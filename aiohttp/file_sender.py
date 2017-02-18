@@ -60,7 +60,7 @@ class FileSender:
             yield from self._sendfile_fallback(request, resp, fobj, count)
             return
 
-        def _send_headers(resp_impl):
+        def _send_headers(version, headers, writer):
             # Durty hack required for
             # https://github.com/KeepSafe/aiohttp/issues/1093
             # don't send headers in sendfile mode
@@ -144,6 +144,14 @@ class FileSender:
     @asyncio.coroutine
     def send(self, request, filepath):
         """Send filepath to client using request."""
+        gzip = False
+        if 'gzip' in request.headers.get(hdrs.ACCEPT_ENCODING, ''):
+            gzip_path = filepath.with_name(filepath.name + '.gz')
+
+            if gzip_path.is_file():
+                filepath = gzip_path
+                gzip = True
+
         st = filepath.stat()
 
         modsince = request.if_modified_since
@@ -176,12 +184,21 @@ class FileSender:
                 count = (end or file_size) - start
 
             if start + count > file_size:
-                raise HTTPRequestRangeNotSatisfiable
+                # rfc7233:If the last-byte-pos value is
+                # absent, or if the value is greater than or equal to
+                # the current length of the representation data,
+                # the byte range is interpreted as the remainder
+                # of the representation (i.e., the server replaces the
+                # value of last-byte-pos with a value that is one less than
+                # the current length of the selected representation).
+                count = file_size - start
 
         resp = self._response_factory(status=status)
         resp.content_type = ct
         if encoding:
             resp.headers[hdrs.CONTENT_ENCODING] = encoding
+        if gzip:
+            resp.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
         resp.last_modified = st.st_mtime
 
         resp.content_length = count

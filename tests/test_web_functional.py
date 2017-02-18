@@ -9,7 +9,7 @@ from multidict import MultiDict
 from yarl import URL
 
 from aiohttp import FormData, multipart, web
-from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
+from aiohttp.protocol import HttpVersion10, HttpVersion11
 
 try:
     import ssl
@@ -52,7 +52,7 @@ def test_handler_returns_not_response(loop, test_server, test_client):
     resp = yield from client.get('/')
     assert 500 == resp.status
 
-    logger.exception.assert_called_with("Error handling request")
+    assert logger.exception.called
 
 
 @asyncio.coroutine
@@ -559,26 +559,6 @@ def test_http10_keep_alive_default(loop, test_client):
 
 
 @asyncio.coroutine
-def test_http09_keep_alive_default(loop, test_client):
-
-    @asyncio.coroutine
-    def handler(request):
-        yield from request.read()
-        return web.Response()
-
-    app = web.Application(loop=loop)
-    app.router.add_get('/', handler)
-    client = yield from test_client(app)
-
-    headers = {'Connection': 'keep-alive'}  # should be ignored
-    resp = yield from client.get('/', version=HttpVersion(0, 9),
-                                 headers=headers)
-    assert 200 == resp.status
-    assert resp.version == HttpVersion(0, 9)
-    assert 'Connection' not in resp.headers
-
-
-@asyncio.coroutine
 def test_http10_keep_alive_with_headers_close(loop, test_client):
 
     @asyncio.coroutine
@@ -622,7 +602,7 @@ def test_http10_keep_alive_with_headers(loop, test_client):
 def test_upload_file(loop, test_client):
 
     here = pathlib.Path(__file__).parent
-    fname = here / 'software_development_in_picture.jpg'
+    fname = here / 'aiohttp.png'
     with fname.open('rb') as f:
         data = f.read()
 
@@ -644,7 +624,7 @@ def test_upload_file(loop, test_client):
 @asyncio.coroutine
 def test_upload_file_object(loop, test_client):
     here = pathlib.Path(__file__).parent
-    fname = here / 'software_development_in_picture.jpg'
+    fname = here / 'aiohttp.png'
     with fname.open('rb') as f:
         data = f.read()
 
@@ -763,14 +743,36 @@ def test_get_with_empty_arg_with_equal(loop, test_client):
     assert 200 == resp.status
 
 
-@pytest.mark.xfail  # and had never worked
 @asyncio.coroutine
-def test_response_with_precompressed_body(loop, test_client):
+def test_response_with_precompressed_body_gzip(loop, test_client):
+
     @asyncio.coroutine
     def handler(request):
         headers = {'Content-Encoding': 'gzip'}
-        deflated_data = zlib.compress(b'mydata')
-        return web.Response(body=deflated_data, headers=headers)
+        zcomp = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+        data = zcomp.compress(b'mydata') + zcomp.flush()
+        return web.Response(body=data, headers=headers)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    data = yield from resp.read()
+    assert b'mydata' == data
+    assert resp.headers.get('Content-Encoding') == 'gzip'
+
+
+@asyncio.coroutine
+def test_response_with_precompressed_body_deflate(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        headers = {'Content-Encoding': 'deflate'}
+        zcomp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+        data = zcomp.compress(b'mydata') + zcomp.flush()
+        return web.Response(body=data, headers=headers)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -825,19 +827,19 @@ def test_requests_count(loop, test_client):
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
     client = yield from test_client(app)
-    assert client.handler.requests_count == 0
+    assert client.server.handler.requests_count == 0
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert client.handler.requests_count == 1
+    assert client.server.handler.requests_count == 1
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert client.handler.requests_count == 2
+    assert client.server.handler.requests_count == 2
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert client.handler.requests_count == 3
+    assert client.server.handler.requests_count == 3
 
 
 @asyncio.coroutine
@@ -869,7 +871,7 @@ def test_simple_subapp(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -893,14 +895,14 @@ def test_subapp_reverse_url(loop, test_client):
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
     subapp.router.add_get('/final', handler2, name='name')
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
     assert resp.status == 200
     txt = yield from resp.text()
     assert 'OK' == txt
-    assert resp.url_obj.path == '/path/final'
+    assert resp.url.path == '/path/final'
 
 
 @asyncio.coroutine
@@ -918,19 +920,19 @@ def test_subapp_reverse_variable_url(loop, test_client):
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
     subapp.router.add_get('/{part}', handler2, name='name')
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
     assert resp.status == 200
     txt = yield from resp.text()
     assert 'OK' == txt
-    assert resp.url_obj.path == '/path/final'
+    assert resp.url.path == '/path/final'
 
 
 @asyncio.coroutine
 def test_subapp_reverse_static_url(loop, test_client):
-    fname = 'software_development_in_picture.jpg'
+    fname = 'aiohttp.png'
 
     @asyncio.coroutine
     def handler(request):
@@ -942,11 +944,11 @@ def test_subapp_reverse_static_url(loop, test_client):
     subapp.router.add_get('/to', handler)
     here = pathlib.Path(__file__).parent
     subapp.router.add_static('/static', here, name='name')
-    app.router.add_subapp('/path', subapp)
+    app.add_subapp('/path', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
-    assert resp.url_obj.path == '/path/static/' + fname
+    assert resp.url.path == '/path/static/' + fname
     assert resp.status == 200
     body = yield from resp.read()
     with (here / fname).open('rb') as f:
@@ -963,7 +965,7 @@ def test_subapp_app(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -981,7 +983,7 @@ def test_subapp_not_found(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/other')
@@ -997,7 +999,7 @@ def test_subapp_not_found2(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/invalid/other')
@@ -1013,7 +1015,7 @@ def test_subapp_not_allowed(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.post('/path/to')
@@ -1031,7 +1033,7 @@ def test_subapp_cannot_add_app_in_handler(loop, test_client):
     app = web.Application(loop=loop)
     subapp = web.Application(loop=loop)
     subapp.router.add_get('/to', handler)
-    app.router.add_subapp('/path/', subapp)
+    app.add_subapp('/path/', subapp)
 
     client = yield from test_client(app)
     resp = yield from client.get('/path/to')
@@ -1062,8 +1064,8 @@ def test_subapp_middlewares(loop, test_client):
     subapp1 = web.Application(loop=loop, middlewares=[middleware_factory])
     subapp2 = web.Application(loop=loop, middlewares=[middleware_factory])
     subapp2.router.add_get('/to', handler)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     client = yield from test_client(app)
     resp = yield from client.get('/a/b/to')
@@ -1095,8 +1097,8 @@ def test_subapp_on_response_prepare(loop, test_client):
     subapp2 = web.Application(loop=loop)
     subapp2.on_response_prepare.append(make_signal(subapp2))
     subapp2.router.add_get('/to', handler)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     client = yield from test_client(app)
     resp = yield from client.get('/a/b/to')
@@ -1118,8 +1120,8 @@ def test_subapp_on_startup(loop, test_server):
     subapp1.on_startup.append(on_signal)
     subapp2 = web.Application(loop=loop)
     subapp2.on_startup.append(on_signal)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     yield from test_server(app)
 
@@ -1139,8 +1141,8 @@ def test_subapp_on_shutdown(loop, test_server):
     subapp1.on_shutdown.append(on_signal)
     subapp2 = web.Application(loop=loop)
     subapp2.on_shutdown.append(on_signal)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     server = yield from test_server(app)
     yield from server.close()
@@ -1162,8 +1164,8 @@ def test_subapp_on_cleanup(loop, test_server):
     subapp1.on_cleanup.append(on_signal)
     subapp2 = web.Application(loop=loop)
     subapp2.on_cleanup.append(on_signal)
-    subapp1.router.add_subapp('/b/', subapp2)
-    app.router.add_subapp('/a/', subapp1)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
 
     server = yield from test_server(app)
     yield from server.close()
@@ -1188,18 +1190,14 @@ def test_custom_date_header(loop, test_client):
 
 
 @asyncio.coroutine
-def test_response_task(loop, test_client):
-
-    srv_resp = None
+def test_response_prepared_with_clone(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        nonlocal srv_resp
-        srv_resp = web.StreamResponse()
-        assert srv_resp.task is None
-        yield from srv_resp.prepare(request)
-        assert srv_resp.task is not None
-        return srv_resp
+        cloned = request.clone()
+        resp = web.StreamResponse()
+        yield from resp.prepare(cloned)
+        return resp
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -1207,7 +1205,6 @@ def test_response_task(loop, test_client):
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert srv_resp.task is None
 
 
 @asyncio.coroutine

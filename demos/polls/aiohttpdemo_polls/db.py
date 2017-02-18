@@ -36,7 +36,7 @@ class RecordNotFound(Exception):
 
 
 async def init_pg(app):
-    conf = app['config']
+    conf = app['config']['postgres']
     engine = await aiopg.sa.create_engine(
         database=conf['database'],
         user=conf['user'],
@@ -80,4 +80,4 @@ async def vote(conn, question_id, choice_id):
     record = await result.fetchone()
     if not record:
         msg = "Question with id: {} or choice id: {} does not exists"
-        raise RecordNotFound(msg.format(question_id), choice_id)
+        raise RecordNotFound(msg.format(question_id, choice_id))

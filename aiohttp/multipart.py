@@ -252,12 +252,8 @@ class BodyPartReader(object):
         if self._at_eof:
             return b''
         data = bytearray()
-        if self._length is None:
-            while not self._at_eof:
-                data.extend((yield from self.readline()))
-        else:
-            while not self._at_eof:
-                data.extend((yield from self.read_chunk(self.chunk_size)))
+        while not self._at_eof:
+            data.extend((yield from self.read_chunk(self.chunk_size)))
         if decode:
             return self.decode(data)
         return data
@@ -332,10 +328,6 @@ class BodyPartReader(object):
             chunk = window[len(self._prev_chunk):idx]
             if not chunk:
                 self._at_eof = True
-        if 0 < len(chunk) < len(sub) and not self._content_eof:
-            self._prev_chunk += chunk
-            self._at_eof = False
-            return b''
         result = self._prev_chunk
         self._prev_chunk = chunk
         return result
@@ -381,12 +373,8 @@ class BodyPartReader(object):
         """
         if self._at_eof:
             return
-        if self._length is None:
-            while not self._at_eof:
-                yield from self.readline()
-        else:
-            while not self._at_eof:
-                yield from self.read_chunk(self.chunk_size)
+        while not self._at_eof:
+            yield from self.read_chunk(self.chunk_size)
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
@@ -398,7 +386,9 @@ class BodyPartReader(object):
         :rtype: str
         """
         data = yield from self.read(decode=True)
-        encoding = encoding or self.get_charset(default='latin1')
+        # see https://www.w3.org/TR/html5/forms.html#multipart/form-data-encoding-algorithm # NOQA
+        # and https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#dom-xmlhttprequest-send # NOQA
+        encoding = encoding or self.get_charset(default='utf-8')
         return data.decode(encoding)
 
     @asyncio.coroutine
@@ -641,6 +631,20 @@ class MultipartReader(object):
             pass
         elif chunk == self._boundary + b'--':
             self._at_eof = True
+            epilogue = yield from self._readline()
+            next_line = yield from self._readline()
+
+            # the epilogue is expected and then either the end of input or the
+            # parent multipart boundary, if the parent boundary is found then
+            # it should be marked as unread and handed to the parent for
+            # processing
+            if next_line[:2] == b'--':
+                self._unread.append(next_line)
+            # otherwise the request is likely missing an epilogue and both
+            # lines should be passed to the parent for processing
+            # (this handles the old behavior gracefully)
+            else:
+                self._unread.extend([next_line, epilogue])
         else:
             raise ValueError('Invalid boundary %r, expected %r'
                              % (chunk, self._boundary))
@@ -672,7 +676,11 @@ class BodyPartWriter(object):
     """Multipart writer for single body part."""
 
     def __init__(self, obj, headers=None, *, chunk_size=8192):
-        if headers is None:
+        if isinstance(obj, MultipartWriter):
+            if headers is not None:
+                obj.headers.update(headers)
+            headers = obj.headers
+        elif headers is None:
             headers = CIMultiDict()
         elif not isinstance(headers, CIMultiDict):
             headers = CIMultiDict(headers)
@@ -690,6 +698,19 @@ class BodyPartWriter(object):
             ('application', 'json'): self._serialize_json,
             ('application', 'x-www-form-urlencoded'): self._serialize_form
         }
+        self._validate_obj(obj, headers)
+
+    def _validate_obj(self, obj, headers):
+        mtype, stype, *_ = parse_mimetype(headers.get(CONTENT_TYPE))
+        if (mtype, stype) in self._serialize_map:
+            return
+        for key in self._serialize_map:
+            if isinstance(key, tuple):
+                continue
+            if isinstance(obj, key):
+                return
+        else:
+            raise TypeError('unexpected body part value type %r' % type(obj))
 
     def _fill_headers_with_defaults(self):
         if CONTENT_TYPE not in self.headers:
@@ -862,7 +883,7 @@ class BodyPartWriter(object):
             raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(encoding))
 
-    def set_content_disposition(self, disptype, **params):
+    def set_content_disposition(self, disptype, quote_fields=True, **params):
         """Sets ``Content-Disposition`` header.
 
         :param str disptype: Disposition type: inline, attachment, form-data.
@@ -879,7 +900,7 @@ class BodyPartWriter(object):
                 if not key or not (TOKEN > set(key)):
                     raise ValueError('bad content disposition parameter'
                                      ' {!r}={!r}'.format(key, val))
-                qval = quote(val, '')
+                qval = quote(val, '') if quote_fields else val
                 lparams.append((key, '"%s"' % qval))
                 if key == 'filename':
                     lparams.append(('filename*', "utf-8''" + qval))

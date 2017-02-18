@@ -2,6 +2,7 @@ Contributors
 ------------
 
 A. Jesse Jiryu Davis
+Adam Mills
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
@@ -10,6 +11,7 @@ Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
 Alexander Malev
+Alexander Mohr
 Alexander Shorin
 Alexander Travov
 Alexandru Mihai
@@ -46,10 +48,12 @@ David Michael Brown
 Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
+Dmitry Doroshev
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+Eduard Iskandarov
 Elizabeth Leddy
 Enrique Saez
 Erich Healy
@@ -79,6 +83,7 @@ Joongi Kim
 Julien Duponchelle
 Junjie Tao
 Justas Trimailovas
+Justin Turner Arthur
 Kay Zheng
 Kimmo Parviainen-Jalanko
 Kirill Klenov
@@ -92,6 +97,7 @@ Lukasz Marcin Dobrzanski
 Manuel Miranda
 Marco Paolini
 Mariano Anaya
+Martin Melka
 Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
@@ -105,19 +111,24 @@ Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
+Pahaz Blinov
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
+Paulus Schoutsen
 Philipp A.
+Rafael Viotti
 Raúl Cumplido
-"Required Field" <requiredfield256@gmail.com>
+Required Field
 Robert Lu
 Samuel Colvin
 Sebastian Hanula
 Sebastian Hüther
+Sean Hunt
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
+Serhii Kostel
 Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
@@ -127,6 +138,7 @@ Steven Seguin
 Sviatoslav Bulbakha
 Taha Jahangir
 Taras Voinarovskyi
+Terence Honles
 Thomas Grainger
 Tolga Tezel
 Vaibhav Sagar

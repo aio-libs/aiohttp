@@ -18,7 +18,7 @@ def test_del(loop):
     response._post_init(loop)
 
     connection = mock.Mock()
-    response._setup_connection(connection)
+    response._connection = connection
     loop.set_exception_handler(lambda loop, ctx: None)
 
     with pytest.warns(ResourceWarning):
@@ -136,6 +136,29 @@ def test_text(loop):
 
     res = yield from response.text()
     assert res == '{"тест": "пройден"}'
+    assert response._connection is None
+
+
+@asyncio.coroutine
+def test_text_bad_encoding(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+
+    def side_effect(*args, **kwargs):
+        fut = helpers.create_future(loop)
+        fut.set_result('{"тестkey": "пройденvalue"}'.encode('cp1251'))
+        return fut
+
+    # lie about the encoding
+    response.headers = {
+        'Content-Type': 'application/json;charset=utf-8'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+    with pytest.raises(UnicodeDecodeError):
+        yield from response.text()
+    # only the valid utf-8 characters will be returned
+    res = yield from response.text(errors='ignore')
+    assert res == '{"key": "value"}'
     assert response._connection is None
 
 
@@ -275,12 +298,13 @@ def test_json_override_encoding(loop):
     assert not response._get_encoding.called
 
 
+@pytest.mark.xfail
 def test_override_flow_control(loop):
     class MyResponse(ClientResponse):
         flow_control_class = aiohttp.StreamReader
     response = MyResponse('get', URL('http://my-cl-resp.org'))
     response._post_init(loop)
-    response._setup_connection(mock.Mock())
+    response._connection = mock.Mock()
     assert isinstance(response.content, aiohttp.StreamReader)
     response.close()
 

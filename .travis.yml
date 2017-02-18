@@ -5,10 +5,14 @@ services:
 language: python
 
 python:
-  - 3.4
+  # python3.4.2 has bug in http.cookies module, aiohttp provides fix
+  - 3.4.2
+  - 3.4.3
+  - 3.5.2
+  # - 3.5.3
   - 3.5
-  - '3.6-dev'
-  - 'nightly'
+  - 3.6
+  # - 'nightly'
 
 os:
   - linux

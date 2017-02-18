@@ -13,6 +13,8 @@ from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import (content_disposition_filename,
                                parse_content_disposition)
+from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
+from aiohttp.streams import StreamReader
 
 
 def run_in_loop(f):
@@ -255,14 +257,13 @@ class PartReaderTestCase(TestCase):
         self.assertEqual(b'.' * size, result)
         self.assertTrue(obj.at_eof())
 
-    def test_read_does_reads_boundary(self):
+    def test_read_does_not_read_boundary(self):
         stream = Stream(b'Hello, world!\r\n--:')
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary, {}, stream)
         result = yield from obj.read()
         self.assertEqual(b'Hello, world!', result)
-        self.assertEqual(b'', (yield from stream.read()))
-        self.assertEqual([b'--:'], list(obj._unread))
+        self.assertEqual(b'--:', (yield from stream.read()))
 
     def test_multiread(self):
         obj = aiohttp.multipart.BodyPartReader(
@@ -360,6 +361,13 @@ class PartReaderTestCase(TestCase):
             self.boundary, {}, Stream(b'Hello, world!\r\n--:--'))
         result = yield from obj.text()
         self.assertEqual('Hello, world!', result)
+
+    def test_read_text_default_encoding(self):
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {},
+            Stream('Привет, Мир!\r\n--:--'.encode('utf-8')))
+        result = yield from obj.text()
+        self.assertEqual('Привет, Мир!', result)
 
     def test_read_text_encoding(self):
         obj = aiohttp.multipart.BodyPartReader(
@@ -467,8 +475,7 @@ class PartReaderTestCase(TestCase):
             self.boundary, {}, stream)
         yield from obj.release()
         self.assertTrue(obj.at_eof())
-        self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
-        self.assertEqual([b'--:\r\n'], list(obj._unread))
+        self.assertEqual(b'--:\r\n\r\nworld!\r\n--:--', stream.content.read())
 
     def test_release_respects_content_length(self):
         obj = aiohttp.multipart.BodyPartReader(
@@ -484,8 +491,7 @@ class PartReaderTestCase(TestCase):
             self.boundary, {}, stream)
         yield from obj.release()
         yield from obj.release()
-        self.assertEqual(b'\r\nworld!\r\n--:--', stream.content.read())
-        self.assertEqual([b'--:\r\n'], list(obj._unread))
+        self.assertEqual(b'--:\r\n\r\nworld!\r\n--:--', stream.content.read())
 
     def test_filename(self):
         part = aiohttp.multipart.BodyPartReader(
@@ -493,6 +499,16 @@ class PartReaderTestCase(TestCase):
             {CONTENT_DISPOSITION: 'attachment; filename=foo.html'},
             None)
         self.assertEqual('foo.html', part.filename)
+
+    def test_reading_long_part(self):
+        size = 2 * stream_reader_default_limit
+        stream = StreamReader()
+        stream.feed_data(b'0' * size + b'\r\n--:--')
+        stream.feed_eof()
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {}, stream)
+        data = yield from obj.read()
+        self.assertEqual(len(data), size)
 
 
 class MultipartReaderTestCase(TestCase):
@@ -587,6 +603,7 @@ class MultipartReaderTestCase(TestCase):
                    b'\r\n'
                    b'passed\r\n'
                    b'----:----\r\n'
+                   b'\r\n'
                    b'--:--'))
         yield from reader.release()
         self.assertTrue(reader.at_eof())
@@ -734,10 +751,10 @@ class BodyPartWriterTestCase(unittest.TestCase):
                          self.part._guess_content_type('foo'))
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'software_development_in_picture.jpg')
+        filename = os.path.join(here, 'aiohttp.png')
 
         with open(filename, 'rb') as f:
-            self.assertEqual('image/jpeg',
+            self.assertEqual('image/png',
                              self.part._guess_content_type(f))
 
     def test_guess_filename(self):
@@ -831,6 +848,12 @@ class BodyPartWriterTestCase(unittest.TestCase):
         multipart = aiohttp.multipart.MultipartWriter(boundary=':')
         multipart.append('foo-bar-baz')
         multipart.append_json({'test': 'passed'})
+        multipart.append_form({'test': 'passed'})
+        multipart.append_form([('one', 1), ('two', 2)])
+        sub_multipart = aiohttp.multipart.MultipartWriter(boundary='::')
+        sub_multipart.append('nested content')
+        sub_multipart.headers['X-CUSTOM'] = 'test'
+        multipart.append(sub_multipart)
         self.assertEqual(
             [b'--:\r\n',
              b'Content-Type: text/plain; charset=utf-8\r\n'
@@ -838,10 +861,36 @@ class BodyPartWriterTestCase(unittest.TestCase):
              b'\r\n\r\n',
              b'foo-bar-baz',
              b'\r\n',
+
              b'--:\r\n',
              b'Content-Type: application/json',
              b'\r\n\r\n',
              b'{"test": "passed"}',
+             b'\r\n',
+
+             b'--:\r\n',
+             b'Content-Type: application/x-www-form-urlencoded',
+             b'\r\n\r\n',
+             b'test=passed',
+             b'\r\n',
+
+             b'--:\r\n',
+             b'Content-Type: application/x-www-form-urlencoded',
+             b'\r\n\r\n',
+             b'one=1&two=2',
+             b'\r\n',
+
+             b'--:\r\n',
+             b'Content-Type: multipart/mixed; boundary="::"\r\nX-Custom: test',
+             b'\r\n\r\n',
+             b'--::\r\n',
+             b'Content-Type: text/plain; charset=utf-8\r\n'
+             b'Content-Length: 14',
+             b'\r\n\r\n',
+             b'nested content',
+             b'\r\n',
+             b'--::--\r\n',
+             b'',
              b'\r\n',
              b'--:--\r\n',
              b''],
@@ -975,6 +1024,13 @@ class BodyPartWriterTestCase(unittest.TestCase):
         self.part.set_content_disposition('related', filename='foo.html')
         self.assertEqual('foo.html', self.part.filename)
 
+    def test_wrap_multipart(self):
+        writer = aiohttp.multipart.MultipartWriter(boundary=':')
+        part = aiohttp.multipart.BodyPartWriter(writer)
+        self.assertEqual(part.headers, writer.headers)
+        part.headers['X-Custom'] = 'test'
+        self.assertEqual(part.headers, writer.headers)
+
 
 class MultipartWriterTestCase(unittest.TestCase):
 
@@ -1041,6 +1097,14 @@ class MultipartWriterTestCase(unittest.TestCase):
         self.assertEqual(part.headers[CONTENT_TYPE],
                          'application/x-www-form-urlencoded')
 
+    def test_append_multipart(self):
+        subwriter = aiohttp.multipart.MultipartWriter(boundary=':')
+        subwriter.append_json({'foo': 'bar'})
+        self.writer.append(subwriter, {CONTENT_TYPE: 'test/passed'})
+        self.assertEqual(1, len(self.writer))
+        part = self.writer.parts[0]
+        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
+
     def test_serialize(self):
         self.assertEqual([b''], list(self.writer.serialize()))
 
@@ -1050,6 +1114,21 @@ class MultipartWriterTestCase(unittest.TestCase):
             writer.append(b'bar')
             writer.append_json({'baz': True})
         self.assertEqual(3, len(writer))
+
+    def test_append_int_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(1)
+
+    def test_append_float_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(1.1)
+
+    def test_append_none_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(None)
 
 
 class ParseContentDispositionTestCase(unittest.TestCase):

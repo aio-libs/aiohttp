@@ -243,6 +243,40 @@ def test_close(loop, test_client):
 
 
 @asyncio.coroutine
+def test_concurrent_close(loop, test_client):
+    client_ws = None
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal client_ws
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        yield from ws.receive_bytes()
+        ws.send_str('test')
+
+        yield from client_ws.close()
+
+        msg = yield from ws.receive()
+        assert msg.type == aiohttp.WSMsgType.CLOSE
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+    ws = client_ws = yield from client.ws_connect('/')
+
+    ws.send_bytes(b'ask')
+
+    msg = yield from ws.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSING
+
+    yield from asyncio.sleep(0.01, loop=loop)
+    msg = yield from ws.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSED
+
+
+@asyncio.coroutine
 def test_close_from_server(loop, test_client):
 
     closed = helpers.create_future(loop)
@@ -379,8 +413,7 @@ def test_override_default_headers(loop, test_client):
         assert request.headers[hdrs.SEC_WEBSOCKET_VERSION] == '8'
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
-
-        ws.send_str('answer')
+        yield from ws.send_str('answer')
         yield from ws.close()
         return ws
 
@@ -469,3 +502,105 @@ def test_recv_timeout(loop, test_client):
             yield from resp.receive()
 
     yield from resp.close()
+
+
+@asyncio.coroutine
+def test_receive_timeout(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive()
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', receive_timeout=0.1)
+    resp._time_service._interval = 0.05
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from resp.receive(0.05)
+
+    yield from resp.close()
+
+
+@asyncio.coroutine
+def test_custom_receive_timeout(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+        yield from ws.receive()
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/')
+    resp._time_service._interval = 0.05
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from resp.receive(0.05)
+
+    yield from resp.close()
+
+
+@asyncio.coroutine
+def test_heartbeat(loop, test_client):
+    ping_received = False
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal ping_received
+        ws = web.WebSocketResponse(autoping=False)
+        yield from ws.prepare(request)
+        msg = yield from ws.receive()
+        if msg.type == aiohttp.WSMsgType.ping:
+            ping_received = True
+        yield from ws.close()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', heartbeat=0.01)
+
+    yield from resp.receive()
+    yield from resp.close()
+
+    assert ping_received
+
+
+@asyncio.coroutine
+def test_heartbeat_no_pong(loop, test_client):
+    ping_received = False
+
+    @asyncio.coroutine
+    def handler(request):
+        nonlocal ping_received
+        ws = web.WebSocketResponse(autoping=False)
+        yield from ws.prepare(request)
+        msg = yield from ws.receive()
+        if msg.type == aiohttp.WSMsgType.ping:
+            ping_received = True
+        yield from ws.receive()
+        return ws
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', heartbeat=0.05)
+
+    yield from resp.receive()
+    yield from resp.receive()
+
+    assert ping_received

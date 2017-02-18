@@ -1,7 +1,7 @@
 .. _aiohttp-client-reference:
 
-HTTP Client Reference
-=====================
+Client Reference
+================
 
 .. module:: aiohttp
 .. currentmodule:: aiohttp
@@ -386,9 +386,11 @@ The client session supports the context manager protocol for self closing.
          URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
+                            receive_timeout=None,\
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
+                            heartbeat=None,\
                             origin=None, \
                             proxy=None, proxy_auth=None)
       :async-with:
@@ -401,7 +403,10 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param float timeout: Timeout for websocket read. 10 seconds by default
+      :param float timeout: Timeout for websocket to close. 10 seconds by default
+
+      :param float receive_timeout: Timeout for websocket to receive complete message.
+                                    None(unlimited) seconds by default
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
@@ -412,6 +417,10 @@ The client session supports the context manager protocol for self closing.
 
       :param bool autoping: automatically send `pong` on `ping`
                             message from server
+
+      :param float heartbeat: Send `ping` message every `heartbeat` seconds
+                              and wait `pong` response, if `pong` response is not received
+                              then close connection.
 
       :param str origin: Origin header to send to server
 
@@ -457,7 +466,6 @@ The client session supports the context manager protocol for self closing.
       Detach connector from session without closing the former.
 
       Session is switched to closed state anyway.
-
 
 
 Basic API
@@ -554,192 +562,6 @@ certification chaining.
       URLs may be either :class:`str` or :class:`~yarl.URL`
 
 
-.. coroutinefunction:: get(url, **kwargs)
-
-   Perform a GET request.
-
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
-
-   :param \*\*kwargs: Optional arguments that :func:`request` takes.
-
-   :return: :class:`ClientResponse` or derived from
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.get`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
-.. coroutinefunction:: options(url, **kwargs)
-
-   Perform an OPTIONS request.
-
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
-
-   :param \*\*kwargs: Optional arguments that :func:`request` takes.
-
-   :return: :class:`ClientResponse` or derived from
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.options`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
-.. coroutinefunction:: head(url, **kwargs)
-
-   Perform a HEAD request.
-
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
-
-   :param \*\*kwargs: Optional arguments that :func:`request` takes.
-
-   :return: :class:`ClientResponse` or derived from
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.head`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
-.. coroutinefunction:: delete(url, **kwargs)
-
-   Perform a DELETE request.
-
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
-
-   :param \*\*kwargs: Optional arguments that :func:`request` takes.
-
-   :return: :class:`ClientResponse` or derived from
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.delete`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
-.. coroutinefunction:: post(url, *, data=None, **kwargs)
-
-   Perform a POST request.
-
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
-
-   :param \*\*kwargs: Optional arguments that :func:`request` takes.
-
-   :return: :class:`ClientResponse` or derived from
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.post`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
-.. coroutinefunction:: put(url, *, data=None, **kwargs)
-
-   Perform a PUT request.
-
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
-
-   :param \*\*kwargs: Optional arguments that :func:`request` takes.
-
-   :return: :class:`ClientResponse` or derived from
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.put`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
-.. coroutinefunction:: patch(url, *, data=None, **kwargs)
-
-   Perform a PATCH request.
-
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`.
-
-   :param \*\*kwargs: Optional arguments that :func:`request` takes.
-
-   :return: :class:`ClientResponse` or derived from
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.patch`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
-.. coroutinefunction:: ws_connect(url, *, protocols=(), \
-                                  timeout=10.0, connector=None, auth=None,\
-                                  autoclose=True, autoping=True, loop=None,\
-                                  origin=None, headers=None)
-
-   This function creates a websocket connection, checks the response and
-   returns a :class:`ClientWebSocketResponse` object. In case of failure
-   it may raise a :exc:`~aiohttp.errors.WSServerHandshakeError` exception.
-
-   :param url: Websocket server url, :class:`str` or :class:`~yarl.URL`
-
-   :param tuple protocols: Websocket protocols
-
-   :param float timeout: Timeout for websocket read. 10 seconds by default
-
-   :param obj connector: object :class:`TCPConnector`
-
-   :param bool autoclose: Automatically close websocket connection
-                          on close message from server. If `autoclose` is
-                          False them close procedure has to be handled manually
-
-   :param bool autoping: Automatically send `pong` on `ping` message from server
-
-   :param aiohttp.helpers.BasicAuth auth: BasicAuth named tuple that
-                                          represents HTTP Basic Authorization
-                                          (optional)
-
-   :param loop: :ref:`event loop<asyncio-event-loop>` used
-                for processing HTTP requests.
-
-                If param is ``None`` :func:`asyncio.get_event_loop`
-                used for getting default event loop, but we strongly
-                recommend to use explicit loops everywhere.
-
-   :param str origin: Origin header to send to server
-
-   :param headers: :class:`dict`, :class:`CIMultiDict` or
-                   :class:`CIMultiDictProxy` for providing additional
-                   headers for websocket handshake request.
-
-   .. versionadded:: 0.18
-
-      Add *auth* parameter.
-
-   .. versionadded:: 0.19
-
-      Add *origin* parameter.
-
-   .. versionadded:: 0.20
-
-      Add *headers* parameter.
-
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.ws_connect`.
-
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
 .. _aiohttp-client-reference-connectors:
 
 Connectors
@@ -785,7 +607,7 @@ BaseConnector
    :param int limit: limit for simultaneous connections to the same
                      endpoint.  Endpoints are the same if they are
                      have equal ``(host, port, is_ssl)`` triple.
-                     If *limit* is ``None`` the connector has no limit.
+                     If *limit* is ``None`` the connector has no limit (default: 20).
 
    :param bool force_close: do close underlying sockets after
                             connection releasing (optional).
@@ -823,7 +645,7 @@ BaseConnector
       Endpoints are the same if they are have equal ``(host, port,
       is_ssl)`` triple.
 
-      If *limit* is ``None`` the connector has no limit (default).
+      If *limit* is ``None`` the connector has no limit.
 
       Read-only property.
 
@@ -869,8 +691,7 @@ TCPConnector
                         family=0, \
                         ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
-                        force_close=False, loop=None, local_addr=None,
-                        resolver=None)
+                        force_close=False, loop=None, local_addr=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -922,10 +743,6 @@ TCPConnector
          The resolver is ``aiohttp.AsyncResolver`` now if
          :term:`aiodns` is installed.
 
-   :param bool resolve: alias for *use_dns_cache* parameter.
-
-      .. deprecated:: 0.17
-
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
                       for  *IPv6* only -- :const:`socket.AF_INET6`.
@@ -973,12 +790,6 @@ TCPConnector
 
       .. versionadded:: 0.17
 
-   .. attribute:: resolve
-
-      Alias for :attr:`dns_cache`.
-
-      .. deprecated:: 0.17
-
    .. attribute:: cached_hosts
 
       The cache of resolved hosts if :attr:`dns_cache` is enabled.
@@ -986,12 +797,6 @@ TCPConnector
       Read-only :class:`types.MappingProxyType` property.
 
       .. versionadded:: 0.17
-
-   .. attribute:: resolved_hosts
-
-      Alias for :attr:`cached_hosts`
-
-      .. deprecated:: 0.17
 
    .. attribute:: fingerprint
 
@@ -1011,14 +816,6 @@ TCPConnector
       clear all cache otherwise.
 
       .. versionadded:: 0.17
-
-   .. method:: clear_resolved_hosts(self, host=None, port=None)
-
-      Alias for :meth:`clear_dns_cache`.
-
-      .. deprecated:: 0.17
-
-
 
 
 ProxyConnector
@@ -1202,15 +999,7 @@ Response object
 
    .. attribute:: url
 
-      URL of request (:class:`str`).
-
-      .. deprecated:: 1.1
-
-   .. attribute:: url_obj
-
       URL of request (:class:`~yarl.URL`).
-
-      .. versionadded:: 1.1
 
    .. attribute:: connection
 
@@ -1263,8 +1052,8 @@ Response object
    .. attribute:: history
 
       A :class:`~collections.abc.Sequence` of :class:`ClientResponse`
-      objects of preceding requests if there were redirects, an empty
-      sequence otherwise.
+      objects of preceding requests (earliest request first) if there were
+      redirects, an empty sequence otherwise.
 
    .. method:: close()
 
@@ -1415,8 +1204,7 @@ manually.
       :param int code: closing code
 
       :param message: optional payload of *pong* message,
-                      :class:`str` (converted to *UTF-8* encoded bytes)
-                      or :class:`bytes`.
+         :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
 
    .. comethod:: receive()
 

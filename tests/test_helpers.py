@@ -1,4 +1,6 @@
+import asyncio
 import datetime
+import sys
 from unittest import mock
 
 import pytest
@@ -135,6 +137,20 @@ def test_invalid_formdata_content_transfer_encoding():
                            content_transfer_encoding=invalid_val)
 
 # ------------- access logger -------------------------
+
+
+def test_formdata_field_name_is_quoted():
+    form = helpers.FormData()
+    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
+    res = b"".join(form("ascii"))
+    assert b'name="emails%5B%5D"' in res
+
+
+def test_formdata_field_name_is_not_quoted():
+    form = helpers.FormData(quote_fields=False)
+    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
+    res = b"".join(form("ascii"))
+    assert b'name="emails[]"' in res
 
 
 def test_access_logger_format():
@@ -289,6 +305,7 @@ class TestReify:
             a.prop = 123
 
 
+@pytest.mark.skipif(sys.version_info < (3, 5), reason='old python')
 def test_create_future_with_new_loop():
     # We should use the new create_future() if it's available.
     mock_loop = mock.Mock()
@@ -297,6 +314,7 @@ def test_create_future_with_new_loop():
     assert expected == helpers.create_future(mock_loop)
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 5, 2), reason='new python')
 def test_create_future_with_old_loop(mocker):
     MockFuture = mocker.patch('asyncio.Future')
     # The old loop (without create_future()) should just have a Future object
@@ -387,20 +405,38 @@ def test_is_ip_address_invalid_type():
         helpers.is_ip_address(object())
 
 
+# ----------------------------------- TimeService ----------------------
+
+
 @pytest.fixture
 def time_service(loop):
-    return helpers.TimeService(loop)
+    return helpers.TimeService(loop, interval=0.1)
 
 
 class TestTimeService:
+
     def test_ctor(self, time_service):
         assert time_service._cb is not None
         assert time_service._time is not None
         assert time_service._strtime is None
-        assert time_service._count == 0
 
     def test_stop(self, time_service):
-        time_service.stop()
+        time_service.close()
+        assert time_service._cb is None
+        assert time_service._loop is None
+
+    def test_cancel_handles_on_stop(self, time_service):
+        def cb(x):
+            return x
+
+        handle = time_service.call_later(10, cb, 'test')
+        time_service.close()
+        assert handle._cancelled
+        assert not time_service._scheduled
+
+    def test_double_stopping(self, time_service):
+        time_service.close()
+        time_service.close()
         assert time_service._cb is None
         assert time_service._loop is None
 
@@ -414,14 +450,93 @@ class TestTimeService:
         # second call should use cached value
         assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
 
-    def test_recalc_time(self, time_service):
+    def test_recalc_time(self, time_service, mocker):
+        mocker.spy(time_service._loop, 'time')
+
         time_service._time = 123
         time_service._strtime = 'asd'
         time_service._count = 1000000
         time_service._on_cb()
         assert time_service._strtime is None
-        assert time_service._count == 0
         assert time_service._time > 1234
+        assert time_service._count == 0
+        assert time_service._loop.time.called
+
+    def test_call_later(self, time_service):
+        time_service._loop.time = mock.Mock()
+        time_service._loop.time.return_value = 1477797232
+        time_service._loop_time = 1477797232
+
+        called = 0
+
+        def cb():
+            nonlocal called
+            called += 1
+
+        time_service.call_later(10, cb)
+        time_service.call_later(20, cb)
+        time_service._loop.time.return_value = 1477797232 + 11
+        time_service._on_cb()
+
+        assert called == 1
+
+        time_service._loop.time.return_value = 1477797232 + 21
+        time_service._on_cb()
+
+        assert called == 2
+        assert not time_service._scheduled
+
+    def test_call_cancel(self, time_service):
+        time_service._loop.time = mock.Mock()
+        time_service._loop.time.return_value = 1477797232
+        time_service._loop_time = 1477797232
+
+        called = 0
+
+        def cb():
+            nonlocal called
+            called += 1
+
+        handle = time_service.call_later(10, cb)
+        handle.cancel()
+        time_service._loop.time.return_value = 1477797232 + 11
+        time_service._on_cb()
+
+        assert called == 0
+        assert not time_service._scheduled
+
+    @asyncio.coroutine
+    def test_timeout(self, time_service, loop):
+        canceled_raised = False
+
+        @asyncio.coroutine
+        def long_running_task():
+            try:
+                yield from asyncio.sleep(10, loop=loop)
+            except asyncio.CancelledError:
+                nonlocal canceled_raised
+                canceled_raised = True
+                raise
+
+        with pytest.raises(asyncio.TimeoutError):
+            with time_service.timeout(0.02):
+                yield from long_running_task()
+        assert canceled_raised, 'CancelledError was not raised'
+
+    @asyncio.coroutine
+    def test_timeout_finish_in_time(self, time_service, loop):
+        @asyncio.coroutine
+        def long_running_task():
+            yield from asyncio.sleep(0.01, loop=loop)
+            return 'done'
+
+        with time_service.timeout(0.1):
+            resp = yield from long_running_task()
+
+        assert resp == 'done'
+
+
+# ----------------------------------- FrozenList ----------------------
 
 
 class TestFrozenList:

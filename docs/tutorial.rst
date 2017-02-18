@@ -1,7 +1,7 @@
 .. _aiohttp-tutorial:
 
-HTTP Server Tutorial
-====================
+Server Tutorial
+===============
 
 Are you going to learn *aiohttp* but don't where to start? We have
 example for you. Polls application is a great example for getting
@@ -35,7 +35,7 @@ command:
 .. code-block:: shell
 
  $ python -c 'import aiohttp; print(aiohttp.__version__)'
- 0.22.0
+ 1.1.5
 
 Project structure looks very similar to other python based web projects:
 
@@ -89,7 +89,83 @@ The following code creates an application::
 
    loop = asyncio.get_event_loop()
    app = web.Application(loop=loop)
+   web.run_app(app, host='127.0.0.1', port=8080)
 
+Save it under ``aiohttpdemo_polls/main.py`` and start the server:
+
+.. code-block:: shell
+
+   $ python main.py  
+   
+You'll see the following output on the command line:
+
+.. code-block:: shell
+
+   ======== Running on http://127.0.0.1:8080 ========
+   (Press CTRL+C to quit)
+
+Open ``http://127.0.0.1:8080`` in browser or do
+
+.. code-block:: shell
+
+   $ curl -X GET localhost:8080
+
+Alas, for now both return only ``404: Not Found``.
+To show something more meaningful let's create a route and a view.
+
+.. _aiohttp-tutorial-views:
+
+Views
+-----
+
+Let's start from first views. Create the file ``aiohttpdemo_polls/views.py`` with the following::
+
+    from aiohttp import web
+
+
+    async def index(request):
+        return web.Response(text='Hello Aiohttp!')
+
+This is the simplest view possible in Aiohttp. 
+Now we should create a route for this ``index`` view. Put this into ``aiohttpdemo_polls/routes.py`` (it is a good practice to separate views, routes, models etc. You'll have more of each, and it is nice to have them in different places)::
+
+    from views import index
+
+
+    def setup_routes(app):
+        app.router.add_get('/', index)
+
+
+Also, we should call ``setup_routes`` function somewhere, and the best place is in the ``main.py`` ::
+
+   import asyncio
+   from aiohttp import web
+   from routes import setup_routes
+
+
+   loop = asyncio.get_event_loop()
+   app = web.Application(loop=loop)
+   setup_routes(app)
+   web.run_app(app, host='127.0.0.1', port=8080)
+
+Start server again. Now if we open browser we can see:
+
+.. code-block:: shell
+
+    $ curl -X GET localhost:8080
+    Hello Aiohttp!
+
+Success! For now your working directory should look like this:
+
+.. code-block:: none
+
+    .
+    ├── ..
+    └── polls
+        ├── aiohttpdemo_polls
+        │   ├── main.py
+        │   ├── routes.py
+        │   └── views.py
 
 .. _aiohttp-tutorial-config:
 
@@ -134,7 +210,7 @@ Thus we **suggest** to use the following approach:
       candidates for such job.
 
 
-Load config and push into into application::
+Load config and push into application::
 
     # load config from yaml file in current dir
     conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
@@ -254,36 +330,6 @@ Let's close DB connection in :attr:`~aiohtp.web.Application.on_cleanup` signal::
 
    app.on_cleanup.append(close_pg)
 
-
-.. _aiohttp-tutorial-views:
-
-Views
------
-
-Let's start from first views. Open polls/aiohttpdemo_polls/views.py and put
-next Python code inside file (``polls/aiohttpdemo_polls/views.py``)::
-
-    from aiohttp import web
-
-
-    async def index(self, request):
-        return web.Response(text='Hello Aiohttp!')
-
-This is the simplest view possible in Aiohttp. Now we should add ``index`` view
-to ``polls/aiohttpdemo_polls/routes.py``::
-
-    from .views import index
-
-
-    def setup_routes(app, project_root):
-        app.router.add_get('/', index)
-
-Now if we open browser we can see:
-
-.. code-block:: shell
-
-    $ curl -X GET localhost:8080
-    Hello Aiohttp!
 
 
 .. _aiohttp-tutorial-templates:

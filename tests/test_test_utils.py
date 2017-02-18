@@ -2,7 +2,7 @@ import asyncio
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
@@ -192,7 +192,7 @@ def test_make_mocked_request(headers):
     assert req.method == "GET"
     assert req.path == "/"
     assert isinstance(req, web_reqrep.Request)
-    assert isinstance(req.headers, CIMultiDictProxy)
+    assert isinstance(req.headers, CIMultiDict)
 
 
 def test_make_mocked_request_sslcontext():
@@ -226,12 +226,10 @@ def test_make_mocked_request_transport():
 def test_test_client_props(loop):
     app = _create_example_app(loop)
     client = _TestClient(app, host='localhost')
-    assert client.app == app
     assert client.host == 'localhost'
     assert client.port is None
     with client:
         assert isinstance(client.port, int)
-        assert client.handler is not None
         assert client.server is not None
     assert client.port is None
 

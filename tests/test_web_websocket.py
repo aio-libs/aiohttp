@@ -2,12 +2,13 @@ import asyncio
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 
-from aiohttp import (CIMultiDict, WSMessage, WSMsgType, errors, helpers,
-                     signals, web)
+from aiohttp import WSMessage, WSMsgType, errors, helpers, signals, web
+from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
-from aiohttp.web_ws import WebSocketReady
+from aiohttp.web_ws import CLOSED_MESSAGE, WebSocketReady
 
 
 @pytest.fixture
@@ -21,18 +22,20 @@ def app(loop):
 
 @pytest.fixture
 def writer():
-    return mock.Mock()
+    writer = mock.Mock()
+    writer.drain.return_value = ()
+    return writer
 
 
 @pytest.fixture
-def reader():
+def protocol():
     ret = mock.Mock()
     ret.set_parser.return_value = ret
     return ret
 
 
 @pytest.fixture
-def make_request(app, writer, reader):
+def make_request(app, protocol, writer):
     def maker(method, path, headers=None, protocols=False):
         if headers is None:
             headers = CIMultiDict(
@@ -45,8 +48,8 @@ def make_request(app, writer, reader):
         if protocols:
             headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
 
-        return make_mocked_request(method, path, headers,
-                                   app=app, writer=writer, reader=reader)
+        return make_mocked_request(
+            method, path, headers, app=app, protocol=protocol, writer=writer)
 
     return maker
 
@@ -248,53 +251,68 @@ def test_closed_after_ctor():
 
 
 @asyncio.coroutine
-def test_send_str_closed(make_request):
+def test_send_str_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.send_str('string')
+
+    mocker.spy(ws_logger, 'warning')
+    ws.send_str('string')
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_send_bytes_closed(make_request):
+def test_send_bytes_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.send_bytes(b'bytes')
+
+    mocker.spy(ws_logger, 'warning')
+    ws.send_bytes(b'bytes')
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_send_json_closed(make_request):
+def test_send_json_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.send_json({'type': 'json'})
+
+    mocker.spy(ws_logger, 'warning')
+    ws.send_json({'type': 'json'})
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_ping_closed(make_request):
+def test_ping_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.ping()
+
+    mocker.spy(ws_logger, 'warning')
+    ws.ping()
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
-def test_pong_closed(make_request):
+def test_pong_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
-    with pytest.raises(RuntimeError):
-        ws.pong()
+
+    mocker.spy(ws_logger, 'warning')
+    ws.pong()
+    assert ws_logger.warning.called
 
 
 @asyncio.coroutine
@@ -302,13 +320,14 @@ def test_close_idempotent(make_request, writer):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     assert (yield from ws.close(code=1, message='message1'))
     assert ws.closed
     assert not (yield from ws.close(code=2, message='message2'))
 
 
 @asyncio.coroutine
-def test_start_invalid_method(make_request):
+def test_prepare_invalid_method(make_request):
     req = make_request('POST', '/')
     ws = WebSocketResponse()
     with pytest.raises(HTTPMethodNotAllowed):
@@ -316,7 +335,7 @@ def test_start_invalid_method(make_request):
 
 
 @asyncio.coroutine
-def test_start_without_upgrade(make_request):
+def test_prepare_without_upgrade(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
     ws = WebSocketResponse()
@@ -333,7 +352,6 @@ def test_wait_closed_before_start():
 
 @asyncio.coroutine
 def test_write_eof_not_started():
-
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.write_eof()
@@ -344,6 +362,7 @@ def test_write_eof_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     yield from ws.write_eof()
@@ -352,15 +371,19 @@ def test_write_eof_idempotent(make_request):
 
 
 @asyncio.coroutine
-def test_receive_exc_in_reader(make_request, loop, reader):
+def test_receive_exc_in_reader(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     exc = ValueError()
     res = helpers.create_future(loop)
     res.set_exception(exc)
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = helpers.create_future(loop)
+    ws._payload_writer.drain.return_value.set_result(True)
 
     msg = yield from ws.receive()
     assert msg.type == WSMsgType.ERROR
@@ -370,47 +393,50 @@ def test_receive_exc_in_reader(make_request, loop, reader):
 
 
 @asyncio.coroutine
-def test_receive_cancelled(make_request, loop, reader):
+def test_receive_cancelled(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     res = helpers.create_future(loop)
     res.set_exception(asyncio.CancelledError())
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
 
     with pytest.raises(asyncio.CancelledError):
         yield from ws.receive()
 
 
 @asyncio.coroutine
-def test_receive_timeouterror(make_request, loop, reader):
+def test_receive_timeouterror(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     res = helpers.create_future(loop)
     res.set_exception(asyncio.TimeoutError())
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
 
     with pytest.raises(asyncio.TimeoutError):
         yield from ws.receive()
 
 
 @asyncio.coroutine
-def test_receive_client_disconnected(make_request, loop, reader):
+def test_receive_client_disconnected(make_request, loop):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     exc = errors.ClientDisconnectedError()
     res = helpers.create_future(loop)
     res.set_exception(exc)
-    reader.read = make_mocked_coro(res)
+    ws._reader.read = make_mocked_coro(res)
 
     msg = yield from ws.receive()
     assert ws.closed
-    assert msg.type == WSMsgType.CLOSE
+    assert msg.type == WSMsgType.CLOSED
     assert msg.type is msg.tp
     assert msg.data is None
     assert ws.exception() is None
@@ -421,6 +447,7 @@ def test_multiple_receive_on_close_connection(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
+    ws._reader.feed_data(CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     yield from ws.receive()
@@ -444,23 +471,27 @@ def test_concurrent_receive(make_request):
 
 
 @asyncio.coroutine
-def test_close_exc(make_request, reader, loop):
+def test_close_exc(make_request, loop, mocker):
     req = make_request('GET', '/')
 
     ws = WebSocketResponse()
     yield from ws.prepare(req)
 
+    ws._reader = mock.Mock()
     exc = ValueError()
-    reader.read.return_value = helpers.create_future(loop)
-    reader.read.return_value.set_exception(exc)
+    ws._reader.read.return_value = helpers.create_future(loop)
+    ws._reader.read.return_value.set_exception(exc)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = helpers.create_future(loop)
+    ws._payload_writer.drain.return_value.set_result(True)
 
     yield from ws.close()
     assert ws.closed
     assert ws.exception() is exc
 
     ws._closed = False
-    reader.read.return_value = helpers.create_future(loop)
-    reader.read.return_value.set_exception(asyncio.CancelledError())
+    ws._reader.read.return_value = helpers.create_future(loop)
+    ws._reader.read.return_value.set_exception(asyncio.CancelledError())
     with pytest.raises(asyncio.CancelledError):
         yield from ws.close()
     assert ws.close_code == 1006
@@ -476,7 +507,6 @@ def test_close_exc2(make_request):
     exc = ValueError()
     ws._writer = mock.Mock()
     ws._writer.close.side_effect = exc
-
     yield from ws.close()
     assert ws.closed
     assert ws.exception() is exc
@@ -487,20 +517,14 @@ def test_close_exc2(make_request):
         yield from ws.close()
 
 
-def test_start_twice_idempotent(make_request):
+@asyncio.coroutine
+def test_prepare_twice_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
-    with pytest.warns(DeprecationWarning):
-        impl1 = ws.start(req)
-        impl2 = ws.start(req)
-        assert impl1 is impl2
 
-
-def test_can_start_ok(make_request):
-    req = make_request('GET', '/', protocols=True)
-    ws = WebSocketResponse(protocols=('chat',))
-    with pytest.warns(DeprecationWarning):
-        assert (True, 'chat') == ws.can_start(req)
+    impl1 = yield from ws.prepare(req)
+    impl2 = yield from ws.prepare(req)
+    assert impl1 is impl2
 
 
 def test_msgtype_alias():

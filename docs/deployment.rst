@@ -96,23 +96,29 @@ Next we need to configure *aiohttp upstream group*:
 
    http {
      upstream aiohttp {
-       fail_timeout=0 means we always retry an upstream even if it failed
+       # fail_timeout=0 means we always retry an upstream even if it failed
        # to return a good HTTP response
 
-       # TCP servers
-       server 127.0.0.1:8081 fail_timeout=0;
-       server 127.0.0.1:8082 fail_timeout=0;
-       server 127.0.0.1:8083 fail_timeout=0;
-       server 127.0.0.1:8084 fail_timeout=0;
+       # Unix domain servers
+       server unix:/tmp/example_1.sock fail_timeout=0;
+       server unix:/tmp/example_2.sock fail_timeout=0;
+       server unix:/tmp/example_3.sock fail_timeout=0;
+       server unix:/tmp/example_4.sock fail_timeout=0;
+
+       # Unix domain sockets are used in this example due to their high performance,
+       # but TCP/IP sockets could be used instead:
+       # server 127.0.0.1:8081 fail_timeout=0;
+       # server 127.0.0.1:8082 fail_timeout=0;
+       # server 127.0.0.1:8083 fail_timeout=0;
+       # server 127.0.0.1:8084 fail_timeout=0;
      }
    }
 
 All HTTP requests for ``http://example.com`` except ones for
-``http://example.com/static`` will be redirected to
-``127.0.0.1:8081``, ``127.0.0.1:8082``, ``127.0.0.1:8083`` or
-``127.0.0.1:8084`` *backend proxies*.
-
-By default Nginx uses round-robin algorithm for backend selection.
+``http://example.com/static`` will be redirected to ``example1.sock``,
+``example2.sock``, ``example3.sock`` or ``example4.sock``
+backend servers. By default, Nginx uses round-robin algorithm for backend
+selection.
 
 .. note::
 
@@ -129,34 +135,24 @@ or backend crash.
 There are very many ways to do it: Supervisord, Upstart, Systemd,
 Gaffer, Circus, Runit etc.
 
-Here we'll use `Supervisord <http://supervisord.org/>`_ for example::
+Here we'll use `Supervisord <http://supervisord.org/>`_ for example:
 
-   [program:aiohttp_1]
-   cmd=/path/to/aiohttp_example.py 8081
+.. code-block:: cfg
+
+   [program:aiohttp]
+   numprocs = 4
+   numprocs_start = 1
+   process_name = example_%(process_num)s
+
+   ; Unix socket paths are specified by command line.
+   cmd=/path/to/aiohttp_example.py --path=/tmp/example%(process_num)s.sock
+
+   ; We can just as easily pass TCP port numbers:
+   ; cmd=/path/to/aiohttp_example.py --port=808%(process_num)s
+
    user=nobody
    autostart=true
    autorestart=true
-
-   [program:aiohttp_2]
-   cmd=/path/to/aiohttp_example.py 8082
-   user=nobody
-   autostart=true
-   autorestart=true
-
-   [program:aiohttp_3]
-   cmd=/path/to/aiohttp_example.py 8083
-   user=nobody
-   autostart=true
-   autorestart=true
-
-   [program:aiohttp_4]
-   cmd=/path/to/aiohttp_example.py 8084
-   user=nobody
-   autostart=true
-   autorestart=true
-
-The config will run four aiohttp server instances, ports are specified
-by command line.
 
 aiohttp server
 --------------
@@ -164,14 +160,17 @@ aiohttp server
 The last step is preparing aiohttp server for working with supervisord.
 
 Assuming we have properly configured :class:`aiohttp.web.Application`
-and port is specified by command line the task is trivial::
+and port is specified by command line, the task is trivial:
+
+.. code-block:: python3
 
    # aiohttp_example.py
    import argparse
    from aiohttp import web
 
    parser = argparse.ArgumentParser(description="aiohttp server example")
-   parser.add_argument('port', type=int)
+   parser.add_argument('--path')
+   parser.add_argument('--port')
 
 
    if __name__ == '__main__':
@@ -179,10 +178,10 @@ and port is specified by command line the task is trivial::
        # configure app
 
        args = parser.parse_args()
-       web.run_app(app, port=args.port)
+       web.run_app(app, path=args.path, port=args.port)
 
 For real use cases we perhaps need to configure other things like
-logging etc. but it's out of scope of the topic.
+logging etc., but it's out of scope of the topic.
 
 
 .. _aiohttp-deployment-gunicorn:
@@ -206,14 +205,14 @@ Prepare environment
 -------------------
 
 You firstly need to setup your deployment environment. This example is
-based on Ubuntu 14.04.
+based on `Ubuntu` 14.04.
 
 Create a directory for your application::
 
   >> mkdir myapp
   >> cd myapp
 
-Ubuntu has a bug in pyenv, so to create virtualenv you need to do some
+`Ubuntu` has a bug in pyenv, so to create virtualenv you need to do some
 extra manipulation::
 
   >> pyvenv-3.4 --without-pip venv
