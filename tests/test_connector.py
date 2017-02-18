@@ -133,6 +133,16 @@ def test_create_conn(loop):
         yield from conn._create_connection(object())
 
 
+def test_context_manager(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn.close = mock.Mock()
+
+    with conn as c:
+        assert conn is c
+
+    assert conn.close.called
+
+
 def test_ctor_loop():
     with unittest.mock.patch('aiohttp.connector.asyncio') as m_asyncio:
         session = aiohttp.BaseConnector(time_service=unittest.mock.Mock())
@@ -324,8 +334,8 @@ def test_release_waiter(loop, key, key2):
     conn._waiters[key].append(w2)
     conn._waiters[key2].append(w1)
     conn._release_waiter()
-    assert not w1.set_result.called
-    assert w2.set_result.called
+    assert (w1.set_result.called and not w2.set_result.called or
+            not w1.set_result.called and w2.set_result.called)
     conn.close()
 
     # limited available
@@ -813,7 +823,116 @@ def test_connect_with_limit(loop, key, transport):
 
 
 @asyncio.coroutine
-def test_connect_with_capacity_cancelled(loop):
+def test_connect_with_limit_and_limit_per_host(loop, key, transport):
+    proto = unittest.mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://localhost1:80'),
+                        loop=loop,
+                        response_class=unittest.mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1000, limit_per_host=1)
+    conn._conns[key] = [(transport, proto, loop.time())]
+    conn._create_connection = unittest.mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_result((transport, proto))
+
+    acquired = False
+    connection1 = yield from conn.connect(req)
+
+    @asyncio.coroutine
+    def f():
+        nonlocal acquired
+        connection2 = yield from conn.connect(req)
+        acquired = True
+        assert 1 == len(conn._acquired)
+        assert 1 == len(conn._acquired_per_host[key])
+        connection2.release()
+
+    task = helpers.ensure_future(f(), loop=loop)
+
+    yield from asyncio.sleep(0.01, loop=loop)
+    assert not acquired
+    connection1.release()
+    yield from asyncio.sleep(0, loop=loop)
+    assert acquired
+    yield from task
+    conn.close()
+
+
+@asyncio.coroutine
+def test_connect_with_no_limit_and_limit_per_host(loop, key, transport):
+    proto = unittest.mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://localhost1:80'),
+                        loop=loop,
+                        response_class=unittest.mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=0, limit_per_host=1)
+    conn._conns[key] = [(transport, proto, loop.time())]
+    conn._create_connection = unittest.mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_result((transport, proto))
+
+    acquired = False
+    connection1 = yield from conn.connect(req)
+
+    @asyncio.coroutine
+    def f():
+        nonlocal acquired
+        connection2 = yield from conn.connect(req)
+        acquired = True
+        connection2.release()
+
+    task = helpers.ensure_future(f(), loop=loop)
+
+    yield from asyncio.sleep(0.01, loop=loop)
+    assert not acquired
+    connection1.release()
+    yield from asyncio.sleep(0, loop=loop)
+    assert acquired
+    yield from task
+    conn.close()
+
+
+@asyncio.coroutine
+def test_connect_with_no_limits(loop, key, transport):
+    proto = unittest.mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://localhost1:80'),
+                        loop=loop, response_class=unittest.mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=0, limit_per_host=0)
+    conn._conns[key] = [(transport, proto, loop.time())]
+    conn._create_connection = unittest.mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_result((transport, proto))
+
+    acquired = False
+    connection1 = yield from conn.connect(req)
+
+    @asyncio.coroutine
+    def f():
+        nonlocal acquired
+        connection2 = yield from conn.connect(req)
+        acquired = True
+        assert 1 == len(conn._acquired)
+        assert 1 == len(conn._acquired_per_host[key])
+        connection2.release()
+
+    task = helpers.ensure_future(f(), loop=loop)
+
+    yield from asyncio.sleep(0.01, loop=loop)
+    assert acquired
+    connection1.release()
+    yield from task
+    conn.close()
+
+
+@asyncio.coroutine
+def test_connect_with_limit_cancelled(loop):
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     proto.is_connected.return_value = True

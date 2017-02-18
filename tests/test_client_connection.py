@@ -36,6 +36,15 @@ def protocol():
     return mock.Mock()
 
 
+def test_ctor(connector, key, request, transport, protocol, loop):
+    conn = Connection(connector, key, request,
+                      transport, protocol, loop)
+    assert conn.loop is loop
+    assert conn.protocol is protocol
+    assert conn.writer is protocol.writer
+    conn.close()
+
+
 def test_del(connector, key, request, transport, protocol, loop):
     loop.is_closed.return_value = False
     conn = Connection(connector, key, request,
