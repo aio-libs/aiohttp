@@ -36,10 +36,9 @@ __all__ = (web_reqrep.__all__ +
 
 class Application(MutableMapping):
 
-    def __init__(self, *, logger=web_logger, loop=None,
-
-                 router=None, middlewares=(), handler_args=None, debug=...,
-                 client_max_size=1024**2):
+    def __init__(self, *, logger=web_logger, router=None, middlewares=(),
+                 handler_args=None, client_max_size=1024**2,
+                 loop=None, debug=...):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:

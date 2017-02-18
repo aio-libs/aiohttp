@@ -9,9 +9,10 @@ CHANGES
 
 - Change `ClientResponse.url` to `yarl.URL` instance #1654
 
-- `run_app` and the Command Line Interface now support serving over Unix domain sockets for
-  faster inter-process communication.
+- Add max_size parameter to web.Request reading methods #1133
 
+- `run_app` and the Command Line Interface now support serving over
+  Unix domain sockets for faster inter-process communication.
 
 - Implementation for Trailer headers parser is broken #1619
 

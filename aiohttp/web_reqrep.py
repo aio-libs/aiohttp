@@ -17,7 +17,6 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from .protocol import (RESPONSES, SERVER_SOFTWARE, HttpVersion10,
                        HttpVersion11, PayloadWriter)
@@ -377,8 +376,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 body.extend(chunk)
                 if self._client_max_size \
                         and len(body) >= self._client_max_size:
-                    # local import to avoid circular imports
-                    from aiohttp import web_exceptions
                     raise web_exceptions.HTTPRequestEntityTooLarge
                 if not chunk:
                     break
@@ -1048,3 +1045,7 @@ def json_response(data=sentinel, *, text=None, body=None, status=200,
             text = dumps(data)
     return Response(text=text, body=body, status=status, reason=reason,
                     headers=headers, content_type=content_type)
+
+
+# circular dependenicies
+from aiohttp import web_exceptions  # noqa isort:skip
