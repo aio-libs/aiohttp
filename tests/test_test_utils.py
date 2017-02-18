@@ -6,7 +6,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import web, web_reqrep
+from aiohttp import web
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
 from aiohttp.test_utils import (AioHTTPTestCase, RawTestServer, loop_context,
@@ -191,7 +191,7 @@ def test_make_mocked_request(headers):
     req = make_mocked_request('GET', '/', headers=headers)
     assert req.method == "GET"
     assert req.path == "/"
-    assert isinstance(req, web_reqrep.Request)
+    assert isinstance(req, web.Request)
     assert isinstance(req.headers, CIMultiDict)
 
 
