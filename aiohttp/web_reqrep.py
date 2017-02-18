@@ -17,6 +17,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
+
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from .protocol import WebResponse as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
@@ -48,13 +49,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
-    # Maximum allowed size of request body.
-    _CLIENT_MAX_SIZE = 1024**2
 
-    def __init__(self, message, payload, transport, reader, writer,
-                 time_service, task, *,
-                 secure_proxy_ssl_header=None,
-                 client_max_size=None):
+    def __init__(self, message, payload, protocol, time_service, task, *,
+                 loop=None, secure_proxy_ssl_header=None,
+                 client_max_size=1024**2):
+        self._loop = loop
         self._message = message
         self._transport = transport
         self._reader = reader
@@ -72,11 +71,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._state = {}
         self._cache = {}
         self._task = task
-        if client_max_size:
-            max_size = client_max_size
-        else:
-            max_size = self._CLIENT_MAX_SIZE
-        self._client_max_size = max_size
+        self._client_max_size = client_max_size
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -389,10 +384,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             while True:
                 chunk = yield from self._payload.readany()
                 body.extend(chunk)
-                if len(body) >= self._client_max_size:
+                if self._client_max_size \
+                        and len(body) >= self._client_max_size:
+                    # local import to avoid circular imports
                     from aiohttp import web_exceptions
-                    msg = 'Request body too large'
-                    raise web_exceptions.HTTPRequestEntityTooLarge(text=msg)
+                    raise web_exceptions.HTTPRequestEntityTooLarge
                 if not chunk:
                     break
             self._read_bytes = bytes(body)
