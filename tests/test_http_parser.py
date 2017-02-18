@@ -10,7 +10,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import errors, streams
+from aiohttp import http_exceptions, streams
 from aiohttp.http_parser import (DeflateBuffer, HttpPayloadParser,
                                  HttpRequestParserPy, HttpResponseParserPy)
 
@@ -239,7 +239,7 @@ def test_headers_old_websocket_key1(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'SEC-WEBSOCKET-KEY1: line\r\n\r\n')
 
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
 
@@ -247,7 +247,7 @@ def test_headers_content_length_err_1(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'content-length: line\r\n\r\n')
 
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
 
@@ -255,14 +255,14 @@ def test_headers_content_length_err_2(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'content-length: -1\r\n\r\n')
 
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
 
 def test_invalid_header(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'test line\r\n\r\n')
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
 
@@ -270,7 +270,7 @@ def test_invalid_name(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'test[]: line\r\n\r\n')
 
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
 
 
@@ -278,7 +278,7 @@ def test_max_header_field_size(parser):
     name = b'test' * 10 * 1024
     text = (b'GET /test HTTP/1.1\r\n' + name + b':data\r\n\r\n')
 
-    with pytest.raises(errors.LineTooLong):
+    with pytest.raises(http_exceptions.LineTooLong):
         parser.feed_data(text)
 
 
@@ -287,7 +287,7 @@ def test_max_header_value_size(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'data:' + name + b'\r\n\r\n')
 
-    with pytest.raises(errors.LineTooLong):
+    with pytest.raises(http_exceptions.LineTooLong):
         parser.feed_data(text)
 
 
@@ -296,7 +296,7 @@ def test_max_header_value_size_continuation(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'data: test\r\n ' + name + b'\r\n\r\n')
 
-    with pytest.raises(errors.LineTooLong):
+    with pytest.raises(http_exceptions.LineTooLong):
         parser.feed_data(text)
 
 
@@ -311,7 +311,7 @@ def test_http_request_parser(parser):
 
 def test_http_request_bad_status_line(parser):
     text = b'getpath \r\n\r\n'
-    with pytest.raises(errors.BadStatusLine):
+    with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(text)
 
 
@@ -359,17 +359,17 @@ def test_http_request_parser_two_slashes(parser):
 
 
 def test_http_request_parser_bad_method(parser):
-    with pytest.raises(errors.BadStatusLine):
+    with pytest.raises(http_exceptions.BadStatusLine):
         parser.feed_data(b'!12%()+=~$ /get HTTP/1.1\r\n\r\n')
 
 
 def test_http_request_parser_bad_version(parser):
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(b'GET //get HT/11\r\n\r\n')
 
 
 def test_http_request_max_status_line(parser):
-    with pytest.raises(errors.LineTooLong):
+    with pytest.raises(http_exceptions.LineTooLong):
         parser.feed_data(
             b'GET /path' + b'test' * 10 * 1024 + b' HTTP/1.1\r\n\r\n')
 
@@ -391,13 +391,13 @@ def test_http_response_parser_utf8(response):
 
 
 def test_http_response_parser_bad_status_line_too_long(response):
-    with pytest.raises(errors.LineTooLong):
+    with pytest.raises(http_exceptions.LineTooLong):
         response.feed_data(
             b'HTTP/1.1 200 Ok' + b'test' * 10 * 1024 + b'\r\n\r\n')
 
 
 def test_http_response_parser_bad_version(response):
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b'HT/11 200 Ok\r\n\r\n')
 
 
@@ -410,7 +410,7 @@ def test_http_response_parser_no_reason(response):
 
 
 def test_http_response_parser_bad(response):
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b'HTT/1\r\n\r\n')
 
 
@@ -420,12 +420,12 @@ def test_http_response_parser_code_under_100(response):
 
 
 def test_http_response_parser_code_above_999(response):
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b'HTTP/1.1 9999 test\r\n\r\n')
 
 
 def test_http_response_parser_code_not_int(response):
-    with pytest.raises(errors.BadHttpMessage):
+    with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b'HTTP/1.1 ttt test\r\n\r\n')
 
 
@@ -554,8 +554,9 @@ class TestParsePayload(unittest.TestCase):
         out = aiohttp.FlowControlDataQueue(self.stream)
         p = HttpPayloadParser(out, chunked=True)
         self.assertRaises(
-            errors.TransferEncodingError, p.feed_data, b'blah\r\n')
-        self.assertIsInstance(out.exception(), errors.TransferEncodingError)
+            http_exceptions.TransferEncodingError, p.feed_data, b'blah\r\n')
+        self.assertIsInstance(
+            out.exception(), http_exceptions.TransferEncodingError)
 
     def test_http_payload_parser_length(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
@@ -610,7 +611,7 @@ class TestDeflateBuffer(unittest.TestCase):
         dbuf.zlib.decompress.side_effect = exc
 
         self.assertRaises(
-            errors.ContentEncodingError, dbuf.feed_data, b'data', 4)
+            http_exceptions.ContentEncodingError, dbuf.feed_data, b'data', 4)
 
     def test_feed_eof(self):
         buf = aiohttp.FlowControlDataQueue(self.stream)
@@ -631,7 +632,7 @@ class TestDeflateBuffer(unittest.TestCase):
         dbuf.zlib.flush.return_value = b'line'
         dbuf.zlib.eof = False
 
-        self.assertRaises(errors.ContentEncodingError, dbuf.feed_eof)
+        self.assertRaises(http_exceptions.ContentEncodingError, dbuf.feed_eof)
 
     def test_empty_body(self):
         buf = aiohttp.FlowControlDataQueue(self.stream)

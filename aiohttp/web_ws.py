@@ -7,8 +7,9 @@ from . import hdrs
 from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE,
                        WebSocketError, WebSocketReader,
                        WSMessage, WSMsgType, do_handshake)
-from .errors import ClientDisconnectedError, HttpProcessingError
+from .errors import ClientDisconnectedError
 from .helpers import create_future
+from .http import HttpProcessingError
 from .streams import FlowControlDataQueue
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)

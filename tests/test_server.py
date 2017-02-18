@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import errors, helpers, server, streams
+from aiohttp import helpers, server, streams
 
 
 @pytest.yield_fixture
@@ -60,12 +60,6 @@ def transport():
     transport.drain.return_value = ()
 
     return (transport, buf)
-
-
-def test_http_error_exception():
-    exc = errors.HttpProcessingError(code=500, message='Internal error')
-    assert exc.code == 500
-    assert exc.message == 'Internal error'
 
 
 @asyncio.coroutine

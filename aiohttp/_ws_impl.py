@@ -10,9 +10,10 @@ import sys
 from enum import IntEnum
 from struct import Struct
 
-from aiohttp import errors, hdrs, helpers
-from aiohttp.helpers import noop
-from aiohttp.log import ws_logger
+from . import hdrs
+from .helpers import NO_EXTENSIONS, noop
+from .http_exceptions import HttpBadRequest, HttpProcessingError
+from .log import ws_logger
 
 __all__ = ('WebSocketReader', 'WebSocketWriter', 'do_handshake',
            'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode')
@@ -78,6 +79,7 @@ _WSMessageBase = collections.namedtuple('_WSMessageBase',
 
 
 class WSMessage(_WSMessageBase):
+
     def json(self, *, loads=json.loads):
         """Return parsed JSON data.
 
@@ -129,7 +131,7 @@ def _websocket_mask_python(mask, data):
     return (data ^ mask).to_bytes(datalen, native_byteorder)
 
 
-if helpers.NO_EXTENSIONS:
+if NO_EXTENSIONS:
     _websocket_mask = _websocket_mask_python
 else:
     try:
@@ -504,16 +506,16 @@ def do_handshake(method, headers, stream,
     """
     # WebSocket accepts only GET
     if method.upper() != hdrs.METH_GET:
-        raise errors.HttpProcessingError(
+        raise HttpProcessingError(
             code=405, headers=((hdrs.ALLOW, hdrs.METH_GET),))
 
     if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
-        raise errors.HttpBadRequest(
+        raise HttpBadRequest(
             message='No WebSocket UPGRADE hdr: {}\n Can '
             '"Upgrade" only to "WebSocket".'.format(headers.get(hdrs.UPGRADE)))
 
     if 'upgrade' not in headers.get(hdrs.CONNECTION, '').lower():
-        raise errors.HttpBadRequest(
+        raise HttpBadRequest(
             message='No CONNECTION upgrade hdr: {}'.format(
                 headers.get(hdrs.CONNECTION)))
 
@@ -536,7 +538,7 @@ def do_handshake(method, headers, stream,
     # check supported version
     version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')
     if version not in ('13', '8', '7'):
-        raise errors.HttpBadRequest(
+        raise HttpBadRequest(
             message='Unsupported version: {}'.format(version),
             headers=((hdrs.SEC_WEBSOCKET_VERSION, '13'),))
 
@@ -544,10 +546,10 @@ def do_handshake(method, headers, stream,
     key = headers.get(hdrs.SEC_WEBSOCKET_KEY)
     try:
         if not key or len(base64.b64decode(key)) != 16:
-            raise errors.HttpBadRequest(
+            raise HttpBadRequest(
                 message='Handshake error: {!r}'.format(key))
     except binascii.Error:
-        raise errors.HttpBadRequest(
+        raise HttpBadRequest(
             message='Handshake error: {!r}'.format(key)) from None
 
     response_headers = [
