@@ -679,7 +679,7 @@ class ClientResponse(HeadersMixin):
 
     def raise_for_status(self):
         if 400 <= self.status:
-            raise aiohttp.HttpProcessingError(
+            raise aiohttp.ClientResponseError(
                 code=self.status,
                 message=self.reason)
 

@@ -19,7 +19,9 @@ from .resolver import *  # noqa
 
 # deprecated #1657
 from .http_message import HttpMessage, Request, Response  # noqa isort:skip
-from .http_parser import HttpRequestParser, HttpResponseParser # noqa isort:skip
+from .http_parser import HttpRequestParser, HttpResponseParser  # noqa isort:skip
+from .http_exceptions import HttpProcessingError, BadHttpMessage  # noqa isort:skip
+from .http_exceptions import HttpBadRequest, BadStatusLine, LineTooLong, InvalidHeader  # noqa isort:skip
 
 
 MsgType = WSMsgType  # backward compatibility
@@ -37,8 +39,11 @@ __all__ = (client.__all__ +  # noqa
             'WSMsgType', 'MsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage',
             'ClientWebSocketResponse', 'CookieJar',
+
             # deprecated api #1657
             'HttpMessage', 'Request', 'Response',
             'HttpRequestParser', 'HttpResponseParser',
             'RawRequestMessage', 'RawResponseMessage',
+            'HttpProcessingError', 'BadHttpMessage',
+            'HttpBadRequest', 'BadStatusLine', 'LineTooLong', 'InvalidHeader'
            ))

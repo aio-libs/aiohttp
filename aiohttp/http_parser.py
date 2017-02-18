@@ -7,8 +7,11 @@ from enum import IntEnum
 import yarl
 from multidict import CIMultiDict, istr
 
-from . import errors, hdrs
+from . import hdrs
 from .helpers import NO_EXTENSIONS
+from .http_exceptions import (BadStatusLine, ContentEncodingError,
+                              InvalidHeader, LineTooLong,
+                              TransferEncodingError)
 from .http_message import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
@@ -113,13 +116,13 @@ class HttpParser:
                             try:
                                 length = int(length)
                             except ValueError:
-                                raise errors.InvalidHeader(CONTENT_LENGTH)
+                                raise InvalidHeader(CONTENT_LENGTH)
                             if length < 0:
-                                raise errors.InvalidHeader(CONTENT_LENGTH)
+                                raise InvalidHeader(CONTENT_LENGTH)
 
                         # do not support old websocket spec
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
-                            raise errors.InvalidHeader(SEC_WEBSOCKET_KEY1)
+                            raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
                         self._upgraded = msg.upgrade
 
@@ -201,11 +204,11 @@ class HttpParser:
             try:
                 bname, bvalue = line.split(b':', 1)
             except ValueError:
-                raise errors.InvalidHeader(line) from None
+                raise InvalidHeader(line) from None
 
             bname = bname.strip(b' \t')
             if HDRRE.search(bname):
-                raise errors.InvalidHeader(bname)
+                raise InvalidHeader(bname)
 
             # next line
             lines_idx += 1
@@ -219,7 +222,7 @@ class HttpParser:
                 while continuation:
                     header_length += len(line)
                     if header_length > self.max_field_size:
-                        raise errors.LineTooLong(
+                        raise LineTooLong(
                             'request header field {}'.format(
                                 bname.decode("utf8", "xmlcharrefreplace")),
                             self.max_field_size)
@@ -237,7 +240,7 @@ class HttpParser:
                 bvalue = b''.join(bvalue)
             else:
                 if header_length > self.max_field_size:
-                    raise errors.LineTooLong(
+                    raise LineTooLong(
                         'request header field {}'.format(
                             bname.decode("utf8", "xmlcharrefreplace")),
                         self.max_field_size)
@@ -282,14 +285,14 @@ class HttpParser:
 
 
 class HttpRequestParserPy(HttpParser):
-    """Read request status line. Exception errors.BadStatusLine
+    """Read request status line. Exception .http_exceptions.BadStatusLine
     could be raised in case of any errors in status line.
     Returns RawRequestMessage.
     """
 
     def parse_message(self, lines):
         if len(lines[0]) > self.max_line_size:
-            raise errors.LineTooLong(
+            raise LineTooLong(
                 'Status line is too long', self.max_line_size)
 
         # request line
@@ -297,12 +300,12 @@ class HttpRequestParserPy(HttpParser):
         try:
             method, path, version = line.split(None, 2)
         except ValueError:
-            raise errors.BadStatusLine(line) from None
+            raise BadStatusLine(line) from None
 
         # method
         method = method.upper()
         if not METHRE.match(method):
-            raise errors.BadStatusLine(method)
+            raise BadStatusLine(method)
 
         # version
         try:
@@ -310,9 +313,9 @@ class HttpRequestParserPy(HttpParser):
                 n1, n2 = version[5:].split('.', 1)
                 version = HttpVersion(int(n1), int(n2))
             else:
-                raise errors.BadStatusLine(version)
+                raise BadStatusLine(version)
         except:
-            raise errors.BadStatusLine(version)
+            raise BadStatusLine(version)
 
         # read headers
         headers, raw_headers, \
@@ -337,14 +340,14 @@ class HttpResponseParserPy(HttpParser):
 
     def parse_message(self, lines):
         if len(lines[0]) > self.max_line_size:
-            raise errors.LineTooLong(
+            raise LineTooLong(
                 'Status line is too long', self.max_line_size)
 
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             version, status = line.split(None, 1)
         except ValueError:
-            raise errors.BadStatusLine(line) from None
+            raise BadStatusLine(line) from None
         else:
             try:
                 status, reason = status.split(None, 1)
@@ -354,17 +357,17 @@ class HttpResponseParserPy(HttpParser):
         # version
         match = VERSRE.match(version)
         if match is None:
-            raise errors.BadStatusLine(line)
+            raise BadStatusLine(line)
         version = HttpVersion(int(match.group(1)), int(match.group(2)))
 
         # The status code is a three-digit number
         try:
             status = int(status)
         except ValueError:
-            raise errors.BadStatusLine(line) from None
+            raise BadStatusLine(line) from None
 
         if status > 999:
-            raise errors.BadStatusLine(line)
+            raise BadStatusLine(line)
 
         # read headers
         headers, raw_headers, \
@@ -467,7 +470,7 @@ class HttpPayloadParser:
                         try:
                             size = int(size, 16)
                         except ValueError:
-                            exc = errors.TransferEncodingError(chunk[:pos])
+                            exc = TransferEncodingError(chunk[:pos])
                             self.payload.set_exception(exc)
                             raise exc from None
 
@@ -552,7 +555,7 @@ class DeflateBuffer:
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise errors.ContentEncodingError('deflate')
+            raise ContentEncodingError('deflate')
 
         if chunk:
             self.out.feed_data(chunk, len(chunk))
@@ -563,7 +566,7 @@ class DeflateBuffer:
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
             if not self.zlib.eof:
-                raise errors.ContentEncodingError('deflate')
+                raise ContentEncodingError('deflate')
 
         self.out.feed_eof()
 

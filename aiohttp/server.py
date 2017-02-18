@@ -12,7 +12,7 @@ from html import escape as html_escape
 
 from . import errors, hdrs, helpers
 from .helpers import TimeService, create_future, ensure_future
-from .http import HttpRequestParser, Response
+from .http import HttpProcessingError, HttpRequestParser, Response
 from .log import access_logger, server_logger
 from .streams import StreamWriter
 
@@ -261,7 +261,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         if self._payload_parser is None and not self._upgrade:
             try:
                 messages, upgraded, tail = self._request_parser.feed_data(data)
-            except errors.HttpProcessingError as exc:
+            except HttpProcessingError as exc:
                 # something happened during parsing
                 self._closing = True
                 self._request_handlers.append(
