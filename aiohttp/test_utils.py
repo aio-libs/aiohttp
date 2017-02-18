@@ -490,7 +490,7 @@ def make_mocked_request(method, path, headers=None, *,
                         payload=sentinel,
                         sslcontext=None,
                         secure_proxy_ssl_header=None,
-                        client_max_size=None):
+                        client_max_size=1024**2):
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
