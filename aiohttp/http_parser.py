@@ -571,7 +571,7 @@ class DeflateBuffer:
 HttpRequestParser = HttpRequestParserPy
 HttpResponseParser = HttpResponseParserPy
 try:
-    from .parser import HttpRequestParserC, HttpResponseParserC
+    from ._http_parser import HttpRequestParserC, HttpResponseParserC
     if not NO_EXTENSIONS:  # pragma: no cover
         HttpRequestParser = HttpRequestParserC
         HttpResponseParser = HttpResponseParserC

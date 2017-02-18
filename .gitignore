@@ -21,7 +21,7 @@
 .vimrc
 aiohttp/_multidict.c
 aiohttp/_multidict.html
-aiohttp/_parser.c
+aiohttp/_http_parser.c
 bin
 build
 cover
