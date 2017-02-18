@@ -19,9 +19,9 @@ REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
 
 try:
-    from aiohttp import _parser
-    REQUEST_PARSERS.append(_parser.HttpRequestParserC)
-    RESPONSE_PARSERS.append(_parser.HttpResponseParserC)
+    from aiohttp import _http_parser
+    REQUEST_PARSERS.append(_http_parser.HttpRequestParserC)
+    RESPONSE_PARSERS.append(_http_parser.HttpResponseParserC)
 except ImportError:  # pragma: no cover
     pass
 
