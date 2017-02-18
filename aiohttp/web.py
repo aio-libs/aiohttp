@@ -37,7 +37,9 @@ __all__ = (web_reqrep.__all__ +
 class Application(MutableMapping):
 
     def __init__(self, *, logger=web_logger, loop=None,
-                 router=None, middlewares=(), handler_args=None, debug=...):
+
+                 router=None, middlewares=(), handler_args=None, debug=...,
+                 client_max_size=1024**2):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
@@ -64,6 +66,7 @@ class Application(MutableMapping):
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
+        self._client_max_size = client_max_size
 
     # MutableMapping API
 
@@ -238,7 +241,8 @@ class Application(MutableMapping):
             message, payload, protocol,
             protocol._time_service, protocol._request_handler,
             loop=self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
+            client_max_size=self._client_max_size)
 
     @asyncio.coroutine
     def _handle(self, request):

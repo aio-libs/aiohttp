@@ -489,7 +489,8 @@ def make_mocked_request(method, path, headers=None, *,
                         transport=sentinel,
                         payload=sentinel,
                         sslcontext=None,
-                        secure_proxy_ssl_header=None):
+                        secure_proxy_ssl_header=None,
+                        client_max_size=1024**2):
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
@@ -547,9 +548,11 @@ def make_mocked_request(method, path, headers=None, *,
     loop = mock.Mock()
     loop.create_future.return_value = ()
 
-    req = Request(message, payload, protocol,
-                  time_service, task, loop=loop,
-                  secure_proxy_ssl_header=secure_proxy_ssl_header)
+    req = Request(message, payload,
+                  protocol, time_service, task,
+                  loop=loop,
+                  secure_proxy_ssl_header=secure_proxy_ssl_header,
+                  client_max_size=client_max_size)
 
     match_info = UrlMappingMatchInfo({}, mock.Mock())
     match_info.add_app(app)
