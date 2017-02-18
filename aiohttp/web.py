@@ -39,7 +39,7 @@ class Application(MutableMapping):
     def __init__(self, *, logger=web_logger, loop=None,
 
                  router=None, middlewares=(), handler_args=None, debug=...,
-                 client_max_size=None):
+                 client_max_size=1024**2):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:

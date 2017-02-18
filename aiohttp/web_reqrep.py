@@ -18,7 +18,6 @@ from yarl import URL
 
 from . import hdrs, multipart
 
-from .errors import HttpRequestEntityTooLarge
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from .protocol import (RESPONSES, SERVER_SOFTWARE, HttpVersion10,
                        HttpVersion11, PayloadWriter)
@@ -50,12 +49,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
-    # Maximum allowed size of request body.
-    _CLIENT_MAX_SIZE = 1024**2
 
     def __init__(self, message, payload, protocol, time_service, task, *,
                  loop=None, secure_proxy_ssl_header=None,
-                 client_max_size=None):
+                 client_max_size=1024**2):
         self._loop = loop
         self._message = message
         self._protocol = protocol
@@ -75,11 +72,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._state = {}
         self._cache = {}
         self._task = task
-        if client_max_size:
-            max_size = client_max_size
-        else:
-            max_size = self._CLIENT_MAX_SIZE
-        self._client_max_size = max_size
+        self._client_max_size = client_max_size
 
         self.rel_url = message.url
 
@@ -382,8 +375,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             while True:
                 chunk = yield from self._payload.readany()
                 body.extend(chunk)
-                if len(body) >= self._client_max_size:
-                    raise HttpRequestEntityTooLarge()
+                if self._client_max_size \
+                        and len(body) >= self._client_max_size:
+                    # local import to avoid circular imports
+                    from aiohttp import web_exceptions
+                    raise web_exceptions.HTTPRequestEntityTooLarge
                 if not chunk:
                     break
             self._read_bytes = bytes(body)
