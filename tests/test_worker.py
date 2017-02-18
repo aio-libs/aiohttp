@@ -77,16 +77,57 @@ def test_run(worker, loop):
     assert loop.is_closed()
 
 
+def test_run_wsgi(worker, loop):
+    worker.wsgi = lambda env, start_resp: start_resp()
+
+    worker.loop = loop
+    worker._run = mock.Mock(
+        wraps=asyncio.coroutine(lambda: None))
+    with pytest.raises(SystemExit):
+        worker.run()
+    assert worker._run.called
+    assert loop.is_closed()
+
+
 def test_handle_quit(worker):
-    worker.handle_quit(object(), object())
-    assert not worker.alive
-    assert worker.exit_code == 0
+    with mock.patch('aiohttp.worker.ensure_future') as m_ensure_future:
+        worker.loop = mock.Mock()
+        worker.handle_quit(object(), object())
+        assert not worker.alive
+        assert worker.exit_code == 0
+        assert m_ensure_future.called
+        worker.loop.call_later.asset_called_with(
+            0.1, worker._notify_waiter_done)
 
 
 def test_handle_abort(worker):
-    worker.handle_abort(object(), object())
-    assert not worker.alive
-    assert worker.exit_code == 1
+    with mock.patch('aiohttp.worker.sys') as m_sys:
+        worker.handle_abort(object(), object())
+        assert not worker.alive
+        assert worker.exit_code == 1
+        m_sys.exit.assert_called_with(1)
+
+
+def test__wait_next_notify(worker):
+    worker.loop = mock.Mock()
+    worker._notify_waiter_done = mock.Mock()
+    fut = worker._wait_next_notify()
+
+    assert worker._notify_waiter == fut
+    worker.loop.call_later.assert_called_with(1.0, worker._notify_waiter_done)
+
+
+def test__notify_waiter_done(worker):
+    worker._notify_waiter = None
+    worker._notify_waiter_done()
+    assert worker._notify_waiter is None
+
+    waiter = worker._notify_waiter = mock.Mock()
+    worker._notify_waiter.done.return_value = False
+    worker._notify_waiter_done()
+
+    assert worker._notify_waiter is None
+    waiter.set_result.assert_called_with(True)
 
 
 def test_init_signals(worker):
@@ -106,6 +147,19 @@ def test_make_handler(worker, mocker):
     f = worker.make_handler(worker.wsgi)
     assert f is worker.wsgi.make_handler.return_value
     assert worker._get_valid_log_format.called
+
+
+def test_make_handler_wsgi(worker, mocker):
+    worker.wsgi = lambda env, start_resp: start_resp()
+    worker.loop = mock.Mock()
+    worker.loop.time.return_value = 1477797232
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    mocker.spy(worker, '_get_valid_log_format')
+
+    with pytest.raises(RuntimeError):
+        worker.make_handler(worker.wsgi)
 
 
 @pytest.mark.parametrize('source,result', [
@@ -205,6 +259,7 @@ def test__run_exc(worker, loop):
         handler = mock.Mock()
         handler.requests_count = 0
         worker.servers = {mock.Mock(): handler}
+        worker._wait_next_notify = mock.Mock()
         worker.ppid = 1
         worker.alive = True
         worker.sockets = []
@@ -223,7 +278,7 @@ def test__run_exc(worker, loop):
 
             yield from worker._run()
 
-        m_sleep.assert_called_with(1.0, loop=loop)
+        assert worker._wait_next_notify.called
         worker.close.assert_called_with()
 
 
@@ -247,6 +302,27 @@ def test_close(worker, loop):
     yield from worker.close()
     app.shutdown.assert_called_with()
     app.cleanup.assert_called_with()
+    handler.shutdown.assert_called_with(timeout=95.0)
+    srv.close.assert_called_with()
+    assert worker.servers is None
+
+    yield from worker.close()
+
+
+@asyncio.coroutine
+def test_close_wsgi(worker, loop):
+    srv = mock.Mock()
+    srv.wait_closed = make_mocked_coro(None)
+    handler = mock.Mock()
+    worker.servers = {srv: handler}
+    worker.log = mock.Mock()
+    worker.loop = loop
+    worker.wsgi = lambda env, start_resp: start_resp()
+    handler.connections = [object()]
+    handler.shutdown.return_value = helpers.create_future(loop)
+    handler.shutdown.return_value.set_result(1)
+
+    yield from worker.close()
     handler.shutdown.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()
     assert worker.servers is None

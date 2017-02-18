@@ -8,10 +8,10 @@ import socket
 import ssl
 import sys
 
-import gunicorn.workers.base as base
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
+from gunicorn.workers import base
 
-from aiohttp.helpers import AccessLogger, ensure_future
+from .helpers import AccessLogger, ensure_future
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 
@@ -26,6 +26,7 @@ class GunicornWebWorker(base.Worker):
 
         self.servers = {}
         self.exit_code = 0
+        self._notify_waiter = None
 
     def init_process(self):
         # create new event_loop after fork
@@ -37,7 +38,8 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self):
-        self.loop.run_until_complete(self.wsgi.startup())
+        if hasattr(self.wsgi, 'startup'):
+            self.loop.run_until_complete(self.wsgi.startup())
         self._runner = ensure_future(self._run(), loop=self.loop)
 
         try:
@@ -48,13 +50,19 @@ class GunicornWebWorker(base.Worker):
         sys.exit(self.exit_code)
 
     def make_handler(self, app):
-        return app.make_handler(
-            logger=self.log,
-            slow_request_timeout=self.cfg.timeout,
-            keepalive_timeout=self.cfg.keepalive,
-            access_log=self.log.access_log,
-            access_log_format=self._get_valid_log_format(
-                self.cfg.access_log_format))
+        if hasattr(self.wsgi, 'make_handler'):
+            access_log = self.log.access_log if self.cfg.accesslog else None
+            return app.make_handler(
+                logger=self.log,
+                slow_request_timeout=self.cfg.timeout,
+                keepalive_timeout=self.cfg.keepalive,
+                access_log=access_log,
+                access_log_format=self._get_valid_log_format(
+                    self.cfg.access_log_format))
+        else:
+            raise RuntimeError(
+                "aiohttp.wsgi is not supported anymore, "
+                "consider to switch to aiohttp.web.Application")
 
     @asyncio.coroutine
     def close(self):
@@ -70,7 +78,8 @@ class GunicornWebWorker(base.Worker):
                 yield from server.wait_closed()
 
             # send on_shutdown event
-            yield from self.wsgi.shutdown()
+            if hasattr(self.wsgi, 'shutdown'):
+                yield from self.wsgi.shutdown()
 
             # stop alive connections
             tasks = [
@@ -80,7 +89,8 @@ class GunicornWebWorker(base.Worker):
             yield from asyncio.gather(*tasks, loop=self.loop)
 
             # cleanup application
-            yield from self.wsgi.cleanup()
+            if hasattr(self.wsgi, 'cleanup'):
+                yield from self.wsgi.cleanup()
 
     @asyncio.coroutine
     def _run(self):
@@ -114,12 +124,27 @@ class GunicornWebWorker(base.Worker):
                     self.alive = False
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
-                    yield from asyncio.sleep(1.0, loop=self.loop)
+                    yield from self._wait_next_notify()
 
         except BaseException:
             pass
 
         yield from self.close()
+
+    def _wait_next_notify(self):
+        self._notify_waiter_done()
+
+        self._notify_waiter = waiter = asyncio.Future(loop=self.loop)
+        self.loop.call_later(1.0, self._notify_waiter_done)
+
+        return waiter
+
+    def _notify_waiter_done(self):
+        waiter = self._notify_waiter
+        if waiter is not None and not waiter.done():
+            waiter.set_result(True)
+
+        self._notify_waiter = None
 
     def init_signals(self):
         # Set up signals through the event loop API.
@@ -150,9 +175,20 @@ class GunicornWebWorker(base.Worker):
     def handle_quit(self, sig, frame):
         self.alive = False
 
+        # worker_int callback
+        self.cfg.worker_int(self)
+
+        # init closing process
+        self._closing = ensure_future(self.close(), loop=self.loop)
+
+        # close loop
+        self.loop.call_later(0.1, self._notify_waiter_done)
+
     def handle_abort(self, sig, frame):
         self.alive = False
         self.exit_code = 1
+        self.cfg.worker_abort(self)
+        sys.exit(1)
 
     @staticmethod
     def _create_ssl_context(cfg):

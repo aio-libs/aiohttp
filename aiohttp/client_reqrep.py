@@ -1,5 +1,4 @@
 import asyncio
-import http.cookies
 import io
 import json
 import mimetypes
@@ -7,6 +6,7 @@ import os
 import sys
 import traceback
 import warnings
+from http.cookies import CookieError, Morsel
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import HeadersMixin, Timeout
+from .helpers import HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -65,8 +65,7 @@ class ClientRequest:
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
-                 proxy=None, proxy_auth=None,
-                 timeout=5*60):
+                 proxy=None, proxy_auth=None, timer=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -80,13 +79,14 @@ class ClientRequest:
             q.extend(url2.query)
             url = url.with_query(q)
         self.url = url.with_fragment(None)
+        self.original_url = url
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
         self.compress = compress
         self.loop = loop
         self.response_class = response_class or ClientResponse
-        self._timeout = timeout
+        self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -147,9 +147,7 @@ class ClientRequest:
         """Update request headers."""
         self.headers = CIMultiDict()
         if headers:
-            if isinstance(headers, dict):
-                headers = headers.items()
-            elif isinstance(headers, (MultiDictProxy, MultiDict)):
+            if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
                 headers = headers.items()
 
             for key, value in headers:
@@ -165,7 +163,7 @@ class ClientRequest:
 
         # add host
         if hdrs.HOST not in used_headers:
-            netloc = self.url.host
+            netloc = self.url.raw_host
             if not self.url.is_default_port():
                 netloc += ':' + str(self.url.port)
             self.headers[hdrs.HOST] = netloc
@@ -178,14 +176,17 @@ class ClientRequest:
         if not cookies:
             return
 
-        c = http.cookies.SimpleCookie()
+        c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
         for name, value in cookies.items():
-            if isinstance(value, http.cookies.Morsel):
-                c[value.key] = value.value
+            if isinstance(value, Morsel):
+                # Preserve coded_value
+                mrsl_val = value.get(value.key, Morsel())
+                mrsl_val.set(value.key, value.value, value.coded_value)
+                c[name] = mrsl_val
             else:
                 c[name] = value
 
@@ -282,7 +283,7 @@ class ClientRequest:
         elif isinstance(data, MultipartWriter):
             self.body = data.serialize()
             self.headers.update(data.headers)
-            self.chunked = self.chunked or 8192
+            self.chunked = True
 
         else:
             if not isinstance(data, helpers.FormData):
@@ -295,7 +296,7 @@ class ClientRequest:
                 self.headers[hdrs.CONTENT_TYPE] = data.content_type
 
             if data.is_multipart:
-                self.chunked = self.chunked or 8192
+                self.chunked = True
             else:
                 if (hdrs.CONTENT_LENGTH not in self.headers and
                         not self.chunked):
@@ -311,10 +312,9 @@ class ClientRequest:
             if 'chunked' not in te:
                 self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
 
-            self.chunked = self.chunked if type(self.chunked) is int else 8192
         else:
             if 'chunked' in te:
-                self.chunked = 8192
+                self.chunked = True
             else:
                 self.chunked = None
                 if hdrs.CONTENT_LENGTH not in self.headers:
@@ -338,10 +338,11 @@ class ClientRequest:
         self.proxy_auth = proxy_auth
 
     @asyncio.coroutine
-    def write_bytes(self, request, reader):
+    def write_bytes(self, request, conn):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
+            yield from request.drain()
             yield from self._continue
 
         try:
@@ -358,7 +359,7 @@ class ClientRequest:
                             result = stream.send(value)
                     except StopIteration as exc:
                         if isinstance(exc.value, bytes):
-                            yield from request.write(exc.value, drain=True)
+                            yield from request.write(exc.value)
                         break
                     except:
                         self.response.close()
@@ -372,7 +373,7 @@ class ClientRequest:
                         except Exception as err:
                             exc = err
                     elif isinstance(result, (bytes, bytearray)):
-                        yield from request.write(result, drain=True)
+                        yield from request.write(result)
                         value = None
                     else:
                         raise ValueError(
@@ -392,12 +393,12 @@ class ClientRequest:
                         chunk = yield from self.body.read()
                         if not chunk:
                             break
-                        yield from request.write(chunk, drain=True)
+                        yield from request.write(chunk)
                     except streams.EofStream:
                         break
 
             elif isinstance(self.body, io.IOBase):
-                chunk = self.body.read(self.chunked)
+                chunk = self.body.read(streams.DEFAULT_LIMIT)
                 while chunk:
                     request.write(chunk)
                     chunk = self.body.read(self.chunked)
@@ -413,37 +414,41 @@ class ClientRequest:
                 'Can not write request body for %s' % self.url)
             new_exc.__context__ = exc
             new_exc.__cause__ = exc
-            reader.set_exception(new_exc)
+            conn.protocol.set_exception(new_exc)
         else:
             try:
-                ret = request.write_eof()
-                # NB: in asyncio 3.4.1+ StreamWriter.drain() is coroutine
-                # see bug #170
-                if (asyncio.iscoroutine(ret) or
-                        isinstance(ret, asyncio.Future)):
-                    yield from ret
+                yield from request.write_eof()
             except Exception as exc:
                 new_exc = aiohttp.ClientRequestError(
                     'Can not write request body for %s' % self.url)
                 new_exc.__context__ = exc
                 new_exc.__cause__ = exc
-                reader.set_exception(new_exc)
+                conn.protocol.set_exception(new_exc)
 
         self._writer = None
 
-    def send(self, writer, reader):
-        path = self.url.raw_path
-        if self.url.raw_query_string:
-            path += '?' + self.url.raw_query_string
-        request = aiohttp.Request(writer, self.method, path,
-                                  self.version)
+    def send(self, conn):
+        # Specify request target:
+        # - CONNECT request must send authority form URI
+        # - not CONNECT proxy must send absolute form URI
+        # - most common is origin form URI
+        if self.method == hdrs.METH_CONNECT:
+            path = '{}:{}'.format(self.url.raw_host, self.url.port)
+        elif self.proxy and not self.ssl:
+            path = str(self.url)
+        else:
+            path = self.url.raw_path
+            if self.url.raw_query_string:
+                path += '?' + self.url.raw_query_string
+
+        request = aiohttp.Request(
+            conn.writer, self.method, path, self.version, loop=self.loop)
 
         if self.compress:
-            request.add_compression_filter(self.compress)
+            request.enable_compression(self.compress)
 
         if self.chunked is not None:
-            request.enable_chunked_encoding()
-            request.add_chunking_filter(self.chunked)
+            request.enable_chunking()
 
         # set default content-type
         if (self.method in self.POST_METHODS and
@@ -456,12 +461,12 @@ class ClientRequest:
         request.send_headers()
 
         self._writer = helpers.ensure_future(
-            self.write_bytes(request, reader), loop=self.loop)
+            self.write_bytes(request, conn), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.url,
-            writer=self._writer, continue100=self._continue,
-            timeout=self._timeout)
+            self.method, self.original_url,
+            writer=self._writer, continue100=self._continue, timer=self._timer)
+
         self.response._post_init(self.loop)
         return self.response
 
@@ -494,45 +499,47 @@ class ClientResponse(HeadersMixin):
     _connection = None  # current connection
     flow_control_class = FlowControlStreamReader  # reader flow control
     _reader = None     # input stream
-    _response_parser = aiohttp.HttpResponseParser()
     _source_traceback = None
     # setted up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
 
-    def __init__(self, method, url, *, writer=None, continue100=None,
-                 timeout=5*60):
+    def __init__(self, method, url, *,
+                 writer=None, continue100=None, timer=None):
         assert isinstance(url, URL)
 
         self.method = method
-        self._url_obj = url
+        self._url = url
         self._content = None
         self._writer = writer
         self._continue = continue100
         self._closed = False
         self._should_close = True  # override by message.should_close later
         self._history = ()
-        self._timeout = timeout
-        self.cookies = http.cookies.SimpleCookie()
-
-    @property
-    def url_obj(self):
-        return self._url_obj
+        self.headers = None
+        self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
+        self.cookies = SimpleCookie()
 
     @property
     def url(self):
-        warnings.warn("Deprecated, use .url_obj",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return str(self._url_obj)
+        return self._url
+
+    @property
+    def url_obj(self):
+        warnings.warn(
+            "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
+        return self._url
 
     @property
     def host(self):
-        warnings.warn("Deprecated, use .url_obj.host",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._url_obj.host
+        warnings.warn(
+            "Deprecated, use .url.host", DeprecationWarning, stacklevel=2)
+        return self._url.host
+
+    @property
+    def _headers(self):
+        return self.headers
 
     def _post_init(self, loop):
         self._loop = loop
@@ -578,33 +585,28 @@ class ClientResponse(HeadersMixin):
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
-    def _setup_connection(self, connection):
-        self._reader = connection.reader
-        self._connection = connection
-        self.content = self.flow_control_class(
-            connection.reader, loop=connection.loop, timeout=self._timeout)
-
-    def _need_parse_response_body(self):
-        return (self.method.lower() != 'head' and
-                self.status not in [204, 304])
-
     @asyncio.coroutine
     def start(self, connection, read_until_eof=False):
         """Start response processing."""
-        self._setup_connection(connection)
+        self._protocol = connection.protocol
+        self._connection = connection
+        connection.protocol.set_response_params(
+            timer=self._timer,
+            skip_payload=self.method.lower() == 'head',
+            skip_status_codes=(204, 304),
+            read_until_eof=read_until_eof)
 
-        while True:
-            httpstream = self._reader.set_parser(self._response_parser)
+        with self._timer:
+            while True:
+                # read response
+                (message, payload) = yield from self._protocol.read()
+                if (message.code < 100 or
+                        message.code > 199 or message.code == 101):
+                    break
 
-            # read response
-            with Timeout(self._timeout, loop=self._loop):
-                message = yield from httpstream.read()
-            if message.code != 100:
-                break
-
-            if self._continue is not None and not self._continue.done():
-                self._continue.set_result(True)
-                self._continue = None
+                if self._continue is not None and not self._continue.done():
+                    self._continue.set_result(True)
+                    self._continue = None
 
         # response status
         self.version = message.version
@@ -617,18 +619,13 @@ class ClientResponse(HeadersMixin):
         self.raw_headers = tuple(message.raw_headers)
 
         # payload
-        rwb = self._need_parse_response_body()
-        self._reader.set_parser(
-            aiohttp.HttpPayloadParser(message,
-                                      readall=read_until_eof,
-                                      response_with_body=rwb),
-            self.content)
+        self.content = payload
 
         # cookies
         for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
             try:
                 self.cookies.load(hdr)
-            except http.cookies.CookieError as exc:
+            except CookieError as exc:
                 client_logger.warning(
                     'Can not load response cookies: %s', exc)
         return self
@@ -649,14 +646,25 @@ class ClientResponse(HeadersMixin):
         self._notify_content()
 
     @asyncio.coroutine
-    def release(self):
+    def release(self, *, consume=False):
         if self._closed:
             return
         try:
             content = self.content
             if content is not None:
-                while not content.at_eof():
-                    yield from content.readany()
+                if consume:
+                    while not content.at_eof():
+                        yield from content.readany()
+                else:
+                    close = False
+                    if content.exception() is not None:
+                        close = True
+                    else:
+                        content.read_nowait()
+                        if not content.at_eof():
+                            close = True
+                    if close:
+                        self.close()
         except Exception:
             self._connection.close()
             self._connection = None
@@ -665,8 +673,6 @@ class ClientResponse(HeadersMixin):
             self._closed = True
             if self._connection is not None:
                 self._connection.release()
-                if self._reader is not None:
-                    self._reader.unset_parser()
                 self._connection = None
             self._cleanup_writer()
             self._notify_content()
@@ -728,7 +734,7 @@ class ClientResponse(HeadersMixin):
         return encoding
 
     @asyncio.coroutine
-    def text(self, encoding=None):
+    def text(self, encoding=None, errors='strict'):
         """Read response payload and decode."""
         if self._content is None:
             yield from self.read()
@@ -736,7 +742,7 @@ class ClientResponse(HeadersMixin):
         if encoding is None:
             encoding = self._get_encoding()
 
-        return self._content.decode(encoding)
+        return self._content.decode(encoding, errors=errors)
 
     @asyncio.coroutine
     def json(self, *, encoding=None, loads=json.loads):
@@ -765,7 +771,7 @@ class ClientResponse(HeadersMixin):
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_val, exc_tb):
-            if exc_type is None:
-                yield from self.release()
-            else:
-                self.close()
+            # similar to _RequestContextManager, we do not need to check
+            # for exceptions, response object can closes connection
+            # is state is broken
+            yield from self.release()

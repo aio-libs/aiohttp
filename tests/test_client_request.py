@@ -6,7 +6,6 @@ import io
 import os.path
 import urllib.parse
 import zlib
-from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
@@ -16,6 +15,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import BaseConnector, hdrs, helpers
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.helpers import SimpleCookie
 
 
 @pytest.yield_fixture
@@ -30,6 +30,28 @@ def make_request(loop):
     yield maker
     if request is not None:
         loop.run_until_complete(request.close())
+
+
+@pytest.yield_fixture
+def transport():
+    transport = mock.Mock()
+
+    buf = bytearray()
+
+    def acquire(cb):
+        cb(transport)
+
+    def write(chunk):
+        buf.extend(chunk)
+
+    transport.acquire.side_effect = acquire
+    transport.write.side_effect = write
+    transport.writer.write.side_effect = write
+    transport.writer.transport.write.side_effect = write
+    transport.writer.drain.return_value = ()
+    transport.drain.return_value = ()
+
+    return (transport, buf)
 
 
 def test_method1(make_request):
@@ -141,6 +163,16 @@ def test_host_header_host_with_default_port(make_request):
 def test_host_header_host_with_nondefault_port(make_request):
     req = make_request('get', 'http://python.org:99/')
     assert req.headers['HOST'] == 'python.org:99'
+
+
+def test_host_header_host_idna_encode(make_request):
+    req = make_request('get', 'http://xn--9caa.com')
+    assert req.headers['HOST'] == 'xn--9caa.com'
+
+
+def test_host_header_host_unicode(make_request):
+    req = make_request('get', 'http://éé.com')
+    assert req.headers['HOST'] == 'xn--9caa.com'
 
 
 def test_host_header_explicit_host(make_request):
@@ -300,8 +332,8 @@ def test_path_is_not_double_encoded3(make_request):
 
 
 def test_path_safe_chars_preserved(make_request):
-    req = make_request('get', "http://0.0.0.0/get/:=")
-    assert req.url.path == "/get/:="
+    req = make_request('get', "http://0.0.0.0/get/:=+/%2B/")
+    assert req.url.path == "/get/:=+/+/"
 
 
 def test_params_are_added_before_fragment1(make_request):
@@ -426,10 +458,14 @@ def test_gen_netloc_no_port(make_request):
         '012345678901234567890'
 
 
+def acquire(cb):
+    cb(mock.Mock())
+
+
 @asyncio.coroutine
 def test_no_content_length(loop):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert '0' == req.headers.get('CONTENT-LENGTH')
     yield from req.close()
     resp.close()
@@ -438,7 +474,7 @@ def test_no_content_length(loop):
 @asyncio.coroutine
 def test_no_content_length2(loop):
     req = ClientRequest('head', URL('http://python.org'), loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert '0' == req.headers.get('CONTENT-LENGTH')
     yield from req.close()
     resp.close()
@@ -446,7 +482,7 @@ def test_no_content_length2(loop):
 
 def test_content_type_auto_header_get(loop):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'CONTENT-TYPE' not in req.headers
     resp.close()
 
@@ -454,7 +490,7 @@ def test_content_type_auto_header_get(loop):
 def test_content_type_auto_header_form(loop):
     req = ClientRequest('post', URL('http://python.org'),
                         data={'hey': 'you'}, loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'application/x-www-form-urlencoded' == \
         req.headers.get('CONTENT-TYPE')
     resp.close()
@@ -463,7 +499,7 @@ def test_content_type_auto_header_form(loop):
 def test_content_type_auto_header_bytes(loop):
     req = ClientRequest('post', URL('http://python.org'), data=b'hey you',
                         loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'application/octet-stream' == req.headers.get('CONTENT-TYPE')
     resp.close()
 
@@ -472,7 +508,7 @@ def test_content_type_skip_auto_header_bytes(loop):
     req = ClientRequest('post', URL('http://python.org'), data=b'hey you',
                         skip_auto_headers={'Content-Type'},
                         loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'CONTENT-TYPE' not in req.headers
     resp.close()
 
@@ -481,7 +517,7 @@ def test_content_type_skip_auto_header_form(loop):
     req = ClientRequest('post', URL('http://python.org'),
                         data={'hey': 'you'}, loop=loop,
                         skip_auto_headers={'Content-Type'})
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'CONTENT-TYPE' not in req.headers
     resp.close()
 
@@ -491,7 +527,7 @@ def test_content_type_auto_header_content_length_no_skip(loop):
                         data=io.BytesIO(b'hey'),
                         skip_auto_headers={'Content-Length'},
                         loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert req.headers.get('CONTENT-LENGTH') == '3'
     resp.close()
 
@@ -502,7 +538,7 @@ def test_post_data(loop):
         req = ClientRequest(
             meth, URL('http://python.org/'),
             data={'life': '42'}, loop=loop)
-        resp = req.send(mock.Mock(), mock.Mock())
+        resp = req.send(mock.Mock(acquire=acquire))
         assert '/' == req.url.path
         assert b'life=42' == req.body
         assert 'application/x-www-form-urlencoded' ==\
@@ -554,7 +590,7 @@ def test_bytes_data(loop):
         req = ClientRequest(
             meth, URL('http://python.org/'),
             data=b'binary data', loop=loop)
-        resp = req.send(mock.Mock(), mock.Mock())
+        resp = req.send(mock.Mock(acquire=acquire))
         assert '/' == req.url.path
         assert b'binary data' == req.body
         assert 'application/octet-stream' == req.headers['CONTENT-TYPE']
@@ -567,11 +603,11 @@ def test_content_encoding(loop):
     req = ClientRequest('get', URL('http://python.org/'), data='foo',
                         compress='deflate', loop=loop)
     with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
-        resp = req.send(mock.Mock(), mock.Mock())
+        resp = req.send(mock.Mock(acquire=acquire))
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
     m_http.Request.return_value\
-        .add_compression_filter.assert_called_with('deflate')
+        .enable_compression.assert_called_with('deflate')
     yield from req.close()
     resp.close()
 
@@ -581,7 +617,7 @@ def test_content_encoding_dont_set_headers_if_no_body(loop):
     req = ClientRequest('get', URL('http://python.org/'),
                         compress='deflate', loop=loop)
     with mock.patch('aiohttp.client_reqrep.aiohttp'):
-        resp = req.send(mock.Mock(), mock.Mock())
+        resp = req.send(mock.Mock(acquire=acquire))
     assert 'TRANSFER-ENCODING' not in req.headers
     assert 'CONTENT-ENCODING' not in req.headers
     yield from req.close()
@@ -594,14 +630,14 @@ def test_content_encoding_header(loop):
         'get', URL('http://python.org/'), data='foo',
         headers={'Content-Encoding': 'deflate'}, loop=loop)
     with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
-        resp = req.send(mock.Mock(), mock.Mock())
+        resp = req.send(mock.Mock(acquire=acquire))
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
 
     m_http.Request.return_value\
-        .add_compression_filter.assert_called_with('deflate')
+        .enable_compression.assert_called_with('deflate')
     m_http.Request.return_value\
-        .add_chunking_filter.assert_called_with(8192)
+        .enable_chunking.assert_called_with()
     yield from req.close()
     resp.close()
 
@@ -611,7 +647,7 @@ def test_chunked(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'),
         headers={'TRANSFER-ENCODING': 'gzip'}, loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'gzip' == req.headers['TRANSFER-ENCODING']
     yield from req.close()
     resp.close()
@@ -622,7 +658,7 @@ def test_chunked2(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'),
         headers={'Transfer-encoding': 'chunked'}, loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     yield from req.close()
     resp.close()
@@ -633,11 +669,11 @@ def test_chunked_explicit(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'), chunked=True, loop=loop)
     with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
-        resp = req.send(mock.Mock(), mock.Mock())
+        resp = req.send(mock.Mock(acquire=acquire))
 
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     m_http.Request.return_value\
-                  .add_chunking_filter.assert_called_with(8192)
+                  .enable_chunking.assert_called_with()
     yield from req.close()
     resp.close()
 
@@ -647,10 +683,10 @@ def test_chunked_explicit_size(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'), chunked=1024, loop=loop)
     with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
-        resp = req.send(mock.Mock(), mock.Mock())
+        resp = req.send(mock.Mock())
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     m_http.Request.return_value\
-                  .add_chunking_filter.assert_called_with(1024)
+                  .enable_chunking.assert_called_with()
     yield from req.close()
     resp.close()
 
@@ -660,7 +696,7 @@ def test_chunked_length(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'),
         headers={'CONTENT-LENGTH': '1000'}, chunked=1024, loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert 'CONTENT-LENGTH' not in req.headers
     yield from req.close()
@@ -729,7 +765,7 @@ def test_file_upload_force_chunked(loop):
 def test_expect100(loop):
     req = ClientRequest('get', URL('http://python.org/'),
                         expect100=True, loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert '100-continue' == req.headers['EXPECT']
     assert req._continue is not None
     req.terminate()
@@ -739,7 +775,7 @@ def test_expect100(loop):
 def test_expect_100_continue_header(loop):
     req = ClientRequest('get', URL('http://python.org/'),
                         headers={'expect': '100-continue'}, loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert '100-continue' == req.headers['EXPECT']
     assert req._continue is not None
     req.terminate()
@@ -747,7 +783,7 @@ def test_expect_100_continue_header(loop):
 
 
 @asyncio.coroutine
-def test_data_stream(loop):
+def test_data_stream(loop, transport):
     def gen():
         yield b'binary data'
         return b' result'
@@ -758,19 +794,20 @@ def test_data_stream(loop):
     assert inspect.isgenerator(req.body)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    transport = mock.Mock()
-    resp = req.send(transport, mock.Mock())
+    transport, buf = transport
+
+    resp = req.send(transport)
     assert isinstance(req._writer, asyncio.Future)
     yield from resp.wait_for_close()
     assert req._writer is None
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'12\r\nbinary data result\r\n'),
-        mock.call(b'0\r\n\r\n')]
+
+    assert buf.split(b'\r\n\r\n', 1)[1] == \
+        b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
     yield from req.close()
 
 
 @asyncio.coroutine
-def test_data_file(loop):
+def test_data_file(loop, transport):
     req = ClientRequest(
         'POST', URL('http://python.org/'),
         data=io.BufferedReader(io.BytesIO(b'*' * 2)),
@@ -779,14 +816,14 @@ def test_data_file(loop):
     assert isinstance(req.body, io.IOBase)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    transport = mock.Mock()
-    resp = req.send(transport, mock.Mock())
+    transport, buf = transport
+
+    resp = req.send(transport)
     assert isinstance(req._writer, asyncio.Future)
     yield from resp.wait_for_close()
     assert req._writer is None
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'2\r\n' + b'*' * 2 + b'\r\n'),
-        mock.call(b'0\r\n\r\n')]
+    assert buf.split(b'\r\n\r\n', 1)[1] == \
+        b'2\r\n' + b'*' * 2 + b'\r\n0\r\n\r\n'
     yield from req.close()
 
 
@@ -811,13 +848,11 @@ def test_data_stream_exc(loop):
 
     helpers.ensure_future(exc(), loop=loop)
 
-    protocol = mock.Mock()
-    resp = req.send(mock.Mock(), protocol)
-    connection = mock.Mock()
-    resp._connection = connection
+    conn = mock.Mock(acquire=acquire)
+    req.send(conn)
     yield from req._writer
-    assert connection.close.called
-    assert protocol.set_exception.called
+    # assert conn.close.called
+    assert conn.protocol.set_exception.called
     yield from req.close()
 
 
@@ -829,16 +864,16 @@ def test_data_stream_not_bytes(loop):
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
-    protocol = mock.Mock()
-    resp = req.send(mock.Mock(), protocol)
+    conn = mock.Mock(acquire=acquire)
+    resp = req.send(conn)
     yield from req._writer
-    assert protocol.set_exception.called
+    assert conn.protocol.set_exception.called
     yield from req.close()
     resp.close()
 
 
 @asyncio.coroutine
-def test_data_stream_exc_chain(loop):
+def test_data_stream_exc_chain(loop, transport):
     fut = helpers.create_future(loop)
 
     def gen():
@@ -856,14 +891,12 @@ def test_data_stream_exc_chain(loop):
 
     helpers.ensure_future(exc(), loop=loop)
 
-    protocol = mock.Mock()
-    resp = req.send(mock.Mock(), protocol)
-    connection = mock.Mock()
-    resp._connection = connection
+    connection, _ = transport
+    req.send(connection)
     yield from req._writer
-    assert connection.close.called
-    assert protocol.set_exception.called
-    outer_exc = protocol.set_exception.call_args[0][0]
+    # assert connection.close.called
+    assert connection.protocol.set_exception.called
+    outer_exc = connection.protocol.set_exception.call_args[0][0]
     assert isinstance(outer_exc, aiohttp.ClientRequestError)
     assert inner_exc is outer_exc.__context__
     assert inner_exc is outer_exc.__cause__
@@ -871,7 +904,7 @@ def test_data_stream_exc_chain(loop):
 
 
 @asyncio.coroutine
-def test_data_stream_continue(loop):
+def test_data_stream_continue(loop, transport):
     def gen():
         yield b'binary data'
         return b' result'
@@ -888,18 +921,17 @@ def test_data_stream_continue(loop):
 
     helpers.ensure_future(coro(), loop=loop)
 
-    transport = mock.Mock()
-    resp = req.send(transport, mock.Mock())
+    transport, buf = transport
+    resp = req.send(transport)
     yield from req._writer
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'12\r\nbinary data result\r\n'),
-        mock.call(b'0\r\n\r\n')]
+    assert buf.split(b'\r\n\r\n', 1)[1] == \
+        b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
     yield from req.close()
     resp.close()
 
 
 @asyncio.coroutine
-def test_data_continue(loop):
+def test_data_continue(loop, transport):
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=b'data',
         expect100=True, loop=loop)
@@ -910,18 +942,17 @@ def test_data_continue(loop):
 
     helpers.ensure_future(coro(), loop=loop)
 
-    transport = mock.Mock()
-    resp = req.send(transport, mock.Mock())
-    assert 1 == len(transport.write.mock_calls)
+    transport, buf = transport
+    resp = req.send(transport)
 
     yield from req._writer
-    assert transport.write.mock_calls[-1] == mock.call(b'data')
+    assert buf.split(b'\r\n\r\n', 1)[1] == b'data'
     yield from req.close()
     resp.close()
 
 
 @asyncio.coroutine
-def test_close(loop):
+def test_close(loop, transport):
     @asyncio.coroutine
     def gen():
         yield from asyncio.sleep(0.00001, loop=loop)
@@ -929,12 +960,10 @@ def test_close(loop):
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
-    transport = mock.Mock()
-    resp = req.send(transport, mock.Mock())
+    transport, buf = transport
+    resp = req.send(transport)
     yield from req.close()
-    assert transport.write.mock_calls[-2:] == [
-        mock.call(b'6\r\nresult\r\n'),
-        mock.call(b'0\r\n\r\n')]
+    assert buf.split(b'\r\n\r\n', 1)[1] == b'6\r\nresult\r\n0\r\n\r\n'
     yield from req.close()
     resp.close()
 
@@ -948,7 +977,7 @@ def test_custom_response_class(loop):
     req = ClientRequest(
         'GET', URL('http://python.org/'), response_class=CustomResponse,
         loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert 'customized!' == resp.read()
     yield from req.close()
     resp.close()
@@ -957,7 +986,7 @@ def test_custom_response_class(loop):
 @asyncio.coroutine
 def test_terminate(loop):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert req._writer is not None
     writer = req._writer = mock.Mock()
 
@@ -969,7 +998,7 @@ def test_terminate(loop):
 
 def test_terminate_with_closed_loop(loop):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(mock.Mock(), mock.Mock())
+    resp = req.send(mock.Mock(acquire=acquire))
     assert req._writer is not None
     writer = req._writer = mock.Mock()
 
@@ -1007,7 +1036,7 @@ def test_custom_req_rep(loop):
 
     class CustomRequest(ClientRequest):
 
-        def send(self, writer, reader):
+        def send(self, conn):
             resp = self.response_class(self.method,
                                        self.url,
                                        writer=self._writer,

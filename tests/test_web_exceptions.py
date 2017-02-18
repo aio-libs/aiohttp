@@ -21,9 +21,14 @@ def request(buf):
     writer = mock.Mock()
     writer.drain.return_value = ()
 
+    def acquire(cb):
+        cb(writer)
+
+    writer.acquire.side_effect = acquire
+
     def append(data):
         buf.extend(data)
-    writer.write.side_effect = append
+    writer.transport.write.side_effect = append
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
@@ -85,8 +90,8 @@ def test_HTTPFound(buf, request):
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 302 Found\r\n'
                     'Content-Type: text/plain; charset=utf-8\r\n'
-                    'Content-Length: 10\r\n'
                     'Location: /redirect\r\n'
+                    'Content-Length: 10\r\n'
                     'Date: .+\r\n'
                     'Server: .+\r\n\r\n'
                     '302: Found', txt)
@@ -111,8 +116,8 @@ def test_HTTPMethodNotAllowed(buf, request):
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 405 Method Not Allowed\r\n'
                     'Content-Type: text/plain; charset=utf-8\r\n'
-                    'Content-Length: 23\r\n'
                     'Allow: POST,PUT\r\n'
+                    'Content-Length: 23\r\n'
                     'Date: .+\r\n'
                     'Server: .+\r\n\r\n'
                     '405: Method Not Allowed', txt)

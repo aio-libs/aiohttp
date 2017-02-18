@@ -28,7 +28,7 @@ def test_app_default_loop(loop):
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(loop=loop, debug=debug)
 
-    srv = mocker.patch('aiohttp.web.WebServer')
+    srv = mocker.patch('aiohttp.web.Server')
 
     app.make_handler()
     with pytest.warns(DeprecationWarning) as exc:
@@ -73,21 +73,6 @@ def test_app_register_coro(loop):
     yield from app.cleanup()
     assert fut.done()
     assert 123 == fut.result()
-
-
-@asyncio.coroutine
-def test_app_register_and_finish_are_deprecated(loop):
-    app = web.Application(loop=loop)
-    cb1 = mock.Mock()
-    cb2 = mock.Mock()
-    with pytest.warns(DeprecationWarning):
-        app.register_on_finish(cb1, 1, b=2)
-    with pytest.warns(DeprecationWarning):
-        app.register_on_finish(cb2, 2, c=3)
-    with pytest.warns(DeprecationWarning):
-        yield from app.finish()
-    cb1.assert_called_once_with(app, 1, b=2)
-    cb2.assert_called_once_with(app, 2, c=3)
 
 
 def test_non_default_router(loop):

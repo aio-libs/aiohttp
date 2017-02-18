@@ -4,30 +4,29 @@ import pickle
 import re
 from collections import defaultdict
 from collections.abc import Mapping
-from http.cookies import Morsel, SimpleCookie
+from http.cookies import Morsel
 from math import ceil
-
 from yarl import URL
 
 from .abc import AbstractCookieJar
-from .helpers import is_ip_address
+from .helpers import SimpleCookie, is_ip_address
 
 
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
     DATE_TOKENS_RE = re.compile(
-        "[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
-        "(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)")
+        r"[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
+        r"(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)")
 
-    DATE_HMS_TIME_RE = re.compile("(\d{1,2}):(\d{1,2}):(\d{1,2})")
+    DATE_HMS_TIME_RE = re.compile(r"(\d{1,2}):(\d{1,2}):(\d{1,2})")
 
-    DATE_DAY_OF_MONTH_RE = re.compile("(\d{1,2})")
+    DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})")
 
     DATE_MONTH_RE = re.compile("(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|"
                                "(aug)|(sep)|(oct)|(nov)|(dec)", re.I)
 
-    DATE_YEAR_RE = re.compile("(\d{2,4})")
+    DATE_YEAR_RE = re.compile(r"(\d{2,4})")
 
     MAX_TIME = 2051215261.0  # so far in future (2035-01-01)
 
@@ -91,7 +90,7 @@ class CookieJar(AbstractCookieJar):
 
     def update_cookies(self, cookies, response_url=URL()):
         """Update cookies."""
-        hostname = response_url.host
+        hostname = response_url.raw_host
 
         if not self._unsafe and is_ip_address(hostname):
             # Don't accept cookies from IPs
@@ -167,8 +166,9 @@ class CookieJar(AbstractCookieJar):
     def filter_cookies(self, request_url=URL()):
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
+        request_url = URL(request_url)
         filtered = SimpleCookie()
-        hostname = request_url.host or ""
+        hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
 
         for cookie in self:
@@ -195,7 +195,11 @@ class CookieJar(AbstractCookieJar):
             if is_not_secure and cookie["secure"]:
                 continue
 
-            filtered[name] = cookie.value
+            # It's critical we use the Morsel so the coded_value
+            # (based on cookie version) is preserved
+            mrsl_val = cookie.get(cookie.key, Morsel())
+            mrsl_val.set(cookie.key, cookie.value, cookie.coded_value)
+            filtered[name] = mrsl_val
 
         return filtered
 

@@ -7,7 +7,7 @@ import pytest
 import aiohttp
 from aiohttp import WebSocketError, WSCloseCode, WSMessage, WSMsgType, _ws_impl
 from aiohttp._ws_impl import (PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2, PACK_LEN3,
-                              WebSocketParser, _websocket_mask, parse_frame)
+                              WebSocketReader, _websocket_mask)
 
 
 def build_frame(message, opcode, use_mask=False, noheader=False):
@@ -53,281 +53,205 @@ def build_close_frame(code=1000, message=b'', noheader=False):
 
 
 @pytest.fixture()
-def buf():
-    return aiohttp.ParserBuffer()
-
-
-@pytest.fixture()
 def out(loop):
     return aiohttp.DataQueue(loop=loop)
 
 
 @pytest.fixture()
-def parser(buf, out):
-    return WebSocketParser(out, buf)
+def parser(out):
+    return WebSocketReader(out)
 
 
-def test_parse_frame(buf):
-    p = parse_frame(buf)
-    next(p)
-    p.send(struct.pack('!BB', 0b00000001, 0b00000001))
-    try:
-        p.send(b'1')
-    except StopIteration as exc:
-        fin, opcode, payload = exc.value
+def test_parse_frame(parser):
+    parser.parse_frame(struct.pack('!BB', 0b00000001, 0b00000001))
+    res = parser.parse_frame(b'1')
+    fin, opcode, payload = res[0]
 
     assert (0, 1, b'1') == (fin, opcode, payload)
 
 
-def test_parse_frame_length0(buf):
-    p = parse_frame(buf)
-    next(p)
-    try:
-        p.send(struct.pack('!BB', 0b00000001, 0b00000000))
-    except StopIteration as exc:
-        fin, opcode, payload = exc.value
+def test_parse_frame_length0(parser):
+    fin, opcode, payload = parser.parse_frame(
+        struct.pack('!BB', 0b00000001, 0b00000000))[0]
 
     assert (0, 1, b'') == (fin, opcode, payload)
 
 
-def test_parse_frame_length2(buf):
-    p = parse_frame(buf)
-    next(p)
-    p.send(struct.pack('!BB', 0b00000001, 126))
-    p.send(struct.pack('!H', 4))
-    try:
-        p.send(b'1234')
-    except StopIteration as exc:
-        fin, opcode, payload = exc.value
+def test_parse_frame_length2(parser):
+    parser.parse_frame(struct.pack('!BB', 0b00000001, 126))
+    parser.parse_frame(struct.pack('!H', 4))
+    res = parser.parse_frame(b'1234')
+    fin, opcode, payload = res[0]
 
     assert (0, 1, b'1234') == (fin, opcode, payload)
 
 
-def test_parse_frame_length4(buf):
-    p = parse_frame(buf)
-    next(p)
-    p.send(struct.pack('!BB', 0b00000001, 127))
-    p.send(struct.pack('!Q', 4))
-    try:
-        p.send(b'1234')
-    except StopIteration as exc:
-        fin, opcode, payload = exc.value
+def test_parse_frame_length4(parser):
+    parser.parse_frame(struct.pack('!BB', 0b00000001, 127))
+    parser.parse_frame(struct.pack('!Q', 4))
+    fin, opcode, payload = parser.parse_frame(b'1234')[0]
 
     assert (0, 1, b'1234') == (fin, opcode, payload)
 
 
-def test_parse_frame_mask(buf):
-    p = parse_frame(buf)
-    next(p)
-    p.send(struct.pack('!BB', 0b00000001, 0b10000001))
-    p.send(b'0001')
-    try:
-        p.send(b'1')
-    except StopIteration as exc:
-        fin, opcode, payload = exc.value
+def test_parse_frame_mask(parser):
+    parser.parse_frame(struct.pack('!BB', 0b00000001, 0b10000001))
+    parser.parse_frame(b'0001')
+    fin, opcode, payload = parser.parse_frame(b'1')[0]
 
     assert (0, 1, b'\x01') == (fin, opcode, payload)
 
 
-def test_parse_frame_header_reversed_bits(buf):
-    p = parse_frame(buf)
-    next(p)
+def test_parse_frame_header_reversed_bits(out, parser):
     with pytest.raises(WebSocketError):
-        p.send(struct.pack('!BB', 0b01100000, 0b00000000))
+        parser.parse_frame(struct.pack('!BB', 0b01100000, 0b00000000))
+        raise out.exception()
 
 
-def test_parse_frame_header_control_frame(buf):
-    p = parse_frame(buf)
-    next(p)
+def test_parse_frame_header_control_frame(out, parser):
     with pytest.raises(WebSocketError):
-        p.send(struct.pack('!BB', 0b00001000, 0b00000000))
+        parser.parse_frame(struct.pack('!BB', 0b00001000, 0b00000000))
+        raise out.exception()
 
 
-def test_parse_frame_header_continuation(buf):
-    p = parse_frame(buf)
-    next(p)
+def test_parse_frame_header_continuation(out, parser):
     with pytest.raises(WebSocketError):
-        p.send(struct.pack('!BB', 0b00000000, 0b00000000))
+        parser._frame_fin = True
+        parser.parse_frame(struct.pack('!BB', 0b00000000, 0b00000000))
+        raise out.exception()
 
 
-def test_parse_frame_header_new_data_err(buf):
-    p = parse_frame(buf)
-    next(p)
+def _test_parse_frame_header_new_data_err(out, parser):
     with pytest.raises(WebSocketError):
-        p.send(struct.pack('!BB', 0b000000000, 0b00000000))
+        parser.parse_frame(struct.pack('!BB', 0b000000000, 0b00000000))
+        raise out.exception()
 
 
-def test_parse_frame_header_payload_size(buf):
-    p = parse_frame(buf)
-    next(p)
+def test_parse_frame_header_payload_size(out, parser):
     with pytest.raises(WebSocketError):
-        p.send(struct.pack('!BB', 0b10001000, 0b01111110))
+        parser.parse_frame(struct.pack('!BB', 0b10001000, 0b01111110))
+        raise out.exception()
 
 
 def test_ping_frame(out, parser):
-    def parse_frame(buf):
-        yield
-        return (1, WSMsgType.PING, b'data')
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [(1, WSMsgType.PING, b'data')]
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
+    parser.feed_data(b'')
     res = out._buffer[0]
     assert res == ((WSMsgType.PING, b'data', ''), 4)
 
 
 def test_pong_frame(out, parser):
-    def parse_frame(buf):
-        yield
-        return (1, WSMsgType.PONG, b'data')
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [(1, WSMsgType.PONG, b'data')]
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
+    parser.feed_data(b'')
     res = out._buffer[0]
     assert res == ((WSMsgType.PONG, b'data', ''), 4)
 
 
 def test_close_frame(out, parser):
-    def parse_frame(buf):
-        yield
-        return (1, WSMsgType.CLOSE, b'')
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'')]
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-
+    parser.feed_data(b'')
     res = out._buffer[0]
     assert res == ((WSMsgType.CLOSE, 0, ''), 0)
 
 
 def test_close_frame_info(out, parser):
-    def parse_frame(buf):
-        yield
-        return (1, WSMsgType.CLOSE, b'0112345')
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'0112345')]
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
+    parser.feed_data(b'')
     res = out._buffer[0]
     assert res == (WSMessage(WSMsgType.CLOSE, 12337, '12345'), 0)
 
 
 def test_close_frame_invalid(out, parser):
-    def parse_frame(buf):
-        yield
-        return (1, WSMsgType.CLOSE, b'1')
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'1')]
+    parser.feed_data(b'')
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        with pytest.raises(WebSocketError) as ctx:
-            next(parser)
-
-        assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+    assert isinstance(out.exception(), WebSocketError)
+    assert out.exception().code == WSCloseCode.PROTOCOL_ERROR
 
 
-def test_close_frame_invalid_2(buf, parser):
-    buf.extend(build_close_frame(code=1))
+def test_close_frame_invalid_2(out, parser):
+    data = build_close_frame(code=1)
+
     with pytest.raises(WebSocketError) as ctx:
-        next(parser)
+        parser._feed_data(data)
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
-def test_close_frame_unicode_err(buf, parser):
-    buf.extend(build_close_frame(
-        code=1000, message=b'\xf4\x90\x80\x80'))
+def test_close_frame_unicode_err(parser):
+    data = build_close_frame(
+        code=1000, message=b'\xf4\x90\x80\x80')
+
     with pytest.raises(WebSocketError) as ctx:
-        next(parser)
+        parser._feed_data(data)
 
     assert ctx.value.code == WSCloseCode.INVALID_TEXT
 
 
 def test_unknown_frame(out, parser):
-    def parse_frame(buf):
-        yield
-        return (1, WSMsgType.CONTINUATION, b'')
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [(1, WSMsgType.CONTINUATION, b'')]
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-
-        with pytest.raises(WebSocketError):
-            parser.send(b'')
+    with pytest.raises(WebSocketError):
+        parser.feed_data(b'')
+        raise out.exception()
 
 
-def test_simple_text(buf, out, parser):
-    buf.extend(build_frame(b'text', WSMsgType.TEXT))
-    next(parser)
-    parser.send(b'')
+def test_simple_text(out, parser):
+    data = build_frame(b'text', WSMsgType.TEXT)
+    parser._feed_data(data)
     res = out._buffer[0]
     assert res == ((WSMsgType.TEXT, 'text', ''), 4)
 
 
-def test_simple_text_unicode_err(buf, parser):
-    buf.extend(
-        build_frame(b'\xf4\x90\x80\x80', WSMsgType.TEXT))
+def test_simple_text_unicode_err(parser):
+    data = build_frame(b'\xf4\x90\x80\x80', WSMsgType.TEXT)
+
     with pytest.raises(WebSocketError) as ctx:
-        next(parser)
+        parser._feed_data(data)
 
     assert ctx.value.code == WSCloseCode.INVALID_TEXT
 
 
 def test_simple_binary(out, parser):
-    def parse_frame(buf):
-        yield
-        return (1, WSMsgType.BINARY, b'binary')
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [(1, WSMsgType.BINARY, b'binary')]
+
+    parser.feed_data(b'')
     res = out._buffer[0]
     assert res == ((WSMsgType.BINARY, b'binary', ''), 6)
 
 
 def test_continuation(out, parser):
-    cur = 0
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
+        (0, WSMsgType.TEXT, b'line1'),
+        (1, WSMsgType.CONTINUATION, b'line2')]
 
-    def parse_frame(buf, cont=False):
-        nonlocal cur
-        yield
-        if cur == 0:
-            cur = 1
-            return (0, WSMsgType.TEXT, b'line1')
-        else:
-            return (1, WSMsgType.CONTINUATION, b'line2')
+    parser._feed_data(b'')
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        parser.send(b'')
     res = out._buffer[0]
     assert res == (WSMessage(WSMsgType.TEXT, 'line1line2', ''), 10)
 
 
 def test_continuation_with_ping(out, parser):
-    frames = [
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
         (0, WSMsgType.TEXT, b'line1'),
         (0, WSMsgType.PING, b''),
         (1, WSMsgType.CONTINUATION, b'line2'),
     ]
 
-    def parse_frame(buf, cont=False):
-        yield
-        return frames.pop(0)
-
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        parser.send(b'')
-        parser.send(b'')
+    parser.feed_data(b'')
     res = out._buffer[0]
     assert res == (WSMessage(WSMsgType.PING, b'', ''), 0)
     res = out._buffer[1]
@@ -335,129 +259,81 @@ def test_continuation_with_ping(out, parser):
 
 
 def test_continuation_err(out, parser):
-    cur = 0
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
+        (0, WSMsgType.TEXT, b'line1'),
+        (1, WSMsgType.TEXT, b'line2')]
 
-    def parse_frame(buf, cont=False):
-        nonlocal cur
-        yield
-        if cur == 0:
-            cur = 1
-            return (0, WSMsgType.TEXT, b'line1')
-        else:
-            return (1, WSMsgType.TEXT, b'line2')
-
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        with pytest.raises(WebSocketError):
-            parser.send(b'')
+    with pytest.raises(WebSocketError):
+        parser._feed_data(b'')
 
 
 def test_continuation_with_close(out, parser):
-    frames = [
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
         (0, WSMsgType.TEXT, b'line1'),
         (0, WSMsgType.CLOSE,
          build_close_frame(1002, b'test', noheader=True)),
         (1, WSMsgType.CONTINUATION, b'line2'),
     ]
 
-    def parse_frame(buf, cont=False):
-        yield
-        return frames.pop(0)
-
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        parser.send(b'')
-        parser.send(b'')
-        res = out._buffer[0]
+    parser.feed_data(b'')
+    res = out._buffer[0]
     assert res, (WSMessage(WSMsgType.CLOSE, 1002, 'test'), 0)
     res = out._buffer[1]
     assert res == (WSMessage(WSMsgType.TEXT, 'line1line2', ''), 10)
 
 
 def test_continuation_with_close_unicode_err(out, parser):
-    frames = [
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
         (0, WSMsgType.TEXT, b'line1'),
         (0, WSMsgType.CLOSE,
          build_close_frame(1000, b'\xf4\x90\x80\x80', noheader=True)),
         (1, WSMsgType.CONTINUATION, b'line2')]
 
-    def parse_frame(buf, cont=False):
-        yield
-        return frames.pop(0)
-
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        with pytest.raises(WebSocketError) as ctx:
-            parser.send(b'')
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(b'')
 
     assert ctx.value.code == WSCloseCode.INVALID_TEXT
 
 
 def test_continuation_with_close_bad_code(out, parser):
-    frames = [
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
         (0, WSMsgType.TEXT, b'line1'),
         (0, WSMsgType.CLOSE,
          build_close_frame(1, b'test', noheader=True)),
         (1, WSMsgType.CONTINUATION, b'line2')]
 
-    def parse_frame(buf, cont=False):
-        yield
-        return frames.pop(0)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(b'')
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        with pytest.raises(WebSocketError) as ctx:
-            parser.send(b'')
-
-        assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
 def test_continuation_with_close_bad_payload(out, parser):
-    frames = [
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
         (0, WSMsgType.TEXT, b'line1'),
         (0, WSMsgType.CLOSE, b'1'),
         (1, WSMsgType.CONTINUATION, b'line2')]
 
-    def parse_frame(buf, cont=False):
-        yield
-        return frames.pop(0)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(b'')
 
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        with pytest.raises(WebSocketError) as ctx:
-            parser.send(b'')
-
-        assert ctx.value.code, WSCloseCode.PROTOCOL_ERROR
+    assert ctx.value.code, WSCloseCode.PROTOCOL_ERROR
 
 
 def test_continuation_with_close_empty(out, parser):
-    frames = [
+    parser.parse_frame = mock.Mock()
+    parser.parse_frame.return_value = [
         (0, WSMsgType.TEXT, b'line1'),
         (0, WSMsgType.CLOSE, b''),
         (1, WSMsgType.CONTINUATION, b'line2'),
     ]
 
-    def parse_frame(buf, cont=False):
-        yield
-        return frames.pop(0)
-
-    with mock.patch('aiohttp._ws_impl.parse_frame') as m_parse_frame:
-        m_parse_frame.side_effect = parse_frame
-        next(parser)
-        parser.send(b'')
-        parser.send(b'')
-        parser.send(b'')
-
+    parser.feed_data(b'')
     res = out._buffer[0]
     assert res, (WSMessage(WSMsgType.CLOSE, 0, ''), 0)
     res = out._buffer[1]

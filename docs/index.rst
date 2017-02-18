@@ -16,7 +16,7 @@ Features
 --------
 
 - Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
-- Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
+  - Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
   :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box.
 - Web-server has :ref:`aiohttp-web-middlewares`,
   :ref:`aiohttp-web-signals` and pluggable routing.
@@ -180,7 +180,7 @@ allowed at least for a year and half after publishing new release with
 deprecation.
 
 All deprecations are reflected in documentation and raises
-:exc:`DeprectaionWarning`.
+:exc:`DeprecationWarning`.
 
 Sometimes we are forced to break the own rule for sake of very strong
 reason.  Most likely the reason is a critical bug which cannot be
@@ -198,8 +198,8 @@ Contents
    tutorial
    web
    web_reference
+   web_lowlevel
    abc
-   server
    multipart
    streams
    api
@@ -208,6 +208,7 @@ Contents
    deployment
    faq
    third_party
+   server
    essays
    contributing
    changes

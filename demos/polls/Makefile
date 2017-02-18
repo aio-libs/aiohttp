@@ -7,6 +7,9 @@ flake:
 	pyflakes aiohttpdemo_polls
 	pep8 aiohttpdemo_polls setup.py
 
+test:
+	pytest tests
+
 clean:
 	rm -rf `find . -name __pycache__`
 	rm -f `find . -type f -name '*.py[co]' `
@@ -22,4 +25,4 @@ clean:
 	rm -rf htmlcov
 	rm -rf dist
 
-.PHONY: flake clean
+.PHONY: flake clean test

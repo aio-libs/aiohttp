@@ -17,7 +17,7 @@ flake: .flake
                       $(shell find benchmark -type f) \
                       $(shell find examples -type f) \
                       $(shell find demos -type f)
-	@flake8 aiohttp
+	@flake8 aiohttp --exclude=aiohttp/backport_cookies.py
 	@if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
 	    flake8 examples tests demos benchmark && \
             python setup.py check -rms; \
@@ -26,7 +26,7 @@ flake: .flake
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests benchmark examples; \
             false; \
-        fi
+	fi
 	@touch .flake
 
 
@@ -79,6 +79,10 @@ clean:
 	@rm -f aiohttp/_websocket.c
 	@rm -f aiohttp/_websocket.*.so
 	@rm -f aiohttp/_websocket.*.pyd
+	@rm -f aiohttp/_parser.html
+	@rm -f aiohttp/_parser.c
+	@rm -f aiohttp/_parser.*.so
+	@rm -f aiohttp/_parser.*.pyd
 	@rm -rf .tox
 
 doc:

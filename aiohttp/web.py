@@ -1,23 +1,28 @@
 import asyncio
+import os
+import socket
+import stat
 import sys
 import warnings
 from argparse import ArgumentParser
-from collections import MutableMapping
+from collections import Iterable, MutableMapping
 from importlib import import_module
 
 from yarl import URL
 
-from . import (hdrs, web_exceptions, web_reqrep, web_server, web_urldispatcher,
-               web_ws)
+from . import (hdrs, web_exceptions, web_middlewares, web_reqrep, web_server,
+               web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList, sentinel
 from .log import access_logger, web_logger
 from .protocol import HttpVersion  # noqa
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
+from .web_middlewares import *  # noqa
 from .web_reqrep import *  # noqa
-from .web_server import WebServer
+from .web_server import Server
 from .web_urldispatcher import *  # noqa
+from .web_urldispatcher import PrefixedSubAppResource
 from .web_ws import *  # noqa
 
 __all__ = (web_reqrep.__all__ +
@@ -25,19 +30,20 @@ __all__ = (web_reqrep.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
            web_server.__all__ +
+           web_middlewares.__all__ +
            ('Application', 'HttpVersion', 'MsgType'))
 
 
 class Application(MutableMapping):
 
     def __init__(self, *, logger=web_logger, loop=None,
-                 router=None,
-                 middlewares=(), debug=...,
+
+                 router=None, middlewares=(), handler_args=None, debug=...,
                  client_max_size=None):
         if loop is None:
             loop = asyncio.get_event_loop()
         if router is None:
-            router = web_urldispatcher.UrlDispatcher(self)
+            router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
         if debug is ...:
@@ -47,6 +53,7 @@ class Application(MutableMapping):
         self._router = router
         self._secure_proxy_ssl_header = None
         self._loop = loop
+        self._handler_args = handler_args
         self.logger = logger
 
         self._middlewares = FrozenList(middlewares)
@@ -97,8 +104,8 @@ class Application(MutableMapping):
         if self._frozen:
             return
         self._frozen = True
+        self._middlewares = tuple(reversed(self._middlewares))
         self._router.freeze()
-        self._middlewares.freeze()
         self._on_pre_signal.freeze()
         self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
@@ -124,6 +131,23 @@ class Application(MutableMapping):
         reg_handler('on_startup')
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
+
+    def add_subapp(self, prefix, subapp):
+        if self.frozen:
+            raise RuntimeError(
+                "Cannot add sub application to frozen application")
+        if subapp.frozen:
+            raise RuntimeError("Cannot add frozen application")
+        if prefix.endswith('/'):
+            prefix = prefix[:-1]
+        if prefix in ('', '/'):
+            raise ValueError("Prefix cannot be empty")
+
+        resource = PrefixedSubAppResource(prefix, subapp)
+        self.router.register_resource(resource)
+        self._reg_subapp_signals(subapp)
+        subapp.freeze()
+        return resource
 
     @property
     def on_response_prepare(self):
@@ -178,11 +202,14 @@ class Application(MutableMapping):
                     "web_reference.html#aiohttp.web.Application"
                 )
         self.freeze()
+
+        if self._handler_args:
+            for k, v in self._handler_args.items():
+                kwargs[k] = v
+
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        return WebServer(self._handle,
-                         request_factory=self._make_request,
-                         debug=self.debug, loop=self.loop,
-                         **kwargs)
+        return Server(self._handle, request_factory=self._make_request,
+                      debug=self.debug, loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def startup(self):
@@ -208,24 +235,12 @@ class Application(MutableMapping):
         """
         yield from self.on_cleanup.send(self)
 
-    @asyncio.coroutine
-    def finish(self):
-        """Finalize an application.
-
-        Deprecated alias for .cleanup()
-        """
-        warnings.warn("Use .cleanup() instead", DeprecationWarning)
-        yield from self.cleanup()
-
-    def register_on_finish(self, func, *args, **kwargs):
-        warnings.warn("Use .on_cleanup.append() instead", DeprecationWarning)
-        self.on_cleanup.append(lambda app: func(app, *args, **kwargs))
-
-    def _make_request(self, message, payload, protocol):
-        return web_reqrep.Request(
-            message, payload,
-            protocol.transport, protocol.reader, protocol.writer,
-            protocol.time_service, protocol._request_handler,
+    def _make_request(self, message, payload, protocol,
+                      _cls=web_reqrep.Request):
+        return _cls(
+            message, payload, protocol,
+            protocol._time_service, protocol._request_handler,
+            loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
@@ -234,7 +249,9 @@ class Application(MutableMapping):
         match_info = yield from self._router.resolve(request)
         assert isinstance(match_info, AbstractMatchInfo), match_info
         match_info.add_app(self)
-        match_info.freeze()
+
+        if __debug__:
+            match_info.freeze()
 
         resp = None
         request._match_info = match_info
@@ -246,7 +263,7 @@ class Application(MutableMapping):
         if resp is None:
             handler = match_info.handler
             for app in match_info.apps:
-                for factory in reversed(app.middlewares):
+                for factory in app._middlewares:
                     handler = yield from factory(app, handler)
             resp = yield from handler(request)
 
@@ -266,17 +283,11 @@ class Application(MutableMapping):
         return "<Application 0x{:x}>".format(id(self))
 
 
-def run_app(app, *, host='0.0.0.0', port=None,
+def run_app(app, *, host=None, port=None, path=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
             access_log=access_logger):
     """Run an app locally"""
-    if port is None:
-        if not ssl_context:
-            port = 8080
-        else:
-            port = 8443
-
     loop = app.loop
 
     make_handler_kwargs = dict()
@@ -284,25 +295,82 @@ def run_app(app, *, host='0.0.0.0', port=None,
         make_handler_kwargs['access_log_format'] = access_log_format
     handler = app.make_handler(access_log=access_log,
                                **make_handler_kwargs)
-    server = loop.create_server(handler, host, port, ssl=ssl_context,
-                                backlog=backlog)
-    srv, startup_res = loop.run_until_complete(asyncio.gather(server,
-                                                              app.startup(),
-                                                              loop=loop))
+
+    loop.run_until_complete(app.startup())
 
     scheme = 'https' if ssl_context else 'http'
-    url = URL('{}://localhost'.format(scheme))
-    url = url.with_host(host).with_port(port)
+    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+
+    if path is None:
+        paths = ()
+    elif isinstance(path, (str, bytes, bytearray, memoryview))\
+            or not isinstance(path, Iterable):
+        paths = (path,)
+    else:
+        paths = path
+
+    if host is None:
+        if paths and not port:
+            hosts = ()
+        else:
+            hosts = ("0.0.0.0",)
+    elif isinstance(host, (str, bytes, bytearray, memoryview))\
+            or not isinstance(host, Iterable):
+        hosts = (host,)
+    else:
+        hosts = host
+
+    if hosts and port is None:
+        port = 8443 if ssl_context else 8080
+
+    server_creations = []
+    uris = [str(base_url.with_host(host)) for host in hosts]
+    if hosts:
+        # Multiple hosts bound to same server is available in most loop
+        # implementations, but only send multiple if we have multiple.
+        host_binding = hosts[0] if len(hosts) == 1 else hosts
+        server_creations.append(
+            loop.create_server(
+                handler, host_binding, port, ssl=ssl_context, backlog=backlog
+            )
+        )
+    for path in paths:
+        # Most loop implementations don't support multiple paths bound in same
+        # server, so create a server for each.
+        server_creations.append(
+            loop.create_unix_server(
+                handler, path, ssl=ssl_context, backlog=backlog
+            )
+        )
+        uris.append('{}://unix:{}:'.format(scheme, path))
+
+        # Clean up prior socket path if stale and not abstract.
+        # CPython 3.5.3+'s event loop already does this. See
+        # https://github.com/python/asyncio/issues/425
+        if path[0] not in (0, '\x00'):  # pragma: no branch
+            try:
+                if stat.S_ISSOCK(os.stat(path).st_mode):
+                    os.remove(path)
+            except FileNotFoundError:
+                pass
+
+    servers = loop.run_until_complete(
+        asyncio.gather(*server_creations, loop=loop)
+    )
+
     print("======== Running on {} ========\n"
-          "(Press CTRL+C to quit)".format(url))
+          "(Press CTRL+C to quit)".format(', '.join(uris)))
 
     try:
         loop.run_forever()
     except KeyboardInterrupt:  # pragma: no cover
         pass
     finally:
-        srv.close()
-        loop.run_until_complete(srv.wait_closed())
+        server_closures = []
+        for srv in servers:
+            srv.close()
+            server_closures.append(srv.wait_closed())
+        loop.run_until_complete(asyncio.gather(*server_closures, loop=loop))
         loop.run_until_complete(app.shutdown())
         loop.run_until_complete(handler.shutdown(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
@@ -331,6 +399,11 @@ def main(argv):
         type=int,
         default="8080"
     )
+    arg_parser.add_argument(
+        "-U", "--path",
+        help="Unix file system path to serve on. Specifying a path will cause "
+             "hostname and port arguments to be ignored.",
+    )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
     # Import logic
@@ -350,8 +423,13 @@ def main(argv):
     except AttributeError:
         arg_parser.error("module %r has no attribute %r" % (mod_str, func_str))
 
+    # Compatibility logic
+    if args.path is not None and not hasattr(socket, 'AF_UNIX'):
+        arg_parser.error("file system paths not supported by your operating"
+                         " environment")
+
     app = func(extra_argv)
-    run_app(app, host=args.hostname, port=args.port)
+    run_app(app, host=args.hostname, port=args.port, path=args.path)
     arg_parser.exit(message="Stopped\n")
 
 

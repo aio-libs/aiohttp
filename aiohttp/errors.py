@@ -60,7 +60,7 @@ class ClientTimeoutError(ClientConnectionError, TimeoutError):
 class ProxyConnectionError(ClientConnectionError):
     """Proxy connection error.
 
-    Raised in :class:`aiohttp.connector.ProxyConnector` if
+    Raised in :class:`aiohttp.connector.TCPConnector` if
     connection to proxy can not be established.
     """
 
@@ -95,7 +95,7 @@ class WSServerHandshakeError(HttpProcessingError):
 class HttpProxyError(HttpProcessingError):
     """HTTP proxy error.
 
-    Raised in :class:`aiohttp.connector.ProxyConnector` if
+    Raised in :class:`aiohttp.connector.TCPConnector` if
     proxy responds with status other than ``200 OK``
     on ``CONNECT`` request.
     """
@@ -160,12 +160,8 @@ class BadStatusLine(BadHttpMessage):
         self.line = line
 
 
-class LineLimitExceededParserError(HttpBadRequest):
-    """Line is too long."""
-
-    def __init__(self, msg, limit):
-        super().__init__(msg)
-        self.limit = limit
+class InvalidURLError(BadHttpMessage):
+    pass
 
 
 class FingerprintMismatch(ClientConnectionError):

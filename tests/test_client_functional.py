@@ -47,7 +47,10 @@ def test_keepalive_two_requests_success(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
+
     resp1 = yield from client.get('/')
     yield from resp1.read()
     resp2 = yield from client.get('/')
@@ -66,7 +69,9 @@ def test_keepalive_response_released(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
     yield from resp1.release()
@@ -88,7 +93,9 @@ def test_keepalive_server_force_close_connection(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
     resp1.close()
@@ -337,7 +344,7 @@ def test_format_task_get(test_server, loop):
 def test_str_params(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        assert 'q=t+est' in request.query_string
+        assert 'q=t est' in request.query_string
         return web.Response()
 
     app = web.Application(loop=loop)
@@ -385,7 +392,7 @@ def test_drop_fragment_on_redirect(loop, test_client):
 
     resp = yield from client.get('/redirect')
     assert resp.status == 200
-    assert resp.url_obj.path == '/ok'
+    assert resp.url.path == '/ok'
 
 
 @asyncio.coroutine
@@ -400,7 +407,7 @@ def test_drop_fragment(loop, test_client):
 
     resp = yield from client.get('/ok#fragment')
     assert resp.status == 200
-    assert resp.url_obj.path == '/ok'
+    assert resp.url.path == '/ok'
 
 
 @asyncio.coroutine
@@ -440,7 +447,9 @@ def test_keepalive_closed_by_server(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
     val1 = yield from resp1.read()
@@ -479,10 +488,10 @@ def test_raw_headers(loop, test_client):
     client = yield from test_client(app)
     resp = yield from client.get('/')
     assert resp.status == 200
-    assert resp.raw_headers == ((b'CONTENT-TYPE', b'application/octet-stream'),
-                                (b'CONTENT-LENGTH', b'0'),
-                                (b'DATE', mock.ANY),
-                                (b'SERVER', mock.ANY))
+    assert resp.raw_headers == ((b'Content-Length', b'0'),
+                                (b'Content-Type', b'application/octet-stream'),
+                                (b'Date', mock.ANY),
+                                (b'Server', mock.ANY))
     resp.close()
 
 
@@ -542,12 +551,53 @@ def test_timeout_on_reading_headers(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_data(loop, test_client):
+def test_timeout_on_conn_reading_headers(loop, test_client):
+    # tests case where user did not set a connection timeout
 
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse()
+        yield from asyncio.sleep(0.1, loop=loop)
         yield from resp.prepare(request)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    conn = aiohttp.TCPConnector(loop=loop)
+    client = yield from test_client(app, connector=conn)
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from client.get('/', timeout=0.01)
+
+
+@asyncio.coroutine
+def test_timeout_on_session_read_timeout(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from asyncio.sleep(0.1, loop=loop)
+        yield from resp.prepare(request)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    conn = aiohttp.TCPConnector(loop=loop)
+    client = yield from test_client(app, connector=conn, read_timeout=0.01)
+
+    with pytest.raises(asyncio.TimeoutError):
+        yield from client.get('/', timeout=None)
+
+
+@asyncio.coroutine
+def test_timeout_on_reading_data(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse(headers={'content-length': '100'})
+        yield from resp.prepare(request)
+        yield from resp.drain()
         yield from asyncio.sleep(0.1, loop=loop)
         return resp
 
@@ -555,7 +605,7 @@ def test_timeout_on_reading_data(loop, test_client):
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.05)
+    resp = yield from client.get('/', timeout=0.01)
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
@@ -687,7 +737,7 @@ def test_HTTP_200_OK_METHOD_connector(loop, test_client):
 
     conn = aiohttp.TCPConnector(
         conn_timeout=0.2, resolve=True, loop=loop)
-    conn.clear_resolved_hosts()
+    conn.clear_dns_cache()
 
     app = web.Application(loop=loop)
     for meth in ('get', 'post', 'put', 'delete', 'head'):
@@ -803,10 +853,11 @@ def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
 
     @asyncio.coroutine
     def redirect(request):
+        yield from request.read()
         return web.HTTPFound(location='/')
 
     data = json.dumps({'some': 'data'})
-    app = web.Application(loop=loop)
+    app = web.Application(loop=loop, debug=True)
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
     client = yield from test_client(app)
@@ -828,6 +879,7 @@ def test_HTTP_307_REDIRECT_POST(loop, test_client):
 
     @asyncio.coroutine
     def redirect(request):
+        yield from request.read()
         return web.HTTPTemporaryRedirect(location='/')
 
     app = web.Application(loop=loop)
@@ -1502,38 +1554,6 @@ def test_shortcuts(test_client, loop):
 
 
 @asyncio.coroutine
-def test_module_shortcuts(test_client, loop):
-    @asyncio.coroutine
-    def handler(request):
-        return web.Response(text=request.method)
-
-    app = web.Application(loop=loop)
-    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
-        app.router.add_route(meth.upper(), '/', handler)
-    client = yield from test_client(lambda loop: app)
-
-    for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
-        coro = getattr(aiohttp, meth)
-        with pytest.warns(DeprecationWarning):
-            resp = yield from coro(client.make_url('/'), loop=loop)
-
-        assert resp.status == 200
-        assert len(resp.history) == 0
-
-        content1 = yield from resp.read()
-        content2 = yield from resp.read()
-        assert content1 == content2
-        content = yield from resp.text()
-
-        if meth == 'head':
-            assert b'' == content1
-        else:
-            assert meth.upper() == content
-
-        yield from resp.release()
-
-
-@asyncio.coroutine
 def test_cookies(test_client, loop):
     @asyncio.coroutine
     def handler(request):
@@ -1547,11 +1567,10 @@ def test_cookies(test_client, loop):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(
+        app, cookies={'test1': '123', 'test2': c})
 
-    resp = yield from aiohttp.get(client.make_url('/'),
-                                  cookies={'test1': '123', 'test2': c},
-                                  loop=loop)
+    resp = yield from client.get('/')
     assert 200 == resp.status
     resp.close()
 
@@ -1581,11 +1600,9 @@ def test_morsel_with_attributes(test_client, loop):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app, cookies={'test2': c})
 
-    resp = yield from aiohttp.get(client.make_url('/'),
-                                  cookies={'test2': c},
-                                  loop=loop)
+    resp = yield from client.get('/')
     assert 200 == resp.status
     resp.close()
 
@@ -1626,6 +1643,7 @@ def test_request_conn_error(loop):
     yield from client.close()
 
 
+@pytest.mark.xfail
 @asyncio.coroutine
 def test_broken_connection(loop, test_client):
     @asyncio.coroutine
@@ -1635,7 +1653,7 @@ def test_broken_connection(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app)
 
     with pytest.raises(aiohttp.ClientResponseError):
         yield from client.get('/')
@@ -1645,15 +1663,17 @@ def test_broken_connection(loop, test_client):
 def test_broken_connection_2(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        resp = web.StreamResponse()
+        resp = web.StreamResponse(headers={'content-length': '1000'})
         yield from resp.prepare(request)
+        yield from resp.drain()
+        resp.write(b'answer')
+        yield from resp.drain()
         request.transport.close()
-        resp.write(b'answer'*1000)
         return resp
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = yield from test_client(app)
 
     resp = yield from client.get('/')
     with pytest.raises(aiohttp.ServerDisconnectedError):

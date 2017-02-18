@@ -40,7 +40,7 @@ class TestProxy(unittest.TestCase):
         tr, proto = mock.Mock(), mock.Mock()
         self.loop.create_connection = make_mocked_coro((tr, proto))
         conn = self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.path, 'http://www.python.org')
+        self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertIs(conn._transport, tr)
         self.assertIs(conn._protocol, proto)
 
@@ -61,6 +61,21 @@ class TestProxy(unittest.TestCase):
             ctx.exception.args[0],
             "proxy_auth must be None or BasicAuth() tuple",
         )
+
+    @mock.patch('aiohttp.Request')
+    def test_connect_request_with_unicode_host(self, Request_mock):
+        loop = mock.Mock()
+        request = ClientRequest("CONNECT", URL("http://éé.com/"),
+                                loop=loop)
+
+        request.response_class = mock.Mock()
+        request.write_bytes = mock.Mock()
+        request.write_bytes.return_value = asyncio.Future(loop=loop)
+        request.write_bytes.return_value.set_result(None)
+        request.send(mock.Mock())
+
+        Request_mock.assert_called_with(mock.ANY, mock.ANY, "xn--9caa.com:80",
+                                        mock.ANY, loop=loop)
 
     def test_proxy_connection_error(self):
         connector = aiohttp.TCPConnector(loop=self.loop)
@@ -105,7 +120,7 @@ class TestProxy(unittest.TestCase):
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         conn = self.loop.run_until_complete(connector.connect(req))
 
-        self.assertEqual(req.path, 'http://www.python.org')
+        self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
@@ -148,7 +163,7 @@ class TestProxy(unittest.TestCase):
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
         conn = self.loop.run_until_complete(connector.connect(req))
 
-        self.assertEqual(req.path, 'http://www.python.org')
+        self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertIn('PROXY-AUTHORIZATION', req.headers)
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
@@ -212,8 +227,8 @@ class TestProxy(unittest.TestCase):
 
         self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
-        self.assertEqual(proxy_req.path, 'www.python.org:443')
-        tr.pause_reading.assert_called_once_with()
+        self.assertEqual(proxy_req.url, URL('https://www.python.org'))
+        tr.close.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
         self.loop.run_until_complete(proxy_req.close())
@@ -341,7 +356,7 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         self.loop.run_until_complete(connector._create_connection(req))
-        self.assertEqual(req.path, 'http://localhost:1234/path')
+        self.assertEqual(req.url, URL('http://localhost:1234/path'))
 
     def test_proxy_auth_property(self):
         req = aiohttp.ClientRequest(
@@ -393,8 +408,8 @@ class TestProxy(unittest.TestCase):
 
         self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
-        self.assertEqual(proxy_req.path, 'www.python.org:443')
-        tr.pause_reading.assert_called_once_with()
+        self.assertEqual(proxy_req.url, URL('https://www.python.org'))
+        tr.close.assert_called_once_with()
         tr.get_extra_info.assert_called_with('socket', default=None)
 
         self.loop.run_until_complete(proxy_req.close())
@@ -446,64 +461,3 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
         self.loop.run_until_complete(req.close())
-
-
-class TestProxyConnector(unittest.TestCase):
-
-    """
-    Backward compatibility simple test. Most testing happens in TextProxy.
-    """
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        # just in case if we have transport close callbacks
-        self.loop.stop()
-        self.loop.run_forever()
-        self.loop.close()
-        gc.collect()
-
-    def test_ctor(self):
-        connector = aiohttp.ProxyConnector(
-            URL('http://localhost:8118'),
-            proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'),
-            loop=self.loop,
-        )
-
-        self.assertEqual('http://localhost:8118', str(connector.proxy))
-        self.assertEqual(
-            aiohttp.helpers.BasicAuth('user', 'pass'),
-            connector.proxy_auth
-        )
-        self.assertTrue(connector.force_close)
-
-    @mock.patch('aiohttp.connector.ClientRequest')
-    def test_connect(self, ClientRequestMock):
-        req = ClientRequest('GET', URL('http://www.python.org'),
-                            loop=self.loop)
-        self.assertEqual(req.url.path, '/')
-
-        connector = aiohttp.ProxyConnector(URL('http://proxy.example.com'),
-                                           loop=self.loop)
-        self.assertIs(self.loop, connector._loop)
-
-        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
-
-        tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = make_mocked_coro((tr, proto))
-        conn = self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.path, 'http://www.python.org')
-        self.assertIs(conn._transport, tr)
-        self.assertIs(conn._protocol, proto)
-
-        # resolve_host.assert_called_once_with('proxy.example.com', 80)
-        tr.get_extra_info.assert_called_once_with('sslcontext')
-
-        ClientRequestMock.assert_called_with(
-            'GET', URL('http://proxy.example.com'),
-            auth=None,
-            headers={'Host': 'www.python.org'},
-            loop=self.loop)
-        conn.close()

@@ -72,9 +72,9 @@ This is simple usage example:
 
         async for msg in ws:
             if msg.type == web.MsgType.text:
-                ws.send_str("Hello, {}".format(msg.data))
+                await ws.send_str("Hello, {}".format(msg.data))
             elif msg.type == web.MsgType.binary:
-                ws.send_bytes(msg.data)
+                await ws.send_bytes(msg.data)
             elif msg.type == web.MsgType.close:
                 break
 

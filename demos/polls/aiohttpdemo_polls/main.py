@@ -1,26 +1,37 @@
+import argparse
 import asyncio
 import logging
-import pathlib
+import sys
 
 import jinja2
+
+from trafaret_config import commandline
+
 
 import aiohttp_jinja2
 from aiohttp import web
 from aiohttpdemo_polls.db import close_pg, init_pg
 from aiohttpdemo_polls.middlewares import setup_middlewares
 from aiohttpdemo_polls.routes import setup_routes
-from aiohttpdemo_polls.utils import load_config
+from aiohttpdemo_polls.utils import TRAFARET
 
 
-def init():
-    loop = asyncio.get_event_loop()
+def init(loop, argv):
+    ap = argparse.ArgumentParser()
+    commandline.standard_argparse_options(ap,
+                                          default_config='./config/polls.yaml')
+    #
+    # define your command-line arguments here
+    #
+    options = ap.parse_args(argv)
+
+    config = commandline.config_from_options(options, TRAFARET)
 
     # setup application and extensions
     app = web.Application(loop=loop)
 
     # load config from yaml file in current dir
-    conf = load_config(str(pathlib.Path('.') / 'config' / 'polls.yaml'))
-    app['config'] = conf
+    app['config'] = config
 
     # setup Jinja2 template renderer
     aiohttp_jinja2.setup(
@@ -37,15 +48,17 @@ def init():
     return app
 
 
-def main():
+def main(argv):
     # init logging
     logging.basicConfig(level=logging.DEBUG)
 
-    app = init()
+    loop = asyncio.get_event_loop()
+
+    app = init(loop, argv)
     web.run_app(app,
                 host=app['config']['host'],
                 port=app['config']['port'])
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])

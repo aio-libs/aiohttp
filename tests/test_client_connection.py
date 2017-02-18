@@ -12,12 +12,17 @@ def key():
 
 
 @pytest.fixture
-def connector():
+def request():
     return mock.Mock()
 
 
 @pytest.fixture
-def request():
+def loop():
+    return mock.Mock()
+
+
+@pytest.fixture
+def connector():
     return mock.Mock()
 
 
@@ -31,7 +36,17 @@ def protocol():
     return mock.Mock()
 
 
+def test_ctor(connector, key, request, transport, protocol, loop):
+    conn = Connection(connector, key, request,
+                      transport, protocol, loop)
+    assert conn.loop is loop
+    assert conn.protocol is protocol
+    assert conn.writer is protocol.writer
+    conn.close()
+
+
 def test_del(connector, key, request, transport, protocol, loop):
+    loop.is_closed.return_value = False
     conn = Connection(connector, key, request,
                       transport, protocol, loop)
     exc_handler = mock.Mock()
@@ -50,7 +65,7 @@ def test_del(connector, key, request, transport, protocol, loop):
            'message': 'Unclosed connection'}
     if loop.get_debug():
         msg['source_traceback'] = mock.ANY
-    exc_handler.assert_called_with(loop, msg)
+    loop.call_exception_handler.assert_called_with(msg)
 
 
 def test_close(connector, key, request, transport, protocol, loop):
@@ -95,5 +110,16 @@ def test_detach(connector, key, request, transport, protocol, loop):
     assert not conn.closed
     conn.detach()
     assert conn._transport is None
+    assert connector._release_acquired.called
     assert not connector._release.called
     assert conn.closed
+
+
+def test_detach_closed(connector, key, request, transport, protocol, loop):
+    conn = Connection(connector, key, request,
+                      transport, protocol, loop)
+    conn.release()
+    conn.detach()
+
+    assert not connector._release_acquired.called
+    assert conn._transport is None

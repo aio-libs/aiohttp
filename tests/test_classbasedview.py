@@ -23,7 +23,7 @@ def test_render_ok():
             return resp
 
     request = mock.Mock()
-    request.method = 'GET'
+    request._method = 'GET'
     resp2 = yield from MyView(request)
     assert resp is resp2
 

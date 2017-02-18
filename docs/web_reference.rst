@@ -1,7 +1,7 @@
 .. _aiohttp-web-reference:
 
-HTTP Server Reference
-=====================
+Server Reference
+================
 
 .. module:: aiohttp.web
 
@@ -10,27 +10,22 @@ HTTP Server Reference
 .. _aiohttp-web-request:
 
 
-Request
--------
+Request and Base Request
+------------------------
 
 The Request object contains all the information about an incoming HTTP request.
 
-Every :ref:`handler<aiohttp-web-handler>` accepts a request instance as the
-first positional parameter.
+:class:`BaseRequest` is used for :ref:`Low-Level
+Servers<aiohttp-web-lowlevel>` (which have no applications, routers, signals
+and middlewares) and :class:`Request` has an *application* and *match
+info* attributes.
 
-A :class:`Request` is a :obj:`dict`-like object, allowing it to be used for
-:ref:`sharing data<aiohttp-web-data-sharing>` among
-:ref:`aiohttp-web-middlewares` and :ref:`aiohttp-web-signals` handlers.
+A :class:`BaseRequest`/:class:`Request` are :obj:`dict`-like objects,
+allowing them to be used for :ref:`sharing
+data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
+and :ref:`aiohttp-web-signals` handlers.
 
-Although :class:`Request` is :obj:`dict`-like object, it can't be duplicated
-like one using :meth:`Request.copy`.
-
-.. note::
-
-   You should never create the :class:`Request` instance manually --
-   :mod:`aiohttp.web` does it for you.
-
-.. class:: Request
+.. class:: BaseRequest
 
    .. attribute:: version
 
@@ -189,22 +184,6 @@ like one using :meth:`Request.copy`.
       protocol version supports it, otherwise ``False``.
 
       Read-only :class:`bool` property.
-
-   .. attribute:: match_info
-
-      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
-      instance for result of route resolving.
-
-      .. note::
-
-         Exact type of property depends on used router.  If
-         ``app.router`` is :class:`UrlDispatcher` the property contains
-         :class:`UrlMappingMatchInfo` instance.
-
-   .. attribute:: app
-
-      An :class:`Application` instance used to call :ref:`request handler
-      <aiohttp-web-handler>`, Read-only property.
 
    .. attribute:: transport
 
@@ -412,6 +391,41 @@ like one using :meth:`Request.copy`.
           User code may never call :meth:`~Request.release`, all
           required work will be processed by :mod:`aiohttp.web`
           internal machinery.
+
+
+.. class:: Request
+
+   An request used for receiving request's information by *web handler*.
+
+   Every :ref:`handler<aiohttp-web-handler>` accepts a request
+   instance as the first positional parameter.
+
+   The class in derived from :class:`BaseRequest`, shares all parent's
+   attributes and methods but has a couple of additional properties:
+
+   .. attribute:: match_info
+
+      Read-only property with :class:`~aiohttp.abc.AbstractMatchInfo`
+      instance for result of route resolving.
+
+      .. note::
+
+         Exact type of property depends on used router.  If
+         ``app.router`` is :class:`UrlDispatcher` the property contains
+         :class:`UrlMappingMatchInfo` instance.
+
+   .. attribute:: app
+
+      An :class:`Application` instance used to call :ref:`request handler
+      <aiohttp-web-handler>`, Read-only property.
+
+   .. note::
+
+      You should never create the :class:`Request` instance manually
+      -- :mod:`aiohttp.web` does it for you. But
+      :meth:`~BaseRequest.clone` may be used for cloning *modified*
+      request copy with changed *path*, *method* etc.
+
 
 
 .. _aiohttp-web-response:
@@ -832,8 +846,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, autoclose=True, \
-                             autoping=True, protocols=())
+.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, autoclose=True, \
+                             autoping=True, heartbeat=None, protocols=())
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -842,6 +856,12 @@ WebSocketResponse
    cannot use :meth:`~StreamResponse.write` method but should to
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
+
+   .. versionadded:: 1.3.0
+
+   To enable back-pressure from slow websocket clients treat methods
+   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as coroutines.
+   By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -853,6 +873,14 @@ WebSocketResponse
                          :const:`~aiohttp.WSMsgType.PING`
                          requests, you need to do this explicitly
                          using :meth:`ping` method.
+
+   .. versionadded:: 1.3.0
+
+   :param float heartbeat: Send `ping` message every `heartbeat` seconds
+                           and wait `pong` response, close connection if `pong` response is not received
+
+   :param float receive_timeout: Timeout value for `receive` operations.
+                                 Default value is None (no timeout for receive operation)
 
    .. versionadded:: 0.19
 
@@ -878,20 +906,6 @@ WebSocketResponse
 
       .. versionadded:: 0.18
 
-   .. method:: start(request)
-
-      Starts websocket. After the call you can use websocket methods.
-
-      :param aiohttp.web.Request request: HTTP request object, that the
-                                          response answers.
-
-
-      :raises HTTPException: if websocket handshake has failed.
-
-      .. deprecated:: 0.18
-
-         Use :meth:`prepare` instead.
-
    .. method:: can_prepare(request)
 
       Performs checks for *request* data to figure out if websocket
@@ -914,12 +928,6 @@ WebSocketResponse
                client and server subprotocols are not overlapping.
 
       .. note:: The method never raises exception.
-
-   .. method:: can_start(request)
-
-      Deprecated alias for :meth:`can_prepare`
-
-      .. deprecated:: 0.18
 
    .. attribute:: closed
 
@@ -1005,11 +1013,7 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      .. note::
-
-         Can only be called by the request handling task. To
-         programmatically close websocket server side see the
-         :ref:`FAQ section <aiohttp_faq_terminating_websockets>`.
+      It is save to call `close()` from different task.
 
       :param int code: closing code
 
@@ -1017,9 +1021,9 @@ WebSocketResponse
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-      :raise RuntimeError: if connection is not started or closing
+      :raise RuntimeError: if connection is not started
 
-   .. coroutinemethod:: receive()
+   .. coroutinemethod:: receive(timeout=None)
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
@@ -1036,13 +1040,16 @@ WebSocketResponse
 
          Can only be called by the request handling task.
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 
       :raise: :exc:`~aiohttp.errors.WSClientDisconnectedError` on closing.
 
-   .. coroutinemethod:: receive_str()
+   .. coroutinemethod:: receive_str(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1052,11 +1059,14 @@ WebSocketResponse
 
          Can only be called by the request handling task.
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return str: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
-   .. coroutinemethod:: receive_bytes()
+   .. coroutinemethod:: receive_bytes(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1066,11 +1076,14 @@ WebSocketResponse
 
          Can only be called by the request handling task.
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return bytes: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
-   .. coroutinemethod:: receive_json(*, loads=json.loads)
+   .. coroutinemethod:: receive_json(*, loads=json.loads, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
       JSON string to a Python dict.
@@ -1084,6 +1097,9 @@ WebSocketResponse
                               with parsed JSON (:func:`json.loads` by
                               default).
 
+      :param timeout: timeout for `receive` operation.
+                      timeout value overrides response`s receive_timeout attribute.
+
       :return dict: loaded JSON content
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
@@ -1093,7 +1109,7 @@ WebSocketResponse
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
-
+             
 
 WebSocketReady
 ^^^^^^^^^^^^^^
@@ -1147,8 +1163,8 @@ Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
 supported urls in *router* and create a *server socket* with
-:class:`~aiohttp.web.RequestHandlerFactory` as a *protocol
-factory*. *RequestHandlerFactory* could be constructed with
+:class:`~aiohttp.web.Server` as a *protocol
+factory*. *Server* could be constructed with
 :meth:`Application.make_handler`.
 
 *Application* contains a *router* instance and a list of callbacks that
@@ -1306,6 +1322,14 @@ duplicated like one using :meth:`Application.copy`.
     :param int max_field_size: Optional maximum header field size. Default:
       ``8190``.
 
+    :param float lingering_time: maximum time during which the server
+       reads and ignore additional data coming from the client when
+       lingering close is on.  Use ``0`` for disabling lingering on
+       server channel closing.
+
+    :param float lingering_timeout: maximum waiting time for more
+        client data to arrive when lingering close is in effect
+
 
     You should pass result of the method as *protocol_factory* to
     :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
@@ -1331,7 +1355,7 @@ duplicated like one using :meth:`Application.copy`.
    .. coroutinemethod:: shutdown()
 
       A :ref:`coroutine<coroutine>` that should be called on
-      server stopping but before :meth:`finish()`.
+      server stopping but before :meth:`cleanup()`.
 
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
@@ -1343,29 +1367,6 @@ duplicated like one using :meth:`Application.copy`.
 
       The purpose of the method is calling :attr:`on_cleanup` signal
       handlers.
-
-   .. coroutinemethod:: finish()
-
-      A deprecated alias for :meth:`cleanup`.
-
-      .. deprecated:: 0.21
-
-   .. method:: register_on_finish(self, func, *args, **kwargs):
-
-      Register *func* as a function to be executed at termination.
-      Any optional arguments that are to be passed to *func* must be
-      passed as arguments to :meth:`register_on_finish`.  It is possible to
-      register the same function and arguments more than once.
-
-      During the call of :meth:`finish` all functions registered are called in
-      last in, first out order.
-
-      *func* may be either regular function or :ref:`coroutine<coroutine>`,
-      :meth:`finish` will un-yield (`await`) the later.
-
-      .. deprecated:: 0.21
-
-         Use :attr:`on_cleanup` instead: ``app.on_cleanup.append(handler)``.
 
    .. note::
 
@@ -1384,37 +1385,44 @@ duplicated like one using :meth:`Application.copy`.
       router for your application).
 
 
-RequestHandlerFactory
-^^^^^^^^^^^^^^^^^^^^^
+Server
+^^^^^^
 
-   A protocol factory compatible with
-   :meth:`~asyncio.AbstreactEventLoop.create_server`.
+A protocol factory compatible with
+:meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-   .. class:: RequestHandlerFactory
+      .. class:: Server
 
-      RequestHandlerFactory is responsible for creating HTTP protocol
-      objects that can handle HTTP connections.
+   The class is responsible for creating HTTP protocol
+   objects that can handle HTTP connections.
 
-      .. attribute:: RequestHandlerFactory.connections
+   .. attribute:: Server.connections
 
-         List of all currently opened connections.
+      List of all currently opened connections.
 
-      .. attribute:: requests_count
+   .. attribute:: requests_count
 
-         Amount of processed requests.
+      Amount of processed requests.
 
-         .. versionadded:: 1.0
+      .. versionadded:: 1.0
 
-      .. coroutinemethod:: RequestHandlerFactory.shutdown(timeout)
+   .. coroutinemethod:: Server.shutdown(timeout)
 
-         A :ref:`coroutine<coroutine>` that should be called to close all opened
-         connections.
+      A :ref:`coroutine<coroutine>` that should be called to close all opened
+      connections.
 
-      .. coroutinemethod:: RequestHandlerFactory.finish_connections(timeout)
+   .. coroutinemethod:: Server.finish_connections(timeout)
 
-         .. deprecated:: 1.2
+      .. deprecated:: 1.2
 
          A deprecated alias for :meth:`shutdown`.
+
+   .. versionchanged:: 1.2
+
+      ``Server`` was called ``RequestHandlerFactory`` before ``aiohttp==1.2``.
+
+      The rename has no deprecation period but it's safe: no user
+      should instantiate the class by hands.
 
 
 Router
@@ -1548,6 +1556,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       system call even if the platform supports it. This can be accomplished by
       by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
+      If a gzip version of the static content exists at file path + ``.gz``, it
+      will be used for the response.
+
       .. warning::
 
          Use :meth:`add_static` for development only. In production,
@@ -1561,6 +1572,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
       .. versionchanged:: 0.19.0
          Disable ``sendfile`` by setting environment variable
          ``AIOHTTP_NOSENDFILE=1``
+
+      .. versionchanged:: 1.2.0
+         Send gzip version if file path + ``.gz`` exists.
 
       :param str prefix: URL path prefix for handled static files
 
@@ -1898,7 +1912,7 @@ Resource classes hierarchy::
 .. class:: PrefixedSubAppResource
 
    A resource for serving nested applications. The class instance is
-   returned by :class:`~aiohttp.web.UrlDispatcher.add_subapp` call.
+   returned by :class:`~aiohttp.web.Application.add_subapp` call.
 
    .. versionadded:: 1.1
 
@@ -2078,9 +2092,9 @@ Utilities
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
 
-.. function:: run_app(app, *, host='0.0.0.0', port=None, loop=None, \
-                      shutdown_timeout=60.0, ssl_context=None, \
-                      print=print, backlog=128, \
+.. function:: run_app(app, *, host=None, port=None, path=None, \
+                      loop=None, shutdown_timeout=60.0, \
+                      ssl_context=None, print=print, backlog=128, \
                       access_log_format=None, \
                       access_log=aiohttp.log.access_logger)
 
@@ -2094,13 +2108,29 @@ Utilities
 
    The function uses *app.loop* as event loop to run.
 
+   The server will listen on any host or Unix domain socket path you supply.
+   If no hosts or paths are supplied, or only a port is supplied, a TCP server
+   listening on 0.0.0.0 (all hosts) will be launched.
+
+   Distributing HTTP traffic to multiple hosts or paths on the same
+   application process provides no performance benefit as the requests are
+   handled on the same event loop. See :doc:`deployment` for ways of
+   distributing work for increased performance.
+
    :param app: :class:`Application` instance to run
 
-   :param str host: host for HTTP server, ``'0.0.0.0'`` by default
+   :param str host: TCP/IP host or a sequence of hosts for HTTP server.
+                    Default is ``'0.0.0.0'`` if *port* has been specified
+                    or if *path* is not supplied.
 
-   :param int port: port for HTTP server. By default is ``8080`` for
-                    plain text HTTP and ``8443`` for HTTP via SSL
-                    (when *ssl_context* parameter is specified).
+   :param int port: TCP/IP port for HTTP server. Default is ``8080`` for plain
+                    text HTTP and ``8443`` for HTTP via SSL (when
+                    *ssl_context* parameter is specified).
+
+   :param str path: file system path for HTTP server Unix domain socket.
+                    A sequence of file system paths can be used to bind
+                    multiple domain sockets. Listening on Unix domain
+                    sockets is not supported by all operating systems.
 
    :param int shutdown_timeout: a delay to wait for graceful server
                                 shutdown before disconnecting all
@@ -2149,6 +2179,34 @@ Constants
    .. attribute:: identity
 
       *no compression*
+
+
+Middlewares
+-----------
+
+Normalize path middleware
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. function:: normalize_path_middleware(*, append_slash=True, merge_slashes=True)
+
+  Middleware that normalizes the path of a request. By normalizing
+  it means:
+
+      - Add a trailing slash to the path.
+      - Double slashes are replaced by one.
+
+  The middleware returns as soon as it finds a path that resolves
+  correctly. The order if all enabled is 1) merge_slashes, 2) append_slash
+  and 3) both merge_slashes and append_slash. If the path resolves with
+  at least one of those conditions, it will redirect to the new path.
+
+  If append_slash is True append slash when needed. If a resource is
+  defined with trailing slash and the request comes without it, it will
+  append it automatically.
+
+  If merge_slashes is True, merge multiple consecutive slashes in the
+  path into one.
+
 
 .. disqus::
   :title: aiohttp server reference
