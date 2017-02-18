@@ -19,7 +19,7 @@ from yarl import URL, unquote
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .file_sender import FileSender
-from .protocol import HttpVersion11, PayloadWriter
+from .http import HttpVersion11, PayloadWriter
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
 from .web_reqrep import Response, StreamResponse

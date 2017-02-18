@@ -24,6 +24,7 @@ from unittest import mock
 from multidict import MultiDict
 
 import aiohttp
+import aiohttp.http
 from aiohttp import client, helpers, server, test_utils
 from aiohttp.multipart import MultipartWriter
 from aiohttp.test_utils import run_briefly, unused_port
@@ -181,7 +182,7 @@ class Router:
         return self._response(self._start_response(404))
 
     def _start_response(self, code):
-        return aiohttp.Response(self._srv.writer, code)
+        return aiohttp.http.Response(self._srv.writer, code)
 
     @asyncio.coroutine
     def _response(self, response, body=None,

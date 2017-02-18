@@ -19,7 +19,7 @@ from multidict import CIMultiDict
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import parse_mimetype
-from .protocol import HttpParser
+from .http import HttpParser
 
 __all__ = ('MultipartReader', 'MultipartWriter',
            'BodyPartReader', 'BodyPartWriter',

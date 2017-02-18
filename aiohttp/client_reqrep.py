@@ -13,11 +13,11 @@ from yarl import URL
 
 import aiohttp
 
-from . import hdrs, helpers, streams
+from . import hdrs, helpers, http, streams
 from .helpers import HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
+from .http import HttpMessage
 from .log import client_logger
 from .multipart import MultipartWriter
-from .protocol import HttpMessage
 from .streams import FlowControlStreamReader
 
 try:
@@ -62,7 +62,7 @@ class ClientRequest:
                  params=None, headers=None, skip_auto_headers=frozenset(),
                  data=None, cookies=None,
                  auth=None, encoding='utf-8',
-                 version=aiohttp.HttpVersion11, compress=None,
+                 version=http.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None, timer=None):
@@ -441,7 +441,7 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
-        request = aiohttp.Request(
+        request = http.Request(
             conn.writer, self.method, path, self.version, loop=self.loop)
 
         if self.compress:

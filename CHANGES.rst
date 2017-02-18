@@ -16,6 +16,8 @@ CHANGES
 
 - Implementation for Trailer headers parser is broken #1619
 
+- Deprecate public low-level api #1657
+
 - Dropped aiohttp.wsgi #1108
 
 - Dropped websocket version 76 support #1160

@@ -9,8 +9,8 @@ from hashlib import md5, sha1, sha256
 from types import MappingProxyType
 
 from . import hdrs, helpers
-from .client import ClientRequest
 from .client_proto import HttpClientProtocol
+from .client_reqrep import ClientRequest
 from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
                      HttpProxyError, ProxyConnectionError)
 from .helpers import SimpleCookie, is_ip_address, sentinel

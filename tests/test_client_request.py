@@ -602,7 +602,7 @@ def test_bytes_data(loop):
 def test_content_encoding(loop):
     req = ClientRequest('get', URL('http://python.org/'), data='foo',
                         compress='deflate', loop=loop)
-    with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
+    with mock.patch('aiohttp.client_reqrep.http') as m_http:
         resp = req.send(mock.Mock(acquire=acquire))
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
@@ -616,7 +616,7 @@ def test_content_encoding(loop):
 def test_content_encoding_dont_set_headers_if_no_body(loop):
     req = ClientRequest('get', URL('http://python.org/'),
                         compress='deflate', loop=loop)
-    with mock.patch('aiohttp.client_reqrep.aiohttp'):
+    with mock.patch('aiohttp.client_reqrep.http'):
         resp = req.send(mock.Mock(acquire=acquire))
     assert 'TRANSFER-ENCODING' not in req.headers
     assert 'CONTENT-ENCODING' not in req.headers
@@ -629,7 +629,7 @@ def test_content_encoding_header(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'), data='foo',
         headers={'Content-Encoding': 'deflate'}, loop=loop)
-    with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
+    with mock.patch('aiohttp.client_reqrep.http') as m_http:
         resp = req.send(mock.Mock(acquire=acquire))
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
@@ -668,7 +668,7 @@ def test_chunked2(loop):
 def test_chunked_explicit(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'), chunked=True, loop=loop)
-    with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
+    with mock.patch('aiohttp.client_reqrep.http') as m_http:
         resp = req.send(mock.Mock(acquire=acquire))
 
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
@@ -682,7 +682,7 @@ def test_chunked_explicit(loop):
 def test_chunked_explicit_size(loop):
     req = ClientRequest(
         'get', URL('http://python.org/'), chunked=1024, loop=loop)
-    with mock.patch('aiohttp.client_reqrep.aiohttp') as m_http:
+    with mock.patch('aiohttp.client_reqrep.http') as m_http:
         resp = req.send(mock.Mock())
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     m_http.Request.return_value\

@@ -11,8 +11,8 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import errors, streams
-from aiohttp.protocol import (DeflateBuffer, HttpPayloadParser,
-                              HttpRequestParserPy, HttpResponseParserPy)
+from aiohttp.http_parser import (DeflateBuffer, HttpPayloadParser,
+                                 HttpRequestParserPy, HttpResponseParserPy)
 
 
 REQUEST_PARSERS = [HttpRequestParserPy]

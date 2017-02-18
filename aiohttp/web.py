@@ -14,8 +14,8 @@ from . import (hdrs, web_exceptions, web_middlewares, web_reqrep, web_server,
                web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList, sentinel
+from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
-from .protocol import HttpVersion  # noqa
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_middlewares import *  # noqa
