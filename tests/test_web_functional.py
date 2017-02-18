@@ -8,8 +8,7 @@ import pytest
 from multidict import MultiDict
 from yarl import URL
 
-from aiohttp import FormData, multipart, web
-from aiohttp.protocol import HttpVersion10, HttpVersion11
+from aiohttp import FormData, HttpVersion10, HttpVersion11, multipart, web
 
 try:
     import ssl

@@ -6,10 +6,10 @@ import pytest
 from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
-from aiohttp.protocol import HttpVersion
+from aiohttp import HttpVersion
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
+from aiohttp.web import HTTPRequestEntityTooLarge
 
 
 @pytest.fixture

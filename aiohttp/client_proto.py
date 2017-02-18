@@ -2,7 +2,7 @@ import asyncio
 import asyncio.streams
 
 from .errors import ServerDisconnectedError
-from .protocol import HttpResponseParser
+from .http_parser import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamWriter
 
 

@@ -7,8 +7,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import hdrs, signals
-from aiohttp.protocol import HttpVersion, HttpVersion10, HttpVersion11
+from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
@@ -433,7 +432,7 @@ def test_write_returns_drain():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
-    with mock.patch('aiohttp.protocol.noop') as noop:
+    with mock.patch('aiohttp.http_message.noop') as noop:
         assert noop.return_value == resp.write(b'data')
 
 

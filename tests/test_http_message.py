@@ -1,4 +1,4 @@
-"""Tests for aiohttp/protocol.py"""
+"""Tests for aiohttp/http_message.py"""
 
 import asyncio
 import zlib
@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import hdrs, protocol
+from aiohttp import hdrs, http
 
 
 @pytest.fixture
@@ -25,17 +25,17 @@ compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
 COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
 
 
-def test_start_request(stream):
-    msg = protocol.Request(
-        stream, 'GET', '/index.html', close=True)
+def test_start_request(stream, loop):
+    msg = http.Request(
+        stream, 'GET', '/index.html', close=True, loop=loop)
 
     assert msg._transport is stream.transport
     assert msg.closing
     assert msg.status_line == 'GET /index.html HTTP/1.1\r\n'
 
 
-def test_start_response(stream):
-    msg = protocol.Response(stream, 200, close=True)
+def test_start_response(stream, loop):
+    msg = http.Response(stream, 200, close=True, loop=loop)
 
     assert msg._transport is stream.transport
     assert msg.status == 200
@@ -44,39 +44,38 @@ def test_start_response(stream):
     assert msg.status_line == 'HTTP/1.1 200 OK\r\n'
 
 
-def test_start_response_with_reason(stream):
-    msg = protocol.Response(stream, 333, close=True,
-                            reason="My Reason")
+def test_start_response_with_reason(stream, loop):
+    msg = http.Response(stream, 333, close=True, reason="My Reason", loop=loop)
 
     assert msg.status == 333
     assert msg.reason == "My Reason"
     assert msg.status_line == 'HTTP/1.1 333 My Reason\r\n'
 
 
-def test_start_response_with_unknown_reason(stream):
-    msg = protocol.Response(stream, 777, close=True)
+def test_start_response_with_unknown_reason(stream, loop):
+    msg = http.Response(stream, 777, close=True, loop=loop)
 
     assert msg.status == 777
     assert msg.reason == ""
     assert msg.status_line == 'HTTP/1.1 777 \r\n'
 
 
-def test_force_close(stream):
-    msg = protocol.Response(stream, 200)
+def test_force_close(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert not msg.closing
     msg.force_close()
     assert msg.closing
 
 
-def test_force_chunked(stream):
-    msg = protocol.Response(stream, 200)
+def test_force_chunked(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert not msg.chunked
     msg.enable_chunking()
     assert msg.chunked
 
 
-def test_keep_alive(stream):
-    msg = protocol.Response(stream, 200, close=True)
+def test_keep_alive(stream, loop):
+    msg = http.Response(stream, 200, close=True, loop=loop)
     assert not msg.keep_alive()
     msg.keepalive = True
     assert msg.keep_alive()
@@ -85,41 +84,41 @@ def test_keep_alive(stream):
     assert not msg.keep_alive()
 
 
-def test_keep_alive_http10(stream):
-    msg = protocol.Response(stream, 200, http_version=(1, 0))
+def test_keep_alive_http10(stream, loop):
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
     assert not msg.keepalive
     assert not msg.keep_alive()
 
-    msg = protocol.Response(stream, 200, http_version=(1, 1))
+    msg = http.Response(stream, 200, http_version=(1, 1), loop=loop)
     assert msg.keepalive is None
 
 
-def test_add_header(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_header(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert [] == list(msg.headers)
 
     msg.add_header('content-type', 'plain/html')
     assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
 
 
-def test_add_header_with_spaces(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_header_with_spaces(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert [] == list(msg.headers)
 
     msg.add_header('content-type', '  plain/html  ')
     assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
 
 
-def test_add_header_non_ascii(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_header_non_ascii(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert [] == list(msg.headers)
 
     with pytest.raises(AssertionError):
         msg.add_header('тип-контента', 'текст/плейн')
 
 
-def test_add_header_invalid_value_type(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_header_invalid_value_type(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert [] == list(msg.headers)
 
     with pytest.raises(AssertionError):
@@ -129,44 +128,44 @@ def test_add_header_invalid_value_type(stream):
         msg.add_header(list('content-type'), 'text/plain')
 
 
-def test_add_headers(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_headers(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert [] == list(msg.headers)
 
     msg.add_headers(('content-type', 'plain/html'))
     assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
 
 
-def test_add_headers_length(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_headers_length(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert msg.length is None
 
     msg.add_headers(('content-length', '42'))
     assert 42 == msg.length
 
 
-def test_add_headers_upgrade(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_headers_upgrade(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     assert not msg.upgrade
 
     msg.add_headers(('connection', 'upgrade'))
     assert msg.upgrade
 
 
-def test_add_headers_upgrade_websocket(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_headers_upgrade_websocket(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('upgrade', 'test'))
     assert not msg.websocket
     assert [('Upgrade', 'test')] == list(msg.headers.items())
 
-    msg = protocol.Response(stream, 200)
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('upgrade', 'websocket'))
     assert msg.websocket
     assert [('Upgrade', 'websocket')] == list(msg.headers.items())
 
 
-def test_add_headers_connection_keepalive(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_headers_connection_keepalive(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
 
     msg.add_headers(('connection', 'keep-alive'))
     assert [] == list(msg.headers)
@@ -176,87 +175,87 @@ def test_add_headers_connection_keepalive(stream):
     assert not msg.keepalive
 
 
-def test_add_headers_hop_headers(stream):
-    msg = protocol.Response(stream, 200)
+def test_add_headers_hop_headers(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.HOP_HEADERS = (hdrs.TRANSFER_ENCODING,)
 
     msg.add_headers(('connection', 'test'), ('transfer-encoding', 't'))
     assert [] == list(msg.headers)
 
 
-def test_default_headers_http_10(stream):
-    msg = protocol.Response(stream, 200,
-                            http_version=protocol.HttpVersion10)
+def test_default_headers_http_10(stream, loop):
+    msg = http.Response(stream, 200,
+                        http_version=http.HttpVersion10, loop=loop)
     msg._add_default_headers()
 
     assert 'DATE' in msg.headers
     assert 'keep-alive' == msg.headers['CONNECTION']
 
 
-def test_default_headers_http_11(stream):
-    msg = protocol.Response(stream, 200)
+def test_default_headers_http_11(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg._add_default_headers()
 
     assert 'DATE' in msg.headers
     assert 'CONNECTION' not in msg.headers
 
 
-def test_default_headers_server(stream):
-    msg = protocol.Response(stream, 200)
+def test_default_headers_server(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg._add_default_headers()
 
     assert 'SERVER' in msg.headers
 
 
-def test_default_headers_chunked(stream):
-    msg = protocol.Response(stream, 200)
+def test_default_headers_chunked(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg._add_default_headers()
 
     assert 'TRANSFER-ENCODING' not in msg.headers
 
-    msg = protocol.Response(stream, 200)
+    msg = http.Response(stream, 200, loop=loop)
     msg.enable_chunking()
     msg.send_headers()
 
     assert 'TRANSFER-ENCODING' in msg.headers
 
 
-def test_default_headers_connection_upgrade(stream):
-    msg = protocol.Response(stream, 200)
+def test_default_headers_connection_upgrade(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.upgrade = True
     msg._add_default_headers()
 
     assert msg.headers['Connection'] == 'Upgrade'
 
 
-def test_default_headers_connection_close(stream):
-    msg = protocol.Response(stream, 200)
+def test_default_headers_connection_close(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.force_close()
     msg._add_default_headers()
 
     assert msg.headers['Connection'] == 'close'
 
 
-def test_default_headers_connection_keep_alive_http_10(stream):
-    msg = protocol.Response(stream, 200,
-                            http_version=protocol.HttpVersion10)
+def test_default_headers_connection_keep_alive_http_10(stream, loop):
+    msg = http.Response(stream, 200,
+                        http_version=http.HttpVersion10, loop=loop)
     msg.keepalive = True
     msg._add_default_headers()
 
     assert msg.headers['Connection'] == 'keep-alive'
 
 
-def test_default_headers_connection_keep_alive_11(stream):
-    msg = protocol.Response(stream, 200,
-                            http_version=protocol.HttpVersion11)
+def test_default_headers_connection_keep_alive_11(stream, loop):
+    msg = http.Response(stream, 200,
+                        http_version=http.HttpVersion11, loop=loop)
     msg.keepalive = True
     msg._add_default_headers()
 
     assert 'Connection' not in msg.headers
 
 
-def test_send_headers(stream):
-    msg = protocol.Response(stream, 200)
+def test_send_headers(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('content-type', 'plain/html'))
     assert not msg.is_headers_sent()
 
@@ -269,8 +268,8 @@ def test_send_headers(stream):
     assert msg.is_headers_sent()
 
 
-def test_send_headers_non_ascii(stream):
-    msg = protocol.Response(stream, 200)
+def test_send_headers_non_ascii(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('x-header', 'текст'))
     assert not msg.is_headers_sent()
 
@@ -284,8 +283,8 @@ def test_send_headers_non_ascii(stream):
     assert msg.is_headers_sent()
 
 
-def test_send_headers_nomore_add(stream):
-    msg = protocol.Response(stream, 200)
+def test_send_headers_nomore_add(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('content-type', 'plain/html'))
     msg.send_headers()
 
@@ -293,44 +292,44 @@ def test_send_headers_nomore_add(stream):
         msg.add_header('content-type', 'plain/html')
 
 
-def test_prepare_length(stream):
-    msg = protocol.Response(stream, 200)
+def test_prepare_length(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('content-length', '42'))
     msg.send_headers()
 
     assert msg.length == 42
 
 
-def test_prepare_chunked_force(stream):
-    msg = protocol.Response(stream, 200)
+def test_prepare_chunked_force(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.enable_chunking()
     msg.add_headers(('content-length', '42'))
     msg.send_headers()
     assert msg.chunked
 
 
-def test_prepare_chunked_no_length(stream):
-    msg = protocol.Response(stream, 200)
+def test_prepare_chunked_no_length(stream, loop):
+    msg = http.Response(stream, 200, loop=loop)
     msg.send_headers()
     assert msg.chunked
 
 
-def test_prepare_eof(stream):
-    msg = protocol.Response(stream, 200, http_version=(1, 0))
+def test_prepare_eof(stream, loop):
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
     msg.send_headers()
     assert msg.length is None
 
 
-def test_write_auto_send_headers(stream):
-    msg = protocol.Response(stream, 200, http_version=(1, 0))
+def test_write_auto_send_headers(stream, loop):
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
     msg.send_headers()
     msg.write(b'data1')
     assert msg.headers_sent
 
 
-def test_write_payload_eof(stream):
+def test_write_payload_eof(stream, loop):
     write = stream.transport.write = mock.Mock()
-    msg = protocol.Response(stream, 200, http_version=(1, 0))
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
     msg.send_headers()
 
     msg.write(b'data1')
@@ -347,7 +346,7 @@ def test_write_payload_eof(stream):
 def test_write_payload_chunked(stream, loop):
     write = stream.transport.write = mock.Mock()
 
-    msg = protocol.Response(stream, 200, loop=loop)
+    msg = http.Response(stream, 200, loop=loop)
     msg.enable_chunking()
     msg.send_headers()
 
@@ -362,7 +361,7 @@ def test_write_payload_chunked(stream, loop):
 def test_write_payload_chunked_multiple(stream, loop):
     write = stream.transport.write = mock.Mock()
 
-    msg = protocol.Response(stream, 200, loop=loop)
+    msg = http.Response(stream, 200, loop=loop)
     msg.enable_chunking()
     msg.send_headers()
 
@@ -379,7 +378,7 @@ def test_write_payload_chunked_multiple(stream, loop):
 def test_write_payload_length(stream, loop):
     write = stream.transport.write = mock.Mock()
 
-    msg = protocol.Response(stream, 200, loop=loop)
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('content-length', '2'))
     msg.send_headers()
 
@@ -395,7 +394,7 @@ def test_write_payload_length(stream, loop):
 def test_write_payload_chunked_filter(stream, loop):
     write = stream.transport.write = mock.Mock()
 
-    msg = protocol.Response(stream, 200, loop=loop)
+    msg = http.Response(stream, 200, loop=loop)
     msg.send_headers()
 
     msg.enable_chunking()
@@ -410,7 +409,7 @@ def test_write_payload_chunked_filter(stream, loop):
 @asyncio.coroutine
 def test_write_payload_chunked_filter_mutiple_chunks(stream, loop):
     write = stream.transport.write = mock.Mock()
-    msg = protocol.Response(stream, 200, loop=loop)
+    msg = http.Response(stream, 200, loop=loop)
     msg.send_headers()
 
     msg.enable_chunking()
@@ -429,7 +428,7 @@ def test_write_payload_chunked_filter_mutiple_chunks(stream, loop):
 @asyncio.coroutine
 def test_write_payload_deflate_compression(stream, loop):
     write = stream.transport.write = mock.Mock()
-    msg = protocol.Response(stream, 200, loop=loop)
+    msg = http.Response(stream, 200, loop=loop)
     msg.add_headers(('content-length', '{}'.format(len(COMPRESSED))))
     msg.send_headers()
 
@@ -446,7 +445,7 @@ def test_write_payload_deflate_compression(stream, loop):
 @asyncio.coroutine
 def test_write_payload_deflate_and_chunked(stream, loop):
     write = stream.transport.write = mock.Mock()
-    msg = protocol.Response(stream, 200, loop=loop)
+    msg = http.Response(stream, 200, loop=loop)
     msg.send_headers()
 
     msg.enable_compression('deflate')
@@ -464,7 +463,7 @@ def test_write_payload_deflate_and_chunked(stream, loop):
 
 
 def test_write_drain(stream, loop):
-    msg = protocol.Response(stream, 200, http_version=(1, 0), loop=loop)
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
     msg.drain = mock.Mock()
     msg.send_headers()
     msg.write(b'1' * (64 * 1024 * 2), drain=False)
@@ -476,7 +475,7 @@ def test_write_drain(stream, loop):
 
 
 def test_dont_override_request_headers_with_default_values(stream, loop):
-    msg = protocol.Request(
+    msg = http.Request(
         stream, 'GET', '/index.html', close=True, loop=loop)
     msg.add_header('USER-AGENT', 'custom')
     msg._add_default_headers()
@@ -484,7 +483,7 @@ def test_dont_override_request_headers_with_default_values(stream, loop):
 
 
 def test_dont_override_response_headers_with_default_values(stream, loop):
-    msg = protocol.Response(stream, 200, http_version=(1, 0), loop=loop)
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
     msg.add_header('DATE', 'now')
     msg.add_header('SERVER', 'custom')
     msg._add_default_headers()

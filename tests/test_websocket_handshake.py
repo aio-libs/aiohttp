@@ -9,7 +9,7 @@ import multidict
 import pytest
 from yarl import URL
 
-from aiohttp import errors, protocol
+from aiohttp import errors, http
 from aiohttp._ws_impl import WS_KEY, do_handshake
 
 
@@ -21,7 +21,7 @@ def transport():
 @pytest.fixture()
 def message():
     headers = multidict.MultiDict()
-    return protocol.RawRequestMessage(
+    return http.RawRequestMessage(
         'GET', '/path', (1, 0), headers, [],
         True, None, True, False, URL('/path'))
 

@@ -18,8 +18,8 @@ from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
-from .protocol import (RESPONSES, SERVER_SOFTWARE, HttpVersion10,
-                       HttpVersion11, PayloadWriter)
+from .http import (RESPONSES, SERVER_SOFTWARE, HttpVersion10,
+                   HttpVersion11, PayloadWriter)
 
 __all__ = (
     'ContentCoding', 'BaseRequest', 'Request', 'StreamResponse', 'Response',

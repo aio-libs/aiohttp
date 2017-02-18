@@ -13,10 +13,11 @@ from yarl import URL
 
 import aiohttp
 
-from . import hdrs, helpers
+from . import hdrs, helpers, http
 from ._ws_impl import WS_KEY, WebSocketReader, WebSocketWriter
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
+from .connector import TCPConnector
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
 from .helpers import TimeService
@@ -42,7 +43,7 @@ class ClientSession:
                  auth=None, request_class=ClientRequest,
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
-                 version=aiohttp.HttpVersion11,
+                 version=http.HttpVersion11,
                  cookie_jar=None, read_timeout=None, time_service=None):
 
         implicit_loop = False
@@ -54,7 +55,7 @@ class ClientSession:
                 loop = asyncio.get_event_loop()
 
         if connector is None:
-            connector = aiohttp.TCPConnector(loop=loop)
+            connector = TCPConnector(loop=loop)
 
         if connector._loop is not loop:
             raise RuntimeError(
@@ -723,7 +724,7 @@ def request(method, url, *,
     """
     warnings.warn("Use ClientSession().request() instead", DeprecationWarning)
     if connector is None:
-        connector = aiohttp.TCPConnector(loop=loop, force_close=True)
+        connector = TCPConnector(loop=loop, force_close=True)
 
     kwargs = {}
 

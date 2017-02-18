@@ -10,11 +10,10 @@ from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
 
-import aiohttp
-from aiohttp import errors, hdrs, helpers
+from . import errors, hdrs, helpers
 from .helpers import TimeService, create_future, ensure_future
+from .http import HttpRequestParser, Response
 from .log import access_logger, server_logger
-from .protocol import HttpRequestParser
 from .streams import StreamWriter
 
 __all__ = ('ServerHttpProtocol',)
@@ -457,7 +456,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             html = DEFAULT_ERROR_MESSAGE.format(
                 status=status, reason=reason, message=msg).encode('utf-8')
 
-            response = aiohttp.Response(
+            response = Response(
                 self.writer, status, close=True, loop=self._loop)
             response.add_header(hdrs.CONTENT_TYPE, 'text/html; charset=utf-8')
             response.add_header(hdrs.CONTENT_LENGTH, str(len(html)))
@@ -492,7 +491,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         """
         if self.access_log:
             now = self._loop.time()
-        response = aiohttp.Response(
+        response = Response(
             self.writer, 404,
             http_version=message.version, close=True, loop=self._loop)
 

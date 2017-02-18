@@ -92,6 +92,8 @@ def pytest_configure(config):
         if uvloop is not None:
             LOOP_FACTORIES.append(uvloop.new_event_loop)
 
+    asyncio.set_event_loop(None)
+
 
 LOOP_FACTORIES = []
 
