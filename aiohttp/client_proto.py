@@ -51,8 +51,8 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
 
         if isinstance(exc, OSError):
             exc = ClientOSError(*exc.args)
-        elif exc is None:
-            exc = ServerDisconnectedError()
+        else:
+            exc = ServerDisconnectedError(exc)
 
         if self._payload is not None and not self._payload.is_eof():
             self._payload.set_exception(exc)
