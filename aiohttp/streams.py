@@ -1,6 +1,5 @@
 import asyncio
 import collections
-import functools
 import socket
 import traceback
 
@@ -8,8 +7,8 @@ from . import helpers
 from .log import internal_logger
 
 __all__ = (
-    'EofStream', 'StreamReader', 'StreamWriter', 'DataQueue',
-    'ChunksQueue', 'FlowControlStreamReader', 'EMPTY_PAYLOAD',
+    'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'StreamWriter', 'DataQueue',
+    'ChunksQueue', 'FlowControlStreamReader',
     'FlowControlDataQueue', 'FlowControlChunksQueue')
 
 DEFAULT_LIMIT = 2 ** 16
@@ -186,8 +185,8 @@ class StreamReader(AsyncStreamReaderMixin):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
+        self._size = 0
         self._buffer = collections.deque()
-        self._buffer_size = 0
         self._buffer_offset = 0
         self._eof = False
         self._waiter = None
@@ -197,8 +196,8 @@ class StreamReader(AsyncStreamReaderMixin):
 
     def __repr__(self):
         info = [self.__class__.__name__]
-        if self._buffer_size:
-            info.append('%d bytes' % self._buffer_size)
+        if self._size:
+            info.append('%d bytes' % self._size)
         if self._eof:
             info.append('eof')
         if self._limit != DEFAULT_LIMIT:
@@ -271,8 +270,8 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._buffer_offset:
             self._buffer[0] = self._buffer[0][self._buffer_offset:]
             self._buffer_offset = 0
+        self._size += len(data)
         self._buffer.appendleft(data)
-        self._buffer_size += len(data)
 
     def feed_data(self, data):
         assert not self._eof, 'feed_data after feed_eof'
@@ -280,8 +279,8 @@ class StreamReader(AsyncStreamReaderMixin):
         if not data:
             return
 
+        self._size += len(data)
         self._buffer.append(data)
-        self._buffer_size += len(data)
         self.total_bytes += len(data)
 
         waiter = self._waiter
@@ -436,7 +435,7 @@ class StreamReader(AsyncStreamReaderMixin):
         else:
             data = self._buffer.popleft()
 
-        self._buffer_size -= len(data)
+        self._size -= len(data)
         return data
 
     def _read_nowait(self, n):
@@ -596,103 +595,58 @@ class ChunksQueue(DataQueue):
     readany = read
 
 
-def maybe_resume(func):
-
-    if asyncio.iscoroutinefunction(func):
-        @asyncio.coroutine
-        @functools.wraps(func)
-        def wrapper(self, *args, **kw):
-            result = yield from func(self, *args, **kw)
-            self._check_buffer_size()
-            return result
-    else:
-        @functools.wraps(func)
-        def wrapper(self, *args, **kw):
-            result = func(self, *args, **kw)
-            self._check_buffer_size()
-            return result
-
-    return wrapper
-
-
 class FlowControlStreamReader(StreamReader):
 
-    def __init__(self, protocol, limit=DEFAULT_LIMIT, *args, **kwargs):
+    def __init__(self, protocol, buffer_limit=DEFAULT_LIMIT, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self._protocol = protocol
-        self._b_limit = limit * 2
-        self._allow_pause = False
-
-        # resume transport reading
-        if protocol._reading_paused:
-            try:
-                self._protocol.transport.resume_reading()
-            except (AttributeError, NotImplementedError):
-                pass
-            else:
-                self._protocol._reading_paused = False
-                self._allow_pause = True
-
-    @property
-    def overflow(self):
-        return self._buffer_size > self._b_limit
-
-    def _check_buffer_size(self):
-        if self._protocol._reading_paused:
-            if self._buffer_size < self._b_limit:
-                try:
-                    self._protocol.transport.resume_reading()
-                except (AttributeError, NotImplementedError):
-                    pass
-                else:
-                    self._protocol._reading_paused = False
-        else:
-            if self._buffer_size > self._b_limit:
-                try:
-                    self._protocol.transport.pause_reading()
-                except (AttributeError, NotImplementedError):
-                    pass
-                else:
-                    self._protocol._reading_paused = True
+        self._b_limit = buffer_limit * 2
 
     def feed_data(self, data, size=0):
-        has_waiter = self._waiter is not None and not self._waiter.cancelled()
-
         super().feed_data(data)
 
-        if (self._allow_pause and not self._protocol._reading_paused and
-                not has_waiter and self._buffer_size > self._b_limit):
-            try:
-                self._protocol.transport.pause_reading()
-            except (AttributeError, NotImplementedError):
-                pass
-            else:
-                self._protocol._reading_paused = True
+        if self._size > self._b_limit and not self._protocol._reading_paused:
+            self._protocol.pause_reading()
 
-    @maybe_resume
     @asyncio.coroutine
     def read(self, n=-1):
-        return (yield from super().read(n))
+        try:
+            return (yield from super().read(n))
+        finally:
+            if self._size < self._b_limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
 
-    @maybe_resume
     @asyncio.coroutine
     def readline(self):
-        return (yield from super().readline())
+        try:
+            return (yield from super().readline())
+        finally:
+            if self._size < self._b_limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
 
-    @maybe_resume
     @asyncio.coroutine
     def readany(self):
-        return (yield from super().readany())
+        try:
+            return (yield from super().readany())
+        finally:
+            if self._size < self._b_limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
 
-    @maybe_resume
     @asyncio.coroutine
     def readexactly(self, n):
-        return (yield from super().readexactly(n))
+        try:
+            return (yield from super().readexactly(n))
+        finally:
+            if self._size < self._b_limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
 
-    @maybe_resume
     def read_nowait(self, n=-1):
-        return super().read_nowait(n)
+        try:
+            return super().read_nowait(n)
+        finally:
+            if self._size < self._b_limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
 
 
 class FlowControlDataQueue(DataQueue):
@@ -705,54 +659,20 @@ class FlowControlDataQueue(DataQueue):
 
         self._protocol = protocol
         self._limit = limit * 2
-        self._allow_pause = False
-
-        # resume transport reading
-        if protocol._reading_paused:
-            try:
-                protocol.transport.resume_reading()
-            except (AttributeError, NotImplementedError):
-                pass
-            else:
-                self._protocol._reading_paused = False
-                self._allow_pause = True
 
     def feed_data(self, data, size):
-        has_waiter = self._waiter is not None and not self._waiter.cancelled()
-
         super().feed_data(data, size)
 
-        if (self._allow_pause and not self._protocol._reading_paused and
-                not has_waiter and self._size > self._limit):
-            try:
-                self._protocol.transport.pause_reading()
-            except (AttributeError, NotImplementedError):
-                pass
-            else:
-                self._protocol._reading_paused = True
+        if self._size > self._limit and not self._protocol._reading_paused:
+            self._protocol.pause_reading()
 
     @asyncio.coroutine
     def read(self):
-        result = yield from super().read()
-
-        if self._protocol._reading_paused:
-            if self._size < self._limit:
-                try:
-                    self._protocol.transport.resume_reading()
-                except (AttributeError, NotImplementedError):
-                    pass
-                else:
-                    self._protocol._reading_paused = False
-        else:
-            if self._size > self._limit:
-                try:
-                    self._protocol.transport.pause_reading()
-                except (AttributeError, NotImplementedError):
-                    pass
-                else:
-                    self._protocol._reading_paused = True
-
-        return result
+        try:
+            return (yield from super().read())
+        finally:
+            if self._size < self._limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
 
 
 class FlowControlChunksQueue(FlowControlDataQueue):
