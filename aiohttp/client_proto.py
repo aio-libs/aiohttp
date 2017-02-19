@@ -1,7 +1,7 @@
 import asyncio
 import asyncio.streams
 
-from .errors import ClientOSError, ServerDisconnectedError
+from .client_exceptions import ClientOSError, ServerDisconnectedError
 from .http_parser import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamWriter
 
