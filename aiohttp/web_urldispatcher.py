@@ -5,7 +5,6 @@ import inspect
 import keyword
 import os
 import re
-import sys
 import warnings
 from collections.abc import Container, Iterable, Sized
 from pathlib import Path
@@ -16,7 +15,7 @@ from types import MappingProxyType
 # Escaping of the URLs need to be consitent with the escaping done by yarl
 from yarl import URL, unquote
 
-from . import hdrs
+from . import hdrs, helpers
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .file_sender import FileSender
 from .http import HttpVersion11, PayloadWriter
@@ -28,10 +27,6 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
            'StaticResource', 'View')
-
-
-PY_35 = sys.version_info >= (3, 5)
-
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 
@@ -664,7 +659,7 @@ class View(AbstractView):
         resp = yield from method()
         return resp
 
-    if PY_35:
+    if helpers.PY_35:
         def __await__(self):
             return (yield from self.__iter__())
 
