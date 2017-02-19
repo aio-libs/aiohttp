@@ -64,6 +64,22 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
     def eof_received(self):
         pass
 
+    def pause_reading(self):
+        if not self._reading_paused:
+            try:
+                self.transport.pause_reading()
+            except (AttributeError, NotImplementedError, RuntimeError):
+                pass
+            self._reading_paused = True
+
+    def resume_reading(self):
+        if self._reading_paused:
+            try:
+                self.transport.resume_reading()
+            except (AttributeError, NotImplementedError, RuntimeError):
+                pass
+            self._reading_paused = False
+
     def set_exception(self, exc):
         self._should_close = True
 

@@ -794,7 +794,7 @@ def test_feed_data_waiters(loop):
 
     reader.feed_data(b'1')
     assert list(reader._buffer) == [b'1']
-    assert reader._buffer_size == 1
+    assert reader._size == 1
     assert reader.total_bytes == 1
 
     assert waiter.done()

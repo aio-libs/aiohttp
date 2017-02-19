@@ -342,6 +342,22 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def _request_handler(self):
         return self._request_handlers[-1]
 
+    def pause_reading(self):
+        if not self._reading_paused:
+            try:
+                self.transport.pause_reading()
+            except (AttributeError, NotImplementedError, RuntimeError):
+                pass
+            self._reading_paused = True
+
+    def resume_reading(self):
+        if self._reading_paused:
+            try:
+                self.transport.resume_reading()
+            except (AttributeError, NotImplementedError, RuntimeError):
+                pass
+            self._reading_paused = False
+
     @asyncio.coroutine
     def start(self, message, payload):
         """Start processing of incoming requests.

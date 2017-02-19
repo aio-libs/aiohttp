@@ -688,3 +688,26 @@ def test_content_length_0(srv, loop):
 
     assert m_handle_request.called
     assert m_handle_request.call_args[0] == (mock.ANY, streams.EMPTY_PAYLOAD)
+
+
+def test_rudimentary_transport(srv, loop):
+    transport = mock.Mock()
+    srv.connection_made(transport)
+
+    srv.pause_reading()
+    assert srv._reading_paused
+    assert transport.pause_reading.called
+
+    srv.resume_reading()
+    assert not srv._reading_paused
+    assert transport.resume_reading.called
+
+    transport.resume_reading.side_effect = NotImplementedError()
+    transport.pause_reading.side_effect = NotImplementedError()
+
+    srv._reading_paused = False
+    srv.pause_reading()
+    assert srv._reading_paused
+
+    srv.resume_reading()
+    assert not srv._reading_paused
