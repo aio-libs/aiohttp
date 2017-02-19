@@ -8,7 +8,7 @@ import pytest
 
 import aiohttp
 from aiohttp import ClientWebSocketResponse, errors, hdrs, helpers
-from aiohttp._ws_impl import WS_KEY
+from aiohttp.http import WS_KEY
 from aiohttp.log import ws_logger
 
 

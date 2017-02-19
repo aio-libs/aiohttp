@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp._ws_impl import WebSocketWriter
+from aiohttp.http import WebSocketWriter
 
 
 @pytest.fixture

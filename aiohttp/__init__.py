@@ -9,10 +9,10 @@ from .client_reqrep import *  # noqa
 from .errors import *  # noqa
 from .helpers import *  # noqa
 from .http_message import HttpVersion, HttpVersion10, HttpVersion11  # noqa
+from .http_websocket import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
 from .streams import *  # noqa
 from .multipart import *  # noqa
 from .client_ws import ClientWebSocketResponse  # noqa
-from ._ws_impl import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
 from .file_sender import FileSender  # noqa
 from .cookiejar import CookieJar  # noqa
 from .resolver import *  # noqa

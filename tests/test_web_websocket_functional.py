@@ -4,7 +4,7 @@ import asyncio
 
 import aiohttp
 from aiohttp import helpers, web
-from aiohttp._ws_impl import WSMsgType
+from aiohttp.http import WSMsgType
 
 
 @asyncio.coroutine

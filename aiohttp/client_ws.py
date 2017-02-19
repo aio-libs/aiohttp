@@ -2,15 +2,11 @@
 
 import asyncio
 import json
-import sys
 
-from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE,
-                       WebSocketError, WSMessage, WSMsgType)
 from .errors import ServerDisconnectedError
-from .helpers import create_future
-
-PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
+from .helpers import PY_35, PY_352, create_future
+from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE,
+                   WebSocketError, WSMessage, WSMsgType)
 
 
 class ClientWebSocketResponse:
@@ -113,7 +109,7 @@ class ClientWebSocketResponse:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
-            self._reader.feed_data(CLOSING_MESSAGE, 0)
+            self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
             yield from self._waiting
 
         if not self._closed:
@@ -164,10 +160,10 @@ class ClientWebSocketResponse:
                     'Concurrent call to receive() is not allowed')
 
             if self._closed:
-                return CLOSED_MESSAGE
+                return WS_CLOSED_MESSAGE
             elif self._closing:
                 yield from self.close()
-                return CLOSED_MESSAGE
+                return WS_CLOSED_MESSAGE
 
             try:
                 try:
@@ -185,7 +181,7 @@ class ClientWebSocketResponse:
             except ServerDisconnectedError:
                 self._closed = True
                 self._close_code = 1006
-                return CLOSED_MESSAGE
+                return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
                 yield from self.close(code=exc.code)
