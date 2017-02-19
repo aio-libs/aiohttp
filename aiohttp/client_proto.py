@@ -1,7 +1,7 @@
 import asyncio
 import asyncio.streams
 
-from .errors import ServerDisconnectedError
+from .errors import ClientOSError, ServerDisconnectedError
 from .http_parser import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamWriter
 
@@ -49,7 +49,9 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
     def connection_lost(self, exc):
         self.transport = self.writer = None
 
-        if exc is None:
+        if isinstance(exc, OSError):
+            exc = ClientOSError(*exc.args)
+        elif exc is None:
             exc = ServerDisconnectedError()
 
         if self._payload is not None and not self._payload.is_eof():

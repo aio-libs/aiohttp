@@ -11,8 +11,9 @@ from types import MappingProxyType
 from . import hdrs, helpers
 from .client_proto import HttpClientProtocol
 from .client_reqrep import ClientRequest
-from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
-                     HttpProxyError, ProxyConnectionError)
+from .errors import (ClientConnectorError, ClientHttpProxyError,
+                     ClientProxyConnectionError, ClientTimeoutError,
+                     FingerprintMismatch)
 from .helpers import SimpleCookie, is_ip_address, sentinel
 from .resolver import DefaultResolver
 
@@ -371,7 +372,7 @@ class BaseConnector(object):
                     'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
                     .format(key)) from exc
             except OSError as exc:
-                raise ClientOSError(
+                raise ClientConnectorError(
                     exc.errno,
                     'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
                     .format(key, exc.strerror)) from exc
@@ -671,9 +672,10 @@ class TCPConnector(BaseConnector):
             except OSError as e:
                 exc = e
         else:
-            raise ClientOSError(exc.errno,
-                                'Can not connect to %s:%s [%s]' %
-                                (req.host, req.port, exc.strerror)) from exc
+            raise ClientConnectorError(
+                exc.errno,
+                'Can not connect to %s:%s [%s]' %
+                (req.host, req.port, exc.strerror)) from exc
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):
@@ -687,7 +689,7 @@ class TCPConnector(BaseConnector):
             transport, proto = yield from self._create_direct_connection(
                 proxy_req)
         except OSError as exc:
-            raise ProxyConnectionError(*exc.args) from exc
+            raise ClientProxyConnectionError(*exc.args) from exc
 
         if hdrs.AUTHORIZATION in proxy_req.headers:
             auth = proxy_req.headers[hdrs.AUTHORIZATION]
@@ -723,9 +725,9 @@ class TCPConnector(BaseConnector):
                 conn._transport = None
                 try:
                     if resp.status != 200:
-                        raise HttpProxyError(code=resp.status,
-                                             message=resp.reason,
-                                             headers=resp.headers)
+                        raise ClientHttpProxyError(code=resp.status,
+                                                   message=resp.reason,
+                                                   headers=resp.headers)
                     rawsock = transport.get_extra_info('socket', default=None)
                     if rawsock is None:
                         raise RuntimeError(

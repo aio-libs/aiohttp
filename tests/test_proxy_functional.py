@@ -116,7 +116,7 @@ def test_proxy_http_connection_error(get_request):
     url = 'http://aiohttp.io/path'
     proxy_url = 'http://localhost:2242/'
 
-    with pytest.raises(aiohttp.ProxyConnectionError):
+    with pytest.raises(aiohttp.ClientConnectorError):
         yield from get_request(url=url, proxy=proxy_url)
 
 
@@ -345,7 +345,7 @@ def test_proxy_https_connection_error(get_request):
     url = 'https://secure.aiohttp.io/path'
     proxy_url = 'http://localhost:2242/'
 
-    with pytest.raises(aiohttp.ProxyConnectionError):
+    with pytest.raises(aiohttp.ClientConnectorError):
         yield from get_request(url=url, proxy=proxy_url)
 
 
@@ -357,7 +357,7 @@ def test_proxy_https_bad_response(proxy_test_server, get_request):
         status=502,
         headers={'Proxy-Agent': 'TestProxy'})
 
-    with pytest.raises(aiohttp.HttpProxyError):
+    with pytest.raises(aiohttp.ClientHttpProxyError):
         yield from get_request(url=url, proxy=proxy.url)
 
     assert len(proxy.requests_list) == 1
