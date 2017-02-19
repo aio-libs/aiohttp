@@ -527,7 +527,7 @@ def test_connect_timeout(loop):
     conn._create_connection.return_value.set_exception(
         asyncio.TimeoutError())
 
-    with pytest.raises(aiohttp.ClientTimeoutError):
+    with pytest.raises(aiohttp.ServerTimeoutError):
         req = unittest.mock.Mock()
         yield from conn.connect(req)
 

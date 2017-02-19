@@ -99,7 +99,7 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
                 self._payload_parser = None
 
                 if tail:
-                    super().data_received(tail)
+                    self.data_received(tail)
             return
         else:
             if self._upgraded:

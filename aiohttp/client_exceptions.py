@@ -5,9 +5,11 @@ from asyncio import TimeoutError
 __all__ = (
     'ClientError', 'ClientRequestError',
 
-    'ClientConnectionError', 'ServerDisconnectedError',
-    'ClientOSError', 'ClientConnectorError', 'ClientTimeoutError',
-    'ClientProxyConnectionError', 'FingerprintMismatch',
+    'ClientConnectionError',
+    'ClientOSError', 'ClientConnectorError', 'ClientProxyConnectionError',
+
+    'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
+    'ServerFingerprintMismatch',
 
     'ClientResponseError', 'ClientHttpProxyError', 'WSServerHandshakeError')
 
@@ -53,16 +55,8 @@ class ClientConnectionError(ClientError):
     """Base class for client socket errors."""
 
 
-class ServerDisconnectedError(ClientConnectionError):
-    """Server disconnected."""
-
-
 class ClientOSError(ClientConnectionError, OSError):
     """OSError error."""
-
-
-class ClientTimeoutError(ClientConnectionError, TimeoutError):
-    """Client connection timeout error."""
 
 
 class ClientConnectorError(ClientOSError):
@@ -81,7 +75,19 @@ class ClientProxyConnectionError(ClientConnectorError):
     """
 
 
-class FingerprintMismatch(ClientConnectionError):
+class ServerConnectionError(ClientConnectionError):
+    """Server connection errors."""
+
+
+class ServerDisconnectedError(ServerConnectionError):
+    """Server disconnected."""
+
+
+class ServerTimeoutError(ServerConnectionError, TimeoutError):
+    """Server timeout error."""
+
+
+class ServerFingerprintMismatch(ServerConnectionError):
     """SSL certificate does not match expected fingerprint."""
 
     def __init__(self, expected, got, host, port):
@@ -98,3 +104,5 @@ class FingerprintMismatch(ClientConnectionError):
 
 # backward compatibility
 ClientDisconnectedError = ClientError
+ClientTimeoutError = ServerTimeoutError
+FingerprintMismatch = ServerFingerprintMismatch
