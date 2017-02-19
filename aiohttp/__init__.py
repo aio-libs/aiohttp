@@ -22,6 +22,7 @@ from .http_message import HttpMessage, Request, Response  # noqa isort:skip
 from .http_parser import HttpRequestParser, HttpResponseParser  # noqa isort:skip
 from .http_exceptions import HttpProcessingError, BadHttpMessage  # noqa isort:skip
 from .http_exceptions import HttpBadRequest, BadStatusLine, LineTooLong, InvalidHeader  # noqa isort:skip
+from .errors import ClientDisconnectedError  # noqa isort:skip
 
 
 MsgType = WSMsgType  # backward compatibility
@@ -45,5 +46,6 @@ __all__ = (client.__all__ +  # noqa
             'HttpRequestParser', 'HttpResponseParser',
             'RawRequestMessage', 'RawResponseMessage',
             'HttpProcessingError', 'BadHttpMessage',
-            'HttpBadRequest', 'BadStatusLine', 'LineTooLong', 'InvalidHeader'
+            'HttpBadRequest', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
+            'ClientDisconnectedError',
            ))

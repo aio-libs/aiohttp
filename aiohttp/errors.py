@@ -3,34 +3,34 @@
 from asyncio import TimeoutError
 
 __all__ = (
-    'DisconnectedError', 'ClientDisconnectedError', 'ServerDisconnectedError',
+    'ServerDisconnectedError',
 
-    'ClientError', 'ClientHttpError', 'ClientConnectionError',
+    'ClientError', 'ClientConnectionError',
     'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
-    'ClientRequestError', 'ClientResponseError',
-    'HttpProxyError', 'FingerprintMismatch',
+    'ClientRequestError',
 
+    'ClientResponseError', 'HttpProxyError', 'FingerprintMismatch',
     'WSServerHandshakeError')
-
-
-class DisconnectedError(Exception):
-    """Disconnected."""
-
-
-class ClientDisconnectedError(DisconnectedError):
-    """Client disconnected."""
-
-
-class ServerDisconnectedError(DisconnectedError):
-    """Server disconnected."""
 
 
 class ClientError(Exception):
     """Base class for client connection errors."""
 
 
-class ClientHttpError(ClientError):
-    """Base class for client HTTP processing errors."""
+# backward compatibility
+ClientDisconnectedError = ClientError
+
+
+class ServerDisconnectedError(ClientError):
+    """Server disconnected."""
+
+
+class ClientRequestError(ClientError):
+    """Connection error during sending request."""
+
+
+class ClientResponseError(ClientError):
+    """Connection error during reading response."""
 
     code = 0
     message = ''
@@ -43,14 +43,6 @@ class ClientHttpError(ClientError):
             self.headers = headers
 
         super().__init__("%s, message='%s'" % (self.code, message))
-
-
-class ClientRequestError(ClientError):
-    """Connection error during sending request."""
-
-
-class ClientResponseError(ClientHttpError):
-    """Connection error during reading response."""
 
 
 class ClientConnectionError(ClientError):

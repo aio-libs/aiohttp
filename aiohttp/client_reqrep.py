@@ -681,7 +681,8 @@ class ClientResponse(HeadersMixin):
         if 400 <= self.status:
             raise aiohttp.ClientResponseError(
                 code=self.status,
-                message=self.reason)
+                message=self.reason,
+                headers=self.headers)
 
     def _cleanup_writer(self):
         if self._writer is not None and not self._writer.done():
