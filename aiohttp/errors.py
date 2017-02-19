@@ -3,26 +3,17 @@
 from asyncio import TimeoutError
 
 __all__ = (
-    'ServerDisconnectedError',
+    'ClientError', 'ClientRequestError',
 
-    'ClientError', 'ClientConnectionError',
-    'ClientOSError', 'ClientTimeoutError', 'ProxyConnectionError',
-    'ClientRequestError',
+    'ClientConnectionError', 'ServerDisconnectedError',
+    'ClientOSError', 'ClientConnectorError', 'ClientTimeoutError',
+    'ClientProxyConnectionError', 'FingerprintMismatch',
 
-    'ClientResponseError', 'HttpProxyError', 'FingerprintMismatch',
-    'WSServerHandshakeError')
+    'ClientResponseError', 'ClientHttpProxyError', 'WSServerHandshakeError')
 
 
 class ClientError(Exception):
     """Base class for client connection errors."""
-
-
-# backward compatibility
-ClientDisconnectedError = ClientError
-
-
-class ServerDisconnectedError(ClientError):
-    """Server disconnected."""
 
 
 class ClientRequestError(ClientError):
@@ -45,8 +36,25 @@ class ClientResponseError(ClientError):
         super().__init__("%s, message='%s'" % (self.code, message))
 
 
+class WSServerHandshakeError(ClientResponseError):
+    """websocket server handshake error."""
+
+
+class ClientHttpProxyError(ClientResponseError):
+    """HTTP proxy error.
+
+    Raised in :class:`aiohttp.connector.TCPConnector` if
+    proxy responds with status other than ``200 OK``
+    on ``CONNECT`` request.
+    """
+
+
 class ClientConnectionError(ClientError):
     """Base class for client socket errors."""
+
+
+class ServerDisconnectedError(ClientConnectionError):
+    """Server disconnected."""
 
 
 class ClientOSError(ClientConnectionError, OSError):
@@ -57,24 +65,19 @@ class ClientTimeoutError(ClientConnectionError, TimeoutError):
     """Client connection timeout error."""
 
 
-class ProxyConnectionError(ClientConnectionError):
-    """Proxy connection error.
+class ClientConnectorError(ClientOSError):
+    """Client connector error.
 
     Raised in :class:`aiohttp.connector.TCPConnector` if
-    connection to proxy can not be established.
+        connection to proxy can not be established.
     """
 
 
-class WSServerHandshakeError(ClientResponseError):
-    """websocket server handshake error."""
-
-
-class HttpProxyError(ClientResponseError):
-    """HTTP proxy error.
+class ClientProxyConnectionError(ClientConnectorError):
+    """Proxy connection error.
 
     Raised in :class:`aiohttp.connector.TCPConnector` if
-    proxy responds with status other than ``200 OK``
-    on ``CONNECT`` request.
+        connection to proxy can not be established.
     """
 
 
@@ -91,3 +94,7 @@ class FingerprintMismatch(ClientConnectionError):
         return '<{} expected={} got={} host={} port={}>'.format(
             self.__class__.__name__, self.expected, self.got,
             self.host, self.port)
+
+
+# backward compatibility
+ClientDisconnectedError = ClientError

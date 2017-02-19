@@ -88,7 +88,7 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         expected_headers = dict(req.headers)
-        with self.assertRaises(aiohttp.ProxyConnectionError):
+        with self.assertRaises(aiohttp.ClientConnectorError):
             self.loop.run_until_complete(connector.connect(req))
         self.assertEqual(req.url.path, '/')
         self.assertEqual(dict(req.headers), expected_headers)
@@ -192,7 +192,7 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         req_headers = dict(req.headers)
-        with self.assertRaises(aiohttp.ProxyConnectionError):
+        with self.assertRaises(aiohttp.ClientConnectorError):
             self.loop.run_until_complete(connector.connect(req))
         self.assertEqual(req.headers, req_headers)
         self.assertEqual(req.url.path, '/')
@@ -298,7 +298,7 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         with self.assertRaisesRegex(
-                aiohttp.HttpProxyError, "400, message='bad request'"):
+                aiohttp.ClientHttpProxyError, "400, message='bad request'"):
             self.loop.run_until_complete(connector._create_connection(req))
 
         self.loop.run_until_complete(proxy_req.close())
