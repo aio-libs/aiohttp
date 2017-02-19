@@ -646,25 +646,21 @@ class ClientResponse(HeadersMixin):
         self._notify_content()
 
     @asyncio.coroutine
-    def release(self, *, consume=False):
+    def release(self):
         if self._closed:
             return
         try:
             content = self.content
             if content is not None:
-                if consume:
-                    while not content.at_eof():
-                        yield from content.readany()
+                close = False
+                if content.exception() is not None:
+                    close = True
                 else:
-                    close = False
-                    if content.exception() is not None:
+                    content.read_nowait()
+                    if not content.at_eof():
                         close = True
-                    else:
-                        content.read_nowait()
-                        if not content.at_eof():
-                            close = True
-                    if close:
-                        self.close()
+                if close:
+                    self.close()
         except Exception:
             self._connection.close()
             self._connection = None

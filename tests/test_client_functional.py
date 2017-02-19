@@ -13,7 +13,7 @@ from multidict import MultiDict
 
 import aiohttp
 from aiohttp import hdrs, web
-from aiohttp.client import FingerprintMismatch
+from aiohttp.client import ServerFingerprintMismatch
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
@@ -315,7 +315,7 @@ def test_tcp_connector_fingerprint_fail(test_server, test_client,
     server = yield from test_server(app, ssl=ssl_ctx)
     client = yield from test_client(server, connector=connector)
 
-    with pytest.raises(FingerprintMismatch) as cm:
+    with pytest.raises(ServerFingerprintMismatch) as cm:
         yield from client.get('/')
     exc = cm.value
     assert exc.expected == bad_fingerprint
