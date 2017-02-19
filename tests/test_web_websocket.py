@@ -4,11 +4,11 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, errors, helpers, signals, web
+from aiohttp import WSMessage, WSMsgType, helpers, signals, web
 from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
-from aiohttp.web_ws import CLOSED_MESSAGE, WebSocketReady
+from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
 
 
 @pytest.fixture
@@ -255,7 +255,7 @@ def test_send_str_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -268,7 +268,7 @@ def test_send_bytes_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -281,7 +281,7 @@ def test_send_json_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -294,7 +294,7 @@ def test_ping_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -307,7 +307,7 @@ def test_pong_closed(make_request, mocker):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     mocker.spy(ws_logger, 'warning')
@@ -320,7 +320,7 @@ def test_close_idempotent(make_request, writer):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     assert (yield from ws.close(code=1, message='message1'))
     assert ws.closed
     assert not (yield from ws.close(code=2, message='message2'))
@@ -362,7 +362,7 @@ def test_write_eof_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     yield from ws.write_eof()
@@ -427,7 +427,7 @@ def test_multiple_receive_on_close_connection(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
-    ws._reader.feed_data(CLOSED_MESSAGE, 0)
+    ws._reader.feed_data(WS_CLOSED_MESSAGE, 0)
     yield from ws.close()
 
     yield from ws.receive()

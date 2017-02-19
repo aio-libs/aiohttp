@@ -5,9 +5,11 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import WebSocketError, WSCloseCode, WSMessage, WSMsgType, _ws_impl
-from aiohttp._ws_impl import (PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2, PACK_LEN3,
-                              WebSocketReader, _websocket_mask)
+from aiohttp.http import (
+    WebSocketError, WSCloseCode, WSMessage, WSMsgType, http_websocket)
+from aiohttp.http_websocket import (
+    PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2, PACK_LEN3,
+    WebSocketReader, _websocket_mask)
 
 
 def build_frame(message, opcode, use_mask=False, noheader=False):
@@ -348,30 +350,30 @@ websocket_mask_masked = (b'B]^Q\x11DVFH\x12_[_U\x13PPFR\x14W]A\x14\\S@_X'
 
 
 def test_websocket_mask_python():
-    ret = _ws_impl._websocket_mask_python(websocket_mask_mask,
-                                          websocket_mask_data)
+    ret = http_websocket._websocket_mask_python(
+        websocket_mask_mask, websocket_mask_data)
     assert ret == websocket_mask_masked
 
 
-@pytest.mark.skipif(not hasattr(_ws_impl, '_websocket_mask_cython'),
+@pytest.mark.skipif(not hasattr(http_websocket, '_websocket_mask_cython'),
                     reason='Requires Cython')
 def test_websocket_mask_cython():
-    ret = _ws_impl._websocket_mask_cython(websocket_mask_mask,
-                                          websocket_mask_data)
+    ret = http_websocket._websocket_mask_cython(
+        websocket_mask_mask, websocket_mask_data)
     assert ret == websocket_mask_masked
 
 
 def test_websocket_mask_python_empty():
-    ret = _ws_impl._websocket_mask_python(websocket_mask_mask,
-                                          bytearray())
+    ret = http_websocket._websocket_mask_python(
+        websocket_mask_mask, bytearray())
     assert ret == bytearray()
 
 
-@pytest.mark.skipif(not hasattr(_ws_impl, '_websocket_mask_cython'),
+@pytest.mark.skipif(not hasattr(http_websocket, '_websocket_mask_cython'),
                     reason='Requires Cython')
 def test_websocket_mask_cython_empty():
-    ret = _ws_impl._websocket_mask_cython(websocket_mask_mask,
-                                          bytearray())
+    ret = http_websocket._websocket_mask_cython(
+        websocket_mask_mask, bytearray())
     assert ret == bytearray()
 
 

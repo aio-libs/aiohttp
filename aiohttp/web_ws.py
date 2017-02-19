@@ -1,23 +1,18 @@
 import asyncio
 import json
-import sys
 from collections import namedtuple
 
 from . import hdrs
-from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE,
-                       WebSocketError, WebSocketReader,
-                       WSMessage, WSMsgType, do_handshake)
-from .helpers import create_future
-from .http import HttpProcessingError
+from .helpers import PY_35, PY_352, create_future
+from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
+                   WebSocketError, WebSocketReader,
+                   WSMessage, WSMsgType, do_handshake)
 from .streams import FlowControlDataQueue
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_response import StreamResponse
 
 __all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
-
-PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
 
 THRESHOLD_CONNLOST_ACCESS = 5
 
@@ -209,7 +204,7 @@ class WebSocketResponse(StreamResponse):
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
-            self._reader.feed_data(CLOSING_MESSAGE, 0)
+            self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
             yield from self._waiting
 
         if not self._closed:
@@ -264,9 +259,9 @@ class WebSocketResponse(StreamResponse):
                 self._conn_lost += 1
                 if self._conn_lost >= THRESHOLD_CONNLOST_ACCESS:
                     raise RuntimeError('WebSocket connection is closed.')
-                return CLOSED_MESSAGE
+                return WS_CLOSED_MESSAGE
             elif self._closing:
-                return CLOSING_MESSAGE
+                return WS_CLOSING_MESSAGE
 
             try:
                 self._waiting = create_future(self._loop)

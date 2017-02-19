@@ -14,13 +14,13 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, http
-from ._ws_impl import WS_KEY, WebSocketReader, WebSocketWriter
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .connector import TCPConnector
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
 from .helpers import TimeService
+from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
 __all__ = ('ClientSession', 'request')
