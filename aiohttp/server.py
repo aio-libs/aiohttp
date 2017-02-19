@@ -10,7 +10,7 @@ from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
 
-from . import errors, hdrs, helpers
+from . import hdrs, helpers
 from .helpers import TimeService, create_future, ensure_future
 from .http import HttpProcessingError, HttpRequestParser, Response
 from .log import access_logger, server_logger
@@ -373,8 +373,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         now = time_service.time()
                         end_time = now + self._lingering_time
 
-                        with suppress(asyncio.TimeoutError,
-                                      errors.ClientDisconnectedError):
+                        with suppress(asyncio.TimeoutError):
                             while (not payload.is_eof() and
                                    now < end_time):
                                 timeout = min(
@@ -385,14 +384,11 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                                 now = time_service.time()
             except asyncio.CancelledError:
                 self._closing = True
-                self.log_debug('Request handler cancelled.')
+                self.log_debug('Ignored premature client disconnection')
             except asyncio.TimeoutError:
                 self._closing = True
                 self.log_debug('Request handler timed out.')
                 yield from self.handle_error(504, message)
-            except errors.ClientDisconnectedError:
-                self._closing = True
-                self.log_debug('Ignored premature client disconnection #1.')
             except Exception as exc:
                 self._closing = True
                 yield from self.handle_error(500, message, None, exc)

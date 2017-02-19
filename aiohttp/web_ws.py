@@ -7,7 +7,6 @@ from . import hdrs
 from ._ws_impl import (CLOSED_MESSAGE, CLOSING_MESSAGE,
                        WebSocketError, WebSocketReader,
                        WSMessage, WSMsgType, do_handshake)
-from .errors import ClientDisconnectedError
 from .helpers import create_future
 from .http import HttpProcessingError
 from .streams import FlowControlDataQueue
@@ -281,15 +280,12 @@ class WebSocketResponse(StreamResponse):
                     self._waiting = None
                     waiter.set_result(True)
             except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
+                self._close_code = 1006
                 raise
             except WebSocketError as exc:
                 self._close_code = exc.code
                 yield from self.close(code=exc.code)
                 return WSMessage(WSMsgType.ERROR, exc, None)
-            except ClientDisconnectedError as exc:
-                self._closed = True
-                self._close_code = 1006
-                return CLOSED_MESSAGE
             except Exception as exc:
                 self._exception = exc
                 self._closing = True

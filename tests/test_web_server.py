@@ -75,9 +75,8 @@ def test_raw_server_do_not_swallow_exceptions(raw_test_server, test_client):
     client = yield from test_client(server)
 
     for _exc, msg in (
-            (asyncio.CancelledError("error"), 'Request handler cancelled.'),
-            (errors.ClientDisconnectedError("error"),
-             'Ignored premature client disconnection #1.')):
+            (asyncio.CancelledError("error"),
+             'Ignored premature client disconnection'),):
         exc = _exc
         with pytest.raises(errors.ServerDisconnectedError):
             yield from client.get('/path/to')

@@ -423,26 +423,6 @@ def test_receive_timeouterror(make_request, loop):
 
 
 @asyncio.coroutine
-def test_receive_client_disconnected(make_request, loop):
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    yield from ws.prepare(req)
-
-    ws._reader = mock.Mock()
-    exc = errors.ClientDisconnectedError()
-    res = helpers.create_future(loop)
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
-
-    msg = yield from ws.receive()
-    assert ws.closed
-    assert msg.type == WSMsgType.CLOSED
-    assert msg.type is msg.tp
-    assert msg.data is None
-    assert ws.exception() is None
-
-
-@asyncio.coroutine
 def test_multiple_receive_on_close_connection(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()

@@ -4,7 +4,6 @@ import asyncio
 import traceback
 from html import escape as html_escape
 
-from . import errors
 from .helpers import TimeService
 from .server import ServerHttpProtocol
 from .web_exceptions import HTTPException, HTTPInternalServerError
@@ -60,9 +59,7 @@ class RequestHandler(ServerHttpProtocol):
 
         try:
             resp = yield from self._handler(request)
-        except (asyncio.CancelledError,
-                asyncio.TimeoutError,
-                errors.ClientDisconnectedError) as exc:
+        except (asyncio.CancelledError, asyncio.TimeoutError):
             raise
         except HTTPException as exc:
             resp = exc
