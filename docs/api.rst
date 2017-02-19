@@ -3,7 +3,7 @@
 Helpers API
 ===========
 
-All public names from submodules ``errors``, ``multipart``,
+All public names from submodules ``client``, ``multipart``,
 ``protocol`` and ``utils`` are exported into
 ``aiohttp`` namespace.
 
@@ -173,14 +173,6 @@ WebSocket utilities
 
       .. deprecated:: 1.0
 
-
-aiohttp.errors module
----------------------
-
-.. automodule:: aiohttp.errors
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 aiohttp.helpers module
 ----------------------
