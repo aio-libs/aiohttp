@@ -11,13 +11,16 @@ import warnings
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
-from . import client_exceptions, hdrs, helpers, http
+from . import connector as connector_mod
+from . import client_exceptions, client_reqrep, hdrs, helpers, http
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientOSError, ClientResponseError,
                                 ServerDisconnectedError,
                                 WSServerHandshakeError)
+from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
+from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
 from .helpers import PY_35, TimeService
@@ -25,7 +28,9 @@ from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
 __all__ = (client_exceptions.__all__ +  # noqa
-           ('ClientSession', 'request'))
+           client_reqrep.__all__ +  # noqa
+           connector_mod.__all__ +  # noqa
+           ('ClientSession', 'ClientWebSocketResponse', 'request'))
 
 
 # 5 Minute default read and connect timeout
