@@ -14,9 +14,8 @@ from yarl import URL
 from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, helpers, http
 from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientOSError, ClientResponseError,
-                                ServerDisconnectedError,
-                                WSServerHandshakeError)
+from .client_exceptions import (ClientError, ClientOSError,
+                                ClientResponseError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
@@ -232,7 +231,7 @@ class ClientSession:
                         resp.close()
                         conn.close()
                         raise
-                except ServerDisconnectedError:
+                except ClientError:
                     raise
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(

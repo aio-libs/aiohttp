@@ -28,6 +28,7 @@ def test_ctor(make_request):
     assert 'a=1&b=2' == req.query_string
     assert CIMultiDict() == req.headers
     assert () == req.raw_headers
+    assert req.message == req._message
 
     get = req.GET
     assert MultiDict([('a', '1'), ('b', '2')]) == get
