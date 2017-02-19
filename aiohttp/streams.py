@@ -2,7 +2,6 @@ import asyncio
 import collections
 import functools
 import socket
-import sys
 import traceback
 
 from . import helpers
@@ -12,9 +11,6 @@ __all__ = (
     'EofStream', 'StreamReader', 'StreamWriter', 'DataQueue',
     'ChunksQueue', 'FlowControlStreamReader', 'EMPTY_PAYLOAD',
     'FlowControlDataQueue', 'FlowControlChunksQueue')
-
-PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
 
 DEFAULT_LIMIT = 2 ** 16
 
@@ -121,7 +117,7 @@ class StreamWriter:
             yield from self._protocol._drain_helper()
 
 
-if PY_35:
+if helpers.PY_35:
     class AsyncStreamIterator:
 
         def __init__(self, read_func):
@@ -130,7 +126,7 @@ if PY_35:
         def __aiter__(self):
             return self
 
-        if not PY_352:  # pragma: no cover
+        if not helpers.PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         @asyncio.coroutine
@@ -146,11 +142,11 @@ if PY_35:
 
 class AsyncStreamReaderMixin:
 
-    if PY_35:
+    if helpers.PY_35:
         def __aiter__(self):
             return AsyncStreamIterator(self.readline)
 
-        if not PY_352:  # pragma: no cover
+        if not helpers.PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
         def iter_chunked(self, n):
@@ -579,11 +575,11 @@ class DataQueue:
             else:
                 raise EofStream
 
-    if PY_35:
+    if helpers.PY_35:
         def __aiter__(self):
             return AsyncStreamIterator(self.read)
 
-        if not PY_352:  # pragma: no cover
+        if not helpers.PY_352:  # pragma: no cover
             __aiter__ = asyncio.coroutine(__aiter__)
 
 

@@ -6,7 +6,6 @@ import json
 import mimetypes
 import os
 import re
-import sys
 import uuid
 import warnings
 import zlib
@@ -18,7 +17,7 @@ from multidict import CIMultiDict
 
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
-from .helpers import parse_mimetype
+from .helpers import PY_35, PY_352, parse_mimetype
 from .http import HttpParser
 
 __all__ = ('MultipartReader', 'MultipartWriter',
@@ -32,9 +31,6 @@ CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
 SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
               '?', '=', '{', '}', ' ', chr(9)}
 TOKEN = CHAR ^ CTL ^ SEPARATORS
-
-PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
 
 
 class BadContentDispositionHeader(RuntimeWarning):

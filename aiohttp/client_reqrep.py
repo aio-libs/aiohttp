@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, http, streams
-from .helpers import HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
+from .helpers import PY_35, HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
 from .http import HttpMessage
 from .log import client_logger
 from .multipart import MultipartWriter
@@ -27,8 +27,6 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('ClientRequest', 'ClientResponse')
-
-PY_35 = sys.version_info >= (3, 5)
 
 
 class ClientRequest:

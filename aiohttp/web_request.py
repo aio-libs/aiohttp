@@ -46,6 +46,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._headers = message.headers
         self._method = message.method
         self._version = message.version
+        self._rel_url = message.url
 
         self._read_bytes = None
 
@@ -55,8 +56,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
-
-        self._rel_url = message.url
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
