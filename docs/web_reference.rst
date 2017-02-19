@@ -123,36 +123,6 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`str` property.
 
-   .. attribute:: GET
-
-      A multidict with all the variables in the query string.
-
-      Read-only :class:`~multidict.MultiDictProxy` lazy property.
-
-      .. versionchanged:: 0.17
-         A multidict contains empty items for query string like ``?arg=``.
-
-      .. deprecated:: 1.1
-
-         Use :attr:`url` (``request.rel_url.query``) instead.
-
-   .. attribute:: POST
-
-      A multidict with all the variables in the POST parameters.
-      POST property available only after :meth:`Request.post` coroutine call.
-
-      Read-only :class:`~multidict.MultiDictProxy`.
-
-      :raises RuntimeError: if :meth:`Request.post` was not called \
-                            before accessing the property.
-
-      .. deprecated:: 1.1
-
-         Since POST date preloaded is not implemented yet and probably
-         will never be done the :meth:`post` call is required and
-         recommended way for accessing to POST data. :meth:`multipart`
-         is useful for working with multipart encoded content.
-
    .. attribute:: headers
 
       A case-insensitive multidict proxy with all headers.
