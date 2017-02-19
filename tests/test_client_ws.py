@@ -7,7 +7,7 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp import ClientWebSocketResponse, errors, hdrs, helpers
+from aiohttp import client, hdrs, helpers
 from aiohttp.http import WS_KEY
 from aiohttp.log import ws_logger
 
@@ -47,7 +47,7 @@ def test_ws_connect(ws_key, loop, key_data):
                 'http://test.org',
                 protocols=('t1', 't2', 'chat'))
 
-    assert isinstance(res, ClientWebSocketResponse)
+    assert isinstance(res, client.ClientWebSocketResponse)
     assert res.protocol == 'chat'
     assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
 
@@ -63,7 +63,7 @@ def test_ws_connect_with_origin(key_data, loop):
             m_req.return_value.set_result(resp)
 
             origin = 'https://example.org/page.html'
-            with pytest.raises(errors.WSServerHandshakeError):
+            with pytest.raises(client.WSServerHandshakeError):
                 yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org', origin=origin)
 
@@ -74,7 +74,7 @@ def test_ws_connect_with_origin(key_data, loop):
 @asyncio.coroutine
 def test_ws_connect_custom_response(loop, ws_key, key_data):
 
-    class CustomResponse(ClientWebSocketResponse):
+    class CustomResponse(client.ClientWebSocketResponse):
         def read(self, decode=False):
             return 'customized!'
 
@@ -113,7 +113,7 @@ def test_ws_connect_err_status(loop, ws_key, key_data):
             m_req.return_value = helpers.create_future(loop)
             m_req.return_value.set_result(resp)
 
-            with pytest.raises(errors.WSServerHandshakeError) as ctx:
+            with pytest.raises(client.WSServerHandshakeError) as ctx:
                 yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
@@ -136,7 +136,7 @@ def test_ws_connect_err_upgrade(loop, ws_key, key_data):
             m_req.return_value = helpers.create_future(loop)
             m_req.return_value.set_result(resp)
 
-            with pytest.raises(errors.WSServerHandshakeError) as ctx:
+            with pytest.raises(client.WSServerHandshakeError) as ctx:
                 yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
@@ -159,7 +159,7 @@ def test_ws_connect_err_conn(loop, ws_key, key_data):
             m_req.return_value = helpers.create_future(loop)
             m_req.return_value.set_result(resp)
 
-            with pytest.raises(errors.WSServerHandshakeError) as ctx:
+            with pytest.raises(client.WSServerHandshakeError) as ctx:
                 yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
@@ -182,7 +182,7 @@ def test_ws_connect_err_challenge(loop, ws_key, key_data):
             m_req.return_value = helpers.create_future(loop)
             m_req.return_value.set_result(resp)
 
-            with pytest.raises(errors.WSServerHandshakeError) as ctx:
+            with pytest.raises(client.WSServerHandshakeError) as ctx:
                 yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))
@@ -226,7 +226,7 @@ def test_ws_connect_common_headers(ws_key, loop, key_data):
                     protocols=('t1', 't2', 'chat'),
                     headers=headers)
 
-        assert isinstance(res, ClientWebSocketResponse)
+        assert isinstance(res, client.ClientWebSocketResponse)
         assert res.protocol == 'chat'
         assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
 
@@ -429,7 +429,7 @@ def test_reader_read_exception(ws_key, key_data, loop):
 
 @asyncio.coroutine
 def test_receive_runtime_err(loop):
-    resp = ClientWebSocketResponse(
+    resp = client.ClientWebSocketResponse(
         mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), 10.0,
         True, True, loop)
     resp._waiting = True
@@ -453,7 +453,7 @@ def test_ws_connect_close_resp_on_err(loop, ws_key, key_data):
             m_req.return_value = helpers.create_future(loop)
             m_req.return_value.set_result(resp)
 
-            with pytest.raises(errors.WSServerHandshakeError):
+            with pytest.raises(client.WSServerHandshakeError):
                 yield from aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org',
                     protocols=('t1', 't2', 'chat'))

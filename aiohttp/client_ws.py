@@ -3,7 +3,7 @@
 import asyncio
 import json
 
-from .errors import ServerDisconnectedError
+from .client_exceptions import ClientError
 from .helpers import PY_35, PY_352, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE,
                    WebSocketError, WSMessage, WSMsgType)
@@ -179,7 +179,7 @@ class ClientWebSocketResponse:
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
-            except ServerDisconnectedError:
+            except ClientError:
                 self._closed = True
                 self._close_code = 1006
                 return WS_CLOSED_MESSAGE

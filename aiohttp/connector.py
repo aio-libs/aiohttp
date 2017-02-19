@@ -9,11 +9,11 @@ from hashlib import md5, sha1, sha256
 from types import MappingProxyType
 
 from . import hdrs, helpers
+from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
+                                ClientProxyConnectionError, ClientTimeoutError,
+                                FingerprintMismatch)
 from .client_proto import HttpClientProtocol
 from .client_reqrep import ClientRequest
-from .errors import (ClientConnectorError, ClientHttpProxyError,
-                     ClientProxyConnectionError, ClientTimeoutError,
-                     FingerprintMismatch)
 from .helpers import SimpleCookie, is_ip_address, sentinel
 from .resolver import DefaultResolver
 

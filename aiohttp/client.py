@@ -11,21 +11,21 @@ import warnings
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
-import aiohttp
-
-from . import hdrs, helpers, http
+from . import client_exceptions, hdrs, helpers, http
+from .client_exceptions import *  # noqa
+from .client_exceptions import (ClientOSError, ClientResponseError,
+                                ServerDisconnectedError,
+                                WSServerHandshakeError)
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .errors import WSServerHandshakeError
-from .helpers import TimeService
+from .helpers import PY_35, TimeService
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
-__all__ = ('ClientSession', 'request')
-
-PY_35 = sys.version_info >= (3, 5)
+__all__ = (client_exceptions.__all__ +  # noqa
+           ('ClientSession', 'request'))
 
 
 # 5 Minute default read and connect timeout
@@ -227,14 +227,14 @@ class ClientSession:
                         resp.close()
                         conn.close()
                         raise
-                except aiohttp.ServerDisconnectedError:
+                except ServerDisconnectedError:
                     raise
                 except http.HttpProcessingError as exc:
-                    raise aiohttp.ClientResponseError(
+                    raise ClientResponseError(
                         code=exc.code,
                         message=exc.message, headers=exc.headers) from exc
                 except OSError as exc:
-                    raise aiohttp.ClientOSError(*exc.args) from exc
+                    raise ClientOSError(*exc.args) from exc
 
                 self._cookie_jar.update_cookies(resp.cookies, resp.url)
 

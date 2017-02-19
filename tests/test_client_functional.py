@@ -13,7 +13,7 @@ from multidict import MultiDict
 
 import aiohttp
 from aiohttp import hdrs, web
-from aiohttp.errors import FingerprintMismatch
+from aiohttp.client import FingerprintMismatch
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
