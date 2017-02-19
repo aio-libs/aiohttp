@@ -85,20 +85,12 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Returns :class:`str` or ``None`` if HTTP request has no *HOST* header.
 
-      .. deprecated:: 1.1
-
-         Use :attr:`url` (``request.url.host``) instead.
-
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
       ``/app/blog?id=10``
 
       Read-only :class:`str` property.
-
-      .. deprecated:: 1.1
-
-         Use :attr:`url` (``str(request.rel_url)``) instead.
 
    .. attribute:: path
 
@@ -107,10 +99,6 @@ and :ref:`aiohttp-web-signals` handlers.
       :attr:`raw_path`.
 
       Read-only :class:`str` property.
-
-      .. deprecated:: 1.1
-
-         Use :attr:`url` (``request.rel_url.path``) instead.
 
    .. attribute:: raw_path
 
@@ -123,19 +111,17 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`str` property.
 
-      .. deprecated:: 1.1
+   .. attribute:: query
 
-         Use :attr:`url` (``request.rel_url.raw_path``) instead.
+      A multidict with all the variables in the query string.
+
+      Read-only :class:`~multidict.MultiDictProxy` lazy property.
 
    .. attribute:: query_string
 
       The query string in the URL, e.g., ``id=10``
 
       Read-only :class:`str` property.
-
-      .. deprecated:: 1.1
-
-         Use :attr:`url` (``request.rel_url.query_string``) instead.
 
    .. attribute:: GET
 
@@ -493,12 +479,6 @@ StreamResponse
 
       .. versionadded:: 0.18
 
-   .. attribute:: started
-
-      Deprecated alias for :attr:`prepared`.
-
-      .. deprecated:: 0.18
-
    .. attribute:: task
 
       A task that serves HTTP request handling.
@@ -715,22 +695,6 @@ StreamResponse
       Set :attr:`tcp_nodelay` property to *value*.
 
       Clear :attr:`tcp_cork` if *value* is ``True``.
-
-   .. method:: start(request)
-
-      :param aiohttp.web.Request request: HTTP request object, that the
-                                          response answers.
-
-      Send *HTTP header*. You should not change any header data after
-      calling this method.
-
-      .. deprecated:: 0.18
-
-         Use :meth:`prepare` instead.
-
-      .. warning:: The method doesn't call
-         :attr:`~aiohttp.web.Application.on_response_prepare` signal, use
-         :meth:`prepare` instead.
 
    .. coroutinemethod:: prepare(request)
 
@@ -1097,7 +1061,7 @@ WebSocketResponse
                               with parsed JSON (:func:`json.loads` by
                               default).
 
-      :param timeout: timeout for `receive` operation.
+   :param timeout: timeout for `receive` operation.
                       timeout value overrides response`s receive_timeout attribute.
 
       :return dict: loaded JSON content
@@ -2176,7 +2140,7 @@ Constants
 
       *GZIP compression*
 
-   .. attribute:: identity
+.. attribute:: identity
 
       *no compression*
 

@@ -17,7 +17,7 @@ from . import hdrs, multipart
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from .web_exceptions import HTTPRequestEntityTooLarge
 
-__all__ = ('BaseRequest', 'Request')
+__all__ = ('BaseRequest', 'FileField', 'Request')
 
 FileField = collections.namedtuple('Field', 'name filename file content_type')
 
@@ -56,7 +56,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
 
-        self.rel_url = message.url
+        self._rel_url = message.url
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -111,6 +111,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def message(self):
         return self._message
 
+    @property
+    def rel_url(self):
+        return self._rel_url
+
     # MutableMapping API
 
     def __getitem__(self, key):
@@ -130,15 +134,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     ########
 
-    @reify
+    @property
     def scheme(self):
         """A string representing the scheme of the request.
 
         'http' or 'https'.
         """
-        warnings.warn("scheme is deprecated, "
-                      "use .url.scheme instead",
-                      DeprecationWarning)
         return self.url.scheme
 
     @reify
@@ -180,21 +181,26 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._message.headers.get(hdrs.HOST)
 
     @reify
+    def url(self):
+        return URL('{}://{}{}'.format(self._scheme,
+                                      self._message.headers.get(hdrs.HOST),
+                                      str(self._rel_url)))
+
+    @property
+    def path(self):
+        """The URL including *PATH INFO* without the host or scheme.
+
+        E.g., ``/app/blog``
+        """
+        return self._rel_url.path
+
+    @reify
     def path_qs(self):
         """The URL including PATH_INFO and the query string.
 
         E.g, /app/blog?id=10
         """
-        warnings.warn("path_qs property is deprecated, "
-                      "use str(request.rel_url) instead",
-                      DeprecationWarning)
-        return str(self.rel_url)
-
-    @reify
-    def url(self):
-        return URL('{}://{}{}'.format(self._scheme,
-                                      self._message.headers.get(hdrs.HOST),
-                                      str(self.rel_url)))
+        return str(self._rel_url)
 
     @property
     def raw_path(self):
@@ -205,36 +211,28 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._message.path
 
-    @reify
-    def path(self):
-        """The URL including *PATH INFO* without the host or scheme.
+    @property
+    def query(self):
+        """A multidict with all the variables in the query string."""
+        return self._rel_url.query
 
-        E.g., ``/app/blog``
-        """
-        warnings.warn("path property is deprecated, use .rel_url.path instead",
-                      DeprecationWarning)
-        return self.rel_url.path
-
-    @reify
+    @property
     def query_string(self):
         """The query string in the URL.
 
         E.g., id=10
         """
-        warnings.warn("query_string property is deprecated, "
-                      "use .rel_url.query_string instead",
-                      DeprecationWarning)
-        return self.rel_url.query_string
+        return self._rel_url.query_string
 
-    @reify
+    @property
     def GET(self):
         """A multidict with all the variables in the query string.
 
         Lazy property.
         """
-        warnings.warn("GET property is deprecated, use .rel_url.query instead",
+        warnings.warn("GET property is deprecated, use .query instead",
                       DeprecationWarning)
-        return self.rel_url.query
+        return self._rel_url.query
 
     @reify
     def POST(self):
@@ -300,7 +298,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         Return a slice instance.
 
         """
-        rng = self.headers.get(_RANGE)
+        rng = self._headers.get(_RANGE)
         start, end = None, None
         if rng is not None:
             try:
@@ -373,27 +371,22 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loads=json.loads, loader=None):
+    def json(self, *, loads=json.loads):
         """Return BODY as JSON."""
-        if loader is not None:
-            warnings.warn(
-                "Using loader argument is deprecated, use loads instead",
-                DeprecationWarning)
-            loads = loader
         body = yield from self.text()
         return loads(body)
 
     @asyncio.coroutine
     def multipart(self, *, reader=multipart.MultipartReader):
         """Return async iterator to process BODY as multipart."""
-        return reader(self.headers, self.content)
+        return reader(self._headers, self._payload)
 
     @asyncio.coroutine
     def post(self):
         """Return POST parameters."""
         if self._post is not None:
             return self._post
-        if self.method not in self.POST_METHODS:
+        if self._method not in self.POST_METHODS:
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
@@ -411,10 +404,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         body = yield from self.read()
         content_charset = self.charset or 'utf-8'
 
-        environ = {'REQUEST_METHOD': self.method,
+        environ = {'REQUEST_METHOD': self._method,
                    'CONTENT_LENGTH': str(len(body)),
                    'QUERY_STRING': '',
-                   'CONTENT_TYPE': self.headers.get(hdrs.CONTENT_TYPE)}
+                   'CONTENT_TYPE': self._headers.get(hdrs.CONTENT_TYPE)}
 
         fs = cgi.FieldStorage(fp=io.BytesIO(body),
                               environ=environ,
@@ -457,7 +450,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         ascii_encodable_path = self.path.encode('ascii', 'backslashreplace') \
             .decode('ascii')
         return "<{} {} {} >".format(self.__class__.__name__,
-                                    self.method, ascii_encodable_path)
+                                    self._method, ascii_encodable_path)
 
     @asyncio.coroutine
     def _prepare_hook(self, response):

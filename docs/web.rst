@@ -523,7 +523,7 @@ HTTP Forms
 HTTP Forms are supported out of the box.
 
 If form's method is ``"GET"`` (``<form method="get">``) use
-:attr:`Request.rel_url.query` for getting form data.
+:attr:`Request.query` for getting form data.
 
 For accessing to form data with ``"POST"`` method use
 :meth:`Request.post` or :meth:`Request.multipart`.
@@ -665,11 +665,10 @@ with the peer::
 
 .. _aiohttp-web-websocket-read-same-task:
 
-Reading from the *WebSocket* (``await ws.receive()``) and closing it
-(``await ws.close()``) **must only** be done inside the request
-handler *task*; however, writing (``ws.send_str(...)``) to the
-*WebSocket* and canceling the handler task may be delegated to other
-tasks. See also :ref:`FAQ section
+Reading from the *WebSocket* (``await ws.receive()``) **must only** be done
+inside the request handler *task*; however, writing (``ws.send_str(...)``) to the
+*WebSocket*, closing (``await ws.close()``) and canceling the handler
+task may be delegated to other tasks. See also :ref:`FAQ section
 <aiohttp_faq_terminating_websockets>`.
 
 *aiohttp.web* creates an implicit :class:`asyncio.Task` for handling every
@@ -689,7 +688,6 @@ incoming request.
 
    Parallel reads from websocket are forbidden, there is no
    possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
-   or :meth:`aiohttp.web.WebSocketResponse.close`
    from two tasks.
 
    See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
