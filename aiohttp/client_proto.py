@@ -88,19 +88,22 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
             self, self._loop, timer=timer)
 
     def data_received(self, data):
+        if not data:
+            return
+
         # custom payload parser
         if self._payload_parser is not None:
-            if data:
-                eof, tail = self._payload_parser.feed_data(data)
-                if eof:
-                    self._payload = None
-                    self._payload_parser = None
+            eof, tail = self._payload_parser.feed_data(data)
+            if eof:
+                self._payload = None
+                self._payload_parser = None
 
-                    if tail:
-                        super().data_received(tail)
+                if tail:
+                    super().data_received(tail)
             return
         else:
             if self._upgraded:
+                # i.e. websocket connection, websocket parser is not set yet
                 self._tail += data
             else:
                 # parse http messages

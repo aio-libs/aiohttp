@@ -122,9 +122,6 @@ def test_post_json(loop, test_client):
         assert dct == data
         data2 = yield from request.json(loads=json.loads)
         assert data == data2
-        with pytest.warns(DeprecationWarning):
-            data3 = yield from request.json(loader=json.loads)
-        assert data == data3
         resp = web.Response()
         resp.content_type = 'application/json'
         resp.body = json.dumps(data).encode('utf8')

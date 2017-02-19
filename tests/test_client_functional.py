@@ -344,7 +344,7 @@ def test_format_task_get(test_server, loop):
 def test_str_params(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        assert 'q=t est' in request.query_string
+        assert 'q=t est' in request.rel_url.query_string
         return web.Response()
 
     app = web.Application(loop=loop)
@@ -363,7 +363,7 @@ def test_drop_params_on_redirect(loop, test_client):
 
     @asyncio.coroutine
     def handler_ok(request):
-        assert request.query_string == 'a=redirect'
+        assert request.rel_url.query_string == 'a=redirect'
         return web.Response(status=200)
 
     app = web.Application(loop=loop)
@@ -925,7 +925,7 @@ def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
-            k+'='+v for k, v in request.GET.items()))
+            k+'='+v for k, v in request.query.items()))
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -1114,7 +1114,7 @@ def test_POST_FILES(loop, test_client, fname):
 
     with fname.open() as f:
         resp = yield from client.post('/', data={'some': f, 'test': b'data'},
-                                      chunked=1024,
+                                      chunked=True,
                                       headers={'Transfer-Encoding': 'chunked'})
         assert 200 == resp.status
         resp.close()
@@ -1138,7 +1138,7 @@ def test_POST_FILES_DEFLATE(loop, test_client, fname):
 
     with fname.open() as f:
         resp = yield from client.post('/', data={'some': f},
-                                      chunked=1024,
+                                      chunked=True,
                                       compress='deflate')
         assert 200 == resp.status
         resp.close()
