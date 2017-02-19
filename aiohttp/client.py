@@ -230,7 +230,9 @@ class ClientSession:
                 except aiohttp.ServerDisconnectedError:
                     raise
                 except http.HttpProcessingError as exc:
-                    raise aiohttp.ClientResponseError() from exc
+                    raise aiohttp.ClientResponseError(
+                        code=exc.code,
+                        message=exc.message, headers=exc.headers) from exc
                 except OSError as exc:
                     raise aiohttp.ClientOSError(*exc.args) from exc
 
