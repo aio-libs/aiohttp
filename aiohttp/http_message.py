@@ -6,7 +6,6 @@ import http.server
 import string
 import sys
 import zlib
-from abc import ABC, abstractmethod
 from urllib.parse import SplitResult
 from wsgiref.handlers import format_date_time
 
@@ -193,7 +192,7 @@ class PayloadWriter:
                 yield from self._drain_waiter
 
 
-class HttpMessage(ABC, PayloadWriter):
+class HttpMessage(PayloadWriter):
     """HttpMessage allows to write headers and payload to a stream."""
 
     HOP_HEADERS = None  # Must be set by subclass.
@@ -208,25 +207,12 @@ class HttpMessage(ABC, PayloadWriter):
     def __init__(self, transport, version, close, loop=None):
         super().__init__(transport, loop)
 
-        self._version = version
+        self.version = version
         self.closing = close
         self.keepalive = None
         self.length = None
         self.headers = CIMultiDict()
         self.headers_sent = False
-
-    @property
-    @abstractmethod
-    def status_line(self):
-        return b''
-
-    @abstractmethod
-    def autochunked(self):
-        return False
-
-    @property
-    def version(self):
-        return self._version
 
     @property
     def body_length(self):
@@ -238,10 +224,10 @@ class HttpMessage(ABC, PayloadWriter):
 
     def keep_alive(self):
         if self.keepalive is None:
-            if self._version < HttpVersion10:
+            if self.version < HttpVersion10:
                 # keep alive not supported at all
                 return False
-            if self._version == HttpVersion10:
+            if self.version == HttpVersion10:
                 if self.headers.get(hdrs.CONNECTION) == 'keep-alive':
                     return True
                 else:  # no headers means we close for Http 1.0
@@ -330,10 +316,10 @@ class HttpMessage(ABC, PayloadWriter):
         if self.upgrade:
             connection = 'Upgrade'
         elif not self.closing if self.keepalive is None else self.keepalive:
-            if self._version == HttpVersion10:
+            if self.version == HttpVersion10:
                 connection = 'keep-alive'
         else:
-            if self._version == HttpVersion11:
+            if self.version == HttpVersion11:
                 connection = 'close'
 
         if connection is not None:
@@ -355,33 +341,25 @@ class Response(HttpMessage):
                  close=False, reason=None, loop=None, _RESPONSES=RESPONSES):
         super().__init__(transport, http_version, close, loop=loop)
 
-        self._status = status
+        self.status = status
         if reason is None:
             try:
                 reason = _RESPONSES[status][0]
             except:
                 reason = ''
 
-        self._reason = reason
-
-    @property
-    def status(self):
-        return self._status
-
-    @property
-    def reason(self):
-        return self._reason
+        self.reason = reason
 
     @property
     def status_line(self):
-        version = self._version
+        version = self.version
         return 'HTTP/{}.{} {} {}\r\n'.format(
-            version[0], version[1], self._status, self._reason)
+            version[0], version[1], self.status, self.reason)
 
     def autochunked(self):
         return (self.length is None and
-                self._version >= HttpVersion11 and
-                self._status not in (304, 204))
+                self.version >= HttpVersion11 and
+                self.status not in (304, 204))
 
     def _add_default_headers(self):
         super()._add_default_headers()
@@ -405,25 +383,17 @@ class Request(HttpMessage):
 
         super().__init__(transport, http_version, close, loop=loop)
 
-        self._method = method
-        self._path = path
-
-    @property
-    def method(self):
-        return self._method
-
-    @property
-    def path(self):
-        return self._path
+        self.method = method
+        self.path = path
 
     @property
     def status_line(self):
         return '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
-            self._method, self._path, self._version)
+            self.method, self.path, self.version)
 
     def autochunked(self):
         return (self.length is None and
-                self._version >= HttpVersion11)
+                self.version >= HttpVersion11)
 
 
 class URL(yarl.URL):

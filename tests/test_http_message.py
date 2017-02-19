@@ -34,16 +34,6 @@ def test_start_request(stream, loop):
     assert msg.status_line == 'GET /index.html HTTP/1.1\r\n'
 
 
-def test_start_response(stream, loop):
-    msg = http.Response(stream, 200, close=True, loop=loop)
-
-    assert msg._transport is stream.transport
-    assert msg.status == 200
-    assert msg.reason == "OK"
-    assert msg.closing
-    assert msg.status_line == 'HTTP/1.1 200 OK\r\n'
-
-
 def test_start_response_with_reason(stream, loop):
     msg = http.Response(stream, 333, close=True, reason="My Reason", loop=loop)
 
@@ -91,6 +81,29 @@ def test_keep_alive_http10(stream, loop):
 
     msg = http.Response(stream, 200, http_version=(1, 1), loop=loop)
     assert msg.keepalive is None
+
+
+def test_http_message_keepsalive(stream, loop):
+    msg = http.Response(stream, 200, http_version=(0, 9), loop=loop)
+    assert not msg.keep_alive()
+
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
+    assert not msg.keep_alive()
+
+    msg = http.Response(stream, 200, http_version=(1, 0), loop=loop)
+    msg.headers[hdrs.CONNECTION] = 'keep-alive'
+    assert msg.keep_alive()
+
+    msg = http.Response(
+        stream, 200, http_version=(1, 1), close=False, loop=loop)
+    assert msg.keep_alive()
+    msg = http.Response(
+        stream, 200, http_version=(1, 1), close=True, loop=loop)
+    assert not msg.keep_alive()
+
+    msg = http.Response(stream, 200, http_version=(0, 9), loop=loop)
+    msg.keepalive = True
+    assert msg.keep_alive()
 
 
 def test_add_header(stream, loop):
@@ -489,3 +502,8 @@ def test_dont_override_response_headers_with_default_values(stream, loop):
     msg._add_default_headers()
     assert 'custom' == msg.headers['SERVER']
     assert 'now' == msg.headers['DATE']
+
+
+def test_request_close_from_version(stream, loop):
+    msg = http.Request(stream, 'POST', '/', http_version=(0, 9), loop=loop)
+    assert msg.closing

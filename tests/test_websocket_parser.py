@@ -5,11 +5,11 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp.http import (
-    WebSocketError, WSCloseCode, WSMessage, WSMsgType, http_websocket)
-from aiohttp.http_websocket import (
-    PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2, PACK_LEN3,
-    WebSocketReader, _websocket_mask)
+from aiohttp import http_websocket
+from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
+from aiohttp.http_websocket import (PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2,
+                                    PACK_LEN3, WebSocketReader,
+                                    _websocket_mask)
 
 
 def build_frame(message, opcode, use_mask=False, noheader=False):
