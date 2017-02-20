@@ -251,6 +251,11 @@ class ClientRequest:
             return
 
         if asyncio.iscoroutine(data):
+            warnings.warn(
+                'coroutine as data object is deprecated, '
+                'use aiohttp.streamer  #1664',
+                DeprecationWarning, stacklevel=2)
+
             self.body = data
             if (hdrs.CONTENT_LENGTH not in self.headers and
                     self.chunked is None):

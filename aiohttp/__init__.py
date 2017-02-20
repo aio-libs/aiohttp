@@ -12,6 +12,7 @@ from .multipart import *  # noqa
 from .file_sender import FileSender  # noqa
 from .cookiejar import CookieJar  # noqa
 from .payload import *  # noqa
+from .payload_streamer import *  # noqa
 from .resolver import *  # noqa
 
 # deprecated #1657
@@ -27,6 +28,7 @@ __all__ = (client.__all__ +  # noqa
            helpers.__all__ +  # noqa
            streams.__all__ +  # noqa
            payload.__all__ +  # noqa
+           payload_streamer.__all__ +  # noqa
            multipart.__all__ +  # noqa
            ('hdrs', 'FileSender',
             'HttpVersion', 'HttpVersion10', 'HttpVersion11',
