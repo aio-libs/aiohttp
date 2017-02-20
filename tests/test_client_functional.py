@@ -1381,7 +1381,6 @@ def test_POST_FILES_WITH_DATA(loop, test_client, fname):
         resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_STREAM_DATA(loop, test_client, fname):
     @asyncio.coroutine
@@ -1390,7 +1389,75 @@ def test_POST_STREAM_DATA(loop, test_client, fname):
         content = yield from request.read()
         with fname.open('rb') as f:
             expected = f.read()
-        assert request.content_length == str(len(expected))
+            assert request.content_length == len(expected)
+            assert content == expected
+
+        return web.HTTPOk()
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with fname.open('rb') as f:
+        data_size = len(f.read())
+
+    @aiohttp.streamer
+    def stream(writer, fname):
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
+
+    resp = yield from client.post(
+        '/', data=stream(fname), headers={'Content-Length': str(data_size)})
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/octet-stream'
+        content = yield from request.read()
+        with fname.open('rb') as f:
+            expected = f.read()
+            assert request.content_length == len(expected)
+            assert content == expected
+
+        return web.HTTPOk()
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with fname.open('rb') as f:
+        data_size = len(f.read())
+
+    @aiohttp.streamer
+    def stream(writer):
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
+
+    resp = yield from client.post(
+        '/', data=stream, headers={'Content-Length': str(data_size)})
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_STREAM_DATA_coroutine_deprecated(loop, test_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/octet-stream'
+        content = yield from request.read()
+        with fname.open('rb') as f:
+            expected = f.read()
+        assert request.content_length == len(expected)
         assert content == expected
 
         return web.HTTPOk()
@@ -1399,7 +1466,7 @@ def test_POST_STREAM_DATA(loop, test_client, fname):
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         data = f.read()
         fut = create_future(loop)
 
