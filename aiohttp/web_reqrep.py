@@ -915,6 +915,7 @@ class StreamResponse(HeadersMixin):
         yield from self._resp_impl.write_eof()
         self._eof_sent = True
         self._req = None
+        self._resp_impl = None
 
     def __repr__(self):
         if self.started:
