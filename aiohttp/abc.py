@@ -129,3 +129,20 @@ class AbstractCookieJar(Sized, Iterable):
     @abstractmethod
     def filter_cookies(self, request_url):
         """Return the jar's cookies filtered by their attributes."""
+
+
+class AbstractPayloadWriter(ABC):
+
+    @abstractmethod
+    def write(self, chunk):
+        """Write chunk into stream"""
+
+    @asyncio.coroutine  # pragma: no branch
+    @abstractmethod
+    def write_eof(self, chunk=b''):
+        """Write last chunk"""
+
+    @asyncio.coroutine  # pragma: no branch
+    @asyncio.coroutine
+    def drain(self):
+        """Flush the write buffer."""

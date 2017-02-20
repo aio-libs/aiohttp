@@ -11,6 +11,7 @@ from .streams import *  # noqa
 from .multipart import *  # noqa
 from .file_sender import FileSender  # noqa
 from .cookiejar import CookieJar  # noqa
+from .payload import *  # noqa
 from .resolver import *  # noqa
 
 # deprecated #1657
@@ -25,6 +26,7 @@ from .client_exceptions import ClientDisconnectedError, ClientTimeoutError, Fing
 __all__ = (client.__all__ +  # noqa
            helpers.__all__ +  # noqa
            streams.__all__ +  # noqa
+           payload.__all__ +  # noqa
            multipart.__all__ +  # noqa
            ('hdrs', 'FileSender',
             'HttpVersion', 'HttpVersion10', 'HttpVersion11',

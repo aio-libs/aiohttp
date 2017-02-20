@@ -1233,12 +1233,27 @@ def test_POST_FILES_CT(loop, test_client, fname):
 @asyncio.coroutine
 def test_POST_FILES_SINGLE(loop, test_client, fname):
 
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.text()
+        with fname.open('r') as f:
+            content = f.read()
+            assert content == data
+            # if system cannot determine 'application/pgp-keys' MIME type
+            # then use 'application/octet-stream' default
+        assert request.content_type in ['application/pgp-keys',
+                                        'text/plain',
+                                        'application/octet-stream']
+        return web.HTTPOk()
+
     app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
     client = yield from test_client(app)
 
     with fname.open() as f:
-        with pytest.raises(ValueError):
-            yield from client.post('/', data=f)
+        resp = yield from client.post('/', data=f)
+        assert 200 == resp.status
+        resp.close()
 
 
 @asyncio.coroutine
