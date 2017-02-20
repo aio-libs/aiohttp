@@ -719,9 +719,10 @@ class TimeService:
             raise RuntimeError
 
         if timeout:
+            ctx = _TimeServiceTimeoutContext(self._loop)
             when = self._loop_time + timeout
-            ctx = _TimeServiceTimeoutContext(when, self._loop)
-            heapq.heappush(self._scheduled, ctx)
+            timer = TimerHandle(when, ctx.cancel, (), self._loop)
+            heapq.heappush(self._scheduled, timer)
         else:
             ctx = _TimeServiceTimeoutNoop()
 
@@ -737,14 +738,13 @@ class _TimeServiceTimeoutNoop:
         return False
 
 
-class _TimeServiceTimeoutContext(TimerHandle):
+class _TimeServiceTimeoutContext:
     """ Low resolution timeout context manager """
 
-    def __init__(self, when, loop):
+    def __init__(self, loop):
         assert loop is not None, "loop is not set"
 
-        super().__init__(when, self.cancel, (), loop)
-
+        self._loop = loop
         self._tasks = []
         self._cancelled = False
 
