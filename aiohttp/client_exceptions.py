@@ -106,3 +106,5 @@ class ServerFingerprintMismatch(ServerConnectionError):
 ClientDisconnectedError = ClientError
 ClientTimeoutError = ServerTimeoutError
 FingerprintMismatch = ServerFingerprintMismatch
+HttpProxyError = ClientHttpProxyError
+ProxyConnectionError = ClientProxyConnectionError
