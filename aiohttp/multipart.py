@@ -153,6 +153,32 @@ def content_disposition_filename(params):
         return value
 
 
+def content_disposition_header(disptype, quote_fields=True, **params):
+    """Sets ``Content-Disposition`` header.
+
+    :param str disptype: Disposition type: inline, attachment, form-data.
+                         Should be valid extension token (see RFC 2183)
+    :param dict params: Disposition params
+    """
+    if not disptype or not (TOKEN > set(disptype)):
+        raise ValueError('bad content disposition type {!r}'
+                         ''.format(disptype))
+    value = disptype
+    if params:
+        lparams = []
+        for key, val in params.items():
+            if not key or not (TOKEN > set(key)):
+                raise ValueError('bad content disposition parameter'
+                                 ' {!r}={!r}'.format(key, val))
+            qval = quote(val, '') if quote_fields else val
+            lparams.append((key, '"%s"' % qval))
+            if key == 'filename':
+                lparams.append(('filename*', "utf-8''" + qval))
+        sparams = '; '.join('='.join(pair) for pair in lparams)
+        value = '; '.join((value, sparams))
+    return value
+
+
 class MultipartResponseWrapper(object):
     """Wrapper around the :class:`MultipartBodyReader` to take care about
     underlying connection and close it when it needs in."""
@@ -886,23 +912,8 @@ class BodyPartWriter(object):
                             Should be valid extension token (see RFC 2183)
         :param dict params: Disposition params
         """
-        if not disptype or not (TOKEN > set(disptype)):
-            raise ValueError('bad content disposition type {!r}'
-                             ''.format(disptype))
-        value = disptype
-        if params:
-            lparams = []
-            for key, val in params.items():
-                if not key or not (TOKEN > set(key)):
-                    raise ValueError('bad content disposition parameter'
-                                     ' {!r}={!r}'.format(key, val))
-                qval = quote(val, '') if quote_fields else val
-                lparams.append((key, '"%s"' % qval))
-                if key == 'filename':
-                    lparams.append(('filename*', "utf-8''" + qval))
-            sparams = '; '.join('='.join(pair) for pair in lparams)
-            value = '; '.join((value, sparams))
-        self.headers[CONTENT_DISPOSITION] = value
+        self.headers[CONTENT_DISPOSITION] = content_disposition_header(
+            disptype, quote_fields=quote_fields, **params)
 
     @property
     def filename(self):

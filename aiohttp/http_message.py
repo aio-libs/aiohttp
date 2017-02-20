@@ -15,6 +15,7 @@ from multidict import CIMultiDict, istr
 import aiohttp
 
 from . import hdrs
+from .abc import AbstractPayloadWriter
 from .helpers import create_future, noop
 
 __all__ = ('RESPONSES', 'SERVER_SOFTWARE',
@@ -33,7 +34,7 @@ HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
-class PayloadWriter:
+class PayloadWriter(AbstractPayloadWriter):
 
     def __init__(self, stream, loop):
         if loop is None:
