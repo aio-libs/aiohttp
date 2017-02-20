@@ -163,6 +163,7 @@ def content_disposition_header(disptype, quote_fields=True, **params):
     if not disptype or not (TOKEN > set(disptype)):
         raise ValueError('bad content disposition type {!r}'
                          ''.format(disptype))
+
     value = disptype
     if params:
         lparams = []

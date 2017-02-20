@@ -802,7 +802,7 @@ def test_ctor_both_charset_param_and_header():
 def test_assign_nonbyteish_body():
     resp = Response(body=b'data')
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         resp.body = 123
     assert b'data' == resp.body
     assert 4 == resp.content_length

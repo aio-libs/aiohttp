@@ -11,7 +11,7 @@ from .helpers import guess_filename
 from .multipart import content_disposition_header
 from .streams import DEFAULT_LIMIT, DataQueue, EofStream, StreamReader
 
-__all__ = ('PAYLOAD_REGISTRY', 'Payload',
+__all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'Payload',
            'BytesPayload', 'StringPayload', 'StreamReaderPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',
            'TextIOPayload', 'StringIOPayload')
@@ -19,6 +19,10 @@ __all__ = ('PAYLOAD_REGISTRY', 'Payload',
 
 class LookupError(Exception):
     pass
+
+
+def get_payload(data, *args, **kwargs):
+    return PAYLOAD_REGISTRY.get(data, *args, **kwargs)
 
 
 class PayloadRegistry:
@@ -31,6 +35,8 @@ class PayloadRegistry:
         self._registry = []
 
     def get(self, data, *args, **kwargs):
+        if isinstance(data, Payload):
+            return data
         for ctor, type in self._registry:
             if isinstance(data, type):
                 return ctor(data, *args, **kwargs)
@@ -144,6 +150,8 @@ class IOBasePayload(Payload):
             yield from writer.write(chunk)
             chunk = self._value.read(DEFAULT_LIMIT)
 
+        self._value.close()
+
 
 class StringIOPayload(IOBasePayload):
 
@@ -153,6 +161,8 @@ class StringIOPayload(IOBasePayload):
         while chunk:
             yield from writer.write(chunk.encode(self._encoding))
             chunk = self._value.read(DEFAULT_LIMIT)
+
+        self._value.close()
 
 
 class TextIOPayload(Payload):
@@ -164,6 +174,8 @@ class TextIOPayload(Payload):
         while chunk:
             yield from writer.write(chunk.encode(encoding))
             chunk = self._value.read(DEFAULT_LIMIT)
+
+        self._value.close()
 
 
 class BytesIOPayload(IOBasePayload):

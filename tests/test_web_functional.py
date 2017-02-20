@@ -1,4 +1,5 @@
 import asyncio
+import io
 import json
 import pathlib
 import zlib
@@ -8,12 +9,23 @@ import pytest
 from multidict import MultiDict
 from yarl import URL
 
+import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, multipart, web
 
 try:
     import ssl
 except:
     ssl = False
+
+
+@pytest.fixture
+def here():
+    return pathlib.Path(__file__).parent
+
+
+@pytest.fixture
+def fname(here):
+    return here / 'sample.key'
 
 
 @asyncio.coroutine
@@ -737,6 +749,164 @@ def test_get_with_empty_arg_with_equal(loop, test_client):
 
     resp = yield from client.get('/?arg=')
     assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_response_with_streamer(loop, test_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    data_size = len(data)
+
+    @aiohttp.streamer
+    def stream(writer, f_name):
+        with f_name.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
+
+    @asyncio.coroutine
+    def handler(request):
+        headers = {'Content-Length': str(data_size)}
+        return web.Response(body=stream(fname), headers=headers)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    resp_data = yield from resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+
+
+@asyncio.coroutine
+def test_response_with_streamer_no_params(loop, test_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    data_size = len(data)
+
+    @aiohttp.streamer
+    def stream(writer):
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
+
+    @asyncio.coroutine
+    def handler(request):
+        headers = {'Content-Length': str(data_size)}
+        return web.Response(body=stream, headers=headers)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    resp_data = yield from resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+
+
+@asyncio.coroutine
+def test_response_with_file(loop, test_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=fname.open('rb'))
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    resp_data = yield from resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Type') in (
+        'application/octet-stream', 'application/pgp-keys')
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+    assert (resp.headers.get('Content-Disposition') ==
+            'attachment; filename="sample.key"; filename*=utf-8\'\'sample.key')
+
+
+@asyncio.coroutine
+def test_response_with_file_ctype(loop, test_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(
+            body=fname.open('rb'), headers={'content-type': 'text/binary'})
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    resp_data = yield from resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Type') == 'text/binary'
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+    assert (resp.headers.get('Content-Disposition') ==
+            'attachment; filename="sample.key"; filename*=utf-8\'\'sample.key')
+
+
+@asyncio.coroutine
+def test_response_with_payload_disp(loop, test_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    @asyncio.coroutine
+    def handler(request):
+        pl = aiohttp.get_payload(fname.open('rb'))
+        pl.set_content_disposition('inline', filename='test.txt')
+        return web.Response(
+            body=pl, headers={'content-type': 'text/binary'})
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    resp_data = yield from resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Type') == 'text/binary'
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+    assert (resp.headers.get('Content-Disposition') ==
+            'inline; filename="test.txt"; filename*=utf-8\'\'test.txt')
+
+
+@asyncio.coroutine
+def test_response_with_payload_stringio(loop, test_client, fname):
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=io.StringIO('test'))
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    resp_data = yield from resp.read()
+    assert resp_data == b'test'
 
 
 @asyncio.coroutine

@@ -9,7 +9,7 @@ from email.utils import parsedate
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
-from . import hdrs
+from . import hdrs, payload
 from .helpers import HeadersMixin, SimpleCookie, sentinel
 from .http import (RESPONSES, SERVER_SOFTWARE, HttpVersion10,
                    HttpVersion11, PayloadWriter)
@@ -478,20 +478,53 @@ class Response(StreamResponse):
                     headers[hdrs.CONTENT_TYPE] = content_type
 
         super().__init__(status=status, reason=reason, headers=headers)
+
         if text is not None:
             self.text = text
         else:
-            self._body = body
+            self.body = body
 
     @property
     def body(self):
         return self._body
 
     @body.setter
-    def body(self, body):
-        assert body is None or isinstance(body, (bytes, bytearray)), \
-            "body argument must be bytes (%r)" % type(body)
-        self._body = body
+    def body(self, body,
+             CONTENT_TYPE=hdrs.CONTENT_TYPE,
+             CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
+        if body is None:
+            self._body = None
+            self._body_payload = False
+        elif isinstance(body, (bytes, bytearray)):
+            self._body = body
+            self._body_payload = False
+        else:
+            try:
+                self._body = body = payload.PAYLOAD_REGISTRY.get(body)
+            except payload.LookupError:
+                raise ValueError('Unsupported body type %r' % type(body))
+
+            self._body_payload = True
+
+            headers = self._headers
+
+            # enable chunked encoding if needed
+            if not self._chunked and CONTENT_LENGTH not in headers:
+                size = body.size
+                if size is None:
+                    self._chunked = True
+                elif CONTENT_LENGTH not in headers:
+                    headers[CONTENT_LENGTH] = str(size)
+
+            # set content-type
+            if CONTENT_TYPE not in headers:
+                headers[CONTENT_TYPE] = body.content_type
+
+            # copy payload headers
+            if body.headers:
+                for (key, value) in body.headers.items():
+                    if key not in headers:
+                        headers[key] = value
 
     @property
     def text(self):
@@ -531,18 +564,20 @@ class Response(StreamResponse):
     @asyncio.coroutine
     def write_eof(self):
         body = self._body
-        if (body is not None and
-            (self._req._method == hdrs.METH_HEAD or
-             self._status in [204, 304])):
-            body = b''
-
-        if body is None:
-            body = b''
-
-        yield from super().write_eof(body)
+        if body is not None:
+            if (self._req._method == hdrs.METH_HEAD or
+                    self._status in [204, 304]):
+                yield from super().write_eof()
+            elif self._body_payload:
+                yield from body.write(self._payload_writer)
+                yield from super().write_eof()
+            else:
+                yield from super().write_eof(body)
+        else:
+            yield from super().write_eof()
 
     def _start(self, request):
-        if not self._chunked:
+        if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if self._body is not None:
                 self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
             else:
