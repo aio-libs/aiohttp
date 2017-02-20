@@ -427,6 +427,10 @@ To tweak or change *transport* layer of requests you can pass a custom
     conn = aiohttp.TCPConnector()
     session = aiohttp.ClientSession(connector=conn)
 
+.. note::
+
+   If you use custom connector, it is you responsibility to clase connector.
+
 
 .. seealso:: :ref:`aiohttp-client-reference-connectors` section for
              more information about different connector types and
