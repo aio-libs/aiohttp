@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, helpers, signals, web
+from aiohttp import WSMessage, WSMsgType, helpers, signals
 from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
@@ -505,8 +505,3 @@ def test_prepare_twice_idempotent(make_request):
     impl1 = yield from ws.prepare(req)
     impl2 = yield from ws.prepare(req)
     assert impl1 is impl2
-
-
-def test_msgtype_alias():
-    # deprecated since 1.0
-    assert web.MsgType is WSMsgType

@@ -377,10 +377,6 @@ def test_websocket_mask_cython_empty():
     assert ret == bytearray()
 
 
-def test_msgtype_class_alias():
-    assert aiohttp.MsgType is aiohttp.WSMsgType
-
-
 def test_msgtype_aliases():
     assert aiohttp.WSMsgType.TEXT == aiohttp.WSMsgType.text
     assert aiohttp.WSMsgType.BINARY == aiohttp.WSMsgType.binary

@@ -15,13 +15,11 @@ from .resolver import *  # noqa
 
 # deprecated #1657
 from .http_message import HttpMessage, Request, Response  # noqa isort:skip
-from .http_parser import HttpRequestParser, HttpResponseParser  # noqa isort:skip
+from .http_parser import RawRequestMessage, RawResponseMessage  # noqa isort:skip
+from .http_parser import HttpRequestParser, HttpResponseParser, HttpPayloadParser  # noqa isort:skip
 from .http_exceptions import HttpProcessingError, BadHttpMessage  # noqa isort:skip
 from .http_exceptions import HttpBadRequest, BadStatusLine, LineTooLong, InvalidHeader  # noqa isort:skip
-from .client_exceptions import ClientDisconnectedError, ClientTimeoutError, FingerprintMismatch  # noqa isort:skip
-
-
-MsgType = WSMsgType  # backward compatibility
+from .client_exceptions import ClientDisconnectedError, ClientTimeoutError, FingerprintMismatch, HttpProxyError, ProxyConnectionError  # noqa isort:skip
 
 
 __all__ = (client.__all__ +  # noqa
@@ -35,10 +33,10 @@ __all__ = (client.__all__ +  # noqa
 
             # deprecated api #1657
             'HttpMessage', 'Request', 'Response',
-            'HttpRequestParser', 'HttpResponseParser',
+            'HttpRequestParser', 'HttpResponseParser', 'HttpPayloadParser',
             'RawRequestMessage', 'RawResponseMessage',
             'HttpProcessingError', 'BadHttpMessage',
             'HttpBadRequest', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
             'ClientDisconnectedError', 'ClientTimeoutError',
-            'FingerprintMismatch'
+            'FingerprintMismatch', 'HttpProxyError', 'ProxyConnectionError',
            ))

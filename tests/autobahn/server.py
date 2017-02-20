@@ -18,11 +18,11 @@ def wshandler(request):
     while True:
         msg = yield from ws.receive()
 
-        if msg.type == web.MsgType.text:
+        if msg.type == web.WSMsgType.text:
             ws.send_str(msg.data)
-        elif msg.type == web.MsgType.binary:
+        elif msg.type == web.WSMsgType.binary:
             ws.send_bytes(msg.data)
-        elif msg.type == web.MsgType.close:
+        elif msg.type == web.WSMsgType.close:
             yield from ws.close()
             break
         else:
