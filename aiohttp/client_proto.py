@@ -47,8 +47,6 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
         self.writer = StreamWriter(self, transport, self._loop)
 
     def connection_lost(self, exc):
-        self.transport = self.writer = None
-
         if isinstance(exc, OSError):
             exc = ClientOSError(*exc.args)
         else:
@@ -58,6 +56,13 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
             self._payload.set_exception(exc)
         if not self.is_eof():
             DataQueue.set_exception(self, exc)
+
+        self.transport = self.writer = None
+        self._should_close = True
+        self._parser = None
+        self._payload = None
+        self._payload_parser = None
+        self._reading_paused = False
 
         super().connection_lost(exc)
 

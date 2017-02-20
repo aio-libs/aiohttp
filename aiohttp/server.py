@@ -216,10 +216,12 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         super().connection_lost(exc)
 
         self._closing = True
+        self._request_parser = None
         self.transport = self.writer = None
 
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
+            self._payload_parser = None
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
