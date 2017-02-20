@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+- Fix StreamResponse representation after eof
+
 1.3.3 (2017-02-19)
 ------------------
 
