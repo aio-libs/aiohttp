@@ -1484,7 +1484,6 @@ def test_POST_STREAM_DATA_coroutine_deprecated(loop, test_client, fname):
         resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_StreamReader(fname, loop, test_client):
     @asyncio.coroutine
@@ -1493,7 +1492,7 @@ def test_POST_StreamReader(fname, loop, test_client):
         content = yield from request.read()
         with fname.open('rb') as f:
             expected = f.read()
-        assert request.content_length == str(len(expected))
+        assert request.content_length == len(expected)
         assert content == expected
 
         return web.HTTPOk()
@@ -1502,7 +1501,7 @@ def test_POST_StreamReader(fname, loop, test_client):
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         data = f.read()
 
     stream = aiohttp.StreamReader(loop=loop)
