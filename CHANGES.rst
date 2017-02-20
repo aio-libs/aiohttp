@@ -11,6 +11,8 @@ CHANGES
 
 - Add max_size parameter to web.Request reading methods #1133
 
+- Do not close connector if client session does not own it #883
+
 - `run_app` and the Command Line Interface now support serving over
   Unix domain sockets for faster inter-process communication.
 

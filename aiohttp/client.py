@@ -58,6 +58,7 @@ class ClientSession:
                 implicit_loop = True
                 loop = asyncio.get_event_loop()
 
+        connector_owner = connector is None
         if connector is None:
             connector = TCPConnector(loop=loop)
 
@@ -88,6 +89,7 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
         self._connector = connector
+        self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
         self._read_timeout = read_timeout
@@ -108,12 +110,11 @@ class ClientSession:
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
-        if time_service is not None:
-            self._time_service_owner = False
-            self._time_service = time_service
-        else:
-            self._time_service_owner = True
-            self._time_service = TimeService(self._loop)
+        self._time_service_owner = time_service is None
+        if time_service is None:
+            time_service = TimeService(self._loop)
+
+        self._time_service = time_service
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
@@ -492,7 +493,8 @@ class ClientSession:
         Release all acquired resources.
         """
         if not self.closed:
-            self._connector.close()
+            if self._connector_owner:
+                self._connector.close()
             self._connector = None
 
             if self._time_service_owner:
