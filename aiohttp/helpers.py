@@ -7,7 +7,6 @@ import cgi
 import datetime
 import functools
 import heapq
-import io
 import os
 import re
 import sys
@@ -16,10 +15,9 @@ from collections import MutableSequence, namedtuple
 from functools import total_ordering
 from pathlib import Path
 from time import gmtime
-from urllib.parse import urlencode
+from urllib.parse import quote
 
 from async_timeout import timeout
-from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
 
@@ -38,13 +36,20 @@ else:
     from .backport_cookies import SimpleCookie  # noqa
 
 
-__all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
+__all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
            'Timeout', 'ensure_future', 'noop')
 
 
 sentinel = object()
 Timeout = timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
+
+CHAR = set(chr(i) for i in range(0, 128))
+CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
+SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
+              '?', '=', '{', '}', ' ', chr(9)}
+TOKEN = CHAR ^ CTL ^ SEPARATORS
+
 
 if sys.version_info < (3, 5):
     noop = tuple
@@ -112,121 +117,6 @@ else:
         return asyncio.Future(loop=loop)
 
 
-class FormData:
-    """Helper class for multipart/form-data and
-    application/x-www-form-urlencoded body generation."""
-
-    def __init__(self, fields=(), quote_fields=True):
-        from . import multipart
-        self._writer = multipart.MultipartWriter('form-data')
-        self._fields = []
-        self._is_multipart = False
-        self._quote_fields = quote_fields
-
-        if isinstance(fields, dict):
-            fields = list(fields.items())
-        elif not isinstance(fields, (list, tuple)):
-            fields = (fields,)
-        self.add_fields(*fields)
-
-    @property
-    def is_multipart(self):
-        return self._is_multipart
-
-    @property
-    def content_type(self):
-        if self._is_multipart:
-            return self._writer.headers[hdrs.CONTENT_TYPE]
-        else:
-            return 'application/x-www-form-urlencoded'
-
-    def add_field(self, name, value, *, content_type=None, filename=None,
-                  content_transfer_encoding=None):
-
-        if isinstance(value, io.IOBase):
-            self._is_multipart = True
-        elif isinstance(value, (bytes, bytearray, memoryview)):
-            if filename is None and content_transfer_encoding is None:
-                filename = name
-
-        type_options = MultiDict({'name': name})
-        if filename is not None and not isinstance(filename, str):
-            raise TypeError('filename must be an instance of str. '
-                            'Got: %s' % filename)
-        if filename is None and isinstance(value, io.IOBase):
-            filename = guess_filename(value, name)
-        if filename is not None:
-            type_options['filename'] = filename
-            self._is_multipart = True
-
-        headers = {}
-        if content_type is not None:
-            if not isinstance(content_type, str):
-                raise TypeError('content_type must be an instance of str. '
-                                'Got: %s' % content_type)
-            headers[hdrs.CONTENT_TYPE] = content_type
-            self._is_multipart = True
-        if content_transfer_encoding is not None:
-            if not isinstance(content_transfer_encoding, str):
-                raise TypeError('content_transfer_encoding must be an instance'
-                                ' of str. Got: %s' % content_transfer_encoding)
-            headers[hdrs.CONTENT_TRANSFER_ENCODING] = content_transfer_encoding
-            self._is_multipart = True
-
-        self._fields.append((type_options, headers, value))
-
-    def add_fields(self, *fields):
-        to_add = list(fields)
-
-        while to_add:
-            rec = to_add.pop(0)
-
-            if isinstance(rec, io.IOBase):
-                k = guess_filename(rec, 'unknown')
-                self.add_field(k, rec)
-
-            elif isinstance(rec, (MultiDictProxy, MultiDict)):
-                to_add.extend(rec.items())
-
-            elif isinstance(rec, (list, tuple)) and len(rec) == 2:
-                k, fp = rec
-                self.add_field(k, fp)
-
-            else:
-                raise TypeError('Only io.IOBase, multidict and (name, file) '
-                                'pairs allowed, use .add_field() for passing '
-                                'more complex parameters, got {!r}'
-                                .format(rec))
-
-    def _gen_form_urlencoded(self, encoding):
-        # form data (x-www-form-urlencoded)
-        data = []
-        for type_options, _, value in self._fields:
-            data.append((type_options['name'], value))
-
-        data = urlencode(data, doseq=True)
-        return data.encode(encoding)
-
-    def _gen_form_data(self, *args, **kwargs):
-        """Encode a list of fields using the multipart/form-data MIME format"""
-        for dispparams, headers, value in self._fields:
-            part = self._writer.append(value, headers)
-            if dispparams:
-                part.set_content_disposition(
-                    'form-data', quote_fields=self._quote_fields, **dispparams
-                )
-                # FIXME cgi.FieldStorage doesn't likes body parts with
-                # Content-Length which were sent via chunked transfer encoding
-                part.headers.pop(hdrs.CONTENT_LENGTH, None)
-        yield from self._writer.serialize()
-
-    def __call__(self, encoding):
-        if self._is_multipart:
-            return self._gen_form_data(encoding)
-        else:
-            return self._gen_form_urlencoded(encoding)
-
-
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
@@ -269,6 +159,33 @@ def guess_filename(obj, default=None):
     if name and name[0] != '<' and name[-1] != '>':
         return Path(name).name
     return default
+
+
+def content_disposition_header(disptype, quote_fields=True, **params):
+    """Sets ``Content-Disposition`` header.
+
+    :param str disptype: Disposition type: inline, attachment, form-data.
+                         Should be valid extension token (see RFC 2183)
+    :param dict params: Disposition params
+    """
+    if not disptype or not (TOKEN > set(disptype)):
+        raise ValueError('bad content disposition type {!r}'
+                         ''.format(disptype))
+
+    value = disptype
+    if params:
+        lparams = []
+        for key, val in params.items():
+            if not key or not (TOKEN > set(key)):
+                raise ValueError('bad content disposition parameter'
+                                 ' {!r}={!r}'.format(key, val))
+            qval = quote(val, '') if quote_fields else val
+            lparams.append((key, '"%s"' % qval))
+            if key == 'filename':
+                lparams.append(('filename*', "utf-8''" + qval))
+        sparams = '; '.join('='.join(pair) for pair in lparams)
+        value = '; '.join((value, sparams))
+    return value
 
 
 class AccessLogger:

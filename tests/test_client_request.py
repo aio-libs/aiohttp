@@ -540,7 +540,7 @@ def test_post_data(loop):
             data={'life': '42'}, loop=loop)
         resp = req.send(mock.Mock(acquire=acquire))
         assert '/' == req.url.path
-        assert b'life=42' == req.body
+        assert b'life=42' == req.body._value
         assert 'application/x-www-form-urlencoded' ==\
             req.headers['CONTENT-TYPE']
         yield from req.close()
@@ -580,7 +580,7 @@ def test_get_with_data(loop):
             meth, URL('http://python.org/'), data={'life': '42'},
             loop=loop)
         assert '/' == req.url.path
-        assert b'life=42' == req.body
+        assert b'life=42' == req.body._value
         yield from req.close()
 
 
