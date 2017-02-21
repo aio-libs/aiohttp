@@ -442,7 +442,17 @@ parameter to *connector*::
 
     conn = aiohttp.TCPConnector(limit=30)
 
-The example limits amount of parallel connections to `30`.
+The example limits total amount of parallel connections to `30`.
+
+The default is `100`.
+
+If you explicitly want not to have limits, pass `0`. For example::
+
+    conn = aiohttp.TCPConnector(limit=0)
+
+To limit amount of simultaneously opened connection to the same
+endpoint (``(host, port, is_ssl)`` triple) you can pass *limit_per_host*
+parameter to *connector*::
 
 The default is `20`.
 
