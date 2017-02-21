@@ -29,7 +29,7 @@ from .streams import FlowControlDataQueue
 __all__ = (client_exceptions.__all__ +  # noqa
            client_reqrep.__all__ +  # noqa
            connector_mod.__all__ +  # noqa
-           ('ClientSession', 'ClientWebSocketResponse', 'request'))
+           ('ClientSession', 'ClientWebSocketResponse'))
 
 
 # 5 Minute default read and connect timeout
@@ -58,7 +58,6 @@ class ClientSession:
                 implicit_loop = True
                 loop = asyncio.get_event_loop()
 
-        connector_owner = connector is None
         if connector is None:
             connector = TCPConnector(loop=loop)
 
@@ -89,7 +88,6 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
         self._connector = connector
-        self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
         self._read_timeout = read_timeout
@@ -493,8 +491,7 @@ class ClientSession:
         Release all acquired resources.
         """
         if not self.closed:
-            if self._connector_owner:
-                self._connector.close()
+            self._connector.close()
             self._connector = None
 
             if self._time_service_owner:
@@ -630,137 +627,3 @@ class _WSRequestContextManager(_BaseRequestContextManager):
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc, tb):
             yield from self._resp.close()
-
-
-class _DetachedRequestContextManager(_RequestContextManager):
-
-    __slots__ = _RequestContextManager.__slots__ + ('_session', )
-
-    def __init__(self, coro, session):
-        super().__init__(coro)
-        self._session = session
-
-    @asyncio.coroutine
-    def __iter__(self):
-        try:
-            return (yield from self._coro)
-        except:
-            yield from self._session.close()
-            raise
-
-    if PY_35:
-        def __await__(self):
-            try:
-                return (yield from self._coro)
-            except:
-                yield from self._session.close()
-                raise
-
-    def __del__(self):
-        self._session.detach()
-
-
-class _DetachedWSRequestContextManager(_WSRequestContextManager):
-
-    __slots__ = _WSRequestContextManager.__slots__ + ('_session', )
-
-    def __init__(self, coro, session):
-        super().__init__(coro)
-        self._session = session
-
-    def __del__(self):
-        self._session.detach()
-
-
-def request(method, url, *,
-            params=None,
-            data=None,
-            headers=None,
-            skip_auto_headers=None,
-            cookies=None,
-            auth=None,
-            allow_redirects=True,
-            max_redirects=10,
-            encoding='utf-8',
-            version=None,
-            compress=None,
-            chunked=None,
-            expect100=False,
-            connector=None,
-            loop=None,
-            read_until_eof=True,
-            request_class=None,
-            response_class=None,
-            proxy=None,
-            proxy_auth=None):
-    """Constructs and sends a request. Returns response object.
-
-    method - HTTP method
-    url - request url
-    params - (optional) Dictionary or bytes to be sent in the query
-      string of the new request
-    data - (optional) Dictionary, bytes, or file-like object to
-      send in the body of the request
-    headers - (optional) Dictionary of HTTP Headers to send with
-      the request
-    cookies - (optional) Dict object to send with the request
-    auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
-    auth - aiohttp.helpers.BasicAuth
-    allow_redirects - (optional) If set to False, do not follow
-      redirects
-    version - Request HTTP version.
-    compress - Set to True if request has to be compressed
-       with deflate encoding.
-    chunked - Set to chunk size for chunked transfer encoding.
-    expect100 - Expect 100-continue response from server.
-    connector - BaseConnector sub-class instance to support
-       connection pooling.
-    read_until_eof - Read response until eof if response
-       does not have Content-Length header.
-    request_class - (optional) Custom Request class implementation.
-    response_class - (optional) Custom Response class implementation.
-    loop - Optional event loop.
-
-    Usage::
-
-      >>> import aiohttp
-      >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
-      >>> resp
-      <ClientResponse(python.org/) [200]>
-      >>> data = yield from resp.read()
-
-    """
-    warnings.warn("Use ClientSession().request() instead", DeprecationWarning)
-    if connector is None:
-        connector = TCPConnector(loop=loop, force_close=True)
-
-    kwargs = {}
-
-    if request_class is not None:
-        kwargs['request_class'] = request_class
-
-    if response_class is not None:
-        kwargs['response_class'] = response_class
-
-    session = ClientSession(loop=loop,
-                            cookies=cookies,
-                            connector=connector,
-                            **kwargs)
-    return _DetachedRequestContextManager(
-        session._request(method, url,
-                         params=params,
-                         data=data,
-                         headers=headers,
-                         skip_auto_headers=skip_auto_headers,
-                         auth=auth,
-                         allow_redirects=allow_redirects,
-                         max_redirects=max_redirects,
-                         encoding=encoding,
-                         version=version,
-                         compress=compress,
-                         chunked=chunked,
-                         expect100=expect100,
-                         read_until_eof=read_until_eof,
-                         proxy=proxy,
-                         proxy_auth=proxy_auth,),
-        session=session)

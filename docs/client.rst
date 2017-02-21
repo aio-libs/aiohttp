@@ -429,8 +429,8 @@ To tweak or change *transport* layer of requests you can pass a custom
 
 .. note::
 
-   If you use custom connector, it is you responsibility to clase connector.
-
+   You can not re-use custom *connector*, *session* object takes ownership
+   of the *connector*.
 
 .. seealso:: :ref:`aiohttp-client-reference-connectors` section for
              more information about different connector types and

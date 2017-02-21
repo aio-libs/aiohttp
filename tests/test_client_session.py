@@ -252,7 +252,7 @@ def test_close(create_session, connector):
 
     session.close()
     assert session.connector is None
-    assert not connector.closed
+    assert connector.closed
 
 
 def test_closed(session):
@@ -268,7 +268,7 @@ def test_connector(create_session, loop, mocker):
     assert session.connector is connector
 
     session.close()
-    assert not connector.close.called
+    assert connector.close.called
     connector.close()
 
 
@@ -326,7 +326,7 @@ def test_double_close(connector, create_session):
     assert session.connector is None
     session.close()
     assert session.closed
-    assert not connector.closed
+    assert connector.closed
 
 
 def test_del(connector, loop):
