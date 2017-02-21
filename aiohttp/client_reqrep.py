@@ -12,10 +12,10 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, http, payload
+from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
 from .http import HttpMessage
 from .log import client_logger
-from .multipart import MultipartWriter
 from .streams import FlowControlStreamReader
 
 try:
@@ -217,71 +217,54 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, data, skip_auto_headers):
-        if not data:
+    def update_body_from_data(self, body, skip_auto_headers):
+        if not body:
             return
 
-        try:
-            self.body = payload.PAYLOAD_REGISTRY.get(data)
-
-            # enable chunked encoding if needed
-            if not self.chunked:
-                if hdrs.CONTENT_LENGTH not in self.headers:
-                    size = self.body.size
-                    if size is None:
-                        self.chunked = True
-                    else:
-                        if hdrs.CONTENT_LENGTH not in self.headers:
-                            self.headers[hdrs.CONTENT_LENGTH] = str(size)
-
-            # set content-type
-            if (hdrs.CONTENT_TYPE not in self.headers and
-                    hdrs.CONTENT_TYPE not in skip_auto_headers):
-                self.headers[hdrs.CONTENT_TYPE] = self.body.content_type
-
-            # copy payload headers
-            if self.body.headers:
-                for (key, value) in self.body.headers.items():
-                    if key not in self.headers:
-                        self.headers[key] = value
-
-        except payload.LookupError:
-            pass
-        else:
-            return
-
-        if asyncio.iscoroutine(data):
+        if asyncio.iscoroutine(body):
             warnings.warn(
                 'coroutine as data object is deprecated, '
                 'use aiohttp.streamer  #1664',
                 DeprecationWarning, stacklevel=2)
 
-            self.body = data
+            self.body = body
             if (hdrs.CONTENT_LENGTH not in self.headers and
                     self.chunked is None):
                 self.chunked = True
 
-        elif isinstance(data, MultipartWriter):
-            self.body = data.serialize()
-            self.headers.update(data.headers)
-            self.chunked = True
+            return
 
-        else:
-            if not isinstance(data, helpers.FormData):
-                data = helpers.FormData(data)
+        # FormData
+        if isinstance(body, FormData):
+            body = body(self.encoding)
 
-            self.body = data(self.encoding)
+        try:
+            body = payload.PAYLOAD_REGISTRY.get(body)
+        except payload.LookupError:
+            body = FormData(body)(self.encoding)
 
-            if (hdrs.CONTENT_TYPE not in self.headers and
-                    hdrs.CONTENT_TYPE not in skip_auto_headers):
-                self.headers[hdrs.CONTENT_TYPE] = data.content_type
+        self.body = body
 
-            if data.is_multipart:
-                self.chunked = True
-            else:
-                if (hdrs.CONTENT_LENGTH not in self.headers and
-                        not self.chunked):
-                    self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
+        # enable chunked encoding if needed
+        if not self.chunked:
+            if hdrs.CONTENT_LENGTH not in self.headers:
+                size = body.size
+                if size is None:
+                    self.chunked = True
+                else:
+                    if hdrs.CONTENT_LENGTH not in self.headers:
+                        self.headers[hdrs.CONTENT_LENGTH] = str(size)
+
+        # set content-type
+        if (hdrs.CONTENT_TYPE not in self.headers and
+                hdrs.CONTENT_TYPE not in skip_auto_headers):
+            self.headers[hdrs.CONTENT_TYPE] = body.content_type
+
+        # copy payload headers
+        if body.headers:
+            for (key, value) in body.headers.items():
+                if key not in self.headers:
+                    self.headers[key] = value
 
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""

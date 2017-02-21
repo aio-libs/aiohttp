@@ -7,8 +7,8 @@ from abc import ABC, abstractmethod
 from multidict import CIMultiDict
 
 from . import hdrs
-from .helpers import guess_filename
-from .multipart import content_disposition_header
+from .helpers import (content_disposition_header, guess_filename,
+                      parse_mimetype, sentinel)
 from .streams import DEFAULT_LIMIT, DataQueue, EofStream, StreamReader
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'Payload',
@@ -54,13 +54,19 @@ class Payload(ABC):
     _content_type = 'application/octet-stream'
 
     def __init__(self, value, *, headers=None,
-                 content_type=None, filename=None, encoding='utf-8'):
+                 content_type=sentinel, filename=None, encoding=None):
         self._value = value
         self._encoding = encoding
-        self._content_type = content_type
         self._filename = filename
         if headers is not None:
             self._headers = CIMultiDict(headers)
+            if content_type is sentinel and hdrs.CONTENT_TYPE in headers:
+                content_type = headers[hdrs.CONTENT_TYPE]
+
+        if content_type is sentinel:
+            content_type = None
+
+        self._content_type = content_type
 
     @property
     def size(self):
@@ -116,10 +122,12 @@ class BytesPayload(Payload):
         assert isinstance(value, (bytes, bytearray, memoryview)), \
             "value argument must be byte-ish (%r)" % type(value)
 
+        if 'content_type' not in kwargs:
+            kwargs['content_type'] = 'application/octet-stream'
+
         super().__init__(value, *args, **kwargs)
 
         self._size = len(value)
-        self._content_type = 'application/octet-stream'
 
     @asyncio.coroutine
     def write(self, writer):
@@ -128,8 +136,15 @@ class BytesPayload(Payload):
 
 class StringPayload(BytesPayload):
 
-    def __init__(self, value, *args, encoding='utf-8', **kwargs):
-        super().__init__(value.encode(encoding), *args, **kwargs)
+    def __init__(self, value, *args,
+                 content_type='text/plain; charset=utf-8', **kwargs):
+
+        *_, params = parse_mimetype(content_type)
+        charset = params.get('charset', 'utf-8')
+        kwargs['encoding'] = charset
+
+        super().__init__(
+            value.encode(charset), content_type=content_type, *args, **kwargs)
 
 
 class IOBasePayload(Payload):
@@ -155,6 +170,16 @@ class IOBasePayload(Payload):
 
 class StringIOPayload(IOBasePayload):
 
+    def __init__(self, value, *args,
+                 content_type='text/plain; charset=utf-8', **kwargs):
+        *_, params = parse_mimetype(content_type)
+        charset = params.get('charset', 'utf-8')
+
+        super().__init__(
+            value,
+            content_type=content_type,
+            encoding=charset, *args, **kwargs)
+
     @asyncio.coroutine
     def write(self, writer):
         chunk = self._value.read(DEFAULT_LIMIT)
@@ -165,7 +190,14 @@ class StringIOPayload(IOBasePayload):
         self._value.close()
 
 
-class TextIOPayload(Payload):
+class TextIOPayload(IOBasePayload):
+
+    @property
+    def size(self):
+        try:
+            return os.fstat(self._value.fileno()).st_size - self._value.tell()
+        except OSError:
+            return None
 
     @asyncio.coroutine
     def write(self, writer):
