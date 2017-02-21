@@ -1197,17 +1197,17 @@ class TestHttpClientConnector(unittest.TestCase):
         conn = aiohttp.TCPConnector(loop=self.loop,
                                     local_addr=('127.0.0.1', port))
 
+        session = aiohttp.ClientSession(connector=conn)
+
         r = self.loop.run_until_complete(
-            aiohttp.request(
-                'get', url,
-                connector=conn
-            ))
+            session.request('get', url)
+        )
 
         self.loop.run_until_complete(r.release())
         first_conn = next(iter(conn._conns.values()))[0][0]
         self.assertEqual(first_conn._sock.getsockname(), ('127.0.0.1', port))
         r.close()
-
+        session.close()
         conn.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
@@ -1222,13 +1222,15 @@ class TestHttpClientConnector(unittest.TestCase):
         connector = aiohttp.UnixConnector(sock_path, loop=self.loop)
         self.assertEqual(sock_path, connector.path)
 
+        session = client.ClientSession(
+            connector=connector,
+            loop=self.loop)
         r = self.loop.run_until_complete(
-            client.request(
-                'get', url,
-                connector=connector,
-                loop=self.loop))
+            session.request(
+                'get', url))
         self.assertEqual(r.status, 200)
         r.close()
+        session.close()
 
     def test_resolver_not_called_with_address_is_ip(self):
         resolver = unittest.mock.MagicMock()

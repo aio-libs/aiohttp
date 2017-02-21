@@ -1054,14 +1054,16 @@ def test_custom_req_rep(loop):
     connector = BaseConnector(loop=loop)
     connector._create_connection = create_connection
 
-    resp = yield from aiohttp.request(
-        'get',
-        URL('http://example.com/path/to'),
+    session = aiohttp.ClientSession(
         request_class=CustomRequest,
         response_class=CustomResponse,
         connector=connector,
         loop=loop)
+
+    resp = yield from session.request(
+        'get', URL('http://example.com/path/to'))
     assert isinstance(resp, CustomResponse)
     assert called
     resp.close()
+    session.close()
     conn.close()
