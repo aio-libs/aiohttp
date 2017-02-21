@@ -914,9 +914,6 @@ def test_content_type_with_set_body():
 def test_started_when_not_started():
     resp = StreamResponse()
     assert not resp.prepared
-    print('+' * 80)
-    print(repr(resp))
-    print('+' * 80)
 
 
 @asyncio.coroutine
@@ -924,9 +921,6 @@ def test_started_when_started():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
     assert resp.prepared
-    print('+' * 80)
-    print(repr(resp))
-    print('+' * 80)
 
 
 @asyncio.coroutine
