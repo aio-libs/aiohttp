@@ -1,13 +1,14 @@
 import asyncio
 import functools
 import io
-import os
 import unittest
 import zlib
 from unittest import mock
 
+import pytest
+
 import aiohttp.multipart
-from aiohttp import helpers
+from aiohttp import helpers, payload
 from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
                           CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from aiohttp.helpers import parse_mimetype
@@ -15,6 +16,28 @@ from aiohttp.multipart import (content_disposition_filename,
                                parse_content_disposition)
 from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
+
+
+@pytest.fixture
+def buf():
+    return bytearray()
+
+
+@pytest.fixture
+def stream(buf):
+    writer = mock.Mock()
+
+    def write(chunk):
+        buf.extend(chunk)
+        return ()
+
+    writer.write.side_effect = write
+    return writer
+
+
+@pytest.fixture
+def writer():
+    return aiohttp.multipart.MultipartWriter(boundary=':')
 
 
 def run_in_loop(f):
@@ -723,318 +746,189 @@ class MultipartReaderTestCase(TestCase):
         self.assertFalse(second.at_eof())
 
 
-class BodyPartWriterTestCase(unittest.TestCase):
+@asyncio.coroutine
+def test_writer(writer):
+    assert writer.size == 0
+    assert writer.boundary == b':'
 
-    def setUp(self):
-        self.part = aiohttp.multipart.BodyPartWriter(b'')
 
-    def test_guess_content_length(self):
-        self.part.headers[CONTENT_TYPE] = 'text/plain; charset=utf-8'
-        self.assertIsNone(self.part._guess_content_length({}))
-        self.assertIsNone(self.part._guess_content_length(object()))
-        self.assertEqual(3,
-                         self.part._guess_content_length(io.BytesIO(b'foo')))
-        self.assertEqual(3,
-                         self.part._guess_content_length(io.StringIO('foo')))
-        self.assertEqual(6,
-                         self.part._guess_content_length(io.StringIO('мяу')))
-        self.assertEqual(3, self.part._guess_content_length(b'bar'))
-        self.assertEqual(12, self.part._guess_content_length('пассед'))
-        with open(__file__, 'rb') as f:
-            self.assertEqual(os.fstat(f.fileno()).st_size,
-                             self.part._guess_content_length(f))
+@asyncio.coroutine
+def test_writer_serialize_io_chunk(buf, stream, writer):
+    flo = io.BytesIO(b'foobarbaz')
+    writer.append(flo)
+    yield from writer.write(stream)
+    print(buf)
+    assert (buf == b'--:\r\nContent-Type: application/octet-stream'
+            b'\r\nContent-Length: 9\r\n\r\nfoobarbaz\r\n--:--\r\n')
 
-    def test_guess_content_type(self):
-        default = 'application/octet-stream'
-        self.assertEqual(default, self.part._guess_content_type(b'foo'))
-        self.assertEqual('text/plain; charset=utf-8',
-                         self.part._guess_content_type('foo'))
 
-        here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'aiohttp.png')
+@asyncio.coroutine
+def test_writer_serialize_json(buf, stream, writer):
+    writer.append_json({'привет': 'мир'})
+    yield from writer.write(stream)
+    assert (b'{"\\u043f\\u0440\\u0438\\u0432\\u0435\\u0442":'
+            b' "\\u043c\\u0438\\u0440"}' in buf)
 
-        with open(filename, 'rb') as f:
-            self.assertEqual('image/png',
-                             self.part._guess_content_type(f))
 
-    def test_guess_filename(self):
-        class Named:
-            name = 'foo'
-        self.assertIsNone(self.part._guess_filename({}))
-        self.assertIsNone(self.part._guess_filename(object()))
-        self.assertIsNone(self.part._guess_filename(io.BytesIO(b'foo')))
-        self.assertIsNone(self.part._guess_filename(Named()))
-        with open(__file__, 'rb') as f:
-            self.assertEqual(os.path.basename(f.name),
-                             self.part._guess_filename(f))
+@asyncio.coroutine
+def test_writer_serialize_form(buf, stream, writer):
+    data = [('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')]
+    writer.append_form(data)
+    yield from writer.write(stream)
 
-    def test_autoset_content_disposition(self):
-        self.part.obj = open(__file__, 'rb')
-        self.addCleanup(self.part.obj.close)
-        self.part._fill_headers_with_defaults()
-        self.assertIn(CONTENT_DISPOSITION, self.part.headers)
-        fname = os.path.basename(self.part.obj.name)
-        self.assertEqual(
-            'attachment; filename="{0}"; filename*=utf-8\'\'{0}'.format(fname),
-            self.part.headers[CONTENT_DISPOSITION])
+    assert (b'foo=bar&foo=baz&boo=zoo' in buf)
 
-    def test_set_content_disposition(self):
-        self.part.set_content_disposition('attachment', foo='bar')
-        self.assertEqual(
-            'attachment; foo="bar"',
-            self.part.headers[CONTENT_DISPOSITION])
 
-    def test_set_content_disposition_bad_type(self):
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('foo bar')
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('тест')
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('foo\x00bar')
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('')
+@asyncio.coroutine
+def test_writer_serialize_form_dict(buf, stream, writer):
+    data = {'hello': 'мир'}
+    writer.append_form(data)
+    yield from writer.write(stream)
 
-    def test_set_content_disposition_bad_param(self):
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('inline', **{'foo bar': 'baz'})
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('inline', **{'тест': 'baz'})
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('inline', **{'': 'baz'})
-        with self.assertRaises(ValueError):
-            self.part.set_content_disposition('inline',
-                                              **{'foo\x00bar': 'baz'})
+    assert (b'hello=%D0%BC%D0%B8%D1%80' in buf)
 
-    def test_serialize_bytes(self):
-        self.assertEqual(b'foo', next(self.part._serialize_bytes(b'foo')))
 
-    def test_serialize_str(self):
-        self.assertEqual(b'foo', next(self.part._serialize_str('foo')))
+@asyncio.coroutine
+def test_writer_write(buf, stream, writer):
+    writer.append('foo-bar-baz')
+    writer.append_json({'test': 'passed'})
+    writer.append_form({'test': 'passed'})
+    writer.append_form([('one', 1), ('two', 2)])
 
-    def test_serialize_str_custom_encoding(self):
-        self.part.headers[CONTENT_TYPE] = \
-            'text/plain;charset=cp1251'
-        self.assertEqual('привет'.encode('cp1251'),
-                         next(self.part._serialize_str('привет')))
+    sub_multipart = aiohttp.multipart.MultipartWriter(boundary='::')
+    sub_multipart.append('nested content')
+    sub_multipart.headers['X-CUSTOM'] = 'test'
+    writer.append(sub_multipart)
+    yield from writer.write(stream)
 
-    def test_serialize_io(self):
-        self.assertEqual(b'foo',
-                         next(self.part._serialize_io(io.BytesIO(b'foo'))))
-        self.assertEqual(b'foo',
-                         next(self.part._serialize_io(io.StringIO('foo'))))
+    assert (
+        (b'--:\r\n'
+         b'Content-Type: text/plain; charset=utf-8\r\n'
+         b'Content-Length: 11\r\n\r\n'
+         b'foo-bar-baz'
+         b'\r\n'
 
-    def test_serialize_io_chunk(self):
-        flo = io.BytesIO(b'foobarbaz')
-        self.part._chunk_size = 3
-        self.assertEqual([b'foo', b'bar', b'baz'],
-                         list(self.part._serialize_io(flo)))
+         b'--:\r\n'
+         b'Content-Type: application/json\r\n'
+         b'Content-Length: 18\r\n\r\n'
+         b'{"test": "passed"}'
+         b'\r\n'
 
-    def test_serialize_json(self):
-        self.assertEqual(b'{"\\u043f\\u0440\\u0438\\u0432\\u0435\\u0442":'
-                         b' "\\u043c\\u0438\\u0440"}',
-                         next(self.part._serialize_json({'привет': 'мир'})))
+         b'--:\r\n'
+         b'Content-Type: application/x-www-form-urlencoded\r\n'
+         b'Content-Length: 11\r\n\r\n'
+         b'test=passed'
+         b'\r\n'
 
-    def test_serialize_form(self):
-        data = [('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')]
-        self.assertEqual(b'foo=bar&foo=baz&boo=zoo',
-                         next(self.part._serialize_form(data)))
+         b'--:\r\n'
+         b'Content-Type: application/x-www-form-urlencoded\r\n'
+         b'Content-Length: 11\r\n\r\n'
+         b'one=1&two=2'
+         b'\r\n'
 
-    def test_serialize_form_dict(self):
-        data = {'hello': 'мир'}
-        self.assertEqual(b'hello=%D0%BC%D0%B8%D1%80',
-                         next(self.part._serialize_form(data)))
+         b'--:\r\n'
+         b'Content-Type: multipart/mixed; boundary="::"\r\n'
+         b'X-Custom: test\r\nContent-Length: 93\r\n\r\n'
+         b'--::\r\n'
+         b'Content-Type: text/plain; charset=utf-8\r\n'
+         b'Content-Length: 14\r\n\r\n'
+         b'nested content\r\n'
+         b'--::--\r\n'
+         b'\r\n'
+         b'--:--\r\n') == bytes(buf))
 
-    def test_serialize_multipart(self):
-        multipart = aiohttp.multipart.MultipartWriter(boundary=':')
-        multipart.append('foo-bar-baz')
-        multipart.append_json({'test': 'passed'})
-        multipart.append_form({'test': 'passed'})
-        multipart.append_form([('one', 1), ('two', 2)])
-        sub_multipart = aiohttp.multipart.MultipartWriter(boundary='::')
-        sub_multipart.append('nested content')
-        sub_multipart.headers['X-CUSTOM'] = 'test'
-        multipart.append(sub_multipart)
-        self.assertEqual(
-            [b'--:\r\n',
-             b'Content-Type: text/plain; charset=utf-8\r\n'
-             b'Content-Length: 11',
-             b'\r\n\r\n',
-             b'foo-bar-baz',
-             b'\r\n',
 
-             b'--:\r\n',
-             b'Content-Type: application/json',
-             b'\r\n\r\n',
-             b'{"test": "passed"}',
-             b'\r\n',
+@asyncio.coroutine
+def test_writer_serialize_with_content_encoding_gzip(buf, stream, writer):
+    writer.append('Time to Relax!', {CONTENT_ENCODING: 'gzip'})
+    yield from writer.write(stream)
+    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-             b'--:\r\n',
-             b'Content-Type: application/x-www-form-urlencoded',
-             b'\r\n\r\n',
-             b'test=passed',
-             b'\r\n',
+    assert (b'--:\r\nContent-Encoding: gzip\r\n'
+            b'Content-Type: text/plain; charset=utf-8' == headers)
 
-             b'--:\r\n',
-             b'Content-Type: application/x-www-form-urlencoded',
-             b'\r\n\r\n',
-             b'one=1&two=2',
-             b'\r\n',
+    decompressor = zlib.decompressobj(wbits=16+zlib.MAX_WBITS)
+    data = decompressor.decompress(message.split(b'\r\n')[0])
+    data += decompressor.flush()
+    assert b'Time to Relax!' == data
 
-             b'--:\r\n',
-             b'Content-Type: multipart/mixed; boundary="::"\r\nX-Custom: test',
-             b'\r\n\r\n',
-             b'--::\r\n',
-             b'Content-Type: text/plain; charset=utf-8\r\n'
-             b'Content-Length: 14',
-             b'\r\n\r\n',
-             b'nested content',
-             b'\r\n',
-             b'--::--\r\n',
-             b'',
-             b'\r\n',
-             b'--:--\r\n',
-             b''],
-            list(self.part._serialize_multipart(multipart))
-        )
 
-    def test_serialize_default(self):
-        with self.assertRaises(TypeError):
-            self.part.obj = object()
-            list(self.part.serialize())
-        with self.assertRaises(TypeError):
-            next(self.part._serialize_default(object()))
+@asyncio.coroutine
+def test_writer_serialize_with_content_encoding_deflate(buf, stream, writer):
+    writer.append('Time to Relax!', {CONTENT_ENCODING: 'deflate'})
+    yield from writer.write(stream)
+    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    def test_serialize_with_content_encoding_gzip(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            'Time to Relax!', {CONTENT_ENCODING: 'gzip'})
-        stream = part.serialize()
-        self.assertEqual(b'Content-Encoding: gzip\r\n'
-                         b'Content-Type: text/plain; charset=utf-8',
-                         next(stream))
-        self.assertEqual(b'\r\n\r\n', next(stream))
+    assert (b'--:\r\nContent-Encoding: deflate\r\n'
+            b'Content-Type: text/plain; charset=utf-8' == headers)
 
-        result = b''.join(stream)
+    thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--\r\n'
+    assert thing == message
 
-        decompressor = zlib.decompressobj(wbits=16+zlib.MAX_WBITS)
-        data = decompressor.decompress(result)
-        self.assertEqual(b'Time to Relax!', data)
-        self.assertIsNone(next(stream, None))
 
-    def test_serialize_with_content_encoding_deflate(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            'Time to Relax!', {CONTENT_ENCODING: 'deflate'})
-        stream = part.serialize()
-        self.assertEqual(b'Content-Encoding: deflate\r\n'
-                         b'Content-Type: text/plain; charset=utf-8',
-                         next(stream))
-        self.assertEqual(b'\r\n\r\n', next(stream))
+@asyncio.coroutine
+def test_writer_serialize_with_content_encoding_identity(buf, stream, writer):
+    thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00'
+    writer.append(thing, {CONTENT_ENCODING: 'identity'})
+    yield from writer.write(stream)
+    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-        thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n'
-        self.assertEqual(thing, b''.join(stream))
-        self.assertIsNone(next(stream, None))
+    assert (b'--:\r\nContent-Encoding: identity\r\n'
+            b'Content-Type: application/octet-stream\r\n'
+            b'Content-Length: 16' == headers)
 
-    def test_serialize_with_content_encoding_identity(self):
-        thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00'
-        part = aiohttp.multipart.BodyPartWriter(
-            thing, {CONTENT_ENCODING: 'identity'})
-        stream = part.serialize()
-        self.assertEqual(b'Content-Encoding: identity\r\n'
-                         b'Content-Type: application/octet-stream\r\n'
-                         b'Content-Length: 16',
-                         next(stream))
-        self.assertEqual(b'\r\n\r\n', next(stream))
+    assert thing == message.split(b'\r\n')[0]
 
-        self.assertEqual(thing, next(stream))
-        self.assertEqual(b'\r\n', next(stream))
-        self.assertIsNone(next(stream, None))
 
-    def test_serialize_with_content_encoding_unknown(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            'Time to Relax!', {CONTENT_ENCODING: 'snappy'})
-        with self.assertRaises(RuntimeError):
-            list(part.serialize())
+def test_writer_serialize_with_content_encoding_unknown(buf, stream, writer):
+    with pytest.raises(RuntimeError):
+        writer.append('Time to Relax!', {CONTENT_ENCODING: 'snappy'})
 
-    def test_serialize_with_content_transfer_encoding_base64(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            'Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'base64'})
-        stream = part.serialize()
-        self.assertEqual(b'Content-Transfer-Encoding: base64\r\n'
-                         b'Content-Type: text/plain; charset=utf-8',
-                         next(stream))
-        self.assertEqual(b'\r\n\r\n', next(stream))
 
-        self.assertEqual(b'VGltZSB0byBSZWxh', next(stream))
-        self.assertEqual(b'eCE=', next(stream))
-        self.assertEqual(b'\r\n', next(stream))
-        self.assertIsNone(next(stream, None))
+@asyncio.coroutine
+def test_writer_with_content_transfer_encoding_base64(buf, stream, writer):
+    writer.append('Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'base64'})
+    yield from writer.write(stream)
+    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    def test_serialize_io_with_content_transfer_encoding_base64(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            io.BytesIO(b'Time to Relax!'),
-            {CONTENT_TRANSFER_ENCODING: 'base64'})
-        part._chunk_size = 6
-        stream = part.serialize()
-        self.assertEqual(b'Content-Transfer-Encoding: base64\r\n'
-                         b'Content-Type: application/octet-stream',
-                         next(stream))
-        self.assertEqual(b'\r\n\r\n', next(stream))
+    assert (b'--:\r\nContent-Transfer-Encoding: base64\r\n'
+            b'Content-Type: text/plain; charset=utf-8' ==
+            headers)
 
-        self.assertEqual(b'VGltZSB0', next(stream))
-        self.assertEqual(b'byBSZWxh', next(stream))
-        self.assertEqual(b'eCE=', next(stream))
-        self.assertEqual(b'\r\n', next(stream))
-        self.assertIsNone(next(stream, None))
+    assert b'VGltZSB0byBSZWxheCE=' == message.split(b'\r\n')[0]
 
-    def test_serialize_with_content_transfer_encoding_quote_printable(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            'Привет, мир!', {CONTENT_TRANSFER_ENCODING: 'quoted-printable'})
-        stream = part.serialize()
-        self.assertEqual(b'Content-Transfer-Encoding: quoted-printable\r\n'
-                         b'Content-Type: text/plain; charset=utf-8',
-                         next(stream))
-        self.assertEqual(b'\r\n\r\n', next(stream))
 
-        self.assertEqual(b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
-                         b' =D0=BC=D0=B8=D1=80!', next(stream))
-        self.assertEqual(b'\r\n', next(stream))
-        self.assertIsNone(next(stream, None))
+@asyncio.coroutine
+def test_writer_content_transfer_encoding_quote_printable(buf, stream, writer):
+    writer.append('Привет, мир!',
+                  {CONTENT_TRANSFER_ENCODING: 'quoted-printable'})
+    yield from writer.write(stream)
+    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    def test_serialize_with_content_transfer_encoding_binary(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            'Привет, мир!'.encode('utf-8'),
-            {CONTENT_TRANSFER_ENCODING: 'binary'})
-        stream = part.serialize()
-        self.assertEqual(b'Content-Transfer-Encoding: binary\r\n'
-                         b'Content-Type: application/octet-stream',
-                         next(stream))
-        self.assertEqual(b'\r\n\r\n', next(stream))
+    assert (b'--:\r\nContent-Transfer-Encoding: quoted-printable\r\n'
+            b'Content-Type: text/plain; charset=utf-8' == headers)
 
-        self.assertEqual(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
-                         b' \xd0\xbc\xd0\xb8\xd1\x80!', next(stream))
-        self.assertEqual(b'\r\n', next(stream))
-        self.assertIsNone(next(stream, None))
+    assert (b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
+            b' =D0=BC=D0=B8=D1=80!' == message.split(b'\r\n')[0])
 
-    def test_serialize_with_content_transfer_encoding_unknown(self):
-        part = aiohttp.multipart.BodyPartWriter(
-            'Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'unknown'})
-        with self.assertRaises(RuntimeError):
-            list(part.serialize())
 
-    def test_filename(self):
-        self.part.set_content_disposition('related', filename='foo.html')
-        self.assertEqual('foo.html', self.part.filename)
-
-    def test_wrap_multipart(self):
-        writer = aiohttp.multipart.MultipartWriter(boundary=':')
-        part = aiohttp.multipart.BodyPartWriter(writer)
-        self.assertEqual(part.headers, writer.headers)
-        part.headers['X-Custom'] = 'test'
-        self.assertEqual(part.headers, writer.headers)
+def test_writer_content_transfer_encoding_unknown(buf, stream, writer):
+    with pytest.raises(RuntimeError):
+        writer.append('Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'unknown'})
 
 
 class MultipartWriterTestCase(unittest.TestCase):
 
     def setUp(self):
+        self.buf = bytearray()
+        self.stream = mock.Mock()
+
+        def write(chunk):
+            self.buf.extend(chunk)
+            return ()
+
+        self.stream.write.side_effect = write
+
         self.writer = aiohttp.multipart.MultipartWriter(boundary=':')
 
     def test_default_subtype(self):
@@ -1061,52 +955,50 @@ class MultipartWriterTestCase(unittest.TestCase):
         self.assertEqual(0, len(self.writer))
         self.writer.append('hello, world!')
         self.assertEqual(1, len(self.writer))
-        self.assertIsInstance(self.writer.parts[0],
-                              self.writer.part_writer_cls)
+        self.assertIsInstance(self.writer._parts[0][0], payload.Payload)
 
     def test_append_with_headers(self):
         self.writer.append('hello, world!', {'x-foo': 'bar'})
         self.assertEqual(1, len(self.writer))
-        self.assertIn('x-foo', self.writer.parts[0].headers)
-        self.assertEqual(self.writer.parts[0].headers['x-foo'], 'bar')
+        self.assertIn('x-foo', self.writer._parts[0][0].headers)
+        self.assertEqual(self.writer._parts[0][0].headers['x-foo'], 'bar')
 
     def test_append_json(self):
         self.writer.append_json({'foo': 'bar'})
         self.assertEqual(1, len(self.writer))
-        part = self.writer.parts[0]
+        part = self.writer._parts[0][0]
         self.assertEqual(part.headers[CONTENT_TYPE], 'application/json')
 
     def test_append_part(self):
-        part = aiohttp.multipart.BodyPartWriter('test',
-                                                {CONTENT_TYPE: 'text/plain'})
+        part = payload.get_payload(
+            'test', headers={CONTENT_TYPE: 'text/plain'})
         self.writer.append(part, {CONTENT_TYPE: 'test/passed'})
         self.assertEqual(1, len(self.writer))
-        part = self.writer.parts[0]
+        part = self.writer._parts[0][0]
         self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
 
     def test_append_json_overrides_content_type(self):
         self.writer.append_json({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
         self.assertEqual(1, len(self.writer))
-        part = self.writer.parts[0]
-        self.assertEqual(part.headers[CONTENT_TYPE], 'application/json')
+        part = self.writer._parts[0][0]
+        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
 
     def test_append_form(self):
         self.writer.append_form({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
         self.assertEqual(1, len(self.writer))
-        part = self.writer.parts[0]
-        self.assertEqual(part.headers[CONTENT_TYPE],
-                         'application/x-www-form-urlencoded')
+        part = self.writer._parts[0][0]
+        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
 
     def test_append_multipart(self):
         subwriter = aiohttp.multipart.MultipartWriter(boundary=':')
         subwriter.append_json({'foo': 'bar'})
         self.writer.append(subwriter, {CONTENT_TYPE: 'test/passed'})
         self.assertEqual(1, len(self.writer))
-        part = self.writer.parts[0]
+        part = self.writer._parts[0][0]
         self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
 
-    def test_serialize(self):
-        self.assertEqual([b''], list(self.writer.serialize()))
+    def test_write(self):
+        self.assertEqual([], list(self.writer.write(self.stream)))
 
     def test_with(self):
         with aiohttp.multipart.MultipartWriter(boundary=':') as writer:

@@ -13,7 +13,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, upstr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, helpers
+from aiohttp import BaseConnector, hdrs, helpers, payload
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.helpers import SimpleCookie
 
@@ -540,7 +540,7 @@ def test_post_data(loop):
             data={'life': '42'}, loop=loop)
         resp = req.send(mock.Mock(acquire=acquire))
         assert '/' == req.url.path
-        assert b'life=42' == req.body
+        assert b'life=42' == req.body._value
         assert 'application/x-www-form-urlencoded' ==\
             req.headers['CONTENT-TYPE']
         yield from req.close()
@@ -580,7 +580,7 @@ def test_get_with_data(loop):
             meth, URL('http://python.org/'), data={'life': '42'},
             loop=loop)
         assert '/' == req.url.path
-        assert b'life=42' == req.body
+        assert b'life=42' == req.body._value
         yield from req.close()
 
 
@@ -592,7 +592,8 @@ def test_bytes_data(loop):
             data=b'binary data', loop=loop)
         resp = req.send(mock.Mock(acquire=acquire))
         assert '/' == req.url.path
-        assert b'binary data' == req.body
+        assert isinstance(req.body, payload.BytesPayload)
+        assert b'binary data' == req.body._value
         assert 'application/octet-stream' == req.headers['CONTENT-TYPE']
         yield from req.close()
         resp.close()
@@ -813,7 +814,7 @@ def test_data_file(loop, transport):
         data=io.BufferedReader(io.BytesIO(b'*' * 2)),
         loop=loop)
     assert req.chunked
-    assert isinstance(req.body, io.IOBase)
+    assert isinstance(req.body, payload.BufferedReaderPayload)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     transport, buf = transport

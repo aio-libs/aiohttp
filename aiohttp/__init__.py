@@ -4,6 +4,7 @@ __version__ = '2.0.0a0'
 
 from . import hdrs  # noqa
 from .client import *  # noqa
+from .formdata import *  # noqa
 from .helpers import *  # noqa
 from .http_message import HttpVersion, HttpVersion10, HttpVersion11  # noqa
 from .http_websocket import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
@@ -11,6 +12,8 @@ from .streams import *  # noqa
 from .multipart import *  # noqa
 from .file_sender import FileSender  # noqa
 from .cookiejar import CookieJar  # noqa
+from .payload import *  # noqa
+from .payload_streamer import *  # noqa
 from .resolver import *  # noqa
 
 # deprecated #1657
@@ -23,9 +26,12 @@ from .client_exceptions import ClientDisconnectedError, ClientTimeoutError, Fing
 
 
 __all__ = (client.__all__ +  # noqa
+           formdata.__all__ +  # noqa
            helpers.__all__ +  # noqa
-           streams.__all__ +  # noqa
            multipart.__all__ +  # noqa
+           payload.__all__ +  # noqa
+           payload_streamer.__all__ +  # noqa
+           streams.__all__ +  # noqa
            ('hdrs', 'FileSender',
             'HttpVersion', 'HttpVersion10', 'HttpVersion11',
             'WSMsgType', 'MsgType', 'WSCloseCode',

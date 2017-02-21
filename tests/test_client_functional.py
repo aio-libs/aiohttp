@@ -1014,9 +1014,32 @@ def test_POST_DATA_with_explicit_formdata(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_DATA_with_charset(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        mp = yield from request.multipart()
+        part = yield from mp.next()
+        text = yield from part.text()
+        return web.Response(text=text)
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    form = aiohttp.FormData()
+    form.add_field('name', 'текст', content_type='text/plain; charset=koi8-r')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'текст'
+    resp.close()
+
+
+@pytest.mark.xfail
+@asyncio.coroutine
+def test_POST_DATA_with_charset_post(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
@@ -1036,14 +1059,13 @@ def test_POST_DATA_with_charset(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
         assert data['name'] == b'text'  # should it be str?
-        return web.Response()
+        return web.Response(body=data['name'])
 
     app = web.Application(loop=loop)
     app.router.add_post('/', handler)
@@ -1051,6 +1073,32 @@ def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
 
     form = aiohttp.FormData()
     form.add_field('name', 'text', content_transfer_encoding='base64')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'text'
+    resp.close()
+
+
+@pytest.mark.xfail
+@asyncio.coroutine
+def test_POST_DATA_with_content_type_context_transfer_encoding(
+        loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert data['name'] == 'text'  # should it be str?
+        return web.Response(body=data['name'])
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    form = aiohttp.FormData()
+    form.add_field('name', 'text',
+                   content_type='text/plain',
+                   content_transfer_encoding='base64')
 
     resp = yield from client.post('/', data=form)
     assert 200 == resp.status
@@ -1233,12 +1281,27 @@ def test_POST_FILES_CT(loop, test_client, fname):
 @asyncio.coroutine
 def test_POST_FILES_SINGLE(loop, test_client, fname):
 
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.text()
+        with fname.open('r') as f:
+            content = f.read()
+            assert content == data
+            # if system cannot determine 'application/pgp-keys' MIME type
+            # then use 'application/octet-stream' default
+        assert request.content_type in ['application/pgp-keys',
+                                        'text/plain',
+                                        'application/octet-stream']
+        return web.HTTPOk()
+
     app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
     client = yield from test_client(app)
 
     with fname.open() as f:
-        with pytest.raises(ValueError):
-            yield from client.post('/', data=f)
+        resp = yield from client.post('/', data=f)
+        assert 200 == resp.status
+        resp.close()
 
 
 @asyncio.coroutine
@@ -1366,7 +1429,6 @@ def test_POST_FILES_WITH_DATA(loop, test_client, fname):
         resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_STREAM_DATA(loop, test_client, fname):
     @asyncio.coroutine
@@ -1375,7 +1437,75 @@ def test_POST_STREAM_DATA(loop, test_client, fname):
         content = yield from request.read()
         with fname.open('rb') as f:
             expected = f.read()
-        assert request.content_length == str(len(expected))
+            assert request.content_length == len(expected)
+            assert content == expected
+
+        return web.HTTPOk()
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with fname.open('rb') as f:
+        data_size = len(f.read())
+
+    @aiohttp.streamer
+    def stream(writer, fname):
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
+
+    resp = yield from client.post(
+        '/', data=stream(fname), headers={'Content-Length': str(data_size)})
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/octet-stream'
+        content = yield from request.read()
+        with fname.open('rb') as f:
+            expected = f.read()
+            assert request.content_length == len(expected)
+            assert content == expected
+
+        return web.HTTPOk()
+
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with fname.open('rb') as f:
+        data_size = len(f.read())
+
+    @aiohttp.streamer
+    def stream(writer):
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
+
+    resp = yield from client.post(
+        '/', data=stream, headers={'Content-Length': str(data_size)})
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_STREAM_DATA_coroutine_deprecated(loop, test_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/octet-stream'
+        content = yield from request.read()
+        with fname.open('rb') as f:
+            expected = f.read()
+        assert request.content_length == len(expected)
         assert content == expected
 
         return web.HTTPOk()
@@ -1384,7 +1514,7 @@ def test_POST_STREAM_DATA(loop, test_client, fname):
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         data = f.read()
         fut = create_future(loop)
 
@@ -1402,7 +1532,6 @@ def test_POST_STREAM_DATA(loop, test_client, fname):
         resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_StreamReader(fname, loop, test_client):
     @asyncio.coroutine
@@ -1411,7 +1540,7 @@ def test_POST_StreamReader(fname, loop, test_client):
         content = yield from request.read()
         with fname.open('rb') as f:
             expected = f.read()
-        assert request.content_length == str(len(expected))
+        assert request.content_length == len(expected)
         assert content == expected
 
         return web.HTTPOk()
@@ -1420,7 +1549,7 @@ def test_POST_StreamReader(fname, loop, test_client):
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         data = f.read()
 
     stream = aiohttp.StreamReader(loop=loop)

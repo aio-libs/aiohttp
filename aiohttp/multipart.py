@@ -1,36 +1,26 @@
 import asyncio
 import base64
 import binascii
-import io
 import json
-import mimetypes
-import os
 import re
 import uuid
 import warnings
 import zlib
 from collections import Mapping, Sequence, deque
-from pathlib import Path
-from urllib.parse import parse_qsl, quote, unquote, urlencode
+from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict
 
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
-from .helpers import PY_35, PY_352, parse_mimetype
+from .helpers import CHAR, PY_35, PY_352, TOKEN, parse_mimetype
 from .http import HttpParser
+from .payload import (BytesPayload, LookupError, Payload, StringPayload,
+                      get_payload)
 
-__all__ = ('MultipartReader', 'MultipartWriter',
-           'BodyPartReader', 'BodyPartWriter',
+__all__ = ('MultipartReader', 'MultipartWriter', 'BodyPartReader',
            'BadContentDispositionHeader', 'BadContentDispositionParam',
            'parse_content_disposition', 'content_disposition_filename')
-
-
-CHAR = set(chr(i) for i in range(0, 128))
-CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
-SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
-              '?', '=', '{', '}', ' ', chr(9)}
-TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
 class BadContentDispositionHeader(RuntimeWarning):
@@ -668,268 +658,22 @@ class MultipartReader(object):
             self._last_part = None
 
 
-class BodyPartWriter(object):
-    """Multipart writer for single body part."""
-
-    def __init__(self, obj, headers=None, *, chunk_size=8192):
-        if isinstance(obj, MultipartWriter):
-            if headers is not None:
-                obj.headers.update(headers)
-            headers = obj.headers
-        elif headers is None:
-            headers = CIMultiDict()
-        elif not isinstance(headers, CIMultiDict):
-            headers = CIMultiDict(headers)
-
-        self.obj = obj
-        self.headers = headers
-        self._chunk_size = chunk_size
-        self._fill_headers_with_defaults()
-
-        self._serialize_map = {
-            bytes: self._serialize_bytes,
-            str: self._serialize_str,
-            io.IOBase: self._serialize_io,
-            MultipartWriter: self._serialize_multipart,
-            ('application', 'json'): self._serialize_json,
-            ('application', 'x-www-form-urlencoded'): self._serialize_form
-        }
-        self._validate_obj(obj, headers)
-
-    def _validate_obj(self, obj, headers):
-        mtype, stype, *_ = parse_mimetype(headers.get(CONTENT_TYPE))
-        if (mtype, stype) in self._serialize_map:
-            return
-        for key in self._serialize_map:
-            if isinstance(key, tuple):
-                continue
-            if isinstance(obj, key):
-                return
-        else:
-            raise TypeError('unexpected body part value type %r' % type(obj))
-
-    def _fill_headers_with_defaults(self):
-        if CONTENT_TYPE not in self.headers:
-            content_type = self._guess_content_type(self.obj)
-            if content_type is not None:
-                self.headers[CONTENT_TYPE] = content_type
-
-        if CONTENT_LENGTH not in self.headers:
-            content_length = self._guess_content_length(self.obj)
-            if content_length is not None:
-                self.headers[CONTENT_LENGTH] = str(content_length)
-
-        if CONTENT_DISPOSITION not in self.headers:
-            filename = self._guess_filename(self.obj)
-            if filename is not None:
-                self.set_content_disposition('attachment', filename=filename)
-
-    def _guess_content_length(self, obj):
-        if isinstance(obj, bytes):
-            return len(obj)
-        elif isinstance(obj, str):
-            *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
-            charset = params.get('charset', 'us-ascii')
-            return len(obj.encode(charset))
-        elif isinstance(obj, io.StringIO):
-            *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
-            charset = params.get('charset', 'us-ascii')
-            return len(obj.getvalue().encode(charset)) - obj.tell()
-        elif isinstance(obj, io.BytesIO):
-            return len(obj.getvalue()) - obj.tell()
-        elif isinstance(obj, io.IOBase):
-            try:
-                return os.fstat(obj.fileno()).st_size - obj.tell()
-            except (AttributeError, OSError):
-                return None
-        else:
-            return None
-
-    def _guess_content_type(self, obj, default='application/octet-stream'):
-        if hasattr(obj, 'name'):
-            name = getattr(obj, 'name')
-            return mimetypes.guess_type(name)[0]
-        elif isinstance(obj, (str, io.StringIO)):
-            return 'text/plain; charset=utf-8'
-        else:
-            return default
-
-    def _guess_filename(self, obj):
-        if isinstance(obj, io.IOBase):
-            name = getattr(obj, 'name', None)
-            if name is not None:
-                return Path(name).name
-
-    def serialize(self):
-        """Yields byte chunks for body part."""
-
-        has_encoding = (
-            CONTENT_ENCODING in self.headers and
-            self.headers[CONTENT_ENCODING] != 'identity' or
-            CONTENT_TRANSFER_ENCODING in self.headers
-        )
-        if has_encoding:
-            # since we're following streaming approach which doesn't assumes
-            # any intermediate buffers, we cannot calculate real content length
-            # with the specified content encoding scheme. So, instead of lying
-            # about content length and cause reading issues, we have to strip
-            # this information.
-            self.headers.pop(CONTENT_LENGTH, None)
-
-        if self.headers:
-            yield b'\r\n'.join(
-                b': '.join(map(lambda i: i.encode('latin1'), item))
-                for item in self.headers.items()
-            )
-        yield b'\r\n\r\n'
-        yield from self._maybe_encode_stream(self._serialize_obj())
-        yield b'\r\n'
-
-    def _serialize_obj(self):
-        obj = self.obj
-        mtype, stype, *_ = parse_mimetype(self.headers.get(CONTENT_TYPE))
-        serializer = self._serialize_map.get((mtype, stype))
-        if serializer is not None:
-            return serializer(obj)
-
-        for key in self._serialize_map:
-            if not isinstance(key, tuple) and isinstance(obj, key):
-                return self._serialize_map[key](obj)
-        return self._serialize_default(obj)
-
-    def _serialize_bytes(self, obj):
-        yield obj
-
-    def _serialize_str(self, obj):
-        *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
-        yield obj.encode(params.get('charset', 'us-ascii'))
-
-    def _serialize_io(self, obj):
-        while True:
-            chunk = obj.read(self._chunk_size)
-            if not chunk:
-                break
-            if isinstance(chunk, str):
-                yield from self._serialize_str(chunk)
-            else:
-                yield from self._serialize_bytes(chunk)
-
-    def _serialize_multipart(self, obj):
-        yield from obj.serialize()
-
-    def _serialize_json(self, obj):
-        *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
-        yield json.dumps(obj).encode(params.get('charset', 'utf-8'))
-
-    def _serialize_form(self, obj):
-        if isinstance(obj, Mapping):
-            obj = list(obj.items())
-        return self._serialize_str(urlencode(obj, doseq=True))
-
-    def _serialize_default(self, obj):
-        raise TypeError('unknown body part type %r' % type(obj))
-
-    def _maybe_encode_stream(self, stream):
-        if CONTENT_ENCODING in self.headers:
-            stream = self._apply_content_encoding(stream)
-        if CONTENT_TRANSFER_ENCODING in self.headers:
-            stream = self._apply_content_transfer_encoding(stream)
-        yield from stream
-
-    def _apply_content_encoding(self, stream):
-        encoding = self.headers[CONTENT_ENCODING].lower()
-        if encoding == 'identity':
-            yield from stream
-        elif encoding in ('deflate', 'gzip'):
-            if encoding == 'gzip':
-                zlib_mode = 16 + zlib.MAX_WBITS
-            else:
-                zlib_mode = -zlib.MAX_WBITS
-            zcomp = zlib.compressobj(wbits=zlib_mode)
-            for chunk in stream:
-                yield zcomp.compress(chunk)
-            else:
-                yield zcomp.flush()
-        else:
-            raise RuntimeError('unknown content encoding: {}'
-                               ''.format(encoding))
-
-    def _apply_content_transfer_encoding(self, stream):
-        encoding = self.headers[CONTENT_TRANSFER_ENCODING].lower()
-        if encoding == 'base64':
-            buffer = bytearray()
-            while True:
-                if buffer:
-                    div, mod = divmod(len(buffer), 3)
-                    chunk, buffer = buffer[:div * 3], buffer[div * 3:]
-                    if chunk:
-                        yield base64.b64encode(chunk)
-                chunk = next(stream, None)
-                if not chunk:
-                    if buffer:
-                        yield base64.b64encode(buffer[:])
-                    return
-                buffer.extend(chunk)
-        elif encoding == 'quoted-printable':
-            for chunk in stream:
-                yield binascii.b2a_qp(chunk)
-        elif encoding == 'binary':
-            yield from stream
-        else:
-            raise RuntimeError('unknown content transfer encoding: {}'
-                               ''.format(encoding))
-
-    def set_content_disposition(self, disptype, quote_fields=True, **params):
-        """Sets ``Content-Disposition`` header.
-
-        :param str disptype: Disposition type: inline, attachment, form-data.
-                            Should be valid extension token (see RFC 2183)
-        :param dict params: Disposition params
-        """
-        if not disptype or not (TOKEN > set(disptype)):
-            raise ValueError('bad content disposition type {!r}'
-                             ''.format(disptype))
-        value = disptype
-        if params:
-            lparams = []
-            for key, val in params.items():
-                if not key or not (TOKEN > set(key)):
-                    raise ValueError('bad content disposition parameter'
-                                     ' {!r}={!r}'.format(key, val))
-                qval = quote(val, '') if quote_fields else val
-                lparams.append((key, '"%s"' % qval))
-                if key == 'filename':
-                    lparams.append(('filename*', "utf-8''" + qval))
-            sparams = '; '.join('='.join(pair) for pair in lparams)
-            value = '; '.join((value, sparams))
-        self.headers[CONTENT_DISPOSITION] = value
-
-    @property
-    def filename(self):
-        """Returns filename specified in Content-Disposition header or ``None``
-        if missed."""
-        _, params = parse_content_disposition(
-            self.headers.get(CONTENT_DISPOSITION))
-        return content_disposition_filename(params)
-
-
-class MultipartWriter(object):
+class MultipartWriter(Payload):
     """Multipart body writer."""
-
-    #: Body part reader class for non multipart/* content types.
-    part_writer_cls = BodyPartWriter
 
     def __init__(self, subtype='mixed', boundary=None):
         boundary = boundary if boundary is not None else uuid.uuid4().hex
         try:
-            boundary.encode('us-ascii')
+            self._boundary = boundary.encode('us-ascii')
         except UnicodeEncodeError:
             raise ValueError('boundary should contains ASCII only chars')
-        self.headers = CIMultiDict()
-        self.headers[CONTENT_TYPE] = 'multipart/{}; boundary="{}"'.format(
-            subtype, boundary
-        )
-        self.parts = []
+        ctype = 'multipart/{}; boundary="{}"'.format(subtype, boundary)
+
+        super().__init__(None, content_type=ctype)
+
+        self._parts = []
+        self._headers = CIMultiDict()
+        self._headers[CONTENT_TYPE] = self.content_type
 
     def __enter__(self):
         return self
@@ -938,53 +682,191 @@ class MultipartWriter(object):
         pass
 
     def __iter__(self):
-        return iter(self.parts)
+        return iter(self._parts)
 
     def __len__(self):
-        return len(self.parts)
+        return len(self._parts)
 
     @property
     def boundary(self):
-        *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
-        return params['boundary'].encode('us-ascii')
+        return self._boundary
 
     def append(self, obj, headers=None):
-        """Adds a new body part to multipart writer."""
-        if isinstance(obj, self.part_writer_cls):
-            if headers:
+        if headers is None:
+            headers = CIMultiDict()
+
+        if isinstance(obj, Payload):
+            if obj.headers is not None:
                 obj.headers.update(headers)
-            self.parts.append(obj)
+            else:
+                obj._headers = headers
+            self.append_payload(obj)
         else:
-            if not headers:
-                headers = CIMultiDict()
-            self.parts.append(self.part_writer_cls(obj, headers))
-        return self.parts[-1]
+            try:
+                self.append_payload(get_payload(obj, headers=headers))
+            except LookupError:
+                raise TypeError
+
+    def append_payload(self, payload):
+        """Adds a new body part to multipart writer."""
+        # content-type
+        if CONTENT_TYPE not in payload.headers:
+            payload.headers[CONTENT_TYPE] = payload.content_type
+
+        # compression
+        encoding = payload.headers.get(CONTENT_ENCODING, '').lower()
+        if encoding and encoding not in ('deflate', 'gzip', 'identity'):
+            raise RuntimeError('unknown content encoding: {}'.format(encoding))
+        if encoding == 'identity':
+            encoding = None
+
+        # te encoding
+        te_encoding = payload.headers.get(
+            CONTENT_TRANSFER_ENCODING, '').lower()
+        if te_encoding not in ('', 'base64', 'quoted-printable', 'binary'):
+            raise RuntimeError('unknown content transfer encoding: {}'
+                               ''.format(te_encoding))
+        if te_encoding == 'binary':
+            te_encoding = None
+
+        # size
+        size = payload.size
+        if size is not None and not (encoding or te_encoding):
+            payload.headers[CONTENT_LENGTH] = str(size)
+
+        # render headers
+        headers = ''.join(
+            [k + ': ' + v + '\r\n' for k, v in payload.headers.items()]
+        ).encode('utf-8') + b'\r\n'
+
+        self._parts.append((payload, headers, encoding, te_encoding))
 
     def append_json(self, obj, headers=None):
         """Helper to append JSON part."""
-        if not headers:
+        if headers is None:
             headers = CIMultiDict()
-        headers[CONTENT_TYPE] = 'application/json'
-        return self.append(obj, headers)
+
+        *_, params = parse_mimetype(headers.get(CONTENT_TYPE))
+        charset = params.get('charset', 'utf-8')
+
+        data = json.dumps(obj).encode(charset)
+        self.append_payload(
+            BytesPayload(
+                data, headers=headers, content_type='application/json'))
 
     def append_form(self, obj, headers=None):
         """Helper to append form urlencoded part."""
-        if not headers:
-            headers = CIMultiDict()
-        headers[CONTENT_TYPE] = 'application/x-www-form-urlencoded'
         assert isinstance(obj, (Sequence, Mapping))
-        return self.append(obj, headers)
 
-    def serialize(self):
-        """Yields multipart byte chunks."""
-        if not self.parts:
-            yield b''
+        if headers is None:
+            headers = CIMultiDict()
+
+        if isinstance(obj, Mapping):
+            obj = list(obj.items())
+        data = urlencode(obj, doseq=True)
+
+        return self.append_payload(
+            StringPayload(data, headers=headers,
+                          content_type='application/x-www-form-urlencoded'))
+
+    @property
+    def size(self):
+        """Size of the payload."""
+        if not self._parts:
+            return 0
+
+        total = 0
+        for part, headers, encoding, te_encoding in self._parts:
+            if encoding or te_encoding or part.size is None:
+                return None
+
+            total += (
+                2 + len(self._boundary) + 2 +  # b'--'+self._boundary+b'\r\n'
+                part.size + len(headers) +
+                2  # b'\r\n'
+            )
+
+        total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
+        return total
+
+    @asyncio.coroutine
+    def write(self, writer):
+        """Write body."""
+        if not self._parts:
             return
 
-        for part in self.parts:
-            yield b'--' + self.boundary + b'\r\n'
-            yield from part.serialize()
-        else:
-            yield b'--' + self.boundary + b'--\r\n'
+        for part, headers, encoding, te_encoding in self._parts:
+            yield from writer.write(b'--' + self._boundary + b'\r\n')
+            yield from writer.write(headers)
 
-        yield b''
+            if encoding or te_encoding:
+                w = MultipartPayloadWriter(writer)
+                if encoding:
+                    w.enable_compression(encoding)
+                if te_encoding:
+                    w.enable_encoding(te_encoding)
+                yield from part.write(w)
+                yield from w.write_eof()
+            else:
+                yield from part.write(writer)
+
+            yield from writer.write(b'\r\n')
+
+        yield from writer.write(b'--' + self._boundary + b'--\r\n')
+
+
+class MultipartPayloadWriter:
+
+    def __init__(self, writer):
+        self._writer = writer
+        self._encoding = None
+        self._compress = None
+
+    def enable_encoding(self, encoding):
+        if encoding == 'base64':
+            self._encoding = encoding
+            self._encoding_buffer = bytearray()
+        elif encoding == 'quoted-printable':
+            self._encoding = 'quoted-printable'
+
+    def enable_compression(self, encoding='deflate'):
+        zlib_mode = (16 + zlib.MAX_WBITS
+                     if encoding == 'gzip' else -zlib.MAX_WBITS)
+        self._compress = zlib.compressobj(wbits=zlib_mode)
+
+    @asyncio.coroutine
+    def write_eof(self):
+        if self._compress is not None:
+            chunk = self._compress.flush()
+            if chunk:
+                self._compress = None
+                yield from self.write(chunk)
+
+        if self._encoding == 'base64':
+            if self._encoding_buffer:
+                yield from self._writer.write(base64.b64encode(
+                    self._encoding_buffer))
+
+    @asyncio.coroutine
+    def write(self, chunk):
+        if self._compress is not None:
+            if chunk:
+                chunk = self._compress.compress(chunk)
+                if not chunk:
+                    return
+
+        if self._encoding == 'base64':
+            self._encoding_buffer.extend(chunk)
+
+            if self._encoding_buffer:
+                buffer = self._encoding_buffer
+                div, mod = divmod(len(buffer), 3)
+                enc_chunk, self._encoding_buffer = (
+                    buffer[:div * 3], buffer[div * 3:])
+                if enc_chunk:
+                    enc_chunk = base64.b64encode(enc_chunk)
+                    yield from self._writer.write(enc_chunk)
+        elif self._encoding == 'quoted-printable':
+            yield from self._writer.write(binascii.b2a_qp(chunk))
+        else:
+            yield from self._writer.write(chunk)

@@ -1,8 +1,6 @@
 import asyncio
 import io
 import json
-import mimetypes
-import os
 import sys
 import traceback
 import warnings
@@ -13,11 +11,11 @@ from yarl import URL
 
 import aiohttp
 
-from . import hdrs, helpers, http, streams
+from . import hdrs, helpers, http, payload
+from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
 from .http import HttpMessage
 from .log import client_logger
-from .multipart import MultipartWriter
 from .streams import FlowControlStreamReader
 
 try:
@@ -219,86 +217,54 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, data, skip_auto_headers):
-        if not data:
+    def update_body_from_data(self, body, skip_auto_headers):
+        if not body:
             return
 
-        if isinstance(data, str):
-            data = data.encode(self.encoding)
+        if asyncio.iscoroutine(body):
+            warnings.warn(
+                'coroutine as data object is deprecated, '
+                'use aiohttp.streamer  #1664',
+                DeprecationWarning, stacklevel=2)
 
-        if isinstance(data, (bytes, bytearray)):
-            self.body = data
-            if (hdrs.CONTENT_TYPE not in self.headers and
-                    hdrs.CONTENT_TYPE not in skip_auto_headers):
-                self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
-            if hdrs.CONTENT_LENGTH not in self.headers and not self.chunked:
-                self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
-
-        elif isinstance(data, (asyncio.StreamReader, streams.StreamReader,
-                               streams.DataQueue)):
-            self.body = data
-
-        elif asyncio.iscoroutine(data):
-            self.body = data
+            self.body = body
             if (hdrs.CONTENT_LENGTH not in self.headers and
                     self.chunked is None):
                 self.chunked = True
 
-        elif isinstance(data, io.IOBase):
-            assert not isinstance(data, io.StringIO), \
-                'attempt to send text data instead of binary'
-            self.body = data
-            if not self.chunked and isinstance(data, io.BytesIO):
-                # Not chunking if content-length can be determined
-                size = len(data.getbuffer())
-                self.headers[hdrs.CONTENT_LENGTH] = str(size)
-                self.chunked = False
-            elif (not self.chunked and
-                  isinstance(data, (io.BufferedReader, io.BufferedRandom))):
-                # Not chunking if content-length can be determined
-                try:
-                    size = os.fstat(data.fileno()).st_size - data.tell()
-                    self.headers[hdrs.CONTENT_LENGTH] = str(size)
-                    self.chunked = False
-                except OSError:
-                    # data.fileno() is not supported, e.g.
-                    # io.BufferedReader(io.BytesIO(b'data'))
+            return
+
+        # FormData
+        if isinstance(body, FormData):
+            body = body(self.encoding)
+
+        try:
+            body = payload.PAYLOAD_REGISTRY.get(body)
+        except payload.LookupError:
+            body = FormData(body)(self.encoding)
+
+        self.body = body
+
+        # enable chunked encoding if needed
+        if not self.chunked:
+            if hdrs.CONTENT_LENGTH not in self.headers:
+                size = body.size
+                if size is None:
                     self.chunked = True
-            else:
-                self.chunked = True
+                else:
+                    if hdrs.CONTENT_LENGTH not in self.headers:
+                        self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
-            if hasattr(data, 'mode'):
-                if data.mode == 'r':
-                    raise ValueError('file {!r} should be open in binary mode'
-                                     ''.format(data))
-            if (hdrs.CONTENT_TYPE not in self.headers and
-                hdrs.CONTENT_TYPE not in skip_auto_headers and
-                    hasattr(data, 'name')):
-                mime = mimetypes.guess_type(data.name)[0]
-                mime = 'application/octet-stream' if mime is None else mime
-                self.headers[hdrs.CONTENT_TYPE] = mime
+        # set content-type
+        if (hdrs.CONTENT_TYPE not in self.headers and
+                hdrs.CONTENT_TYPE not in skip_auto_headers):
+            self.headers[hdrs.CONTENT_TYPE] = body.content_type
 
-        elif isinstance(data, MultipartWriter):
-            self.body = data.serialize()
-            self.headers.update(data.headers)
-            self.chunked = True
-
-        else:
-            if not isinstance(data, helpers.FormData):
-                data = helpers.FormData(data)
-
-            self.body = data(self.encoding)
-
-            if (hdrs.CONTENT_TYPE not in self.headers and
-                    hdrs.CONTENT_TYPE not in skip_auto_headers):
-                self.headers[hdrs.CONTENT_TYPE] = data.content_type
-
-            if data.is_multipart:
-                self.chunked = True
-            else:
-                if (hdrs.CONTENT_LENGTH not in self.headers and
-                        not self.chunked):
-                    self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
+        # copy payload headers
+        if body.headers:
+            for (key, value) in body.headers.items():
+                if key not in self.headers:
+                    self.headers[key] = value
 
     def update_transfer_encoding(self):
         """Analyze transfer-encoding header."""
@@ -344,7 +310,10 @@ class ClientRequest:
             yield from self._continue
 
         try:
-            if asyncio.iscoroutine(self.body):
+            if isinstance(self.body, payload.Payload):
+                yield from self.body.write(request)
+
+            elif asyncio.iscoroutine(self.body):
                 exc = None
                 value = None
                 stream = self.body
@@ -377,29 +346,6 @@ class ClientRequest:
                         raise ValueError(
                             'Bytes object is expected, got: %s.' %
                             type(result))
-
-            elif isinstance(self.body, (asyncio.StreamReader,
-                                        streams.StreamReader)):
-                chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
-                while chunk:
-                    yield from request.write(chunk, drain=True)
-                    chunk = yield from self.body.read(streams.DEFAULT_LIMIT)
-
-            elif isinstance(self.body, streams.DataQueue):
-                while True:
-                    try:
-                        chunk = yield from self.body.read()
-                        if not chunk:
-                            break
-                        yield from request.write(chunk)
-                    except streams.EofStream:
-                        break
-
-            elif isinstance(self.body, io.IOBase):
-                chunk = self.body.read(streams.DEFAULT_LIMIT)
-                while chunk:
-                    request.write(chunk)
-                    chunk = self.body.read(self.chunked)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
