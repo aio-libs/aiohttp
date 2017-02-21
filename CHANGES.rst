@@ -116,3 +116,6 @@ CHANGES
 
 - Deprecated: `Application.finish()` and `Application.register_on_finish()`
   will be removed in 1.4 #1602
+
+- Add the `allow_head` keyword argument for `add_get` and
+  `router.set_defaults(allow_head=True/False)` #1618

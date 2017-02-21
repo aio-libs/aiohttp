@@ -85,9 +85,22 @@ Handlers are setup to handle requests by registering them with the
 *path* pair) using methods like :class:`UrlDispatcher.add_get` and
 :class:`UrlDispatcher.add_post`::
 
+   app.router.set_defaults(allow_head=True)
    app.router.add_get('/', handler)
    app.router.add_post('/post', post_handler)
    app.router.add_put('/put', put_handler)
+
+Setting ``allow_head=True`` in :meth:`~UrlDispatcher.set_defaults` means
+endpoints added with :meth:`~UrlDispatcher.add_get` will accept ``HEAD``
+requests by default, this is the standard for most http servers and is
+recommended. You can also set ``HEAD`` request permissions on each route::
+
+   app.router.add_get('/a', handler, allow_head=True)  # will allow HEAD requests
+   app.router.add_get('/a', handler, allow_head=False)  # will not allow HEAD requests
+
+If ``set_defaults(allow_head=True)`` is not called or called with ``False``
+or ``allow_head=False`` is explicitly set on the route, ``HEAD`` requests to
+routes added with :meth:`~UrlDispatcher.add_get will return ``405``.
 
 :meth:`~UrlDispatcher.add_route` also supports the wildcard *HTTP method*,
 allowing a handler to serve incoming requests on a *path* having **any**
