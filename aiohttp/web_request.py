@@ -1,14 +1,13 @@
 import asyncio
-import binascii
-import cgi
 import collections
 import datetime
-import io
 import json
 import re
+import tempfile
 import warnings
 from email.utils import parsedate
 from types import MappingProxyType
+from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
@@ -19,7 +18,8 @@ from .web_exceptions import HTTPRequestEntityTooLarge
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
 
-FileField = collections.namedtuple('Field', 'name filename file content_type')
+FileField = collections.namedtuple(
+    'Field', 'name filename file content_type headers')
 
 
 ############################################################
@@ -40,7 +40,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._protocol = protocol
         self._transport = protocol.transport
         self._post = None
-        self._post_files_cache = None
 
         self._payload = payload
         self._headers = message.headers
@@ -233,18 +232,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                       DeprecationWarning)
         return self._rel_url.query
 
-    @reify
-    def POST(self):
-        """A multidict with all the variables in the POST parameters.
-
-        post() methods has to be called before using this attribute.
-        """
-        warnings.warn("POST property is deprecated, use .post() instead",
-                      DeprecationWarning)
-        if self._post is None:
-            raise RuntimeError("POST is not available before post()")
-        return self._post
-
     @property
     def headers(self):
         """A case-insensitive multidict proxy with all headers."""
@@ -400,47 +387,43 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             warnings.warn('To process multipart requests use .multipart'
                           ' coroutine instead.', DeprecationWarning)
 
-        body = yield from self.read()
-        content_charset = self.charset or 'utf-8'
-
-        environ = {'REQUEST_METHOD': self._method,
-                   'CONTENT_LENGTH': str(len(body)),
-                   'QUERY_STRING': '',
-                   'CONTENT_TYPE': self._headers.get(hdrs.CONTENT_TYPE)}
-
-        fs = cgi.FieldStorage(fp=io.BytesIO(body),
-                              environ=environ,
-                              keep_blank_values=True,
-                              encoding=content_charset)
-
-        supported_transfer_encoding = {
-            'base64': binascii.a2b_base64,
-            'quoted-printable': binascii.a2b_qp
-        }
-
         out = MultiDict()
-        _count = 1
-        for field in fs.list or ():
-            transfer_encoding = field.headers.get(
-                hdrs.CONTENT_TRANSFER_ENCODING, None)
-            if field.filename:
-                ff = FileField(field.name,
-                               field.filename,
-                               field.file,  # N.B. file closed error
-                               field.type)
-                if self._post_files_cache is None:
-                    self._post_files_cache = {}
-                self._post_files_cache[field.name+str(_count)] = field
-                _count += 1
-                out.add(field.name, ff)
-            else:
-                value = field.value
-                if transfer_encoding in supported_transfer_encoding:
-                    # binascii accepts bytes
-                    value = value.encode('utf-8')
-                    value = supported_transfer_encoding[
-                        transfer_encoding](value)
-                out.add(field.name, value)
+
+        if content_type == 'multipart/form-data':
+            multipart = yield from self.multipart()
+
+            field = yield from multipart.next()
+            while field is not None:
+                content_type = field.headers.get(hdrs.CONTENT_TYPE)
+
+                if field.filename:
+                    # store file in temp file
+                    tmp = tempfile.TemporaryFile()
+                    chunk = yield from field.read_chunk(size=2**16)
+                    while chunk:
+                        tmp.write(field.decode(chunk))
+                        chunk = yield from field.read_chunk(size=2**16)
+                    tmp.seek(0)
+
+                    ff = FileField(field.name, field.filename,
+                                   tmp, content_type, field.headers)
+                    out.add(field.name, ff)
+                else:
+                    value = yield from field.read(decode=True)
+                    if content_type.startswith('text/'):
+                        charset = field.get_charset(default='utf-8')
+                        value = value.decode(charset)
+                    out.add(field.name, value)
+
+                field = yield from multipart.next()
+        else:
+            data = yield from self.read()
+            if data:
+                charset = self.charset or 'utf-8'
+                out.extend(
+                    parse_qsl(
+                        data.rstrip().decode(charset),
+                        encoding=charset))
 
         self._post = MultiDictProxy(out)
         return self._post

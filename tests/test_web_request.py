@@ -58,17 +58,6 @@ def test_doubleslashes(make_request):
     assert '/bar//foo/' == req.path
 
 
-def test_POST(make_request):
-    req = make_request('POST', '/')
-    with pytest.raises(RuntimeError):
-        req.POST
-
-    marker = object()
-    req._post = marker
-    assert req.POST is marker
-    assert req.POST is marker
-
-
 def test_content_type_not_specified(make_request):
     req = make_request('Get', '/')
     assert 'application/octet-stream' == req.content_type

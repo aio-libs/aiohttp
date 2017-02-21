@@ -137,12 +137,12 @@ class AbstractPayloadWriter(ABC):
     def write(self, chunk):
         """Write chunk into stream"""
 
-    @asyncio.coroutine  # pragma: no branch
+    @asyncio.coroutine
     @abstractmethod
     def write_eof(self, chunk=b''):
         """Write last chunk"""
 
-    @asyncio.coroutine  # pragma: no branch
     @asyncio.coroutine
+    @abstractmethod
     def drain(self):
         """Flush the write buffer."""

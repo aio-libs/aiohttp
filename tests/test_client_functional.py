@@ -1037,7 +1037,6 @@ def test_POST_DATA_with_charset(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_DATA_with_charset_post(loop, test_client):
     @asyncio.coroutine
@@ -1064,8 +1063,9 @@ def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
-        assert data['name'] == b'text'  # should it be str?
-        return web.Response(body=data['name'])
+        print(data)
+        assert data['name'] == 'text'
+        return web.Response(text=data['name'])
 
     app = web.Application(loop=loop)
     app.router.add_post('/', handler)
@@ -1081,14 +1081,13 @@ def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_DATA_with_content_type_context_transfer_encoding(
         loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
-        assert data['name'] == 'text'  # should it be str?
+        assert data['name'] == 'text'
         return web.Response(body=data['name'])
 
     app = web.Application(loop=loop)

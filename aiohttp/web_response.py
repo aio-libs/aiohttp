@@ -45,6 +45,7 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._payload_writer = None
         self._eof_sent = False
+        self._body_length = 0
 
         if headers is not None:
             self._headers = CIMultiDict(headers)
@@ -98,11 +99,11 @@ class StreamResponse(HeadersMixin):
 
     @property
     def body_length(self):
-        return self._payload_writer.output_length
+        return self._body_length
 
     @property
     def output_length(self):
-        return self._payload_writer.output_length
+        return self._payload_writer.buffer_size
 
     def enable_chunked_encoding(self, chunk_size=None):
         """Enables automatic chunked transfer encoding."""
@@ -418,6 +419,7 @@ class StreamResponse(HeadersMixin):
         yield from self._payload_writer.write_eof(data)
         self._eof_sent = True
         self._req = None
+        self._body_length = self._payload_writer.output_length
         self._payload_writer = None
 
     def __repr__(self):
