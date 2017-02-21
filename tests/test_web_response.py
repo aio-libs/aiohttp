@@ -400,6 +400,22 @@ def test_cannot_write_after_eof():
 
 
 @asyncio.coroutine
+def test_repr_after_eof():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    yield from resp.prepare(make_request('GET', '/', writer=writer))
+
+    assert resp.prepared
+
+    resp.write(b'data')
+    writer.drain.return_value = ()
+    yield from resp.write_eof()
+    assert not resp.prepared
+    resp_repr = repr(resp)
+    assert resp_repr == '<StreamResponse OK not started>'
+
+
+@asyncio.coroutine
 def test_cannot_write_eof_before_headers():
     resp = StreamResponse()
 

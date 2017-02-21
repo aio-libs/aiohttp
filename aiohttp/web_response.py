@@ -418,6 +418,7 @@ class StreamResponse(HeadersMixin):
         yield from self._payload_writer.write_eof(data)
         self._eof_sent = True
         self._req = None
+        self._payload_writer = None
 
     def __repr__(self):
         if self.prepared:
