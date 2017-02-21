@@ -13,7 +13,7 @@ from multidict import CIMultiDict
 
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
-from .helpers import CHAR, PY_35, PY_352, TOKEN, parse_mimetype
+from .helpers import CHAR, PY_35, PY_352, TOKEN, parse_mimetype, reify
 from .http import HttpParser
 from .payload import (BytesPayload, LookupError, Payload, StringPayload,
                       get_payload)
@@ -113,18 +113,19 @@ def parse_content_disposition(header):
     return disptype.lower(), params
 
 
-def content_disposition_filename(params):
+def content_disposition_filename(params, name='filename'):
+    name_suf = '%s*' % name
     if not params:
         return None
-    elif 'filename*' in params:
-        return params['filename*']
-    elif 'filename' in params:
-        return params['filename']
+    elif name_suf in params:
+        return params[name_suf]
+    elif name in params:
+        return params[name]
     else:
         parts = []
         fnparams = sorted((key, value)
                           for key, value in params.items()
-                          if key.startswith('filename*'))
+                          if key.startswith(name_suf))
         for num, (key, value) in enumerate(fnparams):
             _, tail = key.split('*', 1)
             if tail.endswith('*'):
@@ -203,6 +204,7 @@ class BodyPartReader(object):
         self._unread = deque()
         self._prev_chunk = None
         self._content_eof = 0
+        self._cache = {}
 
     if PY_35:
         def __aiter__(self):
@@ -466,13 +468,21 @@ class BodyPartReader(object):
         *_, params = parse_mimetype(ctype)
         return params.get('charset', default)
 
-    @property
+    @reify
+    def name(self):
+        """Returns filename specified in Content-Disposition header or ``None``
+        if missed or header is malformed."""
+        _, params = parse_content_disposition(
+            self.headers.get(CONTENT_DISPOSITION))
+        return content_disposition_filename(params, 'name')
+
+    @reify
     def filename(self):
         """Returns filename specified in Content-Disposition header or ``None``
         if missed or header is malformed."""
         _, params = parse_content_disposition(
             self.headers.get(CONTENT_DISPOSITION))
-        return content_disposition_filename(params)
+        return content_disposition_filename(params, 'filename')
 
 
 class MultipartReader(object):
