@@ -1063,7 +1063,6 @@ def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
-        print(data)
         assert data['name'] == 'text'
         return web.Response(text=data['name'])
 

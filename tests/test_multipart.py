@@ -757,7 +757,6 @@ def test_writer_serialize_io_chunk(buf, stream, writer):
     flo = io.BytesIO(b'foobarbaz')
     writer.append(flo)
     yield from writer.write(stream)
-    print(buf)
     assert (buf == b'--:\r\nContent-Type: application/octet-stream'
             b'\r\nContent-Length: 9\r\n\r\nfoobarbaz\r\n--:--\r\n')
 

@@ -383,10 +383,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        if self.content_type.startswith('multipart/'):
-            warnings.warn('To process multipart requests use .multipart'
-                          ' coroutine instead.', DeprecationWarning)
-
         out = MultiDict()
 
         if content_type == 'multipart/form-data':

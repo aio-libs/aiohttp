@@ -250,8 +250,7 @@ def test_post_single_file(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        with pytest.warns(DeprecationWarning):
-            data = yield from request.post()
+        data = yield from request.post()
         assert ['sample.crt'] == list(data.keys())
         for fs in data.values():
             check_file(fs)
