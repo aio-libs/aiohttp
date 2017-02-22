@@ -1185,7 +1185,7 @@ def test_subapp_not_allowed(loop, test_client):
     client = yield from test_client(app)
     resp = yield from client.post('/path/to')
     assert resp.status == 405
-    assert resp.headers['Allow'] == 'GET'
+    assert resp.headers['Allow'] == 'GET,HEAD'
 
 
 @asyncio.coroutine
