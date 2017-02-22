@@ -321,7 +321,7 @@ def test_allow_head(loop, test_client):
 
     def handler(_):
         return web.Response()
-    app.router.add_get('/a', handler, allow_head=True, name='a')
+    app.router.add_get('/a', handler, name='a')
     app.router.add_get('/b', handler, allow_head=False, name='b')
     client = yield from test_client(app)
 
@@ -339,34 +339,4 @@ def test_allow_head(loop, test_client):
 
     r = yield from client.head('/b')
     assert r.status == 405
-    yield from r.release()
-
-
-@pytest.mark.parametrize('dft_allow_head,allow_head,status', [
-    (True, False, 405),
-    (True, True, 200),
-    (True, None, 200),
-    (False, False, 405),
-    (False, True, 200),
-    (False, None, 405),
-])
-@asyncio.coroutine
-def test_allow_head(loop, test_client, dft_allow_head, allow_head, status):
-    """
-    Test allow_head on routes.
-    """
-    app = web.Application(loop=loop)
-
-    def handler(_):
-        return web.Response()
-    app.router.set_defaults(allow_head=dft_allow_head)
-    app.router.add_get('/', handler, allow_head=allow_head)
-    client = yield from test_client(app)
-
-    r = yield from client.get('/')
-    assert r.status == 200
-    yield from r.release()
-
-    r = yield from client.head('/')
-    assert r.status == status
     yield from r.release()
