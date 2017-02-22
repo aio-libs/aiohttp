@@ -46,3 +46,6 @@ CHANGES
   attributes and `resolve` constructor  parameter #1607
 
 - Dropped `ProxyConnector` #1609
+
+- Add the `allow_head` keyword argument for `add_get` and
+  `router.set_defaults(allow_head=True/False)` #1618
