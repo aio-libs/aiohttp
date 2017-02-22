@@ -454,7 +454,6 @@ class BaseConnector(object):
         self._release_acquired(key, transport)
 
         resp = req.response
-
         if not should_close:
             if self._force_close:
                 should_close = True
@@ -471,7 +470,6 @@ class BaseConnector(object):
             if conns is None:
                 conns = self._conns[key] = []
             conns.append((transport, protocol, self._time_service.loop_time()))
-            # reader.unset_parser()
 
     @asyncio.coroutine
     def _create_connection(self, req):

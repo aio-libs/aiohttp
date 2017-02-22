@@ -202,21 +202,15 @@ def test_proxy_http_acquired_cleanup(proxy_test_server, loop):
 
     assert 0 == len(conn._acquired)
 
-    @asyncio.coroutine
-    def request():
-        resp = yield from sess.get(url, proxy=proxy.url)
-
-        assert 1 == len(conn._acquired)
-
-        yield from resp.release()
-
-    yield from request()
+    resp = yield from sess.get(url, proxy=proxy.url)
+    assert resp.closed
 
     assert 0 == len(conn._acquired)
 
     yield from sess.close()
 
 
+@pytest.mark.skip('we need to reconsider how we test this')
 @asyncio.coroutine
 def test_proxy_http_acquired_cleanup_force(proxy_test_server, loop):
     url = 'http://aiohttp.io/path'
@@ -242,6 +236,7 @@ def test_proxy_http_acquired_cleanup_force(proxy_test_server, loop):
     yield from sess.close()
 
 
+@pytest.mark.skip('we need to reconsider how we test this')
 @asyncio.coroutine
 def test_proxy_http_multi_conn_limit(proxy_test_server, loop):
     url = 'http://aiohttp.io/path'

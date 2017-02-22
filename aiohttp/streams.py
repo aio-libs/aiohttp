@@ -193,6 +193,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof_waiter = None
         self._exception = None
         self._timer = timer
+        self._eof_callbacks = []
 
     def __repr__(self):
         info = [self.__class__.__name__]
@@ -213,6 +214,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
     def set_exception(self, exc):
         self._exception = exc
+        self._eof_callbacks.clear()
 
         waiter = self._waiter
         if waiter is not None:
@@ -225,6 +227,15 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
             if not waiter.done():
                 waiter.set_exception(exc)
+
+    def on_eof(self, callback):
+        if self._eof:
+            try:
+                callback()
+            except Exception:
+                internal_logger.exception('Exception in eof callback')
+        else:
+            self._eof_callbacks.append(callback)
 
     def feed_eof(self):
         self._eof = True
@@ -240,6 +251,14 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
             if not waiter.done():
                 waiter.set_result(True)
+
+        for cb in self._eof_callbacks:
+            try:
+                cb()
+            except Exception:
+                internal_logger.exception('Exception in eof callback')
+
+        self._eof_callbacks.clear()
 
     def is_eof(self):
         """Return True if  'feed_eof' was called."""
@@ -459,6 +478,12 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
 
     def set_exception(self, exc):
         pass
+
+    def on_eof(self, callback):
+        try:
+            callback()
+        except Exception:
+            internal_logger.exception('Exception in eof callback')
 
     def feed_eof(self):
         pass
