@@ -19,7 +19,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
-from .helpers import TimeService
+from .helpers import TimeoutHandle, TimerContext, TimeService
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -195,8 +195,10 @@ class ClientSession:
 
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
-        timer = self._time_service.timeout(timeout)
+        tm = TimeoutHandle(timeout)
+        handle = tm.handle(self._loop)
 
+        timer = TimerContext(self._loop, tm)
         with timer:
             while True:
                 url = URL(url).with_fragment(None)
@@ -273,6 +275,10 @@ class ClientSession:
 
                 break
 
+        if resp.connection is not None:
+            resp.connection.add_callback(handle.cancel)
+        else:
+            handle.cancel()
         resp._history = tuple(history)
         return resp
 

@@ -15,6 +15,7 @@ import time
 import warnings
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
+from math import ceil
 from pathlib import Path
 from time import gmtime
 from urllib.parse import urlencode
@@ -716,18 +717,18 @@ class TimeService:
 
         timeout - value in seconds or None to disable timeout logic
         """
-        if timeout:
-            ctx = _TimeServiceTimeoutContext(self._loop)
+        if timeout is not None and timeout > 0:
+            ctx = TimerContext(self._loop)
             when = self._loop_time + timeout
-            timer = TimerHandle(when, ctx.cancel, (), self._loop)
+            timer = TimerHandle(when, ctx.timeout, (), self._loop)
             heapq.heappush(self._scheduled, timer)
         else:
-            ctx = _TimeServiceTimeoutNoop()
+            ctx = TimerNoop()
 
         return ctx
 
 
-class _TimeServiceTimeoutNoop:
+class TimerNoop:
 
     def __enter__(self):
         return self
@@ -736,13 +737,44 @@ class _TimeServiceTimeoutNoop:
         return False
 
 
-class _TimeServiceTimeoutContext:
+class TimeoutHandle:
+    """ Timeout handle """
+
+    def __init__(self, timeout):
+        self._timeout = timeout
+        self._callbacks = []
+
+    def register(self, callback, *args, **kwargs):
+        self._callbacks.append((callback, args, kwargs))
+
+    def close(self):
+        self._callbacks.clear()
+
+    def handle(self, loop):
+        if self._timeout is not None and self._timeout > 0:
+            at = ceil(loop.time() + self._timeout)
+            return loop.call_at(at, self.__call__)
+
+    def __call__(self):
+        for cb, args, kwargs in self._callbacks:
+            try:
+                cb(*args, **kwargs)
+            except:
+                pass
+
+        self._callbacks.clear()
+
+
+class TimerContext:
     """ Low resolution timeout context manager """
 
-    def __init__(self, loop):
+    def __init__(self, loop, tm=None):
         self._loop = loop
         self._tasks = []
         self._cancelled = False
+
+        if tm is not None:
+            tm.register(self.timeout)
 
     def __enter__(self):
         task = asyncio.Task.current_task(loop=self._loop)
@@ -759,17 +791,23 @@ class _TimeServiceTimeoutContext:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._tasks:
-            self._tasks.pop()
+            task = self._tasks.pop()
+        else:
+            task = None
 
         if exc_type is asyncio.CancelledError and self._cancelled:
+            for task in self._tasks:
+                task.cancel()
             raise asyncio.TimeoutError from None
 
-    def cancel(self):
+        if exc_type is None and self._cancelled and task is not None:
+            task.cancel()
+
+    def timeout(self):
         if not self._cancelled:
             for task in self._tasks:
                 task.cancel()
 
-            self._tasks = []
             self._cancelled = True
 
 

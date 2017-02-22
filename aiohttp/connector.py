@@ -42,6 +42,7 @@ class Connection:
         self._transport = transport
         self._protocol = protocol
         self._loop = loop
+        self._callbacks = []
         self.reader = protocol.reader
         self.writer = protocol.writer
 
@@ -68,11 +69,26 @@ class Connection:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
+    def add_callback(self, callback):
+        if callback is not None:
+            self._callbacks.append(callback)
+
+    def release_callbacks(self):
+        callbacks, self._callbacks = self._callbacks[:], []
+
+        for cb in callbacks:
+            try:
+                cb()
+            except:
+                pass
+
     @property
     def loop(self):
         return self._loop
 
     def close(self):
+        self.release_callbacks()
+
         if self._transport is not None:
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -80,6 +96,8 @@ class Connection:
             self._transport = None
 
     def release(self):
+        self.release_callbacks()
+
         if self._transport is not None:
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -87,6 +105,8 @@ class Connection:
             self._transport = None
 
     def detach(self):
+        self.release_callbacks()
+
         if self._transport is not None:
             self._connector._release_acquired(self._key, self._transport)
         self._transport = None
