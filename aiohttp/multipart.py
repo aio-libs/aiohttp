@@ -16,7 +16,7 @@ from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
 from .helpers import CHAR, PY_35, PY_352, TOKEN, parse_mimetype, reify
 from .http import HttpParser
 from .payload import (BytesPayload, LookupError, Payload, StringPayload,
-                      get_payload)
+                      get_payload, payload_type)
 
 __all__ = ('MultipartReader', 'MultipartWriter', 'BodyPartReader',
            'BadContentDispositionHeader', 'BadContentDispositionParam',
@@ -483,6 +483,30 @@ class BodyPartReader(object):
         _, params = parse_content_disposition(
             self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, 'filename')
+
+
+@payload_type(BodyPartReader)
+class BodyPartReaderPayload(Payload):
+
+    def __init__(self, value, *args, **kwargs):
+        super().__init__(value, *args, **kwargs)
+
+        params = {}
+        if value.name is not None:
+            params['name'] = value.name
+        if value.filename is not None:
+            params['filename'] = value.name
+
+        if params:
+            self.set_content_disposition('attachment', **params)
+
+    @asyncio.coroutine
+    def write(self, writer):
+        field = self._value
+        chunk = yield from field.read_chunk(size=2**16)
+        while chunk:
+            writer.write(field.decode(chunk))
+            chunk = yield from field.read_chunk(size=2**16)
 
 
 class MultipartReader(object):

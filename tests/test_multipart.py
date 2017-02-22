@@ -492,6 +492,19 @@ class PartReaderTestCase(TestCase):
         result = yield from obj.form()
         self.assertEqual(None, result)
 
+    def test_readline(self):
+        obj = aiohttp.multipart.BodyPartReader(
+            self.boundary, {}, Stream(b'Hello\n,\r\nworld!\r\n--:--'))
+        result = yield from obj.readline()
+        self.assertEqual(b'Hello\n', result)
+        result = yield from obj.readline()
+        self.assertEqual(b',\r\n', result)
+        result = yield from obj.readline()
+        self.assertEqual(b'world!', result)
+        result = yield from obj.readline()
+        self.assertEqual(b'', result)
+        self.assertTrue(obj.at_eof())
+
     def test_release(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
         obj = aiohttp.multipart.BodyPartReader(

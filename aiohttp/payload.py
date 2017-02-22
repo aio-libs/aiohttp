@@ -11,7 +11,7 @@ from .helpers import (content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
 from .streams import DEFAULT_LIMIT, DataQueue, EofStream, StreamReader
 
-__all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'Payload',
+__all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'BytesPayload', 'StringPayload', 'StreamReaderPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',
            'TextIOPayload', 'StringIOPayload')
@@ -23,6 +23,20 @@ class LookupError(Exception):
 
 def get_payload(data, *args, **kwargs):
     return PAYLOAD_REGISTRY.get(data, *args, **kwargs)
+
+
+def register_payload(ctor, type):
+    PAYLOAD_REGISTRY.register(ctor, type)
+
+
+class payload_type:
+
+    def __init__(self, type):
+        self.type = type
+
+    def __call__(self, cls):
+        PAYLOAD_REGISTRY.register(cls, self.type)
+        return cls
 
 
 class PayloadRegistry:
