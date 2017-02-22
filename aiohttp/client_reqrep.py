@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
+from .helpers import HeadersMixin, SimpleCookie, TimerNoop
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -86,7 +86,7 @@ class ClientRequest:
         self.compress = compress
         self.loop = loop
         self.response_class = response_class or ClientResponse
-        self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
+        self._timer = timer if timer is not None else TimerNoop()
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -526,7 +526,7 @@ class ClientResponse(HeadersMixin):
         self._closed = False
         self._should_close = True  # override by message.should_close later
         self._history = ()
-        self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
+        self._timer = timer if timer is not None else TimerNoop()
         self.cookies = SimpleCookie()
 
     @property

@@ -393,7 +393,7 @@ def test_repr_after_eof():
     assert not resp.started
     assert not resp.prepared
     resp_repr = repr(resp)
-    assert resp_repr == '<StreamResponse OK not started>'
+    assert resp_repr == '<StreamResponse OK eof>'
 
 
 @asyncio.coroutine

@@ -533,7 +533,11 @@ def test_204_with_gzipped_content_encoding(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_headers(loop, test_client):
+def test_timeout_on_reading_headers(loop, test_client, mocker):
+    def ceil(val):
+        return val
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):
@@ -551,7 +555,7 @@ def test_timeout_on_reading_headers(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_conn_reading_headers(loop, test_client):
+def test_timeout_on_conn_reading_headers(loop, test_client, mocker):
     # tests case where user did not set a connection timeout
 
     @asyncio.coroutine
@@ -567,12 +571,17 @@ def test_timeout_on_conn_reading_headers(loop, test_client):
     conn = aiohttp.TCPConnector(loop=loop)
     client = yield from test_client(app, connector=conn)
 
+    def ceil(val):
+        return val
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
     with pytest.raises(asyncio.TimeoutError):
         yield from client.get('/', timeout=0.01)
 
 
 @asyncio.coroutine
-def test_timeout_on_session_read_timeout(loop, test_client):
+def test_timeout_on_session_read_timeout(loop, test_client, mocker):
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse()
@@ -586,12 +595,22 @@ def test_timeout_on_session_read_timeout(loop, test_client):
     conn = aiohttp.TCPConnector(loop=loop)
     client = yield from test_client(app, connector=conn, read_timeout=0.01)
 
+    def ceil(val):
+        return val
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
     with pytest.raises(asyncio.TimeoutError):
         yield from client.get('/', timeout=None)
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_data(loop, test_client):
+def test_timeout_on_reading_data(loop, test_client, mocker):
+
+    def ceil(val):
+        return val
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):

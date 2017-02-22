@@ -534,6 +534,7 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._resp_impl = None
         self._eof_sent = False
+        self._body_length = 0
 
         if headers is not None:
             # TODO: optimize CIMultiDict extending
@@ -913,12 +914,15 @@ class StreamResponse(HeadersMixin):
 
         yield from self._resp_impl.write_eof()
         self._eof_sent = True
+        self._body_length = self._resp_impl.body_length
         self._req = None
         self._body_length = self._resp_impl.body_length
         self._resp_impl = None
 
     def __repr__(self):
-        if self.prepared:
+        if self._eof_sent:
+            info = "eof"
+        elif self.prepared:
             info = "{} {} ".format(self._req.method, self._req.path)
         else:
             info = "not started"
