@@ -353,23 +353,18 @@ class ClientRequest:
                 for chunk in self.body:
                     request.write(chunk)
 
-        except Exception as exc:
-            new_exc = aiohttp.ClientRequestError(
+            yield from request.write_eof()
+        except OSError as exc:
+            new_exc = aiohttp.ClientOSError(
+                exc.errno,
                 'Can not write request body for %s' % self.url)
             new_exc.__context__ = exc
             new_exc.__cause__ = exc
             conn.protocol.set_exception(new_exc)
-        else:
-            try:
-                yield from request.write_eof()
-            except Exception as exc:
-                new_exc = aiohttp.ClientRequestError(
-                    'Can not write request body for %s' % self.url)
-                new_exc.__context__ = exc
-                new_exc.__cause__ = exc
-                conn.protocol.set_exception(new_exc)
-
-        self._writer = None
+        except Exception as exc:
+            conn.protocol.set_exception(exc)
+        finally:
+            self._writer = None
 
     def send(self, conn):
         # Specify request target:

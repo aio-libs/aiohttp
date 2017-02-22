@@ -694,10 +694,10 @@ def test_error_not_overwrote_on_conn_close(loop, test_client):
     with aiohttp.ClientSession(loop=loop) as session:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
-        resp.content.set_exception(aiohttp.ClientRequestError())
+        resp.content.set_exception(ValueError())
 
     yield from resp.release()
-    assert isinstance(resp.content.exception(), aiohttp.ClientRequestError)
+    assert isinstance(resp.content.exception(), ValueError)
 
 
 @asyncio.coroutine

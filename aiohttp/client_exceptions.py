@@ -3,7 +3,7 @@
 from asyncio import TimeoutError
 
 __all__ = (
-    'ClientError', 'ClientRequestError',
+    'ClientError',
 
     'ClientConnectionError',
     'ClientOSError', 'ClientConnectorError', 'ClientProxyConnectionError',
@@ -16,10 +16,6 @@ __all__ = (
 
 class ClientError(Exception):
     """Base class for client connection errors."""
-
-
-class ClientRequestError(ClientError):
-    """Connection error during sending request."""
 
 
 class ClientResponseError(ClientError):
@@ -103,6 +99,7 @@ class ServerFingerprintMismatch(ServerConnectionError):
 
 
 # backward compatibility
+ClientRequestError = ClientError
 ClientDisconnectedError = ClientError
 ClientTimeoutError = ServerTimeoutError
 FingerprintMismatch = ServerFingerprintMismatch

@@ -22,7 +22,7 @@ from .http_parser import RawRequestMessage, RawResponseMessage  # noqa isort:ski
 from .http_parser import HttpRequestParser, HttpResponseParser, HttpPayloadParser  # noqa isort:skip
 from .http_exceptions import HttpProcessingError, BadHttpMessage  # noqa isort:skip
 from .http_exceptions import HttpBadRequest, BadStatusLine, LineTooLong, InvalidHeader  # noqa isort:skip
-from .client_exceptions import ClientDisconnectedError, ClientTimeoutError, FingerprintMismatch, HttpProxyError, ProxyConnectionError  # noqa isort:skip
+from .client_exceptions import ClientRequestError, ClientDisconnectedError, ClientTimeoutError, FingerprintMismatch, HttpProxyError, ProxyConnectionError  # noqa isort:skip
 
 
 __all__ = (client.__all__ +  # noqa
@@ -44,5 +44,6 @@ __all__ = (client.__all__ +  # noqa
             'HttpProcessingError', 'BadHttpMessage',
             'HttpBadRequest', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',
             'ClientDisconnectedError', 'ClientTimeoutError',
+            'ClientRequestError'
             'FingerprintMismatch', 'HttpProxyError', 'ProxyConnectionError',
            ))
