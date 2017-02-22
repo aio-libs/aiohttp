@@ -715,7 +715,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         super().__init__()
         self._resources = []
         self._named_resources = {}
-        self._default_allow_head = False
 
     @asyncio.coroutine
     def resolve(self, request):
@@ -755,9 +754,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def named_resources(self):
         return MappingProxyType(self._named_resources)
-
-    def set_defaults(self, *, allow_head):
-        self._default_allow_head = allow_head
 
     def register_resource(self, resource):
         assert isinstance(resource, AbstractResource), \
@@ -859,12 +855,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         return self.add_route(hdrs.METH_HEAD, *args, **kwargs)
 
-    def add_get(self, *args, allow_head=None, name=None, **kwargs):
+    def add_get(self, *args, name=None, allow_head=True, **kwargs):
         """
         Shortcut for add_route with method GET, if allow_head is true another
         route is added allowing head requests to the same endpoint
         """
-        if allow_head or (allow_head is None and self._default_allow_head):
+        if allow_head:
             # the head route can't have "name" set or it would conflict with
             # the GET route below
             self.add_route(hdrs.METH_HEAD, *args, **kwargs)
