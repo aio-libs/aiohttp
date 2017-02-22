@@ -68,16 +68,20 @@ class FileSender:
 
         resp._send_headers = _send_headers
 
+        resp_impl = yield from resp.prepare(request)
+
         @asyncio.coroutine
         def write_eof():
             # Durty hack required for
             # https://github.com/KeepSafe/aiohttp/issues/1177
             # do nothing in write_eof
-            pass
+            resp._eof_sent = True
+            resp._req = None
+            resp._body_length = resp_impl.output_size
+            resp._payload_writer = None
+            resp_impl._stream.release()
 
         resp.write_eof = write_eof
-
-        resp_impl = yield from resp.prepare(request)
 
         loop = request.app.loop
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details

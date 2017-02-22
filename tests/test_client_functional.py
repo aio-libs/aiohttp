@@ -106,6 +106,22 @@ def test_keepalive_server_force_close_connection(loop, test_client):
 
 
 @asyncio.coroutine
+def test_release_early(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.read()
+        return web.Response(body=b'OK')
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/')
+    assert resp.closed
+    assert 1 == len(client._session.connector._conns)
+
+
+@asyncio.coroutine
 def test_HTTP_304(loop, test_client):
     @asyncio.coroutine
     def handler(request):

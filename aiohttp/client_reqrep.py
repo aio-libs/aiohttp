@@ -553,6 +553,9 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
         self._should_close = message.should_close
 
+        # payload eof handler
+        payload.on_eof(self._response_eof)
+
         # headers
         self.headers = CIMultiDictProxy(message.headers)
         self.raw_headers = tuple(message.raw_headers)
@@ -568,6 +571,25 @@ class ClientResponse(HeadersMixin):
                 client_logger.warning(
                     'Can not load response cookies: %s', exc)
         return self
+
+    def _response_eof(self):
+        if self._closed:
+            return
+
+        if self._connection is not None:
+            # websocket
+            if self._connection.protocol.upgraded:
+                return
+
+            self._connection.release()
+            self._connection = None
+
+        self._closed = True
+        self._cleanup_writer()
+
+    @property
+    def closed(self):
+        return self._closed
 
     def close(self):
         if self._closed:

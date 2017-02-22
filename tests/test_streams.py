@@ -843,6 +843,52 @@ def test_feed_eof_cancelled(loop):
     assert reader._eof_waiter is None
 
 
+def test_on_eof(loop):
+    reader = streams.StreamReader(loop=loop)
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+
+    assert not on_eof.called
+    reader.feed_eof()
+    assert on_eof.called
+
+
+def test_on_eof_exc_in_callback(loop):
+    reader = streams.StreamReader(loop=loop)
+
+    on_eof = mock.Mock()
+    on_eof.side_effect = ValueError
+
+    reader.on_eof(on_eof)
+    assert not on_eof.called
+    reader.feed_eof()
+    assert on_eof.called
+    assert not reader._eof_callbacks
+
+
+def test_on_eof_eof_is_set(loop):
+    reader = streams.StreamReader(loop=loop)
+    reader.feed_eof()
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+    assert on_eof.called
+    assert not reader._eof_callbacks
+
+
+def test_on_eof_eof_is_set_exception(loop):
+    reader = streams.StreamReader(loop=loop)
+    reader.feed_eof()
+
+    on_eof = mock.Mock()
+    on_eof.side_effect = ValueError
+
+    reader.on_eof(on_eof)
+    assert on_eof.called
+    assert not reader._eof_callbacks
+
+
 def test_set_exception(loop):
     reader = streams.StreamReader(loop=loop)
     waiter = reader._waiter = helpers.create_future(loop)
@@ -872,3 +918,14 @@ def test_set_exception_cancelled(loop):
     assert eof_waiter.exception() is None
     assert reader._waiter is None
     assert reader._eof_waiter is None
+
+
+def test_set_exception_eof_callbacks(loop):
+    reader = streams.StreamReader(loop=loop)
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+
+    reader.set_exception(ValueError())
+    assert not on_eof.called
+    assert not reader._eof_callbacks
