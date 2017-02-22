@@ -916,7 +916,6 @@ class StreamResponse(HeadersMixin):
         self._eof_sent = True
         self._body_length = self._resp_impl.body_length
         self._req = None
-        self._body_length = self._resp_impl.body_length
         self._resp_impl = None
 
     def __repr__(self):
