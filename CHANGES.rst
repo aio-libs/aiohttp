@@ -13,6 +13,9 @@ CHANGES
 
 - Web Request.post() stores data in temp files #1469
 
+- Add the `allow_head` keyword argument for `add_get` and
+  `router.set_defaults(allow_head=True/False)` #1618
+
 - `run_app` and the Command Line Interface now support serving over
   Unix domain sockets for faster inter-process communication.
 
@@ -46,6 +49,3 @@ CHANGES
   attributes and `resolve` constructor  parameter #1607
 
 - Dropped `ProxyConnector` #1609
-
-- Add the `allow_head` keyword argument for `add_get` and
-  `router.set_defaults(allow_head=True/False)` #1618
