@@ -898,9 +898,9 @@ def test_data_stream_exc_chain(loop, transport):
     # assert connection.close.called
     assert connection.protocol.set_exception.called
     outer_exc = connection.protocol.set_exception.call_args[0][0]
-    assert isinstance(outer_exc, aiohttp.ClientRequestError)
-    assert inner_exc is outer_exc.__context__
-    assert inner_exc is outer_exc.__cause__
+    assert isinstance(outer_exc, ValueError)
+    assert inner_exc is outer_exc
+    assert inner_exc is outer_exc
     yield from req.close()
 
 
