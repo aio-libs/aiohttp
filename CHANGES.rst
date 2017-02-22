@@ -44,6 +44,8 @@ CHANGES
 - Multipart reader accepts multipart messages with or without their epilogue
   to consistently handle valid and legacy behaviors #1526 #1581
 
+- Add the `allow_head=True` keyword argument for `add_get` #1618
+
 - Separate read + connect + request timeouts # 1523
 
 - Do not swallow Upgrade header #1587
