@@ -1439,3 +1439,45 @@ def test_app_max_client_size_none(loop, test_client):
     assert 200 == resp.status
     resp_text = yield from resp.text()
     assert resp_text == 'ok'
+
+
+@asyncio.coroutine
+def test_post_max_client_size(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        try:
+            yield from request.post()
+        except ValueError:
+            return web.HTTPOk()
+        return web.HTTPBadRequest()
+
+    app = web.Application(loop=loop, client_max_size=10)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    data = {"long_string": 1024 * 'x', 'file': io.BytesIO(b'test')}
+    resp = yield from client.post('/', data=data)
+
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_post_max_client_size_for_file(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        try:
+            yield from request.post()
+        except ValueError:
+            return web.HTTPOk()
+        return web.HTTPBadRequest()
+
+    app = web.Application(loop=loop, client_max_size=2)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    data = {'file': io.BytesIO(b'test')}
+    resp = yield from client.post('/', data=data)
+
+    assert 200 == resp.status

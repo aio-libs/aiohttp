@@ -525,14 +525,16 @@ HTTP Forms are supported out of the box.
 If form's method is ``"GET"`` (``<form method="get">``) use
 :attr:`Request.query` for getting form data.
 
-For accessing to form data with ``"POST"`` method use
+To access form data with ``"POST"`` method use
 :meth:`Request.post` or :meth:`Request.multipart`.
 
 :meth:`Request.post` accepts both
 ``'application/x-www-form-urlencoded'`` and ``'multipart/form-data'``
-form's data encoding (e.g. ``<form enctype="multipart/form-data">``)
-but :meth:`Request.multipart` is especially effective for uploading
-large files (:ref:`aiohttp-web-file-upload`).
+form's data encoding (e.g. ``<form enctype="multipart/form-data">``).
+It stores files data in temporary directory. If `client_max_size` is
+specified `post` raises `ValueError` exception.
+For efficiency use :meth:`Request.multipart`, It is especially effective
+for uploading large files (:ref:`aiohttp-web-file-upload`).
 
 Values submitted by the following form:
 
