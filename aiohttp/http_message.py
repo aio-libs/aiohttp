@@ -47,7 +47,7 @@ class PayloadWriter(AbstractPayloadWriter):
         self.length = None
         self.chunked = False
         self.buffer_size = 0
-        self.output_length = 0
+        self.output_size = 0
 
         self._buffer = []
         self._compress = None
@@ -98,13 +98,13 @@ class PayloadWriter(AbstractPayloadWriter):
         if chunk:
             size = len(chunk)
             self.buffer_size += size
-            self.output_length += size
+            self.output_size += size
             self._buffer.append(chunk)
 
     def _write(self, chunk):
         size = len(chunk)
         self.buffer_size += size
-        self.output_length += size
+        self.output_size += size
 
         if self._transport is not None:
             if self._buffer:
@@ -217,7 +217,7 @@ class HttpMessage(PayloadWriter):
 
     @property
     def body_length(self):
-        return self.output_length
+        return self.output_size
 
     def force_close(self):
         self.closing = True

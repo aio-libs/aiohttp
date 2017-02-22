@@ -97,8 +97,7 @@ class FileSender:
 
         bheaders = ''.join(headers).encode('utf-8')
         headers_length = len(bheaders)
-        resp_impl.headers_length = headers_length
-        resp_impl.output_length = headers_length + count
+        resp_impl.output_size = headers_length + count
 
         try:
             yield from loop.sock_sendall(out_socket, bheaders)
