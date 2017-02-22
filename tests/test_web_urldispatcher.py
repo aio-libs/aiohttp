@@ -310,3 +310,33 @@ def test_412_is_returned(loop, test_client):
     resp = yield from client.get('/')
 
     assert resp.status == 412
+
+
+@asyncio.coroutine
+def test_allow_head(loop, test_client):
+    """
+    Test allow_head on routes.
+    """
+    app = web.Application(loop=loop)
+
+    def handler(_):
+        return web.Response()
+    app.router.add_get('/a', handler, name='a')
+    app.router.add_get('/b', handler, allow_head=False, name='b')
+    client = yield from test_client(app)
+
+    r = yield from client.get('/a')
+    assert r.status == 200
+    yield from r.release()
+
+    r = yield from client.head('/a')
+    assert r.status == 200
+    yield from r.release()
+
+    r = yield from client.get('/b')
+    assert r.status == 200
+    yield from r.release()
+
+    r = yield from client.head('/b')
+    assert r.status == 405
+    yield from r.release()
