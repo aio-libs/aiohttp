@@ -409,6 +409,13 @@ def test_body_length_after_eof():
 
 
 @asyncio.coroutine
+def test_unprepared_output_length():
+    resp = StreamResponse()
+    with pytest.raises(RuntimeError):
+        resp.output_length
+
+
+@asyncio.coroutine
 def test_cannot_write_eof_before_headers():
     resp = StreamResponse()
 
