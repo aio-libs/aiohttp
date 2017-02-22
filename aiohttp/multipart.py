@@ -756,10 +756,7 @@ class MultipartWriter(Payload):
         if headers is None:
             headers = CIMultiDict()
 
-        *_, params = parse_mimetype(headers.get(CONTENT_TYPE))
-        charset = params.get('charset', 'utf-8')
-
-        data = json.dumps(obj).encode(charset)
+        data = json.dumps(obj).encode('utf-8')
         self.append_payload(
             BytesPayload(
                 data, headers=headers, content_type='application/json'))

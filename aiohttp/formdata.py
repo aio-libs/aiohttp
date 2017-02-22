@@ -96,13 +96,20 @@ class FormData:
     def _gen_form_data(self, encoding):
         """Encode a list of fields using the multipart/form-data MIME format"""
         for dispparams, headers, value in self._fields:
-            if hdrs.CONTENT_TYPE in headers:
-                part = payload.get_payload(
-                    value, content_type=headers[hdrs.CONTENT_TYPE],
-                    headers=headers, encoding=encoding)
-            else:
-                part = payload.get_payload(
-                    value, headers=headers, encoding=encoding)
+            try:
+                if hdrs.CONTENT_TYPE in headers:
+                    part = payload.get_payload(
+                        value, content_type=headers[hdrs.CONTENT_TYPE],
+                        headers=headers, encoding=encoding)
+                else:
+                    part = payload.get_payload(
+                        value, headers=headers, encoding=encoding)
+            except Exception as exc:
+                raise ValueError(
+                    'Can not serialize value type: %r\n '
+                    'headers: %r\n value: %r' % (
+                        type(value), headers, value)) from exc
+
             if dispparams:
                 part.set_content_disposition(
                     'form-data', quote_fields=self._quote_fields, **dispparams
