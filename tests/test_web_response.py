@@ -472,7 +472,8 @@ def test_force_close():
 def test_response_output_length():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
-    assert resp.output_length
+    with pytest.warns(DeprecationWarning):
+        assert resp.output_length
 
 
 def test_response_cookies():

@@ -351,7 +351,7 @@ class AccessLogger:
 
     @staticmethod
     def _format_O(args):
-        return args[2].output_length
+        return args[2].body_length
 
     @staticmethod
     def _format_T(args):

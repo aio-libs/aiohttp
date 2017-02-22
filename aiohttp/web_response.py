@@ -103,6 +103,7 @@ class StreamResponse(HeadersMixin):
 
     @property
     def output_length(self):
+        warnings.warn('output_length is deprecated', DeprecationWarning)
         return self._payload_writer.buffer_size
 
     def enable_chunked_encoding(self, chunk_size=None):
@@ -372,10 +373,6 @@ class StreamResponse(HeadersMixin):
         return writer
 
     def _send_headers(self, version, headers, writer, _sep=': ', _end='\r\n'):
-        # Durty hack required for
-        # https://github.com/KeepSafe/aiohttp/issues/1093
-        # File sender may override it
-
         status_line = 'HTTP/{}.{} {} {}\r\n'.format(
             version[0], version[1], self._status, self._reason)
 
@@ -419,7 +416,7 @@ class StreamResponse(HeadersMixin):
         yield from self._payload_writer.write_eof(data)
         self._eof_sent = True
         self._req = None
-        self._body_length = self._payload_writer.output_length
+        self._body_length = self._payload_writer.output_size
         self._payload_writer = None
 
     def __repr__(self):
