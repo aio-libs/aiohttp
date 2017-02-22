@@ -138,6 +138,7 @@ class ClientSession:
     def _request(self, method, url, *,
                  params=None,
                  data=None,
+                 files=None,
                  headers=None,
                  skip_auto_headers=None,
                  auth=None,
@@ -214,7 +215,7 @@ class ClientSession:
                 req = self._request_class(
                     method, url, params=params, headers=headers,
                     skip_auto_headers=skip_headers, data=data,
-                    cookies=cookies, encoding=encoding,
+                    files=files, cookies=cookies, encoding=encoding,
                     auth=auth, version=version, compress=compress,
                     chunked=chunked, expect100=expect100,
                     loop=self._loop, response_class=self._response_class,

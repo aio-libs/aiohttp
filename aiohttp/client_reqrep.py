@@ -56,7 +56,8 @@ class ClientRequest:
 
     def __init__(self, method, url, *,
                  params=None, headers=None, skip_auto_headers=frozenset(),
-                 data=None, cookies=None,
+                 # TODO: Implement ability to request files in "files=".
+                 data=None, files=None, cookies=None,
                  auth=None, encoding='utf-8',
                  version=http.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
@@ -74,6 +75,12 @@ class ClientRequest:
             url2 = url.with_query(params)
             q.extend(url2.query)
             url = url.with_query(q)
+        # these 2 lines stolen from
+        # https://github.com/kennethreitz/requests/blob/master
+        # /requests/models.py#L217-#L239
+        files = [] if files is None else files
+        self.files = files
+        # the rest for "files=" isd TBD.
         self.url = url.with_fragment(None)
         self.original_url = url
         self.method = method.upper()
