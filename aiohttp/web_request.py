@@ -390,6 +390,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
             field = yield from multipart.next()
             while field is not None:
+                size = 0
+                max_size = self._client_max_size
                 content_type = field.headers.get(hdrs.CONTENT_TYPE)
 
                 if field.filename:
@@ -397,7 +399,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     tmp = tempfile.TemporaryFile()
                     chunk = yield from field.read_chunk(size=2**16)
                     while chunk:
-                        tmp.write(field.decode(chunk))
+                        chunk = field.decode(chunk)
+                        tmp.write(chunk)
+                        size += len(chunk)
+                        if max_size > 0 and size > max_size:
+                            raise ValueError(
+                                'Maximum request body size exceeded')
                         chunk = yield from field.read_chunk(size=2**16)
                     tmp.seek(0)
 
@@ -410,6 +417,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         charset = field.get_charset(default='utf-8')
                         value = value.decode(charset)
                     out.add(field.name, value)
+                    size += len(value)
+                    if max_size > 0 and size > max_size:
+                        raise ValueError(
+                            'Maximum request body size exceeded')
 
                 field = yield from multipart.next()
         else:
