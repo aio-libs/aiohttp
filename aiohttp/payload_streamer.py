@@ -23,7 +23,7 @@ Then you can use `file_sender` like this:
 
 import asyncio
 
-from . import payload
+from .payload import Payload, payload_type
 
 __all__ = ('streamer',)
 
@@ -49,13 +49,15 @@ class streamer:
         return _stream_wrapper(self.coro, args, kwargs)
 
 
-class StreamWrapperPayload(payload.Payload):
+@payload_type(_stream_wrapper)
+class StreamWrapperPayload(Payload):
 
     @asyncio.coroutine
     def write(self, writer):
         yield from self._value(writer)
 
 
+@payload_type(streamer)
 class StreamPayload(StreamWrapperPayload):
 
     def __init__(self, value, *args, **kwargs):
@@ -64,7 +66,3 @@ class StreamPayload(StreamWrapperPayload):
     @asyncio.coroutine
     def write(self, writer):
         yield from self._value(writer)
-
-
-payload.PAYLOAD_REGISTRY.register(StreamPayload, streamer)
-payload.PAYLOAD_REGISTRY.register(StreamWrapperPayload, _stream_wrapper)

@@ -1481,3 +1481,29 @@ def test_post_max_client_size_for_file(loop, test_client):
     resp = yield from client.post('/', data=data)
 
     assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_response_with_bodypart(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        reader = yield from request.multipart()
+        part = yield from reader.next()
+        return web.Response(body=part)
+
+    app = web.Application(loop=loop, client_max_size=2)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    data = {'file': io.BytesIO(b'test')}
+    resp = yield from client.post('/', data=data)
+
+    assert 200 == resp.status
+    body = yield from resp.read()
+    assert body == b'test'
+
+    disp = multipart.parse_content_disposition(
+        resp.headers['content-disposition'])
+    assert disp == ('attachment',
+                    {'name': 'file', 'filename': 'file', 'filename*': 'file'})
