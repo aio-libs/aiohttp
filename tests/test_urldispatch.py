@@ -936,7 +936,7 @@ def test_subapp_repr(app, loop):
 
 def test_subapp_len(app, loop):
     subapp = web.Application(loop=loop)
-    subapp.router.add_get('/', make_handler())
+    subapp.router.add_get('/', make_handler(), allow_head=False)
     subapp.router.add_post('/', make_handler())
     resource = app.add_subapp('/pre', subapp)
     assert len(resource) == 2
@@ -944,7 +944,7 @@ def test_subapp_len(app, loop):
 
 def test_subapp_iter(app, loop):
     subapp = web.Application(loop=loop)
-    r1 = subapp.router.add_get('/', make_handler())
+    r1 = subapp.router.add_get('/', make_handler(), allow_head=False)
     r2 = subapp.router.add_post('/', make_handler())
     resource = app.add_subapp('/pre', subapp)
     assert list(resource) == [r1, r2]
