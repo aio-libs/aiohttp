@@ -1225,7 +1225,6 @@ def test_response_prepared_with_clone(loop, test_client):
 
     resp = yield from client.get('/')
     assert 200 == resp.status
-    assert srv_resp.task is None
 
 
 @asyncio.coroutine
