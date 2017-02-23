@@ -16,8 +16,6 @@ from types import MappingProxyType
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
-from . import hdrs, multipart
-from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from . import hdrs, multipart, web_exceptions
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from .protocol import WebResponse as ResponseImpl
