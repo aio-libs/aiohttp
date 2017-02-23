@@ -50,7 +50,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, time_service, task, *,
+    def __init__(self, message, payload, transport, reader, writer,
+                 time_service, task, *,
                  loop=None, secure_proxy_ssl_header=None,
                  client_max_size=1024**2):
         self._loop = loop
