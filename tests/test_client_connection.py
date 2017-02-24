@@ -33,22 +33,20 @@ def transport():
 
 @pytest.fixture
 def protocol():
-    return mock.Mock()
+    return mock.Mock(should_close=False)
 
 
-def test_ctor(connector, key, request, transport, protocol, loop):
-    conn = Connection(connector, key, request,
-                      transport, protocol, loop)
+def test_ctor(connector, key, transport, protocol, loop):
+    conn = Connection(connector, key, transport, protocol, loop)
     assert conn.loop is loop
     assert conn.protocol is protocol
     assert conn.writer is protocol.writer
     conn.close()
 
 
-def test_del(connector, key, request, transport, protocol, loop):
+def test_del(connector, key, transport, protocol, loop):
     loop.is_closed.return_value = False
-    conn = Connection(connector, key, request,
-                      transport, protocol, loop)
+    conn = Connection(connector, key, transport, protocol, loop)
     exc_handler = mock.Mock()
     loop.set_exception_handler(exc_handler)
 
@@ -57,7 +55,6 @@ def test_del(connector, key, request, transport, protocol, loop):
         gc.collect()
 
     connector._release.assert_called_with(key,
-                                          request,
                                           transport,
                                           protocol,
                                           should_close=True)
@@ -68,34 +65,41 @@ def test_del(connector, key, request, transport, protocol, loop):
     loop.call_exception_handler.assert_called_with(msg)
 
 
-def test_close(connector, key, request, transport, protocol, loop):
-    conn = Connection(connector, key, request,
-                      transport, protocol, loop)
+def test_close(connector, key, transport, protocol, loop):
+    conn = Connection(connector, key, transport, protocol, loop)
     assert not conn.closed
     conn.close()
     assert conn._transport is None
     connector._release.assert_called_with(
-        key, request, transport, protocol,
-        should_close=True)
+        key, transport, protocol, should_close=True)
     assert conn.closed
 
 
-def test_release(connector, key, request, transport, protocol, loop):
-    conn = Connection(connector, key, request,
-                      transport, protocol, loop)
+def test_release(connector, key, transport, protocol, loop):
+    conn = Connection(connector, key, transport, protocol, loop)
     assert not conn.closed
     conn.release()
     assert not transport.close.called
     assert conn._transport is None
     connector._release.assert_called_with(
-        key, request, transport, protocol,
-        should_close=False)
+        key, transport, protocol, should_close=False)
     assert conn.closed
 
 
-def test_release_released(connector, key, request, transport, protocol, loop):
-    conn = Connection(connector, key, request,
-                      transport, protocol, loop)
+def test_release_proto_should_close(connector, key, transport, protocol, loop):
+    protocol.should_close = True
+    conn = Connection(connector, key, transport, protocol, loop)
+    assert not conn.closed
+    conn.release()
+    assert not transport.close.called
+    assert conn._transport is None
+    connector._release.assert_called_with(
+        key, transport, protocol, should_close=True)
+    assert conn.closed
+
+
+def test_release_released(connector, key, transport, protocol, loop):
+    conn = Connection(connector, key, transport, protocol, loop)
     conn.release()
     connector._release.reset_mock()
     conn.release()
@@ -104,9 +108,8 @@ def test_release_released(connector, key, request, transport, protocol, loop):
     assert not connector._release.called
 
 
-def test_detach(connector, key, request, transport, protocol, loop):
-    conn = Connection(connector, key, request,
-                      transport, protocol, loop)
+def test_detach(connector, key, transport, protocol, loop):
+    conn = Connection(connector, key, transport, protocol, loop)
     assert not conn.closed
     conn.detach()
     assert conn._transport is None
@@ -115,9 +118,8 @@ def test_detach(connector, key, request, transport, protocol, loop):
     assert conn.closed
 
 
-def test_detach_closed(connector, key, request, transport, protocol, loop):
-    conn = Connection(connector, key, request,
-                      transport, protocol, loop)
+def test_detach_closed(connector, key, transport, protocol, loop):
+    conn = Connection(connector, key, transport, protocol, loop)
     conn.release()
     conn.detach()
 

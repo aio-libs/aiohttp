@@ -454,7 +454,6 @@ class ClientResponse(HeadersMixin):
         self._writer = writer
         self._continue = continue100
         self._closed = False
-        self._should_close = True  # override by message.should_close later
         self._history = ()
         self.headers = None
         self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
@@ -547,14 +546,13 @@ class ClientResponse(HeadersMixin):
                     self._continue.set_result(True)
                     self._continue = None
 
+        # payload eof handler
+        payload.on_eof(self._response_eof)
+
         # response status
         self.version = message.version
         self.status = message.code
         self.reason = message.reason
-        self._should_close = message.should_close
-
-        # payload eof handler
-        payload.on_eof(self._response_eof)
 
         # headers
         self.headers = CIMultiDictProxy(message.headers)

@@ -31,10 +31,9 @@ class Connection:
     _source_traceback = None
     _transport = None
 
-    def __init__(self, connector, key, request, transport, protocol, loop):
+    def __init__(self, connector, key, transport, protocol, loop):
         self._key = key
         self._connector = connector
-        self._request = request
         self._transport = transport
         self._protocol = protocol
         self._loop = loop
@@ -55,8 +54,7 @@ class Connection:
                 return
 
             self._connector._release(
-                self._key, self._request, self._transport, self._protocol,
-                should_close=True)
+                self._key, self._transport, self._protocol, should_close=True)
 
             context = {'client_connection': self,
                        'message': 'Unclosed connection'}
@@ -71,15 +69,14 @@ class Connection:
     def close(self):
         if self._transport is not None:
             self._connector._release(
-                self._key, self._request, self._transport, self._protocol,
-                should_close=True)
+                self._key, self._transport, self._protocol, should_close=True)
             self._transport = None
 
     def release(self):
         if self._transport is not None:
             self._connector._release(
-                self._key, self._request, self._transport, self._protocol,
-                should_close=False)
+                self._key, self._transport, self._protocol,
+                should_close=self._protocol.should_close)
             self._transport = None
 
     def detach(self):
@@ -382,7 +379,7 @@ class BaseConnector(object):
 
         self._acquired.add(transport)
         self._acquired_per_host[key].add(transport)
-        return Connection(self, key, req, transport, proto, self._loop)
+        return Connection(self, key, transport, proto, self._loop)
 
     def _get(self, key):
         try:
@@ -446,19 +443,15 @@ class BaseConnector(object):
         else:
             self._release_waiter()
 
-    def _release(self, key, req, transport, protocol, *, should_close=False):
+    def _release(self, key, transport, protocol, *, should_close=False):
         if self._closed:
             # acquired connection is already released on connector closing
             return
 
         self._release_acquired(key, transport)
 
-        resp = req.response
-        if not should_close:
-            if self._force_close:
-                should_close = True
-            elif resp is not None:
-                should_close = resp._should_close
+        if self._force_close:
+            should_close = True
 
         if should_close or protocol.should_close:
             transport.close()
@@ -711,8 +704,7 @@ class TCPConnector(BaseConnector):
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
             key = (req.host, req.port, req.ssl)
-            conn = Connection(self, key, proxy_req,
-                              transport, proto, self._loop)
+            conn = Connection(self, key, transport, proto, self._loop)
             proxy_resp = proxy_req.send(conn)
             try:
                 resp = yield from proxy_resp.start(conn, True)
