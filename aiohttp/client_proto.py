@@ -43,6 +43,13 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
                 self._payload_parser is not None or
                 len(self) or self._tail)
 
+    def close(self):
+        transport = self.transport
+        if transport is not None:
+            transport.close()
+            self.transport = None
+        return transport
+
     def is_connected(self):
         return self.transport is not None
 

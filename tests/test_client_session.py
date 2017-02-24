@@ -19,8 +19,8 @@ from aiohttp.helpers import SimpleCookie
 @pytest.fixture
 def connector(loop):
     conn = BaseConnector(loop=loop)
-    transp = mock.Mock()
-    conn._conns['a'] = [(transp, 'proto', 123)]
+    proto = mock.Mock()
+    conn._conns['a'] = [(proto, 123)]
     return conn
 
 
@@ -365,7 +365,7 @@ def test_reraise_os_error(create_session):
     @asyncio.coroutine
     def create_connection(req):
         # return self.transport, self.protocol
-        return mock.Mock(), mock.Mock()
+        return mock.Mock()
     session._connector._create_connection = create_connection
 
     with pytest.raises(aiohttp.ClientOSError) as ctx:
