@@ -104,13 +104,13 @@ async def test_context_manager_close_on_release(test_server, loop, mocker):
 
     with aiohttp.ClientSession(loop=loop) as session:
         resp = await session.get(server.make_url('/'))
-        conn = resp.connection
-        mocker.spy(conn, 'close')
+        proto = resp.connection._protocol
+        mocker.spy(proto, 'close')
         async with resp:
             assert resp.status == 200
             assert resp.connection is not None
         assert resp.connection is None
-        assert conn.close.called
+        assert proto.close.called
 
 
 async def test_iter_any(test_server, loop):

@@ -594,7 +594,6 @@ class ClientResponse(HeadersMixin):
             return
 
         self._closed = True
-
         if self._loop is None or self._loop.is_closed():
             return
 
@@ -608,29 +607,14 @@ class ClientResponse(HeadersMixin):
     def release(self):
         if self._closed:
             return
-        try:
-            content = self.content
-            if content is not None:
-                close = False
-                if content.exception() is not None:
-                    close = True
-                else:
-                    content.read_nowait()
-                    if not content.at_eof():
-                        close = True
-                if close:
-                    self.close()
-        except Exception:
-            self._connection.close()
+
+        self._closed = True
+        if self._connection is not None:
+            self._connection.release()
             self._connection = None
-            raise
-        finally:
-            self._closed = True
-            if self._connection is not None:
-                self._connection.release()
-                self._connection = None
-            self._cleanup_writer()
-            self._notify_content()
+
+        self._cleanup_writer()
+        self._notify_content()
 
     def raise_for_status(self):
         if 400 <= self.status:

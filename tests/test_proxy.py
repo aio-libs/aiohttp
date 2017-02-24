@@ -37,12 +37,13 @@ class TestProxy(unittest.TestCase):
         connector = aiohttp.TCPConnector(loop=self.loop)
         connector._resolve_host = make_mocked_coro([mock.MagicMock()])
 
-        tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = make_mocked_coro((tr, proto))
+        proto = mock.Mock()
+        self.loop.create_connection = make_mocked_coro(
+            (proto.transport, proto))
         conn = self.loop.run_until_complete(connector.connect(req))
         self.assertEqual(req.url, URL('http://www.python.org'))
-        self.assertIs(conn._transport, tr)
         self.assertIs(conn._protocol, proto)
+        self.assertIs(conn.transport, proto.transport)
 
         ClientRequestMock.assert_called_with(
             'GET', URL('http://proxy.example.com'),

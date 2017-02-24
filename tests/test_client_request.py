@@ -1051,7 +1051,7 @@ def test_custom_req_rep(loop):
     @asyncio.coroutine
     def create_connection(req):
         assert isinstance(req, CustomRequest)
-        return mock.Mock(), mock.Mock()
+        return mock.Mock()
     connector = BaseConnector(loop=loop)
     connector._create_connection = create_connection
 
