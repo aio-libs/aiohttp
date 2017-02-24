@@ -74,9 +74,9 @@ def test_keepalive_response_released(loop, test_client):
     client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
-    yield from resp1.release()
+    resp1.release()
     resp2 = yield from client.get('/')
-    yield from resp2.release()
+    resp2.release()
 
     assert 1 == len(client._session.connector._conns)
 
@@ -545,7 +545,7 @@ def test_204_with_gzipped_content_encoding(loop, test_client):
 
     resp = yield from client.delete('/')
     assert resp.status == 204
-    yield from resp.release()
+    assert resp.closed
 
 
 @asyncio.coroutine
@@ -690,7 +690,7 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
             if not data:
                 break
             assert data == b'data'
-        yield from resp.release()
+
         assert resp.content.exception() is None
 
 
@@ -712,7 +712,6 @@ def test_error_not_overwrote_on_conn_close(loop, test_client):
         resp = yield from session.get(url, headers=headers)
         resp.content.set_exception(ValueError())
 
-    yield from resp.release()
     assert isinstance(resp.content.exception(), ValueError)
 
 
@@ -741,8 +740,6 @@ def test_HTTP_200_OK_METHOD(loop, test_client):
             assert b'' == content1
         else:
             assert meth.upper() == content
-
-        yield from resp.release()
 
 
 @asyncio.coroutine
@@ -773,8 +770,6 @@ def test_HTTP_200_OK_METHOD_connector(loop, test_client):
             assert b'' == content1
         else:
             assert meth.upper() == content
-
-        yield from resp.release()
 
 
 @asyncio.coroutine
@@ -1692,8 +1687,6 @@ def test_shortcuts(test_client, loop):
             assert b'' == content1
         else:
             assert meth.upper() == content
-
-        yield from resp.release()
 
 
 @asyncio.coroutine

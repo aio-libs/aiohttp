@@ -13,11 +13,15 @@ from aiohttp import helpers
 from aiohttp.client_reqrep import ClientResponse
 
 
-def test_del(loop):
+def test_del():
+    loop = mock.Mock()
     response = ClientResponse('get', URL('http://del-cl-resp.org'))
     response._post_init(loop)
+    loop.get_debug = mock.Mock()
+    loop.get_debug.return_value = True
 
     connection = mock.Mock()
+    response._closed = False
     response._connection = connection
     loop.set_exception_handler(lambda loop, ctx: None)
 
@@ -25,12 +29,13 @@ def test_del(loop):
         del response
         gc.collect()
 
-    connection.close.assert_called_with()
+    connection.release.assert_called_with()
 
 
 def test_close(loop):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop)
+    response._closed = False
     response._connection = mock.Mock()
     response.close()
     assert response.connection is None
@@ -115,15 +120,31 @@ def test_release(loop):
     content = response.content = mock.Mock()
     content.readany.return_value = fut
 
-    yield from response.release()
+    response.release()
     assert response._connection is None
+
+
+@asyncio.coroutine
+def test_release_on_del(loop):
+    connection = mock.Mock()
+    connection.protocol.upgraded = False
+
+    def run(conn):
+        response = ClientResponse('get', URL('http://def-cl-resp.org'))
+        response._post_init(loop)
+        response._closed = False
+        response._connection = conn
+
+    run(connection)
+
+    assert connection.release.called
 
 
 @asyncio.coroutine
 def test_response_eof(loop):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop)
-
+    response._closed = False
     conn = response._connection = mock.Mock()
     conn.protocol.upgraded = False
 

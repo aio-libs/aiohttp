@@ -249,7 +249,7 @@ class ClientSession:
                         resp.close()
                         break
                     else:
-                        yield from resp.release()
+                        resp.release()
 
                     # For 301 and 302, mimic IE behaviour, now changed in RFC.
                     # Info: https://github.com/kennethreitz/requests/pull/269
@@ -279,7 +279,7 @@ class ClientSession:
 
                     url = r_url
                     params = None
-                    yield from resp.release()
+                    resp.release()
                     continue
 
                 break
@@ -619,7 +619,7 @@ class _RequestContextManager(_BaseRequestContextManager):
             # would like to close a connection you must do that
             # explicitly.  Otherwise connection error handling should kick in
             # and close/recycle the connection as required.
-            yield from self._resp.release()
+            self._resp.release()
 
 
 class _WSRequestContextManager(_BaseRequestContextManager):

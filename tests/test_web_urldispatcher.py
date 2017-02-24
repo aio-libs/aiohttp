@@ -72,7 +72,6 @@ def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
         assert r.headers['Content-Type'] == "text/html; charset=utf-8"
         read_ = (yield from r.read())
         assert read_ == data
-    yield from r.release()
 
 
 @pytest.mark.parametrize('data', ['hello world'])
@@ -101,8 +100,6 @@ def test_follow_symlink(tmp_dir_path, loop, test_client, data):
     r = yield from client.get('/my_symlink/my_file_in_dir')
     assert r.status == 200
     assert (yield from r.text()) == data
-
-    yield from r.release()
 
 
 @pytest.mark.parametrize('dir_name,filename,data', [
@@ -136,7 +133,6 @@ def test_access_to_the_file_with_spaces(tmp_dir_path, loop, test_client,
     r = yield from client.get(url)
     assert r.status == 200
     assert (yield from r.text()) == data
-    yield from r.release()
 
 
 @asyncio.coroutine
@@ -155,7 +151,6 @@ def test_access_non_existing_resource(tmp_dir_path, loop, test_client):
     # Request the root of the static directory.
     r = yield from client.get('/non_existing_resource')
     assert r.status == 404
-    yield from r.release()
 
 
 @pytest.mark.parametrize('registered_path,request_url', [
@@ -177,7 +172,6 @@ def test_url_escaping(loop, test_client, registered_path, request_url):
 
     r = yield from client.get(request_url)
     assert r.status == 200
-    yield from r.release()
 
 
 @asyncio.coroutine
@@ -207,8 +201,6 @@ def test_unauthorized_folder_access(tmp_dir_path, loop, test_client):
         r = yield from client.get('/my_dir')
         assert r.status == 403
 
-    yield from r.release()
-
 
 @asyncio.coroutine
 def test_access_symlink_loop(tmp_dir_path, loop, test_client):
@@ -227,8 +219,6 @@ def test_access_symlink_loop(tmp_dir_path, loop, test_client):
     # Request the root of the static directory.
     r = yield from client.get('/my_symlink')
     assert r.status == 404
-
-    yield from r.release()
 
 
 @asyncio.coroutine
@@ -261,8 +251,6 @@ def test_access_special_resource(tmp_dir_path, loop, test_client):
         r = yield from client.get('/special')
         assert r.status == 404
 
-    yield from r.release()
-
 
 @asyncio.coroutine
 def test_partialy_applied_handler(loop, test_client):
@@ -278,7 +266,6 @@ def test_partialy_applied_handler(loop, test_client):
     r = yield from client.get('/')
     data = (yield from r.read())
     assert data == b'hello'
-    yield from r.release()
 
 
 def test_system_route():
