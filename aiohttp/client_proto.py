@@ -141,6 +141,9 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
                 self._upgraded = upgraded
 
                 for message, payload in messages:
+                    if message.should_close:
+                        self._should_close = True
+
                     if (self._skip_payload or
                             message.code in self._skip_status_codes):
                         self._payload = payload

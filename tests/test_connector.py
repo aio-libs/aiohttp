@@ -263,9 +263,6 @@ def test_release(loop, key, transport):
 
     conn = aiohttp.BaseConnector(loop=loop)
     conn._release_waiter = unittest.mock.Mock()
-    req = unittest.mock.Mock()
-    resp = req.response = unittest.mock.Mock()
-    resp._should_close = False
 
     proto = unittest.mock.Mock()
     proto.should_close = False
@@ -273,7 +270,7 @@ def test_release(loop, key, transport):
     conn._acquired.add(transport)
     conn._acquired_per_host[key].add(transport)
 
-    conn._release(key, req, transport, proto)
+    conn._release(key, transport, proto)
     assert conn._release_waiter.called
     assert conn._conns[key][0] == (transport, proto, 10)
     assert not conn._cleanup_closed_transports
@@ -285,15 +282,12 @@ def test_release_ssl_transport(loop, ssl_key, transport):
 
     conn = aiohttp.BaseConnector(loop=loop)
     conn._release_waiter = unittest.mock.Mock()
-    req = unittest.mock.Mock()
-    resp = req.response = unittest.mock.Mock()
-    resp._should_close = True
 
     proto = unittest.mock.Mock()
     conn._acquired.add(transport)
     conn._acquired_per_host[ssl_key].add(transport)
 
-    conn._release(ssl_key, req, transport, proto, should_close=True)
+    conn._release(ssl_key, transport, proto, should_close=True)
     assert conn._cleanup_closed_transports == [transport]
     conn.close()
 
@@ -308,9 +302,8 @@ def test_release_already_closed(loop):
 
     conn._release_waiters = unittest.mock.Mock()
     conn._release_acquired = unittest.mock.Mock()
-    req = unittest.mock.Mock()
 
-    conn._release(key, req, tr, proto)
+    conn._release(key, tr, proto)
     assert not conn._release_waiters.called
     assert not conn._release_acquired.called
 
@@ -377,15 +370,11 @@ def test_release_waiter_per_host(loop, key, key2):
 
 def test_release_close(loop):
     conn = aiohttp.BaseConnector(loop=loop)
-    req = unittest.mock.Mock()
-    resp = unittest.mock.Mock()
-    resp.message.should_close = True
-    req.response = resp
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock(should_close=True)
 
-    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = ('localhost', 80, False)
     conn._acquired.add(tr)
-    conn._release(key, req, tr, proto)
+    conn._release(key, tr, proto)
     assert not conn._conns
     assert tr.close.called
 
@@ -433,16 +422,12 @@ def test_get_pop_empty_conns(loop):
 def test_release_close_do_not_add_to_pool(loop):
     # see issue #473
     conn = aiohttp.BaseConnector(loop=loop)
-    req = unittest.mock.Mock()
-    resp = unittest.mock.Mock()
-    resp.message.should_close = True
-    req.response = resp
 
     key = ('127.0.0.1', 80, False)
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock(should_close=True)
 
-    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     conn._acquired.add(tr)
-    conn._release(key, req, tr, proto)
+    conn._release(key, tr, proto)
     assert not conn._conns
 
 
@@ -452,14 +437,10 @@ def test_release_close_do_not_delete_existing_connections(loop):
 
     conn = aiohttp.BaseConnector(loop=loop)
     conn._conns[key] = [(tr1, proto1, 1)]
-    req = unittest.mock.Mock()
-    resp = unittest.mock.Mock()
-    resp.message.should_close = True
-    req.response = resp
 
-    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock(should_close=True)
     conn._acquired.add(tr1)
-    conn._release(key, req, tr, proto)
+    conn._release(key, tr, proto)
     assert conn._conns[key] == [(tr1, proto1, 1)]
     assert tr.close.called
     conn.close()
@@ -467,16 +448,11 @@ def test_release_close_do_not_delete_existing_connections(loop):
 
 def test_release_not_started(loop):
     loop.time = mock.Mock(return_value=10)
-
     conn = aiohttp.BaseConnector(loop=loop)
-    req = unittest.mock.Mock()
-    req.response = None
-
-    tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
-    proto.should_close = False
+    tr, proto = unittest.mock.Mock(), unittest.mock.Mock(should_close=False)
     key = 1
     conn._acquired.add(tr)
-    conn._release(key, req, tr, proto)
+    conn._release(key, tr, proto)
     assert conn._conns == {1: [(tr, proto, 10)]}
     assert not tr.close.called
     conn.close()
@@ -484,14 +460,11 @@ def test_release_not_started(loop):
 
 def test_release_not_opened(loop):
     conn = aiohttp.BaseConnector(loop=loop)
-    req = unittest.mock.Mock()
-    req.response = unittest.mock.Mock()
-    req.response.message = None
 
     tr, proto = unittest.mock.Mock(), unittest.mock.Mock()
     key = ('localhost', 80, False)
     conn._acquired.add(tr)
-    conn._release(key, req, tr, proto)
+    conn._release(key, tr, proto)
     assert tr.close.called
 
 
