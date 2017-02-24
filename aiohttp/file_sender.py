@@ -10,8 +10,7 @@ from .web_response import StreamResponse
 
 
 class FileSender:
-    """"A helper that can be used to send files.
-    """
+    """A helper that can be used to send files."""
 
     def __init__(self, *, resp_factory=StreamResponse, chunk_size=256*1024):
         self._response_factory = resp_factory
