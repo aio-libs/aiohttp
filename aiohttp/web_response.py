@@ -305,14 +305,15 @@ class StreamResponse(HeadersMixin):
                     return
 
     @asyncio.coroutine
-    def prepare(self, request):
+    def prepare(self, request, PayloadWriterFactory=PayloadWriter):
         if self._payload_writer is not None:
             return self._payload_writer
 
         yield from request._prepare_hook(self)
-        return self._start(request)
+        return self._start(request, PayloadWriterFactory=PayloadWriterFactory)
 
     def _start(self, request,
+               PayloadWriterFactory=PayloadWriter,
                HttpVersion10=HttpVersion10,
                HttpVersion11=HttpVersion11,
                CONNECTION=hdrs.CONNECTION,
@@ -330,7 +331,7 @@ class StreamResponse(HeadersMixin):
         self._keep_alive = keep_alive
         version = request.version
 
-        writer = self._payload_writer = PayloadWriter(
+        writer = self._payload_writer = PayloadWriterFactory(
             request._protocol.writer, request._loop)
 
         headers = self._headers
@@ -391,10 +392,7 @@ class StreamResponse(HeadersMixin):
         if self._payload_writer is None:
             raise RuntimeError("Cannot call write() before start()")
 
-        if data:
-            return self._payload_writer.write(data)
-        else:
-            return ()
+        return self._payload_writer.write(data)
 
     @asyncio.coroutine
     def drain(self):
@@ -575,14 +573,14 @@ class Response(StreamResponse):
         else:
             yield from super().write_eof()
 
-    def _start(self, request):
+    def _start(self, request, PayloadWriterFactory=PayloadWriter):
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if self._body is not None:
                 self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
             else:
                 self._headers[hdrs.CONTENT_LENGTH] = '0'
 
-        return super()._start(request)
+        return super()._start(request, PayloadWriterFactory)
 
 
 def json_response(data=sentinel, *, text=None, body=None, status=200,

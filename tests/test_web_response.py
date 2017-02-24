@@ -24,23 +24,25 @@ def make_request(method, path, headers=CIMultiDict(),
 
 
 @pytest.yield_fixture
-def transport():
-    transport = mock.Mock()
+def buf():
+    return bytearray()
 
-    buf = bytearray()
+
+@pytest.yield_fixture
+def writer(buf):
+    writer = mock.Mock()
 
     def acquire(cb):
-        cb(transport)
+        cb(writer.transport)
 
     def write(chunk):
         buf.extend(chunk)
 
-    transport.acquire.side_effect = acquire
-    transport.write.side_effect = write
-    transport.transport.write.side_effect = write
-    transport.drain.return_value = ()
+    writer.acquire.side_effect = acquire
+    writer.transport.write.side_effect = write
+    writer.drain.return_value = ()
 
-    return (transport, buf)
+    return writer
 
 
 def test_stream_response_ctor():
@@ -171,14 +173,13 @@ def test_start():
     resp = StreamResponse()
     assert resp.keep_alive is None
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, PayloadWriterFactory=mock.Mock())
 
-        assert msg.buffer_data.called
-        msg2 = yield from resp.prepare(req)
-        assert msg is msg2
+    assert msg.buffer_data.called
+    msg2 = yield from resp.prepare(req)
+    assert msg is msg2
 
-        assert resp.keep_alive
+    assert resp.keep_alive
 
     req2 = make_request('GET', '/')
     # with pytest.raises(RuntimeError):
@@ -195,9 +196,8 @@ def test_chunked_encoding():
     resp.enable_chunked_encoding()
     assert resp.chunked
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
-        assert msg.chunked
+    msg = yield from resp.prepare(req, mock.Mock())
+    assert msg.chunked
 
 
 @asyncio.coroutine
@@ -209,11 +209,10 @@ def test_chunk_size():
     resp.enable_chunked_encoding(chunk_size=8192)
     assert resp.chunked
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
-        assert msg.chunked
-        assert msg.enable_chunking.called
-        assert msg.filter is not None
+    msg = yield from resp.prepare(req, mock.Mock())
+    assert msg.chunked
+    assert msg.enable_chunking.called
+    assert msg.filter is not None
 
 
 @asyncio.coroutine
@@ -238,9 +237,8 @@ def test_compression_no_accept():
     resp.enable_compression()
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
-        assert not msg.enable_compression.called
+    msg = yield from resp.prepare(req, mock.Mock())
+    assert not msg.enable_compression.called
 
 
 @asyncio.coroutine
@@ -253,8 +251,7 @@ def test_force_compression_no_accept_backwards_compat():
     resp.enable_compression(force=True)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, mock.Mock())
     assert msg.enable_compression.called
     assert msg.filter is not None
 
@@ -268,8 +265,7 @@ def test_force_compression_false_backwards_compat():
     resp.enable_compression(force=False)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, mock.Mock())
     assert not msg.enable_compression.called
 
 
@@ -285,8 +281,7 @@ def test_compression_default_coding():
     resp.enable_compression()
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, mock.Mock())
 
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -303,8 +298,7 @@ def test_force_compression_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, mock.Mock())
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -317,8 +311,7 @@ def test_force_compression_no_accept_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, mock.Mock())
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -333,8 +326,7 @@ def test_force_compression_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, mock.Mock())
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -347,8 +339,7 @@ def test_force_compression_no_accept_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        msg = yield from resp.prepare(req)
+    msg = yield from resp.prepare(req, mock.Mock())
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -359,9 +350,7 @@ def test_delete_content_length_if_compression_enabled():
     resp = Response(body=b'answer')
     resp.enable_compression(ContentCoding.gzip)
 
-    with mock.patch('aiohttp.web_response.PayloadWriter'):
-        yield from resp.prepare(req)
-
+    yield from resp.prepare(req)
     assert resp.content_length is None
 
 
@@ -457,7 +446,8 @@ def test_write_returns_empty_tuple_on_empty_data():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
-    assert () == resp.write(b'')
+    with mock.patch('aiohttp.http_message.noop') as noop:
+        assert noop.return_value == resp.write(b'')
 
 
 def test_force_close():
@@ -824,8 +814,7 @@ def test_assign_nonstr_text():
 
 
 @asyncio.coroutine
-def test_send_headers_for_empty_body(transport):
-    writer, buf = transport
+def test_send_headers_for_empty_body(buf, writer):
     req = make_request('GET', '/', writer=writer)
     resp = Response()
 
@@ -840,8 +829,7 @@ def test_send_headers_for_empty_body(transport):
 
 
 @asyncio.coroutine
-def test_render_with_body(transport):
-    writer, buf = transport
+def test_render_with_body(buf, writer):
     req = make_request('GET', '/', writer=writer)
     resp = Response(body=b'data')
 
@@ -858,8 +846,7 @@ def test_render_with_body(transport):
 
 
 @asyncio.coroutine
-def test_send_set_cookie_header(transport):
-    writer, buf = transport
+def test_send_set_cookie_header(buf, writer):
     resp = Response()
     resp.cookies['name'] = 'value'
     req = make_request('GET', '/', writer=writer)
