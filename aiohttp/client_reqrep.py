@@ -13,7 +13,8 @@ import aiohttp
 
 from . import hdrs, helpers, http, payload
 from .formdata import FormData
-from .helpers import PY_35, HeadersMixin, SimpleCookie, _TimeServiceTimeoutNoop
+from .helpers import (PY_35, HeadersMixin, SimpleCookie,
+                      _TimeServiceTimeoutNoop, noop)
 from .http import HttpMessage
 from .log import client_logger
 from .streams import FlowControlStreamReader
@@ -453,7 +454,7 @@ class ClientResponse(HeadersMixin):
         self._content = None
         self._writer = writer
         self._continue = continue100
-        self._closed = False
+        self._closed = True
         self._history = ()
         self.headers = None
         self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
@@ -489,15 +490,21 @@ class ClientResponse(HeadersMixin):
             return  # not started
         if self._closed:
             return
-        self.close()
 
-        _warnings.warn("Unclosed response {!r}".format(self),
-                       ResourceWarning)
-        context = {'client_response': self,
-                   'message': 'Unclosed response'}
-        if self._source_traceback:
-            context['source_traceback'] = self._source_traceback
-        self._loop.call_exception_handler(context)
+        if self._connection is not None:
+            self._connection.release()
+            self._cleanup_writer()
+
+            # warn
+            if __debug__:
+                if self._loop.get_debug():
+                    _warnings.warn("Unclosed response {!r}".format(self),
+                                   ResourceWarning)
+                    context = {'client_response': self,
+                               'message': 'Unclosed response'}
+                    if self._source_traceback:
+                        context['source_traceback'] = self._source_traceback
+                    self._loop.call_exception_handler(context)
 
     def __repr__(self):
         out = io.StringIO()
@@ -526,8 +533,10 @@ class ClientResponse(HeadersMixin):
     @asyncio.coroutine
     def start(self, connection, read_until_eof=False):
         """Start response processing."""
+        self._closed = False
         self._protocol = connection.protocol
         self._connection = connection
+
         connection.protocol.set_response_params(
             timer=self._timer,
             skip_payload=self.method.lower() == 'head',
@@ -603,10 +612,9 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
         self._notify_content()
 
-    @asyncio.coroutine
     def release(self):
         if self._closed:
-            return
+            return noop()
 
         self._closed = True
         if self._connection is not None:
@@ -615,6 +623,7 @@ class ClientResponse(HeadersMixin):
 
         self._cleanup_writer()
         self._notify_content()
+        return noop()
 
     def raise_for_status(self):
         if 400 <= self.status:
@@ -641,7 +650,7 @@ class ClientResponse(HeadersMixin):
                 yield from self._writer
             finally:
                 self._writer = None
-        yield from self.release()
+        self.release()
 
     @asyncio.coroutine
     def read(self):
@@ -652,8 +661,6 @@ class ClientResponse(HeadersMixin):
             except:
                 self.close()
                 raise
-            else:
-                yield from self.release()
 
         return self._content
 
@@ -714,4 +721,4 @@ class ClientResponse(HeadersMixin):
             # similar to _RequestContextManager, we do not need to check
             # for exceptions, response object can closes connection
             # is state is broken
-            yield from self.release()
+            self.release()

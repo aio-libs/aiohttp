@@ -35,7 +35,8 @@ class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
 
     @property
     def should_close(self):
-        if self._payload is not None and not self._payload.is_eof():
+        if (self._payload is not None and
+                not self._payload.is_eof() or self._upgraded):
             return True
 
         return (self._should_close or self._upgraded or
