@@ -146,7 +146,6 @@ class ClientSession:
                  allow_redirects=True,
                  max_redirects=10,
                  encoding=None,
-                 version=None,
                  compress=None,
                  chunked=None,
                  expect100=False,
@@ -158,12 +157,6 @@ class ClientSession:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
         # to use the existing timeouts by setting timeout to None.
-
-        if version is not None:
-            warnings.warn("HTTP version should be specified "
-                          "by ClientSession constructor", DeprecationWarning)
-        else:
-            version = self._version
 
         if encoding is not None:
             warnings.warn(
@@ -180,6 +173,7 @@ class ClientSession:
 
         redirects = 0
         history = []
+        version = self._version
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
@@ -673,7 +667,7 @@ def request(method, url, *,
             allow_redirects=True,
             max_redirects=10,
             encoding=None,
-            version=None,
+            version=http.HttpVersion11,
             compress=None,
             chunked=None,
             expect100=False,
@@ -719,7 +713,7 @@ def request(method, url, *,
         connector = TCPConnector(loop=loop, force_close=True)
 
     session = ClientSession(
-        loop=loop, cookies=cookies,
+        loop=loop, cookies=cookies, version=version,
         connector=connector, connector_owner=connector_owner)
 
     return _DetachedRequestContextManager(
@@ -732,7 +726,6 @@ def request(method, url, *,
                          allow_redirects=allow_redirects,
                          max_redirects=max_redirects,
                          encoding=encoding,
-                         version=version,
                          compress=compress,
                          chunked=chunked,
                          expect100=expect100,

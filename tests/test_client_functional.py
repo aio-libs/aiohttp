@@ -552,22 +552,6 @@ def test_raw_headers(loop, test_client):
 
 
 @asyncio.coroutine
-def test_http_request_with_version(loop, test_client):
-    @asyncio.coroutine
-    def handler(request):
-        return web.Response()
-
-    app = web.Application(loop=loop)
-    app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
-
-    with pytest.warns(DeprecationWarning):
-        resp = yield from client.get('/', version=aiohttp.HttpVersion11)
-        assert resp.status == 200
-        resp.close()
-
-
-@asyncio.coroutine
 def test_204_with_gzipped_content_encoding(loop, test_client):
     @asyncio.coroutine
     def handler(request):

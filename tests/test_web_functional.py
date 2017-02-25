@@ -75,9 +75,9 @@ def test_head_returns_empty_body(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_head('/', handler)
-    client = yield from test_client(app)
+    client = yield from test_client(app, version=HttpVersion11)
 
-    resp = yield from client.head('/', version=HttpVersion11)
+    resp = yield from client.head('/')
     assert 200 == resp.status
     txt = yield from resp.text()
     assert '' == txt
@@ -540,9 +540,9 @@ def test_http11_keep_alive_default(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(app)
+    client = yield from test_client(app, version=HttpVersion11)
 
-    resp = yield from client.get('/', version=HttpVersion11)
+    resp = yield from client.get('/')
     assert 200 == resp.status
     assert resp.version == HttpVersion11
     assert 'Connection' not in resp.headers
@@ -557,9 +557,9 @@ def test_http10_keep_alive_default(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(app)
+    client = yield from test_client(app, version=HttpVersion10)
 
-    resp = yield from client.get('/', version=HttpVersion10)
+    resp = yield from client.get('/')
     assert 200 == resp.status
     assert resp.version == HttpVersion10
     assert resp.headers['Connection'] == 'keep-alive'
@@ -575,11 +575,10 @@ def test_http10_keep_alive_with_headers_close(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(app)
+    client = yield from test_client(app, version=HttpVersion10)
 
     headers = {'Connection': 'close'}
-    resp = yield from client.get('/', version=HttpVersion10,
-                                 headers=headers)
+    resp = yield from client.get('/', headers=headers)
     assert 200 == resp.status
     assert resp.version == HttpVersion10
     assert 'Connection' not in resp.headers
@@ -595,11 +594,10 @@ def test_http10_keep_alive_with_headers(loop, test_client):
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
-    client = yield from test_client(app)
+    client = yield from test_client(app, version=HttpVersion10)
 
     headers = {'Connection': 'keep-alive'}
-    resp = yield from client.get('/', version=HttpVersion10,
-                                 headers=headers)
+    resp = yield from client.get('/', headers=headers)
     assert 200 == resp.status
     assert resp.version == HttpVersion10
     assert resp.headers['Connection'] == 'keep-alive'
