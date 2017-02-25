@@ -22,9 +22,11 @@ CHANGES
 
 - Deprecate public low-level api #1657
 
-- Deprecate `encoding` parameter for client request()
+- Deprecate `encoding` parameter for ClientSession.request() method
 
 - Dropped aiohttp.wsgi #1108
+
+- Dropped `version` from ClientSession.request() method
 
 - Dropped websocket version 76 support #1160
 
