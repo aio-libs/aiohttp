@@ -954,7 +954,7 @@ def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
-            k+'='+v for k, v in request.GET.items()))
+            k+'='+v for k, v in request.query.items()))
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -973,7 +973,7 @@ def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
-            k+'='+v for k, v in request.GET.items()))
+            k+'='+v for k, v in request.query.items()))
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
