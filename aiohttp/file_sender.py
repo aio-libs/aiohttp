@@ -15,6 +15,14 @@ NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 class SendfilePayloadWriter(PayloadWriter):
 
+    def set_transport(self, transport):
+        self._transport = transport
+
+        if self._drain_waiter is not None:
+            waiter, self._drain_maiter = self._drain_maiter, None
+            if not waiter.done():
+                waiter.set_result(None)
+
     def _write(self, chunk):
         self.output_size += len(chunk)
         self._buffer.append(chunk)
@@ -41,7 +49,14 @@ class SendfilePayloadWriter(PayloadWriter):
         else:
             fut.set_result(None)
 
+    @asyncio.coroutine
     def sendfile(self, fobj, count):
+        if self._transport is None:
+            if self._drain_waiter is None:
+                self._drain_waiter = create_future(self.loop)
+
+            yield from self._drain_waiter
+
         out_socket = self._transport.get_extra_info("socket").dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()

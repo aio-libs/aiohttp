@@ -94,3 +94,8 @@ async def test_aiohttp_request(loop, test_server):
     async with aiohttp.request('GET', server.make_url('/')) as resp:
         await resp.read()
         assert resp.status == 200
+
+    resp = await aiohttp.request('GET', server.make_url('/'))
+    await resp.read()
+    assert resp.status == 200
+    assert resp.connection is None
