@@ -58,7 +58,7 @@ class ClientRequest:
     def __init__(self, method, url, *,
                  params=None, headers=None, skip_auto_headers=frozenset(),
                  data=None, cookies=None,
-                 auth=None, encoding='utf-8',
+                 auth=None, encoding=None,
                  version=http.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,

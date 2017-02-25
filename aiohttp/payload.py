@@ -1,5 +1,4 @@
 import asyncio
-import cgi
 import io
 import mimetypes
 import os
@@ -152,14 +151,22 @@ class BytesPayload(Payload):
 class StringPayload(BytesPayload):
 
     def __init__(self, value, *args,
-                 content_type='text/plain; charset=utf-8', **kwargs):
+                 encoding=None, content_type=None, **kwargs):
 
-        *_, params = parse_mimetype(content_type)
-        charset = params.get('charset', 'utf-8')
-        kwargs['encoding'] = charset
+        if encoding is None:
+            if content_type is None:
+                encoding = 'utf-8'
+                content_type = 'text/plain; charset=utf-8'
+            else:
+                *_, params = parse_mimetype(content_type)
+                encoding = params.get('charset', 'utf-8')
+        else:
+            if content_type is None:
+                content_type = 'text/plain; charset=%s' % encoding
 
         super().__init__(
-            value.encode(charset), content_type=content_type, *args, **kwargs)
+            value.encode(encoding),
+            encoding=encoding, content_type=content_type, *args, **kwargs)
 
 
 class IOBasePayload(Payload):
@@ -186,17 +193,19 @@ class IOBasePayload(Payload):
 
 class TextIOPayload(IOBasePayload):
 
-    def __init__(self, value, *args, encoding=None,
-                 content_type='text/plain; charset=utf-8', **kwargs):
+    def __init__(self, value, *args,
+                 encoding=None, content_type=None, **kwargs):
 
         if encoding is None:
-            *_, params = parse_mimetype(content_type)
-            encoding = params.get('charset', 'utf-8')
+            if content_type is None:
+                encoding = 'utf-8'
+                content_type = 'text/plain; charset=utf-8'
+            else:
+                *_, params = parse_mimetype(content_type)
+                encoding = params.get('charset', 'utf-8')
         else:
-            ct, params = cgi.parse_header(content_type)
-            params['charset'] = encoding
-            params = '; '.join("%s=%s" % i for i in params.items())
-            content_type = ct + '; ' + params
+            if content_type is None:
+                content_type = 'text/plain; charset=%s' % encoding
 
         super().__init__(
             value,

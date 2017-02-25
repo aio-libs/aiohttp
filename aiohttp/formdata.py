@@ -89,6 +89,7 @@ class FormData:
         for type_options, _, value in self._fields:
             data.append((type_options['name'], value))
 
+        encoding = encoding if encoding is not None else 'utf-8'
         return payload.BytesPayload(
             urlencode(data, doseq=True).encode(encoding),
             content_type='application/x-www-form-urlencoded')
