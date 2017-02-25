@@ -22,7 +22,7 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import PY_35, TimeService
+from .helpers import PY_35, TimeService, noop
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
@@ -500,9 +500,7 @@ class ClientSession:
             if self._time_service_owner:
                 self._time_service.close()
 
-        ret = helpers.create_future(self._loop)
-        ret.set_result(None)
-        return ret
+        return noop()
 
     @property
     def closed(self):
