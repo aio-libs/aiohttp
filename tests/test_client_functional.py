@@ -278,6 +278,26 @@ def test_post_data_stringio(loop, test_client):
 
 
 @asyncio.coroutine
+def test_post_data_textio_encoding(loop, test_client):
+    data = 'текст'
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers['CONTENT-TYPE'] == 'text/plain; charset=koi8-r'
+        val = yield from request.text()
+        assert data == val
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_route('POST', '/', handler)
+    client = yield from test_client(app)
+
+    pl = aiohttp.TextIOPayload(io.StringIO(data), encoding='koi8-r')
+    resp = yield from client.post('/', data=pl)
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
 def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
 
