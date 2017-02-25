@@ -668,6 +668,8 @@ class TCPConnector(BaseConnector):
                     expected = self._fingerprint
                     if got != expected:
                         transp.close()
+                        if not self._cleanup_closed_disabled:
+                            self._cleanup_closed_transports.append(transp)
                         raise ServerFingerprintMismatch(
                             expected, got, host, port)
                 return transp, proto

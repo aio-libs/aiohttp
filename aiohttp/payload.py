@@ -174,37 +174,26 @@ class IOBasePayload(Payload):
 
     @asyncio.coroutine
     def write(self, writer):
-        chunk = self._value.read(DEFAULT_LIMIT)
-        while chunk:
-            yield from writer.write(chunk)
+        try:
             chunk = self._value.read(DEFAULT_LIMIT)
-
-        self._value.close()
-
-
-class StringIOPayload(IOBasePayload):
-
-    def __init__(self, value, *args,
-                 content_type='text/plain; charset=utf-8', **kwargs):
-        *_, params = parse_mimetype(content_type)
-        charset = params.get('charset', 'utf-8')
-
-        super().__init__(
-            value,
-            content_type=content_type,
-            encoding=charset, *args, **kwargs)
-
-    @asyncio.coroutine
-    def write(self, writer):
-        chunk = self._value.read(DEFAULT_LIMIT)
-        while chunk:
-            yield from writer.write(chunk.encode(self._encoding))
-            chunk = self._value.read(DEFAULT_LIMIT)
-
-        self._value.close()
+            while chunk:
+                yield from writer.write(chunk)
+                chunk = self._value.read(DEFAULT_LIMIT)
+        finally:
+            self._value.close()
 
 
 class TextIOPayload(IOBasePayload):
+
+    def __init__(self, value, *args, encoding=None,
+                 content_type='text/plain; charset=utf-8', **kwargs):
+
+        if encoding is None:
+            encoding = value.encoding
+
+        super().__init__(
+            value,
+            content_type=content_type, encoding=encoding, *args, **kwargs)
 
     @property
     def size(self):
@@ -215,20 +204,36 @@ class TextIOPayload(IOBasePayload):
 
     @asyncio.coroutine
     def write(self, writer):
-        encoding = self._value.encoding
-        chunk = self._value.read(DEFAULT_LIMIT)
-        while chunk:
-            yield from writer.write(chunk.encode(encoding))
+        try:
             chunk = self._value.read(DEFAULT_LIMIT)
+            while chunk:
+                yield from writer.write(chunk.encode(self._encoding))
+                chunk = self._value.read(DEFAULT_LIMIT)
+        finally:
+            self._value.close()
 
-        self._value.close()
+
+class StringIOPayload(TextIOPayload):
+
+    def __init__(self, value, *args,
+                 content_type='text/plain; charset=utf-8', **kwargs):
+        *_, params = parse_mimetype(content_type)
+        charset = params.get('charset', 'utf-8')
+
+        super().__init__(
+            value,
+            content_type=content_type, encoding=charset, *args, **kwargs)
+
+    @property
+    def size(self):
+        return len(self._value.getvalue()) - self._value.tell()
 
 
 class BytesIOPayload(IOBasePayload):
 
     @property
     def size(self):
-        return len(self._value.getbuffer())
+        return len(self._value.getbuffer()) - self._value.tell()
 
 
 class BufferedReaderPayload(IOBasePayload):
