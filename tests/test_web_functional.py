@@ -689,8 +689,8 @@ def test_get_with_empty_arg(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        assert 'arg' in request.GET
-        assert '' == request.GET['arg']
+        assert 'arg' in request.query
+        assert '' == request.query['arg']
         return web.Response()
 
     app = web.Application(loop=loop)
@@ -738,8 +738,8 @@ def test_large_header_allowed(loop, test_client, test_server):
 def test_get_with_empty_arg_with_equal(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        assert 'arg' in request.GET
-        assert '' == request.GET['arg']
+        assert 'arg' in request.query
+        assert '' == request.query['arg']
         return web.Response()
 
     app = web.Application(loop=loop)

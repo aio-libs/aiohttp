@@ -363,6 +363,8 @@ class StreamResponse(HeadersMixin):
         headers.setdefault(CONTENT_TYPE, 'application/octet-stream')
         headers.setdefault(DATE, request.time_service.strtime())
         headers.setdefault(SERVER, SERVER_SOFTWARE)
+
+        # connection header
         if CONNECTION not in headers:
             if keep_alive:
                 if version == HttpVersion10:
