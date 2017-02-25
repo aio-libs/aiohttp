@@ -35,7 +35,7 @@ CHANGES
 
 - Dropped: `Application.finish()` and `Application.register_on_finish()`  #1602
 
-- Dropped: aiohttp.request(), aiohttp.get(), aiohttp.options(), aiohttp.head(),
+- Dropped: aiohttp.get(), aiohttp.options(), aiohttp.head(),
   aiohttp.post(), aiohttp.put(), aiohttp.patch(), aiohttp.delete(), and
   aiohttp.ws_connect() #1593
 
