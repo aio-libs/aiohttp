@@ -81,3 +81,16 @@ async def test_close_detached_session_on_non_existing_addr(loop):
             await cm
 
     assert session.closed
+
+
+async def test_aiohttp_request(loop, test_server):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    server = await test_server(app)
+
+    async with aiohttp.request('GET', server.make_url('/')) as resp:
+        await resp.read()
+        assert resp.status == 200

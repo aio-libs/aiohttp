@@ -378,6 +378,25 @@ class TestHttpClientFunctional(unittest.TestCase):
             r.close()
             session.close()
 
+    def test_POST_DATA_with_charset_pub_request(self):
+        with run_server(self.loop, router=Functional) as httpd:
+            url = httpd.url('method', 'post')
+
+            form = aiohttp.FormData()
+            form.add_field('name', 'текст',
+                           content_type='text/plain; charset=koi8-r')
+
+            r = self.loop.run_until_complete(
+                aiohttp.request('post', url, data=form, loop=self.loop))
+            content = self.loop.run_until_complete(r.json())
+
+            self.assertEqual(1, len(content['multipart-data']))
+            field = content['multipart-data'][0]
+            self.assertEqual('name', field['name'])
+            self.assertEqual('текст', field['data'])
+            self.assertEqual(r.status, 200)
+            r.close()
+
     def test_POST_DATA_with_content_transfer_encoding(self):
         with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('method', 'post')
