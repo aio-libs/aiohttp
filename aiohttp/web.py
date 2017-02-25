@@ -13,7 +13,7 @@ from yarl import URL
 from . import (hdrs, web_exceptions, web_middlewares, web_request,
                web_response, web_server, web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import FrozenList, sentinel
+from .helpers import FrozenList
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
 from .signals import PostSignal, PreSignal, Signal
@@ -187,30 +187,16 @@ class Application(MutableMapping):
         return self._middlewares
 
     def make_handler(self, *, secure_proxy_ssl_header=None, **kwargs):
-        debug = kwargs.pop('debug', sentinel)
-        if debug is not sentinel:
-            warnings.warn(
-                "`debug` parameter is deprecated. "
-                "Use Application's debug mode instead", DeprecationWarning)
-            if debug != self.debug:
-                raise ValueError(
-                    "The value of `debug` parameter conflicts with the debug "
-                    "settings of the `Application` instance. The "
-                    "application's debug mode setting should be used instead "
-                    "as a single point to setup a debug mode. For more "
-                    "information please check "
-                    "http://aiohttp.readthedocs.io/en/stable/"
-                    "web_reference.html#aiohttp.web.Application"
-                )
         self.freeze()
 
+        kwargs['debug'] = self.debug
         if self._handler_args:
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         return Server(self._handle, request_factory=self._make_request,
-                      debug=self.debug, loop=self.loop, **kwargs)
+                      loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def startup(self):
