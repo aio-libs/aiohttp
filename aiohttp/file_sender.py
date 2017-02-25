@@ -4,22 +4,23 @@ import os
 
 from . import hdrs
 from .helpers import create_future
+from .http_message import PayloadWriter
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
                              HTTPRequestRangeNotSatisfiable)
 from .web_response import StreamResponse
 
 
-class FileSender:
-    """A helper that can be used to send files."""
+NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
-    def __init__(self, *, resp_factory=StreamResponse, chunk_size=256*1024):
-        self._response_factory = resp_factory
-        self._chunk_size = chunk_size
-        if bool(os.environ.get("AIOHTTP_NOSENDFILE")):
-            self._sendfile = self._sendfile_fallback
 
-    def _sendfile_cb(self, fut, out_fd, in_fd, offset,
-                     count, loop, registered):
+class SendfilePayloadWriter(PayloadWriter):
+
+    def _write(self, chunk):
+        self.output_size += len(chunk)
+        self._buffer.append(chunk)
+
+    def _sendfile_cb(self, fut, out_fd, in_fd,
+                     offset, count, loop, registered):
         if registered:
             loop.remove_writer(out_fd)
         if fut.cancelled():
@@ -40,76 +41,58 @@ class FileSender:
         else:
             fut.set_result(None)
 
-    @asyncio.coroutine
-    def _sendfile_system(self, request, resp, fobj, count):
-        # Write count bytes of fobj to resp using
-        # the os.sendfile system call.
-        #
-        # request should be a aiohttp.web.Request instance.
-        #
-        # resp should be a aiohttp.web.StreamResponse instance.
-        #
-        # fobj should be an open file object.
-        #
-        # count should be an integer > 0.
-
-        transport = request.transport
-
-        if transport.get_extra_info("sslcontext"):
-            yield from self._sendfile_fallback(request, resp, fobj, count)
-            return
-
-        def _send_headers(version, headers, writer):
-            # Durty hack required for
-            # https://github.com/KeepSafe/aiohttp/issues/1093
-            # don't send headers in sendfile mode
-            pass
-
-        resp._send_headers = _send_headers
-
-        resp_impl = yield from resp.prepare(request)
-
-        @asyncio.coroutine
-        def write_eof():
-            # Durty hack required for
-            # https://github.com/KeepSafe/aiohttp/issues/1177
-            # do nothing in write_eof
-            resp._eof_sent = True
-            resp._req = None
-            resp._body_length = resp_impl.output_size
-            resp._payload_writer = None
-            resp_impl._stream.release()
-
-        resp.write_eof = write_eof
-
-        loop = request.app.loop
-        # See https://github.com/KeepSafe/aiohttp/issues/958 for details
-
-        # send headers
-        headers = ['HTTP/{0.major}.{0.minor} {1} OK\r\n'.format(
-            request.version, resp.status)]
-        for hdr, val in resp.headers.items():
-            headers.append('{}: {}\r\n'.format(hdr, val))
-        headers.append('\r\n')
-
-        out_socket = transport.get_extra_info("socket").dup()
+    def sendfile(self, fobj, count):
+        out_socket = self._transport.get_extra_info("socket").dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
         offset = fobj.tell()
 
-        bheaders = ''.join(headers).encode('utf-8')
-        headers_length = len(bheaders)
-        resp_impl.output_size = headers_length + count
-
+        loop = self.loop
         try:
-            yield from loop.sock_sendall(out_socket, bheaders)
+            yield from loop.sock_sendall(out_socket, b''.join(self._buffer))
             fut = create_future(loop)
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
-
             yield from fut
         finally:
             out_socket.close()
+
+        self.output_size += count
+        self._transport = None
+        self._stream.release()
+
+    @asyncio.coroutine
+    def write_eof(self, chunk=b''):
+        pass
+
+
+class FileSender:
+    """A helper that can be used to send files."""
+
+    def __init__(self, *, resp_factory=StreamResponse, chunk_size=256*1024):
+        self._response_factory = resp_factory
+        self._chunk_size = chunk_size
+
+    @asyncio.coroutine
+    def _sendfile_system(self, request, resp, fobj, count):
+        # Write count bytes of fobj to resp using
+        # the os.sendfile system call.
+        #
+        # For details check
+        # https://github.com/KeepSafe/aiohttp/issues/1177
+        # See https://github.com/KeepSafe/aiohttp/issues/958 for details
+        #
+        # request should be a aiohttp.web.Request instance.
+        # fobj should be an open file object.
+        # count should be an integer > 0.
+
+        transport = request.transport
+        if transport.get_extra_info("sslcontext"):
+            yield from self._sendfile_fallback(request, resp, fobj, count)
+        else:
+            writer = yield from resp.prepare(
+                request, PayloadWriterFactory=SendfilePayloadWriter)
+            yield from writer.sendfile(fobj, count)
 
     @asyncio.coroutine
     def _sendfile_fallback(self, request, resp, fobj, count):
@@ -129,8 +112,7 @@ class FileSender:
 
             chunk = fobj.read(chunk_size)
             while True:
-                resp.write(chunk)
-                yield from resp.drain()
+                yield from resp.write(chunk)
                 count = count - chunk_size
                 if count <= 0:
                     break
@@ -138,7 +120,7 @@ class FileSender:
         finally:
             resp.set_tcp_nodelay(True)
 
-    if hasattr(os, "sendfile"):  # pragma: no cover
+    if hasattr(os, "sendfile") and not NOSENDFILE:  # pragma: no cover
         _sendfile = _sendfile_system
     else:  # pragma: no cover
         _sendfile = _sendfile_fallback

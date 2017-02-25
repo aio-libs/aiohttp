@@ -698,14 +698,14 @@ def test_response_ctor():
 
 
 def test_ctor_with_headers_and_status():
-    resp = Response(body=b'body', status=201, headers={'Age': '12'})
+    resp = Response(body=b'body', status=201,
+                    headers={'Age': '12', 'DATE': 'date'})
 
     assert 201 == resp.status
     assert b'body' == resp.body
     assert resp.headers['AGE'] == '12'
 
-    resp._send_headers = mock.Mock()
-    resp._start(mock.Mock())
+    resp._start(mock.Mock(version=HttpVersion11))
     assert 4 == resp.content_length
     assert resp.headers['CONTENT-LENGTH'] == '4'
 
@@ -737,8 +737,8 @@ def test_ctor_text():
     assert resp.body == b'test text'
     assert resp.text == 'test text'
 
-    resp._send_headers = mock.Mock()
-    resp._start(mock.Mock())
+    resp.headers['DATE'] = 'date'
+    resp._start(mock.Mock(version=HttpVersion11))
     assert resp.headers['CONTENT-LENGTH'] == '9'
 
 
@@ -798,8 +798,8 @@ def test_assign_nonbyteish_body():
     assert b'data' == resp.body
     assert 4 == resp.content_length
 
-    resp._send_headers = mock.Mock()
-    resp._start(mock.Mock())
+    resp.headers['DATE'] = 'date'
+    resp._start(mock.Mock(version=HttpVersion11))
     assert resp.headers['CONTENT-LENGTH'] == '4'
     assert 4 == resp.content_length
 

@@ -323,7 +323,8 @@ class StreamResponse(HeadersMixin):
                CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
                SET_COOKIE=hdrs.SET_COOKIE,
                SERVER_SOFTWARE=SERVER_SOFTWARE,
-               TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING):
+               TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING,
+               SEP=': ', END='\r\n'):
         self._req = request
         keep_alive = self._keep_alive
         if keep_alive is None:
@@ -370,18 +371,17 @@ class StreamResponse(HeadersMixin):
                 if version == HttpVersion11:
                     headers[CONNECTION] = 'close'
 
-        self._send_headers(version, headers, writer)
-        return writer
-
-    def _send_headers(self, version, headers, writer, _sep=': ', _end='\r\n'):
+        # status line
         status_line = 'HTTP/{}.{} {} {}\r\n'.format(
             version[0], version[1], self._status, self._reason)
 
         # status + headers
         headers = status_line + ''.join(
-            [k + _sep + v + _end for k, v in headers.items()])
+            [k + SEP + v + END for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
         writer.buffer_data(headers)
+
+        return writer
 
     def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \
