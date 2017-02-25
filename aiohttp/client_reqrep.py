@@ -58,8 +58,7 @@ class ClientRequest:
     def __init__(self, method, url, *,
                  params=None, headers=None, skip_auto_headers=frozenset(),
                  data=None, cookies=None,
-                 auth=None, encoding=None,
-                 version=http.HttpVersion11, compress=None,
+                 auth=None, version=http.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None, timer=None):
@@ -78,7 +77,6 @@ class ClientRequest:
         self.url = url.with_fragment(None)
         self.original_url = url
         self.method = method.upper()
-        self.encoding = encoding
         self.chunked = chunked
         self.compress = compress
         self.loop = loop
@@ -237,12 +235,12 @@ class ClientRequest:
 
         # FormData
         if isinstance(body, FormData):
-            body = body(self.encoding)
+            body = body()
 
         try:
             body = payload.PAYLOAD_REGISTRY.get(body)
         except payload.LookupError:
-            body = FormData(body)(self.encoding)
+            body = FormData(body)()
 
         self.body = body
 

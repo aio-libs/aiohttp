@@ -13,11 +13,12 @@ class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
 
-    def __init__(self, fields=(), quote_fields=True):
+    def __init__(self, fields=(), quote_fields=True, charset=None):
         self._writer = multipart.MultipartWriter('form-data')
         self._fields = []
         self._is_multipart = False
         self._quote_fields = quote_fields
+        self._charset = charset
 
         if isinstance(fields, dict):
             fields = list(fields.items())
@@ -83,28 +84,28 @@ class FormData:
                                 'more complex parameters, got {!r}'
                                 .format(rec))
 
-    def _gen_form_urlencoded(self, encoding):
+    def _gen_form_urlencoded(self):
         # form data (x-www-form-urlencoded)
         data = []
         for type_options, _, value in self._fields:
             data.append((type_options['name'], value))
 
-        encoding = encoding if encoding is not None else 'utf-8'
+        charset = self._charset if self._charset is not None else 'utf-8'
         return payload.BytesPayload(
-            urlencode(data, doseq=True).encode(encoding),
+            urlencode(data, doseq=True).encode(charset),
             content_type='application/x-www-form-urlencoded')
 
-    def _gen_form_data(self, encoding):
+    def _gen_form_data(self):
         """Encode a list of fields using the multipart/form-data MIME format"""
         for dispparams, headers, value in self._fields:
             try:
                 if hdrs.CONTENT_TYPE in headers:
                     part = payload.get_payload(
                         value, content_type=headers[hdrs.CONTENT_TYPE],
-                        headers=headers, encoding=encoding)
+                        headers=headers, encoding=self._charset)
                 else:
                     part = payload.get_payload(
-                        value, headers=headers, encoding=encoding)
+                        value, headers=headers, encoding=self._charset)
             except Exception as exc:
                 raise ValueError(
                     'Can not serialize value type: %r\n '
@@ -123,8 +124,8 @@ class FormData:
 
         return self._writer
 
-    def __call__(self, encoding):
+    def __call__(self):
         if self._is_multipart:
-            return self._gen_form_data(encoding)
+            return self._gen_form_data()
         else:
-            return self._gen_form_urlencoded(encoding)
+            return self._gen_form_urlencoded()

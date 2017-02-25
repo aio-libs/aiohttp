@@ -22,6 +22,8 @@ CHANGES
 
 - Deprecate public low-level api #1657
 
+- Deprecate `encoding` parameter for client request()
+
 - Dropped aiohttp.wsgi #1108
 
 - Dropped websocket version 76 support #1160

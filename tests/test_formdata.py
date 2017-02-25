@@ -61,17 +61,17 @@ def test_invalid_formdata_content_transfer_encoding():
 
 @asyncio.coroutine
 def test_formdata_field_name_is_quoted(buf, writer):
-    form = FormData()
+    form = FormData(charset="ascii")
     form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
-    payload = form("ascii")
+    payload = form()
     yield from payload.write(writer)
     assert b'name="emails%5B%5D"' in buf
 
 
 @asyncio.coroutine
 def test_formdata_field_name_is_not_quoted(buf, writer):
-    form = FormData(quote_fields=False)
+    form = FormData(quote_fields=False, charset="ascii")
     form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
-    payload = form("ascii")
+    payload = form()
     yield from payload.write(writer)
     assert b'name="emails[]"' in buf

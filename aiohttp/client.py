@@ -165,6 +165,12 @@ class ClientSession:
         else:
             version = self._version
 
+        if encoding is not None:
+            warnings.warn(
+                "encoding parameter is not supported, "
+                "please use FormData(charset='utf-8') instead",
+                DeprecationWarning)
+
         if self.closed:
             raise RuntimeError('Session is closed')
 
@@ -216,9 +222,8 @@ class ClientSession:
                 req = self._request_class(
                     method, url, params=params, headers=headers,
                     skip_auto_headers=skip_headers, data=data,
-                    cookies=cookies, encoding=encoding,
-                    auth=auth, version=version, compress=compress,
-                    chunked=chunked, expect100=expect100,
+                    cookies=cookies, auth=auth, version=version,
+                    compress=compress, chunked=chunked, expect100=expect100,
                     loop=self._loop, response_class=self._response_class,
                     proxy=proxy, proxy_auth=proxy_auth, timer=timer)
 
