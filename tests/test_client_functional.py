@@ -258,6 +258,26 @@ def test_post_data_with_bytesio_file(loop, test_client):
 
 
 @asyncio.coroutine
+def test_post_data_stringio(loop, test_client):
+    data = 'some buffer'
+
+    @asyncio.coroutine
+    def handler(request):
+        assert len(data) == request.content_length
+        assert request.headers['CONTENT-TYPE'] == 'text/plain; charset=utf-8'
+        val = yield from request.text()
+        assert data == val
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_route('POST', '/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/', data=io.StringIO(data))
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
 def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
 
@@ -1420,7 +1440,7 @@ def test_POST_FILES_WITH_DATA(loop, test_client, fname):
         data = yield from request.post()
         assert data['test'] == 'true'
         assert data['some'].content_type in ['application/pgp-keys',
-                                             'text/plain',
+                                             'text/plain; charset=utf-8',
                                              'application/octet-stream']
         assert data['some'].filename == fname.name
         with fname.open('rb') as f:
