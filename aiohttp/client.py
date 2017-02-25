@@ -12,7 +12,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
 from . import connector as connector_mod
-from . import client_exceptions, client_reqrep, hdrs, helpers, http
+from . import client_exceptions, client_reqrep, hdrs, http
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError,
                                 ClientResponseError, WSServerHandshakeError)

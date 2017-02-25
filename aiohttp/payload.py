@@ -1,4 +1,5 @@
 import asyncio
+import cgi
 import io
 import mimetypes
 import os
@@ -189,7 +190,13 @@ class TextIOPayload(IOBasePayload):
                  content_type='text/plain; charset=utf-8', **kwargs):
 
         if encoding is None:
-            encoding = value.encoding
+            *_, params = parse_mimetype(content_type)
+            encoding = params.get('charset', 'utf-8')
+        else:
+            ct, params = cgi.parse_header(content_type)
+            params['charset'] = encoding
+            params = '; '.join("%s=%s" % i for i in params.items())
+            content_type = ct + '; ' + params
 
         super().__init__(
             value,
@@ -214,15 +221,6 @@ class TextIOPayload(IOBasePayload):
 
 
 class StringIOPayload(TextIOPayload):
-
-    def __init__(self, value, *args,
-                 content_type='text/plain; charset=utf-8', **kwargs):
-        *_, params = parse_mimetype(content_type)
-        charset = params.get('charset', 'utf-8')
-
-        super().__init__(
-            value,
-            content_type=content_type, encoding=charset, *args, **kwargs)
 
     @property
     def size(self):
