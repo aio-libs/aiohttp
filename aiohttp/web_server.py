@@ -24,10 +24,6 @@ class RequestHandler(ServerHttpProtocol):
         self._request_factory = manager.request_factory
         self._handler = manager.handler
 
-    @property
-    def time_service(self):
-        return self._time_service
-
     def __repr__(self):
         if self._request is None:
             meth = 'none'
@@ -151,7 +147,7 @@ class Server:
     def _make_request(self, message, payload, protocol):
         return BaseRequest(
             message, payload, protocol,
-            protocol._time_service, protocol._request_handler, loop=self._loop)
+            protocol._time_service, None, loop=self._loop)
 
     @asyncio.coroutine
     def shutdown(self, timeout=None):
