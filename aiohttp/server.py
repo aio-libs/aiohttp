@@ -11,8 +11,7 @@ from contextlib import suppress
 from html import escape as html_escape
 
 from . import hdrs, helpers
-from .helpers import (CeilTimeout, TimeService, call_later, create_future,
-                      ensure_future)
+from .helpers import CeilTimeout, TimeService, create_future, ensure_future
 from .http import HttpProcessingError, HttpRequestParser, Response
 from .log import access_logger, server_logger
 from .streams import StreamWriter
@@ -81,7 +80,6 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
     """
     _request_count = 0
-    _reading_request = False
     _keepalive = False  # keep transport open
 
     def __init__(self, *, loop=None,
@@ -119,6 +117,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             self._time_service = TimeService(self._loop)
 
         self._tcp_keepalive = tcp_keepalive
+        self._keepalive_time = None
         self._keepalive_handle = None
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
@@ -128,7 +127,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._message_tail = b''
 
         self._waiters = deque()
-        self._reading_request = False
+        self._error_handler = None
         self._request_handlers = []
         self._max_concurrent_handlers = max_concurrent_handlers
 
@@ -151,7 +150,9 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 access_log, access_log_format)
         else:
             self.access_logger = None
-        self._closing = False
+
+        self._close = False
+        self._force_close = False
 
     @property
     def time_service(self):
@@ -166,32 +167,34 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         """Worker process is about to exit, we need cleanup everything and
         stop accepting requests. It is especially important for keep-alive
         connections."""
-        if not self._request_handlers:
-            if self.transport is not None:
-                self.transport.close()
-                self.transport = None
-            return
-
-        closing, self._closing = self._closing, True
+        self._force_close = True
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._request_count and timeout and not closing:
-            with suppress(asyncio.CancelledError):
-                with CeilTimeout(timeout, loop=self._loop):
-                    while self._request_handlers:
-                        h = None
-                        for handler in self._request_handlers:
-                            if not handler.done():
-                                h = handler
-                                break
-                        if h:
-                            yield from h
-                        else:
-                            break
+        # cancel waiters
+        for waiter in self._waiters:
+            if not waiter.done():
+                waiter.cancel()
 
-        # force-close idle keep-alive connections
+        # wait for handlers
+        with suppress(asyncio.CancelledError, asyncio.TimeoutError):
+            with CeilTimeout(timeout, loop=self._loop):
+                if self._error_handler and not self._error_handler.done():
+                    yield from self._error_handler
+
+                while True:
+                    h = None
+                    for handler in self._request_handlers:
+                        if not handler.done():
+                            h = handler
+                            break
+                    if h:
+                        yield from h
+                    else:
+                        break
+
+        # force-close non-idle handlers
         for handler in self._request_handlers:
             if not handler.done():
                 handler.cancel()
@@ -200,7 +203,8 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             self.transport.close()
             self.transport = None
 
-        self._request_handlers.clear()
+        if self._request_handlers:
+            self._request_handlers.clear()
 
     def connection_made(self, transport):
         super().connection_made(transport)
@@ -216,7 +220,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def connection_lost(self, exc):
         super().connection_lost(exc)
 
-        self._closing = True
+        self._force_close = True
         self._request_parser = None
         self.transport = self.writer = None
 
@@ -230,6 +234,10 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         for handler in self._request_handlers:
             if not handler.done():
                 handler.cancel()
+
+        if self._error_handler is not None:
+            if not self._error_handler.done():
+                self._error_handler.cancel()
 
         self._request_handlers = ()
 
@@ -249,16 +257,8 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         pass
 
     def data_received(self, data):
-        if self._closing:
+        if self._force_close or self._close:
             return
-
-        while self._messages:
-            if self._waiters:
-                waiter = self._waiters.popleft()
-                message = self._messages.popleft()
-                waiter.set_result(message)
-            else:
-                break
 
         # parse http messages
         if self._payload_parser is None and not self._upgrade:
@@ -266,40 +266,36 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 messages, upgraded, tail = self._request_parser.feed_data(data)
             except HttpProcessingError as exc:
                 # something happened during parsing
-                self._closing = True
-                self._request_handlers.append(
-                    ensure_future(
-                        self.handle_error(
-                            400, None,
-                            None, exc, exc.headers, exc.message),
-                        loop=self._loop))
-                return
+                self.close()
+                self._error_handler = ensure_future(
+                    self.handle_error(
+                        400, None, None, exc, exc.headers, exc.message),
+                    loop=self._loop)
             except Exception as exc:
-                self._closing = True
-                self._request_handlers.append(
-                    ensure_future(
-                        self.handle_error(500, None, None, exc),
-                        loop=self._loop))
-                return
+                # 500: internal error
+                self.close()
+                self._error_handler = ensure_future(
+                    self.handle_error(500, None, None, exc), loop=self._loop)
+            else:
+                for (msg, payload) in messages:
+                    self._request_count += 1
 
-            for (msg, payload) in messages:
-                self._request_count += 1
-                self._reading_request = True
+                    if self._waiters:
+                        waiter = self._waiters.popleft()
+                        waiter.set_result((msg, payload))
+                    elif self._max_concurrent_handlers:
+                        self._max_concurrent_handlers -= 1
+                        data = []
+                        handler = ensure_future(
+                            self.start(msg, payload, data), loop=self._loop)
+                        data.append(handler)
+                        self._request_handlers.append(handler)
+                    else:
+                        self._messages.append((msg, payload))
 
-                if self._waiters:
-                    waiter = self._waiters.popleft()
-                    waiter.set_result((msg, payload))
-                elif self._max_concurrent_handlers:
-                    self._max_concurrent_handlers -= 1
-                    handler = ensure_future(
-                        self.start(msg, payload), loop=self._loop)
-                    self._request_handlers.append(handler)
-                else:
-                    self._messages.append((msg, payload))
-
-            self._upgraded = upgraded
-            if upgraded:
-                self._message_tail = tail
+                self._upgraded = upgraded
+                if upgraded:
+                    self._message_tail = tail
 
         # no parser, just store
         elif self._payload_parser is None and self._upgrade and data:
@@ -309,7 +305,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         elif data:
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
-                self._closing = True
+                self.close()
 
     def keep_alive(self, val):
         """Set keep-alive connection mode.
@@ -317,6 +313,24 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         :param bool val: new state.
         """
         self._keepalive = val
+
+    def close(self):
+        """Stop accepting new pipelinig messages and close
+        connection when handlers done processing messages"""
+        self._close = True
+        for waiter in self._waiters:
+            if not waiter.done():
+                waiter.cancel()
+
+    def force_close(self):
+        """Force close connection"""
+        self._force_close = True
+        for waiter in self._waiters:
+            if not waiter.done():
+                waiter.cancel()
+        if self.transport is not None:
+            self.transport.close()
+            self.transport = None
 
     def log_access(self, message, environ, response, time):
         if self.access_logger:
@@ -331,18 +345,20 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self.logger.exception(*args, **kw)
 
     def _process_keepalive(self):
-        if self._closing or not self._process_keepalive:
+        if self._force_close:
             return
 
-        if self._request_handlers:
-            self._keepalive_handle = call_later(
-                self._process_keepalive, self._keepalive_timeout, self._loop)
-        elif self.transport is not None:
-            self.transport.close()
+        next = self._keepalive_time + self._keepalive_timeout
 
-    @property
-    def _request_handler(self):
-        return self._request_handlers[-1]
+        # all handlers in idle state
+        if len(self._request_handlers) == len(self._waiters):
+            now = self._time_service.loop_time
+            if now + 1.0 > next:
+                self.force_close()
+                return
+
+        self._keepalive_handle = self._loop.call_at(
+            next, self._process_keepalive)
 
     def pause_reading(self):
         if not self._reading_paused:
@@ -361,7 +377,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             self._reading_paused = False
 
     @asyncio.coroutine
-    def start(self, message, payload):
+    def start(self, message, payload, handler):
         """Start processing of incoming requests.
 
         It reads request line, request headers and request payload, then
@@ -371,65 +387,80 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         keep_alive(True) specified.
         """
         loop = self._loop
-        handler = self._request_handlers[-1]
+        handler = handler[0]
+        keepalive_timeout = self._keepalive_timeout
 
-        while not self._closing:
+        while not self._force_close:
             try:
                 yield from self.handle_request(message, payload)
 
-                if not payload.is_eof() and not self._closing:
-                    self.log_debug('Uncompleted request.')
-                    self._closing = True
-
-                    if self._lingering_time:
-                        self.transport.write_eof()
+                if not payload.is_eof():
+                    lingering_time = self._lingering_time
+                    if not self._force_close and lingering_time:
                         self.log_debug(
                             'Start lingering close timer for %s sec.',
-                            self._lingering_time)
+                            lingering_time)
 
                         now = loop.time()
-                        end_time = now + self._lingering_time
+                        end_t = now + lingering_time
 
                         with suppress(asyncio.TimeoutError):
-                            while (not payload.is_eof() and now < end_time):
-                                timeout = min(
-                                    end_time - now, self._lingering_timeout)
+                            while (not payload.is_eof() and now < end_t):
+                                timeout = min(end_t - now, lingering_time)
                                 with CeilTimeout(timeout, loop=loop):
                                     # read and ignore
                                     yield from payload.readany()
                                 now = loop.time()
+
+                    # if payload still uncompleted
+                    if not payload.is_eof() and not self._force_close:
+                        self.log_debug('Uncompleted request.')
+                        self.close()
+
             except asyncio.CancelledError:
-                self._closing = True
                 self.log_debug('Ignored premature client disconnection')
+                break
             except asyncio.TimeoutError:
-                self._closing = True
                 self.log_debug('Request handler timed out.')
                 yield from self.handle_error(504, message)
+                break
             except Exception as exc:
-                self._closing = True
                 yield from self.handle_error(500, message, None, exc)
+                break
             finally:
                 if self.transport is None:
-                    self.log_debug(
-                        'Ignored premature client disconnection #2.')
-                    return
-                elif not self._closing:
+                    self.log_debug('Ignored premature client disconnection.')
+                elif not self._force_close:
                     if self._messages:
                         message, payload = self._messages.popleft()
                     else:
-                        if not self._keepalive:
-                            self._closing = True
-                            self.transport.close()
-                        else:
+                        if self._keepalive and not self._close:
+                            # start keep-alive timer
+                            if keepalive_timeout is not None:
+                                now = self._time_service.loop_time
+                                self._keepalive_time = now
+                                if self._keepalive_handle is None:
+                                    self._keepalive_handle = loop.call_at(
+                                        now + keepalive_timeout,
+                                        self._process_keepalive)
+
+                            # wait for next request
                             waiter = create_future(loop)
                             self._waiters.append(waiter)
-                            message, payload = yield from waiter
-                else:
-                    self._request_handlers.remove(handler)
+                            try:
+                                message, payload = yield from waiter
+                            except asyncio.CancelledError:
+                                # shutdown process
+                                break
+                        else:
+                            break
 
-                    if (not self._request_handlers and
-                            self.transport is not None):
-                        self.transport.close()
+        # remove handler, close transport if no handlers left
+        if not self._force_close:
+            self._request_handlers.remove(handler)
+            if not self._request_handlers:
+                if self.transport is not None:
+                    self.transport.close()
 
     @asyncio.coroutine
     def handle_error(self, status=500, message=None,

@@ -225,8 +225,7 @@ class Application(MutableMapping):
     def _make_request(self, message, payload, protocol,
                       _cls=web_request.Request):
         return _cls(
-            message, payload, protocol,
-            protocol._time_service, protocol._request_handler,
+            message, payload, protocol, protocol._time_service, None,
             loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)

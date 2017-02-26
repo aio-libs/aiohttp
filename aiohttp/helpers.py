@@ -525,9 +525,10 @@ class TimeService:
         self._loop = loop
         self._interval = interval
         self._time = time.time()
+        self._loop_time = loop.time()
         self._count = 0
         self._strtime = None
-        self._cb = loop.call_later(self._interval, self._on_cb)
+        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
 
     def close(self):
         if self._cb:
@@ -545,7 +546,9 @@ class TimeService:
             self._time += self._interval
 
         self._strtime = None
-        self._cb = self._loop.call_later(self._interval, self._on_cb)
+        self._loop_time = ceil(self._loop.time())
+        self._cb = self._loop.call_at(
+            self._loop_time + self._interval, self._on_cb)
 
     def _format_date_time(self):
         # Weekday and month names for HTTP date/time formatting;
@@ -570,6 +573,10 @@ class TimeService:
             self._strtime = s = self._format_date_time()
         return self._strtime
 
+    @property
+    def loop_time(self):
+        return self._loop_time
+
 
 def _weakref_handle(ref):
     cb = ref()
@@ -586,12 +593,9 @@ def weakref_handle(cb, timeout, loop, ceil_timeout=True):
         return loop.call_at(when, _weakref_handle, weakref.ref(cb))
 
 
-def call_later(cb, timeout, loop, ceil_timeout=True):
+def call_later(cb, timeout, loop):
     if timeout is not None and timeout > 0:
-        when = loop.time() + timeout
-        if ceil_timeout:
-            when = ceil(when)
-
+        when = ceil(loop.time() + timeout)
         return loop.call_at(when, cb)
 
 
