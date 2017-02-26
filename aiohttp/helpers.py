@@ -6,13 +6,14 @@ import binascii
 import cgi
 import datetime
 import functools
-import heapq
 import os
 import re
 import sys
 import time
+import weakref
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
+from math import ceil
 from pathlib import Path
 from time import gmtime
 from urllib.parse import quote
@@ -518,39 +519,24 @@ class FrozenList(MutableSequence):
         self._items.insert(pos, item)
 
 
-class TimerHandle(asyncio.TimerHandle):
-
-    def cancel(self):
-        asyncio.Handle.cancel(self)
-
-
 class TimeService:
 
     def __init__(self, loop, *, interval=1.0):
         self._loop = loop
         self._interval = interval
         self._time = time.time()
-        self._loop_time = loop.time()
         self._count = 0
         self._strtime = None
-        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
-        self._scheduled = []
+        self._cb = loop.call_later(self._interval, self._on_cb)
 
     def close(self):
         if self._cb:
             self._cb.cancel()
 
-        # cancel all scheduled handles
-        for handle in self._scheduled:
-            handle.cancel()
-
         self._cb = None
-        self._scheduled = []
         self._loop = None
 
     def _on_cb(self, reset_count=10*60):
-        self._loop_time = self._loop.time()
-
         if self._count >= reset_count:
             # reset timer every 10 minutes
             self._count = 0
@@ -558,23 +544,8 @@ class TimeService:
         else:
             self._time += self._interval
 
-        # Handle 'later' callbacks that are ready.
-        ready = []
-        end_time = self._loop_time
-        while self._scheduled:
-            handle = self._scheduled[0]
-            if handle._when >= end_time:
-                break
-            handle = heapq.heappop(self._scheduled)
-            ready.append(handle)
-
-        for handle in ready:
-            if not handle._cancelled:
-                handle._run()
-
         self._strtime = None
-        self._cb = self._loop.call_at(
-            self._loop_time + self._interval, self._on_cb)
+        self._cb = self._loop.call_later(self._interval, self._on_cb)
 
     def _format_date_time(self):
         # Weekday and month names for HTTP date/time formatting;
@@ -599,54 +570,66 @@ class TimeService:
             self._strtime = s = self._format_date_time()
         return self._strtime
 
-    def loop_time(self):
-        return self._loop_time
 
-    def call_later(self, delay, callback, *args):
-        """Arrange for a callback to be called at a given time.
+def _weakref_handle(ref):
+    cb = ref()
+    if cb is not None:
+        cb()
 
-        Return a Handle: an opaque object with a cancel() method that
-        can be used to cancel the call.
 
-        The delay can be an int or float, expressed in seconds.  It is
-        always relative to the current time.
+def weakref_handle(cb, timeout, loop, ceil_timeout=True):
+    if timeout is not None and timeout > 0:
+        when = loop.time() + timeout
+        if ceil_timeout:
+            when = ceil(when)
 
-        Any positional arguments after the callback will be passed to
-        the callback when it is called.
+        return loop.call_at(when, _weakref_handle, weakref.ref(cb))
 
-        Time resolution is aproximatly one second.
-        """
-        return self._call_at(self._loop_time + delay, callback, *args)
 
-    def _call_at(self, when, callback, *args):
-        """Like call_later(), but uses an absolute time.
+def call_later(cb, timeout, loop, ceil_timeout=True):
+    if timeout is not None and timeout > 0:
+        when = loop.time() + timeout
+        if ceil_timeout:
+            when = ceil(when)
 
-        Absolute time corresponds to the loop's time() method.
-        """
-        timer = TimerHandle(when, callback, args, self._loop)
-        heapq.heappush(self._scheduled, timer)
+        return loop.call_at(when, cb)
+
+
+class TimeoutHandle:
+    """ Timeout handle """
+
+    def __init__(self, loop, timeout):
+        self._timeout = timeout
+        self._loop = loop
+        self._callbacks = []
+
+    def register(self, callback, *args, **kwargs):
+        self._callbacks.append((callback, args, kwargs))
+
+    def close(self):
+        self._callbacks.clear()
+
+    def start(self):
+        if self._timeout is not None and self._timeout > 0:
+            at = ceil(self._loop.time() + self._timeout)
+            return self._loop.call_at(at, self.__call__)
+
+    def timer(self):
+        timer = TimerContext(self._loop)
+        self.register(timer.timeout)
         return timer
 
-    def timeout(self, timeout):
-        """low resolution timeout context manager.
+    def __call__(self):
+        for cb, args, kwargs in self._callbacks:
+            try:
+                cb(*args, **kwargs)
+            except:
+                pass
 
-        timeout - value in seconds or None to disable timeout logic
-        """
-        if self._loop is None:
-            raise RuntimeError
-
-        if timeout:
-            ctx = _TimeServiceTimeoutContext(self._loop)
-            when = self._loop_time + timeout
-            timer = TimerHandle(when, ctx.cancel, (), self._loop)
-            heapq.heappush(self._scheduled, timer)
-        else:
-            ctx = _TimeServiceTimeoutNoop()
-
-        return ctx
+        self._callbacks.clear()
 
 
-class _TimeServiceTimeoutNoop:
+class TimerNoop:
 
     def __enter__(self):
         return self
@@ -655,12 +638,10 @@ class _TimeServiceTimeoutNoop:
         return False
 
 
-class _TimeServiceTimeoutContext:
+class TimerContext:
     """ Low resolution timeout context manager """
 
     def __init__(self, loop):
-        assert loop is not None, "loop is not set"
-
         self._loop = loop
         self._tasks = []
         self._cancelled = False
@@ -680,18 +661,38 @@ class _TimeServiceTimeoutContext:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._tasks:
-            self._tasks.pop()
+            task = self._tasks.pop()
+        else:
+            task = None
 
         if exc_type is asyncio.CancelledError and self._cancelled:
+            for task in self._tasks:
+                task.cancel()
             raise asyncio.TimeoutError from None
 
-    def cancel(self):
+        if exc_type is None and self._cancelled and task is not None:
+            task.cancel()
+
+    def timeout(self):
         if not self._cancelled:
             for task in self._tasks:
                 task.cancel()
 
-            self._tasks = []
             self._cancelled = True
+
+
+class CeilTimeout(Timeout):
+
+    def __enter__(self):
+        if self._timeout is not None and self._timeout > 0:
+            self._task = asyncio.Task.current_task(loop=self._loop)
+            if self._task is None:
+                raise RuntimeError('Timeout context manager should be used '
+                                   'inside a task')
+            self._cancel_handler = self._loop.call_at(
+                ceil(self._loop.time() + self._timeout), self._cancel_task)
+
+        return self
 
 
 class HeadersMixin:

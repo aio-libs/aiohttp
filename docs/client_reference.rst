@@ -45,7 +45,7 @@ The client session supports the context manager protocol for self closing.
                          headers=None, skip_auto_headers=None, \
                          auth=None, \
                          version=aiohttp.HttpVersion11, \
-                         cookie_jar=None)
+                         cookie_jar=None, read_timeout=None, conn_timeout=None)
 
    The class for creating client sessions and making requests.
 
@@ -100,6 +100,13 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 0.22
 
+   :param float read_timeout: Request operations timeout. read_timeout is
+      cumulative for all request operations (request, redirects, responses,
+      data consuming)
+
+   :param float conn_timeout: timeout for connection establishing
+      (optional). Values ``0`` or ``None`` mean no timeout.
+
    .. versionchanged:: 1.0
 
       ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
@@ -113,7 +120,7 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: connector
 
-      :class:`aiohttp.connector.BaseConnector` derived instance used
+   :class:`aiohttp.connector.BaseConnector` derived instance used
       for the session.
 
       A read-only property.
@@ -139,7 +146,7 @@ The client session supports the context manager protocol for self closing.
                          auth=None, allow_redirects=True,\
                          max_redirects=10, encoding='utf-8',\
                          version=HttpVersion(major=1, minor=1),\
-                         compress=None, chunked=None, expect100=False,\
+                 compress=None, chunked=None, expect100=False,\
                          read_until_eof=True,\
                          proxy=None, proxy_auth=None,\
                          timeout=5*60)
@@ -588,15 +595,11 @@ constructor's parameter).
 BaseConnector
 ^^^^^^^^^^^^^
 
-.. class:: BaseConnector(*, conn_timeout=None, keepalive_timeout=30, \
-                         limit=20, \
+.. class:: BaseConnector(*, keepalive_timeout=30, \
+                         limit=100, limit_per_host=None, \
                          force_close=False, loop=None)
 
    Base class for all connectors.
-
-   :param float conn_timeout: timeout for connection establishing
-                              (optional). Values ``0`` or ``None``
-                              mean no timeout.
 
    :param float keepalive_timeout: timeout for connection reusing
                                    after releasing (optional). Values
@@ -604,10 +607,13 @@ BaseConnector
                                    feature use ``force_close=True``
                                    flag.
 
-   :param int limit: limit for simultaneous connections to the same
-                     endpoint.  Endpoints are the same if they are
-                     have equal ``(host, port, is_ssl)`` triple.
-                     If *limit* is ``None`` the connector has no limit (default: 20).
+   :param int limit: Total number simultaneous connections. If *limit* is
+                     ``None`` the connector has no limit (default: 100).
+
+   :param int limit_by_host: limit for simultaneous connections to the same
+      endpoint.  Endpoints are the same if they are
+      have equal ``(host, port, is_ssl)`` triple.
+      If *limit* is ``None`` the connector has no limit (default: None).
 
    :param bool force_close: do close underlying sockets after
                             connection releasing (optional).

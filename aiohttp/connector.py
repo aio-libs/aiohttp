@@ -11,10 +11,10 @@ from types import MappingProxyType
 from . import hdrs, helpers
 from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
                                 ClientProxyConnectionError,
-                                ServerFingerprintMismatch, ServerTimeoutError)
+                                ServerFingerprintMismatch)
 from .client_proto import HttpClientProtocol
 from .client_reqrep import ClientRequest
-from .helpers import SimpleCookie, is_ip_address, sentinel
+from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .resolver import DefaultResolver
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
@@ -36,6 +36,7 @@ class Connection:
         self._connector = connector
         self._loop = loop
         self._protocol = protocol
+        self._callbacks = []
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -75,13 +76,30 @@ class Connection:
     def writer(self):
         return self._protocol.writer
 
+    def add_callback(self, callback):
+        if callback is not None:
+            self._callbacks.append(callback)
+
+    def _notify_release(self):
+        callbacks, self._callbacks = self._callbacks[:], []
+
+        for cb in callbacks:
+            try:
+                cb()
+            except:
+                pass
+
     def close(self):
+        self._notify_release()
+
         if self._protocol is not None:
             self._connector._release(
                 self._key, self._protocol, should_close=True)
             self._protocol = None
 
     def release(self):
+        self._notify_release()
+
         if self._protocol is not None:
             self._connector._release(
                 self._key, self._protocol,
@@ -89,6 +107,8 @@ class Connection:
             self._protocol = None
 
     def detach(self):
+        self._notify_release()
+
         if self._protocol is not None:
             self._connector._release_acquired(self._protocol)
         self._protocol = None
@@ -108,7 +128,6 @@ class _TransportPlaceholder:
 class BaseConnector(object):
     """Base connector class.
 
-    conn_timeout - (optional) Connect timeout.
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
@@ -124,9 +143,9 @@ class BaseConnector(object):
     # abort transport after 2 seconds (cleanup broken connections)
     _cleanup_closed_period = 2.0
 
-    def __init__(self, *, conn_timeout=None, keepalive_timeout=sentinel,
+    def __init__(self, *, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
-                 time_service=None, disable_cleanup_closed=False, loop=None):
+                 disable_cleanup_closed=False, loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -149,17 +168,9 @@ class BaseConnector(object):
         self._limit_per_host = limit_per_host
         self._acquired = set()
         self._acquired_per_host = defaultdict(set)
-        self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
         self._waiters = defaultdict(list)
-
-        if time_service is not None:
-            self._time_service_owner = False
-            self._time_service = time_service
-        else:
-            self._time_service_owner = True
-            self._time_service = helpers.TimeService(loop)
 
         self._loop = loop
         self._factory = functools.partial(HttpClientProtocol, loop=loop)
@@ -168,9 +179,6 @@ class BaseConnector(object):
 
         # start keep-alive connection cleanup task
         self._cleanup_handle = None
-        if (keepalive_timeout is not sentinel and
-                keepalive_timeout is not None):
-            self._cleanup()
 
         # start cleanup closed transports task
         self._cleanup_closed_handle = None
@@ -204,10 +212,6 @@ class BaseConnector(object):
         self.close()
 
     @property
-    def conn_timeout(self):
-        return self._conn_timeout
-
-    @property
     def force_close(self):
         """Ultimately close connection on releasing if True."""
         return self._force_close
@@ -237,11 +241,12 @@ class BaseConnector(object):
         if self._cleanup_handle:
             self._cleanup_handle.cancel()
 
-        now = self._time_service.loop_time()
+        now = self._loop.time()
+        timeout = self._keepalive_timeout
 
         if self._conns:
             connections = {}
-            deadline = now - self._keepalive_timeout
+            deadline = now - timeout
             for key, conns in self._conns.items():
                 alive = []
                 for proto, use_time in conns:
@@ -259,8 +264,9 @@ class BaseConnector(object):
 
             self._conns = connections
 
-        self._cleanup_handle = self._time_service.call_later(
-            self._keepalive_timeout / 2.0, self._cleanup)
+        if self._conns:
+            self._cleanup_handle = helpers.weakref_handle(
+                self._cleanup, timeout, self._loop)
 
     def _cleanup_closed(self):
         """Double confirmation for transport close.
@@ -276,30 +282,19 @@ class BaseConnector(object):
         self._cleanup_closed_transports = []
 
         if not self._cleanup_closed_disabled:
-            self._cleanup_closed_handle = self._time_service.call_later(
-                self._cleanup_closed_period, self._cleanup_closed)
+            self._cleanup_closed_handle = helpers.weakref_handle(
+                self._cleanup_closed, self._cleanup_closed_period, self._loop)
 
     def close(self):
         """Close all opened transports."""
-        ret = helpers.create_future(self._loop)
-        ret.set_result(None)
         if self._closed:
-            return ret
+            return noop()
+
         self._closed = True
 
         try:
             if self._loop.is_closed():
-                return ret
-
-            if self._time_service_owner:
-                self._time_service.close()
-
-            for data in self._conns.values():
-                for proto, t0 in data:
-                    proto.close()
-
-            for proto in self._acquired:
-                proto.close()
+                return noop()
 
             # cacnel cleanup task
             if self._cleanup_handle:
@@ -308,6 +303,13 @@ class BaseConnector(object):
             # cacnel cleanup close task
             if self._cleanup_closed_handle:
                 self._cleanup_closed_handle.cancel()
+
+            for data in self._conns.values():
+                for proto, t0 in data:
+                    proto.close()
+
+            for proto in self._acquired:
+                proto.close()
 
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
@@ -321,7 +323,7 @@ class BaseConnector(object):
             self._cleanup_closed_transports.clear()
             self._cleanup_closed_handle = None
 
-        return ret
+        return noop()
 
     @property
     def closed(self):
@@ -371,12 +373,7 @@ class BaseConnector(object):
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
             try:
-                with self._time_service.timeout(self._conn_timeout):
-                    proto = yield from self._create_connection(req)
-            except asyncio.TimeoutError as exc:
-                raise ServerTimeoutError(
-                    'Connection timeout to host {0[0]}:{0[1]} ssl:{0[2]}'
-                    .format(key)) from exc
+                proto = yield from self._create_connection(req)
             except OSError as exc:
                 raise ClientConnectorError(
                     exc.errno,
@@ -396,7 +393,7 @@ class BaseConnector(object):
         except KeyError:
             return None
 
-        t1 = self._time_service.loop_time()
+        t1 = self._loop.time()
         while conns:
             proto, t0 = conns.pop()
             if proto.is_connected():
@@ -472,7 +469,11 @@ class BaseConnector(object):
             conns = self._conns.get(key)
             if conns is None:
                 conns = self._conns[key] = []
-            conns.append((protocol, self._time_service.loop_time()))
+            conns.append((protocol, self._loop.time()))
+
+            if self._cleanup_handle is None:
+                self._cleanup_handle = helpers.weakref_handle(
+                    self._cleanup, self._keepalive_timeout, self._loop)
 
     @asyncio.coroutine
     def _create_connection(self, req):
@@ -498,7 +499,6 @@ class TCPConnector(BaseConnector):
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 
-    conn_timeout - (optional) Connect timeout.
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
@@ -510,11 +510,9 @@ class TCPConnector(BaseConnector):
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  resolve=sentinel, use_dns_cache=True,
                  family=0, ssl_context=None, local_addr=None,
-                 resolver=None, time_service=None,
-                 conn_timeout=None, keepalive_timeout=sentinel,
+                 resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0, loop=None):
-        super().__init__(time_service=time_service, conn_timeout=conn_timeout,
-                         keepalive_timeout=keepalive_timeout,
+        super().__init__(keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
                          limit=limit, limit_per_host=limit_per_host, loop=loop)
 
@@ -754,7 +752,6 @@ class UnixConnector(BaseConnector):
     """Unix socket connector.
 
     path - Unix socket path.
-    conn_timeout - (optional) Connect timeout.
     keepalive_timeout - (optional) Keep-alive timeout.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
@@ -770,13 +767,9 @@ class UnixConnector(BaseConnector):
 
     """
 
-    def __init__(self, path, force_close=False,
-                 time_service=None,
-                 conn_timeout=None, keepalive_timeout=sentinel,
+    def __init__(self, path, force_close=False, keepalive_timeout=sentinel,
                  limit=100, limit_per_host=0, loop=None):
         super().__init__(force_close=force_close,
-                         time_service=time_service,
-                         conn_timeout=conn_timeout,
                          keepalive_timeout=keepalive_timeout,
                          limit=limit, limit_per_host=limit_per_host, loop=loop)
         self._path = path

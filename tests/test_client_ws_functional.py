@@ -6,6 +6,14 @@ import aiohttp
 from aiohttp import hdrs, helpers, web
 
 
+@pytest.fixture
+def ceil(mocker):
+    def ceil(val):
+        return val
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+
 @asyncio.coroutine
 def test_send_recv_text(loop, test_client):
 
@@ -358,7 +366,8 @@ def test_close_timeout(loop, test_client):
         yield from ws.prepare(request)
         yield from ws.receive_bytes()
         ws.send_str('test')
-        yield from asyncio.sleep(10, loop=loop)
+        yield from asyncio.sleep(1, loop=loop)
+        return ws
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
@@ -520,7 +529,6 @@ def test_receive_timeout(loop, test_client):
 
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', receive_timeout=0.1)
-    resp._time_service._interval = 0.05
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.receive(0.05)
@@ -544,7 +552,6 @@ def test_custom_receive_timeout(loop, test_client):
 
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
-    resp._time_service._interval = 0.05
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.receive(0.05)
@@ -553,7 +560,7 @@ def test_custom_receive_timeout(loop, test_client):
 
 
 @asyncio.coroutine
-def test_heartbeat(loop, test_client):
+def test_heartbeat(loop, test_client, ceil):
     ping_received = False
 
     @asyncio.coroutine
@@ -580,7 +587,7 @@ def test_heartbeat(loop, test_client):
 
 
 @asyncio.coroutine
-def test_heartbeat_no_pong(loop, test_client):
+def test_heartbeat_no_pong(loop, test_client, ceil):
     ping_received = False
 
     @asyncio.coroutine

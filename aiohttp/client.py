@@ -15,14 +15,15 @@ from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError,
-                                ClientResponseError, WSServerHandshakeError)
+                                ClientResponseError, ServerTimeoutError,
+                                WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import PY_35, TimeService, noop
+from .helpers import PY_35, CeilTimeout, TimeoutHandle, noop
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
@@ -48,8 +49,8 @@ class ClientSession:
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,
-                 cookie_jar=None, read_timeout=None, time_service=None,
-                 connector_owner=True):
+                 cookie_jar=None, connector_owner=True,
+                 read_timeout=None, conn_timeout=None):
 
         implicit_loop = False
         if loop is None:
@@ -93,6 +94,7 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._read_timeout = read_timeout
+        self._conn_timeout = conn_timeout
 
         # Convert to list of tuples
         if headers:
@@ -110,12 +112,6 @@ class ClientSession:
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
-        self._time_service_owner = time_service is None
-        if time_service is None:
-            time_service = TimeService(self._loop)
-
-        self._time_service = time_service
-
     def __del__(self, _warnings=warnings):
         if not self.closed:
             self.close()
@@ -127,10 +123,6 @@ class ClientSession:
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
-
-    @property
-    def time_service(self):
-        return self._time_service
 
     def request(self, method, url, **kwargs):
         """Perform HTTP request."""
@@ -195,22 +187,16 @@ class ClientSession:
         if proxy is not None:
             proxy = URL(proxy)
 
-        # request timeout
-        if timeout is None:
-            timeout = self._read_timeout
-        if timeout is None:
-            timeout = self._connector.conn_timeout
-        elif self._connector.conn_timeout is not None:
-            timeout = max(timeout, self._connector.conn_timeout)
-
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
-        timer = self._time_service.timeout(timeout)
+        tm = TimeoutHandle(
+            self._loop, timeout if timeout is not None else self._read_timeout)
+        handle = tm.start()
 
+        timer = tm.timer()
         with timer:
             while True:
                 url = URL(url).with_fragment(None)
-
                 cookies = self._cookie_jar.filter_cookies(url)
 
                 req = self._request_class(
@@ -221,7 +207,14 @@ class ClientSession:
                     loop=self._loop, response_class=self._response_class,
                     proxy=proxy, proxy_auth=proxy_auth, timer=timer)
 
-                conn = yield from self._connector.connect(req)
+                # connection timeout
+                try:
+                    with CeilTimeout(self._conn_timeout, loop=self._loop):
+                        conn = yield from self._connector.connect(req)
+                except asyncio.TimeoutError as exc:
+                    raise ServerTimeoutError(
+                        'Connection timeout to host {0}'.format(url)) from exc
+
                 conn.writer.set_tcp_nodelay(True)
                 try:
                     resp = req.send(conn)
@@ -284,6 +277,13 @@ class ClientSession:
                     continue
 
                 break
+
+        # register connection
+        if handle is not None:
+            if resp.connection is not None:
+                resp.connection.add_callback(handle.cancel)
+            else:
+                handle.cancel()
 
         resp._history = tuple(history)
         return resp
@@ -417,7 +417,6 @@ class ClientSession:
                                            autoclose,
                                            autoping,
                                            self._loop,
-                                           time_service=self.time_service,
                                            receive_timeout=receive_timeout,
                                            heartbeat=heartbeat)
 
@@ -495,9 +494,6 @@ class ClientSession:
             if self._connector_owner:
                 self._connector.close()
             self._connector = None
-
-            if self._time_service_owner:
-                self._time_service.close()
 
         return noop()
 

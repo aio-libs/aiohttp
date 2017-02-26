@@ -11,7 +11,8 @@ from contextlib import suppress
 from html import escape as html_escape
 
 from . import hdrs, helpers
-from .helpers import TimeService, create_future, ensure_future
+from .helpers import (CeilTimeout, TimeService, call_later, create_future,
+                      ensure_future)
 from .http import HttpProcessingError, HttpRequestParser, Response
 from .log import access_logger, server_logger
 from .streams import StreamWriter
@@ -178,7 +179,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         if self._request_count and timeout and not closing:
             with suppress(asyncio.CancelledError):
-                with self.time_service.timeout(timeout):
+                with CeilTimeout(timeout, loop=self._loop):
                     while self._request_handlers:
                         h = None
                         for handler in self._request_handlers:
@@ -330,13 +331,12 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self.logger.exception(*args, **kw)
 
     def _process_keepalive(self):
-        if self._closing:
+        if self._closing or not self._process_keepalive:
             return
 
         if self._request_handlers:
-            self._keepalive_handle = self._time_service.call_later(
-                self._keepalive_timeout, self._process_keepalive)
-
+            self._keepalive_handle = call_later(
+                self._process_keepalive, self._keepalive_timeout, self._loop)
         elif self.transport is not None:
             self.transport.close()
 
@@ -372,7 +372,6 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         """
         loop = self._loop
         handler = self._request_handlers[-1]
-        time_service = self.time_service
 
         while not self._closing:
             try:
@@ -388,18 +387,17 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                             'Start lingering close timer for %s sec.',
                             self._lingering_time)
 
-                        now = time_service.time()
+                        now = loop.time()
                         end_time = now + self._lingering_time
 
                         with suppress(asyncio.TimeoutError):
-                            while (not payload.is_eof() and
-                                   now < end_time):
+                            while (not payload.is_eof() and now < end_time):
                                 timeout = min(
                                     end_time - now, self._lingering_timeout)
-                                with time_service.timeout(timeout):
+                                with CeilTimeout(timeout, loop=loop):
                                     # read and ignore
                                     yield from payload.readany()
-                                now = time_service.time()
+                                now = loop.time()
             except asyncio.CancelledError:
                 self._closing = True
                 self.log_debug('Ignored premature client disconnection')

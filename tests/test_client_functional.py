@@ -37,6 +37,10 @@ def fname(here):
     return here / 'sample.key'
 
 
+def ceil(val):
+    return val
+
+
 @asyncio.coroutine
 def test_keepalive_two_requests_success(loop, test_client):
     @asyncio.coroutine
@@ -573,7 +577,8 @@ def test_204_with_gzipped_content_encoding(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_headers(loop, test_client):
+def test_timeout_on_reading_headers(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):
@@ -591,8 +596,10 @@ def test_timeout_on_reading_headers(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_conn_reading_headers(loop, test_client):
+def test_timeout_on_conn_reading_headers(loop, test_client, mocker):
     # tests case where user did not set a connection timeout
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):
@@ -612,7 +619,9 @@ def test_timeout_on_conn_reading_headers(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_session_read_timeout(loop, test_client):
+def test_timeout_on_session_read_timeout(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse()
@@ -772,14 +781,13 @@ def test_HTTP_200_OK_METHOD_connector(loop, test_client):
     def handler(request):
         return web.Response(text=request.method)
 
-    conn = aiohttp.TCPConnector(
-        conn_timeout=0.2, resolve=True, loop=loop)
+    conn = aiohttp.TCPConnector(resolve=True, loop=loop)
     conn.clear_dns_cache()
 
     app = web.Application(loop=loop)
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         app.router.add_route(meth.upper(), '/', handler)
-    client = yield from test_client(app, connector=conn)
+    client = yield from test_client(app, connector=conn, conn_timeout=0.2)
 
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         resp = yield from client.request(meth, '/')
