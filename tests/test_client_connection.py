@@ -39,6 +39,62 @@ def test_ctor(connector, key, protocol, loop):
     conn.close()
 
 
+def test_callbacks_on_close(connector, key, protocol, loop):
+    conn = Connection(connector, key, protocol, loop)
+    notified = False
+
+    def cb():
+        nonlocal notified
+        notified = True
+
+    conn.add_callback(cb)
+    conn.close()
+    assert notified
+
+
+def test_callbacks_on_release(connector, key, protocol, loop):
+    conn = Connection(connector, key, protocol, loop)
+    notified = False
+
+    def cb():
+        nonlocal notified
+        notified = True
+
+    conn.add_callback(cb)
+    conn.release()
+    assert notified
+
+
+def test_callbacks_on_detach(connector, key, protocol, loop):
+    conn = Connection(connector, key, protocol, loop)
+    notified = False
+
+    def cb():
+        nonlocal notified
+        notified = True
+
+    conn.add_callback(cb)
+    conn.detach()
+    assert notified
+
+
+def test_callbacks_exception(connector, key, protocol, loop):
+    conn = Connection(connector, key, protocol, loop)
+    notified = False
+
+    def cb1():
+        raise Exception
+
+    def cb2():
+        nonlocal notified
+        notified = True
+
+    conn.add_callback(cb1)
+    conn.add_callback(cb2)
+    conn.close()
+    assert notified
+
+
 def test_del(connector, key, protocol, loop):
     loop.is_closed.return_value = False
     conn = Connection(connector, key, protocol, loop)

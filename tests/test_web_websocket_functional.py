@@ -2,9 +2,19 @@
 
 import asyncio
 
+import pytest
+
 import aiohttp
 from aiohttp import helpers, web
 from aiohttp.http import WSMsgType
+
+
+@pytest.fixture
+def ceil(mocker):
+    def ceil(val):
+        return val
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
 
 @asyncio.coroutine
@@ -554,7 +564,7 @@ def test_server_close_handshake(loop, test_client):
 
 
 @asyncio.coroutine
-def test_client_close_handshake(loop, test_client):
+def test_client_close_handshake(loop, test_client, ceil):
 
     closed = helpers.create_future(loop)
 
@@ -630,7 +640,6 @@ def test_receive_timeout(loop, test_client):
         ws = web.WebSocketResponse(receive_timeout=0.1)
         yield from ws.prepare(request)
 
-        ws._time_service._interval = 0.05
         try:
             yield from ws.receive()
         except asyncio.TimeoutError:
@@ -659,7 +668,6 @@ def test_custom_receive_timeout(loop, test_client):
         ws = web.WebSocketResponse(receive_timeout=None)
         yield from ws.prepare(request)
 
-        ws._time_service._interval = 0.05
         try:
             yield from ws.receive(0.1)
         except asyncio.TimeoutError:
@@ -680,11 +688,9 @@ def test_custom_receive_timeout(loop, test_client):
 
 
 @asyncio.coroutine
-def test_heartbeat(loop, test_client):
+def test_heartbeat(loop, test_client, ceil):
     @asyncio.coroutine
     def handler(request):
-        request._time_service._interval = 0.1
-
         ws = web.WebSocketResponse(heartbeat=0.05)
         yield from ws.prepare(request)
         yield from ws.receive()
@@ -704,7 +710,7 @@ def test_heartbeat(loop, test_client):
 
 
 @asyncio.coroutine
-def test_heartbeat_no_pong(loop, test_client):
+def test_heartbeat_no_pong(loop, test_client, ceil):
     cancelled = False
 
     @asyncio.coroutine

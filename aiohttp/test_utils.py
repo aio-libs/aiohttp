@@ -17,7 +17,7 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import PY_35, TimeService, sentinel
+from .helpers import PY_35, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
@@ -205,7 +205,6 @@ class TestClient:
         if cookie_jar is None:
             cookie_jar = aiohttp.CookieJar(unsafe=True,
                                            loop=self._loop)
-        kwargs['time_service'] = TimeService(self._loop, interval=0.1)
         self._session = ClientSession(loop=self._loop,
                                       cookie_jar=cookie_jar,
                                       **kwargs)

@@ -385,8 +385,7 @@ def test_raise_for_status_4xx():
 
 def test_resp_host():
     response = ClientResponse('get', URL('http://del-cl-resp.org'))
-    with pytest.warns(DeprecationWarning):
-        assert 'del-cl-resp.org' == response.host
+    assert 'del-cl-resp.org' == response.host
 
 
 def test_content_type():

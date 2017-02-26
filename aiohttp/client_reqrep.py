@@ -13,8 +13,7 @@ import aiohttp
 
 from . import hdrs, helpers, http, payload
 from .formdata import FormData
-from .helpers import (PY_35, HeadersMixin, SimpleCookie,
-                      _TimeServiceTimeoutNoop, noop)
+from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
 from .http import HttpMessage
 from .log import client_logger
 from .streams import FlowControlStreamReader
@@ -81,7 +80,7 @@ class ClientRequest:
         self.compress = compress
         self.loop = loop
         self.response_class = response_class or ClientResponse
-        self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
+        self._timer = timer if timer is not None else TimerNoop()
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -448,15 +447,16 @@ class ClientResponse(HeadersMixin):
         assert isinstance(url, URL)
 
         self.method = method
+        self.headers = None
+        self.cookies = SimpleCookie()
+
         self._url = url
         self._content = None
         self._writer = writer
         self._continue = continue100
         self._closed = True
         self._history = ()
-        self.headers = None
-        self._timer = timer if timer is not None else _TimeServiceTimeoutNoop()
-        self.cookies = SimpleCookie()
+        self._timer = timer if timer is not None else TimerNoop()
 
     @property
     def url(self):
@@ -470,8 +470,6 @@ class ClientResponse(HeadersMixin):
 
     @property
     def host(self):
-        warnings.warn(
-            "Deprecated, use .url.host", DeprecationWarning, stacklevel=2)
         return self._url.host
 
     @property
