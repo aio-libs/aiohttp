@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import signals, web
+from aiohttp import helpers, signals, web
 from aiohttp.test_utils import make_mocked_request
 
 
@@ -21,18 +21,18 @@ def request(buf):
     writer = mock.Mock()
     writer.drain.return_value = ()
 
-    def acquire(cb):
-        cb(writer)
-
-    writer.acquire.side_effect = acquire
-
-    def append(data):
+    def append(data=b''):
         buf.extend(data)
-    writer.transport.write.side_effect = append
+        return helpers.noop()
+
+    writer.buffer_data.side_effect = append
+    writer.write.side_effect = append
+    writer.write_eof.side_effect = append
+
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
-    req = make_mocked_request(method, path, app=app, writer=writer)
+    req = make_mocked_request(method, path, app=app, payload_writer=writer)
     return req
 
 

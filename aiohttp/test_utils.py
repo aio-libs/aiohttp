@@ -17,8 +17,8 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import PY_35, sentinel
-from .http import HttpVersion, PayloadWriter, RawRequestMessage
+from .helpers import PY_35, noop, sentinel
+from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
 
@@ -484,6 +484,7 @@ def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
                         writer=sentinel,
+                        payload_writer=sentinel,
                         protocol=sentinel,
                         transport=sentinel,
                         payload=sentinel,
@@ -496,6 +497,10 @@ def make_mocked_request(method, path, headers=None, *,
     specific conditions and errors are hard to trigger.
 
     """
+
+    task = mock.Mock()
+    loop = mock.Mock()
+    loop.create_future.return_value = ()
 
     if version < HttpVersion(1, 1):
         closing = True
@@ -526,6 +531,10 @@ def make_mocked_request(method, path, headers=None, *,
         writer = mock.Mock()
         writer.transport = transport
 
+    if payload_writer is sentinel:
+        payload_writer = mock.Mock()
+        payload_writer.write_eof.side_effect = noop
+
     protocol.transport = transport
     protocol.writer = writer
 
@@ -543,14 +552,8 @@ def make_mocked_request(method, path, headers=None, *,
     time_service.timeout = mock.Mock()
     time_service.timeout.side_effect = timeout
 
-    task = mock.Mock()
-    loop = mock.Mock()
-    loop.create_future.return_value = ()
-
-    w = PayloadWriter(writer, loop=loop)
-
     req = Request(message, payload,
-                  protocol, w, time_service, task,
+                  protocol, payload_writer, time_service, task,
                   secure_proxy_ssl_header=secure_proxy_ssl_header,
                   client_max_size=client_max_size)
 

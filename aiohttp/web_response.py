@@ -11,8 +11,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
 from .helpers import HeadersMixin, SimpleCookie, sentinel
-from .http import (RESPONSES, SERVER_SOFTWARE, HttpVersion10,
-                   HttpVersion11, PayloadWriter)
+from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
 __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
 
@@ -305,15 +304,14 @@ class StreamResponse(HeadersMixin):
                     return
 
     @asyncio.coroutine
-    def prepare(self, request, PayloadWriterFactory=PayloadWriter):
+    def prepare(self, request):
         if self._payload_writer is not None:
             return self._payload_writer
 
         yield from request._prepare_hook(self)
-        return self._start(request, PayloadWriterFactory=PayloadWriterFactory)
+        return self._start(request)
 
     def _start(self, request,
-               PayloadWriterFactory=PayloadWriter,
                HttpVersion10=HttpVersion10,
                HttpVersion11=HttpVersion11,
                CONNECTION=hdrs.CONNECTION,
@@ -575,14 +573,14 @@ class Response(StreamResponse):
         else:
             yield from super().write_eof()
 
-    def _start(self, request, PayloadWriterFactory=PayloadWriter):
+    def _start(self, request):
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if self._body is not None:
                 self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
             else:
                 self._headers[hdrs.CONTENT_LENGTH] = '0'
 
-        return super()._start(request, PayloadWriterFactory)
+        return super()._start(request)
 
 
 def json_response(data=sentinel, *, text=None, body=None, status=200,

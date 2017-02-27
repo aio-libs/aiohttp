@@ -25,7 +25,7 @@ from multidict import MultiDict
 
 import aiohttp
 import aiohttp.http
-from aiohttp import client, helpers, server, test_utils
+from aiohttp import client, helpers, test_utils, web
 from aiohttp.multipart import MultipartWriter
 from aiohttp.test_utils import run_briefly, unused_port
 
@@ -56,28 +56,24 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             return urllib.parse.urljoin(
                 self._url, '/'.join(str(s) for s in suffix))
 
-    class TestHttpServer(server.ServerHttpProtocol):
+    @asyncio.coroutine
+    def handler(request):
+        if properties.get('close', False):
+            return
+
+        for hdr, val in request.message.headers.items():
+            if (hdr.upper() == 'EXPECT') and (val == '100-continue'):
+                request.writer.write(b'HTTP/1.0 100 Continue\r\n\r\n')
+                break
+
+        rob = router(properties, request)
+        return (yield from rob.dispatch())
+
+    class TestHttpServer(web.RequestHandler):
 
         def connection_made(self, transport):
             transports.append(transport)
-
             super().connection_made(transport)
-
-        def handle_request(self, message, payload):
-
-            if properties.get('close', False):
-                return
-
-            for hdr, val in message.headers.items():
-                if (hdr.upper() == 'EXPECT') and (val == '100-continue'):
-                    self.transport.write(b'HTTP/1.0 100 Continue\r\n\r\n')
-                    break
-
-            body = yield from payload.read()
-
-            rob = router(
-                self, properties, self.transport, message, body)
-            yield from rob.dispatch()
 
     if use_ssl:
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
@@ -94,7 +90,8 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
 
         host, port = listen_addr
         server_coroutine = thread_loop.create_server(
-            lambda: TestHttpServer(keepalive_timeout=0.5),
+            lambda: TestHttpServer(
+                web.Server(handler, loop=loop), keepalive_timeout=0.5),
             host, port, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 
@@ -137,20 +134,19 @@ class Router:
     _response_version = "1.1"
     _responses = http.server.BaseHTTPRequestHandler.responses
 
-    def __init__(self, srv, props, transport, message, payload):
+    def __init__(self, props, request):
         # headers
         self._headers = http.client.HTTPMessage()
-        for hdr, val in message.headers.items():
+        for hdr, val in request.message.headers.items():
             self._headers.add_header(hdr, val)
 
-        self._srv = srv
         self._props = props
-        self._transport = transport
-        self._method = message.method
-        self._uri = message.path
-        self._version = message.version
-        self._compression = message.compression
-        self._body = payload
+        self._request = request
+        self._method = request.message.method
+        self._uri = request.message.path
+        self._version = request.message.version
+        self._compression = request.message.compression
+        self._body = request.content
 
         url = urllib.parse.urlsplit(self._uri)
         self._path = url.path
@@ -171,18 +167,18 @@ class Router:
             match = route.match(self._path)
             if match is not None:
                 try:
-                    return getattr(self, fn)(match)
+                    return (yield from getattr(self, fn)(match))
                 except Exception:
                     out = io.StringIO()
                     traceback.print_exc(file=out)
-                    self._response(500, out.getvalue())
+                    return (yield from self._response(500, out.getvalue()))
 
                 return ()
 
-        return self._response(self._start_response(404))
+        return (yield from self._response(self._start_response(404)))
 
     def _start_response(self, code):
-        return aiohttp.http.Response(self._srv.writer, code)
+        return web.Response(status=code)
 
     @asyncio.coroutine
     def _response(self, response, body=None,
@@ -205,7 +201,7 @@ class Router:
             'version': '%s.%s' % self._version,
             'path': self._uri,
             'headers': r_headers,
-            'origin': self._transport.get_extra_info('addr', ' ')[0],
+            'origin': self._request.transport.get_extra_info('addr', ' ')[0],
             'query': self._query,
             'form': {},
             'compression': cmod,
@@ -214,7 +210,8 @@ class Router:
         if body:  # pragma: no cover
             resp['content'] = body
         else:
-            resp['content'] = self._body.decode('utf-8', 'ignore')
+            resp['content'] = (
+                yield from self._request.read()).decode('utf-8', 'ignore')
 
         ct = self._headers.get('content-type', '').lower()
 
@@ -228,8 +225,9 @@ class Router:
             for key, val in self._headers.items():
                 out.write(bytes('{}: {}\r\n'.format(key, val), 'latin1'))
 
+            b = yield from self._request.read()
             out.write(b'\r\n')
-            out.write(self._body)
+            out.write(b)
             out.write(b'\r\n')
             out.seek(0)
 
@@ -261,12 +259,14 @@ class Router:
         if headers:
             hdrs.extend(headers.items())
 
-        if chunked:
-            response.enable_chunked_encoding()
-
         # headers
-        response.add_headers(*hdrs)
-        response.send_headers()
+        for key, val in hdrs:
+            response.headers[key] = val
+
+        if chunked:
+            self._request.writer.enable_chunking()
+
+        yield from response.prepare(self._request)
 
         # write payload
         if write_body:
@@ -277,11 +277,7 @@ class Router:
         else:
             response.write(body.encode('utf8'))
 
-        yield from response.write_eof()
-
-        # keep-alive
-        if response.keep_alive():
-            self._srv.keep_alive(True)
+        return response
 
 
 class Functional(Router):
@@ -292,15 +288,16 @@ class Functional(Router):
 
     @Router.define('/keepalive$')
     def keepalive(self, match):
-        self._transport._requests = getattr(
-            self._transport, '_requests', 0) + 1
+        transport = self._request.transport
+
+        transport._requests = getattr(transport, '_requests', 0) + 1
         resp = self._start_response(200)
         if 'close=' in self._query:
             return self._response(
-                resp, 'requests={}'.format(self._transport._requests))
+                resp, 'requests={}'.format(transport._requests))
         else:
             return self._response(
-                resp, 'requests={}'.format(self._transport._requests),
+                resp, 'requests={}'.format(transport._requests),
                 headers={'CONNECTION': 'keep-alive'})
 
     @Router.define('/cookies$')
@@ -311,12 +308,13 @@ class Functional(Router):
 
         resp = self._start_response(200)
         for cookie in cookies.output(header='').split('\n'):
-            resp.add_header('Set-Cookie', cookie.strip())
+            resp.headers.extend({'Set-Cookie': cookie.strip()})
 
-        resp.add_header(
-            'Set-Cookie',
-            'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
-            '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/')
+        resp.headers.extend(
+            {'Set-Cookie':
+             'ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}='
+             '{925EC0B8-CB17-4BEB-8A35-1033813B0523}; HttpOnly; Path=/'})
+
         return self._response(resp)
 
     @Router.define('/cookies_partial$')

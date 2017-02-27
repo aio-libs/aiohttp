@@ -10,15 +10,18 @@ from importlib import import_module
 
 from yarl import URL
 
-from . import (hdrs, web_exceptions, web_middlewares, web_request,
-               web_response, web_server, web_urldispatcher, web_ws)
+from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
+               web_protocol, web_request, web_response, web_server,
+               web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
 from .signals import PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
+from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
+from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
 from .web_server import Server
@@ -26,7 +29,9 @@ from .web_urldispatcher import *  # noqa
 from .web_urldispatcher import PrefixedSubAppResource
 from .web_ws import *  # noqa
 
-__all__ = (web_request.__all__ +
+__all__ = (web_protocol.__all__ +
+           web_fileresponse.__all__ +
+           web_request.__all__ +
            web_response.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
@@ -222,10 +227,10 @@ class Application(MutableMapping):
         """
         yield from self.on_cleanup.send(self)
 
-    def _make_request(self, message, payload, protocol, writer,
+    def _make_request(self, message, payload, protocol, writer, task,
                       _cls=web_request.Request):
         return _cls(
-            message, payload, protocol, writer, protocol._time_service, None,
+            message, payload, protocol, writer, protocol._time_service, task,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
@@ -250,6 +255,7 @@ class Application(MutableMapping):
             for app in match_info.apps:
                 for factory in app._middlewares:
                     handler = yield from factory(app, handler)
+
             resp = yield from handler(request)
 
         assert isinstance(resp, web_response.StreamResponse), \

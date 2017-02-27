@@ -6,7 +6,6 @@ import pytest
 
 import aiohttp
 from aiohttp import web
-from aiohttp.file_sender import FileSender
 
 try:
     import ssl
@@ -17,7 +16,7 @@ except:
 @pytest.fixture(params=['sendfile', 'fallback'], ids=['sendfile', 'fallback'])
 def sender(request):
     def maker(*args, **kwargs):
-        ret = FileSender(*args, **kwargs)
+        ret = web.FileResponse(*args, **kwargs)
         if request.param == 'fallback':
             ret._sendfile = ret._sendfile_fallback
         return ret
@@ -30,8 +29,7 @@ def test_static_file_ok(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -85,8 +83,7 @@ def test_static_file_with_content_type(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -109,8 +106,7 @@ def test_static_file_with_content_encoding(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -134,8 +130,7 @@ def test_static_file_if_modified_since(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -159,8 +154,7 @@ def test_static_file_if_modified_since_past_date(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -180,8 +174,7 @@ def test_static_file_if_modified_since_invalid_date(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -201,8 +194,7 @@ def test_static_file_if_modified_since_future_date(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -312,8 +304,7 @@ def test_static_file_range(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -359,8 +350,7 @@ def test_static_file_range_end_bigger_than_size(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -389,8 +379,7 @@ def test_static_file_range_tail(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -413,8 +402,7 @@ def test_static_file_invalid_range(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)

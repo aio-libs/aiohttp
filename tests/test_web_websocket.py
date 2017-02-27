@@ -24,6 +24,7 @@ def app(loop):
 def writer():
     writer = mock.Mock()
     writer.drain.return_value = ()
+    writer.write_eof.return_value = ()
     return writer
 
 
@@ -49,7 +50,8 @@ def make_request(app, protocol, writer):
             headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
 
         return make_mocked_request(
-            method, path, headers, app=app, protocol=protocol, writer=writer)
+            method, path, headers,
+            app=app, protocol=protocol, payload_writer=writer)
 
     return maker
 

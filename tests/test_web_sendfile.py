@@ -1,13 +1,13 @@
 from unittest import mock
 
 from aiohttp import hdrs, helpers
-from aiohttp.file_sender import FileSender, SendfilePayloadWriter
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.web_fileresponse import FileResponse, SendfilePayloadWriter
 
 
 def test_static_handle_eof(loop):
     fake_loop = mock.Mock()
-    with mock.patch('aiohttp.file_sender.os') as m_os:
+    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
         fut = helpers.create_future(loop)
@@ -23,7 +23,7 @@ def test_static_handle_eof(loop):
 
 def test_static_handle_again(loop):
     fake_loop = mock.Mock()
-    with mock.patch('aiohttp.file_sender.os') as m_os:
+    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
         fut = helpers.create_future(loop)
@@ -41,7 +41,7 @@ def test_static_handle_again(loop):
 
 def test_static_handle_exception(loop):
     fake_loop = mock.Mock()
-    with mock.patch('aiohttp.file_sender.os') as m_os:
+    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
         fut = helpers.create_future(loop)
@@ -58,7 +58,7 @@ def test_static_handle_exception(loop):
 
 def test__sendfile_cb_return_on_cancelling(loop):
     fake_loop = mock.Mock()
-    with mock.patch('aiohttp.file_sender.os') as m_os:
+    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
         fut = helpers.create_future(loop)
@@ -89,10 +89,10 @@ def test_using_gzip_if_header_present_and_file_available(loop):
     filepath.open = mock.mock_open()
     filepath.with_name.return_value = gz_filepath
 
-    file_sender = FileSender()
+    file_sender = FileResponse(filepath)
     file_sender._sendfile = make_mocked_coro(None)
 
-    loop.run_until_complete(file_sender.send(request, filepath))
+    loop.run_until_complete(file_sender.prepare(request))
 
     assert not filepath.open.called
     assert gz_filepath.open.called
@@ -115,10 +115,10 @@ def test_gzip_if_header_not_present_and_file_available(loop):
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024
 
-    file_sender = FileSender()
+    file_sender = FileResponse(filepath)
     file_sender._sendfile = make_mocked_coro(None)
 
-    loop.run_until_complete(file_sender.send(request, filepath))
+    loop.run_until_complete(file_sender.prepare(request))
 
     assert filepath.open.called
     assert not gz_filepath.open.called
@@ -141,10 +141,10 @@ def test_gzip_if_header_not_present_and_file_not_available(loop):
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024
 
-    file_sender = FileSender()
+    file_sender = FileResponse(filepath)
     file_sender._sendfile = make_mocked_coro(None)
 
-    loop.run_until_complete(file_sender.send(request, filepath))
+    loop.run_until_complete(file_sender.prepare(request))
 
     assert filepath.open.called
     assert not gz_filepath.open.called
@@ -168,10 +168,10 @@ def test_gzip_if_header_present_and_file_not_available(loop):
     filepath.stat.return_value = mock.MagicMock()
     filepath.stat.st_size = 1024
 
-    file_sender = FileSender()
+    file_sender = FileResponse(filepath)
     file_sender._sendfile = make_mocked_coro(None)
 
-    loop.run_until_complete(file_sender.send(request, filepath))
+    loop.run_until_complete(file_sender.prepare(request))
 
     assert filepath.open.called
     assert not gz_filepath.open.called

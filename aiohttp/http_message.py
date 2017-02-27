@@ -7,7 +7,6 @@ import string
 import sys
 import zlib
 from urllib.parse import SplitResult
-from wsgiref.handlers import format_date_time
 
 import yarl
 from multidict import CIMultiDict, istr
@@ -36,7 +35,7 @@ HttpVersion11 = HttpVersion(1, 1)
 
 class PayloadWriter(AbstractPayloadWriter):
 
-    def __init__(self, stream, loop):
+    def __init__(self, stream, loop, acquire=True):
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -53,13 +52,29 @@ class PayloadWriter(AbstractPayloadWriter):
         self._compress = None
         self._drain_waiter = None
 
+        self._replacement = None
+
         if self._stream.available:
             self._transport = self._stream.transport
             self._stream.available = False
-        else:
+        elif acquire:
             self._stream.acquire(self.set_transport)
 
+    def replace(self, factory):
+        """Hack: for internal use only """
+        if self._transport is not None:
+            self._transport = None
+            self._stream.available = True
+            return factory(self._stream, self.loop)
+        else:
+            self._replacement = factory(self._stream, self.loop, False)
+            return self._replacement
+
     def set_transport(self, transport):
+        if self._replacement is not None:
+            self._replacement.set_transport(transport)
+            return
+
         self._transport = transport
 
         chunk = b''.join(self._buffer)
@@ -196,7 +211,7 @@ class PayloadWriter(AbstractPayloadWriter):
 class HttpMessage(PayloadWriter):
     """HttpMessage allows to write headers and payload to a stream."""
 
-    HOP_HEADERS = None  # Must be set by subclass.
+    HOP_HEADERS = ()  # Must be set by subclass.
 
     SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
         sys.version_info, aiohttp.__version__)
@@ -205,7 +220,8 @@ class HttpMessage(PayloadWriter):
     websocket = False  # Upgrade: WEBSOCKET
     has_chunked_hdr = False  # Transfer-encoding: chunked
 
-    def __init__(self, transport, version, close, loop=None):
+    def __init__(self, transport,
+                 version=HttpVersion11, close=False, loop=None):
         super().__init__(transport, loop)
 
         self.version = version
