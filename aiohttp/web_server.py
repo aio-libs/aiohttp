@@ -49,12 +49,12 @@ class RequestHandler(ServerHttpProtocol):
         self._handler = None
 
     @asyncio.coroutine
-    def handle_request(self, message, payload):
+    def handle_request(self, message, payload, writer):
         self._manager._requests_count += 1
         if self.access_log:
             now = self._loop.time()
 
-        request = self._request_factory(message, payload, self)
+        request = self._request_factory(message, payload, self, writer)
         self._request = request
 
         try:
@@ -144,10 +144,10 @@ class Server:
         if handler in self._connections:
             del self._connections[handler]
 
-    def _make_request(self, message, payload, protocol):
+    def _make_request(self, message, payload, protocol, writer):
         return BaseRequest(
-            message, payload, protocol,
-            protocol._time_service, None, loop=self._loop)
+            message, payload, protocol, writer,
+            protocol._time_service, None)
 
     @asyncio.coroutine
     def shutdown(self, timeout=None):

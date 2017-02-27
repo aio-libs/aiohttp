@@ -18,7 +18,7 @@ from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
 from .helpers import PY_35, sentinel
-from .http import HttpVersion, RawRequestMessage
+from .http import HttpVersion, PayloadWriter, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
 
@@ -547,9 +547,10 @@ def make_mocked_request(method, path, headers=None, *,
     loop = mock.Mock()
     loop.create_future.return_value = ()
 
+    w = PayloadWriter(writer, loop=loop)
+
     req = Request(message, payload,
-                  protocol, time_service, task,
-                  loop=loop,
+                  protocol, w, time_service, task,
                   secure_proxy_ssl_header=secure_proxy_ssl_header,
                   client_max_size=client_max_size)
 

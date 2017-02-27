@@ -222,11 +222,10 @@ class Application(MutableMapping):
         """
         yield from self.on_cleanup.send(self)
 
-    def _make_request(self, message, payload, protocol,
+    def _make_request(self, message, payload, protocol, writer,
                       _cls=web_request.Request):
         return _cls(
-            message, payload, protocol, protocol._time_service, None,
-            loop=self._loop,
+            message, payload, protocol, writer, protocol._time_service, None,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 

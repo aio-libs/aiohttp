@@ -17,7 +17,7 @@ from .payload_streamer import *  # noqa
 from .resolver import *  # noqa
 
 # deprecated #1657
-from .http_message import HttpMessage, Request, Response  # noqa isort:skip
+from .http_message import HttpMessage, Request  # noqa isort:skip
 from .http_parser import RawRequestMessage, RawResponseMessage  # noqa isort:skip
 from .http_parser import HttpRequestParser, HttpResponseParser, HttpPayloadParser  # noqa isort:skip
 from .http_exceptions import HttpProcessingError, BadHttpMessage  # noqa isort:skip
@@ -38,8 +38,8 @@ __all__ = (client.__all__ +  # noqa
             'WebSocketError', 'WSMessage', 'CookieJar',
 
             # deprecated api #1657
-            'HttpMessage', 'Request', 'Response',
-            'HttpRequestParser', 'HttpResponseParser', 'HttpPayloadParser',
+            'HttpMessage', 'Request', 'HttpRequestParser',
+            'HttpResponseParser', 'HttpPayloadParser',
             'RawRequestMessage', 'RawResponseMessage',
             'HttpProcessingError', 'BadHttpMessage',
             'HttpBadRequest', 'BadStatusLine', 'LineTooLong', 'InvalidHeader',

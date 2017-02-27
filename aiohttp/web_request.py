@@ -32,21 +32,19 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, time_service, task, *,
-                 loop=None, secure_proxy_ssl_header=None,
-                 client_max_size=1024**2):
-        self._loop = loop
+    def __init__(self, message, payload, protocol, writer, time_service, task,
+                 *, secure_proxy_ssl_header=None, client_max_size=1024**2):
         self._message = message
         self._protocol = protocol
         self._transport = protocol.transport
-        self._post = None
+        self._writer = writer
 
         self._payload = payload
         self._headers = message.headers
         self._method = message.method
         self._version = message.version
         self._rel_url = message.url
-
+        self._post = None
         self._read_bytes = None
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
@@ -88,9 +86,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             message,
             self._payload,
             self._protocol,
+            self._writer,
             self._time_service,
             self._task,
-            loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     @property
@@ -104,6 +102,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @property
     def transport(self):
         return self._protocol.transport
+
+    @property
+    def writer(self):
+        return self._writer
 
     @property
     def message(self):
