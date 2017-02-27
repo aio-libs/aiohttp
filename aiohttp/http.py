@@ -1,3 +1,5 @@
+from yarl import URL  # noqa
+
 from .http_exceptions import HttpProcessingError
 from .http_message import (RESPONSES, SERVER_SOFTWARE, HttpMessage,
                            HttpVersion, HttpVersion10, HttpVersion11,
@@ -13,7 +15,7 @@ __all__ = (
 
     # .http_message
     'RESPONSES', 'SERVER_SOFTWARE',
-    'HttpMessage', 'Request', 'Response', 'PayloadWriter',
+    'HttpMessage', 'Request', 'PayloadWriter',
     'HttpVersion', 'HttpVersion10', 'HttpVersion11',
 
     # .http_parser

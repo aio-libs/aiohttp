@@ -17,10 +17,10 @@ from yarl import URL, unquote
 
 from . import hdrs, helpers
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .file_sender import FileSender
-from .http import HttpVersion11, PayloadWriter
+from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
+from .web_fileresponse import FileResponse
 from .web_response import Response, StreamResponse
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -399,9 +399,8 @@ class StaticResource(PrefixResource):
             raise ValueError(
                 "No directory exists at '{}'".format(directory)) from error
         self._directory = directory
-        self._file_sender = FileSender(resp_factory=response_factory,
-                                       chunk_size=chunk_size)
         self._show_index = show_index
+        self._chunk_size = chunk_size
         self._follow_symlinks = follow_symlinks
         self._expect_handler = expect_handler
 
@@ -482,7 +481,7 @@ class StaticResource(PrefixResource):
             else:
                 raise HTTPForbidden()
         elif filepath.is_file():
-            ret = yield from self._file_sender.send(request, filepath)
+            ret = FileResponse(filepath, chunk_size=self._chunk_size)
         else:
             raise HTTPNotFound
 

@@ -56,9 +56,7 @@ def test_raw_server_handler_timeout(raw_test_server, test_client):
     resp = yield from cli.get('/path/to')
     assert resp.status == 504
 
-    txt = yield from resp.text()
-    assert "<h1>504 Gateway Timeout</h1>" in txt
-
+    yield from resp.text()
     logger.debug.assert_called_with("Request handler timed out.")
 
 

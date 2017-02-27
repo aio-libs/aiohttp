@@ -10,7 +10,6 @@ from .http_message import HttpVersion, HttpVersion10, HttpVersion11  # noqa
 from .http_websocket import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
 from .streams import *  # noqa
 from .multipart import *  # noqa
-from .file_sender import FileSender  # noqa
 from .cookiejar import CookieJar  # noqa
 from .payload import *  # noqa
 from .payload_streamer import *  # noqa
@@ -32,8 +31,7 @@ __all__ = (client.__all__ +  # noqa
            payload.__all__ +  # noqa
            payload_streamer.__all__ +  # noqa
            streams.__all__ +  # noqa
-           ('hdrs', 'FileSender',
-            'HttpVersion', 'HttpVersion10', 'HttpVersion11',
+           ('hdrs', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
             'WSMsgType', 'MsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage', 'CookieJar',
 

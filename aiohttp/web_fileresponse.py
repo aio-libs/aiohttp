@@ -1,6 +1,7 @@
 import asyncio
 import mimetypes
 import os
+import pathlib
 
 from . import hdrs
 from .helpers import create_future
@@ -8,6 +9,8 @@ from .http_message import PayloadWriter
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
                              HTTPRequestRangeNotSatisfiable)
 from .web_response import StreamResponse
+
+__all__ = ('FileResponse',)
 
 
 NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
@@ -81,15 +84,20 @@ class SendfilePayloadWriter(PayloadWriter):
         pass
 
 
-class FileSender:
-    """A helper that can be used to send files."""
+class FileResponse(StreamResponse):
+    """A response object can be used to send files."""
 
-    def __init__(self, *, resp_factory=StreamResponse, chunk_size=256*1024):
-        self._response_factory = resp_factory
+    def __init__(self, path, chunk_size=256*1024, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if isinstance(path, str):
+            path = pathlib.Path(path)
+
+        self._path = path
         self._chunk_size = chunk_size
 
     @asyncio.coroutine
-    def _sendfile_system(self, request, resp, fobj, count):
+    def _sendfile_system(self, request, fobj, count):
         # Write count bytes of fobj to resp using
         # the os.sendfile system call.
         #
@@ -103,14 +111,17 @@ class FileSender:
 
         transport = request.transport
         if transport.get_extra_info("sslcontext"):
-            yield from self._sendfile_fallback(request, resp, fobj, count)
+            writer = yield from self._sendfile_fallback(request, fobj, count)
         else:
-            writer = yield from resp.prepare(
-                request, PayloadWriterFactory=SendfilePayloadWriter)
+            writer = request._writer.replace(SendfilePayloadWriter)
+            request._writer = writer
+            yield from super().prepare(request)
             yield from writer.sendfile(fobj, count)
 
+        return writer
+
     @asyncio.coroutine
-    def _sendfile_fallback(self, request, resp, fobj, count):
+    def _sendfile_fallback(self, request, fobj, count):
         # Mimic the _sendfile_system() method, but without using the
         # os.sendfile() system call. This should be used on systems
         # that don't support the os.sendfile().
@@ -119,21 +130,23 @@ class FileSender:
         # fobj is transferred in chunks controlled by the
         # constructor's chunk_size argument.
 
-        yield from resp.prepare(request)
+        writer = (yield from super().prepare(request))
 
-        resp.set_tcp_cork(True)
+        self.set_tcp_cork(True)
         try:
             chunk_size = self._chunk_size
 
             chunk = fobj.read(chunk_size)
             while True:
-                yield from resp.write(chunk)
+                yield from writer.write(chunk)
                 count = count - chunk_size
                 if count <= 0:
                     break
                 chunk = fobj.read(min(chunk_size, count))
         finally:
-            resp.set_tcp_nodelay(True)
+            self.set_tcp_nodelay(True)
+
+        yield from writer.drain()
 
     if hasattr(os, "sendfile") and not NOSENDFILE:  # pragma: no cover
         _sendfile = _sendfile_system
@@ -141,8 +154,9 @@ class FileSender:
         _sendfile = _sendfile_fallback
 
     @asyncio.coroutine
-    def send(self, request, filepath):
-        """Send filepath to client using request."""
+    def prepare(self, request):
+        filepath = self._path
+
         gzip = False
         if 'gzip' in request.headers.get(hdrs.ACCEPT_ENCODING, ''):
             gzip_path = filepath.with_name(filepath.name + '.gz')
@@ -155,7 +169,8 @@ class FileSender:
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
-            raise HTTPNotModified()
+            self.set_status(HTTPNotModified.status_code)
+            return (yield from super().prepare(request))
 
         ct, encoding = mimetypes.guess_type(str(filepath))
         if not ct:
@@ -170,7 +185,8 @@ class FileSender:
             start = rng.start
             end = rng.stop
         except ValueError:
-            raise HTTPRequestRangeNotSatisfiable
+            self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
+            return (yield from super().prepare(request))
 
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
@@ -192,18 +208,17 @@ class FileSender:
                 # the current length of the selected representation).
                 count = file_size - start
 
-        resp = self._response_factory(status=status)
-        resp.content_type = ct
+        self.set_status(status)
+        self.content_type = ct
         if encoding:
-            resp.headers[hdrs.CONTENT_ENCODING] = encoding
+            self.headers[hdrs.CONTENT_ENCODING] = encoding
         if gzip:
-            resp.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
-        resp.last_modified = st.st_mtime
+            self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
+        self.last_modified = st.st_mtime
+        self.content_length = count
 
-        resp.content_length = count
-        with filepath.open('rb') as f:
+        with filepath.open('rb') as fobj:
             if start:
-                f.seek(start)
-            yield from self._sendfile(request, resp, f, count)
+                fobj.seek(start)
 
-        return resp
+            return (yield from self._sendfile(request, fobj, count))

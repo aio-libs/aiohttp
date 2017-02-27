@@ -35,11 +35,21 @@ def writer(buf):
     def acquire(cb):
         cb(writer.transport)
 
+    def buffer_data(chunk):
+        buf.extend(chunk)
+
     def write(chunk):
+        buf.extend(chunk)
+
+    @asyncio.coroutine
+    def write_eof(chunk=b''):
         buf.extend(chunk)
 
     writer.acquire.side_effect = acquire
     writer.transport.write.side_effect = write
+    writer.write.side_effect = write
+    writer.write_eof.side_effect = write_eof
+    writer.buffer_data.side_effect = buffer_data
     writer.drain.return_value = ()
 
     return writer
@@ -169,11 +179,11 @@ def test_last_modified_reset():
 
 @asyncio.coroutine
 def test_start():
-    req = make_request('GET', '/')
+    req = make_request('GET', '/', payload_writer=mock.Mock())
     resp = StreamResponse()
     assert resp.keep_alive is None
 
-    msg = yield from resp.prepare(req, PayloadWriterFactory=mock.Mock())
+    msg = yield from resp.prepare(req)
 
     assert msg.buffer_data.called
     msg2 = yield from resp.prepare(req)
@@ -196,20 +206,20 @@ def test_chunked_encoding():
     resp.enable_chunked_encoding()
     assert resp.chunked
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     assert msg.chunked
 
 
 @asyncio.coroutine
 def test_chunk_size():
-    req = make_request('GET', '/')
+    req = make_request('GET', '/', payload_writer=mock.Mock())
     resp = StreamResponse()
     assert not resp.chunked
 
     resp.enable_chunked_encoding(chunk_size=8192)
     assert resp.chunked
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     assert msg.chunked
     assert msg.enable_chunking.called
     assert msg.filter is not None
@@ -229,7 +239,7 @@ def test_chunked_encoding_forbidden_for_http_10():
 
 @asyncio.coroutine
 def test_compression_no_accept():
-    req = make_request('GET', '/')
+    req = make_request('GET', '/', payload_writer=mock.Mock())
     resp = StreamResponse()
     assert not resp.chunked
 
@@ -237,13 +247,13 @@ def test_compression_no_accept():
     resp.enable_compression()
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     assert not msg.enable_compression.called
 
 
 @asyncio.coroutine
 def test_force_compression_no_accept_backwards_compat():
-    req = make_request('GET', '/')
+    req = make_request('GET', '/', payload_writer=mock.Mock())
     resp = StreamResponse()
     assert not resp.chunked
 
@@ -251,21 +261,21 @@ def test_force_compression_no_accept_backwards_compat():
     resp.enable_compression(force=True)
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     assert msg.enable_compression.called
     assert msg.filter is not None
 
 
 @asyncio.coroutine
 def test_force_compression_false_backwards_compat():
-    req = make_request('GET', '/')
+    req = make_request('GET', '/', payload_writer=mock.Mock())
     resp = StreamResponse()
 
     assert not resp.compression
     resp.enable_compression(force=False)
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     assert not msg.enable_compression.called
 
 
@@ -281,7 +291,7 @@ def test_compression_default_coding():
     resp.enable_compression()
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
 
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
@@ -298,7 +308,7 @@ def test_force_compression_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -311,7 +321,7 @@ def test_force_compression_no_accept_deflate():
     resp.enable_compression(ContentCoding.deflate)
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('deflate')
     assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -326,7 +336,7 @@ def test_force_compression_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -339,7 +349,7 @@ def test_force_compression_no_accept_gzip():
     resp.enable_compression(ContentCoding.gzip)
     assert resp.compression
 
-    msg = yield from resp.prepare(req, mock.Mock())
+    msg = yield from resp.prepare(req)
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
 
@@ -391,13 +401,11 @@ def test_cannot_write_after_eof():
 @asyncio.coroutine
 def test_repr_after_eof():
     resp = StreamResponse()
-    writer = mock.Mock()
-    yield from resp.prepare(make_request('GET', '/', writer=writer))
+    yield from resp.prepare(make_request('GET', '/'))
 
     assert resp.prepared
 
     resp.write(b'data')
-    writer.drain.return_value = ()
     yield from resp.write_eof()
     assert not resp.prepared
     resp_repr = repr(resp)
@@ -416,8 +424,7 @@ def test_cannot_write_eof_before_headers():
 def test_cannot_write_eof_twice():
     resp = StreamResponse()
     writer = mock.Mock()
-    resp_impl = yield from resp.prepare(
-        make_request('GET', '/', writer=writer))
+    resp_impl = yield from resp.prepare(make_request('GET', '/'))
     resp_impl.write = mock.Mock()
     resp_impl.write_eof = mock.Mock()
     resp_impl.write_eof.return_value = ()
@@ -433,16 +440,16 @@ def test_cannot_write_eof_twice():
 
 
 @asyncio.coroutine
-def test_write_returns_drain():
+def _test_write_returns_drain():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
     with mock.patch('aiohttp.http_message.noop') as noop:
-        assert noop.return_value == resp.write(b'data')
+        assert noop == resp.write(b'data')
 
 
 @asyncio.coroutine
-def test_write_returns_empty_tuple_on_empty_data():
+def _test_write_returns_empty_tuple_on_empty_data():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
@@ -635,7 +642,7 @@ def test_get_nodelay_prepared():
     resp = StreamResponse()
     writer = mock.Mock()
     writer.tcp_nodelay = False
-    req = make_request('GET', '/', writer=writer)
+    req = make_request('GET', '/', payload_writer=writer)
 
     yield from resp.prepare(req)
     assert not resp.tcp_nodelay
@@ -644,7 +651,7 @@ def test_get_nodelay_prepared():
 def test_set_nodelay_prepared():
     resp = StreamResponse()
     writer = mock.Mock()
-    req = make_request('GET', '/', writer=writer)
+    req = make_request('GET', '/', payload_writer=writer)
 
     yield from resp.prepare(req)
     resp.set_tcp_nodelay(True)
@@ -668,7 +675,7 @@ def test_get_cork_prepared():
     resp = StreamResponse()
     writer = mock.Mock()
     writer.tcp_cork = False
-    req = make_request('GET', '/', writer=writer)
+    req = make_request('GET', '/', payload_writer=writer)
 
     yield from resp.prepare(req)
     assert not resp.tcp_cork
@@ -677,7 +684,7 @@ def test_get_cork_prepared():
 def test_set_cork_prepared():
     resp = StreamResponse()
     writer = mock.Mock()
-    req = make_request('GET', '/', writer=writer)
+    req = make_request('GET', '/', payload_writer=writer)
 
     yield from resp.prepare(req)
     resp.set_tcp_cork(True)
@@ -815,7 +822,7 @@ def test_assign_nonstr_text():
 
 @asyncio.coroutine
 def test_send_headers_for_empty_body(buf, writer):
-    req = make_request('GET', '/', writer=writer)
+    req = make_request('GET', '/', payload_writer=writer)
     resp = Response()
 
     yield from resp.prepare(req)
@@ -830,7 +837,7 @@ def test_send_headers_for_empty_body(buf, writer):
 
 @asyncio.coroutine
 def test_render_with_body(buf, writer):
-    req = make_request('GET', '/', writer=writer)
+    req = make_request('GET', '/', payload_writer=writer)
     resp = Response(body=b'data')
 
     yield from resp.prepare(req)
@@ -849,7 +856,7 @@ def test_render_with_body(buf, writer):
 def test_send_set_cookie_header(buf, writer):
     resp = Response()
     resp.cookies['name'] = 'value'
-    req = make_request('GET', '/', writer=writer)
+    req = make_request('GET', '/', payload_writer=writer)
 
     yield from resp.prepare(req)
     yield from resp.write_eof()

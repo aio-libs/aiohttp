@@ -1,5 +1,3 @@
-"""simple HTTP server."""
-
 import asyncio
 import asyncio.streams
 import http.server
@@ -10,27 +8,20 @@ from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
 
-from . import hdrs, helpers
-from .helpers import CeilTimeout, TimeService, create_future, ensure_future
+from . import helpers, http
+from .helpers import CeilTimeout, create_future, ensure_future
 from .http import HttpProcessingError, HttpRequestParser, PayloadWriter
 from .log import access_logger, server_logger
-from .streams import StreamWriter
+from .streams import EMPTY_PAYLOAD, StreamWriter
+from .web_exceptions import HTTPException
+from .web_request import BaseRequest
+from .web_response import Response
 
-__all__ = ('ServerHttpProtocol',)
+__all__ = ('RequestHandler',)
 
-
-RESPONSES = http.server.BaseHTTPRequestHandler.responses
-DEFAULT_ERROR_MESSAGE = """
-<html>
-  <head>
-    <title>{status} {reason}</title>
-  </head>
-  <body>
-    <h1>{status} {reason}</h1>
-    {message}
-  </body>
-</html>"""
-
+ERROR = http.RawRequestMessage(
+    'UNKNOWN', '/', http.HttpVersion10, {},
+    {}, True, False, False, False, http.URL('/'))
 
 if hasattr(socket, 'SO_KEEPALIVE'):
     def tcp_keepalive(server, transport):
@@ -41,14 +32,14 @@ else:
         pass
 
 
-class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
-    """Simple HTTP protocol implementation.
+class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
+    """HTTP protocol implementation.
 
-    ServerHttpProtocol handles incoming HTTP request. It reads request line,
+    RequestHandler handles incoming HTTP request. It reads request line,
     request headers and request payload and calls handle_request() method.
     By default it always returns with 404 response.
 
-    ServerHttpProtocol handles errors in incoming request, like bad
+    RequestHandler handles errors in incoming request, like bad
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
@@ -82,8 +73,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     _request_count = 0
     _keepalive = False  # keep transport open
 
-    def __init__(self, *, loop=None,
-                 time_service=None,
+    def __init__(self, manager, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
                  tcp_keepalive=True,
                  slow_request_timeout=None,
@@ -94,8 +84,7 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                  max_line_size=8190,
                  max_headers=32768,
                  max_field_size=8190,
-                 lingering_time=30.0,
-                 lingering_timeout=5.0,
+                 lingering_time=10.0,
                  max_concurrent_handlers=2,
                  **kwargs):
 
@@ -109,19 +98,17 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         super().__init__(loop=loop)
 
         self._loop = loop if loop is not None else asyncio.get_event_loop()
-        if time_service is not None:
-            self._time_service_owner = False
-            self._time_service = time_service
-        else:
-            self._time_service_owner = True
-            self._time_service = TimeService(self._loop)
+
+        self._manager = manager
+        self._time_service = manager.time_service
+        self._request_handler = manager.request_handler
+        self._request_factory = manager.request_factory
 
         self._tcp_keepalive = tcp_keepalive
         self._keepalive_time = None
         self._keepalive_handle = None
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
-        self._lingering_timeout = float(lingering_timeout)
 
         self._messages = deque()
         self._message_tail = b''
@@ -153,6 +140,20 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         self._close = False
         self._force_close = False
+
+    def __repr__(self):
+        self._request = None
+        if self._request is None:
+            meth = 'none'
+            path = 'none'
+        else:
+            meth = 'none'
+            path = 'none'
+            # meth = self._request.method
+            # path = self._request.rel_url.raw_path
+        return "<{} {}:{} {}>".format(
+            self.__class__.__name__, meth, path,
+            'connected' if self.transport is not None else 'disconnected')
 
     @property
     def time_service(self):
@@ -216,11 +217,17 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             tcp_keepalive(self, transport)
 
         self.writer.set_tcp_nodelay(True)
+        self._manager.connection_made(self, transport)
 
     def connection_lost(self, exc):
+        self._manager.connection_lost(self, exc)
+
         super().connection_lost(exc)
 
+        self._manager = None
         self._force_close = True
+        self._request_factory = None
+        self._request_handler = None
         self._request_parser = None
         self.transport = self.writer = None
 
@@ -240,9 +247,6 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 self._error_handler.cancel()
 
         self._request_handlers = ()
-
-        if self._time_service_owner:
-            self._time_service.close()
 
     def set_parser(self, parser):
         assert self._payload_parser is None
@@ -268,17 +272,17 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # something happened during parsing
                 self.close()
                 self._error_handler = ensure_future(
-                    self.handle_error(
+                    self.handle_parse_error(
                         PayloadWriter(self.writer, self._loop),
-                        400, None, exc, exc.message),
+                        400, exc, exc.message),
                     loop=self._loop)
             except Exception as exc:
                 # 500: internal error
                 self.close()
                 self._error_handler = ensure_future(
-                    self.handle_error(
+                    self.handle_parse_error(
                         PayloadWriter(self.writer, self._loop),
-                        500, None, exc), loop=self._loop)
+                        500, exc), loop=self._loop)
             else:
                 for (msg, payload) in messages:
                     self._request_count += 1
@@ -391,13 +395,47 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         """
         loop = self._loop
         handler = handler[0]
+        manager = self._manager
         keepalive_timeout = self._keepalive_timeout
 
         while not self._force_close:
-            try:
-                writer = PayloadWriter(self.writer, loop)
-                yield from self.handle_request(message, payload, writer)
+            if self.access_log:
+                now = loop.time()
 
+            manager.requests_count += 1
+            writer = PayloadWriter(self.writer, loop)
+            request = self._request_factory(
+                message, payload, self, writer, handler)
+            try:
+                try:
+                    resp = yield from self._request_handler(request)
+                except HTTPException as exc:
+                    resp = exc
+                except asyncio.CancelledError:
+                    self.log_debug('Ignored premature client disconnection')
+                    break
+                except asyncio.TimeoutError:
+                    self.log_debug('Request handler timed out.')
+                    resp = self.handle_error(request, 504)
+                except Exception as exc:
+                    resp = self.handle_error(request, 500, exc)
+
+                yield from resp.prepare(request)
+                yield from resp.write_eof()
+
+                # notify server about keep-alive
+                self._keepalive = resp.keep_alive
+
+                # Restore default state.
+                # Should be no-op if server code didn't touch these attributes.
+                writer.set_tcp_cork(False)
+                writer.set_tcp_nodelay(True)
+
+                # log access
+                if self.access_log:
+                    self.log_access(message, None, resp, loop.time() - now)
+
+                # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
                     if not self._force_close and lingering_time:
@@ -421,16 +459,9 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         self.log_debug('Uncompleted request.')
                         self.close()
 
-            except asyncio.CancelledError:
-                self.log_debug('Ignored premature client disconnection')
-                break
-            except asyncio.TimeoutError:
-                self.log_debug('Request handler timed out.')
-                yield from self.handle_error(writer, 504, message)
-                break
             except Exception as exc:
-                yield from self.handle_error(writer, 500, message, exc)
-                break
+                self.log_exception('Unhandled exception', exc_info=exc)
+                self.force_close()
             finally:
                 if self.transport is None:
                     self.log_debug('Ignored premature client disconnection.')
@@ -466,107 +497,51 @@ class ServerHttpProtocol(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 if self.transport is not None:
                     self.transport.close()
 
-    @asyncio.coroutine
-    def handle_error(self, writer, status=500, message=None,
-                     exc=None, reason=None, SEP=': ', END='\r\n'):
+    def handle_error(self, request, status=500, exc=None, message=None):
         """Handle errors.
 
         Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection."""
-        if self.access_log:
-            now = self._loop.time()
+        self.log_exception("Error handling request", exc_info=exc)
 
         if status == 500:
-            self.log_exception("Error handling request")
-
-        try:
-            # some data already got sent, connection is broken
-            if writer.output_size > 0 or self.transport is None:
-                self.force_close()
-                return
-
-            try:
-                if not reason:
-                    reason, msg = RESPONSES[status]
-                else:
-                    msg = reason
-                    reason, _ = RESPONSES[status]
-            except KeyError:
-                status = 500
-                reason, msg = RESPONSES[500]
-
-            writer.status = status
-
-            if self.debug and exc is not None:
+            msg = "<h1>500 Internal Server Error</h1>"
+            if self.debug:
                 try:
                     tb = traceback.format_exc()
                     tb = html_escape(tb)
-                    msg += '<br><h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
-                except:
+                    msg += '<br><h2>Traceback:</h2>\n<pre>'
+                    msg += tb
+                    msg += '</pre>'
+                except:  # pragma: no cover
                     pass
+            else:
+                msg += "Server got itself in trouble"
+                msg = ("<html><head><title>500 Internal Server Error</title>"
+                       "</head><body>" + msg + "</body></html>")
+        else:
+            msg = message
 
-            html = DEFAULT_ERROR_MESSAGE.format(
-                status=status, reason=reason, message=msg).encode('utf-8')
+        resp = Response(status=status, text=msg, content_type='text/html')
+        resp.force_close()
 
-            headers = {
-                hdrs.CONNECTION: 'close',
-                hdrs.CONTENT_TYPE: 'text/html; charset=utf-8',
-                hdrs.CONTENT_LENGTH: str(len(html)),
-                hdrs.DATE: self._time_service.strtime()}
-            writer.headers = headers
+        # some data already got sent, connection is broken
+        if request.writer.output_size > 0 or self.transport is None:
+            self.force_close()
 
-            # status line
-            status_line = 'HTTP/1.1 {} {}\r\n'.format(status, reason)
-
-            # status + headers
-            headers = status_line + ''.join(
-                [k + SEP + v + END for k, v in headers.items()])
-            headers = headers.encode('utf-8') + b'\r\n'
-            writer.buffer_data(headers + html)
-
-            # disable CORK, enable NODELAY if needed
-            writer.set_tcp_nodelay(True)
-            yield from writer.write_eof()
-        finally:
-            self.keep_alive(False)
-            if self.access_log:
-                self.log_access(message, None, writer, self._loop.time() - now)
+        return resp
 
     @asyncio.coroutine
-    def handle_request(self, message, payload, writer, SEP=': ', END='\r\n'):
-        """Handle a single HTTP request.
+    def handle_parse_error(self, writer, status, exc=None, message=None):
+        request = BaseRequest(
+            ERROR, EMPTY_PAYLOAD,
+            self, writer, self._time_service, None)
 
-        Subclass should override this method. By default it always
-        returns 404 response.
+        resp = self.handle_error(request, status, exc, message)
+        yield from resp.prepare(request)
+        yield from resp.write_eof()
 
-        :param message: Request headers
-        :type message: aiohttp.protocol.HttpRequestParser
-        :param payload: Request payload
-        :type payload: aiohttp.streams.FlowControlStreamReader
-        """
-        if self.access_log:
-            now = self._loop.time()
-
-        body = b'Page Not Found!'
-        headers = {
-            hdrs.CONNECTION: 'close',
-            hdrs.CONTENT_TYPE: 'text/plain',
-            hdrs.CONTENT_LENGTH: str(len(body)),
-            hdrs.DATE: self._time_service.strtime()}
-        writer.status = 404
-        writer.headers = headers
-
-        # status line
-        status_line = 'HTTP/{}.{} {} {}\r\n'.format(
-            message.version[0], message.version[1], 404, 'Not Found')
-
-        # status + headers
-        headers = status_line + ''.join(
-            [k + SEP + v + END for k, v in headers.items()])
-        headers = headers.encode('utf-8') + b'\r\n'
-        writer.buffer_data(headers + body)
-        yield from writer.write_eof()
-
-        self.keep_alive(False)
-        if self.access_log:
-            self.log_access(message, None, response, self._loop.time() - now)
+        # Restore default state.
+        # Should be no-op if server code didn't touch these attributes.
+        self.writer.set_tcp_cork(False)
+        self.writer.set_tcp_nodelay(True)
