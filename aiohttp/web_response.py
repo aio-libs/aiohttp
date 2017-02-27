@@ -326,14 +326,14 @@ class StreamResponse(HeadersMixin):
                TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING,
                SEP=': ', END='\r\n'):
         self._req = request
+
         keep_alive = self._keep_alive
         if keep_alive is None:
             keep_alive = request.keep_alive
         self._keep_alive = keep_alive
-        version = request.version
 
-        writer = self._payload_writer = PayloadWriterFactory(
-            request._protocol.writer, request._loop)
+        version = request.version
+        writer = self._payload_writer = request._writer
 
         headers = self._headers
         for cookie in self._cookies.values():

@@ -227,9 +227,7 @@ def _defaultExpectHandler(request):
     expect = request.headers.get(hdrs.EXPECT)
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
-            writer = PayloadWriter(
-                request.protocol.writer, request.app.loop)
-            yield from writer.write_eof(b"HTTP/1.1 100 Continue\r\n\r\n")
+            yield from request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
         else:
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 

@@ -1,7 +1,7 @@
 from .http_exceptions import HttpProcessingError
 from .http_message import (RESPONSES, SERVER_SOFTWARE, HttpMessage,
                            HttpVersion, HttpVersion10, HttpVersion11,
-                           PayloadWriter, Request, Response)
+                           PayloadWriter, Request)
 from .http_parser import (HttpParser, HttpRequestParser, HttpResponseParser,
                           RawRequestMessage, RawResponseMessage)
 from .http_websocket import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,

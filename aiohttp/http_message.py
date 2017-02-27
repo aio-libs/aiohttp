@@ -19,7 +19,7 @@ from .abc import AbstractPayloadWriter
 from .helpers import create_future, noop
 
 __all__ = ('RESPONSES', 'SERVER_SOFTWARE',
-           'HttpMessage', 'Request', 'Response', 'PayloadWriter',
+           'HttpMessage', 'Request', 'PayloadWriter',
            'HttpVersion', 'HttpVersion10', 'HttpVersion11')
 
 ASCIISET = set(string.printable)
@@ -68,7 +68,7 @@ class PayloadWriter(AbstractPayloadWriter):
             self._buffer.clear()
 
         if self._drain_waiter is not None:
-            waiter, self._drain_maiter = self._drain_maiter, None
+            waiter, self._drain_waiter = self._drain_waiter, None
             if not waiter.done():
                 waiter.set_result(None)
 
@@ -186,11 +186,11 @@ class PayloadWriter(AbstractPayloadWriter):
                     self._buffer.clear()
             yield from self._stream.drain()
         else:
-            if self._buffer:
-                if self._drain_waiter is None:
-                    self._drain_waiter = create_future(self.loop)
+            # wait for transport
+            if self._drain_waiter is None:
+                self._drain_waiter = create_future(self.loop)
 
-                yield from self._drain_waiter
+            yield from self._drain_waiter
 
 
 class HttpMessage(PayloadWriter):
@@ -325,50 +325,6 @@ class HttpMessage(PayloadWriter):
 
         if connection is not None:
             self.headers[hdrs.CONNECTION] = connection
-
-
-class Response(HttpMessage):
-    """Create HTTP response message.
-
-    Transport is a socket stream transport. status is a response status code,
-    status has to be integer value. http_version is a tuple that represents
-    HTTP version, (1, 0) stands for HTTP/1.0 and (1, 1) is for HTTP/1.1
-    """
-
-    HOP_HEADERS = ()
-
-    def __init__(self, transport, status,
-                 http_version=HttpVersion11,
-                 close=False, reason=None, loop=None, _RESPONSES=RESPONSES):
-        super().__init__(transport, http_version, close, loop=loop)
-
-        self.status = status
-        if reason is None:
-            try:
-                reason = _RESPONSES[status][0]
-            except:
-                reason = ''
-
-        self.reason = reason
-
-    @property
-    def status_line(self):
-        version = self.version
-        return 'HTTP/{}.{} {} {}\r\n'.format(
-            version[0], version[1], self.status, self.reason)
-
-    def autochunked(self):
-        return (self.length is None and
-                self.version >= HttpVersion11 and
-                self.status not in (304, 204))
-
-    def _add_default_headers(self):
-        super()._add_default_headers()
-
-        if hdrs.DATE not in self.headers:
-            # format_date_time(None) is quite expensive
-            self.headers.setdefault(hdrs.DATE, format_date_time(None))
-        self.headers.setdefault(hdrs.SERVER, self.SERVER_SOFTWARE)
 
 
 class Request(HttpMessage):
