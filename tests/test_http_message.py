@@ -13,8 +13,8 @@ from aiohttp import hdrs, http
 def stream():
     stream = mock.Mock()
 
-    def acquire(cb):
-        cb(stream)
+    def acquire(writer):
+        writer.set_transport(stream)
 
     stream.acquire = acquire
     stream.drain.return_value = ()

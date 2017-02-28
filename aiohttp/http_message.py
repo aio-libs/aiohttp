@@ -52,29 +52,13 @@ class PayloadWriter(AbstractPayloadWriter):
         self._compress = None
         self._drain_waiter = None
 
-        self._replacement = None
-
         if self._stream.available:
             self._transport = self._stream.transport
             self._stream.available = False
         elif acquire:
-            self._stream.acquire(self.set_transport)
-
-    def replace(self, factory):
-        """Hack: for internal use only """
-        if self._transport is not None:
-            self._transport = None
-            self._stream.available = True
-            return factory(self._stream, self.loop)
-        else:
-            self._replacement = factory(self._stream, self.loop, False)
-            return self._replacement
+            self._stream.acquire(self)
 
     def set_transport(self, transport):
-        if self._replacement is not None:
-            self._replacement.set_transport(transport)
-            return
-
         self._transport = transport
 
         chunk = b''.join(self._buffer)

@@ -38,8 +38,8 @@ def transport():
 
     buf = bytearray()
 
-    def acquire(cb):
-        cb(transport)
+    def acquire(writer):
+        writer.set_transport(transport)
 
     def write(chunk):
         buf.extend(chunk)

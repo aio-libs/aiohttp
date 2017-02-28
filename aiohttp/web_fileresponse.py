@@ -113,7 +113,8 @@ class FileResponse(StreamResponse):
         if transport.get_extra_info("sslcontext"):
             writer = yield from self._sendfile_fallback(request, fobj, count)
         else:
-            writer = request._writer.replace(SendfilePayloadWriter)
+            writer = request._protocol.writer.replace(
+                request._writer, SendfilePayloadWriter)
             request._writer = writer
             yield from super().prepare(request)
             yield from writer.sendfile(fobj, count)
