@@ -548,6 +548,7 @@ def test_http11_keep_alive_default(loop, test_client):
     assert 'Connection' not in resp.headers
 
 
+@pytest.mark.xfail
 @asyncio.coroutine
 def test_http10_keep_alive_default(loop, test_client):
 

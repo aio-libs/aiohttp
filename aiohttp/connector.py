@@ -12,7 +12,7 @@ from . import hdrs, helpers
 from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
                                 ClientProxyConnectionError,
                                 ServerFingerprintMismatch)
-from .client_proto import HttpClientProtocol
+from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .resolver import DefaultResolver
@@ -173,7 +173,7 @@ class BaseConnector(object):
         self._waiters = defaultdict(list)
 
         self._loop = loop
-        self._factory = functools.partial(HttpClientProtocol, loop=loop)
+        self._factory = functools.partial(ResponseHandler, loop=loop)
 
         self.cookies = SimpleCookie()
 

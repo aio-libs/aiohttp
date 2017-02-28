@@ -63,8 +63,8 @@ class TestProxy(unittest.TestCase):
             "proxy_auth must be None or BasicAuth() tuple",
         )
 
-    @mock.patch('aiohttp.http.Request')
-    def test_connect_request_with_unicode_host(self, Request_mock):
+    @mock.patch('aiohttp.client_reqrep.PayloadWriter')
+    def _test_connect_request_with_unicode_host(self, Request_mock):
         loop = mock.Mock()
         request = ClientRequest("CONNECT", URL("http://éé.com/"),
                                 loop=loop)

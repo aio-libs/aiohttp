@@ -9,17 +9,14 @@ import zlib
 from urllib.parse import SplitResult
 
 import yarl
-from multidict import CIMultiDict, istr
 
 import aiohttp
 
-from . import hdrs
 from .abc import AbstractPayloadWriter
 from .helpers import create_future, noop
 
 __all__ = ('RESPONSES', 'SERVER_SOFTWARE',
-           'HttpMessage', 'Request', 'PayloadWriter',
-           'HttpVersion', 'HttpVersion10', 'HttpVersion11')
+           'PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
 
 ASCIISET = set(string.printable)
 SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
@@ -48,6 +45,7 @@ class PayloadWriter(AbstractPayloadWriter):
         self.buffer_size = 0
         self.output_size = 0
 
+        self._eof = False
         self._buffer = []
         self._compress = None
         self._drain_waiter = None
@@ -152,6 +150,9 @@ class PayloadWriter(AbstractPayloadWriter):
 
     @asyncio.coroutine
     def write_eof(self, chunk=b''):
+        if self._eof:
+            return
+
         if self._compress:
             if chunk:
                 chunk = self._compress.compress(chunk)
@@ -173,6 +174,7 @@ class PayloadWriter(AbstractPayloadWriter):
 
         yield from self.drain(True)
 
+        self._eof = True
         self._transport = None
         self._stream.release()
 
@@ -190,167 +192,6 @@ class PayloadWriter(AbstractPayloadWriter):
                 self._drain_waiter = create_future(self.loop)
 
             yield from self._drain_waiter
-
-
-class HttpMessage(PayloadWriter):
-    """HttpMessage allows to write headers and payload to a stream."""
-
-    HOP_HEADERS = ()  # Must be set by subclass.
-
-    SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
-        sys.version_info, aiohttp.__version__)
-
-    upgrade = False  # Connection: UPGRADE
-    websocket = False  # Upgrade: WEBSOCKET
-    has_chunked_hdr = False  # Transfer-encoding: chunked
-
-    def __init__(self, transport,
-                 version=HttpVersion11, close=False, loop=None):
-        super().__init__(transport, loop)
-
-        self.version = version
-        self.closing = close
-        self.keepalive = None
-        self.length = None
-        self.headers = CIMultiDict()
-        self.headers_sent = False
-
-    @property
-    def body_length(self):
-        return self.output_size
-
-    def force_close(self):
-        self.closing = True
-        self.keepalive = False
-
-    def keep_alive(self):
-        if self.keepalive is None:
-            if self.version < HttpVersion10:
-                # keep alive not supported at all
-                return False
-            if self.version == HttpVersion10:
-                if self.headers.get(hdrs.CONNECTION) == 'keep-alive':
-                    return True
-                else:  # no headers means we close for Http 1.0
-                    return False
-            else:
-                return not self.closing
-        else:
-            return self.keepalive
-
-    def is_headers_sent(self):
-        return self.headers_sent
-
-    def add_header(self, name, value):
-        """Analyze headers. Calculate content length,
-        removes hop headers, etc."""
-        assert not self.headers_sent, 'headers have been sent already'
-        assert isinstance(name, str), \
-            'Header name should be a string, got {!r}'.format(name)
-        assert set(name).issubset(ASCIISET), \
-            'Header name should contain ASCII chars, got {!r}'.format(name)
-        assert isinstance(value, str), \
-            'Header {!r} should have string value, got {!r}'.format(
-                name, value)
-
-        name = istr(name)
-        value = value.strip()
-
-        if name == hdrs.CONTENT_LENGTH:
-            self.length = int(value)
-
-        if name == hdrs.TRANSFER_ENCODING:
-            self.has_chunked_hdr = value.lower() == 'chunked'
-
-        if name == hdrs.CONNECTION:
-            val = value.lower()
-            # handle websocket
-            if 'upgrade' in val:
-                self.upgrade = True
-            # connection keep-alive
-            elif 'close' in val:
-                self.keepalive = False
-            elif 'keep-alive' in val:
-                self.keepalive = True
-
-        elif name == hdrs.UPGRADE:
-            if 'websocket' in value.lower():
-                self.websocket = True
-            self.headers[name] = value
-
-        elif name not in self.HOP_HEADERS:
-            # ignore hop-by-hop headers
-            self.headers.add(name, value)
-
-    def add_headers(self, *headers):
-        """Adds headers to a HTTP message."""
-        for name, value in headers:
-            self.add_header(name, value)
-
-    def send_headers(self, _sep=': ', _end='\r\n'):
-        """Writes headers to a stream. Constructs payload writer."""
-        # Chunked response is only for HTTP/1.1 clients or newer
-        # and there is no Content-Length header is set.
-        # Do not use chunked responses when the response is guaranteed to
-        # not have a response body (304, 204).
-        assert not self.headers_sent, 'headers have been sent already'
-        self.headers_sent = True
-
-        if not self.chunked and self.autochunked():
-            self.enable_chunking()
-
-        if self.chunked:
-            self.headers[hdrs.TRANSFER_ENCODING] = 'chunked'
-
-        self._add_default_headers()
-
-        # status + headers
-        headers = self.status_line + ''.join(
-            [k + _sep + v + _end for k, v in self.headers.items()])
-        headers = headers.encode('utf-8') + b'\r\n'
-
-        self.buffer_data(headers)
-
-    def _add_default_headers(self):
-        # set the connection header
-        connection = None
-        if self.upgrade:
-            connection = 'Upgrade'
-        elif not self.closing if self.keepalive is None else self.keepalive:
-            if self.version == HttpVersion10:
-                connection = 'keep-alive'
-        else:
-            if self.version == HttpVersion11:
-                connection = 'close'
-
-        if connection is not None:
-            self.headers[hdrs.CONNECTION] = connection
-
-
-class Request(HttpMessage):
-
-    HOP_HEADERS = ()
-
-    def __init__(self, transport, method, path,
-                 http_version=HttpVersion11, close=False, loop=None):
-        # set the default for HTTP 0.9 to be different
-        # will only be overwritten with keep-alive header
-        if http_version < HttpVersion10:
-            close = True
-
-        super().__init__(transport, http_version, close, loop=loop)
-
-        self.method = method
-        self.path = path
-
-    @property
-    def status_line(self):
-        return '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
-            self.method, self.path, self.version)
-
-    def autochunked(self):
-        return (self.length is None and
-                self.version >= HttpVersion11)
 
 
 class URL(yarl.URL):

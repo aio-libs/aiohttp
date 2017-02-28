@@ -460,10 +460,10 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             fut = helpers.create_future(self.loop)
 
-            @asyncio.coroutine
-            def stream():
+            @aiohttp.streamer
+            def stream(writer):
                 yield from fut
-                yield data
+                writer.write(data)
 
             self.loop.call_later(0.01, fut.set_result, True)
 
