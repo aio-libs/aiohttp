@@ -6,7 +6,7 @@ from .http_parser import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamWriter
 
 
-class HttpClientProtocol(DataQueue, asyncio.streams.FlowControlMixin):
+class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
     """Helper class to adapt between Protocol and StreamReader."""
 
     def __init__(self, *, loop=None, **kwargs):

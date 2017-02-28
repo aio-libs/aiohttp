@@ -10,11 +10,27 @@ from aiohttp import hdrs, http
 
 
 @pytest.fixture
-def stream():
-    stream = mock.Mock()
+def buf():
+    return bytearray()
+
+
+@pytest.fixture
+def transport(buf):
+    transport = mock.Mock()
+
+    def write(chunk):
+        buf.extend(chunk)
+
+    transport.write.side_effect = write
+    return transport
+
+
+@pytest.fixture
+def stream(transport):
+    stream = mock.Mock(transport=transport)
 
     def acquire(writer):
-        writer.set_transport(stream)
+        writer.set_transport(transport)
 
     stream.acquire = acquire
     stream.drain.return_value = ()
@@ -25,24 +41,7 @@ compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
 COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
 
 
-def test_start_request(stream, loop):
-    msg = http.Request(
-        stream, 'GET', '/index.html', close=True, loop=loop)
-
-    assert msg._transport is stream.transport
-    assert msg.closing
-    assert msg.status_line == 'GET /index.html HTTP/1.1\r\n'
-
-
-def test_force_chunked(stream, loop):
-    msg = http.Request(
-        stream, 'GET', '/index.html', close=True, loop=loop)
-    assert not msg.chunked
-    msg.enable_chunking()
-    assert msg.chunked
-
-
-def test_keep_alive(stream, loop):
+def _test_keep_alive(stream, loop):
     msg = http.Request(
         stream, 'GET', '/index.html', close=True, loop=loop)
     assert not msg.keep_alive()
@@ -53,7 +52,7 @@ def test_keep_alive(stream, loop):
     assert not msg.keep_alive()
 
 
-def test_keep_alive_http10(stream, loop):
+def _test_keep_alive_http10(stream, loop):
     msg = http.HttpMessage(stream, version=(1, 0), close=True, loop=loop)
     assert not msg.keepalive
     assert not msg.keep_alive()
@@ -62,7 +61,7 @@ def test_keep_alive_http10(stream, loop):
     assert msg.keepalive is None
 
 
-def test_http_message_keepsalive(stream, loop):
+def _test_http_message_keepsalive(stream, loop):
     msg = http.HttpMessage(stream, version=(0, 9), loop=loop)
     assert not msg.keep_alive()
 
@@ -83,78 +82,7 @@ def test_http_message_keepsalive(stream, loop):
     assert msg.keep_alive()
 
 
-def test_add_header(stream, loop):
-    msg = http.HttpMessage(stream, version=(1, 1), loop=loop)
-    assert [] == list(msg.headers)
-
-    msg.add_header('content-type', 'plain/html')
-    assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
-
-
-def test_add_header_with_spaces(stream, loop):
-    msg = http.HttpMessage(stream, version=(1, 1), loop=loop)
-    assert [] == list(msg.headers)
-
-    msg.add_header('content-type', '  plain/html  ')
-    assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
-
-
-def test_add_header_non_ascii(stream, loop):
-    msg = http.HttpMessage(stream, version=(1, 1), loop=loop)
-    assert [] == list(msg.headers)
-
-    with pytest.raises(AssertionError):
-        msg.add_header('тип-контента', 'текст/плейн')
-
-
-def test_add_header_invalid_value_type(stream, loop):
-    msg = http.HttpMessage(stream, version=(1, 1), loop=loop)
-    assert [] == list(msg.headers)
-
-    with pytest.raises(AssertionError):
-        msg.add_header('content-type', {'test': 'plain'})
-
-    with pytest.raises(AssertionError):
-        msg.add_header(list('content-type'), 'text/plain')
-
-
-def test_add_headers(stream, loop):
-    msg = http.HttpMessage(stream, version=(1, 1), loop=loop)
-    assert [] == list(msg.headers)
-
-    msg.add_headers(('content-type', 'plain/html'))
-    assert [('Content-Type', 'plain/html')] == list(msg.headers.items())
-
-
-def test_add_headers_length(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-    assert msg.length is None
-
-    msg.add_headers(('content-length', '42'))
-    assert 42 == msg.length
-
-
-def test_add_headers_upgrade(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-    assert not msg.upgrade
-
-    msg.add_headers(('connection', 'upgrade'))
-    assert msg.upgrade
-
-
-def test_add_headers_upgrade_websocket(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-    msg.add_headers(('upgrade', 'test'))
-    assert not msg.websocket
-    assert [('Upgrade', 'test')] == list(msg.headers.items())
-
-    msg = http.HttpMessage(stream, loop=loop)
-    msg.add_headers(('upgrade', 'websocket'))
-    assert msg.websocket
-    assert [('Upgrade', 'websocket')] == list(msg.headers.items())
-
-
-def test_add_headers_connection_keepalive(stream, loop):
+def _test_add_headers_connection_keepalive(stream, loop):
     msg = http.HttpMessage(stream, loop=loop)
 
     msg.add_headers(('connection', 'keep-alive'))
@@ -165,50 +93,21 @@ def test_add_headers_connection_keepalive(stream, loop):
     assert not msg.keepalive
 
 
-def test_add_headers_hop_headers(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-    msg.HOP_HEADERS = (hdrs.TRANSFER_ENCODING,)
-
-    msg.add_headers(('connection', 'test'), ('transfer-encoding', 't'))
-    assert [] == list(msg.headers)
-
-
-def test_default_headers_http_10(stream, loop):
+def _test_default_headers_http_10(stream, loop):
     msg = http.HttpMessage(stream, version=http.HttpVersion10, loop=loop)
     msg._add_default_headers()
 
     assert 'keep-alive' == msg.headers['CONNECTION']
 
 
-def test_default_headers_http_11(stream, loop):
+def _test_default_headers_http_11(stream, loop):
     msg = http.HttpMessage(stream, loop=loop)
     msg._add_default_headers()
 
     assert 'CONNECTION' not in msg.headers
 
 
-def test_default_headers_chunked(stream, loop):
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg._add_default_headers()
-
-    assert 'TRANSFER-ENCODING' not in msg.headers
-
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.enable_chunking()
-    msg.send_headers()
-
-    assert 'TRANSFER-ENCODING' in msg.headers
-
-
-def test_default_headers_connection_upgrade(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-    msg.upgrade = True
-    msg._add_default_headers()
-
-    assert msg.headers['Connection'] == 'Upgrade'
-
-
-def test_default_headers_connection_close(stream, loop):
+def _test_default_headers_connection_close(stream, loop):
     msg = http.HttpMessage(stream, loop=loop)
     msg.force_close()
     msg._add_default_headers()
@@ -216,7 +115,7 @@ def test_default_headers_connection_close(stream, loop):
     assert msg.headers['Connection'] == 'close'
 
 
-def test_default_headers_connection_keep_alive_http_10(stream, loop):
+def _test_default_headers_connection_keep_alive_http_10(stream, loop):
     msg = http.HttpMessage(stream, version=http.HttpVersion10, loop=loop)
     msg.keepalive = True
     msg._add_default_headers()
@@ -224,7 +123,7 @@ def test_default_headers_connection_keep_alive_http_10(stream, loop):
     assert msg.headers['Connection'] == 'keep-alive'
 
 
-def test_default_headers_connection_keep_alive_11(stream, loop):
+def _test_default_headers_connection_keep_alive_11(stream, loop):
     msg = http.HttpMessage(stream, version=http.HttpVersion11, loop=loop)
     msg.keepalive = True
     msg._add_default_headers()
@@ -232,87 +131,11 @@ def test_default_headers_connection_keep_alive_11(stream, loop):
     assert 'Connection' not in msg.headers
 
 
-def test_send_headers(stream, loop):
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.add_headers(('content-type', 'plain/html'))
-    assert not msg.is_headers_sent()
-
-    msg.send_headers()
-
-    content = b''.join(msg._buffer)
-    assert content.startswith(b'GET / HTTP/1.1\r\n')
-    assert b'Content-Type: plain/html' in content
-    assert msg.headers_sent
-    assert msg.is_headers_sent()
-
-
-def test_send_headers_non_ascii(stream, loop):
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.add_headers(('x-header', 'текст'))
-    assert not msg.is_headers_sent()
-
-    msg.send_headers()
-
-    content = b''.join(msg._buffer)
-
-    assert content.startswith(b'GET / HTTP/1.1\r\n')
-    assert b'X-Header: \xd1\x82\xd0\xb5\xd0\xba\xd1\x81\xd1\x82' in content
-    assert msg.headers_sent
-    assert msg.is_headers_sent()
-
-
-def test_send_headers_nomore_add(stream, loop):
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.add_headers(('content-type', 'plain/html'))
-    msg.send_headers()
-
-    with pytest.raises(AssertionError):
-        msg.add_header('content-type', 'plain/html')
-
-
-def test_prepare_length(stream, loop):
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.add_headers(('content-length', '42'))
-    msg.send_headers()
-
-    assert msg.length == 42
-
-
-def test_prepare_chunked_force(stream, loop):
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.enable_chunking()
-    msg.add_headers(('content-length', '42'))
-    msg.send_headers()
-    assert msg.chunked
-
-
-def test_prepare_chunked_no_length(stream, loop):
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.send_headers()
-    assert msg.chunked
-
-
-def test_prepare_eof(stream, loop):
-    msg = http.Request(stream, 'GET', '/', http_version=(1, 0), loop=loop)
-    msg.send_headers()
-    assert msg.length is None
-
-
-def test_write_auto_send_headers(stream, loop):
-    msg = http.Request(stream, 'GET', '/', http_version=(1, 0), loop=loop)
-    msg.send_headers()
-    msg.write(b'data1')
-    assert msg.headers_sent
-
-
 def test_write_payload_eof(stream, loop):
     write = stream.transport.write = mock.Mock()
-    msg = http.Request(stream, 'GET', '/', http_version=(1, 0), loop=loop)
-    msg.send_headers()
+    msg = http.PayloadWriter(stream, loop)
 
     msg.write(b'data1')
-    assert msg.headers_sent
-
     msg.write(b'data2')
     msg.write_eof()
 
@@ -321,45 +144,32 @@ def test_write_payload_eof(stream, loop):
 
 
 @asyncio.coroutine
-def test_write_payload_chunked(stream, loop):
-    write = stream.transport.write = mock.Mock()
-
-    msg = http.Request(stream, 'GET', '/', loop=loop)
+def test_write_payload_chunked(buf, stream, loop):
+    msg = http.PayloadWriter(stream, loop)
     msg.enable_chunking()
-    msg.send_headers()
-
     msg.write(b'data')
     yield from msg.write_eof()
 
-    content = b''.join([c[1][0] for c in list(write.mock_calls)])
-    assert b'4\r\ndata\r\n0\r\n\r\n' == content.split(b'\r\n\r\n', 1)[-1]
+    assert b'4\r\ndata\r\n0\r\n\r\n' == buf
 
 
 @asyncio.coroutine
-def test_write_payload_chunked_multiple(stream, loop):
-    write = stream.transport.write = mock.Mock()
-
-    msg = http.Request(stream, 'GET', '/', loop=loop)
+def test_write_payload_chunked_multiple(buf, stream, loop):
+    msg = http.PayloadWriter(stream, loop)
     msg.enable_chunking()
-    msg.send_headers()
-
     msg.write(b'data1')
     msg.write(b'data2')
     yield from msg.write_eof()
 
-    content = b''.join([c[1][0] for c in list(write.mock_calls)])
-    assert (b'5\r\ndata1\r\n5\r\ndata2\r\n0\r\n\r\n' ==
-            content.split(b'\r\n\r\n', 1)[-1])
+    assert b'5\r\ndata1\r\n5\r\ndata2\r\n0\r\n\r\n' == buf
 
 
 @asyncio.coroutine
 def test_write_payload_length(stream, loop):
     write = stream.transport.write = mock.Mock()
 
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.add_headers(('content-length', '2'))
-    msg.send_headers()
-
+    msg = http.PayloadWriter(stream, loop)
+    msg.length = 2
     msg.write(b'd')
     msg.write(b'ata')
     yield from msg.write_eof()
@@ -372,9 +182,7 @@ def test_write_payload_length(stream, loop):
 def test_write_payload_chunked_filter(stream, loop):
     write = stream.transport.write = mock.Mock()
 
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.send_headers()
-
+    msg = http.PayloadWriter(stream, loop)
     msg.enable_chunking()
     msg.write(b'da')
     msg.write(b'ta')
@@ -387,9 +195,7 @@ def test_write_payload_chunked_filter(stream, loop):
 @asyncio.coroutine
 def test_write_payload_chunked_filter_mutiple_chunks(stream, loop):
     write = stream.transport.write = mock.Mock()
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.send_headers()
-
+    msg = http.PayloadWriter(stream, loop)
     msg.enable_chunking()
     msg.write(b'da')
     msg.write(b'ta')
@@ -406,10 +212,7 @@ def test_write_payload_chunked_filter_mutiple_chunks(stream, loop):
 @asyncio.coroutine
 def test_write_payload_deflate_compression(stream, loop):
     write = stream.transport.write = mock.Mock()
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.add_headers(('content-length', '{}'.format(len(COMPRESSED))))
-    msg.send_headers()
-
+    msg = http.PayloadWriter(stream, loop)
     msg.enable_compression('deflate')
     msg.write(b'data')
     yield from msg.write_eof()
@@ -421,11 +224,8 @@ def test_write_payload_deflate_compression(stream, loop):
 
 
 @asyncio.coroutine
-def test_write_payload_deflate_and_chunked(stream, loop):
-    write = stream.transport.write = mock.Mock()
-    msg = http.Request(stream, 'GET', '/', loop=loop)
-    msg.send_headers()
-
+def test_write_payload_deflate_and_chunked(buf, stream, loop):
+    msg = http.PayloadWriter(stream, loop)
     msg.enable_compression('deflate')
     msg.enable_chunking()
 
@@ -433,42 +233,15 @@ def test_write_payload_deflate_and_chunked(stream, loop):
     msg.write(b'ta')
     yield from msg.write_eof()
 
-    chunks = [c[1][0] for c in list(write.mock_calls)]
-    assert all(chunks)
-    content = b''.join(chunks)
-    assert (b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' ==
-            content.split(b'\r\n\r\n', 1)[-1])
+    assert b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' == buf
 
 
 def test_write_drain(stream, loop):
-    msg = http.Request(stream, 'GET', '/', http_version=(1, 0), loop=loop)
+    msg = http.PayloadWriter(stream, loop)
     msg.drain = mock.Mock()
-    msg.send_headers()
     msg.write(b'1' * (64 * 1024 * 2), drain=False)
     assert not msg.drain.called
 
     msg.write(b'1', drain=True)
     assert msg.drain.called
     assert msg.buffer_size == 0
-
-
-def test_dont_override_request_headers_with_default_values(stream, loop):
-    msg = http.Request(
-        stream, 'GET', '/index.html', close=True, loop=loop)
-    msg.add_header('USER-AGENT', 'custom')
-    msg._add_default_headers()
-    assert 'custom' == msg.headers['USER-AGENT']
-
-
-def test_dont_override_response_headers_with_default_values(stream, loop):
-    msg = http.Request(stream, 'GET', '/', http_version=(1, 0), loop=loop)
-    msg.add_header('DATE', 'now')
-    msg.add_header('SERVER', 'custom')
-    msg._add_default_headers()
-    assert 'custom' == msg.headers['SERVER']
-    assert 'now' == msg.headers['DATE']
-
-
-def test_request_close_from_version(stream, loop):
-    msg = http.Request(stream, 'POST', '/', http_version=(0, 9), loop=loop)
-    assert msg.closing

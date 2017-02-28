@@ -1,9 +1,8 @@
 from yarl import URL  # noqa
 
 from .http_exceptions import HttpProcessingError
-from .http_message import (RESPONSES, SERVER_SOFTWARE, HttpMessage,
-                           HttpVersion, HttpVersion10, HttpVersion11,
-                           PayloadWriter, Request)
+from .http_message import (RESPONSES, SERVER_SOFTWARE, HttpVersion,
+                           HttpVersion10, HttpVersion11, PayloadWriter)
 from .http_parser import (HttpParser, HttpRequestParser, HttpResponseParser,
                           RawRequestMessage, RawResponseMessage)
 from .http_websocket import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
@@ -15,8 +14,7 @@ __all__ = (
 
     # .http_message
     'RESPONSES', 'SERVER_SOFTWARE',
-    'HttpMessage', 'Request', 'PayloadWriter',
-    'HttpVersion', 'HttpVersion10', 'HttpVersion11',
+    'PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
 
     # .http_parser
     'HttpParser', 'HttpRequestParser', 'HttpResponseParser',

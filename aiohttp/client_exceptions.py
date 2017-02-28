@@ -96,12 +96,3 @@ class ServerFingerprintMismatch(ServerConnectionError):
         return '<{} expected={} got={} host={} port={}>'.format(
             self.__class__.__name__, self.expected, self.got,
             self.host, self.port)
-
-
-# backward compatibility
-ClientRequestError = ClientError
-ClientDisconnectedError = ClientError
-ClientTimeoutError = ServerTimeoutError
-FingerprintMismatch = ServerFingerprintMismatch
-HttpProxyError = ClientHttpProxyError
-ProxyConnectionError = ClientProxyConnectionError

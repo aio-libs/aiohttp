@@ -35,7 +35,7 @@ class payload_type:
         self.type = type
 
     def __call__(self, cls):
-        PAYLOAD_REGISTRY.register(cls, self.type)
+        register_payload(cls, self.type)
         return cls
 
 

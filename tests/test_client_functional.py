@@ -14,7 +14,6 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.client import ServerFingerprintMismatch
-from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
 
@@ -684,7 +683,7 @@ def test_readline_error_on_conn_close(loop, test_client):
         timer_started = False
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
-        with pytest.raises(aiohttp.ClientDisconnectedError):
+        with pytest.raises(aiohttp.ClientConnectionError):
             while True:
                 data = yield from resp.content.readline()
                 data = data.strip()
@@ -1536,41 +1535,6 @@ def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
         '/', data=stream, headers={'Content-Length': str(data_size)})
     assert 200 == resp.status
     resp.close()
-
-
-@asyncio.coroutine
-def test_POST_STREAM_DATA_coroutine_deprecated(loop, test_client, fname):
-    @asyncio.coroutine
-    def handler(request):
-        assert request.content_type == 'application/octet-stream'
-        content = yield from request.read()
-        with fname.open('rb') as f:
-            expected = f.read()
-        assert request.content_length == len(expected)
-        assert content == expected
-
-        return web.HTTPOk()
-
-    app = web.Application(loop=loop)
-    app.router.add_post('/', handler)
-    client = yield from test_client(app)
-
-    with fname.open('rb') as f:
-        data = f.read()
-        fut = create_future(loop)
-
-        @asyncio.coroutine
-        def stream():
-            yield from fut
-            yield data
-
-        loop.call_later(0.01, fut.set_result, None)
-
-        resp = yield from client.post(
-            '/', data=stream(),
-            headers={'Content-Length': str(len(data))})
-        assert 200 == resp.status
-        resp.close()
 
 
 @asyncio.coroutine

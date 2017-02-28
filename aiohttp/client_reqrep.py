@@ -14,7 +14,7 @@ import aiohttp
 from . import hdrs, helpers, http, payload
 from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
-from .http import HttpMessage
+from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import FlowControlStreamReader
 
@@ -38,8 +38,6 @@ class ClientRequest:
         hdrs.ACCEPT: '*/*',
         hdrs.ACCEPT_ENCODING: 'gzip, deflate',
     }
-
-    SERVER_SOFTWARE = HttpMessage.SERVER_SOFTWARE
 
     body = b''
     auth = None
@@ -79,6 +77,7 @@ class ClientRequest:
         self.chunked = chunked
         self.compress = compress
         self.loop = loop
+        self.length = None
         self.response_class = response_class or ClientResponse
         self._timer = timer if timer is not None else TimerNoop()
 
@@ -163,7 +162,7 @@ class ClientRequest:
             self.headers[hdrs.HOST] = netloc
 
         if hdrs.USER_AGENT not in used_headers:
-            self.headers[hdrs.USER_AGENT] = self.SERVER_SOFTWARE
+            self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
 
     def update_cookies(self, cookies):
         """Update request cookies header."""
@@ -217,19 +216,6 @@ class ClientRequest:
 
     def update_body_from_data(self, body, skip_auto_headers):
         if not body:
-            return
-
-        if asyncio.iscoroutine(body):
-            warnings.warn(
-                'coroutine as data object is deprecated, '
-                'use aiohttp.streamer  #1664',
-                DeprecationWarning, stacklevel=2)
-
-            self.body = body
-            if (hdrs.CONTENT_LENGTH not in self.headers and
-                    self.chunked is None):
-                self.chunked = True
-
             return
 
         # FormData
@@ -299,59 +285,37 @@ class ClientRequest:
         self.proxy = proxy
         self.proxy_auth = proxy_auth
 
+    def keep_alive(self):
+        if self.version < HttpVersion10:
+            # keep alive not supported at all
+            return False
+        if self.version == HttpVersion10:
+            if self.headers.get(hdrs.CONNECTION) == 'keep-alive':
+                return True
+            else:  # no headers means we close for Http 1.0
+                return False
+
+        return True
+
     @asyncio.coroutine
-    def write_bytes(self, request, conn):
+    def write_bytes(self, writer, conn):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            yield from request.drain()
+            yield from writer.drain()
             yield from self._continue
 
         try:
             if isinstance(self.body, payload.Payload):
-                yield from self.body.write(request)
-
-            elif asyncio.iscoroutine(self.body):
-                exc = None
-                value = None
-                stream = self.body
-
-                while True:
-                    try:
-                        if exc is not None:
-                            result = stream.throw(exc)
-                        else:
-                            result = stream.send(value)
-                    except StopIteration as exc:
-                        if isinstance(exc.value, bytes):
-                            yield from request.write(exc.value)
-                        break
-                    except:
-                        self.response.close()
-                        raise
-
-                    if isinstance(result, asyncio.Future):
-                        exc = None
-                        value = None
-                        try:
-                            value = yield result
-                        except Exception as err:
-                            exc = err
-                    elif isinstance(result, (bytes, bytearray)):
-                        yield from request.write(result)
-                        value = None
-                    else:
-                        raise ValueError(
-                            'Bytes object is expected, got: %s.' %
-                            type(result))
+                yield from self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
 
                 for chunk in self.body:
-                    request.write(chunk)
+                    writer.write(chunk)
 
-            yield from request.write_eof()
+            yield from writer.write_eof()
         except OSError as exc:
             new_exc = aiohttp.ClientOSError(
                 exc.errno,
@@ -378,14 +342,13 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
-        request = http.Request(
-            conn.writer, self.method, path, self.version, loop=self.loop)
+        writer = PayloadWriter(conn.writer, self.loop)
 
         if self.compress:
-            request.enable_compression(self.compress)
+            writer.enable_compression(self.compress)
 
         if self.chunked is not None:
-            request.enable_chunking()
+            writer.enable_chunking()
 
         # set default content-type
         if (self.method in self.POST_METHODS and
@@ -393,12 +356,29 @@ class ClientRequest:
                 hdrs.CONTENT_TYPE not in self.headers):
             self.headers[hdrs.CONTENT_TYPE] = 'application/octet-stream'
 
-        for k, value in self.headers.items():
-            request.add_header(k, value)
-        request.send_headers()
+        # set the connection header
+        connection = self.headers.get(hdrs.CONNECTION)
+        if not connection:
+            if self.keep_alive():
+                if self.version == HttpVersion10:
+                    connection = 'keep-alive'
+            else:
+                if self.version == HttpVersion11:
+                    connection = 'close'
+
+        if connection is not None:
+            self.headers[hdrs.CONNECTION] = connection
+
+        # status + headers
+        status_line = '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
+            self.method, path, self.version)
+        headers = status_line + ''.join(
+            [k + ': ' + v + '\r\n' for k, v in self.headers.items()])
+        headers = headers.encode('utf-8') + b'\r\n'
+        writer.buffer_data(headers)
 
         self._writer = helpers.ensure_future(
-            self.write_bytes(request, conn), loop=self.loop)
+            self.write_bytes(writer, conn), loop=self.loop)
 
         self.response = self.response_class(
             self.method, self.original_url,
@@ -637,7 +617,7 @@ class ClientResponse(HeadersMixin):
         content = self.content
         if content and content.exception() is None and not content.is_eof():
             content.set_exception(
-                aiohttp.ClientDisconnectedError('Connection closed'))
+                aiohttp.ClientConnectionError('Connection closed'))
 
     @asyncio.coroutine
     def wait_for_close(self):
