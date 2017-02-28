@@ -38,20 +38,30 @@ class StreamWriter:
         self.available = True
         self.transport = transport
 
-    def acquire(self, cb):
+    def acquire(self, writer):
         if self.available:
             self.available = False
-            cb(self.transport)
+            writer.set_transport(self.transport)
         else:
-            self._waiters.append(cb)
+            self._waiters.append(writer)
 
     def release(self):
         if self._waiters:
             self.available = False
-            cb = self._waiters.pop(0)
-            cb(self.transport)
+            writer = self._waiters.pop(0)
+            writer.set_transport(self.transport)
         else:
             self.available = True
+
+    def replace(self, writer, factory):
+        try:
+            idx = self._waiters.index(writer)
+            writer = factory(self, self._loop, False)
+            self._waiters[idx] = writer
+            return writer
+        except ValueError:
+            self.available = True
+            return factory(self, self._loop)
 
     @property
     def tcp_nodelay(self):

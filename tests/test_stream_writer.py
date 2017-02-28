@@ -243,38 +243,37 @@ def test_set_enabling_nodelay_disables_cork(loop):
 
 def test_acquire(loop):
     transport = mock.Mock()
-    writer = StreamWriter(mock.Mock(), transport, loop)
-    assert writer.available
+    stream = StreamWriter(mock.Mock(), transport, loop)
+    assert stream.available
 
     acquired = None
+    writer = mock.Mock()
 
     def cb(tr):
         nonlocal acquired
         acquired = tr
 
-    writer.acquire(cb)
-    assert not writer.available
+    writer.set_transport.side_effect = cb
+
+    stream.acquire(writer)
+    assert not stream.available
     assert acquired is transport
 
 
 def test_release(loop):
     transport = mock.Mock()
-    writer = StreamWriter(mock.Mock(), transport, loop)
-    writer.available = False
+    stream = StreamWriter(mock.Mock(), transport, loop)
+    stream.available = False
 
-    acquired = None
+    writer = mock.Mock()
 
-    def cb(tr):
-        nonlocal acquired
-        acquired = tr
+    stream.acquire(writer)
+    assert not stream.available
+    assert not writer.set_transport.called
 
-    writer.acquire(cb)
-    assert not writer.available
-    assert acquired is None
+    stream.release()
+    assert not stream.available
+    writer.set_transport.assert_called_with(transport)
 
-    writer.release()
-    assert not writer.available
-    assert acquired is transport
-
-    writer.release()
-    assert writer.available
+    stream.release()
+    assert stream.available
