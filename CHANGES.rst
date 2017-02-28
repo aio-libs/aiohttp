@@ -7,6 +7,8 @@ CHANGES
 - Connector's `limit` parameter indicates total concurrent connections.
   New `limit_per_host` added, indicates total connections per endpoint. #1601
 
+- Use url's `raw_host` for name resolution #1685
+
 - Change `ClientResponse.url` to `yarl.URL` instance #1654
 
 - Add max_size parameter to web.Request reading methods #1133
