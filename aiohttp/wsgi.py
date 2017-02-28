@@ -118,7 +118,7 @@ class WSGIServerHttpProtocol(server.ServerHttpProtocol):
                            'SERVER_NAME', 'SERVER_PORT'):
                 environ[header] = message.headers.get(header, '')
 
-        path_info = uri_parts.path
+        path_info = message.path.split('?')[0]
         if script_name:
             path_info = path_info.split(script_name, 1)[-1]
 
