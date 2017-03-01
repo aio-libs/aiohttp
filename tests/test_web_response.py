@@ -41,6 +41,12 @@ def writer(buf):
     def write(chunk):
         buf.extend(chunk)
 
+    def write_headers(status_line, headers):
+        headers = status_line + ''.join(
+            [k + ': ' + v + '\r\n' for k, v in headers.items()])
+        headers = headers.encode('utf-8') + b'\r\n'
+        buf.extend(headers)
+
     @asyncio.coroutine
     def write_eof(chunk=b''):
         buf.extend(chunk)
@@ -49,6 +55,7 @@ def writer(buf):
     writer.transport.write.side_effect = write
     writer.write.side_effect = write
     writer.write_eof.side_effect = write_eof
+    writer.write_headers.side_effect = write_headers
     writer.buffer_data.side_effect = buffer_data
     writer.drain.return_value = ()
 
@@ -185,7 +192,7 @@ def test_start():
 
     msg = yield from resp.prepare(req)
 
-    assert msg.buffer_data.called
+    assert msg.write_headers.called
     msg2 = yield from resp.prepare(req)
     assert msg is msg2
 

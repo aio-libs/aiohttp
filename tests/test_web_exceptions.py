@@ -25,9 +25,16 @@ def request(buf):
         buf.extend(data)
         return helpers.noop()
 
+    def write_headers(status_line, headers):
+        headers = status_line + ''.join(
+            [k + ': ' + v + '\r\n' for k, v in headers.items()])
+        headers = headers.encode('utf-8') + b'\r\n'
+        buf.extend(headers)
+
     writer.buffer_data.side_effect = append
     writer.write.side_effect = append
     writer.write_eof.side_effect = append
+    writer.write_headers.side_effect = write_headers
 
     app = mock.Mock()
     app._debug = False

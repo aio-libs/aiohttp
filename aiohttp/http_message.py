@@ -2,30 +2,17 @@
 
 import asyncio
 import collections
-import http.server
-import string
-import sys
 import zlib
 from urllib.parse import SplitResult
 
 import yarl
 
-import aiohttp
-
 from .abc import AbstractPayloadWriter
 from .helpers import create_future, noop
 
-__all__ = ('RESPONSES', 'SERVER_SOFTWARE',
-           'PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
+__all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
 
-ASCIISET = set(string.printable)
-SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
-    sys.version_info, aiohttp.__version__)
-
-RESPONSES = http.server.BaseHTTPRequestHandler.responses
-
-HttpVersion = collections.namedtuple(
-    'HttpVersion', ['major', 'minor'])
+HttpVersion = collections.namedtuple('HttpVersion', ['major', 'minor'])
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
@@ -147,6 +134,18 @@ class PayloadWriter(AbstractPayloadWriter):
                 return self.drain()
 
         return noop()
+
+    def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
+        """Write request/response status and headers."""
+        # status + headers
+        headers = status_line + ''.join(
+            [k + SEP + v + END for k, v in headers.items()])
+        headers = headers.encode('utf-8') + b'\r\n'
+
+        size = len(headers)
+        self.buffer_size += size
+        self.output_size += size
+        self._buffer.append(headers)
 
     @asyncio.coroutine
     def write_eof(self, chunk=b''):
