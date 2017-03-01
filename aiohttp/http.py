@@ -1,8 +1,12 @@
+import http.server
+import sys
+
 from yarl import URL  # noqa
 
+from . import __version__
 from .http_exceptions import HttpProcessingError
-from .http_message import (RESPONSES, SERVER_SOFTWARE, HttpVersion,
-                           HttpVersion10, HttpVersion11, PayloadWriter)
+from .http_message import (HttpVersion, HttpVersion10, HttpVersion11,
+                           PayloadWriter)
 from .http_parser import (HttpParser, HttpRequestParser, HttpResponseParser,
                           RawRequestMessage, RawResponseMessage)
 from .http_websocket import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
@@ -25,3 +29,9 @@ __all__ = (
     'WebSocketReader', 'WebSocketWriter', 'do_handshake',
     'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode',
 )
+
+
+SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
+    sys.version_info, __version__)
+
+RESPONSES = http.server.BaseHTTPRequestHandler.responses

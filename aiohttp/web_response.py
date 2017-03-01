@@ -321,8 +321,7 @@ class StreamResponse(HeadersMixin):
                CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
                SET_COOKIE=hdrs.SET_COOKIE,
                SERVER_SOFTWARE=SERVER_SOFTWARE,
-               TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING,
-               SEP=': ', END='\r\n'):
+               TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING):
         self._req = request
 
         keep_alive = self._keep_alive
@@ -374,12 +373,7 @@ class StreamResponse(HeadersMixin):
         # status line
         status_line = 'HTTP/{}.{} {} {}\r\n'.format(
             version[0], version[1], self._status, self._reason)
-
-        # status + headers
-        headers = status_line + ''.join(
-            [k + SEP + v + END for k, v in headers.items()])
-        headers = headers.encode('utf-8') + b'\r\n'
-        writer.buffer_data(headers)
+        writer.write_headers(status_line, headers)
 
         return writer
 

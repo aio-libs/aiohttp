@@ -372,10 +372,7 @@ class ClientRequest:
         # status + headers
         status_line = '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
             self.method, path, self.version)
-        headers = status_line + ''.join(
-            [k + ': ' + v + '\r\n' for k, v in self.headers.items()])
-        headers = headers.encode('utf-8') + b'\r\n'
-        writer.buffer_data(headers)
+        writer.write_headers(status_line, self.headers)
 
         self._writer = helpers.ensure_future(
             self.write_bytes(writer, conn), loop=self.loop)
