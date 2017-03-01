@@ -5,7 +5,7 @@ import pathlib
 
 from . import hdrs
 from .helpers import create_future
-from .http_message import PayloadWriter
+from .http_writer import PayloadWriter
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
                              HTTPRequestRangeNotSatisfiable)
 from .web_response import StreamResponse

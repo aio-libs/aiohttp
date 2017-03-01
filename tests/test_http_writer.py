@@ -1,4 +1,4 @@
-"""Tests for aiohttp/http_message.py"""
+"""Tests for aiohttp/http_writer.py"""
 
 import asyncio
 import zlib

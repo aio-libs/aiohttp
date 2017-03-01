@@ -13,7 +13,7 @@ from multidict import CIMultiDict
 from aiohttp import hdrs
 from .http_exceptions import (
     BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError)
-from .http_message import HttpVersion, HttpVersion10, HttpVersion11, URL
+from .http_writer import HttpVersion, HttpVersion10, HttpVersion11, URL
 from .http_parser import RawRequestMessage, RawResponseMessage, DeflateBuffer
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
