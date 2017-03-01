@@ -451,7 +451,7 @@ def _test_write_returns_drain():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
-    with mock.patch('aiohttp.http_message.noop') as noop:
+    with mock.patch('aiohttp.http_writer.noop') as noop:
         assert noop == resp.write(b'data')
 
 
@@ -460,7 +460,7 @@ def _test_write_returns_empty_tuple_on_empty_data():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
-    with mock.patch('aiohttp.http_message.noop') as noop:
+    with mock.patch('aiohttp.http_writer.noop') as noop:
         assert noop.return_value == resp.write(b'')
 
 

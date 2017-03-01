@@ -12,7 +12,7 @@ from .helpers import NO_EXTENSIONS
 from .http_exceptions import (BadStatusLine, ContentEncodingError,
                               InvalidHeader, LineTooLong,
                               TransferEncodingError)
-from .http_message import HttpVersion, HttpVersion10
+from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 

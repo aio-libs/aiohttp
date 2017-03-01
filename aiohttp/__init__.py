@@ -6,8 +6,8 @@ from . import hdrs  # noqa
 from .client import *  # noqa
 from .formdata import *  # noqa
 from .helpers import *  # noqa
-from .http_message import HttpVersion, HttpVersion10, HttpVersion11  # noqa
-from .http_websocket import WSMsgType, WSCloseCode, WSMessage, WebSocketError  # noqa
+from .http import (HttpVersion, HttpVersion10, HttpVersion11,  # noqa
+                   WSMsgType, WSCloseCode, WSMessage, WebSocketError)  # noqa
 from .streams import *  # noqa
 from .multipart import *  # noqa
 from .cookiejar import CookieJar  # noqa
