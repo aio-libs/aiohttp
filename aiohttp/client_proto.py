@@ -2,8 +2,8 @@ import asyncio
 import asyncio.streams
 
 from .client_exceptions import ClientOSError, ServerDisconnectedError
-from .http_parser import HttpResponseParser
-from .streams import EMPTY_PAYLOAD, DataQueue, StreamWriter
+from .http import HttpResponseParser, StreamWriter
+from .streams import EMPTY_PAYLOAD, DataQueue
 
 
 class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):

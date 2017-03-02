@@ -2,6 +2,7 @@
 
 import asyncio
 import collections
+import socket
 import zlib
 from urllib.parse import SplitResult
 
@@ -10,19 +11,125 @@ import yarl
 from .abc import AbstractPayloadWriter
 from .helpers import create_future, noop
 
-__all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
+__all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
+           'StreamWriter')
 
 HttpVersion = collections.namedtuple('HttpVersion', ['major', 'minor'])
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
+if hasattr(socket, 'TCP_CORK'):  # pragma: no cover
+    CORK = socket.TCP_CORK
+elif hasattr(socket, 'TCP_NOPUSH'):  # pragma: no cover
+    CORK = socket.TCP_NOPUSH
+else:  # pragma: no cover
+    CORK = None
+
+
+class StreamWriter:
+
+    def __init__(self, protocol, transport, loop):
+        self._protocol = protocol
+        self._loop = loop
+        self._tcp_nodelay = False
+        self._tcp_cork = False
+        self._socket = transport.get_extra_info('socket')
+        self._waiters = []
+        self.available = True
+        self.transport = transport
+
+    def acquire(self, writer):
+        if self.available:
+            self.available = False
+            writer.set_transport(self.transport)
+        else:
+            self._waiters.append(writer)
+
+    def release(self):
+        if self._waiters:
+            self.available = False
+            writer = self._waiters.pop(0)
+            writer.set_transport(self.transport)
+        else:
+            self.available = True
+
+    def replace(self, writer, factory):
+        try:
+            idx = self._waiters.index(writer)
+            writer = factory(self, self._loop, False)
+            self._waiters[idx] = writer
+            return writer
+        except ValueError:
+            self.available = True
+            return factory(self, self._loop)
+
+    @property
+    def tcp_nodelay(self):
+        return self._tcp_nodelay
+
+    def set_tcp_nodelay(self, value):
+        value = bool(value)
+        if self._tcp_nodelay == value:
+            return
+        if self._socket is None:
+            return
+        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
+            return
+
+        # socket may be closed already, on windows OSError get raised
+        try:
+            if self._tcp_cork:
+                if CORK is not None:  # pragma: no branch
+                    self._socket.setsockopt(socket.IPPROTO_TCP, CORK, False)
+                    self._tcp_cork = False
+
+            self._socket.setsockopt(
+                socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
+            self._tcp_nodelay = value
+        except OSError:
+            pass
+
+    @property
+    def tcp_cork(self):
+        return self._tcp_cork
+
+    def set_tcp_cork(self, value):
+        value = bool(value)
+        if self._tcp_cork == value:
+            return
+        if self._socket is None:
+            return
+        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
+            return
+
+        try:
+            if self._tcp_nodelay:
+                self._socket.setsockopt(
+                    socket.IPPROTO_TCP, socket.TCP_NODELAY, False)
+                self._tcp_nodelay = False
+            if CORK is not None:  # pragma: no branch
+                self._socket.setsockopt(socket.IPPROTO_TCP, CORK, value)
+                self._tcp_cork = value
+        except OSError:
+            pass
+
+    @asyncio.coroutine
+    def drain(self):
+        """Flush the write buffer.
+
+        The intended use is to write
+
+          w.write(data)
+          yield from w.drain()
+        """
+        if self._protocol.transport is not None:
+            yield from self._protocol._drain_helper()
+
+
 class PayloadWriter(AbstractPayloadWriter):
 
     def __init__(self, stream, loop, acquire=True):
-        if loop is None:
-            loop = asyncio.get_event_loop()
-
         self._stream = stream
         self._transport = None
 

@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import hdrs, http
+from aiohttp import http
 
 
 @pytest.fixture
@@ -35,100 +35,6 @@ def stream(transport):
     stream.acquire = acquire
     stream.drain.return_value = ()
     return stream
-
-
-compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
-COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
-
-
-def _test_keep_alive(stream, loop):
-    msg = http.Request(
-        stream, 'GET', '/index.html', close=True, loop=loop)
-    assert not msg.keep_alive()
-    msg.keepalive = True
-    assert msg.keep_alive()
-
-    msg.force_close()
-    assert not msg.keep_alive()
-
-
-def _test_keep_alive_http10(stream, loop):
-    msg = http.HttpMessage(stream, version=(1, 0), close=True, loop=loop)
-    assert not msg.keepalive
-    assert not msg.keep_alive()
-
-    msg = http.HttpMessage(stream, version=(1, 1), loop=loop)
-    assert msg.keepalive is None
-
-
-def _test_http_message_keepsalive(stream, loop):
-    msg = http.HttpMessage(stream, version=(0, 9), loop=loop)
-    assert not msg.keep_alive()
-
-    msg = http.HttpMessage(stream, version=(1, 0), loop=loop)
-    assert not msg.keep_alive()
-
-    msg = http.HttpMessage(stream, version=(1, 0), loop=loop)
-    msg.headers[hdrs.CONNECTION] = 'keep-alive'
-    assert msg.keep_alive()
-
-    msg = http.HttpMessage(stream, version=(1, 1), close=False, loop=loop)
-    assert msg.keep_alive()
-    msg = http.HttpMessage(stream, version=(1, 1), close=True, loop=loop)
-    assert not msg.keep_alive()
-
-    msg = http.HttpMessage(stream, version=(0, 9), loop=loop)
-    msg.keepalive = True
-    assert msg.keep_alive()
-
-
-def _test_add_headers_connection_keepalive(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-
-    msg.add_headers(('connection', 'keep-alive'))
-    assert [] == list(msg.headers)
-    assert msg.keepalive
-
-    msg.add_headers(('connection', 'close'))
-    assert not msg.keepalive
-
-
-def _test_default_headers_http_10(stream, loop):
-    msg = http.HttpMessage(stream, version=http.HttpVersion10, loop=loop)
-    msg._add_default_headers()
-
-    assert 'keep-alive' == msg.headers['CONNECTION']
-
-
-def _test_default_headers_http_11(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-    msg._add_default_headers()
-
-    assert 'CONNECTION' not in msg.headers
-
-
-def _test_default_headers_connection_close(stream, loop):
-    msg = http.HttpMessage(stream, loop=loop)
-    msg.force_close()
-    msg._add_default_headers()
-
-    assert msg.headers['Connection'] == 'close'
-
-
-def _test_default_headers_connection_keep_alive_http_10(stream, loop):
-    msg = http.HttpMessage(stream, version=http.HttpVersion10, loop=loop)
-    msg.keepalive = True
-    msg._add_default_headers()
-
-    assert msg.headers['Connection'] == 'keep-alive'
-
-
-def _test_default_headers_connection_keep_alive_11(stream, loop):
-    msg = http.HttpMessage(stream, version=http.HttpVersion11, loop=loop)
-    msg.keepalive = True
-    msg._add_default_headers()
-
-    assert 'Connection' not in msg.headers
 
 
 def test_write_payload_eof(stream, loop):
@@ -207,6 +113,10 @@ def test_write_payload_chunked_filter_mutiple_chunks(stream, loop):
     assert content.endswith(
         b'2\r\nda\r\n2\r\nta\r\n2\r\n1d\r\n2\r\nat\r\n'
         b'2\r\na2\r\n0\r\n\r\n')
+
+
+compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
 
 
 @asyncio.coroutine

@@ -11,13 +11,14 @@ from .http_websocket import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
                              WebSocketError, WebSocketReader, WebSocketWriter,
                              WSCloseCode, WSMessage, WSMsgType, do_handshake)
 from .http_writer import (HttpVersion, HttpVersion10, HttpVersion11,
-                          PayloadWriter)
+                          PayloadWriter, StreamWriter)
 
 __all__ = (
     'HttpProcessingError', 'RESPONSES', 'SERVER_SOFTWARE',
 
     # .http_writer
     'PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
+    'StreamWriter',
 
     # .http_parser
     'HttpParser', 'HttpRequestParser', 'HttpResponseParser',
