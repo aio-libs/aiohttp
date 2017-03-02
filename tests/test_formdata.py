@@ -23,6 +23,13 @@ def writer(buf):
     return writer
 
 
+def test_invalid_formdata_payload():
+    form = FormData()
+    form.add_field('test', object(), filename='test.txt')
+    with pytest.raises(TypeError):
+        form()
+
+
 def test_invalid_formdata_params():
     with pytest.raises(TypeError):
         FormData('asdasf')

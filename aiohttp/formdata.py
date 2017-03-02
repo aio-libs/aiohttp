@@ -107,7 +107,7 @@ class FormData:
                     part = payload.get_payload(
                         value, headers=headers, encoding=self._charset)
             except Exception as exc:
-                raise ValueError(
+                raise TypeError(
                     'Can not serialize value type: %r\n '
                     'headers: %r\n value: %r' % (
                         type(value), headers, value)) from exc
