@@ -25,8 +25,8 @@ def get_payload(data, *args, **kwargs):
     return PAYLOAD_REGISTRY.get(data, *args, **kwargs)
 
 
-def register_payload(ctor, type):
-    PAYLOAD_REGISTRY.register(ctor, type)
+def register_payload(factory, type):
+    PAYLOAD_REGISTRY.register(factory, type)
 
 
 class payload_type:
@@ -34,9 +34,9 @@ class payload_type:
     def __init__(self, type):
         self.type = type
 
-    def __call__(self, cls):
-        register_payload(cls, self.type)
-        return cls
+    def __call__(self, factory):
+        register_payload(factory, self.type)
+        return factory
 
 
 class PayloadRegistry:
@@ -51,14 +51,14 @@ class PayloadRegistry:
     def get(self, data, *args, **kwargs):
         if isinstance(data, Payload):
             return data
-        for ctor, type in self._registry:
+        for factory, type in self._registry:
             if isinstance(data, type):
-                return ctor(data, *args, **kwargs)
+                return factory(data, *args, **kwargs)
 
         raise LookupError()
 
-    def register(self, ctor, type):
-        self._registry.append((ctor, type))
+    def register(self, factory, type):
+        self._registry.append((factory, type))
 
 
 class Payload(ABC):
@@ -74,8 +74,8 @@ class Payload(ABC):
         self._filename = filename
         if headers is not None:
             self._headers = CIMultiDict(headers)
-            if content_type is sentinel and hdrs.CONTENT_TYPE in headers:
-                content_type = headers[hdrs.CONTENT_TYPE]
+            if content_type is sentinel and hdrs.CONTENT_TYPE in self._headers:
+                content_type = self._headers[hdrs.CONTENT_TYPE]
 
         if content_type is sentinel:
             content_type = None
@@ -96,6 +96,11 @@ class Payload(ABC):
     def headers(self):
         """Custom item headers"""
         return self._headers
+
+    @property
+    def encoding(self):
+        """Payload encoding"""
+        return self._encoding
 
     @property
     def content_type(self):
