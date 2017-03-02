@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp.streams import CORK, StreamWriter
+from aiohttp.http_writer import CORK, PayloadWriter, StreamWriter
 
 has_ipv6 = socket.has_ipv6
 if has_ipv6:
@@ -241,23 +241,33 @@ def test_set_enabling_nodelay_disables_cork(loop):
     assert not s.getsockopt(socket.IPPROTO_TCP, CORK)
 
 
+# payload writers management
+
 def test_acquire(loop):
     transport = mock.Mock()
     stream = StreamWriter(mock.Mock(), transport, loop)
     assert stream.available
 
-    acquired = None
-    writer = mock.Mock()
-
-    def cb(tr):
-        nonlocal acquired
-        acquired = tr
-
-    writer.set_transport.side_effect = cb
-
-    stream.acquire(writer)
+    payload = PayloadWriter(stream, loop)
     assert not stream.available
-    assert acquired is transport
+    assert payload._transport is transport
+
+    payload2 = PayloadWriter(stream, loop)
+    assert payload2._transport is None
+    assert payload2 in stream._waiters
+
+
+def test_acquire2(loop):
+    transport = mock.Mock()
+    stream = StreamWriter(mock.Mock(), transport, loop)
+
+    payload = PayloadWriter(stream, loop)
+    stream.release()
+    assert stream.available
+
+    stream.acquire(payload)
+    assert not stream.available
+    assert payload._transport is transport
 
 
 def test_release(loop):
@@ -277,3 +287,32 @@ def test_release(loop):
 
     stream.release()
     assert stream.available
+
+
+def test_replace(loop):
+    transport = mock.Mock()
+    stream = StreamWriter(mock.Mock(), transport, loop)
+    stream.available = False
+
+    payload = PayloadWriter(stream, loop)
+    assert payload._transport is None
+    assert payload in stream._waiters
+
+    payload2 = stream.replace(payload, PayloadWriter)
+    assert payload2._transport is None
+    assert payload2 in stream._waiters
+    assert payload not in stream._waiters
+
+    stream.release()
+    assert payload2._transport is transport
+    assert not stream._waiters
+
+
+def test_replace_available(loop):
+    transport = mock.Mock()
+    stream = StreamWriter(mock.Mock(), transport, loop)
+
+    payload = PayloadWriter(stream, loop, False)
+    payload2 = stream.replace(payload, PayloadWriter)
+    assert payload2._transport is transport
+    assert payload2 not in stream._waiters

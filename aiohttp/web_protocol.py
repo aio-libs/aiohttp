@@ -10,9 +10,10 @@ from html import escape as html_escape
 
 from . import helpers, http
 from .helpers import CeilTimeout, create_future, ensure_future
-from .http import HttpProcessingError, HttpRequestParser, PayloadWriter
+from .http import (HttpProcessingError, HttpRequestParser, PayloadWriter,
+                   StreamWriter)
 from .log import access_logger, server_logger
-from .streams import EMPTY_PAYLOAD, StreamWriter
+from .streams import EMPTY_PAYLOAD
 from .web_exceptions import HTTPException
 from .web_request import BaseRequest
 from .web_response import Response
