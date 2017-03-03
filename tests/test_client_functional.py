@@ -1866,3 +1866,31 @@ def test_redirect_without_location_header(loop, test_client):
                               'a redirect [301] status but response lacks '
                               'a Location or URI HTTP header'
                               .format(client.port))
+
+
+@asyncio.coroutine
+def test_encoding_deprecated(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301)
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    with pytest.warns(DeprecationWarning):
+        yield from client.get('/', encoding='utf-8')
+
+
+@asyncio.coroutine
+def test_chunked_deprecated(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301)
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    with pytest.warns(DeprecationWarning):
+        yield from client.get('/', chunked=1024)
