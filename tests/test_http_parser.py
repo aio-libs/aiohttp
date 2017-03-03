@@ -26,11 +26,6 @@ except ImportError:  # pragma: no cover
 
 
 @pytest.fixture
-def loop():
-    return mock.Mock()
-
-
-@pytest.fixture
 def protocol():
     return mock.Mock()
 

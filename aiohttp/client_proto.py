@@ -1,7 +1,9 @@
 import asyncio
 import asyncio.streams
 
-from .client_exceptions import ClientOSError, ServerDisconnectedError
+from . import hdrs
+from .client_exceptions import (ClientOSError, ClientResponseError,
+                                ServerDisconnectedError)
 from .http import HttpResponseParser, StreamWriter
 from .streams import EMPTY_PAYLOAD, DataQueue
 
@@ -18,6 +20,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self.writer = None
         self._should_close = False
 
+        self._message = None
         self._payload = None
         self._payload_parser = None
         self._reading_paused = False
@@ -65,13 +68,19 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
             exc = ServerDisconnectedError(exc)
 
         if self._payload is not None and not self._payload.is_eof():
-            self._payload.set_exception(exc)
+            if (not self._read_until_eof or
+                    (self._message.chunked or
+                     hdrs.CONTENT_LENGTH in self._message.headers)):
+                self._payload.set_exception(exc)
+            else:
+                self._payload.feed_eof()
         if not self.is_eof():
             DataQueue.set_exception(self, exc)
 
         self.transport = self.writer = None
         self._should_close = True
         self._parser = None
+        self._message = None
         self._payload = None
         self._payload_parser = None
         self._reading_paused = False
@@ -117,8 +126,11 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self._skip_payload = skip_payload
         self._skip_status_codes = skip_status_codes
         self._read_until_eof = read_until_eof
-        self._parser = HttpResponseParser(
-            self, self._loop, timer=timer)
+        self._parser = HttpResponseParser(self, self._loop, timer=timer)
+
+        if self._tail:
+            data, self._tail = self._tail, b''
+            self.data_received(data)
 
     def data_received(self, data):
         if not data:
@@ -135,16 +147,18 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                     self.data_received(tail)
             return
         else:
-            if self._upgraded:
+            if self._upgraded or self._parser is None:
                 # i.e. websocket connection, websocket parser is not set yet
                 self._tail += data
             else:
                 # parse http messages
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
-                except BaseException:
+                except BaseException as exc:
                     self._should_close = True
-                    raise
+                    self.set_exception(ClientResponseError(code=400))
+                    self.transport.close()
+                    return
 
                 self._upgraded = upgraded
 
@@ -152,12 +166,13 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                     if message.should_close:
                         self._should_close = True
 
+                    self._message = message
+                    self._payload = payload
+
                     if (self._skip_payload or
                             message.code in self._skip_status_codes):
-                        self._payload = payload
                         self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
-                        self._payload = payload
                         self.feed_data((message, payload), 0)
 
                 if upgraded:
