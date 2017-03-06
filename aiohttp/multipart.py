@@ -467,7 +467,7 @@ class BodyPartReader(object):
             return base64.b64decode(data)
         elif encoding == 'quoted-printable':
             return binascii.a2b_qp(data)
-        elif encoding == 'binary':
+        elif encoding in ('binary', '8bit', '7bit'):
             return data
         else:
             raise RuntimeError('unknown content transfer encoding: {}'
