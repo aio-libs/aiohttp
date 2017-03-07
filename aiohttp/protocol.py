@@ -25,8 +25,8 @@ __all__ = ('HttpMessage', 'Request', 'Response',
 
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
-VERSRE = re.compile('HTTP/(\d+).(\d+)')
-HDRRE = re.compile(b'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
+VERSRE = re.compile(r'HTTP/(\d+).(\d+)')
+HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
 EOF_MARKER = object()
 EOL_MARKER = object()
 STATUS_LINE_READY = object()
@@ -377,12 +377,14 @@ class DeflateBuffer:
 
     def __init__(self, out, encoding):
         self.out = out
+        self.size = 0
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
 
         self.zlib = zlib.decompressobj(wbits=zlib_mode)
 
     def feed_data(self, chunk, size):
+        self.size += size
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
@@ -393,9 +395,11 @@ class DeflateBuffer:
 
     def feed_eof(self):
         chunk = self.zlib.flush()
-        self.out.feed_data(chunk, len(chunk))
-        if not self.zlib.eof:
-            raise errors.ContentEncodingError('deflate')
+
+        if chunk or self.size > 0:
+            self.out.feed_data(chunk, len(chunk))
+            if not self.zlib.eof:
+                raise errors.ContentEncodingError('deflate')
 
         self.out.feed_eof()
 
@@ -637,7 +641,7 @@ class HttpMessage(ABC):
         elif name == hdrs.UPGRADE:
             if 'websocket' in value.lower():
                 self.websocket = True
-                self.headers[name] = value
+            self.headers[name] = value
 
         elif name not in self.HOP_HEADERS:
             # ignore hop-by-hop headers

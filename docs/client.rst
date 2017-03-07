@@ -184,6 +184,9 @@ However it's not necessary if you use :meth:`~ClientResponse.read`,
 They do release connection internally but better don't rely on that
 behavior.
 
+If response still contains un-consumed data (i.e. not received from server)
+underlining connection get closed and not re-used in connection pooling.
+
 
 Custom Headers
 --------------
@@ -439,7 +442,17 @@ parameter to *connector*::
 
     conn = aiohttp.TCPConnector(limit=30)
 
-The example limits amount of parallel connections to `30`.
+The example limits total amount of parallel connections to `30`.
+
+The default is `100`.
+
+If you explicitly want not to have limits, pass `0`. For example::
+
+    conn = aiohttp.TCPConnector(limit=0)
+
+To limit amount of simultaneously opened connection to the same
+endpoint (``(host, port, is_ssl)`` triple) you can pass *limit_per_host*
+parameter to *connector*::
 
 The default is `20`.
 
@@ -601,6 +614,7 @@ perspective they are may be retrieved by using
      (b'CONTENT-LENGTH', b'12150'),
      (b'CONNECTION', b'keep-alive'))
 
+
 Response Cookies
 ----------------
 
@@ -635,6 +649,7 @@ history will be an empty sequence.
 
 
 .. _aiohttp-client-websockets:
+
 
 WebSockets
 ----------
@@ -690,6 +705,12 @@ reading procedures::
     with async_timeout.timeout(0.001, loop=session.loop):
         async with session.get('https://github.com') as r:
             await r.text()
+
+
+.. note::
+
+   Timeout is cumulative time, it includes all operations like sending request,
+   redirects, response parsing, consuming response, etc.
 
 
 .. disqus::

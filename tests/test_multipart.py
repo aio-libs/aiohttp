@@ -603,6 +603,7 @@ class MultipartReaderTestCase(TestCase):
                    b'\r\n'
                    b'passed\r\n'
                    b'----:----\r\n'
+                   b'\r\n'
                    b'--:--'))
         yield from reader.release()
         self.assertTrue(reader.at_eof())
@@ -750,10 +751,10 @@ class BodyPartWriterTestCase(unittest.TestCase):
                          self.part._guess_content_type('foo'))
 
         here = os.path.dirname(__file__)
-        filename = os.path.join(here, 'software_development_in_picture.jpg')
+        filename = os.path.join(here, 'aiohttp.png')
 
         with open(filename, 'rb') as f:
-            self.assertEqual('image/jpeg',
+            self.assertEqual('image/png',
                              self.part._guess_content_type(f))
 
     def test_guess_filename(self):
@@ -1113,6 +1114,21 @@ class MultipartWriterTestCase(unittest.TestCase):
             writer.append(b'bar')
             writer.append_json({'baz': True})
         self.assertEqual(3, len(writer))
+
+    def test_append_int_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(1)
+
+    def test_append_float_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(1.1)
+
+    def test_append_none_not_allowed(self):
+        with self.assertRaises(TypeError):
+            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+                writer.append(None)
 
 
 class ParseContentDispositionTestCase(unittest.TestCase):

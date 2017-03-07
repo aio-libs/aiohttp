@@ -1,5 +1,4 @@
 import asyncio
-import http.cookies
 import io
 import json
 import mimetypes
@@ -7,6 +6,7 @@ import os
 import sys
 import traceback
 import warnings
+from http.cookies import CookieError, Morsel
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -14,7 +14,7 @@ from yarl import URL
 import aiohttp
 
 from . import hdrs, helpers, streams
-from .helpers import HeadersMixin, Timeout
+from .helpers import HeadersMixin, SimpleCookie, TimerNoop
 from .log import client_logger
 from .multipart import MultipartWriter
 from .protocol import HttpMessage
@@ -65,8 +65,7 @@ class ClientRequest:
                  version=aiohttp.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
-                 proxy=None, proxy_auth=None,
-                 timeout=5*60):
+                 proxy=None, proxy_auth=None, timer=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -80,13 +79,14 @@ class ClientRequest:
             q.extend(url2.query)
             url = url.with_query(q)
         self.url = url.with_fragment(None)
+        self.original_url = url
         self.method = method.upper()
         self.encoding = encoding
         self.chunked = chunked
         self.compress = compress
         self.loop = loop
         self.response_class = response_class or ClientResponse
-        self._timeout = timeout
+        self._timer = timer if timer is not None else TimerNoop()
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -178,15 +178,15 @@ class ClientRequest:
         if not cookies:
             return
 
-        c = http.cookies.SimpleCookie()
+        c = SimpleCookie()
         if hdrs.COOKIE in self.headers:
             c.load(self.headers.get(hdrs.COOKIE, ''))
             del self.headers[hdrs.COOKIE]
 
         for name, value in cookies.items():
-            if isinstance(value, http.cookies.Morsel):
+            if isinstance(value, Morsel):
                 # Preserve coded_value
-                mrsl_val = value.get(value.key, http.cookies.Morsel())
+                mrsl_val = value.get(value.key, Morsel())
                 mrsl_val.set(value.key, value.value, value.coded_value)
                 c[name] = mrsl_val
             else:
@@ -472,9 +472,9 @@ class ClientRequest:
             self.write_bytes(request, reader), loop=self.loop)
 
         self.response = self.response_class(
-            self.method, self.url,
-            writer=self._writer, continue100=self._continue,
-            timeout=self._timeout)
+            self.method, self.original_url,
+            writer=self._writer, continue100=self._continue, timer=self._timer)
+
         self.response._post_init(self.loop)
         return self.response
 
@@ -514,8 +514,8 @@ class ClientResponse(HeadersMixin):
     _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
 
-    def __init__(self, method, url, *, writer=None, continue100=None,
-                 timeout=5*60):
+    def __init__(self, method, url, *,
+                 writer=None, continue100=None, timer=None):
         assert isinstance(url, URL)
 
         self.method = method
@@ -526,8 +526,8 @@ class ClientResponse(HeadersMixin):
         self._closed = False
         self._should_close = True  # override by message.should_close later
         self._history = ()
-        self._timeout = timeout
-        self.cookies = http.cookies.SimpleCookie()
+        self._timer = timer if timer is not None else TimerNoop()
+        self.cookies = SimpleCookie()
 
     @property
     def url_obj(self):
@@ -595,7 +595,7 @@ class ClientResponse(HeadersMixin):
         self._reader = connection.reader
         self._connection = connection
         self.content = self.flow_control_class(
-            connection.reader, loop=connection.loop, timeout=self._timeout)
+            connection.reader, loop=connection.loop, timer=self._timer)
 
     def _need_parse_response_body(self):
         return (self.method.lower() != 'head' and
@@ -606,18 +606,19 @@ class ClientResponse(HeadersMixin):
         """Start response processing."""
         self._setup_connection(connection)
 
-        while True:
-            httpstream = self._reader.set_parser(self._response_parser)
+        with self._timer:
+            while True:
+                httpstream = self._reader.set_parser(self._response_parser)
 
-            # read response
-            with Timeout(self._timeout, loop=self._loop):
+                # read response
                 message = yield from httpstream.read()
-            if message.code < 100 or message.code > 199 or message.code == 101:
-                break
+                if (message.code < 100 or
+                        message.code > 199 or message.code == 101):
+                    break
 
-            if self._continue is not None and not self._continue.done():
-                self._continue.set_result(True)
-                self._continue = None
+                if self._continue is not None and not self._continue.done():
+                    self._continue.set_result(True)
+                    self._continue = None
 
         # response status
         self.version = message.version
@@ -641,7 +642,7 @@ class ClientResponse(HeadersMixin):
         for hdr in self.headers.getall(hdrs.SET_COOKIE, ()):
             try:
                 self.cookies.load(hdr)
-            except http.cookies.CookieError as exc:
+            except CookieError as exc:
                 client_logger.warning(
                     'Can not load response cookies: %s', exc)
         return self
@@ -662,14 +663,25 @@ class ClientResponse(HeadersMixin):
         self._notify_content()
 
     @asyncio.coroutine
-    def release(self):
+    def release(self, *, consume=False):
         if self._closed:
             return
         try:
             content = self.content
             if content is not None:
-                while not content.at_eof():
-                    yield from content.readany()
+                if consume:
+                    while not content.at_eof():
+                        yield from content.readany()
+                else:
+                    close = False
+                    if content.exception() is not None:
+                        close = True
+                    else:
+                        content.read_nowait()
+                        if not content.at_eof():
+                            close = True
+                    if close:
+                        self.close()
         except Exception:
             self._connection.close()
             self._connection = None
@@ -778,7 +790,7 @@ class ClientResponse(HeadersMixin):
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_val, exc_tb):
-            if exc_type is None:
-                yield from self.release()
-            else:
-                self.close()
+            # similar to _RequestContextManager, we do not need to check
+            # for exceptions, response object can closes connection
+            # is state is broken
+            yield from self.release()

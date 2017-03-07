@@ -10,9 +10,12 @@ import heapq
 import io
 import os
 import re
+import sys
+import time
 import warnings
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
+from math import ceil
 from pathlib import Path
 from time import gmtime
 from urllib.parse import urlencode
@@ -28,12 +31,25 @@ except ImportError:
     ensure_future = asyncio.async
 
 
+if sys.version_info >= (3, 4, 3):
+    from http.cookies import SimpleCookie  # noqa
+else:
+    from .backport_cookies import SimpleCookie  # noqa
+
+
 __all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'ensure_future')
+           'Timeout', 'ensure_future', 'noop')
 
 
 sentinel = object()
 Timeout = timeout
+
+if sys.version_info < (3, 5):
+    noop = tuple
+else:
+    @asyncio.coroutine
+    def noop(*args, **kwargs):
+        pass
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -97,11 +113,12 @@ class FormData:
     """Helper class for multipart/form-data and
     application/x-www-form-urlencoded body generation."""
 
-    def __init__(self, fields=()):
+    def __init__(self, fields=(), quote_fields=True):
         from . import multipart
         self._writer = multipart.MultipartWriter('form-data')
         self._fields = []
         self._is_multipart = False
+        self._quote_fields = quote_fields
 
         if isinstance(fields, dict):
             fields = list(fields.items())
@@ -192,7 +209,9 @@ class FormData:
         for dispparams, headers, value in self._fields:
             part = self._writer.append(value, headers)
             if dispparams:
-                part.set_content_disposition('form-data', **dispparams)
+                part.set_content_disposition(
+                    'form-data', quote_fields=self._quote_fields, **dispparams
+                )
                 # FIXME cgi.FieldStorage doesn't likes body parts with
                 # Content-Length which were sent via chunked transfer encoding
                 part.headers.pop(hdrs.CONTENT_LENGTH, None)
@@ -488,17 +507,17 @@ class reify:
         raise AttributeError("reified property is read-only")
 
 
-_ipv4_pattern = ('^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
-                 '(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
+_ipv4_pattern = (r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
+                 r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
 _ipv6_pattern = (
-    '^(?:(?:(?:[A-F0-9]{1,4}:){6}|(?=(?:[A-F0-9]{0,4}:){0,6}'
-    '(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)(([0-9A-F]{1,4}:){0,5}|:)'
-    '((:[0-9A-F]{1,4}){1,5}:|:)|::(?:[A-F0-9]{1,4}:){5})'
-    '(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}'
-    '(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[A-F0-9]{1,4}:){7}'
-    '[A-F0-9]{1,4}|(?=(?:[A-F0-9]{0,4}:){0,7}[A-F0-9]{0,4}$)'
-    '(([0-9A-F]{1,4}:){1,7}|:)((:[0-9A-F]{1,4}){1,7}|:)|(?:[A-F0-9]{1,4}:){7}'
-    ':|:(:[A-F0-9]{1,4}){7})$')
+    r'^(?:(?:(?:[A-F0-9]{1,4}:){6}|(?=(?:[A-F0-9]{0,4}:){0,6}'
+    r'(?:[0-9]{1,3}\.){3}[0-9]{1,3}$)(([0-9A-F]{1,4}:){0,5}|:)'
+    r'((:[0-9A-F]{1,4}){1,5}:|:)|::(?:[A-F0-9]{1,4}:){5})'
+    r'(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\.){3}'
+    r'(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])|(?:[A-F0-9]{1,4}:){7}'
+    r'[A-F0-9]{1,4}|(?=(?:[A-F0-9]{0,4}:){0,7}[A-F0-9]{0,4}$)'
+    r'(([0-9A-F]{1,4}:){1,7}|:)((:[0-9A-F]{1,4}){1,7}|:)|(?:[A-F0-9]{1,4}:){7}'
+    r':|:(:[A-F0-9]{1,4}){7})$')
 _ipv4_regex = re.compile(_ipv4_pattern)
 _ipv6_regex = re.compile(_ipv6_pattern, flags=re.IGNORECASE)
 _ipv4_regexb = re.compile(_ipv4_pattern.encode('ascii'))
@@ -592,14 +611,17 @@ class TimerHandle(asyncio.TimerHandle):
 
 class TimeService:
 
-    def __init__(self, loop):
+    def __init__(self, loop, *, interval=1.0):
         self._loop = loop
-        self._time = loop.time()
+        self._interval = interval
+        self._time = time.time()
+        self._loop_time = loop.time()
+        self._count = 0
         self._strtime = None
-        self._cb = loop.call_at(self._time + 1.0, self._on_cb)
+        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
         self._scheduled = []
 
-    def stop(self):
+    def close(self):
         if self._cb:
             self._cb.cancel()
 
@@ -611,12 +633,19 @@ class TimeService:
         self._scheduled = []
         self._loop = None
 
-    def _on_cb(self):
-        self._time = self._loop.time()
+    def _on_cb(self, reset_count=10*60):
+        self._loop_time = self._loop.time()
+
+        if self._count >= reset_count:
+            # reset timer every 10 minutes
+            self._count = 0
+            self._time = time.time()
+        else:
+            self._time += self._interval
 
         # Handle 'later' callbacks that are ready.
         ready = []
-        end_time = self._time
+        end_time = self._loop_time
         while self._scheduled:
             handle = self._scheduled[0]
             if handle._when >= end_time:
@@ -629,7 +658,8 @@ class TimeService:
                 handle._run()
 
         self._strtime = None
-        self._cb = self._loop.call_later(self._time + 1.0, self._on_cb)
+        self._cb = self._loop.call_at(
+            self._loop_time + self._interval, self._on_cb)
 
     def _format_date_time(self):
         # Weekday and month names for HTTP date/time formatting;
@@ -654,6 +684,9 @@ class TimeService:
             self._strtime = s = self._format_date_time()
         return self._strtime
 
+    def loop_time(self):
+        return self._loop_time
+
     def call_later(self, delay, callback, *args):
         """Arrange for a callback to be called at a given time.
 
@@ -668,12 +701,12 @@ class TimeService:
 
         Time resolution is aproximatly one second.
         """
-        return self.call_at(self._time + delay, callback, *args)
+        return self._call_at(self._loop_time + delay, callback, *args)
 
-    def call_at(self, when, callback, *args):
+    def _call_at(self, when, callback, *args):
         """Like call_later(), but uses an absolute time.
 
-        Absolute time corresponds to the time service's time() method.
+        Absolute time corresponds to the loop's time() method.
         """
         timer = TimerHandle(when, callback, args, self._loop)
         heapq.heappush(self._scheduled, timer)
@@ -684,43 +717,98 @@ class TimeService:
 
         timeout - value in seconds or None to disable timeout logic
         """
-        return LowresTimeout(timeout, self, self._loop)
+        if timeout is not None and timeout > 0:
+            ctx = TimerContext(self._loop)
+            when = self._loop_time + timeout
+            timer = TimerHandle(when, ctx.timeout, (), self._loop)
+            heapq.heappush(self._scheduled, timer)
+        else:
+            ctx = TimerNoop()
+
+        return ctx
 
 
-class LowresTimeout:
-    """ Low resolution timeout context manager """
-
-    def __init__(self, timeout, time_service, loop):
-        self._loop = loop
-        self._timeout = timeout
-        self._time_service = time_service
-        self._task = None
-        self._cancelled = False
-        self._cancel_handler = None
+class TimerNoop:
 
     def __enter__(self):
-        self._task = asyncio.Task.current_task(loop=self._loop)
-        if self._task is None:
-            raise RuntimeError('Timeout context manager should be used '
-                               'inside a task')
-        if self._timeout is not None:
-            self._cancel_handler = self._time_service.call_later(
-                self._timeout, self._cancel_task)
-
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._task = None
+        return False
+
+
+class TimeoutHandle:
+    """ Timeout handle """
+
+    def __init__(self, timeout):
+        self._timeout = timeout
+        self._callbacks = []
+
+    def register(self, callback, *args, **kwargs):
+        self._callbacks.append((callback, args, kwargs))
+
+    def close(self):
+        self._callbacks.clear()
+
+    def handle(self, loop):
+        if self._timeout is not None and self._timeout > 0:
+            at = ceil(loop.time() + self._timeout)
+            return loop.call_at(at, self.__call__)
+
+    def __call__(self):
+        for cb, args, kwargs in self._callbacks:
+            try:
+                cb(*args, **kwargs)
+            except:
+                pass
+
+        self._callbacks.clear()
+
+
+class TimerContext:
+    """ Low resolution timeout context manager """
+
+    def __init__(self, loop, tm=None):
+        self._loop = loop
+        self._tasks = []
+        self._cancelled = False
+
+        if tm is not None:
+            tm.register(self.timeout)
+
+    def __enter__(self):
+        task = asyncio.Task.current_task(loop=self._loop)
+        if task is None:
+            raise RuntimeError('Timeout context manager should be used '
+                               'inside a task')
+
+        if self._cancelled:
+            task.cancel()
+            raise asyncio.TimeoutError from None
+
+        self._tasks.append(task)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._tasks:
+            task = self._tasks.pop()
+        else:
+            task = None
 
         if exc_type is asyncio.CancelledError and self._cancelled:
-            self._cancel_handler = None
+            for task in self._tasks:
+                task.cancel()
             raise asyncio.TimeoutError from None
-        if self._timeout is not None:
-            self._cancel_handler.cancel()
-            self._cancel_handler = None
 
-    def _cancel_task(self):
-        self._cancelled = self._task.cancel()
+        if exc_type is None and self._cancelled and task is not None:
+            task.cancel()
+
+    def timeout(self):
+        if not self._cancelled:
+            for task in self._tasks:
+                task.cancel()
+
+            self._cancelled = True
 
 
 class HeadersMixin:

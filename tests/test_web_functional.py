@@ -622,7 +622,7 @@ def test_http10_keep_alive_with_headers(loop, test_client):
 def test_upload_file(loop, test_client):
 
     here = pathlib.Path(__file__).parent
-    fname = here / 'software_development_in_picture.jpg'
+    fname = here / 'aiohttp.png'
     with fname.open('rb') as f:
         data = f.read()
 
@@ -644,7 +644,7 @@ def test_upload_file(loop, test_client):
 @asyncio.coroutine
 def test_upload_file_object(loop, test_client):
     here = pathlib.Path(__file__).parent
-    fname = here / 'software_development_in_picture.jpg'
+    fname = here / 'aiohttp.png'
     with fname.open('rb') as f:
         data = f.read()
 
@@ -763,14 +763,36 @@ def test_get_with_empty_arg_with_equal(loop, test_client):
     assert 200 == resp.status
 
 
-@pytest.mark.xfail  # and had never worked
 @asyncio.coroutine
-def test_response_with_precompressed_body(loop, test_client):
+def test_response_with_precompressed_body_gzip(loop, test_client):
+
     @asyncio.coroutine
     def handler(request):
         headers = {'Content-Encoding': 'gzip'}
-        deflated_data = zlib.compress(b'mydata')
-        return web.Response(body=deflated_data, headers=headers)
+        zcomp = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+        data = zcomp.compress(b'mydata') + zcomp.flush()
+        return web.Response(body=data, headers=headers)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    data = yield from resp.read()
+    assert b'mydata' == data
+    assert resp.headers.get('Content-Encoding') == 'gzip'
+
+
+@asyncio.coroutine
+def test_response_with_precompressed_body_deflate(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        headers = {'Content-Encoding': 'deflate'}
+        zcomp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+        data = zcomp.compress(b'mydata') + zcomp.flush()
+        return web.Response(body=data, headers=headers)
 
     app = web.Application(loop=loop)
     app.router.add_get('/', handler)
@@ -930,7 +952,7 @@ def test_subapp_reverse_variable_url(loop, test_client):
 
 @asyncio.coroutine
 def test_subapp_reverse_static_url(loop, test_client):
-    fname = 'software_development_in_picture.jpg'
+    fname = 'aiohttp.png'
 
     @asyncio.coroutine
     def handler(request):
@@ -1203,3 +1225,72 @@ def test_response_prepared_with_clone(loop, test_client):
 
     resp = yield from client.get('/')
     assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_app_max_client_size(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.post()
+        return web.Response(body=b'ok')
+
+    max_size = 1024**2
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+    data = {"long_string": max_size * 'x' + 'xxx'}
+    resp = yield from client.post('/', data=data)
+    assert 413 == resp.status
+    resp_text = yield from resp.text()
+    assert 'Request body too large' in resp_text
+
+
+@asyncio.coroutine
+def test_app_max_client_size_adjusted(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.post()
+        return web.Response(body=b'ok')
+
+    default_max_size = 1024**2
+    custom_max_size = default_max_size * 2
+    app = web.Application(loop=loop, client_max_size=custom_max_size)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+    data = {'long_string': default_max_size * 'x' + 'xxx'}
+    resp = yield from client.post('/', data=data)
+    assert 200 == resp.status
+    resp_text = yield from resp.text()
+    assert 'ok' == resp_text
+    too_large_data = {'log_string': custom_max_size * 'x' + "xxx"}
+    resp = yield from client.post('/', data=too_large_data)
+    assert 413 == resp.status
+    resp_text = yield from resp.text()
+    assert 'Request Entity Too Large' in resp_text
+
+
+@asyncio.coroutine
+def test_app_max_client_size_none(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.post()
+        return web.Response(body=b'ok')
+
+    default_max_size = 1024**2
+    custom_max_size = None
+    app = web.Application(loop=loop, client_max_size=custom_max_size)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+    data = {'long_string': default_max_size * 'x' + 'xxx'}
+    resp = yield from client.post('/', data=data)
+    assert 200 == resp.status
+    resp_text = yield from resp.text()
+    assert 'ok' == resp_text
+    too_large_data = {'log_string': default_max_size * 2 * 'x'}
+    resp = yield from client.post('/', data=too_large_data)
+    assert 200 == resp.status
+    resp_text = yield from resp.text()
+    assert resp_text == 'ok'

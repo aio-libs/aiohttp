@@ -11,14 +11,14 @@ import re
 import time
 import warnings
 from email.utils import parsedate
-from http.cookies import SimpleCookie
 from types import MappingProxyType
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, reify, sentinel
+
+from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from .protocol import WebResponse as ResponseImpl
 from .protocol import HttpVersion10, HttpVersion11
 
@@ -52,7 +52,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     def __init__(self, message, payload, transport, reader, writer,
                  time_service, task, *,
-                 secure_proxy_ssl_header=None):
+                 loop=None, secure_proxy_ssl_header=None,
+                 client_max_size=1024**2):
+        self._loop = loop
         self._message = message
         self._transport = transport
         self._reader = reader
@@ -70,6 +72,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._state = {}
         self._cache = {}
         self._task = task
+        self._client_max_size = client_max_size
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -181,6 +184,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def rel_url(self):
+        # special case for path started with `//`
+        # if path starts with // it is valid host, but in case of web server
+        # liklyhood of it beein malformed path is much higher
+        url = URL(self._message.path)
+
+        if self._message.path.startswith('//'):
+            return url.with_path(self._message.path.split('?')[0])
+
         return URL(self._message.path)
 
     @reify
@@ -294,6 +305,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Transport used for request processing."""
         return self._transport
 
+    @property
+    def transport_pair(self):
+        """Reader and writer used for request processing."""
+        return (self._reader, self._writer)
+
     @reify
     def cookies(self):
         """Return request cookies.
@@ -369,6 +385,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             while True:
                 chunk = yield from self._payload.readany()
                 body.extend(chunk)
+                if self._client_max_size \
+                        and len(body) >= self._client_max_size:
+                    # local import to avoid circular imports
+                    from aiohttp import web_exceptions
+                    raise web_exceptions.HTTPRequestEntityTooLarge
                 if not chunk:
                     break
             self._read_bytes = bytes(body)
@@ -522,6 +543,7 @@ class StreamResponse(HeadersMixin):
         self._req = None
         self._resp_impl = None
         self._eof_sent = False
+        self._body_length = 0
 
         if headers is not None:
             # TODO: optimize CIMultiDict extending
@@ -577,7 +599,7 @@ class StreamResponse(HeadersMixin):
 
     @property
     def body_length(self):
-        return self._resp_impl.body_length
+        return self._body_length
 
     @property
     def output_length(self):
@@ -902,10 +924,14 @@ class StreamResponse(HeadersMixin):
 
         yield from self._resp_impl.write_eof()
         self._eof_sent = True
+        self._body_length = self._resp_impl.body_length
         self._req = None
+        self._resp_impl = None
 
     def __repr__(self):
-        if self.started:
+        if self._eof_sent:
+            info = "eof"
+        elif self.started:
             info = "{} {} ".format(self._req.method, self._req.path)
         else:
             info = "not started"

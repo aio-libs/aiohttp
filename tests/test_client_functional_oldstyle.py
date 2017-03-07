@@ -6,7 +6,6 @@ import cgi
 import contextlib
 import email.parser
 import gc
-import http.cookies
 import http.server
 import io
 import json
@@ -303,7 +302,7 @@ class Functional(Router):
 
     @Router.define('/cookies$')
     def cookies(self, match):
-        cookies = http.cookies.SimpleCookie()
+        cookies = helpers.SimpleCookie()
         cookies['c1'] = 'cookie1'
         cookies['c2'] = 'cookie2'
 
@@ -319,7 +318,7 @@ class Functional(Router):
 
     @Router.define('/cookies_partial$')
     def cookies_partial(self, match):
-        cookies = http.cookies.SimpleCookie()
+        cookies = helpers.SimpleCookie()
         cookies['c1'] = 'other_cookie1'
 
         resp = self._start_response(200)
@@ -647,7 +646,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             addr = server.sockets[0].getsockname()
 
-            connector = aiohttp.TCPConnector(loop=self.loop)
+            connector = aiohttp.TCPConnector(loop=self.loop, limit=1)
 
             url = 'http://{}:{}/'.format(*addr)
             for i in range(2):
@@ -690,7 +689,7 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             addr = server.sockets[0].getsockname()
 
-            connector = aiohttp.TCPConnector(loop=self.loop)
+            connector = aiohttp.TCPConnector(loop=self.loop, limit=1)
 
             url = 'http://{}:{}/'.format(*addr)
 

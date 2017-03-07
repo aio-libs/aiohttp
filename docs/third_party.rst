@@ -82,3 +82,6 @@ period ask to raise he status.
   system for aiohttp server.
 - `aiocache <https://github.com/argaen/aiocache>`_ Caching for asyncio
   with multiple backends (framework agnostic)
+- `aiohttp-devtools <https://github.com/samuelcolvin/aiohttp-devtools>`_
+  provides development tools for :mod:`aiohttp.web` applications
+

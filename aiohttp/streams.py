@@ -86,7 +86,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
     total_bytes = 0
 
-    def __init__(self, limit=DEFAULT_LIMIT, timeout=None, loop=None):
+    def __init__(self, limit=DEFAULT_LIMIT, timer=None, loop=None):
         self._limit = limit
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -96,10 +96,9 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer_offset = 0
         self._eof = False
         self._waiter = None
-        self._canceller = None
         self._eof_waiter = None
         self._exception = None
-        self._timeout = timeout
+        self._timer = timer
 
     def __repr__(self):
         info = ['StreamReader']
@@ -127,11 +126,6 @@ class StreamReader(AsyncStreamReaderMixin):
             if not waiter.cancelled():
                 waiter.set_exception(exc)
 
-        canceller = self._canceller
-        if canceller is not None:
-            self._canceller = None
-            canceller.cancel()
-
     def feed_eof(self):
         self._eof = True
 
@@ -140,11 +134,6 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
             if not waiter.cancelled():
                 waiter.set_result(True)
-
-        canceller = self._canceller
-        if canceller is not None:
-            self._canceller = None
-            canceller.cancel()
 
         waiter = self._eof_waiter
         if waiter is not None:
@@ -200,11 +189,6 @@ class StreamReader(AsyncStreamReaderMixin):
             if not waiter.cancelled():
                 waiter.set_result(False)
 
-        canceller = self._canceller
-        if canceller is not None:
-            self._canceller = None
-            canceller.cancel()
-
     @asyncio.coroutine
     def _wait(self, func_name):
         # StreamReader uses a future to link the protocol feed_data() method
@@ -214,18 +198,16 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._waiter is not None:
             raise RuntimeError('%s() called while another coroutine is '
                                'already waiting for incoming data' % func_name)
+
         waiter = self._waiter = helpers.create_future(self._loop)
-        if self._timeout:
-            self._canceller = self._loop.call_later(self._timeout,
-                                                    self.set_exception,
-                                                    asyncio.TimeoutError())
         try:
-            yield from waiter
+            if self._timer:
+                with self._timer:
+                    yield from waiter
+            else:
+                yield from waiter
         finally:
             self._waiter = None
-            if self._canceller is not None:
-                self._canceller.cancel()
-                self._canceller = None
 
     @asyncio.coroutine
     def readline(self):
@@ -329,7 +311,6 @@ class StreamReader(AsyncStreamReaderMixin):
         #
         # I believe the most users don't know about the method and
         # they are not affected.
-        assert n is not None, "n should be -1"
         if self._exception is not None:
             raise self._exception
 

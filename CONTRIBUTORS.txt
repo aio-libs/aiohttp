@@ -83,6 +83,7 @@ Joongi Kim
 Julien Duponchelle
 Junjie Tao
 Justas Trimailovas
+Justin Turner Arthur
 Kay Zheng
 Kimmo Parviainen-Jalanko
 Kirill Klenov
@@ -93,9 +94,11 @@ Louis-Philippe Huberdeau
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Makc Belousow
 Manuel Miranda
 Marco Paolini
 Mariano Anaya
+Martin Melka
 Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
@@ -109,7 +112,7 @@ Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Novik
 Olaf Conradi
-Pahaz Blinov <pahaz.blinov@gmail.com>
+Pahaz Blinov
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
@@ -117,11 +120,12 @@ Paulus Schoutsen
 Philipp A.
 Rafael Viotti
 Raúl Cumplido
-"Required Field" <requiredfield256@gmail.com>
+Required Field
 Robert Lu
 Samuel Colvin
 Sebastian Hanula
 Sebastian Hüther
+Sean Hunt
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick

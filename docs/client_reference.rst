@@ -390,6 +390,7 @@ The client session supports the context manager protocol for self closing.
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
+                            heartbeat=None,\
                             origin=None, \
                             proxy=None, proxy_auth=None)
       :async-with:
@@ -406,7 +407,7 @@ The client session supports the context manager protocol for self closing.
 
       :param float receive_timeout: Timeout for websocket to receive complete message.
                                     None(unlimited) seconds by default
- 
+
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
 
@@ -416,6 +417,10 @@ The client session supports the context manager protocol for self closing.
 
       :param bool autoping: automatically send `pong` on `ping`
                             message from server
+
+      :param float heartbeat: Send `ping` message every `heartbeat` seconds
+                              and wait `pong` response, if `pong` response is not received
+                              then close connection.
 
       :param str origin: Origin header to send to server
 
@@ -461,7 +466,6 @@ The client session supports the context manager protocol for self closing.
       Detach connector from session without closing the former.
 
       Session is switched to closed state anyway.
-
 
 
 Basic API
@@ -1267,8 +1271,8 @@ Response object
    .. attribute:: history
 
       A :class:`~collections.abc.Sequence` of :class:`ClientResponse`
-      objects of preceding requests if there were redirects, an empty
-      sequence otherwise.
+      objects of preceding requests (earliest request first) if there were
+      redirects, an empty sequence otherwise.
 
    .. method:: close()
 

@@ -18,7 +18,7 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import sentinel
+from .helpers import TimeService, sentinel
 from .protocol import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
@@ -42,7 +42,8 @@ def unused_port():
 
 
 class BaseTestServer(ABC):
-    def __init__(self, *, scheme=sentinel, host='127.0.0.1'):
+    def __init__(self, *, scheme=sentinel,
+                 host='127.0.0.1', skip_url_asserts=False, **kwargs):
         self.port = None
         self.server = None
         self.handler = None
@@ -50,6 +51,7 @@ class BaseTestServer(ABC):
         self.host = host
         self._closed = False
         self.scheme = scheme
+        self.skip_url_asserts = skip_url_asserts
 
     @asyncio.coroutine
     def start_server(self, **kwargs):
@@ -80,8 +82,11 @@ class BaseTestServer(ABC):
 
     def make_url(self, path):
         url = URL(path)
-        assert not url.is_absolute()
-        return self._root.join(url)
+        if not self.skip_url_asserts:
+            assert not url.is_absolute()
+            return self._root.join(url)
+        else:
+            return URL(str(self._root) + path)
 
     @property
     def started(self):
@@ -136,10 +141,10 @@ class BaseTestServer(ABC):
 
 
 class TestServer(BaseTestServer):
-    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1'):
+    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1', **kwargs):
         self.app = app
         self._loop = app.loop
-        super().__init__(scheme=scheme, host=host)
+        super().__init__(scheme=scheme, host=host, **kwargs)
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
@@ -155,13 +160,13 @@ class TestServer(BaseTestServer):
 
 
 class RawTestServer(BaseTestServer):
-    def __init__(self, handler,
-                 *, loop=None, scheme=sentinel, host='127.0.0.1'):
+    def __init__(self, handler, *,
+                 loop=None, scheme=sentinel, host='127.0.0.1', **kwargs):
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
         self._handler = handler
-        super().__init__(scheme=scheme, host=host)
+        super().__init__(scheme=scheme, host=host, **kwargs)
 
     @asyncio.coroutine
     def _make_factory(self, debug=True, **kwargs):
@@ -183,7 +188,7 @@ class TestClient:
     """
 
     def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
-                 cookie_jar=None, **kwargs):
+                 cookie_jar=None, server_kwargs=None, **kwargs):
         if isinstance(app_or_server, BaseTestServer):
             if scheme is not sentinel or host is not sentinel:
                 raise ValueError("scheme and host are mutable exclusive "
@@ -192,8 +197,10 @@ class TestClient:
         elif isinstance(app_or_server, Application):
             scheme = "http" if scheme is sentinel else scheme
             host = '127.0.0.1' if host is sentinel else host
-            self._server = TestServer(app_or_server,
-                                      scheme=scheme, host=host)
+            server_kwargs = server_kwargs or {}
+            self._server = TestServer(
+                app_or_server,
+                scheme=scheme, host=host, **server_kwargs)
         else:
             raise TypeError("app_or_server should be either web.Application "
                             "or TestServer instance")
@@ -201,6 +208,7 @@ class TestClient:
         if cookie_jar is None:
             cookie_jar = aiohttp.CookieJar(unsafe=True,
                                            loop=self._loop)
+        kwargs['time_service'] = TimeService(self._loop, interval=0.1)
         self._session = ClientSession(loop=self._loop,
                                       cookie_jar=cookie_jar,
                                       **kwargs)
@@ -384,14 +392,21 @@ class AioHTTPTestCase(unittest.TestCase):
 
     def setUp(self):
         self.loop = setup_test_loop()
+
         self.app = self.loop.run_until_complete(
             self.get_application(self.loop))
-        self.client = TestClient(self.app)
+        self.client = self.loop.run_until_complete(self._get_client(self.app))
+
         self.loop.run_until_complete(self.client.start_server())
 
     def tearDown(self):
         self.loop.run_until_complete(self.client.close())
         teardown_test_loop(self.loop)
+
+    @asyncio.coroutine
+    def _get_client(self, app):
+        """Return a TestClient instance."""
+        return TestClient(self.app)
 
 
 def unittest_run_loop(func):
@@ -474,7 +489,8 @@ def make_mocked_request(method, path, headers=None, *,
                         transport=sentinel,
                         payload=sentinel,
                         sslcontext=None,
-                        secure_proxy_ssl_header=None):
+                        secure_proxy_ssl_header=None,
+                        client_max_size=1024**2):
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
@@ -526,7 +542,8 @@ def make_mocked_request(method, path, headers=None, *,
     req = Request(message, payload,
                   transport, reader, writer,
                   time_service, task,
-                  secure_proxy_ssl_header=secure_proxy_ssl_header)
+                  secure_proxy_ssl_header=secure_proxy_ssl_header,
+                  client_max_size=client_max_size)
 
     match_info = UrlMappingMatchInfo({}, mock.Mock())
     match_info.add_app(app)

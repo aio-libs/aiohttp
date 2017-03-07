@@ -158,6 +158,28 @@ def test_access_non_existing_resource(tmp_dir_path, loop, test_client):
     yield from r.release()
 
 
+@pytest.mark.parametrize('registered_path,request_url', [
+    ('/a:b', '/a:b'),
+    ('/a@b', '/a@b'),
+    ('/a:b', '/a%3Ab'),
+])
+@asyncio.coroutine
+def test_url_escaping(loop, test_client, registered_path, request_url):
+    """
+    Tests accessing a resource with
+    """
+    app = web.Application(loop=loop)
+
+    def handler(_):
+        return web.Response()
+    app.router.add_get(registered_path, handler)
+    client = yield from test_client(app)
+
+    r = yield from client.get(request_url)
+    assert r.status == 200
+    yield from r.release()
+
+
 @asyncio.coroutine
 def test_unauthorized_folder_access(tmp_dir_path, loop, test_client):
     """
@@ -288,3 +310,33 @@ def test_412_is_returned(loop, test_client):
     resp = yield from client.get('/')
 
     assert resp.status == 412
+
+
+@asyncio.coroutine
+def test_allow_head(loop, test_client):
+    """
+    Test allow_head on routes.
+    """
+    app = web.Application(loop=loop)
+
+    def handler(_):
+        return web.Response()
+    app.router.add_get('/a', handler, name='a')
+    app.router.add_get('/b', handler, allow_head=False, name='b')
+    client = yield from test_client(app)
+
+    r = yield from client.get('/a')
+    assert r.status == 200
+    yield from r.release()
+
+    r = yield from client.head('/a')
+    assert r.status == 200
+    yield from r.release()
+
+    r = yield from client.get('/b')
+    assert r.status == 200
+    yield from r.release()
+
+    r = yield from client.head('/b')
+    assert r.status == 405
+    yield from r.release()

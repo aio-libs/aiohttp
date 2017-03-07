@@ -9,6 +9,7 @@ import pytest
 import aiohttp
 from aiohttp import ClientWebSocketResponse, errors, hdrs, helpers
 from aiohttp._ws_impl import WS_KEY
+from aiohttp.log import ws_logger
 
 
 @pytest.fixture
@@ -215,6 +216,52 @@ def test_ws_connect_err_challenge(loop, ws_key, key_data):
 
 
 @asyncio.coroutine
+def test_ws_connect_common_headers(ws_key, loop, key_data):
+    """Emulate a headers dict being reused for a second ws_connect.
+
+    In this scenario, we need to ensure that the newly generated secret key
+    is sent to the server, not the stale key.
+    """
+    headers = {}
+
+    @asyncio.coroutine
+    def test_connection():
+        @asyncio.coroutine
+        def mock_get(*args, **kwargs):
+            resp = mock.Mock()
+            resp.status = 101
+            key = kwargs.get('headers').get(hdrs.SEC_WEBSOCKET_KEY)
+            accept = base64.b64encode(
+                hashlib.sha1(base64.b64encode(base64.b64decode(key)) + WS_KEY)
+                .digest()).decode()
+            resp.headers = {
+                hdrs.UPGRADE: hdrs.WEBSOCKET,
+                hdrs.CONNECTION: hdrs.UPGRADE,
+                hdrs.SEC_WEBSOCKET_ACCEPT: accept,
+                hdrs.SEC_WEBSOCKET_PROTOCOL: 'chat'
+            }
+            return resp
+        with mock.patch('aiohttp.client.os') as m_os:
+            with mock.patch('aiohttp.client.ClientSession.get',
+                            side_effect=mock_get) as m_req:
+                m_os.urandom.return_value = key_data
+
+                res = yield from aiohttp.ClientSession(loop=loop).ws_connect(
+                    'http://test.org',
+                    protocols=('t1', 't2', 'chat'),
+                    headers=headers)
+
+        assert isinstance(res, ClientWebSocketResponse)
+        assert res.protocol == 'chat'
+        assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
+
+    yield from test_connection()
+    # Generate a new ws key
+    key_data = os.urandom(16)
+    yield from test_connection()
+
+
+@asyncio.coroutine
 def test_close(loop, ws_key, key_data):
     resp = mock.Mock()
     resp.status = 101
@@ -321,7 +368,7 @@ def test_close_exc2(loop, ws_key, key_data):
 
 
 @asyncio.coroutine
-def test_send_data_after_close(ws_key, key_data, loop):
+def test_send_data_after_close(ws_key, key_data, loop, mocker):
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -329,23 +376,26 @@ def test_send_data_after_close(ws_key, key_data, loop):
         hdrs.CONNECTION: hdrs.UPGRADE,
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
-        with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
-                m_os.urandom.return_value = key_data
-                m_req.return_value = helpers.create_future(loop)
-                m_req.return_value.set_result(resp)
-                WebSocketWriter.return_value = mock.Mock()
+    with mock.patch('aiohttp.client.os') as m_os:
+        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = helpers.create_future(loop)
+            m_req.return_value.set_result(resp)
 
-                resp = yield from aiohttp.ws_connect('http://test.org',
-                                                     loop=loop)
-                resp._closed = True
+            resp = yield from aiohttp.ws_connect('http://test.org',
+                                                 loop=loop)
+            resp._writer._closing = True
 
-                pytest.raises(RuntimeError, resp.ping)
-                pytest.raises(RuntimeError, resp.pong)
-                pytest.raises(RuntimeError, resp.send_str, 's')
-                pytest.raises(RuntimeError, resp.send_bytes, b'b')
-                pytest.raises(RuntimeError, resp.send_json, {})
+            mocker.spy(ws_logger, 'warning')
+
+            for meth, args in ((resp.ping, ()),
+                               (resp.pong, ()),
+                               (resp.send_str, ('s',)),
+                               (resp.send_bytes, (b'b',)),
+                               (resp.send_json, ({},))):
+                meth(*args)
+                assert ws_logger.warning.called
+                ws_logger.warning.reset_mock()
 
 
 @asyncio.coroutine

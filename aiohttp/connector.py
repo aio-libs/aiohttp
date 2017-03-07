@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import http.cookies
 import ssl
 import sys
 import traceback
@@ -8,7 +7,6 @@ import warnings
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from itertools import chain
-from math import ceil
 from types import MappingProxyType
 
 from yarl import URL
@@ -20,12 +18,10 @@ from .client import ClientRequest
 from .errors import (ClientOSError, ClientTimeoutError, FingerprintMismatch,
                      HttpProxyError, ProxyConnectionError,
                      ServerDisconnectedError)
-from .helpers import is_ip_address, sentinel
+from .helpers import SimpleCookie, is_ip_address, sentinel
 from .resolver import DefaultResolver
 
 __all__ = ('BaseConnector', 'TCPConnector', 'ProxyConnector', 'UnixConnector')
-
-PY_343 = sys.version_info >= (3, 4, 3)
 
 HASHFUNC_BY_DIGESTLEN = {
     16: md5,
@@ -46,6 +42,7 @@ class Connection:
         self._transport = transport
         self._protocol = protocol
         self._loop = loop
+        self._callbacks = []
         self.reader = protocol.reader
         self.writer = protocol.writer
 
@@ -72,11 +69,26 @@ class Connection:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
+    def add_callback(self, callback):
+        if callback is not None:
+            self._callbacks.append(callback)
+
+    def release_callbacks(self):
+        callbacks, self._callbacks = self._callbacks[:], []
+
+        for cb in callbacks:
+            try:
+                cb()
+            except:
+                pass
+
     @property
     def loop(self):
         return self._loop
 
     def close(self):
+        self.release_callbacks()
+
         if self._transport is not None:
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -84,6 +96,8 @@ class Connection:
             self._transport = None
 
     def release(self):
+        self.release_callbacks()
+
         if self._transport is not None:
             self._connector._release(
                 self._key, self._request, self._transport, self._protocol,
@@ -91,6 +105,8 @@ class Connection:
             self._transport = None
 
     def detach(self):
+        self.release_callbacks()
+
         if self._transport is not None:
             self._connector._release_acquired(self._key, self._transport)
         self._transport = None
@@ -108,15 +124,19 @@ class BaseConnector(object):
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The limit of simultaneous connections to the same endpoint.
+    disable_cleanup_closed - Disable clean-up closed ssl transports.
     loop - Optional event loop.
     """
 
     _closed = True  # prevent AttributeError in __del__ if ctor was failed
     _source_traceback = None
 
+    # abort transport after 2 seconds (cleanup broken connections)
+    _cleanup_closed_period = 2.0
+
     def __init__(self, *, conn_timeout=None, keepalive_timeout=sentinel,
-                 force_close=False, limit=20,
-                 loop=None):
+                 force_close=False, limit=20, time_service=None,
+                 disable_cleanup_closed=False, loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -125,7 +145,7 @@ class BaseConnector(object):
                                  'be set if force_close is True')
         else:
             if keepalive_timeout is sentinel:
-                keepalive_timeout = 30
+                keepalive_timeout = 15.0
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -138,17 +158,35 @@ class BaseConnector(object):
         self._acquired = defaultdict(set)
         self._conn_timeout = conn_timeout
         self._keepalive_timeout = keepalive_timeout
-        self._cleanup_handle = None
         self._force_close = force_close
         self._limit = limit
         self._waiters = defaultdict(list)
+
+        if time_service is not None:
+            self._time_service_owner = False
+            self._time_service = time_service
+        else:
+            self._time_service_owner = True
+            self._time_service = helpers.TimeService(loop)
 
         self._loop = loop
         self._factory = functools.partial(
             aiohttp.StreamProtocol, loop=loop,
             disconnect_error=ServerDisconnectedError)
 
-        self.cookies = http.cookies.SimpleCookie()
+        self.cookies = SimpleCookie()
+
+        # start keep-alive connection cleanup task
+        self._cleanup_handle = None
+        if (keepalive_timeout is not sentinel and
+                keepalive_timeout is not None):
+            self._cleanup()
+
+        # start cleanup closed transports task
+        self._cleanup_closed_handle = None
+        self._cleanup_closed_disabled = disable_cleanup_closed
+        self._cleanup_closed_transports = []
+        self._cleanup_closed()
 
     def __del__(self, _warnings=warnings):
         if self._closed:
@@ -200,43 +238,49 @@ class BaseConnector(object):
         """Cleanup unused transports."""
         if self._cleanup_handle:
             self._cleanup_handle.cancel()
-            self._cleanup_handle = None
 
-        now = self._loop.time()
+        now = self._time_service.loop_time()
 
-        connections = {}
-        timeout = self._keepalive_timeout
+        if self._conns:
+            connections = {}
+            deadline = now - self._keepalive_timeout
+            for key, conns in self._conns.items():
+                alive = []
+                for transport, proto, use_time in conns:
+                    if transport is not None:
+                        if proto.is_connected():
+                            if use_time - deadline < 0:
+                                transport.close()
+                                if (key[-1] and
+                                        not self._cleanup_closed_disabled):
+                                    self._cleanup_closed_transports.append(
+                                        transport)
+                            else:
+                                alive.append((transport, proto, use_time))
 
-        for key, conns in self._conns.items():
-            alive = []
-            for transport, proto, t0 in conns:
-                if transport is not None:
-                    if proto and not proto.is_connected():
-                        transport = None
-                    else:
-                        delta = t0 + self._keepalive_timeout - now
-                        if delta < 0:
-                            transport.close()
-                            transport = None
-                        elif delta < timeout:
-                            timeout = delta
+                if alive:
+                    connections[key] = alive
 
-                if transport is not None:
-                    alive.append((transport, proto, t0))
-            if alive:
-                connections[key] = alive
+            self._conns = connections
 
-        if connections:
-            self._cleanup_handle = self._loop.call_at(
-                ceil(now + timeout), self._cleanup)
+        self._cleanup_handle = self._time_service.call_later(
+            self._keepalive_timeout / 2.0, self._cleanup)
 
-        self._conns = connections
+    def _cleanup_closed(self):
+        """Double confirmation for transport close.
+        Some broken ssl servers may leave socket open without proper close.
+        """
+        if self._cleanup_closed_handle:
+            self._cleanup_closed_handle.cancel()
 
-    def _start_cleanup_task(self):
-        if self._cleanup_handle is None:
-            now = self._loop.time()
-            self._cleanup_handle = self._loop.call_at(
-                ceil(now + self._keepalive_timeout), self._cleanup)
+        for transport in self._cleanup_closed_transports:
+            transport.abort()
+
+        self._cleanup_closed_transports = []
+
+        if not self._cleanup_closed_disabled:
+            self._cleanup_closed_handle = self._time_service.call_later(
+                self._cleanup_closed_period, self._cleanup_closed)
 
     def close(self):
         """Close all opened transports."""
@@ -250,6 +294,9 @@ class BaseConnector(object):
             if self._loop.is_closed():
                 return ret
 
+            if self._time_service_owner:
+                self._time_service.close()
+
             for key, data in self._conns.items():
                 for transport, proto, t0 in data:
                     transport.close()
@@ -257,13 +304,24 @@ class BaseConnector(object):
             for transport in chain(*self._acquired.values()):
                 transport.close()
 
+            # cacnel cleanup task
             if self._cleanup_handle:
                 self._cleanup_handle.cancel()
+
+            # cacnel cleanup close task
+            if self._cleanup_closed_handle:
+                self._cleanup_closed_handle.cancel()
+
+            for transport in self._cleanup_closed_transports:
+                transport.abort()
 
         finally:
             self._conns.clear()
             self._acquired.clear()
             self._cleanup_handle = None
+            self._cleanup_closed_transports.clear()
+            self._cleanup_closed_handle = None
+
         return ret
 
     @property
@@ -333,18 +391,21 @@ class BaseConnector(object):
             conns = self._conns[key]
         except KeyError:
             return None, None
+
         t1 = self._loop.time()
         while conns:
             transport, proto, t0 = conns.pop()
             if transport is not None and proto.is_connected():
                 if t1 - t0 > self._keepalive_timeout:
                     transport.close()
-                    transport = None
+                    if key[-1] and not self._cleanup_closed_disabled:
+                        self._cleanup_closed_transports.append(transport)
                 else:
                     if not conns:
                         # The very last connection was reclaimed: drop the key
                         del self._conns[key]
                     return transport, proto
+
         # No more connections: drop the key
         del self._conns[key]
         return None, None
@@ -394,14 +455,15 @@ class BaseConnector(object):
         reader = protocol.reader
         if should_close or (reader.output and not reader.output.at_eof()):
             transport.close()
+
+            if key[-1] and not self._cleanup_closed_disabled:
+                self._cleanup_closed_transports.append(transport)
         else:
             conns = self._conns.get(key)
             if conns is None:
                 conns = self._conns[key] = []
             conns.append((transport, protocol, self._loop.time()))
             reader.unset_parser()
-
-            self._start_cleanup_task()
 
     @asyncio.coroutine
     def _create_connection(self, req):

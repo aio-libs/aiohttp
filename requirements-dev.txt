@@ -1,5 +1,5 @@
 -r requirements-ci.txt
 ipdb==0.10.2
 pytest-sugar==0.8.0
-ipython==5.2.1
+ipython==5.2.2
 aiodns==1.1.1

@@ -19,7 +19,7 @@ from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
 from .cookiejar import CookieJar
 from .errors import WSServerHandshakeError
-from .helpers import Timeout, TimeService
+from .helpers import TimeoutHandle, TimerContext, TimeService
 
 __all__ = ('ClientSession', 'request', 'get', 'options', 'head',
            'delete', 'post', 'put', 'patch', 'ws_connect')
@@ -29,18 +29,6 @@ PY_35 = sys.version_info >= (3, 5)
 
 # 5 Minute default read and connect timeout
 DEFAULT_TIMEOUT = 5 * 60
-
-
-def _timeout_min(value1, value2):
-    # If neither value is None returns minimum of two, otherwise returns non-
-    # None value
-
-    assert value1 is not None
-
-    if value2 is None:
-        return value1
-
-    return min(value1, value2)
 
 
 class ClientSession:
@@ -57,20 +45,27 @@ class ClientSession:
                  version=aiohttp.HttpVersion11,
                  cookie_jar=None, read_timeout=None, time_service=None):
 
+        implicit_loop = False
+        if loop is None:
+            if connector is not None:
+                loop = connector._loop
+            else:
+                implicit_loop = True
+                loop = asyncio.get_event_loop()
+
         if connector is None:
             connector = aiohttp.TCPConnector(loop=loop)
-            loop = connector._loop  # never None
-        else:
-            if loop is None:
-                loop = connector._loop  # never None
-            elif connector._loop is not loop:
-                raise ValueError("loop argument must agree with connector")
+
+        if connector._loop is not loop:
+            raise RuntimeError(
+                "Session and connector has to use same event loop")
 
         self._loop = loop
+
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        if not loop.is_running():
+        if implicit_loop and not loop.is_running():
             warnings.warn("Creating a client session outside of coroutine is "
                           "a very dangerous idea", ResourceWarning,
                           stacklevel=2)
@@ -107,10 +102,13 @@ class ClientSession:
         self._request_class = request_class
         self._response_class = response_class
         self._ws_response_class = ws_response_class
-        self._time_service = (
-            time_service
-            if time_service is not None
-            else TimeService(self._loop))
+
+        if time_service is not None:
+            self._time_service_owner = False
+            self._time_service = time_service
+        else:
+            self._time_service_owner = True
+            self._time_service = TimeService(self._loop)
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
@@ -187,99 +185,100 @@ class ClientSession:
         if proxy is not None:
             proxy = URL(proxy)
 
-        # optionally clamp timeouts to timeout parameter
-        read_timeout = self._read_timeout
-        conn_timeout = self._connector.conn_timeout
-        if timeout is not None:
-            read_timeout = _timeout_min(timeout, read_timeout)
-            conn_timeout = _timeout_min(timeout, conn_timeout)
+        # request timeout
+        if timeout is None:
+            timeout = self._read_timeout
+        if timeout is None:
+            timeout = self._connector.conn_timeout
+        elif self._connector.conn_timeout is not None:
+            timeout = max(timeout, self._connector.conn_timeout)
 
-        # is this just the same as the connector's existing timeout?
-        if conn_timeout == self._connector.conn_timeout:
-            conn_timeout = None  # this will no-op the below timeout
+        # timeout is cumulative for all request operations
+        # (request, redirects, responses, data consuming)
+        tm = TimeoutHandle(timeout)
+        handle = tm.handle(self._loop)
 
-        while True:
-            url = URL(url).with_fragment(None)
+        timer = TimerContext(self._loop, tm)
+        with timer:
+            while True:
+                url = URL(url).with_fragment(None)
 
-            cookies = self._cookie_jar.filter_cookies(url)
+                cookies = self._cookie_jar.filter_cookies(url)
 
-            req = self._request_class(
-                method, url, params=params, headers=headers,
-                skip_auto_headers=skip_headers, data=data,
-                cookies=cookies, encoding=encoding,
-                auth=auth, version=version, compress=compress, chunked=chunked,
-                expect100=expect100,
-                loop=self._loop, response_class=self._response_class,
-                proxy=proxy, proxy_auth=proxy_auth, timeout=read_timeout)
+                req = self._request_class(
+                    method, url, params=params, headers=headers,
+                    skip_auto_headers=skip_headers, data=data,
+                    cookies=cookies, encoding=encoding,
+                    auth=auth, version=version, compress=compress,
+                    chunked=chunked, expect100=expect100,
+                    loop=self._loop, response_class=self._response_class,
+                    proxy=proxy, proxy_auth=proxy_auth, timer=timer)
 
-            # None conn_timeout is a Timeout no-op
-            with Timeout(conn_timeout, loop=self._loop):
                 conn = yield from self._connector.connect(req)
-            conn.writer.set_tcp_nodelay(True)
-            try:
-                resp = req.send(conn.writer, conn.reader)
+                conn.writer.set_tcp_nodelay(True)
                 try:
-                    yield from resp.start(conn, read_until_eof)
-                except:
-                    resp.close()
-                    conn.close()
-                    raise
-            except (aiohttp.HttpProcessingError,
-                    aiohttp.ServerDisconnectedError) as exc:
-                raise aiohttp.ClientResponseError() from exc
-            except OSError as exc:
-                raise aiohttp.ClientOSError(*exc.args) from exc
+                    resp = req.send(conn.writer, conn.reader)
+                    try:
+                        yield from resp.start(conn, read_until_eof)
+                    except:
+                        resp.close()
+                        conn.close()
+                        raise
+                except (aiohttp.HttpProcessingError,
+                        aiohttp.ServerDisconnectedError) as exc:
+                    raise aiohttp.ClientResponseError() from exc
+                except OSError as exc:
+                    raise aiohttp.ClientOSError(*exc.args) from exc
 
-            self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
+                self._cookie_jar.update_cookies(resp.cookies, resp.url_obj)
 
-            # redirects
-            if resp.status in (301, 302, 303, 307) and allow_redirects:
-                redirects += 1
-                history.append(resp)
-                if max_redirects and redirects >= max_redirects:
-                    resp.close()
-                    break
-                else:
-                    # TODO: close the connection if BODY is large enough
-                    # Redirect with big BODY is forbidden by HTTP protocol
-                    # but malformed server may send illegal response.
-                    # Small BODIES with text like "Not Found" are still
-                    # perfectly fine and should be accepted.
+                # redirects
+                if resp.status in (301, 302, 303, 307) and allow_redirects:
+                    redirects += 1
+                    history.append(resp)
+                    if max_redirects and redirects >= max_redirects:
+                        resp.close()
+                        break
+                    else:
+                        yield from resp.release()
+
+                    # For 301 and 302, mimic IE behaviour, now changed in RFC.
+                    # Info: https://github.com/kennethreitz/requests/pull/269
+                    if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
+                       or (resp.status in (301, 302) and
+                           resp.method == hdrs.METH_POST):
+                        method = hdrs.METH_GET
+                        data = None
+                        if headers.get(hdrs.CONTENT_LENGTH):
+                            headers.pop(hdrs.CONTENT_LENGTH)
+
+                    r_url = (resp.headers.get(hdrs.LOCATION) or
+                             resp.headers.get(hdrs.URI))
+                    if r_url is None:
+                        raise RuntimeError("{0.method} {0.url_obj} returns "
+                                           "a redirect [{0.status}] status "
+                                           "but response lacks a Location "
+                                           "or URI HTTP header".format(resp))
+                    r_url = URL(r_url)
+
+                    scheme = r_url.scheme
+                    if scheme not in ('http', 'https', ''):
+                        resp.close()
+                        raise ValueError('Can redirect only to http or https')
+                    elif not scheme:
+                        r_url = url.join(r_url)
+
+                    url = r_url
+                    params = None
                     yield from resp.release()
+                    continue
 
-                # For 301 and 302, mimic IE behaviour, now changed in RFC.
-                # Details: https://github.com/kennethreitz/requests/pull/269
-                if (resp.status == 303 and resp.method != hdrs.METH_HEAD) \
-                   or (resp.status in (301, 302) and
-                       resp.method == hdrs.METH_POST):
-                    method = hdrs.METH_GET
-                    data = None
-                    if headers.get(hdrs.CONTENT_LENGTH):
-                        headers.pop(hdrs.CONTENT_LENGTH)
+                break
 
-                r_url = (resp.headers.get(hdrs.LOCATION) or
-                         resp.headers.get(hdrs.URI))
-                if r_url is None:
-                    raise RuntimeError("{0.method} {0.url_obj} returns "
-                                       "a redirect [{0.status}] status "
-                                       "but response lacks a Location "
-                                       "or URI HTTP header".format(resp))
-                r_url = URL(r_url)
-
-                scheme = r_url.scheme
-                if scheme not in ('http', 'https', ''):
-                    resp.close()
-                    raise ValueError('Can redirect only to http or https')
-                elif not scheme:
-                    r_url = url.join(r_url)
-
-                url = r_url
-                params = None
-                yield from resp.release()
-                continue
-
-            break
-
+        if resp.connection is not None:
+            resp.connection.add_callback(handle.cancel)
+        else:
+            handle.cancel()
         resp._history = tuple(history)
         return resp
 
@@ -289,6 +288,7 @@ class ClientSession:
                    receive_timeout=None,
                    autoclose=True,
                    autoping=True,
+                   heartbeat=None,
                    auth=None,
                    origin=None,
                    headers=None,
@@ -302,6 +302,7 @@ class ClientSession:
                              receive_timeout=receive_timeout,
                              autoclose=autoclose,
                              autoping=autoping,
+                             heartbeat=heartbeat,
                              auth=auth,
                              origin=origin,
                              headers=headers,
@@ -315,13 +316,12 @@ class ClientSession:
                     receive_timeout=None,
                     autoclose=True,
                     autoping=True,
+                    heartbeat=None,
                     auth=None,
                     origin=None,
                     headers=None,
                     proxy=None,
                     proxy_auth=None):
-
-        sec_key = base64.b64encode(os.urandom(16))
 
         if headers is None:
             headers = CIMultiDict()
@@ -330,12 +330,14 @@ class ClientSession:
             hdrs.UPGRADE: hdrs.WEBSOCKET,
             hdrs.CONNECTION: hdrs.UPGRADE,
             hdrs.SEC_WEBSOCKET_VERSION: '13',
-            hdrs.SEC_WEBSOCKET_KEY: sec_key.decode(),
         }
 
         for key, value in default_headers.items():
             if key not in headers:
                 headers[key] = value
+
+        sec_key = base64.b64encode(os.urandom(16))
+        headers[hdrs.SEC_WEBSOCKET_KEY] = sec_key.decode()
 
         if protocols:
             headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
@@ -407,7 +409,8 @@ class ClientSession:
                                            autoping,
                                            self._loop,
                                            time_service=self.time_service,
-                                           receive_timeout=receive_timeout)
+                                           receive_timeout=receive_timeout,
+                                           heartbeat=heartbeat)
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict
@@ -482,6 +485,10 @@ class ClientSession:
         if not self.closed:
             self._connector.close()
             self._connector = None
+
+            if self._time_service_owner:
+                self._time_service.close()
+
         ret = helpers.create_future(self._loop)
         ret.set_result(None)
         return ret
@@ -599,10 +606,12 @@ class _RequestContextManager(_BaseRequestContextManager):
     if PY_35:
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc, tb):
-            if exc_type is not None:
-                self._resp.close()
-            else:
-                yield from self._resp.release()
+            # We're basing behavior on the exception as it can be caused by
+            # user code unrelated to the status of the connection.  If you
+            # would like to close a connection you must do that
+            # explicitly.  Otherwise connection error handling should kick in
+            # and close/recycle the connection as required.
+            yield from self._resp.release()
 
 
 class _WSRequestContextManager(_BaseRequestContextManager):

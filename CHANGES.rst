@@ -1,10 +1,54 @@
 CHANGES
 =======
 
-1.3.0 (XXXX-XX-XX)
+1.3.4 (2017-02-..)
 ------------------
 
+- `run_app` and the Command Line Interface now support serving over Unix domain sockets for
+  faster inter-process communication.
+
+- Revert timeout handling in client request
+
+- Fix StreamResponse representation after eof
+
+
+1.3.3 (2017-02-19)
+------------------
+
+- Fixed memory leak in time service #1656
+
+
+1.3.2 (2017-02-16)
+------------------
+
+- Awaiting on WebSocketResponse.send_* does not work #1645
+
+- Fix multiple calls to client ws_connect when using a shared header dict #1643
+
+- Make CookieJar.filter_cookies() accept plain string parameter. #1636
+
+
+1.3.1 (2017-02-09)
+------------------
+
+- Handle CLOSING in WebSocketResponse.__anext__
+
+- Fixed AttributeError 'drain' for server websocket handler #1613
+
+
+1.3.0 (2017-02-08)
+------------------
+
+- Multipart writer validates the data on append instead of on a request send #920
+
+- Multipart reader accepts multipart messages with or without their epilogue
+  to consistently handle valid and legacy behaviors #1526 #1581
+
+- Add the `allow_head=True` keyword argument for `add_get` #1618
+
 - Separate read + connect + request timeouts # 1523
+
+- Do not swallow Upgrade header #1587
 
 - Fix polls demo run application #1487
 
@@ -14,9 +58,17 @@ CHANGES
 
 - Do not use readline when reading the content of a part
   in the multipart reader #1535
-
-- Added `receive_timeout` timeout for websocket to receive complete message. #1024 #1325
   
+- Add optional flag for quoting `FormData` fields #916
+
+- 416 Range Not Satisfiable if requested range end > file size #1588
+
+- Having a `:` or `@` in a route does not work #1552
+
+- Added `receive_timeout` timeout for websocket to receive complete message. #1325
+
+- Added `heartbeat` parameter for websocket to automatically send `ping` message. #1024 #777
+
 - Remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
 - Accepting back-pressure from slow websocket clients #1367
@@ -24,71 +76,48 @@ CHANGES
 - Do not pause transport during set_parser stage #1211
 
 - Lingering close doesn't terminate before timeout #1559
-  
+
+- `setsockopt` may raise `OSError` exception if socket is closed already #1595
+
 - Lots of CancelledError when requests are interrupted #1565
 
 - Allow users to specify what should happen to decoding errors
   when calling a responses `text()` method #1542
 
+- Back port std module `http.cookies` for python3.4.2 #1566
+
+- Maintain url's fragment in client response #1314
+
+- Allow concurrently close WebSocket connection #754
+
+- Gzipped responses with empty body raises ContentEncodingError #609
+
 - Return 504 if request handle raises TimeoutError.
 
-- Refactor how we use keep-alive and clone lingering timeouts.
+- Refactor how we use keep-alive and close lingering timeouts.
 
+- Close response connection if we can not consume whole http
+  message during client response release
 
-1.2.0 (2016-12-17)
-------------------
+- Abort closed ssl client transports, broken servers can keep socket open un-limit time #1568
 
-- Extract `BaseRequest` from `web.Request`, introduce `web.Server`
-  (former `RequestHandlerFactory`), introduce new low-level web server
-  which is not coupled with `web.Application` and routing #1362
+- Log warning instead of `RuntimeError` is websocket connection is closed.
 
-- Make `TestServer.make_url` compatible with `yarl.URL` #1389
+- Deprecated: `aiohttp.protocol.HttpPrefixParser`
+  will be removed in 1.4 #1590
 
-- Implement range requests for static files #1382
+- Deprecated: Servers response's `.started`, `.start()` and `.can_start()` method
+  will be removed in 1.4 #1591
 
-- Support task attribute for StreamResponse #1410
+- Deprecated: Adding `sub app` via `app.router.add_subapp()` is deprecated
+  use `app.add_subapp()` instead, will be removed in 1.4 #1592
 
-- Drop `TestClient.app` property, use `TestClient.server.app` instead
-  (BACKWARD INCOMPATIBLE)
+- Deprecated: aiohttp.get(), aiohttp.options(), aiohttp.head(), aiohttp.post(),
+  aiohttp.put(), aiohttp.patch(), aiohttp.delete(), and aiohttp.ws_connect()
+  will be removed in 1.4 #1593
 
-- Drop `TestClient.handler` property, use `TestClient.server.handler` instead
-  (BACKWARD INCOMPATIBLE)
+- Deprecated: `Application.finish()` and `Application.register_on_finish()`
+  will be removed in 1.4 #1602
 
-- `TestClient.server` property returns a test server instance, was
-  `asyncio.AbstractServer` (BACKWARD INCOMPATIBLE)
-
-- Follow gunicorn's signal semantics in `Gunicorn[UVLoop]WebWorker` #1201
-
-- Call worker_int and worker_abort callbacks in
-  `Gunicorn[UVLoop]WebWorker` #1202
-
-- Has functional tests for client proxy #1218
-
-- Fix bugs with client proxy target path and proxy host with port #1413
-
-- Fix bugs related to the use of unicode hostnames #1444
-
-- Preserve cookie quoting/escaping #1453
-
-- FileSender will send gzipped response if gzip version available #1426
-
-- Don't override `Content-Length` header in `web.Response` if no body
-  was set #1400
-
-- Introduce `router.post_init()` for solving #1373
-
-- Fix raise error in case of multiple calls of `TimeServive.stop()`
-
-- Allow to raise web exceptions on router resolving stage #1460
-
-- Add a warning for session creation outside of coroutine #1468
-
-- Avoid a race when application might start accepting incoming requests
-  but startup signals are not processed yet e98e8c6
-
-- Raise a `RuntimeError` when trying to change the status of the HTTP response
-  after the headers have been sent #1480
-
-- Fix bug with https proxy acquired cleanup #1340
-
-- Use UTF-8 as the default encoding for multipart text parts #1484
+- Add the `allow_head` keyword argument for `add_get` and
+  `router.set_defaults(allow_head=True/False)` #1618

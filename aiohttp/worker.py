@@ -13,9 +13,9 @@ import warnings
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
-from aiohttp.helpers import AccessLogger, ensure_future
-from aiohttp.web_server import Server
-from aiohttp.wsgi import WSGIServerHttpProtocol
+from .helpers import AccessLogger, ensure_future
+from .web_server import Server
+from .wsgi import WSGIServerHttpProtocol
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 

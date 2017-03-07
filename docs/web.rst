@@ -98,6 +98,26 @@ allowing a handler to serve incoming requests on a *path* having **any**
 The *HTTP method* can be queried later in the request handler using the
 :attr:`Request.method` property.
 
+By default endpoints added with :meth:`~UrlDispatcher.add_get` will accept
+``HEAD`` requests and return the same response headers as they would
+for a ``GET`` request. You can also deny ``HEAD`` requests on a route::
+
+   app.router.add_get('/', handler, allow_head=False)
+
+Here ``handler`` won't be called and the server will response with ``405``.
+
+.. note::
+
+   This is a change as of **aiohttp v2.0** to act in accordance with
+   `RFC 7231 <https://tools.ietf.org/html/rfc7231#section-4.3.2>`_.
+
+   Previous version always returned ``405`` for ``HEAD`` requests
+   to routes added with :meth:`~UrlDispatcher.add_get`.
+
+If you have handlers which perform lots of processing to write the response
+body you may wish to improve performance by skipping that processing
+in the case of ``HEAD`` requests while still taking care to respond with
+the same headers as with ``GET`` requests.
 
 .. _aiohttp-web-resource-and-route:
 
@@ -1277,6 +1297,30 @@ After that attach the :mod:`aiohttp_debugtoolbar` middleware to your
 The toolbar is ready to use. Enjoy!!!
 
 .. _aiohttp_debugtoolbar: https://github.com/aio-libs/aiohttp_debugtoolbar
+
+
+Dev Tools
+---------
+
+aiohttp-devtools_ provides a couple of tools to simplify development of
+:mod:`aiohttp.web` applications.
+
+
+Install via ``pip``:
+
+.. code-block:: shell
+
+    $ pip install aiohttp-devtools
+
+   * ``runserver`` provides a development server with auto-reload, live-reload, static file serving and
+  aiohttp_debugtoolbar_ integration.
+   * ``start`` is a `cookiecutter command which does the donkey work of creating new :mod:`aiohttp.web`
+  Applications.
+
+Documentation and a complete tutorial of creating and running an app locally are available at
+aiohttp-devtools_.
+
+.. _aiohttp-devtools: https://github.com/samuelcolvin/aiohttp-devtools
 
 
 .. disqus::
