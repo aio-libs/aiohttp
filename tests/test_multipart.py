@@ -811,6 +811,9 @@ class BodyPartWriterTestCase(unittest.TestCase):
     def test_serialize_str(self):
         self.assertEqual(b'foo', next(self.part._serialize_str('foo')))
 
+    def test_serialize_int(self):
+        self.assertEqual(b'42', next(self.part._serialize_int(42)))
+
     def test_serialize_str_custom_encoding(self):
         self.part.headers[CONTENT_TYPE] = \
             'text/plain;charset=cp1251'

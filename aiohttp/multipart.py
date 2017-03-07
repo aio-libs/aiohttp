@@ -693,6 +693,7 @@ class BodyPartWriter(object):
         self._serialize_map = {
             bytes: self._serialize_bytes,
             str: self._serialize_str,
+            int: self._serialize_int,
             io.IOBase: self._serialize_io,
             MultipartWriter: self._serialize_multipart,
             ('application', 'json'): self._serialize_json,
@@ -807,6 +808,9 @@ class BodyPartWriter(object):
     def _serialize_str(self, obj):
         *_, params = parse_mimetype(self.headers.get(CONTENT_TYPE))
         yield obj.encode(params.get('charset', 'us-ascii'))
+
+    def _serialize_int(self, obj):
+        return self._serialize_str(str(obj))
 
     def _serialize_io(self, obj):
         while True:
