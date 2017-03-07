@@ -85,9 +85,9 @@ class HttpParser:
                 raise errors.InvalidHeader(line) from None
 
             bname = bname.strip(b' \t')
-            bname_upper = bname.upper()
-            if HDRRE.search(bname_upper):
-                raise errors.InvalidHeader(bname_upper)
+            bname_upr = bname.upper()
+            if HDRRE.search(bname_upr):
+                raise errors.InvalidHeader(bname_upr)
 
             # next line
             lines_idx += 1
@@ -103,7 +103,7 @@ class HttpParser:
                     if header_length > self.max_field_size:
                         raise errors.LineTooLong(
                             'request header field {}'.format(
-                                bname_upper.decode("utf8", "xmlcharrefreplace")),
+                                bname_upr.decode("utf8", "xmlcharrefreplace")),
                             self.max_field_size)
                     bvalue.append(line)
 
@@ -116,12 +116,12 @@ class HttpParser:
                 if header_length > self.max_field_size:
                     raise errors.LineTooLong(
                         'request header field {}'.format(
-                            bname_upper.decode("utf8", "xmlcharrefreplace")),
+                            bname_upr.decode("utf8", "xmlcharrefreplace")),
                         self.max_field_size)
 
             bvalue = bvalue.strip()
 
-            name = istr(bname_upper.decode('utf-8', 'surrogateescape'))
+            name = istr(bname_upr.decode('utf-8', 'surrogateescape'))
             value = bvalue.decode('utf-8', 'surrogateescape')
 
             # keep-alive and encoding
