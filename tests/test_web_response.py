@@ -390,8 +390,8 @@ def test_repr_after_eof():
     resp.write(b'data')
     writer.drain.return_value = ()
     yield from resp.write_eof()
-    assert not resp.started
-    assert not resp.prepared
+    assert resp.started
+    assert resp.prepared
     resp_repr = repr(resp)
     assert resp_repr == '<StreamResponse OK eof>'
 
