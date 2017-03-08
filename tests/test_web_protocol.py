@@ -265,6 +265,15 @@ def test_slow_request(make_srv):
 
 
 @asyncio.coroutine
+def test_simple(srv, loop, buf):
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n\r\n')
+
+    yield from asyncio.sleep(0, loop=loop)
+    assert buf.startswith(b'HTTP/1.1 200 OK\r\n')
+
+
+@asyncio.coroutine
 def test_bad_method(srv, loop, buf):
     srv.data_received(
         b'!@#$ / HTTP/1.0\r\n'
