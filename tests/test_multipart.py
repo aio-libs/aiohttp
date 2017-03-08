@@ -363,14 +363,17 @@ class PartReaderTestCase(TestCase):
         self.assertEqual(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
                          b' \xd0\xbc\xd0\xb8\xd1\x80!', result)
 
+    @pytest.mark.parametrize('encoding', [])
     def test_read_with_content_transfer_encoding_binary(self):
-        obj = aiohttp.multipart.BodyPartReader(
-            self.boundary, {CONTENT_TRANSFER_ENCODING: 'binary'},
-            Stream(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
-                   b' \xd0\xbc\xd0\xb8\xd1\x80!\r\n--:--'))
-        result = yield from obj.read(decode=True)
-        self.assertEqual(b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
-                         b' \xd0\xbc\xd0\xb8\xd1\x80!', result)
+        data = b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,' \
+               b' \xd0\xbc\xd0\xb8\xd1\x80!'
+        for encoding in ('binary', '8bit', '7bit'):
+            with self.subTest(encoding):
+                obj = aiohttp.multipart.BodyPartReader(
+                    self.boundary, {CONTENT_TRANSFER_ENCODING: encoding},
+                    Stream(data + b'\r\n--:--'))
+                result = yield from obj.read(decode=True)
+                self.assertEqual(data, result)
 
     def test_read_with_content_transfer_encoding_unknown(self):
         obj = aiohttp.multipart.BodyPartReader(
