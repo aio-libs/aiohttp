@@ -406,7 +406,7 @@ def test_cannot_write_after_eof():
 
 
 @asyncio.coroutine
-def test_repr_after_eof():
+def test___repr___after_eof():
     resp = StreamResponse()
     yield from resp.prepare(make_request('GET', '/'))
 
@@ -416,7 +416,7 @@ def test_repr_after_eof():
     yield from resp.write_eof()
     assert not resp.prepared
     resp_repr = repr(resp)
-    assert resp_repr == '<StreamResponse OK not started>'
+    assert resp_repr == '<StreamResponse OK eof>'
 
 
 @asyncio.coroutine
@@ -578,9 +578,9 @@ def test___repr__():
     assert "<StreamResponse 301 GET /path/to >" == repr(resp)
 
 
-def test___repr__not_started():
+def test___repr___not_prepared():
     resp = StreamResponse(reason=301)
-    assert "<StreamResponse 301 not started>" == repr(resp)
+    assert "<StreamResponse 301 not prepared>" == repr(resp)
 
 
 @asyncio.coroutine
