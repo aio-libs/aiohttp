@@ -305,6 +305,8 @@ class StreamResponse(HeadersMixin):
 
     @asyncio.coroutine
     def prepare(self, request):
+        if self._eof_sent:
+            return
         if self._payload_writer is not None:
             return self._payload_writer
 
@@ -390,6 +392,7 @@ class StreamResponse(HeadersMixin):
 
     @asyncio.coroutine
     def drain(self):
+        assert not self._eof_sent, "EOF has already been sent"
         assert self._payload_writer is not None, \
             "Response has not been started"
         yield from self._payload_writer.drain()
@@ -412,10 +415,12 @@ class StreamResponse(HeadersMixin):
         self._payload_writer = None
 
     def __repr__(self):
-        if self.prepared:
+        if self._eof_sent:
+            info = "eof"
+        elif self.prepared:
             info = "{} {} ".format(self._req.method, self._req.path)
         else:
-            info = "not started"
+            info = "not prepared"
         return "<{} {} {}>".format(self.__class__.__name__,
                                    self.reason, info)
 
