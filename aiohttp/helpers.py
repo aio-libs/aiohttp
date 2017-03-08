@@ -186,8 +186,18 @@ class FormData:
                 to_add.extend(rec.items())
 
             elif isinstance(rec, (list, tuple)) and len(rec) == 2:
-                k, fp = rec
-                self.add_field(k, fp)
+                k, v = rec
+                ct, fn = None, None
+                if isinstance(v, (list, tuple)):
+                    if len(v) == 2:
+                        fn, v = v
+                    elif len(v) == 3:
+                        fn, v, ct = v
+                    else:
+                        raise ValueError('Only (filename, file) and '
+                                         '(filename, file, content_type) '
+                                         'tuples are allowed')
+                self.add_field(k, v, content_type=ct, filename=fn)
 
             else:
                 raise TypeError('Only io.IOBase, multidict and (name, file) '
