@@ -192,6 +192,8 @@ class FileSender:
                 # value of last-byte-pos with a value that is one less than
                 # the current length of the selected representation).
                 count = file_size - start
+            if start >= file_size:
+                count = 0
 
         resp = self._response_factory(status=status)
         resp.content_type = ct
@@ -202,9 +204,11 @@ class FileSender:
         resp.last_modified = st.st_mtime
 
         resp.content_length = count
-        with filepath.open('rb') as f:
-            if start:
-                f.seek(start)
-            yield from self._sendfile(request, resp, f, count)
+        
+        if count:
+            with filepath.open('rb') as f:
+                if start:
+                    f.seek(start)
+                yield from self._sendfile(request, resp, f, count)
 
         return resp
