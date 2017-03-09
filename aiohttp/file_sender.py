@@ -176,8 +176,6 @@ class FileSender:
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
         if start is not None or end is not None:
-            if start > 0 or end:
-                status = HTTPPartialContent.status_code
             if start is None and end < 0:  # return tail of file
                 start = file_size + end
                 count = -end
@@ -194,6 +192,9 @@ class FileSender:
                 # the current length of the selected representation).
                 count = file_size - start
 
+        if count != file_size:
+            status = HTTPPartialContent.status_code
+                
         resp = self._response_factory(status=status)
         resp.content_type = ct
         if encoding:
