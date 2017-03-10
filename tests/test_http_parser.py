@@ -78,12 +78,22 @@ def test_parse(parser):
     text = b'GET /test HTTP/1.1\r\n\r\n'
     messages, upgrade, tail = parser.feed_data(text)
     assert len(messages) == 1
-    msg = messages[0][0]
+    msg, _ = messages[0]
     assert msg.compression is None
     assert not msg.upgrade
     assert msg.method == 'GET'
     assert msg.path == '/test'
     assert msg.version == (1, 1)
+
+
+@asyncio.coroutine
+def test_parse_body(parser):
+    text = b'GET /test HTTP/1.1\r\nContent-Length: 4\r\n\r\nbody'
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    _, payload = messages[0]
+    body = yield from payload.read(4)
+    assert body == b'body'
 
 
 def test_parse_delayed(parser):
