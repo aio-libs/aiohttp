@@ -74,6 +74,30 @@ test2: data\r
     assert not msg.upgrade
 
 
+def test_parse(parser):
+    text = b'GET /test HTTP/1.1\r\n\r\n'
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+
+
+def test_parse_delayed(parser):
+    text = b'GET /test HTTP/1.1\r\n'
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 0
+    assert not upgrade
+
+    messages, upgrade, tail = parser.feed_data(b'\r\n')
+    assert len(messages) == 1
+    msg = messages[0][0]
+    assert msg.method == 'GET'
+
+
 def test_headers_multi_feed(parser):
     text1 = b'GET /test HTTP/1.1\r\n'
     text2 = b'test: line\r'
