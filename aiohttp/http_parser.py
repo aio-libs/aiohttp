@@ -99,12 +99,10 @@ class HttpParser:
                 if pos >= start_pos:
                     # line found
                     self._lines.append(data[start_pos:pos])
+                    start_pos = pos + 2
 
                     # \r\n\r\n found
-                    start_pos = pos + 2
-                    if data[start_pos:start_pos+2] == SEP:
-                        self._lines.append(EMPTY)
-
+                    if self._lines[-1] == EMPTY:
                         try:
                             msg = self.parse_message(self._lines)
                         finally:
@@ -152,8 +150,6 @@ class HttpParser:
                             payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
-
-                        start_pos = start_pos+2
                 else:
                     self._tail = data[start_pos:]
                     data = EMPTY
