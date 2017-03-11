@@ -175,9 +175,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         Returns str or None if HTTP request has no HOST header.
         """
-        warnings.warn("host property is deprecated, "
-                      "use .url.host instead",
-                      DeprecationWarning)
         return self._message.headers.get(hdrs.HOST)
 
     @reify
@@ -214,6 +211,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @property
     def query(self):
         """A multidict with all the variables in the query string."""
+        return self._rel_url.query
+
+    @property
+    def GET(self):
+        """A multidict with all the variables in the query string."""
+        warnings.warn("GET property is deprecated, use .query instead",
+                      DeprecationWarning)
         return self._rel_url.query
 
     @property
