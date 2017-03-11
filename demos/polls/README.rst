@@ -43,6 +43,6 @@ Requirements
 
 
 .. _Python: https://www.python.org
-.. _aiohttp: https://github.com/KeepSafe/aiohttp
+.. _aiohttp: https://github.com/aio-libs/aiohttp
 .. _aiopg: https://github.com/aio-libs/aiopg
 .. _aiohttp_jinja2: https://github.com/aio-libs/aiohttp_jinja2

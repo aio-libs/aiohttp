@@ -11,7 +11,7 @@ If you want the full source code in advance or for comparison, check out
 the `demo source`_.
 
 .. _demo source:
-   https://github.com/KeepSafe/aiohttp/tree/master/demos/polls/
+   https://github.com/aio-libs/aiohttp/tree/master/demos/polls/
 
 
 .. _aiohttp-tutorial-setup:

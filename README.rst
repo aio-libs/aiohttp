@@ -1,17 +1,17 @@
 http client/server for asyncio
 ==============================
 
-.. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
+.. image:: https://raw.github.com/aio-libs/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
   :height: 64px
   :width: 64px
   :alt: aiohttp logo
 
-.. image:: https://travis-ci.org/KeepSafe/aiohttp.svg?branch=master
-  :target:  https://travis-ci.org/KeepSafe/aiohttp
+.. image:: https://travis-ci.org/aio-libs/aiohttp.svg?branch=master
+  :target:  https://travis-ci.org/aio-libs/aiohttp
   :align: right
 
-.. image:: https://codecov.io/gh/KeepSafe/aiohttp/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/KeepSafe/aiohttp
+.. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/aio-libs/aiohttp
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
     :target: https://badge.fury.io/py/aiohttp
@@ -141,7 +141,7 @@ Source code
 ------------
 
 The latest developer version is available in a github repository:
-https://github.com/KeepSafe/aiohttp
+https://github.com/aio-libs/aiohttp
 
 Benchmarks
 ----------
