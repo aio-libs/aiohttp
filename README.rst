@@ -1,5 +1,5 @@
-http client/server for asyncio
-==============================
+Async http client/server framework
+==================================
 
 .. image:: https://raw.github.com/aio-libs/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
   :height: 64px
