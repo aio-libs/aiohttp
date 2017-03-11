@@ -49,6 +49,7 @@ The client session supports the context manager protocol for self closing.
 
    The class for creating client sessions and making requests.
 
+
    :param aiohttp.connector.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
 

@@ -225,7 +225,7 @@ Now that the virtual environment is ready, we'll proceed to install
 aiohttp and gunicorn::
 
   >> pip install gunicorn
-  >> pip install -e git+https://github.com/KeepSafe/aiohttp.git#egg=aiohttp
+  >> pip install -e git+https://github.com/aio-libs/aiohttp.git#egg=aiohttp
 
 
 Application
