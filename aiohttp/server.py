@@ -279,7 +279,11 @@ class ServerHttpProtocol(aiohttp.StreamProtocol):
                     self._closing = True
 
                     if self._lingering_time:
-                        self.transport.write_eof()
+                        try:
+                            self.transport.write_eof()
+                        except:
+                            pass
+
                         self.log_debug(
                             'Start lingering close timer for %s sec.',
                             self._lingering_time)

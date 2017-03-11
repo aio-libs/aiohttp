@@ -225,9 +225,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         E.g., ``/app/blog``
         """
-        warnings.warn("path property is deprecated, use .rel_url.path instead",
-                      DeprecationWarning)
         return self.rel_url.path
+
+    @reify
+    def query(self):
+        """A multidict with all the variables in the query string."""
+        return self.rel_url.query
 
     @reify
     def query_string(self):
@@ -235,9 +238,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         E.g., id=10
         """
-        warnings.warn("query_string property is deprecated, "
-                      "use .rel_url.query_string instead",
-                      DeprecationWarning)
         return self.rel_url.query_string
 
     @reify
@@ -246,7 +246,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         Lazy property.
         """
-        warnings.warn("GET property is deprecated, use .rel_url.query instead",
+        warnings.warn("GET property is deprecated, use .query instead",
                       DeprecationWarning)
         return self.rel_url.query
 
