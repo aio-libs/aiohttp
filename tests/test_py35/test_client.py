@@ -91,11 +91,11 @@ async def test_aiohttp_request(loop, test_server):
     app.router.add_get('/', handler)
     server = await test_server(app)
 
-    async with aiohttp.request('GET', server.make_url('/')) as resp:
+    async with aiohttp.request('GET', server.make_url('/'), loop=loop) as resp:
         await resp.read()
         assert resp.status == 200
 
-    resp = await aiohttp.request('GET', server.make_url('/'))
+    resp = await aiohttp.request('GET', server.make_url('/'), loop=loop)
     await resp.read()
     assert resp.status == 200
     assert resp.connection is None

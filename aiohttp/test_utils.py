@@ -534,6 +534,7 @@ def make_mocked_request(method, path, headers=None, *,
     if payload_writer is sentinel:
         payload_writer = mock.Mock()
         payload_writer.write_eof.side_effect = noop
+        payload_writer.drain.side_effect = noop
 
     protocol.transport = transport
     protocol.writer = writer
