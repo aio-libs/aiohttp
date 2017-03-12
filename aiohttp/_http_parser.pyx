@@ -259,7 +259,8 @@ cdef class HttpRequestParserC(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190, response_with_body=True):
+                 size_t max_field_size=8190,
+                 response_with_body=True, read_until_eof=False):
          self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
                     max_line_size, max_headers, max_field_size,
                     response_with_body)
@@ -269,7 +270,8 @@ cdef class HttpResponseParserC(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190, response_with_body=True):
+                 size_t max_field_size=8190,
+                 response_with_body=True, read_until_eof=False):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
                    response_with_body)

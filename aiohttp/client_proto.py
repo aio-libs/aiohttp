@@ -126,7 +126,8 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self._skip_payload = skip_payload
         self._skip_status_codes = skip_status_codes
         self._read_until_eof = read_until_eof
-        self._parser = HttpResponseParser(self, self._loop, timer=timer)
+        self._parser = HttpResponseParser(
+            self, self._loop, timer=timer, read_until_eof=read_until_eof)
 
         if self._tail:
             data, self._tail = self._tail, b''

@@ -57,7 +57,7 @@ class HttpParser:
     def __init__(self, protocol=None, loop=None,
                  max_line_size=8190, max_headers=32768, max_field_size=8190,
                  timer=None, code=None, method=None,
-                 readall=False, response_with_body=True):
+                 readall=False, response_with_body=True, read_until_eof=False):
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
@@ -68,6 +68,7 @@ class HttpParser:
         self.method = method
         self.readall = readall
         self.response_with_body = response_with_body
+        self.read_until_eof = read_until_eof
 
         self._lines = []
         self._tail = b''
@@ -147,7 +148,20 @@ class HttpParser:
                                 payload, method=msg.method,
                                 compression=msg.compression, readall=True)
                         else:
-                            payload = EMPTY_PAYLOAD
+                            if (getattr(msg, 'code', 100) >= 199 and
+                                    length is None and self.read_until_eof):
+                                payload = FlowControlStreamReader(
+                                    self.protocol, timer=self.timer, loop=loop)
+                                payload_parser = HttpPayloadParser(
+                                    payload, length=length,
+                                    chunked=msg.chunked, method=method,
+                                    compression=msg.compression,
+                                    code=self.code, readall=True,
+                                    response_with_body=self.response_with_body)
+                                if not payload_parser.done:
+                                    self._payload_parser = payload_parser
+                            else:
+                                payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
                 else:
