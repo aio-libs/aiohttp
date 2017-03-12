@@ -69,7 +69,8 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
             if (not self._read_until_eof or
                     (self._message.chunked or
                      hdrs.CONTENT_LENGTH in self._message.headers)):
-                payload_exc = (exc if exc is not None else
+                payload_exc = (
+                    exc if exc is not None else
                     ClientPayloadError('Response payload is not completed'))
                 self._payload.set_exception(payload_exc)
             else:
