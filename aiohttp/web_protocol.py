@@ -18,7 +18,7 @@ from .web_exceptions import HTTPException
 from .web_request import BaseRequest
 from .web_response import Response
 
-__all__ = ('RequestHandler',)
+__all__ = ('RequestHandler', 'RequestPayloadError')
 
 ERROR = http.RawRequestMessage(
     'UNKNOWN', '/', http.HttpVersion10, {},
@@ -31,6 +31,10 @@ if hasattr(socket, 'SO_KEEPALIVE'):
 else:
     def tcp_keepalive(server, transport):  # pragma: no cover
         pass
+
+
+class RequestPayloadError(Exception):
+    """Payload parsing error."""
 
 
 class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
@@ -125,7 +129,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             self, loop,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
-            max_headers=max_headers)
+            max_headers=max_headers,
+            payload_exception=RequestPayloadError)
 
         self.transport = None
         self._reading_paused = False

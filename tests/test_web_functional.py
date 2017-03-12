@@ -950,6 +950,29 @@ def test_response_with_precompressed_body_deflate(loop, test_client):
 
 
 @asyncio.coroutine
+def test_bad_request_payload(loop, test_client):
+
+    got_exception = False
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.method == 'GET'
+
+        with pytest.raises(aiohttp.web.RequestPayloadError):
+            yield from request.content.read()
+
+        return web.Response()
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get(
+        '/', data=b'test', headers={'content-encoding': 'gzip'})
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
 def test_stream_response_multiple_chunks(loop, test_client):
     @asyncio.coroutine
     def handler(request):

@@ -1637,6 +1637,27 @@ def test_encoding_gzip(loop, test_client):
 
 
 @asyncio.coroutine
+def test_bad_payload_encoding(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.headers['Content-Encoding'] = 'gzip'
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        yield from resp.read()
+
+    resp.close()
+
+
+@asyncio.coroutine
 def test_chunked(loop, test_client):
     @asyncio.coroutine
     def handler(request):
@@ -1808,7 +1829,7 @@ def test_broken_connection_2(loop, test_client):
     client = yield from test_client(app)
 
     resp = yield from client.get('/')
-    with pytest.raises(aiohttp.ServerDisconnectedError):
+    with pytest.raises(aiohttp.ClientPayloadError):
         yield from resp.read()
     resp.close()
 

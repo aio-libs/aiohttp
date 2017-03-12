@@ -601,6 +601,7 @@ class ClientResponse(HeadersMixin):
         return noop()
 
     def raise_for_status(self):
+        print ('=========')
         if 400 <= self.status:
             raise aiohttp.ClientResponseError(
                 code=self.status,

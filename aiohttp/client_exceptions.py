@@ -11,7 +11,8 @@ __all__ = (
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
     'ServerFingerprintMismatch',
 
-    'ClientResponseError', 'ClientHttpProxyError', 'WSServerHandshakeError')
+    'ClientResponseError', 'ClientPayloadError',
+    'ClientHttpProxyError', 'WSServerHandshakeError')
 
 
 class ClientError(Exception):
@@ -32,6 +33,10 @@ class ClientResponseError(ClientError):
             self.headers = headers
 
         super().__init__("%s, message='%s'" % (self.code, message))
+
+
+class ClientPayloadError(ClientError):
+    """Response payload error."""
 
 
 class WSServerHandshakeError(ClientResponseError):
