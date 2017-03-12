@@ -2,8 +2,8 @@ import asyncio
 import asyncio.streams
 
 from . import hdrs
-from .client_exceptions import (ClientOSError, ClientResponseError,
-                                ServerDisconnectedError)
+from .client_exceptions import (ClientOSError, ClientPayloadError,
+                                ClientResponseError, ServerDisconnectedError)
 from .http import HttpResponseParser, StreamWriter
 from .streams import EMPTY_PAYLOAD, DataQueue
 
@@ -64,17 +64,20 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
     def connection_lost(self, exc):
         if isinstance(exc, OSError):
             exc = ClientOSError(*exc.args)
-        else:
-            exc = ServerDisconnectedError(exc)
 
         if self._payload is not None and not self._payload.is_eof():
             if (not self._read_until_eof or
                     (self._message.chunked or
                      hdrs.CONTENT_LENGTH in self._message.headers)):
-                self._payload.set_exception(exc)
+                payload_exc = (exc if exc is not None else
+                    ClientPayloadError('Response payload is not completed'))
+                self._payload.set_exception(payload_exc)
             else:
                 self._payload.feed_eof()
+
         if not self.is_eof():
+            if exc is None:
+                exc = ServerDisconnectedError(exc)
             DataQueue.set_exception(self, exc)
 
         self.transport = self.writer = None
@@ -127,7 +130,9 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self._skip_status_codes = skip_status_codes
         self._read_until_eof = read_until_eof
         self._parser = HttpResponseParser(
-            self, self._loop, timer=timer, read_until_eof=read_until_eof)
+            self, self._loop, timer=timer,
+            payload_exception=ClientPayloadError,
+            read_until_eof=read_until_eof)
 
         if self._tail:
             data, self._tail = self._tail, b''

@@ -53,6 +53,8 @@ cdef class HttpParser:
         bint    _upgraded
         list    _messages
         object  _payload
+        bint    _payload_error
+        object  _payload_exception
         object _last_error
 
         Py_buffer py_buf
@@ -75,7 +77,8 @@ cdef class HttpParser:
     cdef _init(self, cparser.http_parser_type mode,
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
-                   size_t max_field_size=8190, response_with_body=True):
+                   size_t max_field_size=8190, payload_exception=None,
+                   response_with_body=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -87,6 +90,8 @@ cdef class HttpParser:
         self._timer = timer
 
         self._payload = None
+        self._payload_error = 0
+        self._payload_exception = payload_exception
         self._messages = []
 
         self._header_name = None
@@ -235,13 +240,14 @@ cdef class HttpParser:
         if (self._cparser.http_errno != cparser.HPE_OK and
                 (self._cparser.http_errno != cparser.HPE_INVALID_METHOD or
                  self._cparser.method == 0)):
-            if self._last_error is not None:
-                ex = self._last_error
-                self._last_error = None
-            else:
-                ex = parser_error_from_errno(
-                    <cparser.http_errno> self._cparser.http_errno)
-            raise ex
+            if self._payload_error == 0:
+                if self._last_error is not None:
+                    ex = self._last_error
+                    self._last_error = None
+                else:
+                    ex = parser_error_from_errno(
+                        <cparser.http_errno> self._cparser.http_errno)
+                raise ex
 
         if self._messages:
             messages = self._messages
@@ -259,22 +265,22 @@ cdef class HttpRequestParserC(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190,
+                 size_t max_field_size=8190, payload_exception=None,
                  response_with_body=True, read_until_eof=False):
          self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
                     max_line_size, max_headers, max_field_size,
-                    response_with_body)
+                    payload_exception, response_with_body)
 
 
 cdef class HttpResponseParserC(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
-                 size_t max_field_size=8190,
+                 size_t max_field_size=8190, payload_exception=None,
                  response_with_body=True, read_until_eof=False):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
-                   response_with_body)
+                   payload_exception, response_with_body)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
@@ -359,8 +365,8 @@ cdef int cb_on_headers_complete(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_headers_complete()
-    except BaseException as ex:
-        pyparser._last_error = ex
+    except BaseException as exc:
+        pyparser._last_error = exc
         return -1
     else:
         if pyparser._cparser.upgrade or pyparser._cparser.method == 5: # CONNECT
@@ -375,8 +381,12 @@ cdef int cb_on_body(cparser.http_parser* parser,
     cdef bytes body = at[:length]
     try:
         pyparser._payload.feed_data(body, length)
-    except BaseException as ex:
-        pyparser._last_error = ex
+    except BaseException as exc:
+        if pyparser._payload_exception is not None:
+            pyparser._payload.set_exception(pyparser._payload_exception(str(exc)))
+        else:
+            pyparser._payload.set_exception(exc)
+        pyparser._payload_error = 1
         return -1
     else:
         return 0
@@ -386,8 +396,8 @@ cdef int cb_on_message_complete(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
         pyparser._on_message_complete()
-    except BaseException as ex:
-        pyparser._last_error = ex
+    except BaseException as exc:
+        pyparser._last_error = exc
         return -1
     else:
         return 0

@@ -56,8 +56,9 @@ class HttpParser:
 
     def __init__(self, protocol=None, loop=None,
                  max_line_size=8190, max_headers=32768, max_field_size=8190,
-                 timer=None, code=None, method=None,
-                 readall=False, response_with_body=True, read_until_eof=False):
+                 timer=None, code=None, method=None, readall=False,
+                 payload_exception=None,
+                 response_with_body=True, read_until_eof=False):
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
@@ -67,6 +68,7 @@ class HttpParser:
         self.code = code
         self.method = method
         self.readall = readall
+        self.payload_exception = payload_exception
         self.response_with_body = response_with_body
         self.read_until_eof = read_until_eof
 
@@ -177,8 +179,19 @@ class HttpParser:
             # feed payload
             elif data and start_pos < data_len:
                 assert not self._lines
-                eof, data = self._payload_parser.feed_data(
-                    data[start_pos:])
+                try:
+                    eof, data = self._payload_parser.feed_data(
+                        data[start_pos:])
+                except BaseException as exc:
+                    if self.payload_exception is not None:
+                        self._payload_parser.payload.set_exception(
+                            self.payload_exception(str(exc)))
+                    else:
+                        self._payload_parser.payload.set_exception(exc)
+
+                    eof = True
+                    data = b''
+
                 if eof:
                     start_pos = 0
                     data_len = len(data)
@@ -555,17 +568,23 @@ class DeflateBuffer:
     def __init__(self, out, encoding):
         self.out = out
         self.size = 0
+        self.encoding = encoding
+
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
 
         self.zlib = zlib.decompressobj(wbits=zlib_mode)
+
+    def set_exception(self, exc):
+        self.out.set_exception(exc)
 
     def feed_data(self, chunk, size):
         self.size += size
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise ContentEncodingError('deflate')
+            raise ContentEncodingError(
+                'Can not decode content-encoding: %s' % self.encoding)
 
         if chunk:
             self.out.feed_data(chunk, len(chunk))
