@@ -91,7 +91,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
         host, port = listen_addr
         server_coroutine = thread_loop.create_server(
             lambda: TestHttpServer(
-                web.Server(handler, loop=loop), keepalive_timeout=0.5),
+                web.Server(handler, loop=thread_loop), keepalive_timeout=0.5),
             host, port, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 
