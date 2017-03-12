@@ -952,8 +952,6 @@ def test_response_with_precompressed_body_deflate(loop, test_client):
 @asyncio.coroutine
 def test_bad_request_payload(loop, test_client):
 
-    got_exception = False
-
     @asyncio.coroutine
     def handler(request):
         assert request.method == 'GET'

@@ -17,6 +17,9 @@ Client
 
 6. ClientPayloadError
 
+7. ClientResponse.release
+
+8. chunked
 
 
 Web
