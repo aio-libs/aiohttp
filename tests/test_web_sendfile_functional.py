@@ -45,6 +45,27 @@ def test_static_file_ok(loop, test_client, sender):
 
 
 @asyncio.coroutine
+def test_static_file_ok_string_path(loop, test_client, sender):
+    filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
+
+    @asyncio.coroutine
+    def handler(request):
+        return sender(str(filepath))
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    txt = yield from resp.text()
+    assert 'file content' == txt.rstrip()
+    assert 'application/octet-stream' == resp.headers['Content-Type']
+    assert resp.headers.get('Content-Encoding') is None
+    yield from resp.release()
+
+
+@asyncio.coroutine
 def test_static_file_not_exists(loop, test_client):
 
     app = web.Application(loop=loop)

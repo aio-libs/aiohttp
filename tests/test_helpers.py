@@ -1,4 +1,6 @@
+import asyncio
 import datetime
+import gc
 import sys
 from unittest import mock
 
@@ -402,6 +404,27 @@ class TestTimeService:
         assert time_service._count == 0
 
 
+# ----------------------------------- TimeoutHandle -------------------
+
+def test_timeout_handle(loop):
+    handle = helpers.TimeoutHandle(loop, 10.2)
+    cb = mock.Mock()
+    handle.register(cb)
+    assert cb == handle._callbacks[0][0]
+    handle.close()
+    assert not handle._callbacks
+
+
+def test_timeout_handle_cb_exc(loop):
+    handle = helpers.TimeoutHandle(loop, 10.2)
+    cb = mock.Mock()
+    handle.register(cb)
+    cb.side_effect = ValueError()
+    handle()
+    assert cb.called
+    assert not handle._callbacks
+
+
 # ----------------------------------- FrozenList ----------------------
 
 
@@ -416,6 +439,39 @@ class TestFrozenList:
 
 
 # -------------------------------- CeilTimeout --------------------------
+
+
+@asyncio.coroutine
+def test_weakref_handle(loop):
+    cb = mock.Mock()
+    helpers.weakref_handle(cb, 0.01, loop, False)
+    yield from asyncio.sleep(0.1, loop=loop)
+    assert cb.called
+
+
+@asyncio.coroutine
+def test_weakref_handle_weak(loop):
+    cb = mock.Mock()
+    helpers.weakref_handle(cb, 0.01, loop, False)
+    del cb
+    gc.collect()
+    yield from asyncio.sleep(0.1, loop=loop)
+
+
+def test_ceil_call_later():
+    cb = mock.Mock()
+    loop = mock.Mock()
+    loop.time.return_value = 10.1
+    helpers.call_later(cb, 10.1, loop)
+    loop.call_at.assert_called_with(21.0, cb)
+
+
+def test_ceil_call_later_no_timeout():
+    cb = mock.Mock()
+    loop = mock.Mock()
+    helpers.call_later(cb, 0, loop)
+    assert not loop.call_at.called
+
 
 def test_ceil_timeout(loop):
     with helpers.CeilTimeout(0, loop=loop) as timeout:
