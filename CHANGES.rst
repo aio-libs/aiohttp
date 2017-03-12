@@ -61,3 +61,7 @@ CHANGES
   attributes and `resolve` constructor  parameter #1607
 
 - Dropped `ProxyConnector` #1609
+
+- Fix file_sender to not fall on bad request (range out of file size)
+
+- Fix file_sender to correct stream video to Chromes
