@@ -1107,7 +1107,7 @@ class TestHttpClientConnector(unittest.TestCase):
             session.request('get', url)
         )
 
-        self.loop.run_until_complete(r.release())
+        r.release()
         first_conn = next(iter(conn._conns.values()))[0][0]
         self.assertEqual(
             first_conn.transport._sock.getsockname(), ('127.0.0.1', port))
