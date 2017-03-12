@@ -301,7 +301,7 @@ def _wrap_add_subbapp(app):
     return add_subapp
 
 
-def run_app(app, *, host='0.0.0.0', port=None, path=None,
+def run_app(app, *, host='0.0.0.0', port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
             access_log=access_logger):
@@ -341,6 +341,13 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
     if hosts and port is None:
         port = 8443 if ssl_context else 8080
 
+    if sock is None:
+        socks = ()
+    elif not isinstance(sock, Iterable):
+        socks = (sock,)
+    else:
+        socks = sock
+
     server_creations = []
     uris = [str(base_url.with_host(host)) for host in hosts]
     if hosts:
@@ -371,6 +378,15 @@ def run_app(app, *, host='0.0.0.0', port=None, path=None,
                     os.remove(path)
             except FileNotFoundError:
                 pass
+    for sock in socks:
+        server_creations.append(
+            loop.create_server(
+                handler, sock=sock, ssl=ssl_context, backlog=backlog
+            )
+        )
+
+        host, port = sock.getsockname()
+        uris.append(str(base_url.with_host(host).with_port(port)))
 
     servers = loop.run_until_complete(
         asyncio.gather(*server_creations, loop=loop)
