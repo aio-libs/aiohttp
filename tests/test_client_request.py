@@ -688,15 +688,19 @@ def test_content_encoding_header(loop, conn):
         headers={'Content-Encoding': 'deflate'}, loop=loop)
     with mock.patch('aiohttp.client_reqrep.PayloadWriter') as m_writer:
         resp = req.send(conn)
-    assert req.headers['TRANSFER-ENCODING'] == 'chunked'
-    assert req.headers['CONTENT-ENCODING'] == 'deflate'
 
-    m_writer.return_value\
-        .enable_compression.assert_called_with('deflate')
-    m_writer.return_value\
-        .enable_chunking.assert_called_with()
+    assert not m_writer.return_value.enable_compression.called
+    assert not m_writer.return_value.enable_chunking.called
     yield from req.close()
     resp.close()
+
+
+@asyncio.coroutine
+def test_compress_and_content_encoding(loop, conn):
+    with pytest.raises(ValueError):
+        ClientRequest('get', URL('http://python.org/'), data='foo',
+                      headers={'content-encoding': 'deflate'},
+                      compress='deflate', loop=loop)
 
 
 @asyncio.coroutine
@@ -736,14 +740,10 @@ def test_chunked_explicit(loop, conn):
 
 @asyncio.coroutine
 def test_chunked_length(loop, conn):
-    req = ClientRequest(
-        'get', URL('http://python.org/'),
-        headers={'CONTENT-LENGTH': '1000'}, chunked=1024, loop=loop)
-    resp = req.send(conn)
-    assert req.headers['TRANSFER-ENCODING'] == 'chunked'
-    assert 'CONTENT-LENGTH' not in req.headers
-    yield from req.close()
-    resp.close()
+    with pytest.raises(ValueError):
+        ClientRequest(
+            'get', URL('http://python.org/'),
+            headers={'CONTENT-LENGTH': '1000'}, chunked=True, loop=loop)
 
 
 @asyncio.coroutine

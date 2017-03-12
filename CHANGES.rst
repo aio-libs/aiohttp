@@ -6,7 +6,7 @@ CHANGES
 
 - Properly handle payload errors #1710
 
-- It is not possible to combine Tranfer-Encoding and chunked parameter,
+- It is not possible to combine Transfer-Encoding and chunked parameter,
   same for compress and Content-Encoding #1655
 
 - Connector's `limit` parameter indicates total concurrent connections.

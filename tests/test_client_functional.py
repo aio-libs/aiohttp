@@ -1201,9 +1201,8 @@ def test_POST_FILES(loop, test_client, fname):
     client = yield from test_client(app)
 
     with fname.open() as f:
-        resp = yield from client.post('/', data={'some': f, 'test': b'data'},
-                                      chunked=True,
-                                      headers={'Transfer-Encoding': 'chunked'})
+        resp = yield from client.post(
+            '/', data={'some': f, 'test': b'data'}, chunked=True)
         assert 200 == resp.status
         resp.close()
 
