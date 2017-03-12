@@ -415,6 +415,14 @@ class TestFrozenList:
         assert l < [2]
 
 
+# -------------------------------- CeilTimeout --------------------------
+
+def test_ceil_timeout(loop):
+    with helpers.CeilTimeout(0, loop=loop) as timeout:
+        assert timeout._timeout is None
+        assert timeout._cancel_handler is None
+
+
 # -------------------------------- ContentDisposition -------------------
 
 def test_content_disposition():
