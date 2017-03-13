@@ -24,6 +24,6 @@ __all__ = (client.__all__ +  # noqa
            payload_streamer.__all__ +  # noqa
            streams.__all__ +  # noqa
            ('hdrs', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
-            'WSMsgType', 'MsgType', 'WSCloseCode',
+            'WSMsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage', 'CookieJar',
            ))

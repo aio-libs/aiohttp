@@ -40,6 +40,8 @@ Client
 
 16. TCPConnector.conn_timeout - moved to ClientSession
 
+17. aiohttp.MsgType dropped, use aiohttp.WSMsgType
+
 
 Web
 ---
