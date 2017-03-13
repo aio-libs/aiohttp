@@ -671,7 +671,7 @@ class TCPConnector(BaseConnector):
         else:
             sslcontext = None
 
-        hosts = yield from self._resolve_host(req.host, req.port)
+        hosts = yield from self._resolve_host(req.url.raw_host, req.port)
         exc = None
 
         for hinfo in hosts:

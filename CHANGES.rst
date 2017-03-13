@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-1.3.4 (2017-02-..)
+1.3.4 (2017-03-..)
 ------------------
 
 - Revert timeout handling in client request
@@ -11,6 +11,8 @@ CHANGES
 - Fix file_sender to not fall on bad request (range out of file size)
 
 - Fix file_sender to correct stream video to Chromes
+
+- Fix NotImplemented server exception
 
 
 1.3.3 (2017-02-19)

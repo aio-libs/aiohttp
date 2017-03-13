@@ -101,7 +101,7 @@ args = dict(
     maintainer=', '.join(('Andrew Svetlov <andrew.svetlov@gmail.com>',
                           'Nikolay Kim <fafhrd91@gmail.com>')),
     maintainer_email='aio-libs@googlegroups.com',
-    url='https://github.com/KeepSafe/aiohttp/',
+    url='https://github.com/aio-libs/aiohttp/',
     license='Apache 2',
     packages=['aiohttp'],
     install_requires=install_requires,

@@ -194,6 +194,9 @@ class FileSender:
             if start >= file_size:
                 count = 0
 
+        if count != file_size:
+            status = HTTPPartialContent.status_code
+
         resp = self._response_factory(status=status)
         resp.content_type = ct
         if encoding:
@@ -202,9 +205,6 @@ class FileSender:
             resp.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
         resp.last_modified = st.st_mtime
 
-        if count != file_size:
-            status = HTTPPartialContent.status_code
-        
         resp.content_length = count
         if count:
             with filepath.open('rb') as f:

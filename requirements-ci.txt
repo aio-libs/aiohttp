@@ -9,7 +9,7 @@ chardet==2.3.0
 isort==4.2.5
 tox==2.6.0
 multidict==2.1.4
-async-timeout==1.1.0
+async-timeout==1.2.0
 sphinxcontrib-asyncio==0.2.0
 sphinxcontrib-newsfeed==0.1.4
 pytest==3.0.6

@@ -502,12 +502,13 @@ def test_close_exc2(make_request):
         yield from ws.close()
 
 
+@asyncio.coroutine
 def test_start_twice_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     with pytest.warns(DeprecationWarning):
-        impl1 = ws.start(req)
-        impl2 = ws.start(req)
+        impl1 = yield from ws.start(req)
+        impl2 = yield from ws.start(req)
         assert impl1 is impl2
 
 

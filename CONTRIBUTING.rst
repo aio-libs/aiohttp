@@ -164,6 +164,6 @@ The End
 After finishing all steps make a GitHub_ Pull Request, thanks.
 
 
-.. _GitHub: https://github.com/KeepSafe/aiohttp
+.. _GitHub: https://github.com/aio-libs/aiohttp
 
 .. _ipdb: https://pypi.python.org/pypi/ipdb

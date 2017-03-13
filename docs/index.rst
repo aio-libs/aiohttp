@@ -8,7 +8,7 @@ aiohttp: Asynchronous HTTP Client/Server
 
 HTTP client/server for :term:`asyncio` (:pep:`3156`).
 
-.. _GitHub: https://github.com/KeepSafe/aiohttp
+.. _GitHub: https://github.com/aio-libs/aiohttp
 .. _Freenode: http://freenode.net
 
 
@@ -111,10 +111,10 @@ Source code
 The project is hosted on GitHub_
 
 Please feel free to file an issue on the `bug tracker
-<https://github.com/KeepSafe/aiohttp/issues>`_ if you have found a bug
+<https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Travis <https://travis-ci.org/KeepSafe/aiohttp>`_ for
+The library uses `Travis <https://travis-ci.org/aio-libs/aiohttp>`_ for
 Continuous Integration.
 
 
