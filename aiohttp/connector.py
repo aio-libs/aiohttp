@@ -288,7 +288,7 @@ class BaseConnector(object):
     def close(self):
         """Close all opened transports."""
         if self._closed:
-            return noop()
+            return
 
         self._closed = True
 
@@ -322,8 +322,6 @@ class BaseConnector(object):
             self._cleanup_handle = None
             self._cleanup_closed_transports.clear()
             self._cleanup_closed_handle = None
-
-        return noop()
 
     @property
     def closed(self):

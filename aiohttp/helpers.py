@@ -55,9 +55,15 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 if sys.version_info < (3, 5):
     noop = tuple
 else:
+    coroutines = asyncio.coroutines
+    old_debug = coroutines._DEBUG
+    coroutines._DEBUG = False
+
     @asyncio.coroutine
     def noop(*args, **kwargs):
-        pass
+        return
+
+    coroutines._DEBUG = old_debug
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):

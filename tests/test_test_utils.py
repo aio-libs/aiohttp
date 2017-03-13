@@ -243,7 +243,7 @@ def test_test_server_context_manager(loop):
             resp = yield from client.head(server.make_url('/'))
             assert resp.status == 200
             resp.close()
-            yield from client.close()
+            client.close()
 
         loop.run_until_complete(go())
 

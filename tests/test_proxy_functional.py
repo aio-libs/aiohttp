@@ -207,7 +207,7 @@ def test_proxy_http_acquired_cleanup(proxy_test_server, loop):
 
     assert 0 == len(conn._acquired)
 
-    yield from sess.close()
+    sess.close()
 
 
 @pytest.mark.skip('we need to reconsider how we test this')
