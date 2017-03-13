@@ -34,6 +34,13 @@ Client
 
 13. encoding and version params are dropped for ClientSession.request()
 
+14. BaseConnector.close - not a coroutine
+
+15. ClientSession.close - not a coroutine
+
+16. TCPConnector.conn_timeout - moved to ClientSession
+
+
 Web
 ---
 
@@ -48,3 +55,7 @@ Web
 5. Payload's supported as body
 
 6. FileSender api is gone, replacement is FileResponse
+
+7. Application.add_subapp
+
+8. Application.finished

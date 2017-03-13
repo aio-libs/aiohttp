@@ -23,7 +23,7 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import PY_35, CeilTimeout, TimeoutHandle, noop
+from .helpers import PY_35, CeilTimeout, TimeoutHandle
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
@@ -495,8 +495,6 @@ class ClientSession:
                 self._connector.close()
             self._connector = None
 
-        return noop()
-
     @property
     def closed(self):
         """Is client session closed.
@@ -546,7 +544,7 @@ class ClientSession:
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_val, exc_tb):
-            yield from self.close()
+            self.close()
 
 
 if PY_35:
@@ -638,7 +636,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
         try:
             return (yield from self._coro)
         except:
-            yield from self._session.close()
+            self._session.close()
             raise
 
     if PY_35:
@@ -646,7 +644,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
             try:
                 return (yield from self._coro)
             except:
-                yield from self._session.close()
+                self._session.close()
                 raise
 
     def __del__(self):

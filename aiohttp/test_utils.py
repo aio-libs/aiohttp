@@ -330,7 +330,7 @@ class TestClient:
                 resp.close()
             for ws in self._websockets:
                 yield from ws.close()
-            yield from self._session.close()
+            self._session.close()
             yield from self._server.close()
             self._closed = True
 

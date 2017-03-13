@@ -396,7 +396,7 @@ def test_format_task_get(test_server, loop):
     assert "{}".format(task)[:18] == "<Task pending coro"
     resp = yield from task
     resp.close()
-    yield from client.close()
+    client.close()
 
 
 @asyncio.coroutine
@@ -1792,7 +1792,7 @@ def test_request_conn_error(loop):
     client = aiohttp.ClientSession(loop=loop)
     with pytest.raises(aiohttp.ClientConnectionError):
         yield from client.get('http://0.0.0.0:1')
-    yield from client.close()
+    client.close()
 
 
 @pytest.mark.xfail
