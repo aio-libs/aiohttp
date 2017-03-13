@@ -176,7 +176,6 @@ class FileSender:
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
         if start is not None or end is not None:
-            status = HTTPPartialContent.status_code
             if start is None and end < 0:  # return tail of file
                 start = file_size + end
                 count = -end
@@ -192,6 +191,8 @@ class FileSender:
                 # value of last-byte-pos with a value that is one less than
                 # the current length of the selected representation).
                 count = file_size - start
+            if start >= file_size:
+                count = 0
 
         resp = self._response_factory(status=status)
         resp.content_type = ct
@@ -201,10 +202,14 @@ class FileSender:
             resp.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
         resp.last_modified = st.st_mtime
 
+        if count != file_size:
+            status = HTTPPartialContent.status_code
+        
         resp.content_length = count
-        with filepath.open('rb') as f:
-            if start:
-                f.seek(start)
-            yield from self._sendfile(request, resp, f, count)
+        if count:
+            with filepath.open('rb') as f:
+                if start:
+                    f.seek(start)
+                yield from self._sendfile(request, resp, f, count)
 
         return resp
