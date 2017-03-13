@@ -33,6 +33,8 @@ class ContentCoding(enum.Enum):
 
 class StreamResponse(HeadersMixin):
 
+    _length_check = True
+
     def __init__(self, *, status=200, reason=None, headers=None):
         self._body = None
         self._keep_alive = None
@@ -351,7 +353,7 @@ class StreamResponse(HeadersMixin):
             headers[TRANSFER_ENCODING] = 'chunked'
             if CONTENT_LENGTH in headers:
                 del headers[CONTENT_LENGTH]
-        else:
+        elif self._length_check:
             writer.length = self.content_length
             if writer.length is None and version >= HttpVersion11:
                 writer.enable_chunking()

@@ -10,7 +10,7 @@ from multidict import CIMultiDict, istr
 from . import hdrs
 from .helpers import NO_EXTENSIONS
 from .http_exceptions import (BadStatusLine, ContentEncodingError,
-                              InvalidHeader, LineTooLong,
+                              ContentLengthError, InvalidHeader, LineTooLong,
                               TransferEncodingError)
 from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
@@ -77,6 +77,11 @@ class HttpParser:
         self._upgraded = False
         self._payload = None
         self._payload_parser = None
+
+    def feed_eof(self):
+        if self._payload_parser is not None:
+            self._payload_parser.feed_eof()
+            self._payload_parser = None
 
     def feed_data(self, data,
                   SEP=b'\r\n', EMPTY=b'',
@@ -453,6 +458,12 @@ class HttpPayloadParser:
     def feed_eof(self):
         if self._type == ParseState.PARSE_UNTIL_EOF:
             self.payload.feed_eof()
+        elif self._type == ParseState.PARSE_LENGTH:
+            raise ContentLengthError(
+                "Not enough data for satisfy content length header.")
+        elif self._type == ParseState.PARSE_CHUNKED:
+            raise TransferEncodingError(
+                "Not enough data for satisfy transfer length header.")
 
     def feed_data(self, chunk, SEP=b'\r\n', CHUNK_EXT=b';'):
         # Read specified amount of bytes

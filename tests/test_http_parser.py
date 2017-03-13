@@ -576,7 +576,9 @@ class TestParsePayload(unittest.TestCase):
 
         p = HttpPayloadParser(out, length=4)
         p.feed_data(b'da')
-        p.feed_eof()
+
+        with pytest.raises(http_exceptions.ContentLengthError):
+            p.feed_eof()
 
     def test_parse_chunked_payload_size_error(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
