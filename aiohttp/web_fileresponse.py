@@ -148,6 +148,7 @@ class FileResponse(StreamResponse):
             self.set_tcp_nodelay(True)
 
         yield from writer.drain()
+        return writer
 
     if hasattr(os, "sendfile") and not NOSENDFILE:  # pragma: no cover
         _sendfile = _sendfile_system
@@ -207,13 +208,13 @@ class FileResponse(StreamResponse):
                 # value of last-byte-pos with a value that is one less than
                 # the current length of the selected representation).
                 count = file_size - start
-            
+
             if start >= file_size:
                 count = 0
-                
+
         if count != file_size:
             status = HTTPPartialContent.status_code
-            
+
         self.set_status(status)
         self.content_type = ct
         if encoding:
@@ -229,3 +230,5 @@ class FileResponse(StreamResponse):
                     fobj.seek(start)
 
                 return (yield from self._sendfile(request, fobj, count))
+
+        return (yield from super().prepare(request))
