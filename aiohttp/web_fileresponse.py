@@ -192,7 +192,6 @@ class FileResponse(StreamResponse):
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
         if start is not None or end is not None:
-            status = HTTPPartialContent.status_code
             if start is None and end < 0:  # return tail of file
                 start = file_size + end
                 count = -end
@@ -208,7 +207,13 @@ class FileResponse(StreamResponse):
                 # value of last-byte-pos with a value that is one less than
                 # the current length of the selected representation).
                 count = file_size - start
-
+            
+            if start >= file_size:
+                count = 0
+                
+        if count != file_size:
+            status = HTTPPartialContent.status_code
+            
         self.set_status(status)
         self.content_type = ct
         if encoding:
@@ -218,8 +223,9 @@ class FileResponse(StreamResponse):
         self.last_modified = st.st_mtime
         self.content_length = count
 
-        with filepath.open('rb') as fobj:
-            if start:
-                fobj.seek(start)
+        if count:
+            with filepath.open('rb') as fobj:
+                if start:
+                    fobj.seek(start)
 
-            return (yield from self._sendfile(request, fobj, count))
+                return (yield from self._sendfile(request, fobj, count))
