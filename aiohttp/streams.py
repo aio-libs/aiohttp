@@ -449,6 +449,7 @@ class DataQueue:
         return self._exception
 
     def set_exception(self, exc):
+        self._eof = True
         self._exception = exc
 
         waiter = self._waiter

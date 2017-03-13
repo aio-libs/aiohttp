@@ -12,7 +12,8 @@ from multidict import CIMultiDict
 
 from aiohttp import hdrs
 from .http_exceptions import (
-    BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError)
+    BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError,
+    PayloadEncodingError, ContentLengthError, TransferEncodingError)
 from .http_writer import HttpVersion, HttpVersion10, HttpVersion11, URL
 from .http_parser import RawRequestMessage, RawResponseMessage, DeflateBuffer
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
@@ -218,6 +219,23 @@ cdef class HttpParser:
 
         return HttpVersion(parser.http_major, parser.http_minor)
 
+    def feed_eof(self):
+        cdef bytes desc
+
+        if self._payload is not None:
+            if self._cparser.flags & cparser.F_CHUNKED:
+                raise TransferEncodingError(
+                    "Not enough data for satisfy transfer length header.")
+            elif self._cparser.flags & cparser.F_CONTENTLENGTH:
+                raise ContentLengthError(
+                    "Not enough data for satisfy content length header.")
+            elif self._cparser.http_errno != cparser.HPE_OK:
+                desc = cparser.http_errno_description(
+                    <cparser.http_errno> self._cparser.http_errno)
+                raise PayloadEncodingError(desc.decode('latin-1'))
+            else:
+                self._payload.feed_eof()
+
     def feed_data(self, data):
         cdef:
             size_t data_len
@@ -247,6 +265,7 @@ cdef class HttpParser:
                 else:
                     ex = parser_error_from_errno(
                         <cparser.http_errno> self._cparser.http_errno)
+                self._payload = None
                 raise ex
 
         if self._messages:

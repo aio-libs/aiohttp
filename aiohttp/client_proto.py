@@ -1,7 +1,6 @@
 import asyncio
 import asyncio.streams
 
-from . import hdrs
 from .client_exceptions import (ClientOSError, ClientPayloadError,
                                 ClientResponseError, ServerDisconnectedError)
 from .http import HttpResponseParser, StreamWriter
@@ -62,23 +61,24 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self.writer = StreamWriter(self, transport, self._loop)
 
     def connection_lost(self, exc):
-        if isinstance(exc, OSError):
-            exc = ClientOSError(*exc.args)
+        if self._payload_parser is not None:
+            try:
+                self._payload_parser.feed_eof()
+            except Exception:
+                pass
 
-        if self._payload is not None and not self._payload.is_eof():
-            if (not self._read_until_eof or
-                    (self._message.chunked or
-                     hdrs.CONTENT_LENGTH in self._message.headers)):
-                payload_exc = (
-                    exc if exc is not None else
+        try:
+            self._parser.feed_eof()
+        except Exception as e:
+            if self._payload is not None:
+                self._payload.set_exception(
                     ClientPayloadError('Response payload is not completed'))
-                self._payload.set_exception(payload_exc)
-            else:
-                self._payload.feed_eof()
 
         if not self.is_eof():
+            if isinstance(exc, OSError):
+                exc = ClientOSError(*exc.args)
             if exc is None:
-                exc = ServerDisconnectedError(exc)
+                exc = ServerDisconnectedError()
             DataQueue.set_exception(self, exc)
 
         self.transport = self.writer = None
@@ -162,8 +162,11 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
                 except BaseException as exc:
+                    import traceback
+                    traceback.print_exc()
                     self._should_close = True
-                    self.set_exception(ClientResponseError(code=400))
+                    self.set_exception(
+                        ClientResponseError(code=400, message=str(exc)))
                     self.transport.close()
                     return
 
