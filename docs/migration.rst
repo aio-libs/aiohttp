@@ -56,6 +56,6 @@ Web
 
 6. FileSender api is gone, replacement is FileResponse
 
-7. Application.add_subapp
+7. `Application.add_subapp`
 
-8. Application.finished
+8. `Application.finished`

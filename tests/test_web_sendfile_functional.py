@@ -395,6 +395,27 @@ def test_static_file_range_end_bigger_than_size(loop, test_client, sender):
 
 
 @asyncio.coroutine
+def test_static_file_range_beyond_eof(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
+
+    @asyncio.coroutine
+    def handler(request):
+        return sender(filepath, chunk_size=16)
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    # Ensure the whole file requested in parts is correct
+    response = yield from client.get(
+        '/', headers={'Range': 'bytes=1000000-1200000'})
+
+    assert response.status == 206, \
+        "failed 'bytes=1000000-1200000': %s" % response.reason
+    assert response.headers['content-length'] == '0'
+
+
+@asyncio.coroutine
 def test_static_file_range_tail(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
 
