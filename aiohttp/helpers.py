@@ -693,16 +693,12 @@ class CeilTimeout(Timeout):
 
     def __enter__(self):
         if self._timeout is not None:
-            if self._timeout > 0:
-                self._task = asyncio.Task.current_task(loop=self._loop)
-                if self._task is None:
-                    raise RuntimeError(
-                        'Timeout context manager should be used inside a task')
-                self._cancel_handler = self._loop.call_at(
-                    ceil(self._loop.time() + self._timeout), self._cancel_task)
-            else:
-                self._timeout = None
-
+            self._task = asyncio.Task.current_task(loop=self._loop)
+            if self._task is None:
+                raise RuntimeError(
+                    'Timeout context manager should be used inside a task')
+            self._cancel_handler = self._loop.call_at(
+                ceil(self._loop.time() + self._timeout), self._cancel_task)
         return self
 
 
