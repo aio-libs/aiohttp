@@ -1,3 +1,4 @@
+import contextlib
 import os
 import socket
 import ssl
@@ -354,3 +355,79 @@ def test_run_app_existing_file_conflict(loop, mocker, shorttmpdir):
 
     # No attempt should be made to remove a non-socket file
     assert mock.call([sock_path_str]) not in os.remove.mock_calls
+
+
+def test_run_app_preexisting_inet_socket(loop, mocker):
+    mocker.spy(loop, 'create_server')
+    loop.call_later(0.05, loop.stop)
+
+    app = web.Application(loop=loop)
+    mocker.spy(app, 'startup')
+
+    sock = socket.socket()
+    with contextlib.closing(sock):
+        sock.bind(('0.0.0.0', 0))
+        _, port = sock.getsockname()
+
+        printed = StringIO()
+        web.run_app(app, sock=sock, print=printed.write)
+
+        assert loop.is_closed()
+        loop.create_server.assert_called_with(
+            mock.ANY, sock=sock, backlog=128, ssl=None
+        )
+        app.startup.assert_called_once_with()
+        assert "http://0.0.0.0:{}".format(port) in printed.getvalue()
+
+
+@skip_if_no_unix_socks
+def test_run_app_preexisting_unix_socket(loop, mocker):
+    mocker.spy(loop, 'create_server')
+    loop.call_later(0.05, loop.stop)
+
+    app = web.Application(loop=loop)
+    mocker.spy(app, 'startup')
+
+    sock_path = '/tmp/test_preexisting_sock1'
+    sock = socket.socket(socket.AF_UNIX)
+    with contextlib.closing(sock):
+        sock.bind(sock_path)
+        os.unlink(sock_path)
+
+        printed = StringIO()
+        web.run_app(app, sock=sock, print=printed.write)
+
+        assert loop.is_closed()
+        loop.create_server.assert_called_with(
+            mock.ANY, sock=sock, backlog=128, ssl=None
+        )
+        app.startup.assert_called_once_with()
+        assert "http://unix:{}:".format(sock_path) in printed.getvalue()
+
+
+def test_run_app_multiple_preexisting_sockets(loop, mocker):
+    mocker.spy(loop, 'create_server')
+    loop.call_later(0.05, loop.stop)
+
+    app = web.Application(loop=loop)
+    mocker.spy(app, 'startup')
+
+    sock1 = socket.socket()
+    sock2 = socket.socket()
+    with contextlib.closing(sock1), contextlib.closing(sock2):
+        sock1.bind(('0.0.0.0', 0))
+        _, port1 = sock1.getsockname()
+        sock2.bind(('0.0.0.0', 0))
+        _, port2 = sock2.getsockname()
+
+        printed = StringIO()
+        web.run_app(app, sock=(sock1, sock2), print=printed.write)
+
+        assert loop.is_closed()
+        loop.create_server.assert_has_calls([
+            mock.call(mock.ANY, sock=sock1, backlog=128, ssl=None),
+            mock.call(mock.ANY, sock=sock2, backlog=128, ssl=None)
+        ])
+        app.startup.assert_called_once_with()
+        assert "http://0.0.0.0:{}".format(port1) in printed.getvalue()
+        assert "http://0.0.0.0:{}".format(port2) in printed.getvalue()
