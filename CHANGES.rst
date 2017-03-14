@@ -12,7 +12,9 @@ CHANGES
 
 - Fix file_sender to correct stream video to Chromes
 
-- Fix NotImplemented server exception
+- Fix NotImplementedError server exception #1703
+
+- Clearer error message for URL without a hostname. #1691
 
 
 1.3.3 (2017-02-19)

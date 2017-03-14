@@ -116,7 +116,8 @@ class ClientRequest:
         """Update destination host, port and connection type (ssl)."""
         # get host/port
         if not url.host:
-            raise ValueError('Host could not be detected.')
+            raise ValueError(
+                "Could not parse hostname from URL '{}'".format(url))
 
         # basic auth info
         username, password = url.user, url.password
