@@ -2066,6 +2066,9 @@ Utilities
                     multiple domain sockets. Listening on Unix domain
                     sockets is not supported by all operating systems.
 
+   :param socket sock: a preexisting socket object to accept connections on.
+                       A sequence of socket objects can be passed.
+
    :param int shutdown_timeout: a delay to wait for graceful server
                                 shutdown before disconnecting all
                                 open client sockets hard way.
