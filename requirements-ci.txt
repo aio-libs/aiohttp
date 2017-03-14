@@ -2,8 +2,8 @@ pip==9.0.1
 flake8==3.3.0
 pyflakes==1.5.0
 coverage==4.3.4
-cchardet==1.1.2
-sphinx==1.5.2
+cchardet==1.1.3
+sphinx==1.5.3
 cython==0.25.2
 chardet==2.3.0
 isort==4.2.5
@@ -16,7 +16,7 @@ pytest==3.0.6
 pytest-cov==2.4.0
 pytest-mock==1.5.0
 pytest-timeout==1.2.0
-gunicorn==19.6.0
+gunicorn==19.7.0
 pygments>=2.1
 #aiodns  # Enable from .travis.yml as required c-ares will not build on windows
 twine==1.8.1
