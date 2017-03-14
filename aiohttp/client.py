@@ -719,7 +719,6 @@ def request(method, url, *,
       >>> data = yield from resp.read()
 
     """
-    warnings.warn("Use ClientSession().request() instead", DeprecationWarning)
     if connector is None:
         connector = aiohttp.TCPConnector(loop=loop, force_close=True)
 
