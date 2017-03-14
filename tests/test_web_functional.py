@@ -1225,3 +1225,72 @@ def test_response_prepared_with_clone(loop, test_client):
 
     resp = yield from client.get('/')
     assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_app_max_client_size(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.post()
+        return web.Response(body=b'ok')
+
+    max_size = 1024**2
+    app = web.Application(loop=loop)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+    data = {"long_string": max_size * 'x' + 'xxx'}
+    resp = yield from client.post('/', data=data)
+    assert 413 == resp.status
+    resp_text = yield from resp.text()
+    assert 'Request body too large' in resp_text
+
+
+@asyncio.coroutine
+def test_app_max_client_size_adjusted(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.post()
+        return web.Response(body=b'ok')
+
+    default_max_size = 1024**2
+    custom_max_size = default_max_size * 2
+    app = web.Application(loop=loop, client_max_size=custom_max_size)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+    data = {'long_string': default_max_size * 'x' + 'xxx'}
+    resp = yield from client.post('/', data=data)
+    assert 200 == resp.status
+    resp_text = yield from resp.text()
+    assert 'ok' == resp_text
+    too_large_data = {'log_string': custom_max_size * 'x' + "xxx"}
+    resp = yield from client.post('/', data=too_large_data)
+    assert 413 == resp.status
+    resp_text = yield from resp.text()
+    assert 'Request Entity Too Large' in resp_text
+
+
+@asyncio.coroutine
+def test_app_max_client_size_none(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.post()
+        return web.Response(body=b'ok')
+
+    default_max_size = 1024**2
+    custom_max_size = None
+    app = web.Application(loop=loop, client_max_size=custom_max_size)
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+    data = {'long_string': default_max_size * 'x' + 'xxx'}
+    resp = yield from client.post('/', data=data)
+    assert 200 == resp.status
+    resp_text = yield from resp.text()
+    assert 'ok' == resp_text
+    too_large_data = {'log_string': default_max_size * 2 * 'x'}
+    resp = yield from client.post('/', data=too_large_data)
+    assert 200 == resp.status
+    resp_text = yield from resp.text()
+    assert resp_text == 'ok'

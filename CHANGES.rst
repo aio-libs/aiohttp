@@ -4,6 +4,9 @@ CHANGES
 1.3.4 (2017-03-14)
 ------------------
 
+- `run_app` and the Command Line Interface now support serving over Unix domain sockets for
+  faster inter-process communication.
+
 - Revert timeout handling in client request
 
 - Fix StreamResponse representation after eof
@@ -52,6 +55,8 @@ CHANGES
 
 - Multipart reader accepts multipart messages with or without their epilogue
   to consistently handle valid and legacy behaviors #1526 #1581
+
+- Add the `allow_head=True` keyword argument for `add_get` #1618
 
 - Separate read + connect + request timeouts # 1523
 
@@ -125,3 +130,6 @@ CHANGES
 
 - Deprecated: `Application.finish()` and `Application.register_on_finish()`
   will be removed in 1.4 #1602
+
+- Add the `allow_head` keyword argument for `add_get` and
+  `router.set_defaults(allow_head=True/False)` #1618
