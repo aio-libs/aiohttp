@@ -1,7 +1,7 @@
 CHANGES
 =======
 
-1.3.4 (2017-03-..)
+1.3.4 (2017-03-14)
 ------------------
 
 - Revert timeout handling in client request
@@ -17,6 +17,8 @@ CHANGES
 - Clearer error message for URL without a hostname. #1691
 
 - Silence deprecation warning in __repr__ #1690
+
+- IDN + HTTPS = ssl.CertificateError #1685
 
 
 1.3.3 (2017-02-19)
