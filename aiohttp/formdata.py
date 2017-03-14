@@ -26,6 +26,10 @@ class FormData:
             fields = (fields,)
         self.add_fields(*fields)
 
+    @property
+    def is_multipart(self):
+        return self._is_multipart
+
     def add_field(self, name, value, *, content_type=None, filename=None,
                   content_transfer_encoding=None):
 
