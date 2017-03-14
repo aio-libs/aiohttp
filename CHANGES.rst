@@ -14,11 +14,11 @@ CHANGES
 
 - Fix NotImplementedError server exception #1703
 
-- Clearer error message for URL without a hostname. #1691
+- Clearer error message for URL without a host name. #1691
 
 - Silence deprecation warning in __repr__ #1690
 
-- IDN + HTTPS = ssl.CertificateError #1685
+- IDN + HTTPS = `ssl.CertificateError` #1685
 
 
 1.3.3 (2017-02-19)
