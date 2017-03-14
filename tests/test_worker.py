@@ -26,6 +26,7 @@ ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 class BaseTestWorker:
 
     def __init__(self):
+        self.pid = 'pid'
         self.servers = {}
         self.exit_code = 0
         self.cfg = mock.Mock()
