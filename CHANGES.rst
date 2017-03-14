@@ -16,6 +16,8 @@ CHANGES
 
 - Clearer error message for URL without a hostname. #1691
 
+- Silence deprecation warning in __repr__ #1690
+
 
 1.3.3 (2017-02-19)
 ------------------

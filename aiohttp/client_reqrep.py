@@ -570,7 +570,7 @@ class ClientResponse(HeadersMixin):
 
     def __repr__(self):
         out = io.StringIO()
-        ascii_encodable_url = str(self.url)
+        ascii_encodable_url = str(self._url_obj)
         if self.reason:
             ascii_encodable_reason = self.reason.encode('ascii',
                                                         'backslashreplace') \
