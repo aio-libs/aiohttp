@@ -13,17 +13,17 @@ aiohttp does not support custom chunking sizes. It is up to developer
 to decide how to chunk data stream. If chunking is enabled aiohttp
 encodes provided chunks into "Transfer-encoding: chunked" format.
 
-Aiohttp does not enable chunking automatically encoding if "transfer-encoding"
+Aiohttp does not enable chunked encoding automatically if *transfer-encoding*
 header is supplied. *chunked* has to be set explicitly. If *chunked* encoding
-is enabled "Transfer-encoding" and "content-length" headers are  disallowed.
+is enabled *Transfer-encoding* and *content-length* headers are disallowed.
 
 compression
 ^^^^^^^^^^^
 
-Compression has to be enabled explicitly with compress parameter.
-If compression is enabled content-encoding is not allowed. Compression
-also enables chunked transfer-encoding. Compression can not be combined
-with "Content-Encoding" header.
+Compression has to be enabled explicitly with *compress* parameter.
+If compression is enabled *content-encoding* header is not allowed. Compression
+also enables *chunked* transfer-encoding. Compression can not be combined
+with *Content-Length* header.
 
 
 Client Connector
