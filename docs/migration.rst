@@ -175,3 +175,9 @@ RequestPayloadError
 
 Reading request's payload may raise `RequestPayloadError` exception. Behavior is similar
 to `ClientPayloadError`.
+
+
+WSGI
+^^^^
+
+*WSGI* support has been dropped, as well as gunicorn wsgi support.
