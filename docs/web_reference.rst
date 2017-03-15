@@ -390,8 +390,8 @@ and :ref:`aiohttp-web-signals` handlers.
 Response classes
 ----------------
 
-For now, :mod:`aiohttp.web` has two classes for the *HTTP response*:
-:class:`StreamResponse` and :class:`Response`.
+For now, :mod:`aiohttp.web` has three classes for the *HTTP response*:
+:class:`StreamResponse`, :class:`Response` and :class:`FileResponse`.
 
 Usually you need to use the second one. :class:`StreamResponse` is
 intended for streaming data, while :class:`Response` contains *HTTP
@@ -545,8 +545,8 @@ StreamResponse
          manipulations.
 
    .. method:: set_cookie(name, value, *, path='/', expires=None, \
-                   domain=None, max_age=None, \
-                   secure=None, httponly=None, version=None)
+                          domain=None, max_age=None, \
+                          secure=None, httponly=None, version=None)
 
       Convenient way for setting :attr:`cookies`, allows to specify
       some additional properties like *max_age* in a single call.
@@ -724,8 +724,7 @@ Response
 ^^^^^^^^
 
 .. class:: Response(*, status=200, headers=None, content_type=None, \
-                    charset=None, \
-                    body=None, text=None)
+                    charset=None, body=None, text=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -811,7 +810,8 @@ WebSocketResponse
    .. versionadded:: 1.3.0
 
    :param float heartbeat: Send `ping` message every `heartbeat` seconds
-                           and wait `pong` response, close connection if `pong` response is not received
+                           and wait `pong` response, close connection if `pong` response
+                           is not received.
 
    :param float receive_timeout: Timeout value for `receive` operations.
                                  Default value is None (no timeout for receive operation)
@@ -905,7 +905,7 @@ WebSocketResponse
 
       :raise RuntimeError: if connections is not started or closing.
 
-   .. method:: send_str(data)
+   .. coroutinemethod:: send_str(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
@@ -915,7 +915,7 @@ WebSocketResponse
 
       :raise TypeError: if data is not :class:`str`
 
-   .. method:: send_bytes(data)
+   .. coroutinemethod:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
@@ -926,7 +926,7 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. method:: send_json(data, *, dumps=json.loads)
+   .. coroutinemethod:: send_json(data, *, dumps=json.loads)
 
       Send *data* to peer as JSON string.
 

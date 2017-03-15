@@ -119,6 +119,11 @@ You can also access the response body as bytes, for non-text requests::
 The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
+.. note::
+
+   This methods reads whole response body into memory. If you are planing
+   planing to read a lot of data consider to use streaming response.
+
 
 JSON Response Content
 ---------------------
@@ -162,30 +167,6 @@ streamed to a file::
 It is not possible to use :meth:`~ClientResponse.read`,
 :meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` after
 explicit reading from :attr:`~ClientResponse.content`.
-
-
-Releasing Response
-------------------
-
-Don't forget to release response after use. This will ensure explicit
-behavior and proper connection pooling.
-
-The easiest way to release response correctly is ``async with`` statement::
-
-    async with session.get(url) as resp:
-        pass
-
-But explicit :meth:`~ClientResponse.release` call also may be used::
-
-    await resp.release()
-
-However it's not necessary if you use :meth:`~ClientResponse.read`,
-:meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` methods.
-They do release connection internally but better don't rely on that
-behavior.
-
-If response still contains un-consumed data (i.e. not received from server)
-underlining connection get closed and not re-used in connection pooling.
 
 
 Custom Headers
@@ -303,22 +284,21 @@ As a simple case, simply provide a file-like object for your body::
        await session.post('http://some.url/streamed', data=f)
 
 
-Or you can provide an :ref:`coroutine<coroutine>` that yields bytes objects::
+Or you can use `aiohttp.streamer` object::
 
-   @asyncio.coroutine
-   def my_coroutine():
-      chunk = yield from read_some_data_from_somewhere()
-      if not chunk:
-         return
-      yield chunk
+  @aiohttp.streamer
+  def file_sender(writer, file_name=None):
+      with open(file_name, 'rb') as f:
+          chunk = f.read(2**16)
+          while chunk:
+              yield from writer.write(chunk)
+              chunk = f.read(2**16)
 
-.. warning:: ``yield`` expression is forbidden inside ``async def``.
+  # Then you can use `file_sender` as a data provider:
 
-.. note::
-
-   It is not a standard :ref:`coroutine<coroutine>` as it yields values so it
-   cannot be used like ``yield from my_coroutine()``.
-   :mod:`aiohttp` internally handles such coroutines.
+  async with session.post('http://httpbin.org/post',
+                          data=file_sender(file_name='hude_file')) as resp:
+      print(await resp.text())
 
 Also it is possible to use a :class:`~aiohttp.streams.StreamReader`
 object. Lets say we want to upload a file from another request and
@@ -356,17 +336,15 @@ Uploading pre-compressed data
 -----------------------------
 
 To upload data that is already compressed before passing it to aiohttp, call
-the request function with ``compress=False`` and set the used compression
-algorithm name (usually deflate or zlib) as the value of the
-``Content-Encoding`` header::
+the request function with the used compression algorithm name (usually deflate or zlib)
+as the value of the ``Content-Encoding`` header::
 
     async def my_coroutine(session, headers, my_data):
         data = zlib.compress(my_data)
         headers = {'Content-Encoding': 'deflate'}
         async with session.post('http://httpbin.org/post',
                                 data=data,
-                                headers=headers,
-                                compress=False):
+                                headers=headers)
             pass
 
 
