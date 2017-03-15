@@ -541,6 +541,7 @@ class Response(StreamResponse):
             self.charset = 'utf-8'
 
         self._body = text.encode(self.charset)
+        self._body_payload = False
 
     @property
     def content_length(self):
