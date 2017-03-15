@@ -43,8 +43,7 @@ The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, \
-                         version=aiohttp.HttpVersion11, \
+                         auth=None, version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, conn_timeout=None)
 
    The class for creating client sessions and making requests.
@@ -64,8 +63,7 @@ The client session supports the context manager protocol for self closing.
 
    :param dict cookies: Cookies to send with the request (optional)
 
-   :param headers: HTTP Headers to send with
-                   the request (optional).
+   :param headers: HTTP Headers to send with every request (optional).
 
                    May be either *iterable of key-value pairs* or
                    :class:`~collections.abc.Mapping`
@@ -145,17 +143,14 @@ The client session supports the context manager protocol for self closing.
    .. comethod:: request(method, url, *, params=None, data=None,\
                          headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
-                         max_redirects=10, encoding='utf-8',\
-                         version=HttpVersion(major=1, minor=1),\
-                 compress=None, chunked=None, expect100=False,\
-                         read_until_eof=True,\
-                         proxy=None, proxy_auth=None,\
+                         max_redirects=10, version=HttpVersion(major=1, minor=1),\
+                         compress=None, chunked=None, expect100=False,\
+                         read_until_eof=True, proxy=None, proxy_auth=None,\
                          timeout=5*60)
       :async-with:
       :coroutine:
 
       Performs an asynchronous HTTP request. Returns a response object.
-
 
       :param str method: HTTP method
 
@@ -203,11 +198,15 @@ The client session supports the context manager protocol for self closing.
                                                    (optional)
 
       :param bool compress: Set to ``True`` if request has to be compressed
-                            with deflate encoding.
-                            ``None`` by default (optional).
+         with deflate encoding. If `compress` can not be combined
+         with a *Content-Encoding* and *Content-Length* headers.
+         ``None`` by default (optional).
 
-      :param int chunked: Set to chunk size for chunked transfer encoding.
-                      ``None`` by default (optional).
+      :param int chunked: Enable chunked transfer encoding. It is up to the developer
+         to decide how to chunk data streams. If chunking is enabled, aiohttp
+         encodes the provided chunks in the "Transfer-encoding: chunked" format.
+         If *chunked* is set, then the *Transfer-encoding* and *content-length*
+         headers are disallowed. ``None`` by default (optional).
 
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
@@ -222,11 +221,9 @@ The client session supports the context manager protocol for self closing.
                                            Basic Authorization (optional)
 
       :param int timeout: a timeout for IO operations, 5min by default.
-
                           Use ``None`` or ``0`` to disable timeout checks.
 
-      :return ClientResponse: a :class:`client response
-                              <ClientResponse>` object.
+      :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
       .. versionadded:: 1.0
 
@@ -463,12 +460,6 @@ The client session supports the context manager protocol for self closing.
 
       Release all acquired resources.
 
-      .. versionchanged:: 0.21
-
-         The method is converted into coroutine (but technically
-         returns a future for keeping backward compatibility during
-         transition period).
-
    .. method:: detach()
 
       Detach connector from session without closing the former.
@@ -488,13 +479,13 @@ certification chaining.
 
 
 .. coroutinefunction:: request(method, url, *, params=None, data=None, \
-                       headers=None, cookies=None, auth=None, \
-                       allow_redirects=True, max_redirects=10, \
-                       encoding='utf-8', \
-                       version=HttpVersion(major=1, minor=1), \
-                       compress=None, chunked=None, expect100=False, \
-                       connector=None, loop=None,\
-                       read_until_eof=True)
+                               headers=None, cookies=None, auth=None, \
+                               allow_redirects=True, max_redirects=10, \
+                               encoding='utf-8', \
+                               version=HttpVersion(major=1, minor=1), \
+                               compress=None, chunked=None, expect100=False, \
+                               connector=None, loop=None,\
+                               read_until_eof=True)
 
    Perform an asynchronous HTTP request. Return a response object
    (:class:`ClientResponse` or derived from).
@@ -524,13 +515,11 @@ certification chaining.
 
    :param bool compress: Set to ``True`` if request has to be compressed
                          with deflate encoding.
-                         ``False`` instructs aiohttp to not compress data
-                         even if the Content-Encoding header is set. Use it
-                         when sending pre-compressed data.
+                         ``False`` instructs aiohttp to not compress data.
                          ``None`` by default (optional).
 
-   :param int chunked: Set to chunk size for chunked transfer encoding.
-                   ``None`` by default (optional).
+   :param int chunked: Enables chunked transfer encoding.
+                       ``None`` by default (optional).
 
    :param bool expect100: Expect 100-continue response from server.
                           ``False`` by default (optional).
@@ -561,10 +550,6 @@ certification chaining.
               assert resp.status == 200
               print(await resp.text())
 
-   .. deprecated:: 0.21
-
-      Use :meth:`ClientSession.request`.
-
    .. versionchanged:: 1.1
 
       URLs may be either :class:`str` or :class:`~yarl.URL`
@@ -581,16 +566,13 @@ There are standard connectors:
 
 1. :class:`TCPConnector` for regular *TCP sockets* (both *HTTP* and
    *HTTPS* schemes supported).
-2. :class:`ProxyConnector` for connecting via HTTP proxy (deprecated).
-3. :class:`UnixConnector` for connecting via UNIX socket (it's used mostly for
+2. :class:`UnixConnector` for connecting via UNIX socket (it's used mostly for
    testing purposes).
 
 All connector classes should be derived from :class:`BaseConnector`.
 
-By default all *connectors* except :class:`ProxyConnector` support
-*keep-alive connections* (behavior is controlled by *force_close*
-constructor's parameter).
-
+By default all *connectors* support *keep-alive connections* (behavior is controlled by
+*force_close* constructor's parameter).
 
 
 BaseConnector
@@ -626,13 +608,6 @@ BaseConnector
       recommend to use explicit loops everywhere.
       (optional)
 
-   .. versionchanged:: 1.0
-
-      ``limit`` changed from unlimited (``None``) to 20.
-      Expect a max of up to 20 connections to the same endpoint,
-      if it is not specified.
-      For limitless connections, pass `None` explicitly.
-
    .. attribute:: closed
 
       Read-only property, ``True`` if connector is closed.
@@ -646,27 +621,24 @@ BaseConnector
 
    .. attribute:: limit
 
+      The total number for simultaneous connections.
+      If limit is 0 the connector has no limit. The default limit size is 100.
+
+   .. attribute:: limit_per_host
+
       The limit for simultaneous connections to the same
       endpoint.
 
       Endpoints are the same if they are have equal ``(host, port,
       is_ssl)`` triple.
 
-      If *limit* is ``None`` the connector has no limit.
+      If *limit_per_host* is ``None`` the connector has no limit per host.
 
       Read-only property.
-
-      .. versionadded:: 0.16
 
    .. comethod:: close()
 
       Close all opened connections.
-
-      .. versionchanged:: 0.21
-
-         The method is converted into coroutine (but technically
-         returns a future for keeping backward compatibility during
-         transition period).
 
    .. comethod:: connect(request)
 
@@ -695,8 +667,7 @@ TCPConnector
 
 .. class:: TCPConnector(*, verify_ssl=True, fingerprint=None,\
                         use_dns_cache=True, \
-                        family=0, \
-                        ssl_context=None, conn_timeout=None, \
+                        family=0, ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
                         force_close=False, loop=None, local_addr=None)
 
@@ -825,82 +796,16 @@ TCPConnector
       .. versionadded:: 0.17
 
 
-ProxyConnector
-^^^^^^^^^^^^^^
-
-.. class:: ProxyConnector(proxy, *, proxy_auth=None, \
-                          conn_timeout=None, \
-                          keepalive_timeout=30, limit=None, \
-                          force_close=True, loop=None)
-
-   HTTP Proxy connector.
-
-   Use :class:`ProxyConnector` for sending *HTTP/HTTPS* requests
-   through *HTTP proxy*.
-
-   :class:`ProxyConnector` is inherited from :class:`TCPConnector`.
-
-   .. deprecated:: 1.0
-
-      Use :meth:`ClientSession.request` with :attr:`proxy` and
-      :attr:`proxy_auth` parameters.
-
-   Usage::
-
-      conn = ProxyConnector(proxy="http://some.proxy.com")
-      session = ClientSession(connector=conn)
-      async with session.get('http://python.org') as resp:
-          assert resp.status == 200
-
-   Constructor accepts all parameters suitable for
-   :class:`TCPConnector` plus several proxy-specific ones:
-
-   :param str proxy: URL for proxy :class:`str` or :class:`~yarl.URL`,
-                     e.g. ``URL("http://some.proxy.com")``.
-
-   :param aiohttp.BasicAuth proxy_auth: basic authentication info used
-                                        for proxies with
-                                        authorization.
-
-   .. note::
-
-      :class:`ProxyConnector` in opposite to all other connectors
-      **doesn't** support *keep-alives* by default
-      (:attr:`force_close` is ``True``).
-
-   .. versionchanged:: 0.16
-
-      *force_close* parameter changed to ``True`` by default.
-
-   .. attribute:: proxy
-
-      Proxy *URL*, read-only :class:`~yarl.URL` property.
-
-      .. versionchanged:: 1.1
-
-         The attribute type was changed from :class:`str` to
-         :class:`~yarl.URL`.
-
-   .. attribute:: proxy_auth
-
-      Proxy authentication info, read-only :class:`BasicAuth` property
-      or ``None`` for proxy without authentication.
-
-      .. versionadded:: 0.16
-
-
-
 UnixConnector
 ^^^^^^^^^^^^^
 
-.. class:: UnixConnector(path, *, \
-                         conn_timeout=None, \
+.. class:: UnixConnector(path, *, conn_timeout=None, \
                          keepalive_timeout=30, limit=None, \
                          force_close=False, loop=None)
 
    Unix socket connector.
 
-   Use :class:`ProxyConnector` for sending *HTTP/HTTPS* requests
+   Use :class:`UnixConnector` for sending *HTTP/HTTPS* requests
    through *UNIX Sockets* as underlying transport.
 
    UNIX sockets are handy for writing tests and making very fast
@@ -944,6 +849,10 @@ Connection
    .. attribute:: loop
 
       Event loop used for connection
+
+   .. attribute:: transport
+
+      Connection transport
 
    .. method:: close()
 
@@ -1016,9 +925,10 @@ Response object
 
       Payload stream, contains response's BODY (:class:`StreamReader`).
 
-      Reading from the stream raises
-      :exc:`aiohttp.ClientDisconnectedError` if the response object is
-      closed before read calls.
+      Reading from the stream may raise
+      :exc:`aiohttp.ClientPayloadError` if the response object is
+      closed before response receives all data or in case if any transfer encoding
+      related errors like mis-formed chunked encoding of broken compression data.
 
    .. attribute:: cookies
 
@@ -1032,7 +942,7 @@ Response object
 
    .. attribute:: raw_headers
 
-      HTTP headers of response as unconverted bytes, a sequence of
+      Unmodified HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
 
    .. attribute:: content_type
@@ -1081,13 +991,13 @@ Response object
 
    .. comethod:: release()
 
-      Finish response processing, release underlying connection and
-      return it into free connection pool for re-usage by next upcoming
-      request.
+      It is not required to call `release` on the response object. When the
+      client fully receives the payload, the underlying connection automatically
+      returns back to pool. If the payload is not fully read, the connection is closed
 
    .. method:: raise_for_status()
 
-      Raise an HttpProcessingError if the response status is 400 or higher.
+      Raise an :exc:`aiohttp.ClientResponseError` if the response status is 400 or higher.
       Do nothing for success responses (less than 400).
 
    .. comethod:: text(encoding=None)
@@ -1131,6 +1041,7 @@ Response object
                ``None`` if *BODY* is empty or contains white-spaces
                only.
 
+
 ClientWebSocketResponse
 -----------------------
 
@@ -1155,6 +1066,10 @@ manually.
       May be ``None`` if server and client protocols are
       not overlapping.
 
+   .. method:: get_extra_info(name, default=None)
+
+      Reads extra info from connection's transport
+
    .. method:: exception()
 
       Returns exception if any occurs or returns None.
@@ -1167,7 +1082,7 @@ manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-   .. method:: send_str(data)
+   .. comethod:: send_str(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
@@ -1175,7 +1090,7 @@ manually.
 
       :raise TypeError: if data is not :class:`str`
 
-   .. method:: send_bytes(data)
+   .. comethod:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
@@ -1184,7 +1099,7 @@ manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. method:: send_json(data, *, dumps=json.loads)
+   .. comethod:: send_json(data, *, dumps=json.loads)
 
       Send *data* to peer as JSON string.
 
@@ -1263,6 +1178,7 @@ manually.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
+
 
 Utilities
 ---------
@@ -1372,6 +1288,50 @@ CookieJar
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
+
+
+Client exceptions
+^^^^^^^^^^^^^^^^^
+
+Exception hierarchy has been significantly modified in version 2.0. aiohttp defines only
+exceptions that covers connection handling and server response misbehaviors.
+For developer specific mistakes, aiohttp uses python standard exceptions
+like `ValueError` or `TypeError`.
+
+Reading a response content may raise a :exc:`ClientPayloadError` exception. This exception
+indicates errors specific to the payload encoding. Such as invalid compressed data,
+malformed chunked-encoded chunks or not enough data that satisfy the content-length header.
+
+Hierarchy of exceptions:
+
+* `ClientError` - Base class for all client specific exceptions
+
+ - `ClientResponseError` - exceptions that could happen after we get response from server
+
+  * `WSServerHandshakeError` - web socket server response error
+
+    - `ClientHttpProxyError` - proxy response
+
+ - `ClientConnectionError` - exceptions related to low-level connection problems
+
+  * `ClientOSError` - subset of connection errors that are initiated by an OSError exception
+
+    - `ClientConnectorError` - connector related exceptions
+
+      * `ClientProxyConnectionError` - proxy connection initialization error
+
+        - `ServerConnectionError` - server connection related errors
+
+      * `ServerDisconnectedError` - server disconnected
+
+      * `ServerTimeoutError` - server operation timeout, (read timeout, etc)
+
+      * `ServerFingerprintMismatch` - server fingerprint mismatch
+
+ - `ClientPayloadError` - This exception can only be raised while reading the response
+   payload if one of these errors occurs: invalid compression, malformed chunked encoding or
+   not enough data that satisfy content-length header.
+
 
 .. disqus::
   :title: aiohttp client reference

@@ -1,10 +1,41 @@
+Major aiohttp2.0 release!
+=========================
+
+Warning! This is not final release. It contains backward incompatible change,
+please check compatibility before installing on production systems.
+
+For this release we completely refactored low-level implementation of http handling.
+Finally `uvloop` gives performance improvement. Overall performance improvement
+should be around 70-90% compared to 1.x version.
+
+We took opportunity to refactor long standing api design problem across whole package.
+Client exceptions handling has been cleaned up and now much more strait forward. Client payload
+management simplified and allows to extends with any custom types. Client collection pool
+implementation has been redesigned as well, now there is no need for actively releasing responses,
+aiohttp handles connection release automatically.
+
+Another major change, we moved aiohttp development to public organization https://github.com/aio-libs
+The aiohttp community would like to thank `Keepsafe` (https://www.getkeepsafe.com) for it's support in the early days of the project.
+
+Alas we had to make backward incompatible changes. Please check this migration document http://aiohttp.readthedocs.io/en/latest/migration.html
+
+Please report problems or annoyance with with api to https://github.com/aio-libs/aiohttp
+
+You can install and test this release with::
+
+  pip install https://github.com/aio-libs/aiohttp/archive/2.0.0rc1.tar.gz#egg=aiohttp-2.0.0rc1
+
+
 CHANGES
-=======
+-------
+
 
 `2.0.0rc1` (2017-03-14)
 -----------------------
 
 - Properly handle payload errors #1710
+
+- Added `ClientWebSocketResponse.get_extra_info()` #1717
 
 - It is not possible to combine Transfer-Encoding and chunked parameter,
   same for compress and Content-Encoding #1655
