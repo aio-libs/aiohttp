@@ -10,6 +10,7 @@ import os
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
@@ -62,6 +63,10 @@ else:
     @asyncio.coroutine
     def noop(*args, **kwargs):
         return
+
+    @asyncio.coroutine
+    def deprecated_noop(message):
+        warnings.warn(message, DeprecationWarning, stacklevel=3)
 
     coroutines._DEBUG = old_debug
 

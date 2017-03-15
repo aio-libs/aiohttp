@@ -23,7 +23,7 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import PY_35, CeilTimeout, TimeoutHandle
+from .helpers import PY_35, CeilTimeout, TimeoutHandle, deprecated_noop
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
@@ -494,6 +494,8 @@ class ClientSession:
             if self._connector_owner:
                 self._connector.close()
             self._connector = None
+
+        return deprecated_noop('ClientSession.close() is not coroutine')
 
     @property
     def closed(self):
