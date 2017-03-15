@@ -84,7 +84,7 @@ tests_require = install_requires + ['pytest', 'gunicorn', 'pytest-timeout']
 args = dict(
     name='aiohttp',
     version=version,
-    description='http client/server for asyncio',
+    description='Async http client/server framework (asyncio)',
     long_description='\n\n'.join((read('README.rst'), read('CHANGES.rst'))),
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
@@ -101,8 +101,8 @@ args = dict(
         'Topic :: Internet :: WWW/HTTP'],
     author='Nikolay Kim',
     author_email='fafhrd91@gmail.com',
-    maintainer=', '.join(('Andrew Svetlov <andrew.svetlov@gmail.com>',
-                          'Nikolay Kim <fafhrd91@gmail.com>')),
+    maintainer=', '.join(('Nikolay Kim <fafhrd91@gmail.com>',
+                          'Andrew Svetlov <andrew.svetlov@gmail.com>')),
     maintainer_email='aio-libs@googlegroups.com',
     url='https://github.com/aio-libs/aiohttp/',
     license='Apache 2',
