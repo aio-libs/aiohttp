@@ -55,6 +55,14 @@ def params():
         read_until_eof=False)
 
 
+@asyncio.coroutine
+def test_close_deprecated(create_session):
+    session = create_session()
+
+    with pytest.warns(DeprecationWarning):
+        yield from session.close()
+
+
 def test_init_headers_simple_dict(create_session):
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})

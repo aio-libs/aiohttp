@@ -1,3 +1,22 @@
+1.3.4 (2017-03-14)
+------------------
+
+- Revert timeout handling in client request
+
+- Fix StreamResponse representation after eof
+
+- Fix file_sender to not fall on bad request (range out of file size)
+
+- Fix file_sender to correct stream video to Chromes
+
+- Fix NotImplementedError server exception #1703
+
+- Clearer error message for URL without a host name. #1691
+
+- Silence deprecation warning in __repr__ #1690
+
+- IDN + HTTPS = `ssl.CertificateError` #1685
+
 
 1.3.3 (2017-02-19)
 ------------------
