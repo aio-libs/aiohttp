@@ -137,6 +137,12 @@ License
 ``aiohttp`` is offered under the Apache 2 license.
 
 
+Keepsafe
+--------
+
+The aiohttp community would like to thank Keepsafe (www.getkeepsafe.com) for it's support in the early days of the project.
+
+
 Source code
 ------------
 
