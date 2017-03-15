@@ -55,6 +55,17 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 if sys.version_info < (3, 5):
     noop = tuple
+
+    coroutines = asyncio.coroutines
+    old_debug = coroutines._DEBUG
+    coroutines._DEBUG = False
+
+    @asyncio.coroutine
+    def deprecated_noop(message):
+        warnings.warn(message, DeprecationWarning, stacklevel=3)
+
+    coroutines._DEBUG = old_debug
+
 else:
     coroutines = asyncio.coroutines
     old_debug = coroutines._DEBUG
