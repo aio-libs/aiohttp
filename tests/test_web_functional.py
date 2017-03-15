@@ -48,6 +48,25 @@ def test_simple_get(loop, test_client):
 
 
 @asyncio.coroutine
+def test_simple_get_with_text(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        body = yield from request.read()
+        assert b'' == body
+        return web.Response(text='OK', headers={'content-type': 'text/plain'})
+
+    app = web.Application(loop=loop)
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert 'OK' == txt
+
+
+@asyncio.coroutine
 def test_handler_returns_not_response(loop, test_server, test_client):
     logger = mock.Mock()
 
