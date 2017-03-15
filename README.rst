@@ -140,7 +140,7 @@ License
 Keepsafe
 --------
 
-The aiohttp community would like to thank Keepsafe (www.getkeepsafe.com) for it's support in the early days of the project.
+The aiohttp community would like to thank Keepsafe (https://www.getkeepsafe.com) for it's support in the early days of the project.
 
 
 Source code
