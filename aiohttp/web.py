@@ -358,7 +358,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
             )
         )
 
-        if sock.family == socket.AF_UNIX:
+        if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
             uris.append('{}://unix:{}:'.format(scheme, sock.getsockname()))
         else:
             host, port = sock.getsockname()
