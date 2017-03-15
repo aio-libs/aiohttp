@@ -81,6 +81,14 @@ class ClientWebSocketResponse:
     def protocol(self):
         return self._protocol
 
+    def get_extra_info(self, name, default=None):
+        """extra info from connection transport"""
+        try:
+            return self._response.connection.transport.get_extra_info(
+                name, default)
+        except:
+            return default
+
     def exception(self):
         return self._exception
 

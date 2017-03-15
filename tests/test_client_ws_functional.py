@@ -33,9 +33,13 @@ def test_send_recv_text(loop, test_client):
     resp = yield from client.ws_connect('/')
     resp.send_str('ask')
 
+    assert resp.get_extra_info('socket') is not None
+
     data = yield from resp.receive_str()
     assert data == 'ask/answer'
     yield from resp.close()
+
+    assert resp.get_extra_info('socket') is None
 
 
 @asyncio.coroutine
