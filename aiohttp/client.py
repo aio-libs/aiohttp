@@ -275,10 +275,12 @@ class ClientSession:
 
                 break
 
-        if resp.connection is not None:
-            resp.connection.add_callback(handle.cancel)
-        else:
-            handle.cancel()
+        if handle is not None:
+            if resp.connection is not None:
+                resp.connection.add_callback(handle.cancel)
+            else:
+                handle.cancel()
+
         resp._history = tuple(history)
         return resp
 

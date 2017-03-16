@@ -630,6 +630,22 @@ def test_timeout_on_reading_data(loop, test_client, mocker):
 
 
 @asyncio.coroutine
+def test_timeout_none(loop, test_client, mocker):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from resp.prepare(request)
+        return resp
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/', timeout=None)
+    assert resp.status == 200
+
+
+@asyncio.coroutine
 def test_readline_error_on_conn_close(loop, test_client):
 
     @asyncio.coroutine

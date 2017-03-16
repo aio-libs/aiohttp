@@ -1,7 +1,13 @@
 CHANGES
 =======
 
-1.3.4 (2017-03-14)
+1.3.5 (2017-03-16)
+------------------
+
+- Fixed None timeout support #1720
+
+
+1.3.4 (2017-03-15)
 ------------------
 
 - Revert timeout handling in client request
