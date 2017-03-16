@@ -109,17 +109,18 @@ app test client::
     @pytest.fixture
     def cli(loop, test_client):
         app = web.Application(loop=loop)
-        app.router.add_get('/', hello)
+        app.router.add_get('/', previous)
+        app.router.add_post('/', previous)
         return loop.run_until_complete(test_client(app))
 
     async def test_set_value(cli):
         resp = await cli.post('/', data={'value': 'foo'})
         assert resp.status == 200
         assert await resp.text() == 'thanks for the data'
-        assert cli.app['value'] == 'foo'
+        assert cli.server.app['value'] == 'foo'
 
     async def test_get_value(cli):
-        cli.app['value'] = 'bar'
+        cli.server.app['value'] = 'bar'
         resp = await cli.get('/')
         assert resp.status == 200
         assert await resp.text() == 'value: bar'
