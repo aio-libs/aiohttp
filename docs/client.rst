@@ -671,7 +671,7 @@ By default all IO operations have 5min timeout. The timeout may be
 overridden by passing ``timeout`` parameter into
 :meth:`ClientSession.get` and family::
 
-    aync with session.get('https://github.com', timeout=60) as r:
+    async with session.get('https://github.com', timeout=60) as r:
         ...
 
 ``None`` or ``0`` disables timeout check.
