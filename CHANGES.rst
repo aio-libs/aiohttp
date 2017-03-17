@@ -6,6 +6,8 @@ CHANGES
 
 - Fixed None timeout support #1720
 
+- Cleanup timer and loop handle on any client exception.
+
 
 `2.0.0rc1` (2017-03-15)
 -----------------------
