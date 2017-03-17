@@ -594,6 +594,9 @@ class StreamResponse(HeadersMixin):
 
     @property
     def output_length(self):
+        if not self.prepared:
+            raise RuntimeError('Cannot get output_length for unprepared '
+                               'response')
         return self._resp_impl.output_length
 
     def enable_chunked_encoding(self, chunk_size=None):
@@ -743,33 +746,29 @@ class StreamResponse(HeadersMixin):
 
     @property
     def tcp_nodelay(self):
-        resp_impl = self._resp_impl
-        if resp_impl is None:
+        if not self.prepared:
             raise RuntimeError("Cannot get tcp_nodelay for "
                                "not prepared response")
-        return resp_impl.transport.tcp_nodelay
+        return self._resp_impl.transport.tcp_nodelay
 
     def set_tcp_nodelay(self, value):
-        resp_impl = self._resp_impl
-        if resp_impl is None:
+        if not self.prepared:
             raise RuntimeError("Cannot set tcp_nodelay for "
                                "not prepared response")
-        resp_impl.transport.set_tcp_nodelay(value)
+        self._resp_impl.transport.set_tcp_nodelay(value)
 
     @property
     def tcp_cork(self):
-        resp_impl = self._resp_impl
-        if resp_impl is None:
+        if not self.prepared:
             raise RuntimeError("Cannot get tcp_cork for "
                                "not prepared response")
-        return resp_impl.transport.tcp_cork
+        return self._resp_impl.transport.tcp_cork
 
     def set_tcp_cork(self, value):
-        resp_impl = self._resp_impl
-        if resp_impl is None:
+        if not self.prepared:
             raise RuntimeError("Cannot set tcp_cork for "
                                "not prepared response")
-        resp_impl.transport.set_tcp_cork(value)
+        self._resp_impl.transport.set_tcp_cork(value)
 
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
@@ -780,7 +779,7 @@ class StreamResponse(HeadersMixin):
         self.headers[CONTENT_TYPE] = ctype
 
     def _start_pre_check(self, request):
-        if self._resp_impl is not None:
+        if self.prepared:
             if self._req is not request:
                 raise RuntimeError(
                     "Response has been started with different request.")
@@ -892,7 +891,7 @@ class StreamResponse(HeadersMixin):
 
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
-        if self._resp_impl is None:
+        if not self.prepared:
             raise RuntimeError("Cannot call write() before start()")
 
         if data:
@@ -902,7 +901,7 @@ class StreamResponse(HeadersMixin):
 
     @asyncio.coroutine
     def drain(self):
-        if self._resp_impl is None:
+        if not self.prepared:
             raise RuntimeError("Response has not been started")
         yield from self._resp_impl.transport.drain()
 
@@ -910,7 +909,7 @@ class StreamResponse(HeadersMixin):
     def write_eof(self):
         if self._eof_sent:
             return
-        if self._resp_impl is None:
+        if not self.prepared:
             raise RuntimeError("Response has not been started")
 
         yield from self._resp_impl.write_eof()
@@ -922,7 +921,7 @@ class StreamResponse(HeadersMixin):
     def __repr__(self):
         if self._eof_sent:
             info = "eof"
-        elif self.started:
+        elif self.prepared:
             info = "{} {} ".format(self._req.method, self._req.path)
         else:
             info = "not started"

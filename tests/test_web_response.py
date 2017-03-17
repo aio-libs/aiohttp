@@ -397,6 +397,25 @@ def test_repr_after_eof():
 
 
 @asyncio.coroutine
+def test_body_length_after_eof():
+    resp = StreamResponse()
+    writer = mock.Mock()
+    yield from resp.prepare(make_request('GET', '/', writer=writer))
+    resp.write(b'data')
+    resp.write(b'next data')
+    writer.drain.return_value = ()
+    yield from resp.write_eof()
+    assert resp.body_length == 28
+
+
+@asyncio.coroutine
+def test_unprepared_output_length():
+    resp = StreamResponse()
+    with pytest.raises(RuntimeError):
+        resp.output_length
+
+
+@asyncio.coroutine
 def test_cannot_write_eof_before_headers():
     resp = StreamResponse()
 
