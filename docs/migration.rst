@@ -133,7 +133,9 @@ Various
 
 4. `ClientResponse.url` is an instance of `yarl.URL` class (`url_obj` is deprecated)
 
-5. `ClientSession.close()` is a regular function returning None, not a coroutine.
+5. `ClientResponse.raise_for_status()` raises :exc:`aiohttp.ClientResponseError` exception
+
+6. `ClientSession.close()` is a regular function returning None, not a coroutine.
 
 
 

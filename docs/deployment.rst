@@ -64,7 +64,7 @@ First configure HTTP server itself:
    http {
      server {
        listen 80;
-       client_max_body_size 4G;
+     client_max_body_size 4G;
 
        server example.com;
 
@@ -266,11 +266,11 @@ In this case, we will use:
   <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
 
 The custom worker subclass is defined in
-*aiohttp.worker.GunicornWebWorker* and should be used instead of the
+*aiohttp.GunicornWebWorker* and should be used instead of the
 *gaiohttp* worker provided by Gunicorn, which supports only
 aiohttp.wsgi applications::
 
-  >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.worker.GunicornWebWorker
+  >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Starting gunicorn 19.3.0
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Listening at: http://127.0.0.1:8080 (1249)
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Using worker: aiohttp.worker.GunicornWebWorker
@@ -283,7 +283,7 @@ worker processes.
 
    If you want to use an alternative asyncio event loop
    `uvloop <https://github.com/MagicStack/uvloop>`_, you can use the
-   ``aiohttp.worker.GunicornUVLoopWebWorker`` worker class.
+   ``aiohttp.GunicornUVLoopWebWorker`` worker class.
 
 
 More information

@@ -1,4 +1,4 @@
-__version__ = '2.0.0rc1'
+__version__ = '2.0.0'
 
 # This relies on each of the submodules having an __all__ variable.
 
@@ -15,6 +15,12 @@ from .payload import *  # noqa
 from .payload_streamer import *  # noqa
 from .resolver import *  # noqa
 
+try:
+    from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
+    workers = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
+except ImportError:
+    workers = ()
+
 
 __all__ = (client.__all__ +  # noqa
            formdata.__all__ +  # noqa
@@ -26,4 +32,4 @@ __all__ = (client.__all__ +  # noqa
            ('hdrs', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
             'WSMsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage', 'CookieJar',
-           ))
+           ) + workers)
