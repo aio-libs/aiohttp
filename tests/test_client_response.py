@@ -81,6 +81,12 @@ def test_repr_non_ascii_reason():
         in repr(response)
 
 
+def test_url_obj_deprecated():
+    response = ClientResponse('get', URL('http://fake-host.org/'))
+    with pytest.warns(DeprecationWarning):
+        response.url_obj
+
+
 @asyncio.coroutine
 def test_read_and_release_connection(loop):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
@@ -314,13 +320,11 @@ def test_json_no_content(loop):
         'Content-Type': 'data/octet-stream'}
     response._content = b''
 
-    with mock.patch('aiohttp.client_reqrep.client_logger') as m_log:
-        res = yield from response.json()
+    with pytest.raises(aiohttp.ClientResponseError):
+        yield from response.json()
 
+    res = yield from response.json(content_type=None)
     assert res is None
-    m_log.warning.assert_called_with(
-        'Attempt to decode JSON with unexpected mimetype: %s',
-        'data/octet-stream')
 
 
 @asyncio.coroutine

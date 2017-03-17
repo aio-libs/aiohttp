@@ -646,14 +646,14 @@ def test_timeout_on_reading_data(loop, test_client):
         resp = web.StreamResponse(headers={'content-length': '100'})
         yield from resp.prepare(request)
         yield from resp.drain()
-        yield from asyncio.sleep(0.1, loop=loop)
+        yield from asyncio.sleep(0.2, loop=loop)
         return resp
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.01)
+    resp = yield from client.get('/', timeout=0.05)
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
