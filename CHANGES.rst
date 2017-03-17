@@ -6,6 +6,8 @@ CHANGES
 
 - Fixed None timeout support #1720
 
+- Added session's `raise_for_status` parameter, automatically calls raise_for_status() on any request. #1724
+
 - Cleanup timer and loop handle on any client exception.
 
 

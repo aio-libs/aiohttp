@@ -49,7 +49,7 @@ class ClientSession:
                  response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,
-                 cookie_jar=None, connector_owner=True,
+                 cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=None, conn_timeout=None):
 
         implicit_loop = False
@@ -95,6 +95,7 @@ class ClientSession:
         self._version = version
         self._read_timeout = read_timeout
         self._conn_timeout = conn_timeout
+        self._raise_for_status = raise_for_status
 
         # Convert to list of tuples
         if headers:
@@ -283,6 +284,10 @@ class ClientSession:
                         continue
 
                     break
+
+            # check response status
+            if self._raise_for_status:
+                resp.raise_for_status()
 
             # register connection
             if handle is not None:
