@@ -44,7 +44,8 @@ The client session supports the context manager protocol for self closing.
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, version=aiohttp.HttpVersion11, \
-                         cookie_jar=None, read_timeout=None, conn_timeout=None)
+                         cookie_jar=None, read_timeout=None, conn_timeout=None, \
+                         raise_for_status=False)
 
    The class for creating client sessions and making requests.
 
@@ -98,6 +99,11 @@ The client session supports the context manager protocol for self closing.
       proxy mode.
 
       .. versionadded:: 0.22
+
+   :param bool raise_for_status: Automatically call `raise_for_status()` for each response.
+      (default is False)
+
+      .. versionadded:: 2.0
 
    :param float read_timeout: Request operations timeout. read_timeout is
       cumulative for all request operations (request, redirects, responses,

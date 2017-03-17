@@ -1978,3 +1978,17 @@ def test_chunked_deprecated(loop, test_client):
 
     with pytest.warns(DeprecationWarning):
         yield from client.get('/', chunked=1024)
+
+
+@asyncio.coroutine
+def test_raise_for_status(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.HTTPBadRequest()
+
+    app = web.Application(loop=loop)
+    app.router.add_route('GET', '/', handler_redirect)
+    client = yield from test_client(app, raise_for_status=True)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        yield from client.get('/')
