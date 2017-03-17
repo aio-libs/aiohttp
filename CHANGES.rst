@@ -8,6 +8,9 @@ CHANGES
 
 - Added session's `raise_for_status` parameter, automatically calls raise_for_status() on any request. #1724
 
+- `response.json()` raises `ClientReponseError` exception if response's
+  content type does not match #1723
+
 - Cleanup timer and loop handle on any client exception.
 
 

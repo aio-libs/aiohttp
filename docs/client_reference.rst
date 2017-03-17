@@ -114,7 +114,7 @@ The client session supports the context manager protocol for self closing.
 
    .. versionchanged:: 1.0
 
-      ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
+   ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
       instead.
 
    .. attribute:: closed
@@ -1024,7 +1024,7 @@ Response object
 
       :return str: decoded *BODY*
 
-   .. comethod:: json(encoding=None, loads=json.loads)
+   .. comethod:: json(encoding=None, loads=json.loads, content_type='application/json')
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*.
@@ -1033,8 +1033,9 @@ Response object
       using :term:`cchardet` or :term:`chardet` as fallback if
       *cchardet* is not available.
 
-      Close underlying connection if data reading gets an error,
-      release connection otherwise.
+      if response's `content-type` does not match `content_type` parameter
+      :exc:`aiohttp.ClientResponseError` get raised. To disable content type
+      check pass ``None`` value.
 
       :param str encoding: text encoding used for *BODY* decoding, or
                            ``None`` for encoding autodetection
@@ -1043,9 +1044,13 @@ Response object
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.
 
+      :param str content_type: specify response's content-type, if content type
+         does not match raise :exc:`aiohttp.ClientResponseError`.
+         To disable `content-type` check, pass ``None`` as value.
+         (default: `application/json`).
+
       :return: *BODY* as *JSON* data parsed by *loads* parameter or
-               ``None`` if *BODY* is empty or contains white-spaces
-               only.
+               ``None`` if *BODY* is empty or contains white-spaces only.
 
 
 ClientWebSocketResponse

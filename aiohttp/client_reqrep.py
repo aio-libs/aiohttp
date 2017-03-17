@@ -9,9 +9,9 @@ from http.cookies import CookieError, Morsel
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
-import aiohttp
-
 from . import hdrs, helpers, http, payload
+from .client_exceptions import (ClientConnectionError, ClientOSError,
+                                ClientResponseError)
 from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
@@ -323,7 +323,7 @@ class ClientRequest:
 
             yield from writer.write_eof()
         except OSError as exc:
-            new_exc = aiohttp.ClientOSError(
+            new_exc = ClientOSError(
                 exc.errno,
                 'Can not write request body for %s' % self.url)
             new_exc.__context__ = exc
@@ -606,7 +606,7 @@ class ClientResponse(HeadersMixin):
 
     def raise_for_status(self):
         if 400 <= self.status:
-            raise aiohttp.ClientResponseError(
+            raise ClientResponseError(
                 code=self.status,
                 message=self.reason,
                 headers=self.headers)
@@ -620,7 +620,7 @@ class ClientResponse(HeadersMixin):
         content = self.content
         if content and content.exception() is None and not content.is_eof():
             content.set_exception(
-                aiohttp.ClientConnectionError('Connection closed'))
+                ClientConnectionError('Connection closed'))
 
     @asyncio.coroutine
     def wait_for_close(self):
@@ -671,15 +671,19 @@ class ClientResponse(HeadersMixin):
         return self._content.decode(encoding, errors=errors)
 
     @asyncio.coroutine
-    def json(self, *, encoding=None, loads=json.loads):
+    def json(self, *, encoding=None, loads=json.loads,
+             content_type='application/json'):
         """Read and decodes JSON response."""
         if self._content is None:
             yield from self.read()
 
-        ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-        if 'json' not in ctype:
-            client_logger.warning(
-                'Attempt to decode JSON with unexpected mimetype: %s', ctype)
+        if content_type:
+            ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
+            if content_type not in ctype:
+                raise ClientResponseError(
+                    message=('Attempt to decode JSON with '
+                             'unexpected mimetype: %s' % ctype),
+                    headers=self.headers)
 
         stripped = self._content.strip()
         if not stripped:
