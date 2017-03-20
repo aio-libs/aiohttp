@@ -24,21 +24,21 @@ For this release we completely refactored low-level implementation of http handl
 Finally `uvloop` gives performance improvement. Overall performance improvement
 should be around 70-90% compared to 1.x version.
 
-We took opportunity to refactor long standing api design problem across whole package.
+We took opportunity to refactor long standing api design problems across whole package.
 Client exceptions handling has been cleaned up and now much more straight forward. Client payload
-management simplified and allows to extends with any custom types. Client collection pool
-implementation has been redesigned as well, now there is no need for actively releasing responses,
+management simplified and allows to extend with any custom type. Client connection pool
+implementation has been redesigned as well, now there is no need for actively releasing response objects,
 aiohttp handles connection release automatically.
 
 Another major change, we moved aiohttp development to public organization https://github.com/aio-libs
 
-Alas we had to make backward incompatible changes. Please check this migration document http://aiohttp.readthedocs.io/en/latest/migration.html
+With this amount of api changes we had to make backward incompatible changes. Please check this migration document http://aiohttp.readthedocs.io/en/latest/migration.html
 
 Please report problems or annoyance with with api to https://github.com/aio-libs/aiohttp
 
 You can install and test this release with::
 
-  pip install https://github.com/aio-libs/aiohttp/archive/2.0.0rc1.tar.gz#egg=aiohttp-2.0.0rc1
+  pip install https://github.com/aio-libs/aiohttp/archive/master.tar.gz#egg=aiohttp-2.0.0
 
 
 Features

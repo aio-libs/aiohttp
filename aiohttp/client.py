@@ -681,6 +681,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
 def request(method, url, *,
             params=None,
             data=None,
+            json=None,
             headers=None,
             skip_auto_headers=None,
             cookies=None,
@@ -704,6 +705,7 @@ def request(method, url, *,
       string of the new request
     data - (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
+    json - (optional) Any json compatibile python object
     headers - (optional) Dictionary of HTTP Headers to send with
       the request
     cookies - (optional) Dict object to send with the request
@@ -741,6 +743,7 @@ def request(method, url, *,
         session._request(method, url,
                          params=params,
                          data=data,
+                         json=json,
                          headers=headers,
                          skip_auto_headers=skip_auto_headers,
                          auth=auth,
