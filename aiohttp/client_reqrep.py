@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import io
 import json
 import sys
@@ -25,6 +26,9 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('ClientRequest', 'ClientResponse')
+
+
+RequestInfo = collections.namedtuple('RequestInfo', ('url', 'headers'))
 
 
 class ClientRequest:
@@ -385,7 +389,9 @@ class ClientRequest:
 
         self.response = self.response_class(
             self.method, self.original_url,
-            writer=self._writer, continue100=self._continue, timer=self._timer)
+            writer=self._writer, continue100=self._continue, timer=self._timer,
+            request_info=RequestInfo(self.url, self.headers)
+        )
 
         self.response._post_init(self.loop)
         return self.response
@@ -426,7 +432,8 @@ class ClientResponse(HeadersMixin):
     _closed = True  # to allow __del__ for non-initialized properly response
 
     def __init__(self, method, url, *,
-                 writer=None, continue100=None, timer=None):
+                 writer=None, continue100=None, timer=None,
+                 request_info=None):
         assert isinstance(url, URL)
 
         self.method = method
@@ -439,6 +446,7 @@ class ClientResponse(HeadersMixin):
         self._continue = continue100
         self._closed = True
         self._history = ()
+        self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
 
     @property
@@ -458,6 +466,10 @@ class ClientResponse(HeadersMixin):
     @property
     def _headers(self):
         return self.headers
+
+    @property
+    def request_info(self):
+        return self._request_info
 
     def _post_init(self, loop):
         self._loop = loop
