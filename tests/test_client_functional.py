@@ -1606,6 +1606,36 @@ def test_json(loop, test_client):
 
 
 @asyncio.coroutine
+def test_json_custom(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/json'
+        data = yield from request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    used = False
+
+    def dumps(obj):
+        nonlocal used
+        used = True
+        return json.dumps(obj)
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app, json_serialize=dumps)
+
+    resp = yield from client.post('/', json={'some': 'data'})
+    assert 200 == resp.status
+    assert used
+    content = yield from resp.json()
+    assert content == {'some': 'data'}
+    resp.close()
+
+    with pytest.raises(ValueError):
+        yield from client.post('/', data="some data", json={'some': 'data'})
+
+
+@asyncio.coroutine
 def test_expect_continue(loop, test_client):
     expect_called = False
 
