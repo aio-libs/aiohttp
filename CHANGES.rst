@@ -15,7 +15,7 @@ CHANGES
 
 - Cleanup timer and loop handle on any client exception.
 
-- Deprecate `loop` parameter for Application's contructor
+- Deprecate `loop` parameter for Application's constructor
 
 
 `2.0.0rc1` (2017-03-15)
