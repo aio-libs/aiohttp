@@ -10,7 +10,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import helpers
-from aiohttp.client_reqrep import ClientResponse
+from aiohttp.client_reqrep import ClientResponse, RequestInfo
 
 
 def test_del():
@@ -425,3 +425,17 @@ def test_charset_no_charset():
     response.headers = {'Content-Type': 'application/json'}
 
     assert response.charset is None
+
+
+def test_response_request_info():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get', URL(url),
+        request_info=RequestInfo(
+            url,
+            headers
+        )
+    )
+    assert URL(url) == response.request_info.url
+    assert headers == response.request_info.headers
