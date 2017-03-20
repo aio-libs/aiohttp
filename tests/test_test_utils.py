@@ -9,12 +9,12 @@ import aiohttp
 from aiohttp import web
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
-from aiohttp.test_utils import (AioHTTPTestCase, RawTestServer, loop_context,
+from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
                                 make_mocked_request, setup_test_loop,
                                 teardown_test_loop, unittest_run_loop)
 
 
-def _create_example_app(loop):
+def _create_example_app():
 
     @asyncio.coroutine
     def hello(request):
@@ -40,7 +40,7 @@ def _create_example_app(loop):
         resp.set_cookie('cookie', 'val')
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('*', '/', hello)
     app.router.add_route('*', '/websocket', websocket_handler)
     app.router.add_route('*', '/cookie', cookie_handler)
@@ -49,8 +49,8 @@ def _create_example_app(loop):
 
 def test_full_server_scenario():
     with loop_context() as loop:
-        app = _create_example_app(loop)
-        with _TestClient(app) as client:
+        app = _create_example_app()
+        with _TestClient(app, loop=loop) as client:
 
             @asyncio.coroutine
             def test_get_route():
@@ -65,8 +65,8 @@ def test_full_server_scenario():
 
 def test_server_with_create_test_teardown():
     with loop_context() as loop:
-        app = _create_example_app(loop)
-        with _TestClient(app) as client:
+        app = _create_example_app()
+        with _TestClient(app, loop=loop) as client:
 
             @asyncio.coroutine
             def test_get_route():
@@ -84,8 +84,8 @@ def test_test_client_close_is_idempotent():
     not attempt to close the server again.
     """
     loop = setup_test_loop()
-    app = _create_example_app(loop)
-    client = _TestClient(app)
+    app = _create_example_app()
+    client = _TestClient(app, loop=loop)
     loop.run_until_complete(client.close())
     loop.run_until_complete(client.close())
     teardown_test_loop(loop)
@@ -93,8 +93,8 @@ def test_test_client_close_is_idempotent():
 
 class TestAioHTTPTestCase(AioHTTPTestCase):
 
-    def get_app(self, loop):
-        return _create_example_app(loop)
+    def get_app(self):
+        return _create_example_app()
 
     @unittest_run_loop
     @asyncio.coroutine
@@ -123,13 +123,13 @@ def loop():
 
 
 @pytest.fixture
-def app(loop):
-    return _create_example_app(loop)
+def app():
+    return _create_example_app()
 
 
 @pytest.yield_fixture
 def test_client(loop, app):
-    client = _TestClient(app)
+    client = _TestClient(app, loop=loop)
     loop.run_until_complete(client.start_server())
     yield client
     loop.run_until_complete(client.close())
@@ -224,8 +224,8 @@ def test_make_mocked_request_transport():
 
 
 def test_test_client_props(loop):
-    app = _create_example_app(loop)
-    client = _TestClient(app, host='localhost')
+    app = _create_example_app()
+    client = _TestClient(app, loop=loop, host='localhost')
     assert client.host == 'localhost'
     assert client.port is None
     with client:
@@ -235,8 +235,8 @@ def test_test_client_props(loop):
 
 
 def test_test_server_context_manager(loop):
-    app = _create_example_app(loop)
-    with _TestServer(app) as server:
+    app = _create_example_app()
+    with _TestServer(app, loop=loop) as server:
         @asyncio.coroutine
         def go():
             client = aiohttp.ClientSession(loop=loop)
@@ -248,15 +248,15 @@ def test_test_server_context_manager(loop):
         loop.run_until_complete(go())
 
 
-def test_client_scheme_mutually_exclusive_with_server(loop):
-    app = _create_example_app(loop)
+def test_client_scheme_mutually_exclusive_with_server():
+    app = _create_example_app()
     server = _TestServer(app)
     with pytest.raises(ValueError):
         _TestClient(server, scheme='http')
 
 
-def test_client_host_mutually_exclusive_with_server(loop):
-    app = _create_example_app(loop)
+def test_client_host_mutually_exclusive_with_server():
+    app = _create_example_app()
     server = _TestServer(app)
     with pytest.raises(ValueError):
         _TestClient(server, host='127.0.0.1')
@@ -268,20 +268,11 @@ def test_client_unsupported_arg():
 
 
 def test_server_make_url_yarl_compatibility(loop):
-    app = _create_example_app(loop)
-    with _TestServer(app) as server:
+    app = _create_example_app()
+    with _TestServer(app, loop=loop) as server:
         make_url = server.make_url
         assert make_url(URL('/foo')) == make_url('/foo')
         with pytest.raises(AssertionError):
             make_url('http://foo.com')
         with pytest.raises(AssertionError):
             make_url(URL('http://foo.com'))
-
-
-def test_raw_server_implicit_loop(loop):
-    @asyncio.coroutine
-    def handler(request):
-        pass
-    asyncio.set_event_loop(loop)
-    srv = RawTestServer(handler)
-    assert srv._loop is loop

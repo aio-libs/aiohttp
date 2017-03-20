@@ -126,11 +126,8 @@ def test_server(loop):
 
     @asyncio.coroutine
     def go(app, **kwargs):
-        assert app.loop is loop, \
-            "Application is attached to other event loop"
-
         server = TestServer(app)
-        yield from server.start_server(**kwargs)
+        yield from server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server
 
@@ -154,8 +151,8 @@ def raw_test_server(loop):
 
     @asyncio.coroutine
     def go(handler, **kwargs):
-        server = RawTestServer(handler, loop=loop)
-        yield from server.start_server(**kwargs)
+        server = RawTestServer(handler)
+        yield from server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server
 
@@ -183,22 +180,16 @@ def test_client(loop):
     def go(__param, *args, **kwargs):
         if isinstance(__param, Application):
             assert not args, "args should be empty"
-            assert __param.loop is loop, \
-                "Application is attached to other event loop"
-            client = TestClient(__param, **kwargs)
+            client = TestClient(__param, loop=loop, **kwargs)
         elif isinstance(__param, TestServer):
             assert not args, "args should be empty"
-            assert __param.app.loop is loop, \
-                "TestServer is attached to other event loop"
-            client = TestClient(__param, **kwargs)
+            client = TestClient(__param, loop=loop, **kwargs)
         elif isinstance(__param, RawTestServer):
             assert not args, "args should be empty"
-            assert __param._loop is loop, \
-                "TestServer is attached to other event loop"
-            client = TestClient(__param, **kwargs)
+            client = TestClient(__param, loop=loop, **kwargs)
         else:
             __param = __param(loop, *args, **kwargs)
-            client = TestClient(__param)
+            client = TestClient(__param, loop=loop)
 
         yield from client.start_server()
         clients.append(client)
