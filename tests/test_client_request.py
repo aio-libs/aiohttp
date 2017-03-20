@@ -747,6 +747,14 @@ def test_chunked_length(loop, conn):
 
 
 @asyncio.coroutine
+def test_chunked_transfer_encoding(loop, conn):
+    with pytest.raises(ValueError):
+        ClientRequest(
+            'get', URL('http://python.org/'),
+            headers={'TRANSFER-ENCODING': 'chunked'}, chunked=True, loop=loop)
+
+
+@asyncio.coroutine
 def test_file_upload_not_chunked(loop):
     here = os.path.dirname(__file__)
     fname = os.path.join(here, 'sample.key')

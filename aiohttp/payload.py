@@ -1,5 +1,6 @@
 import asyncio
 import io
+import json
 import mimetypes
 import os
 from abc import ABC, abstractmethod
@@ -14,7 +15,7 @@ from .streams import DEFAULT_LIMIT, DataQueue, EofStream, StreamReader
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'BytesPayload', 'StringPayload', 'StreamReaderPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',
-           'TextIOPayload', 'StringIOPayload')
+           'TextIOPayload', 'StringIOPayload', 'JsonPayload')
 
 
 class LookupError(Exception):
@@ -282,6 +283,17 @@ class DataQueuePayload(Payload):
                 yield from writer.write(chunk)
             except EofStream:
                 break
+
+
+class JsonPayload(BytesPayload):
+
+    def __init__(self, value,
+                 encoding='utf-8', content_type='application/json',
+                 *args, **kwargs):
+
+        super().__init__(
+            json.dumps(value).encode(encoding),
+            content_type=content_type, encoding=encoding, *args, **kwargs)
 
 
 PAYLOAD_REGISTRY = PayloadRegistry()

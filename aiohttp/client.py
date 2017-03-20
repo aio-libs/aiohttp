@@ -133,6 +133,7 @@ class ClientSession:
     def _request(self, method, url, *,
                  params=None,
                  data=None,
+                 json=None,
                  headers=None,
                  skip_auto_headers=None,
                  auth=None,
@@ -159,6 +160,10 @@ class ClientSession:
 
         if self.closed:
             raise RuntimeError('Session is closed')
+
+        if data is not None and json is not None:
+            raise ValueError(
+                'data and json parameters can not be used at the same time')
 
         if not isinstance(chunked, bool) and chunked is not None:
             warnings.warn(
@@ -203,7 +208,7 @@ class ClientSession:
 
                     req = self._request_class(
                         method, url, params=params, headers=headers,
-                        skip_auto_headers=skip_headers, data=data,
+                        skip_auto_headers=skip_headers, data=data, json=json,
                         cookies=cookies, auth=auth, version=version,
                         compress=compress, chunked=chunked,
                         expect100=expect100, loop=self._loop,

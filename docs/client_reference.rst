@@ -146,7 +146,7 @@ The client session supports the context manager protocol for self closing.
 
       A read-only property.
 
-   .. comethod:: request(method, url, *, params=None, data=None,\
+   .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
                          max_redirects=10, version=HttpVersion(major=1, minor=1),\
@@ -179,6 +179,9 @@ The client session supports the context manager protocol for self closing.
 
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
+
+      :param json: Any json compatible python object (optional). `json` and `data`
+                   parameters could not be used at the same time.
 
       :param dict headers: HTTP Headers to send with
                            the request (optional)
@@ -484,7 +487,7 @@ keepaliving, cookies and complex connection stuff like properly configured SSL
 certification chaining.
 
 
-.. coroutinefunction:: request(method, url, *, params=None, data=None, \
+.. coroutinefunction:: request(method, url, *, params=None, data=None, json=None,\
                                headers=None, cookies=None, auth=None, \
                                allow_redirects=True, max_redirects=10, \
                                encoding='utf-8', \
@@ -506,8 +509,10 @@ certification chaining.
    :param data: Dictionary, bytes, or file-like object to
                 send in the body of the request (optional)
 
-   :param dict headers: HTTP Headers to send with
-                        the request (optional)
+   :param json: Any json compatible python object (optional). `json` and `data`
+                parameters could not be used at the same time.
+
+   :param dict headers: HTTP Headers to send with the request (optional)
 
    :param dict cookies: Cookies to send with the request (optional)
 
