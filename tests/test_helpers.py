@@ -473,6 +473,7 @@ def test_ceil_call_later_no_timeout():
     assert not loop.call_at.called
 
 
+@asyncio.coroutine
 def test_ceil_timeout(loop):
     with helpers.CeilTimeout(0, loop=loop) as timeout:
         assert timeout._timeout is None

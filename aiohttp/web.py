@@ -67,6 +67,7 @@ class Application(MutableMapping):
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
+        self._on_loop_available = Signal(self)
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
@@ -100,27 +101,40 @@ class Application(MutableMapping):
         return iter(self._state)
 
     ########
-
     @property
-    def frozen(self):
-        return self._frozen
+    def loop(self):
+        return self._loop
 
-    def freeze(self, loop=None):
+    def _set_loop(self, loop):
         if loop is None:
             loop = asyncio.get_event_loop()
         if self._loop is not None and self._loop is not loop:
             raise RuntimeError(
                 "web.Application instance initialized with different loop")
-        if self._frozen:
-            return
 
+        self._loop = loop
+        self._on_loop_available.send()
+
+        # set loop debug
         if self._debug is ...:
             self._debug = loop.get_debug()
 
-        self._loop = loop
+        # set loop to sub applications
+        for subapp in self._subapps:
+            subapp._set_loop(loop)
+
+    @property
+    def frozen(self):
+        return self._frozen
+
+    def freeze(self):
+        if self._frozen:
+            return
+
         self._frozen = True
         self._middlewares = tuple(reversed(self._middlewares))
         self._router.freeze()
+        self._on_loop_available.freeze()
         self._on_pre_signal.freeze()
         self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
@@ -129,7 +143,7 @@ class Application(MutableMapping):
         self._on_cleanup.freeze()
 
         for subapp in self._subapps:
-            subapp.freeze(loop=loop)
+            subapp.freeze()
 
     @property
     def debug(self):
@@ -165,7 +179,13 @@ class Application(MutableMapping):
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
+        if self._loop is not None:
+            subapp._set_loop(self._loop)
         return resource
+
+    @property
+    def on_loop_available(self):
+        return self._on_loop_available
 
     @property
     def on_response_prepare(self):
@@ -196,16 +216,13 @@ class Application(MutableMapping):
         return self._router
 
     @property
-    def loop(self):
-        return self._loop
-
-    @property
     def middlewares(self):
         return self._middlewares
 
     def make_handler(self, *, loop=None,
                      secure_proxy_ssl_header=None, **kwargs):
-        self.freeze(loop=loop)
+        self._set_loop(loop)
+        self.freeze()
 
         kwargs['debug'] = self.debug
         if self._handler_args:
