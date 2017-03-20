@@ -1,4 +1,4 @@
-version: $env:APPVEYOR_REPO_BRANCH-{build}
+version: 2.0-{build}
 
 environment:
   PYPI_PASSWD:
