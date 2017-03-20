@@ -43,7 +43,7 @@ The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, json_serialize=json.dumps, \
+                         auth=None, json_serialize=func:`json.dumps`, \
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, conn_timeout=None, \
                          raise_for_status=False)
@@ -101,7 +101,7 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 0.22
 
-   :param callable json_serialize: Json serializer function. (:func:`json.dumps` by default)
+   :param callable json_serialize: Json `serializer` function. (:func:`json.dumps` by default)
 
    :param bool raise_for_status: Automatically call `raise_for_status()` for each response.
       (default is False)

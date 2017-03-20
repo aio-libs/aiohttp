@@ -241,7 +241,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Clone itself with replacement some attributes.
 
-               Creates and returns a new instance of Request object. If no parameters
+      Creates and returns a new instance of Request object. If no parameters
       are given, an exact copy is returned. If a parameter is not passed, it
       will reuse the one from the current request object.
 
