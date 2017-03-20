@@ -1,8 +1,8 @@
-version: 2.0.0a0.dev{build}
+version: 2.0dev{build}
 
 environment:
   PYPI_PASSWD:
-    secure: u+K6dKi7+CXXVFEUG4V7zUyV3w7Ntg0Ork/RGVV0eSQ=
+    secure: syNUF3e8AEPY327rWBkKag==
   matrix:
     - PYTHON: "C:\\Python34"
     - PYTHON: "C:\\Python34-x64"
@@ -31,7 +31,7 @@ artifacts:
 deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username andrew.svetlov --password $env:PYPI_PASSWD"
+          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username fafhrd --password $env:PYPI_PASSWD"
       }
 
 #notifications:
