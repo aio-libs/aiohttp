@@ -14,7 +14,7 @@ As a simple case, you can upload data from file::
 Then you can use `file_sender` like this:
 
     async with session.post('http://httpbin.org/post',
-                            data=file_sender(file_name='hude_file')) as resp:
+                            data=file_sender(file_name='huge_file')) as resp:
         print(await resp.text())
 
 ..note:: Coroutine must accept `writer` as first argument
