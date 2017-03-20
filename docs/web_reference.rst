@@ -1109,7 +1109,7 @@ will be called during application finishing.
 properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 :attr:`Request.app` property::
 
-   app = Application(loop=loop)
+   app = Application()
    app['database'] = await aiopg.create_engine(**db_config)
 
    async def handler(request):
@@ -1119,17 +1119,10 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
-.. class:: Application(*, loop=None, router=None, logger=<default>, \
+.. class:: Application(*, router=None, logger=<default>, \
                        middlewares=(), debug=False, **kwargs)
 
    The class inherits :class:`dict`.
-
-   :param loop: :ref:`event loop<asyncio-event-loop>` used
-    for processing HTTP requests.
-
-    If param is ``None`` :func:`asyncio.get_event_loop`
-    used for getting default event loop, but we strongly
-    recommend to use explicit loops everywhere.
 
    :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
@@ -1143,6 +1136,8 @@ duplicated like one using :meth:`Application.copy`.
                        :ref:`aiohttp-web-middlewares` for details.
 
    :param debug: Switches debug mode.
+
+   :param loop: loop parameter is deprecated. loop is get set during freeze stage.
 
    .. attribute:: router
 
@@ -1222,9 +1217,15 @@ duplicated like one using :meth:`Application.copy`.
 
       .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
 
-   .. method:: make_handler(**kwargs)
+   .. method:: make_handler(loop=None, **kwargs)
 
     Creates HTTP protocol factory for handling requests.
+
+    :param loop: :ref:`event loop<asyncio-event-loop>` used
+                 for processing HTTP requests.
+
+                 If param is ``None`` :func:`asyncio.get_event_loop`
+                 used for getting default event loop.
 
     :param tuple secure_proxy_ssl_header: Secure proxy SSL header. Can
       be used to detect request scheme,
@@ -1263,7 +1264,6 @@ duplicated like one using :meth:`Application.copy`.
 
     :param float lingering_timeout: maximum waiting time for more
         client data to arrive when lingering close is in effect
-
 
     You should pass result of the method as *protocol_factory* to
     :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::

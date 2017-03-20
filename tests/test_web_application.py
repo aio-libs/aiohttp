@@ -19,17 +19,42 @@ def test_app_call(loop):
 
 
 def test_app_default_loop(loop):
+    app = web.Application()
+    assert app.loop is None
+
+
+def test_freeze_with_loop(loop):
+    app = web.Application()
+    app.freeze(loop=loop)
+    assert app.loop is loop
+
+    # idepotent
+    app.freeze(loop=loop)
+    app.freeze(loop=loop)
+
+
+def test_freeze_default_loop(loop):
     asyncio.set_event_loop(loop)
     app = web.Application()
-    assert loop is app.loop
+    app.freeze()
+    assert app.loop is loop
+
+
+def test_freeze_with_different_loops(loop):
+    app = web.Application()
+    app.freeze(loop=loop)
+    assert app.loop is loop
+
+    with pytest.raises(RuntimeError):
+        app.freeze(loop=object())
 
 
 @pytest.mark.parametrize('debug', [True, False])
 def test_app_make_handler_debug_exc(loop, mocker, debug):
-    app = web.Application(loop=loop, debug=debug)
+    app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web.Server')
 
-    app.make_handler()
+    app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
                            loop=loop,
