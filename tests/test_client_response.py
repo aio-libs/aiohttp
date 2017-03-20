@@ -439,3 +439,11 @@ def test_response_request_info():
     )
     assert URL(url) == response.request_info.url
     assert headers == response.request_info.headers
+
+
+def test_response_request_info_empty():
+    url = 'http://def-cl-resp.org'
+    response = ClientResponse(
+        'get', URL(url),
+    )
+    assert response.request_info is None

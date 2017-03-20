@@ -168,6 +168,12 @@ It is not possible to use :meth:`~ClientResponse.read`,
 :meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` after
 explicit reading from :attr:`~ClientResponse.content`.
 
+RequestInfo
+-----------
+
+`ClientResponse` object contains :attr:`~ClientResponse.request_info` property,
+which contains request fields: `url` and `headers`.
+
 
 Custom Headers
 --------------
