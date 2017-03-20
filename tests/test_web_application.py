@@ -23,30 +23,26 @@ def test_app_default_loop():
     assert app.loop is None
 
 
-def test_freeze_with_loop(loop):
+def test_set_loop(loop):
     app = web.Application()
-    app.freeze(loop=loop)
+    app._set_loop(loop)
     assert app.loop is loop
 
-    # idepotent
-    app.freeze(loop=loop)
-    app.freeze(loop=loop)
 
-
-def test_freeze_default_loop(loop):
+def test_set_loop_default_loop(loop):
     asyncio.set_event_loop(loop)
     app = web.Application()
-    app.freeze()
+    app._set_loop(None)
     assert app.loop is loop
 
 
-def test_freeze_with_different_loops(loop):
+def test_set_loop_with_different_loops(loop):
     app = web.Application()
-    app.freeze(loop=loop)
+    app._set_loop(loop)
     assert app.loop is loop
 
     with pytest.raises(RuntimeError):
-        app.freeze(loop=object())
+        app._set_loop(loop=object())
 
 
 @pytest.mark.parametrize('debug', [True, False])
@@ -120,8 +116,9 @@ def test_on_shutdown():
 
 
 @asyncio.coroutine
-def test_on_startup():
+def test_on_startup(loop):
     app = web.Application()
+    app._set_loop(loop)
 
     blocking_called = False
     long_running1_called = False
@@ -178,8 +175,8 @@ def test_secure_proxy_ssl_header_default():
 
 
 @asyncio.coroutine
-def test_secure_proxy_ssl_header_non_default():
+def test_secure_proxy_ssl_header_non_default(loop):
     app = web.Application()
     hdr = ('X-Forwarded-Proto', 'https')
-    app.make_handler(secure_proxy_ssl_header=hdr)
+    app.make_handler(secure_proxy_ssl_header=hdr, loop=loop)
     assert app._secure_proxy_ssl_header is hdr

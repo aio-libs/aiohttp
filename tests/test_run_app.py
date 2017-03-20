@@ -318,7 +318,7 @@ def test_run_app_abstract_linux_socket(loop, mocker):
     loop.call_later(0.05, loop.stop)
     app = web.Application()
     web.run_app(
-        app, path=sock_path.decode('ascii', 'ignore'),
+        app, path=sock_path.decode('ascii', 'ignore'), loop=loop,
         print=lambda *args: None)
     assert loop.is_closed()
 
@@ -333,7 +333,7 @@ def test_run_app_abstract_linux_socket(loop, mocker):
         mocker.spy(os, 'remove')
         printed = StringIO()
 
-        web.run_app(app, path=sock_path, print=printed.write)
+        web.run_app(app, path=sock_path, print=printed.write, loop=loop)
 
         # Abstract paths don't exist on the file system, so no attempt should
         # be made to remove.

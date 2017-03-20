@@ -31,8 +31,10 @@ def make_handler():
 
 
 @pytest.fixture
-def app():
-    return web.Application()
+def app(loop):
+    app = web.Application()
+    app._set_loop(loop)
+    return app
 
 
 @pytest.fixture
@@ -963,13 +965,13 @@ def test_frozen_router(router):
 
 def test_frozen_router_subapp(app, loop):
     subapp = web.Application()
-    subapp.freeze(loop=loop)
+    subapp.freeze()
     with pytest.raises(RuntimeError):
         app.add_subapp('/', subapp)
 
 
 def test_frozen_app_on_subapp(app, loop):
-    app.freeze(loop=loop)
+    app.freeze()
     subapp = web.Application()
     with pytest.raises(RuntimeError):
         app.add_subapp('/', subapp)

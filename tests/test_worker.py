@@ -26,11 +26,15 @@ ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 class BaseTestWorker:
 
     def __init__(self):
-        self.pid = 'pid'
         self.servers = {}
         self.exit_code = 0
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
+
+        try:
+            self.pid = 'pid'
+        except:
+            pass
 
 
 class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
