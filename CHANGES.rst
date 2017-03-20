@@ -1,7 +1,7 @@
 Changes
 =======
 
-2.0.0 (2017-03-30)
+2.0.0 (2017-03-20)
 ------------------
 
 - Added `json` to `ClientSession.request()` method #1726
