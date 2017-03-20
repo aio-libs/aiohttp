@@ -82,7 +82,7 @@ A simple would be::
         return web.Response(text='Hello, world')
 
     async def test_hello(test_client, loop):
-        app = web.Application(loop=loop)
+        app = web.Application()
         app.router.add_get('/', hello)
         client = await test_client(app)
         resp = await client.get('/')
@@ -108,7 +108,7 @@ app test client::
 
     @pytest.fixture
     def cli(loop, test_client):
-        app = web.Application(loop=loop)
+        app = web.Application()
         app.router.add_get('/', previous)
         app.router.add_post('/', previous)
         return loop.run_until_complete(test_client(app))
@@ -133,8 +133,8 @@ Pytest tooling has the following fixtures:
    A fixture factory that creates
    :class:`~aiohttp.test_utils.TestServer`::
 
-      async def test_f(loop, test_server):
-          app = web.Application(loop=loop)
+      async def test_f(test_server):
+          app = web.Application()
           # fill route table
 
           server = await test_server(app)
@@ -155,8 +155,8 @@ Pytest tooling has the following fixtures:
    A fixture factory that creates
    :class:`~aiohttp.test_utils.TestClient` for access to tested server::
 
-      async def test_f(loop, test_client):
-          app = web.Application(loop=loop)
+      async def test_f(test_client):
+          app = web.Application()
           # fill route table
 
           client = await test_client(app)
@@ -204,11 +204,11 @@ functionality, the AioHTTPTestCase is provided::
 
     class MyAppTestCase(AioHTTPTestCase):
 
-        async def get_application(self, loop):
+        async def get_application(self):
             """Override the get_app method to return your application.
             """
             # it's important to use the loop passed here.
-            return web.Application(loop=loop)
+            return web.Application()
 
         # the unittest_run_loop decorator can be used in tandem with
         # the AioHTTPTestCase to simplify running
@@ -252,14 +252,11 @@ functionality, the AioHTTPTestCase is provided::
        The application returned by :meth:`get_app`
        (:class:`aiohttp.web.Application` instance).
 
-    .. comethod:: get_application(loop)
+    .. comethod:: get_application()
 
        This async method should be overridden
        to return the :class:`aiohttp.web.Application`
        object to test.
-
-       :param loop: the event_loop to use
-       :type loop: asyncio.AbstractEventLoop
 
        :return: :class:`aiohttp.web.Application` instance.
 
@@ -389,6 +386,7 @@ conditions that hard to reproduce on real server::
 
 .. _aiohttp-testing-framework-agnostic-utilities:
 
+
 Framework Agnostic Utilities
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -400,8 +398,8 @@ High level test creation::
     # loop_context is provided as a utility. You can use any
     # asyncio.BaseEventLoop class in it's place.
     with loop_context() as loop:
-        app = _create_example_app(loop)
-        with TestClient(app) as client:
+        app = _create_example_app()
+        with TestClient(app, loop=loop) as client:
 
             async def test_get_route():
                 nonlocal client
@@ -419,8 +417,8 @@ basis, the TestClient object can be used directly::
     from aiohttp.test_utils import TestClient
 
     with loop_context() as loop:
-        app = _create_example_app(loop)
-        client = TestClient(app)
+        app = _create_example_app()
+        client = TestClient(app, loop=loop)
         loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 
@@ -553,7 +551,10 @@ for accessing to the server.
 
       :class:`asyncio.AbstractServer` used for managing accepted connections.
 
-   .. comethod:: start_server(**kwargs)
+   .. comethod:: start_server(loop=None, **kwargs)
+
+      :param loop: the event_loop to use
+      :type loop: asyncio.AbstractEventLoop
 
       Start a test server.
 
@@ -566,8 +567,7 @@ for accessing to the server.
       Return an *absolute* :class:`~yarl.URL` for given *path*.
 
 
-.. class:: RawTestServer(handler, *, \
-                         loop=None, scheme="http", host='127.0.0.1')
+.. class:: RawTestServer(handler, *, scheme="http", host='127.0.0.1')
 
    Low-level test server (derived from :class:`BaseTestServer`).
 
@@ -609,7 +609,7 @@ for accessing to the server.
 Test Client
 ~~~~~~~~~~~
 
-.. class:: TestClient(app_or_server, *, \
+.. class:: TestClient(app_or_server, *, loop=None, \
                       scheme='http', host='127.0.0.1', \
                       cookie_jar=None, **kwargs)
 
@@ -628,6 +628,8 @@ Test Client
                       option.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
+
+   :param asyncio.AbstractEventLoop loop: the event_loop to use
 
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
