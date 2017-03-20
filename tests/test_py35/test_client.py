@@ -21,7 +21,7 @@ async def test_close_resp_on_error_async_with_session(loop, test_server):
         await asyncio.sleep(0.1, loop=request.app.loop)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     server = await test_server(app)
 
@@ -38,7 +38,7 @@ async def test_release_resp_on_normal_exit_from_cm(loop, test_server):
     async def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     server = await test_server(app)
 
@@ -57,7 +57,7 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
         await asyncio.sleep(0.1, loop=request.app.loop)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     server = await test_server(app)
 
@@ -87,7 +87,7 @@ async def test_aiohttp_request(loop, test_server):
     async def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     server = await test_server(app)
 

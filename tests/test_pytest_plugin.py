@@ -19,7 +19,7 @@ def hello(request):
 
 
 def create_app(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', hello)
     return app
 
@@ -35,7 +35,7 @@ def test_hello(test_client):
 
 @asyncio.coroutine
 def test_hello_from_app(test_client, loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', hello)
     client = yield from test_client(app)
     resp = yield from client.get('/')
@@ -72,13 +72,13 @@ def test_hello_with_fake_loop(test_client):
 @asyncio.coroutine
 def test_set_args(test_client, loop):
     with pytest.raises(AssertionError):
-        app = web.Application(loop=loop)
+        app = web.Application()
         yield from test_client(app, 1, 2, 3)
 
 
 @asyncio.coroutine
 def test_set_keyword_args(test_client, loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     with pytest.raises(TypeError):
         yield from test_client(app, param=1)
 

@@ -15,7 +15,7 @@ async def test_client_ws_async_for(loop, test_client):
         await ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = await test_client(app)
@@ -40,7 +40,7 @@ async def test_client_ws_async_with(loop, test_server):
         await ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     server = await test_server(app)
@@ -65,7 +65,7 @@ async def test_client_ws_async_with_send(loop, test_server):
         await ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     server = await test_server(app)
@@ -89,7 +89,7 @@ async def test_client_ws_async_with_shortcut(loop, test_server):
         await ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
 
@@ -117,7 +117,7 @@ async def test_closed_async_for(loop, test_client):
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = await test_client(app)
     resp = await client.ws_connect('/')

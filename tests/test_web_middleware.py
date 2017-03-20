@@ -24,7 +24,7 @@ def test_middleware_modifies_response(loop, test_client):
             return resp
         return middleware
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.middlewares.append(middleware_factory)
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
@@ -53,7 +53,7 @@ def test_middleware_handles_exception(loop, test_client):
 
         return middleware
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.middlewares.append(middleware_factory)
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
@@ -83,7 +83,7 @@ def test_middleware_chain(loop, test_client):
             return middleware
         return factory
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.middlewares.append(make_factory(1))
     app.middlewares.append(make_factory(2))
     app.router.add_route('GET', '/', handler)
@@ -97,7 +97,7 @@ def test_middleware_chain(loop, test_client):
 @pytest.fixture
 def cli(loop, test_client):
     def wrapper(extra_middlewares):
-        app = web.Application(loop=loop)
+        app = web.Application()
         app.router.add_route(
             'GET', '/resource1', lambda x: web.Response(text="OK"))
         app.router.add_route(

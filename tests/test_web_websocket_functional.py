@@ -32,7 +32,7 @@ def test_websocket_json(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -61,7 +61,7 @@ def test_websocket_json_invalid_message(loop, test_client):
             yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -86,7 +86,7 @@ def test_websocket_send_json(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -115,7 +115,7 @@ def test_websocket_send_drain(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -141,7 +141,7 @@ def test_websocket_receive_json(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -169,7 +169,7 @@ def test_send_recv_text(loop, test_client):
         closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -206,7 +206,7 @@ def test_send_recv_bytes(loop, test_client):
         closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -241,7 +241,7 @@ def test_send_recv_json(loop, test_client):
         closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -284,7 +284,7 @@ def test_close_timeout(loop, test_client):
         aborted.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -343,7 +343,7 @@ def test_concurrent_close(loop, test_client):
 
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -378,7 +378,7 @@ def test_auto_pong_with_closing_by_peer(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -407,7 +407,7 @@ def test_ping(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -435,7 +435,7 @@ def test_client_ping(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -470,7 +470,7 @@ def test_pong(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -502,7 +502,7 @@ def test_change_status(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -527,7 +527,7 @@ def test_handle_protocol(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -550,7 +550,7 @@ def test_server_close_handshake(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -587,7 +587,7 @@ def test_client_close_handshake(loop, test_client, ceil):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -613,7 +613,7 @@ def test_server_close_handshake_server_eats_client_messages(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -649,7 +649,7 @@ def test_receive_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -677,7 +677,7 @@ def test_custom_receive_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -697,7 +697,7 @@ def test_heartbeat(loop, test_client, ceil):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
 
     client = yield from test_client(app)
@@ -729,7 +729,7 @@ def test_heartbeat_no_pong(loop, test_client, ceil):
 
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
 
     client = yield from test_client(app)

@@ -31,8 +31,8 @@ def make_handler():
 
 
 @pytest.fixture
-def app(loop):
-    return web.Application(loop=loop)
+def app():
+    return web.Application()
 
 
 @pytest.fixture
@@ -908,34 +908,34 @@ def test_url_for_in_resource_route(router):
 
 
 def test_subapp_get_info(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     resource = subapp.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
 def test_subapp_url(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
     with pytest.raises(RuntimeError):
         resource.url()
 
 
 def test_subapp_url_for(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
     with pytest.raises(RuntimeError):
         resource.url_for()
 
 
 def test_subapp_repr(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
     assert repr(resource).startswith(
         '<PrefixedSubAppResource /pre -> <Application')
 
 
 def test_subapp_len(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     subapp.router.add_get('/', make_handler(), allow_head=False)
     subapp.router.add_post('/', make_handler())
     resource = app.add_subapp('/pre', subapp)
@@ -943,7 +943,7 @@ def test_subapp_len(app, loop):
 
 
 def test_subapp_iter(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     r1 = subapp.router.add_get('/', make_handler(), allow_head=False)
     r2 = subapp.router.add_post('/', make_handler())
     resource = app.add_subapp('/pre', subapp)
@@ -999,13 +999,13 @@ def test_dynamic_url_with_name_started_from_undescore(router):
 
 
 def test_cannot_add_subapp_with_empty_prefix(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     with pytest.raises(ValueError):
         app.add_subapp('', subapp)
 
 
 def test_cannot_add_subapp_with_slash_prefix(app, loop):
-    subapp = web.Application(loop=loop)
+    subapp = web.Application()
     with pytest.raises(ValueError):
         app.add_subapp('/', subapp)
 
