@@ -1,10 +1,8 @@
-CHANGES
+Changes
 =======
 
-2.0.0 (2017-03-xx)
+2.0.0 (2017-03-30)
 ------------------
-
-- Fixed None timeout support #1720
 
 - Added `json` to `ClientSession.request()` method #1726
 

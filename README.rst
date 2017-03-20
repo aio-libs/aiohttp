@@ -36,10 +36,6 @@ With this amount of api changes we had to make backward incompatible changes. Pl
 
 Please report problems or annoyance with with api to https://github.com/aio-libs/aiohttp
 
-You can install and test this release with::
-
-  pip install https://github.com/aio-libs/aiohttp/archive/master.tar.gz#egg=aiohttp-2.0.0
-
 
 Features
 --------
