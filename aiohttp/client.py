@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import hashlib
+import json
 import os
 import sys
 import traceback
@@ -12,7 +13,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
 from . import connector as connector_mod
-from . import client_exceptions, client_reqrep, hdrs, http
+from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError,
                                 ClientResponseError, ServerTimeoutError,
@@ -45,8 +46,8 @@ class ClientSession:
 
     def __init__(self, *, connector=None, loop=None, cookies=None,
                  headers=None, skip_auto_headers=None,
-                 auth=None, request_class=ClientRequest,
-                 response_class=ClientResponse,
+                 auth=None, json_serialize=json.dumps,
+                 request_class=ClientRequest, response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
@@ -93,6 +94,7 @@ class ClientSession:
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
+        self._json_serialize = json_serialize
         self._read_timeout = read_timeout
         self._conn_timeout = conn_timeout
         self._raise_for_status = raise_for_status
@@ -164,6 +166,8 @@ class ClientSession:
         if data is not None and json is not None:
             raise ValueError(
                 'data and json parameters can not be used at the same time')
+        elif json is not None:
+            data = payload.JsonPayload(json)
 
         if not isinstance(chunked, bool) and chunked is not None:
             warnings.warn(
@@ -208,7 +212,7 @@ class ClientSession:
 
                     req = self._request_class(
                         method, url, params=params, headers=headers,
-                        skip_auto_headers=skip_headers, data=data, json=json,
+                        skip_auto_headers=skip_headers, data=data,
                         cookies=cookies, auth=auth, version=version,
                         compress=compress, chunked=chunked,
                         expect100=expect100, loop=self._loop,
