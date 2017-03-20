@@ -1,6 +1,9 @@
 Changes
 =======
 
+2.0.1 (2017-xx-xx)
+------------------
+
 - Added `request_info` to response object.
 
 2.0.0 (2017-03-20)
