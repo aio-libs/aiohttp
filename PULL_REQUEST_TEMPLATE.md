@@ -25,7 +25,7 @@
 - [ ] I think the code is well written
 - [ ] Unit tests for the changes exist
 - [ ] Documentation reflects the changes
-- [ ] Add yourself to `CONTRIBUTORS.txt`
+- [ ] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
   * The format is &lt;Name&gt; &lt;Surname&gt;.
   * Please keep alphabetical order, the file is sorted by names. 
 - [ ] Add a new entry to `CHANGES.rst`
