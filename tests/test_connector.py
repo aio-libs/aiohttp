@@ -1032,7 +1032,7 @@ def test_tcp_connector(test_client, loop):
     def handler(request):
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1062,11 +1062,11 @@ class TestHttpClientConnector(unittest.TestCase):
 
     @asyncio.coroutine
     def create_server(self, method, path, handler):
-        app = web.Application(loop=self.loop)
+        app = web.Application()
         app.router.add_route(method, path, handler)
 
         port = unused_port()
-        self.handler = app.make_handler(tcp_keepalive=False)
+        self.handler = app.make_handler(loop=self.loop, tcp_keepalive=False)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port)
         url = "http://127.0.0.1:{}".format(port) + path
@@ -1077,10 +1077,11 @@ class TestHttpClientConnector(unittest.TestCase):
     def create_unix_server(self, method, path, handler):
         tmpdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tmpdir)
-        app = web.Application(loop=self.loop)
+        app = web.Application()
         app.router.add_route(method, path, handler)
 
-        self.handler = app.make_handler(tcp_keepalive=False, access_log=None)
+        self.handler = app.make_handler(
+            loop=self.loop, tcp_keepalive=False, access_log=None)
         sock_path = os.path.join(tmpdir, 'socket.sock')
         srv = yield from self.loop.create_unix_server(
             self.handler, sock_path)

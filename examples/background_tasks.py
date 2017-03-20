@@ -53,7 +53,7 @@ async def cleanup_background_tasks(app):
 
 
 async def init(loop):
-    app = Application(loop=loop)
+    app = Application()
     app['websockets'] = []
     app.router.add_get('/news', websocket_handler)
     app.on_startup.append(start_background_tasks)

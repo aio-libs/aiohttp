@@ -46,7 +46,7 @@ async def hello(request):
 
 
 async def init(loop):
-    app = Application(loop=loop)
+    app = Application()
     app.router.add_get('/', intro)
     app.router.add_get('/simple', simple)
     app.router.add_get('/change_body', change_body)

@@ -37,7 +37,7 @@ def test_simple_get(loop, test_client):
         assert b'' == body
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -56,7 +56,7 @@ def test_simple_get_with_text(loop, test_client):
         assert b'' == body
         return web.Response(text='OK', headers={'content-type': 'text/plain'})
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -74,7 +74,7 @@ def test_handler_returns_not_response(loop, test_server, test_client):
     def handler(request):
         return 'abc'
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     server = yield from test_server(app, logger=logger)
     client = yield from test_client(server)
@@ -92,7 +92,7 @@ def test_head_returns_empty_body(loop, test_client):
     def handler(request):
         return web.Response(body=b'test')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_head('/', handler)
     client = yield from test_client(app, version=HttpVersion11)
 
@@ -111,7 +111,7 @@ def test_post_form(loop, test_client):
         assert {'a': '1', 'b': '2'} == data
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -132,7 +132,7 @@ def test_post_text(loop, test_client):
         assert data == data2
         return web.Response(text=data)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -158,7 +158,7 @@ def test_post_json(loop, test_client):
         resp.body = json.dumps(data).encode('utf8')
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -196,7 +196,7 @@ def test_multipart(loop, test_client):
         resp.body = b''
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -228,7 +228,7 @@ def test_multipart_content_transfer_encoding(loop, test_client):
         resp.body = b''
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -244,7 +244,7 @@ def test_render_redirect(loop, test_client):
     def handler(request):
         raise web.HTTPMovedPermanently(location='/path')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -277,7 +277,7 @@ def test_post_single_file(loop, test_client):
         resp = web.Response(body=b'OK')
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -306,7 +306,7 @@ def test_files_upload_with_same_key(loop, test_client):
         resp = web.Response(body=b'OK')
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -343,7 +343,7 @@ def test_post_files(loop, test_client):
         resp = web.Response(body=b'OK')
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -363,7 +363,7 @@ def test_release_post_data(loop, test_client):
         assert chunk == b''
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -379,7 +379,7 @@ def test_POST_DATA_with_content_transfer_encoding(loop, test_client):
         assert b'123' == data['name']
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -400,7 +400,7 @@ def test_post_form_with_duplicate_keys(loop, test_client):
         assert [('a', '1'), ('a', '2')] == lst
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -409,7 +409,7 @@ def test_post_form_with_duplicate_keys(loop, test_client):
 
 
 def test_repr_for_application(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     assert "<Application 0x{:x}>".format(id(app)) == repr(app)
 
 
@@ -432,7 +432,7 @@ def test_expect_default_handler_unknown(loop, test_client):
         pytest.xfail('Handler should not proceed to this point in case of '
                      'unknown Expect header')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -452,7 +452,7 @@ def test_100_continue(loop, test_client):
     form.add_field('name', b'123',
                    content_transfer_encoding='base64')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -482,7 +482,7 @@ def test_100_continue_custom(loop, test_client):
     form.add_field('name', b'123',
                    content_transfer_encoding='base64')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
     client = yield from test_client(app)
 
@@ -512,7 +512,7 @@ def test_100_continue_custom_response(loop, test_client):
     form.add_field('name', b'123',
                    content_transfer_encoding='base64')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
     client = yield from test_client(app)
 
@@ -528,7 +528,7 @@ def test_100_continue_custom_response(loop, test_client):
 @asyncio.coroutine
 def test_100_continue_for_not_found(loop, test_client):
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     client = yield from test_client(app)
 
     resp = yield from client.post('/not_found', data='data', expect100=True)
@@ -542,7 +542,7 @@ def test_100_continue_for_not_allowed(loop, test_client):
     def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -557,7 +557,7 @@ def test_http11_keep_alive_default(loop, test_client):
     def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app, version=HttpVersion11)
 
@@ -575,7 +575,7 @@ def test_http10_keep_alive_default(loop, test_client):
     def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app, version=HttpVersion10)
 
@@ -593,7 +593,7 @@ def test_http10_keep_alive_with_headers_close(loop, test_client):
         yield from request.read()
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app, version=HttpVersion10)
 
@@ -612,7 +612,7 @@ def test_http10_keep_alive_with_headers(loop, test_client):
         yield from request.read()
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app, version=HttpVersion10)
 
@@ -638,7 +638,7 @@ def test_upload_file(loop, test_client):
         assert data == raw_data
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -660,7 +660,7 @@ def test_upload_file_object(loop, test_client):
         assert data == raw_data
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -677,7 +677,7 @@ def test_empty_content_for_query_without_body(loop, test_client):
         assert not request.has_body
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -694,7 +694,7 @@ def test_empty_content_for_query_with_body(loop, test_client):
         body = yield from request.read()
         return web.Response(body=body)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -711,7 +711,7 @@ def test_get_with_empty_arg(loop, test_client):
         assert '' == request.query['arg']
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -726,7 +726,7 @@ def test_large_header(loop, test_client):
     def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -742,7 +742,7 @@ def test_large_header_allowed(loop, test_client, test_server):
     def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     server = yield from test_server(app, max_field_size=81920)
     client = yield from test_client(server)
@@ -760,7 +760,7 @@ def test_get_with_empty_arg_with_equal(loop, test_client):
         assert '' == request.query['arg']
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -789,7 +789,7 @@ def test_response_with_streamer(loop, test_client, fname):
         headers = {'Content-Length': str(data_size)}
         return web.Response(body=stream(fname), headers=headers)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -821,7 +821,7 @@ def test_response_with_streamer_no_params(loop, test_client, fname):
         headers = {'Content-Length': str(data_size)}
         return web.Response(body=stream, headers=headers)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -842,7 +842,7 @@ def test_response_with_file(loop, test_client, fname):
     def handler(request):
         return web.Response(body=fname.open('rb'))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -868,7 +868,7 @@ def test_response_with_file_ctype(loop, test_client, fname):
         return web.Response(
             body=fname.open('rb'), headers={'content-type': 'text/binary'})
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -895,7 +895,7 @@ def test_response_with_payload_disp(loop, test_client, fname):
         return web.Response(
             body=pl, headers={'content-type': 'text/binary'})
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -916,7 +916,7 @@ def test_response_with_payload_stringio(loop, test_client, fname):
     def handler(request):
         return web.Response(body=io.StringIO('test'))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -936,7 +936,7 @@ def test_response_with_precompressed_body_gzip(loop, test_client):
         data = zcomp.compress(b'mydata') + zcomp.flush()
         return web.Response(body=data, headers=headers)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -957,7 +957,7 @@ def test_response_with_precompressed_body_deflate(loop, test_client):
         data = zcomp.compress(b'mydata') + zcomp.flush()
         return web.Response(body=data, headers=headers)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -980,7 +980,7 @@ def test_bad_request_payload(loop, test_client):
 
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1001,7 +1001,7 @@ def test_stream_response_multiple_chunks(loop, test_client):
         resp.write(b'z')
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1014,7 +1014,7 @@ def test_stream_response_multiple_chunks(loop, test_client):
 @asyncio.coroutine
 def test_start_without_routes(loop, test_client):
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     client = yield from test_client(app)
 
     resp = yield from client.get('/')
@@ -1028,7 +1028,7 @@ def test_requests_count(loop, test_client):
     def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
     assert client.server.handler.requests_count == 0
@@ -1057,7 +1057,7 @@ def test_redirect_url(loop, test_client):
     def redirected(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/redirector', redirector)
     app.router.add_get('/redirected', redirected)
 
@@ -1072,8 +1072,8 @@ def test_simple_subapp(loop, test_client):
     def handler(request):
         return web.Response(text="OK")
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     app.add_subapp('/path', subapp)
 
@@ -1095,8 +1095,8 @@ def test_subapp_reverse_url(loop, test_client):
     def handler2(request):
         return web.Response(text="OK")
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     subapp.router.add_get('/final', handler2, name='name')
     app.add_subapp('/path', subapp)
@@ -1120,8 +1120,8 @@ def test_subapp_reverse_variable_url(loop, test_client):
     def handler2(request):
         return web.Response(text="OK")
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     subapp.router.add_get('/{part}', handler2, name='name')
     app.add_subapp('/path', subapp)
@@ -1143,8 +1143,8 @@ def test_subapp_reverse_static_url(loop, test_client):
         return web.HTTPMovedPermanently(
             location=subapp.router['name'].url_for(filename=fname))
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     here = pathlib.Path(__file__).parent
     subapp.router.add_static('/static', here, name='name')
@@ -1166,8 +1166,8 @@ def test_subapp_app(loop, test_client):
         assert request.app is subapp
         return web.HTTPOk(text='OK')
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     app.add_subapp('/path/', subapp)
 
@@ -1184,8 +1184,8 @@ def test_subapp_not_found(loop, test_client):
     def handler(request):
         return web.HTTPOk(text='OK')
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     app.add_subapp('/path/', subapp)
 
@@ -1200,8 +1200,8 @@ def test_subapp_not_found2(loop, test_client):
     def handler(request):
         return web.HTTPOk(text='OK')
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     app.add_subapp('/path/', subapp)
 
@@ -1216,8 +1216,8 @@ def test_subapp_not_allowed(loop, test_client):
     def handler(request):
         return web.HTTPOk(text='OK')
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     app.add_subapp('/path/', subapp)
 
@@ -1234,8 +1234,8 @@ def test_subapp_cannot_add_app_in_handler(loop, test_client):
         request.match_info.add_app(app)
         return web.HTTPOk(text='OK')
 
-    app = web.Application(loop=loop)
-    subapp = web.Application(loop=loop)
+    app = web.Application()
+    subapp = web.Application()
     subapp.router.add_get('/to', handler)
     app.add_subapp('/path/', subapp)
 
@@ -1264,9 +1264,9 @@ def test_subapp_middlewares(loop, test_client):
             return resp
         return middleware
 
-    app = web.Application(loop=loop, middlewares=[middleware_factory])
-    subapp1 = web.Application(loop=loop, middlewares=[middleware_factory])
-    subapp2 = web.Application(loop=loop, middlewares=[middleware_factory])
+    app = web.Application(middlewares=[middleware_factory])
+    subapp1 = web.Application(middlewares=[middleware_factory])
+    subapp2 = web.Application(middlewares=[middleware_factory])
     subapp2.router.add_get('/to', handler)
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
@@ -1294,11 +1294,11 @@ def test_subapp_on_response_prepare(loop, test_client):
 
         return on_response
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.on_response_prepare.append(make_signal(app))
-    subapp1 = web.Application(loop=loop)
+    subapp1 = web.Application()
     subapp1.on_response_prepare.append(make_signal(subapp1))
-    subapp2 = web.Application(loop=loop)
+    subapp2 = web.Application()
     subapp2.on_response_prepare.append(make_signal(subapp2))
     subapp2.router.add_get('/to', handler)
     subapp1.add_subapp('/b/', subapp2)
@@ -1318,11 +1318,11 @@ def test_subapp_on_startup(loop, test_server):
     def on_signal(app):
         order.append(app)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.on_startup.append(on_signal)
-    subapp1 = web.Application(loop=loop)
+    subapp1 = web.Application()
     subapp1.on_startup.append(on_signal)
-    subapp2 = web.Application(loop=loop)
+    subapp2 = web.Application()
     subapp2.on_startup.append(on_signal)
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
@@ -1339,11 +1339,11 @@ def test_subapp_on_shutdown(loop, test_server):
     def on_signal(app):
         order.append(app)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.on_shutdown.append(on_signal)
-    subapp1 = web.Application(loop=loop)
+    subapp1 = web.Application()
     subapp1.on_shutdown.append(on_signal)
-    subapp2 = web.Application(loop=loop)
+    subapp2 = web.Application()
     subapp2.on_shutdown.append(on_signal)
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
@@ -1362,11 +1362,11 @@ def test_subapp_on_cleanup(loop, test_server):
     def on_signal(app):
         order.append(app)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.on_cleanup.append(on_signal)
-    subapp1 = web.Application(loop=loop)
+    subapp1 = web.Application()
     subapp1.on_cleanup.append(on_signal)
-    subapp2 = web.Application(loop=loop)
+    subapp2 = web.Application()
     subapp2.on_cleanup.append(on_signal)
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
@@ -1384,7 +1384,7 @@ def test_custom_date_header(loop, test_client):
     def handler(request):
         return web.Response(headers={'Date': 'Sun, 30 Oct 2016 03:13:52 GMT'})
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1403,7 +1403,7 @@ def test_response_prepared_with_clone(loop, test_client):
         yield from resp.prepare(cloned)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1420,7 +1420,7 @@ def test_app_max_client_size(loop, test_client):
         return web.Response(body=b'ok')
 
     max_size = 1024**2
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
     data = {"long_string": max_size * 'x' + 'xxx'}
@@ -1440,7 +1440,7 @@ def test_app_max_client_size_adjusted(loop, test_client):
 
     default_max_size = 1024**2
     custom_max_size = default_max_size * 2
-    app = web.Application(loop=loop, client_max_size=custom_max_size)
+    app = web.Application(client_max_size=custom_max_size)
     app.router.add_post('/', handler)
     client = yield from test_client(app)
     data = {'long_string': default_max_size * 'x' + 'xxx'}
@@ -1465,7 +1465,7 @@ def test_app_max_client_size_none(loop, test_client):
 
     default_max_size = 1024**2
     custom_max_size = None
-    app = web.Application(loop=loop, client_max_size=custom_max_size)
+    app = web.Application(client_max_size=custom_max_size)
     app.router.add_post('/', handler)
     client = yield from test_client(app)
     data = {'long_string': default_max_size * 'x' + 'xxx'}
@@ -1491,7 +1491,7 @@ def test_post_max_client_size(loop, test_client):
             return web.HTTPOk()
         return web.HTTPBadRequest()
 
-    app = web.Application(loop=loop, client_max_size=10)
+    app = web.Application(client_max_size=10)
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1512,7 +1512,7 @@ def test_post_max_client_size_for_file(loop, test_client):
             return web.HTTPOk()
         return web.HTTPBadRequest()
 
-    app = web.Application(loop=loop, client_max_size=2)
+    app = web.Application(client_max_size=2)
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1531,7 +1531,7 @@ def test_response_with_bodypart(loop, test_client):
         part = yield from reader.next()
         return web.Response(body=part)
 
-    app = web.Application(loop=loop, client_max_size=2)
+    app = web.Application(client_max_size=2)
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 

@@ -13,12 +13,12 @@ def test_app_ctor(loop):
     assert app.logger is log.web_logger
 
 
-def test_app_call(loop):
-    app = web.Application(loop=loop)
+def test_app_call():
+    app = web.Application()
     assert app is app()
 
 
-def test_app_default_loop(loop):
+def test_app_default_loop():
     app = web.Application()
     assert app.loop is None
 
@@ -62,8 +62,8 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
 
 
 @asyncio.coroutine
-def test_app_register_on_finish(loop):
-    app = web.Application(loop=loop)
+def test_app_register_on_finish():
+    app = web.Application()
     cb1 = mock.Mock()
     cb2 = mock.Mock()
     app.on_cleanup.append(cb1)
@@ -75,8 +75,7 @@ def test_app_register_on_finish(loop):
 
 @asyncio.coroutine
 def test_app_register_coro(loop):
-    app = web.Application(loop=loop)
-
+    app = web.Application()
     fut = helpers.create_future(loop)
 
     @asyncio.coroutine
@@ -90,22 +89,22 @@ def test_app_register_coro(loop):
     assert 123 == fut.result()
 
 
-def test_non_default_router(loop):
+def test_non_default_router():
     router = mock.Mock(spec=AbstractRouter)
-    app = web.Application(loop=loop, router=router)
+    app = web.Application(router=router)
     assert router is app.router
 
 
-def test_logging(loop):
+def test_logging():
     logger = mock.Mock()
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.logger = logger
     assert app.logger is logger
 
 
 @asyncio.coroutine
-def test_on_shutdown(loop):
-    app = web.Application(loop=loop)
+def test_on_shutdown():
+    app = web.Application()
     called = False
 
     @asyncio.coroutine
@@ -121,8 +120,8 @@ def test_on_shutdown(loop):
 
 
 @asyncio.coroutine
-def test_on_startup(loop):
-    app = web.Application(loop=loop)
+def test_on_startup():
+    app = web.Application()
 
     blocking_called = False
     long_running1_called = False
@@ -165,22 +164,22 @@ def test_on_startup(loop):
     assert all_long_running_called
 
 
-def test_app_delitem(loop):
-    app = web.Application(loop=loop)
+def test_app_delitem():
+    app = web.Application()
     app['key'] = 'value'
     assert len(app) == 1
     del app['key']
     assert len(app) == 0
 
 
-def test_secure_proxy_ssl_header_default(loop):
-    app = web.Application(loop=loop)
+def test_secure_proxy_ssl_header_default():
+    app = web.Application()
     assert app._secure_proxy_ssl_header is None
 
 
 @asyncio.coroutine
-def test_secure_proxy_ssl_header_non_default(loop):
-    app = web.Application(loop=loop)
+def test_secure_proxy_ssl_header_non_default():
+    app = web.Application()
     hdr = ('X-Forwarded-Proto', 'https')
     app.make_handler(secure_proxy_ssl_header=hdr)
     assert app._secure_proxy_ssl_header is hdr

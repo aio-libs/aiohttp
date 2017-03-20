@@ -48,7 +48,7 @@ async def on_shutdown(app):
 
 
 async def init(loop):
-    app = Application(loop=loop)
+    app = Application()
     app['sockets'] = []
     app.router.add_get('/', wshandler)
     app.on_shutdown.append(on_shutdown)

@@ -33,7 +33,7 @@ def wshandler(request):
 
 @asyncio.coroutine
 def main(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', wshandler)
 
     handler = app.make_handler()

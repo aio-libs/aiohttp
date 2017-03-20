@@ -316,7 +316,7 @@ def test_run_app_abstract_linux_socket(loop, mocker):
     sock_path = b"\x00" + uuid4().hex.encode('ascii')
 
     loop.call_later(0.05, loop.stop)
-    app = web.Application(loop=loop)
+    app = web.Application()
     web.run_app(
         app, path=sock_path.decode('ascii', 'ignore'),
         print=lambda *args: None)
@@ -327,7 +327,7 @@ def test_run_app_abstract_linux_socket(loop, mocker):
         mocker.spy(loop, 'create_unix_server')
         loop.call_later(0.05, loop.stop)
 
-        app = web.Application(loop=loop)
+        app = web.Application()
 
         mocker.spy(app, 'startup')
         mocker.spy(os, 'remove')

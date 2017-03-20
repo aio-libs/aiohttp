@@ -27,7 +27,7 @@ def test_send_recv_text(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -55,7 +55,7 @@ def test_send_recv_bytes_bad_type(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -79,7 +79,7 @@ def test_send_recv_bytes(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -105,7 +105,7 @@ def test_send_recv_text_bad_type(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -131,7 +131,7 @@ def test_send_recv_json(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -162,7 +162,7 @@ def test_ping_pong(loop, test_client):
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -200,7 +200,7 @@ def test_ping_pong_manual(loop, test_client):
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoping=False)
@@ -238,7 +238,7 @@ def test_close(loop, test_client):
         yield from ws.receive()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -273,7 +273,7 @@ def test_concurrent_close(loop, test_client):
         assert msg.type == aiohttp.WSMsgType.CLOSE
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     ws = client_ws = yield from client.ws_connect('/')
@@ -305,7 +305,7 @@ def test_close_from_server(loop, test_client):
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -341,7 +341,7 @@ def test_close_manual(loop, test_client):
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoclose=False)
@@ -373,7 +373,7 @@ def test_close_timeout(loop, test_client):
         yield from asyncio.sleep(1, loop=loop)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', timeout=0.2, autoclose=False)
@@ -400,7 +400,7 @@ def test_close_cancel(loop, test_client):
         ws.send_str('test')
         yield from asyncio.sleep(10, loop=loop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoclose=False)
@@ -430,7 +430,7 @@ def test_override_default_headers(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     headers = {hdrs.SEC_WEBSOCKET_VERSION: '8'}
     client = yield from test_client(app)
@@ -453,7 +453,7 @@ def test_additional_headers(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', headers={'x-hdr': 'xtra'})
@@ -475,7 +475,7 @@ def test_recv_protocol_error(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -504,7 +504,7 @@ def test_recv_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -528,7 +528,7 @@ def test_receive_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
@@ -551,7 +551,7 @@ def test_custom_receive_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
@@ -578,7 +578,7 @@ def test_heartbeat(loop, test_client, ceil):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
@@ -605,7 +605,7 @@ def test_heartbeat_no_pong(loop, test_client, ceil):
         yield from ws.receive()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)

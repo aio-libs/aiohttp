@@ -10,13 +10,13 @@ from aiohttp.web import Application, Response
 
 
 @pytest.fixture
-def app(loop):
-    return Application(loop=loop)
+def app():
+    return Application()
 
 
 @pytest.fixture
-def debug_app(loop):
-    return Application(loop=loop, debug=True)
+def debug_app():
+    return Application(debug=True)
 
 
 def make_request(app, method, path, headers=CIMultiDict()):

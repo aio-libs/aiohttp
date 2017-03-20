@@ -412,7 +412,7 @@ def test_cookie_jar_usage(loop, test_client):
         resp.set_cookie("response", "resp_value")
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     session = yield from test_client(app,
                                      cookies={"request": "req_value"},

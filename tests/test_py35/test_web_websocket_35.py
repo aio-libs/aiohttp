@@ -17,7 +17,7 @@ async def test_server_ws_async_for(loop, test_server):
         closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
 
@@ -57,7 +57,7 @@ async def test_closed_async_for(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = await test_client(app)
 

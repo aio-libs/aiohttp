@@ -58,7 +58,7 @@ def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
     with open(my_file_path, 'w') as fw:
         fw.write('world')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     # Register global static route:
     app.router.add_static('/', tmp_dir_path, show_index=show_index)
@@ -90,7 +90,7 @@ def test_follow_symlink(tmp_dir_path, loop, test_client, data):
     my_symlink_path = os.path.join(tmp_dir_path, 'my_symlink')
     os.symlink(my_dir_path, my_symlink_path)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     # Register global static route:
     app.router.add_static('/', tmp_dir_path, follow_symlinks=True)
@@ -123,7 +123,7 @@ def test_access_to_the_file_with_spaces(tmp_dir_path, loop, test_client,
     with open(my_file_path, 'w') as fw:
         fw.write(data)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     url = os.path.join('/', dir_name, filename)
 
@@ -142,7 +142,7 @@ def test_access_non_existing_resource(tmp_dir_path, loop, test_client):
     Try to access a non-exiting resource and make sure that 404 HTTP status
     returned.
     """
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     # Register global static route:
     app.router.add_static('/', tmp_dir_path, show_index=True)
@@ -163,7 +163,7 @@ def test_url_escaping(loop, test_client, registered_path, request_url):
     """
     Tests accessing a resource with
     """
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     def handler(_):
         return web.Response()
@@ -184,7 +184,7 @@ def test_unauthorized_folder_access(tmp_dir_path, loop, test_client):
     my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
     os.mkdir(my_dir_path)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     with mock.patch('pathlib.Path.__new__') as path_constructor:
         path = MagicMock()
@@ -210,7 +210,7 @@ def test_access_symlink_loop(tmp_dir_path, loop, test_client):
     my_dir_path = os.path.join(tmp_dir_path, 'my_symlink')
     os.symlink(my_dir_path, my_dir_path)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     # Register global static route:
     app.router.add_static('/', tmp_dir_path, show_index=True)
@@ -228,7 +228,7 @@ def test_access_special_resource(tmp_dir_path, loop, test_client):
     Checks that if a special resource is accessed (f.e. named pipe or UNIX
     domain socket) then 404 HTTP status returned.
     """
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     with mock.patch('pathlib.Path.__new__') as path_constructor:
         special = MagicMock()
@@ -254,7 +254,7 @@ def test_access_special_resource(tmp_dir_path, loop, test_client):
 
 @asyncio.coroutine
 def test_partialy_applied_handler(loop, test_client):
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     @asyncio.coroutine
     def handler(data, request):
@@ -304,7 +304,7 @@ def test_allow_head(loop, test_client):
     """
     Test allow_head on routes.
     """
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     def handler(_):
         return web.Response()

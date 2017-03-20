@@ -35,8 +35,8 @@ def test_connections(loop):
 
 @asyncio.coroutine
 def test_finish_connection_no_timeout(loop):
-    app = web.Application(loop=loop)
-    manager = app.make_handler()
+    app = web.Application()
+    manager = app.make_handler(loop=loop)
 
     handler = mock.Mock()
     handler.shutdown = make_mocked_coro(mock.Mock())
@@ -52,8 +52,8 @@ def test_finish_connection_no_timeout(loop):
 
 @asyncio.coroutine
 def test_finish_connection_timeout(loop):
-    app = web.Application(loop=loop)
-    manager = app.make_handler()
+    app = web.Application()
+    manager = app.make_handler(loop=loop)
 
     handler = mock.Mock()
     handler.shutdown = make_mocked_coro(mock.Mock())
