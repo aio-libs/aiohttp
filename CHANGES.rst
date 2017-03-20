@@ -6,12 +6,16 @@ CHANGES
 
 - Fixed None timeout support #1720
 
+- Added `json` to `ClientSession.request()` method #1726
+
 - Added session's `raise_for_status` parameter, automatically calls raise_for_status() on any request. #1724
 
 - `response.json()` raises `ClientReponseError` exception if response's
   content type does not match #1723
 
 - Cleanup timer and loop handle on any client exception.
+
+- Deprecate `loop` parameter for Application's contructor
 
 
 `2.0.0rc1` (2017-03-15)
