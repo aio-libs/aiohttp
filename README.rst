@@ -17,11 +17,8 @@ Async http client/server framework
     :target: https://badge.fury.io/py/aiohttp
 
 
-Major aiohttp2.0 release!
--------------------------
-
-Warning! This is not final release. It contains backward incompatible change,
-please check compatibility before installing on production systems.
+aiohttp 2.0 release!
+--------------------
 
 For this release we completely refactored low-level implementation of http handling.
 Finally `uvloop` gives performance improvement. Overall performance improvement
@@ -34,7 +31,6 @@ implementation has been redesigned as well, now there is no need for actively re
 aiohttp handles connection release automatically.
 
 Another major change, we moved aiohttp development to public organization https://github.com/aio-libs
-The aiohttp community would like to thank `Keepsafe` (https://www.getkeepsafe.com) for it's support in the early days of the project.
 
 Alas we had to make backward incompatible changes. Please check this migration document http://aiohttp.readthedocs.io/en/latest/migration.html
 
