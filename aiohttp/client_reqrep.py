@@ -54,7 +54,7 @@ class ClientRequest:
 
     def __init__(self, method, url, *,
                  params=None, headers=None, skip_auto_headers=frozenset(),
-                 data=None, cookies=None,
+                 data=None, json=None, cookies=None,
                  auth=None, version=http.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
@@ -83,6 +83,9 @@ class ClientRequest:
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
+
+        if json is not None:
+            data = payload.JsonPayload(json)
 
         self.update_version(version)
         self.update_host(url)
