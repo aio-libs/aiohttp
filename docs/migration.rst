@@ -159,7 +159,7 @@ Application
 ^^^^^^^^^^^
 
 1. Constructor parameter `loop` is deprecated. Loop is get configured by application runner,
-`run_app` function for any of gunicorn workers.
+   `run_app` function for any of gunicorn workers.
 
 2. `Application.router.add_subapp` is dropped, use `Application.add_subapp` instead
 
@@ -193,4 +193,4 @@ to `ClientPayloadError`.
 WSGI
 ^^^^
 
-*WSGI* support has been dropped, as well as gunicorn wsgi support.
+*WSGI* support has been dropped, as well as gunicorn wsgi support. We still provide default and uvloop gunicorn workers for `web.Application`
