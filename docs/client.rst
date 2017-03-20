@@ -297,7 +297,7 @@ Or you can use `aiohttp.streamer` object::
   # Then you can use `file_sender` as a data provider:
 
   async with session.post('http://httpbin.org/post',
-                          data=file_sender(file_name='hude_file')) as resp:
+                          data=file_sender(file_name='huge_file')) as resp:
       print(await resp.text())
 
 Also it is possible to use a :class:`~aiohttp.streams.StreamReader`

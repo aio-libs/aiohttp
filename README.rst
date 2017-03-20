@@ -28,7 +28,7 @@ Finally `uvloop` gives performance improvement. Overall performance improvement
 should be around 70-90% compared to 1.x version.
 
 We took opportunity to refactor long standing api design problem across whole package.
-Client exceptions handling has been cleaned up and now much more strait forward. Client payload
+Client exceptions handling has been cleaned up and now much more straight forward. Client payload
 management simplified and allows to extends with any custom types. Client collection pool
 implementation has been redesigned as well, now there is no need for actively releasing responses,
 aiohttp handles connection release automatically.
