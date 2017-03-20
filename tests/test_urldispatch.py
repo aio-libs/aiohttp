@@ -962,15 +962,15 @@ def test_frozen_router(router):
 
 
 def test_frozen_router_subapp(app, loop):
-    subapp = web.Application(loop=loop)
-    subapp.freeze()
+    subapp = web.Application()
+    subapp.freeze(loop=loop)
     with pytest.raises(RuntimeError):
         app.add_subapp('/', subapp)
 
 
 def test_frozen_app_on_subapp(app, loop):
-    app.freeze()
-    subapp = web.Application(loop=loop)
+    app.freeze(loop=loop)
+    subapp = web.Application()
     with pytest.raises(RuntimeError):
         app.add_subapp('/', subapp)
 

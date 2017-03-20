@@ -46,14 +46,12 @@ class Application(MutableMapping):
     def __init__(self, *, logger=web_logger, router=None, middlewares=(),
                  handler_args=None, client_max_size=1024**2,
                  loop=None, debug=...):
-        if loop is None:
-            loop = asyncio.get_event_loop()
         if router is None:
             router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
-        if debug is ...:
-            debug = loop.get_debug()
+        if loop is not None:
+            warnings.warn("loop argument is deprecated", ResourceWarning)
 
         self._debug = debug
         self._router = router
@@ -65,6 +63,7 @@ class Application(MutableMapping):
         self._middlewares = FrozenList(middlewares)
         self._state = {}
         self._frozen = False
+        self._subapps = []
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
@@ -106,9 +105,19 @@ class Application(MutableMapping):
     def frozen(self):
         return self._frozen
 
-    def freeze(self):
+    def freeze(self, loop=None):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        if self._loop is not None and self._loop is not loop:
+            raise RuntimeError(
+                "web.Application instance initialized with different loop")
         if self._frozen:
             return
+
+        if self._debug is ...:
+            self._debug = loop.get_debug()
+
+        self._loop = loop
         self._frozen = True
         self._middlewares = tuple(reversed(self._middlewares))
         self._router.freeze()
@@ -118,6 +127,9 @@ class Application(MutableMapping):
         self._on_startup.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
+
+        for subapp in self._subapps:
+            subapp.freeze(loop=loop)
 
     @property
     def debug(self):
@@ -152,7 +164,7 @@ class Application(MutableMapping):
         resource = PrefixedSubAppResource(prefix, subapp)
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
-        subapp.freeze()
+        self._subapps.append(subapp)
         return resource
 
     @property
@@ -191,8 +203,9 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, *, secure_proxy_ssl_header=None, **kwargs):
-        self.freeze()
+    def make_handler(self, *, loop=None,
+                     secure_proxy_ssl_header=None, **kwargs):
+        self.freeze(loop=loop)
 
         kwargs['debug'] = self.debug
         if self._handler_args:
@@ -277,14 +290,15 @@ class Application(MutableMapping):
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
-            access_log=access_logger):
+            access_log=access_logger, loop=None):
     """Run an app locally"""
-    loop = app.loop
+    if loop is None:
+        loop = asyncio.get_event_loop()
 
     make_handler_kwargs = dict()
     if access_log_format is not None:
         make_handler_kwargs['access_log_format'] = access_log_format
-    handler = app.make_handler(access_log=access_log,
+    handler = app.make_handler(loop=loop, access_log=access_log,
                                **make_handler_kwargs)
 
     loop.run_until_complete(app.startup())

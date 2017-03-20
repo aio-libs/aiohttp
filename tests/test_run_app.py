@@ -44,10 +44,10 @@ def test_run_app_http(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, print=lambda *args: None)
+    web.run_app(app, loop=loop, print=lambda *args: None)
 
     assert loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
@@ -150,22 +150,24 @@ mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
 def test_run_app_mixed_bindings(mocker, run_app_kwargs, expected_server_calls,
                                 expected_unix_server_calls):
     app = mocker.MagicMock()
+    loop = mocker.MagicMock()
     mocker.patch('asyncio.gather')
 
-    web.run_app(app, print=lambda *args: None, **run_app_kwargs)
+    web.run_app(app, loop=loop, print=lambda *args: None, **run_app_kwargs)
 
-    assert app.loop.create_unix_server.mock_calls == expected_unix_server_calls
-    assert app.loop.create_server.mock_calls == expected_server_calls
+    assert loop.create_unix_server.mock_calls == expected_unix_server_calls
+    assert loop.create_server.mock_calls == expected_server_calls
 
 
 def test_run_app_http_access_format(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, print=lambda *args: None, access_log_format='%a')
+    web.run_app(app, loop=loop,
+                print=lambda *args: None, access_log_format='%a')
 
     assert loop.is_closed()
     cs = loop.create_server
@@ -178,12 +180,13 @@ def test_run_app_https(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
     ssl_context = ssl.create_default_context()
 
-    web.run_app(app, ssl_context=ssl_context, print=lambda *args: None)
+    web.run_app(app, loop=loop,
+                ssl_context=ssl_context, print=lambda *args: None)
 
     assert loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8443,
@@ -198,10 +201,11 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, host=host, port=port, print=lambda *args: None)
+    web.run_app(app, loop=loop,
+                host=host, port=port, print=lambda *args: None)
 
     assert loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, host, port,
@@ -213,10 +217,10 @@ def test_run_app_custom_backlog(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, backlog=10, print=lambda *args: None)
+    web.run_app(app, loop=loop, backlog=10, print=lambda *args: None)
 
     assert loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
@@ -229,12 +233,12 @@ def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
     sock_path = str(shorttmpdir.join('socket.sock'))
     printed = StringIO()
-    web.run_app(app, path=sock_path, print=printed.write)
+    web.run_app(app, loop=loop, path=sock_path, print=printed.write)
 
     assert loop.is_closed()
     loop.create_unix_server.assert_called_with(mock.ANY, sock_path,
@@ -248,13 +252,13 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
     sock_path = str(shorttmpdir.join('socket.sock'))
     printed = StringIO()
     ssl_context = ssl.create_default_context()
-    web.run_app(app, path=sock_path, ssl_context=ssl_context,
+    web.run_app(app, loop=loop, path=sock_path, ssl_context=ssl_context,
                 print=printed.write)
 
     assert loop.is_closed()
@@ -271,12 +275,13 @@ def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
     """
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
 
     sock_path = shorttmpdir.join('socket.sock')
     sock_path_string = str(sock_path)
 
-    web.run_app(app, path=sock_path_string, print=lambda *args: None)
+    web.run_app(app, loop=loop,
+                path=sock_path_string, print=lambda *args: None)
     assert loop.is_closed()
 
     if sock_path.check():
@@ -285,13 +290,14 @@ def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
             mocker.spy(loop, 'create_unix_server')
             loop.call_later(0.05, loop.stop)
 
-            app = web.Application(loop=loop)
+            app = web.Application()
 
             mocker.spy(app, 'startup')
             mocker.spy(os, 'remove')
             printed = StringIO()
 
-            web.run_app(app, path=sock_path_string, print=printed.write)
+            web.run_app(app, loop=loop,
+                        path=sock_path_string, print=printed.write)
             os.remove.assert_called_with(sock_path_string)
             loop.create_unix_server.assert_called_with(
                 mock.ANY,
@@ -344,14 +350,15 @@ def test_run_app_abstract_linux_socket(loop, mocker):
 
 @skip_if_no_unix_socks
 def test_run_app_existing_file_conflict(loop, mocker, shorttmpdir):
-    app = web.Application(loop=loop)
+    app = web.Application()
     sock_path = shorttmpdir.join('socket.sock')
     sock_path.ensure()
     sock_path_str = str(sock_path)
     mocker.spy(os, 'remove')
 
     with pytest.raises(OSError):
-        web.run_app(app, path=sock_path_str, print=lambda *args: None)
+        web.run_app(app, loop=loop,
+                    path=sock_path_str, print=lambda *args: None)
 
     # No attempt should be made to remove a non-socket file
     assert mock.call([sock_path_str]) not in os.remove.mock_calls
@@ -361,7 +368,7 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
     sock = socket.socket()
@@ -370,7 +377,7 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
         _, port = sock.getsockname()
 
         printed = StringIO()
-        web.run_app(app, sock=sock, print=printed.write)
+        web.run_app(app, loop=loop, sock=sock, print=printed.write)
 
         assert loop.is_closed()
         loop.create_server.assert_called_with(
@@ -385,7 +392,7 @@ def test_run_app_preexisting_unix_socket(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
     sock_path = '/tmp/test_preexisting_sock1'
@@ -395,7 +402,7 @@ def test_run_app_preexisting_unix_socket(loop, mocker):
         os.unlink(sock_path)
 
         printed = StringIO()
-        web.run_app(app, sock=sock, print=printed.write)
+        web.run_app(app, loop=loop, sock=sock, print=printed.write)
 
         assert loop.is_closed()
         loop.create_server.assert_called_with(
@@ -409,7 +416,7 @@ def test_run_app_multiple_preexisting_sockets(loop, mocker):
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     mocker.spy(app, 'startup')
 
     sock1 = socket.socket()
@@ -421,7 +428,7 @@ def test_run_app_multiple_preexisting_sockets(loop, mocker):
         _, port2 = sock2.getsockname()
 
         printed = StringIO()
-        web.run_app(app, sock=(sock1, sock2), print=printed.write)
+        web.run_app(app, loop=loop, sock=(sock1, sock2), print=printed.write)
 
         assert loop.is_closed()
         loop.create_server.assert_has_calls([

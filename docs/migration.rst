@@ -155,6 +155,17 @@ ServerHttpProtocol is dropped, implementation is merged with RequestHandler
 a lot of low-level api's are dropped.
 
 
+Application
+^^^^^^^^^^^
+
+1. Constructor parameter `loop` is deprecated. Loop is get configured by application runner,
+`run_app` function for any of gunicorn workers.
+
+2. `Application.router.add_subapp` is dropped, use `Application.add_subapp` instead
+
+3. `Application.finished` is dropped, use `Application.cleanup` instead
+
+
 WebRequest and WebResponse
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -170,10 +181,6 @@ WebRequest and WebResponse
 
      async def handle(request):
          return web.FileResponse('path-to-file.txt)
-
-5. `Application.router.add_subapp` is dropped, use `Application.add_subapp` instead
-
-6. `Application.finished` is dropped, use `Application.cleanup` instead
 
 
 RequestPayloadError

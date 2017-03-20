@@ -6,8 +6,8 @@ from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 
 
 def test_repr(loop):
-    app = web.Application(loop=loop)
-    manager = app.make_handler()
+    app = web.Application()
+    manager = app.make_handler(loop=loop)
     handler = manager()
 
     assert '<RequestHandler none:none disconnected>' == repr(handler)
@@ -20,8 +20,8 @@ def test_repr(loop):
 
 
 def test_connections(loop):
-    app = web.Application(loop=loop)
-    manager = app.make_handler()
+    app = web.Application()
+    manager = app.make_handler(loop=loop)
     assert manager.connections == []
 
     handler = object()
