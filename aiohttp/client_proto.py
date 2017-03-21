@@ -162,8 +162,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
                 except BaseException as exc:
-                    import traceback
-                    traceback.print_exc()
                     self._should_close = True
                     self.set_exception(
                         ClientResponseError(code=400, message=str(exc)))
