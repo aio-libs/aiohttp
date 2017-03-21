@@ -437,7 +437,7 @@ def test_response_request_info():
             headers
         )
     )
-    assert URL(url) == response.request_info.url
+    assert url == response.request_info.url
     assert headers == response.request_info.headers
 
 
@@ -447,3 +447,20 @@ def test_response_request_info_empty():
         'get', URL(url),
     )
     assert response.request_info is None
+
+def test_request_info_in_exception():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert cm.request_info == response.request_info

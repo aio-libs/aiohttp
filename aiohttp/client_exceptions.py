@@ -26,11 +26,13 @@ class ClientResponseError(ClientError):
     message = ''
     headers = None
 
-    def __init__(self, *, code=None, message='', headers=None):
+    def __init__(self, *, code=None, message='', headers=None,
+                 request_info=None):
         if code is not None:
             self.code = code
             self.message = message
             self.headers = headers
+            self.request_info = request_info
 
         super().__init__("%s, message='%s'" % (self.code, message))
 
