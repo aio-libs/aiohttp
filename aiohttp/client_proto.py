@@ -68,8 +68,9 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 pass
 
         try:
-            self._parser.feed_eof()
+            uncompleted = self._parser.feed_eof()
         except Exception as e:
+            uncompleted = None
             if self._payload is not None:
                 self._payload.set_exception(
                     ClientPayloadError('Response payload is not completed'))
@@ -78,7 +79,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
             if isinstance(exc, OSError):
                 exc = ClientOSError(*exc.args)
             if exc is None:
-                exc = ServerDisconnectedError()
+                exc = ServerDisconnectedError(uncompleted)
             DataQueue.set_exception(self, exc)
 
         self.transport = self.writer = None

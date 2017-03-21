@@ -83,6 +83,9 @@ class ServerConnectionError(ClientConnectionError):
 class ServerDisconnectedError(ServerConnectionError):
     """Server disconnected."""
 
+    def __init__(self, message=None):
+        self.message = message
+
 
 class ServerTimeoutError(ServerConnectionError, TimeoutError):
     """Server timeout error."""
