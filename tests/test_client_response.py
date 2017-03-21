@@ -464,4 +464,4 @@ def test_request_info_in_exception():
     response.reason = 'CONFLICT'
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
-    assert cm.request_info == response.request_info
+    assert cm.value.request_info == response.request_info
