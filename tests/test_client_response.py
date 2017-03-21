@@ -9,8 +9,29 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import helpers
+from aiohttp import helpers, http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
+
+
+@asyncio.coroutine
+def test_http_processing_error():
+    loop = mock.Mock()
+    request_info = mock.Mock()
+    response = ClientResponse(
+        'get', URL('http://del-cl-resp.org'), request_info=request_info)
+    response._post_init(loop)
+    loop.get_debug = mock.Mock()
+    loop.get_debug.return_value = True
+
+    connection = mock.Mock()
+    connection.protocol = aiohttp.DataQueue(loop=loop)
+    connection.protocol.set_response_params = mock.Mock()
+    connection.protocol.set_exception(http.HttpProcessingError())
+
+    with pytest.raises(aiohttp.ClientResponseError) as info:
+        yield from response.start(connection)
+
+    assert info.value.request_info is request_info
 
 
 def test_del():
