@@ -4,6 +4,8 @@ Changes
 2.0.1 (2017-03-21)
 ------------------
 
+- Fix allow-head to include name on route #1737
+
 - Fixed AttributeError in WebSocketResponse.can_prepare #1736
 
 
