@@ -859,9 +859,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         route is added allowing head requests to the same endpoint
         """
         if allow_head:
-            # the head route can't have "name" set or it would conflict with
+            # it name is not None append -head to avoid it conflicting with
             # the GET route below
-            self.add_route(hdrs.METH_HEAD, *args, **kwargs)
+            head_name = name and '{}-head'.format(name)
+            self.add_route(hdrs.METH_HEAD, *args, name=head_name, **kwargs)
         return self.add_route(hdrs.METH_GET, *args, name=name, **kwargs)
 
     def add_post(self, *args, **kwargs):
