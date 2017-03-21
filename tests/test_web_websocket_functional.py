@@ -18,10 +18,31 @@ def ceil(mocker):
 
 
 @asyncio.coroutine
+def test_websocket_can_prepare(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        if not ws.can_prepare(request):
+            return web.HTTPUpgradeRequired()
+
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert resp.status == 426
+
+
+@asyncio.coroutine
 def test_websocket_json(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         ws = web.WebSocketResponse()
+        if not ws.can_prepare(request):
+            return web.HTTPUpgradeRequired()
+
         yield from ws.prepare(request)
         msg = yield from ws.receive()
 
