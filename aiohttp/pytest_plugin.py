@@ -83,22 +83,28 @@ def pytest_configure(config):
         without_uvloop = True
 
     LOOP_FACTORIES.clear()
+    LOOP_FACTORY_IDS.clear()
     if uvloop_only and uvloop is not None:
         LOOP_FACTORIES.append(uvloop.new_event_loop)
+        LOOP_FACTORY_IDS.append('uvloop')
     elif without_uvloop:
         LOOP_FACTORIES.append(asyncio.new_event_loop)
+        LOOP_FACTORY_IDS.append('pyloop')
     else:
         LOOP_FACTORIES.append(asyncio.new_event_loop)
+        LOOP_FACTORY_IDS.append('pyloop')
         if uvloop is not None:
             LOOP_FACTORIES.append(uvloop.new_event_loop)
+            LOOP_FACTORY_IDS.append('uvloop')
 
     asyncio.set_event_loop(None)
 
 
 LOOP_FACTORIES = []
+LOOP_FACTORY_IDS = []
 
 
-@pytest.yield_fixture(params=LOOP_FACTORIES)
+@pytest.yield_fixture(params=LOOP_FACTORIES, ids=LOOP_FACTORY_IDS)
 def loop(request):
     """Return an instance of the event loop."""
     fast = request.config.getoption('--fast')
