@@ -9,6 +9,14 @@ Changes
 - Added `request_info` to response object and `ClientResponseError`. #1733
 
 
+2.0.2 (2017-03-21)
+------------------
+
+- Fixed Application.on_loop_available signal #1739
+
+- Remove debug code
+
+
 2.0.1 (2017-03-21)
 ------------------
 
