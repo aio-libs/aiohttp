@@ -3,8 +3,8 @@ from unittest import mock
 
 from yarl import URL
 
-from aiohttp.client_exceptions import (ClientOSError, ClientResponseError,
-                                       ServerDisconnectedError)
+from aiohttp import http
+from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 
@@ -41,7 +41,7 @@ def test_client_proto_bad_message(loop):
     proto.data_received(b'HTTP\r\n\r\n')
     assert proto.should_close
     assert transport.close.called
-    assert isinstance(proto.exception(), ClientResponseError)
+    assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
 @asyncio.coroutine

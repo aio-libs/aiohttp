@@ -725,9 +725,11 @@ class TCPConnector(BaseConnector):
                 conn._transport = None
                 try:
                     if resp.status != 200:
-                        raise ClientHttpProxyError(code=resp.status,
-                                                   message=resp.reason,
-                                                   headers=resp.headers)
+                        raise ClientHttpProxyError(
+                            proxy_resp.request_info,
+                            code=resp.status,
+                            message=resp.reason,
+                            headers=resp.headers)
                     rawsock = transport.get_extra_info('socket', default=None)
                     if rawsock is None:
                         raise RuntimeError(

@@ -320,8 +320,10 @@ def test_json_no_content(loop):
         'Content-Type': 'data/octet-stream'}
     response._content = b''
 
-    with pytest.raises(aiohttp.ClientResponseError):
+    with pytest.raises(aiohttp.ClientResponseError) as info:
         yield from response.json()
+
+    assert info.value.request_info == response.request_info
 
     res = yield from response.json(content_type=None)
     assert res is None
@@ -434,10 +436,12 @@ def test_response_request_info():
         'get', URL(url),
         request_info=RequestInfo(
             url,
+            'get',
             headers
         )
     )
     assert url == response.request_info.url
+    assert 'get' == response.request_info.method
     assert headers == response.request_info.headers
 
 
@@ -457,6 +461,7 @@ def test_request_info_in_exception():
         URL(url),
         request_info=RequestInfo(
             url,
+            'get',
             headers
         )
     )

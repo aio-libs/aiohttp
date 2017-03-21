@@ -2,7 +2,7 @@ import asyncio
 import asyncio.streams
 
 from .client_exceptions import (ClientOSError, ClientPayloadError,
-                                ClientResponseError, ServerDisconnectedError)
+                                ServerDisconnectedError)
 from .http import HttpResponseParser, StreamWriter
 from .streams import EMPTY_PAYLOAD, DataQueue
 
@@ -163,12 +163,9 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
                 except BaseException as exc:
-                    import traceback
-                    traceback.print_exc()
                     self._should_close = True
-                    self.set_exception(
-                        ClientResponseError(code=400, message=str(exc)))
                     self.transport.close()
+                    self.set_exception(exc)
                     return
 
                 self._upgraded = upgraded

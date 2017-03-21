@@ -28,7 +28,8 @@ except ImportError:  # pragma: no cover
 __all__ = ('ClientRequest', 'ClientResponse')
 
 
-RequestInfo = collections.namedtuple('RequestInfo', ('url', 'headers'))
+RequestInfo = collections.namedtuple(
+    'RequestInfo', ('url', 'method', 'headers'))
 
 
 class ClientRequest:
@@ -108,6 +109,10 @@ class ClientRequest:
     @property
     def port(self):
         return self.url.port
+
+    @property
+    def request_info(self):
+        return RequestInfo(self.url, self.method, self.headers)
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
@@ -390,7 +395,7 @@ class ClientRequest:
         self.response = self.response_class(
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
-            request_info=RequestInfo(self.url, self.headers)
+            request_info=self.request_info
         )
 
         self.response._post_init(self.loop)
@@ -537,7 +542,14 @@ class ClientResponse(HeadersMixin):
         with self._timer:
             while True:
                 # read response
-                (message, payload) = yield from self._protocol.read()
+                try:
+                    (message, payload) = yield from self._protocol.read()
+                except http.HttpProcessingError as exc:
+                    raise ClientResponseError(
+                        self.request_info,
+                        code=exc.code,
+                        message=exc.message, headers=exc.headers) from exc
+
                 if (message.code < 100 or
                         message.code > 199 or message.code == 101):
                     break
@@ -619,10 +631,10 @@ class ClientResponse(HeadersMixin):
     def raise_for_status(self):
         if 400 <= self.status:
             raise ClientResponseError(
+                self.request_info,
                 code=self.status,
                 message=self.reason,
-                headers=self.headers,
-                request_info=self.request_info)
+                headers=self.headers)
 
     def _cleanup_writer(self):
         if self._writer is not None and not self._writer.done():
@@ -694,6 +706,7 @@ class ClientResponse(HeadersMixin):
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
             if content_type not in ctype:
                 raise ClientResponseError(
+                    self.request_info,
                     message=('Attempt to decode JSON with '
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)

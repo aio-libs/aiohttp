@@ -96,6 +96,11 @@ def test_version_default(make_request):
     assert req.version == (1, 1)
 
 
+def test_request_info(make_request):
+    req = make_request('get', 'http://python.org/')
+    assert req.request_info == (URL('http://python.org/'), 'GET', req.headers)
+
+
 def test_version_err(make_request):
     with pytest.raises(ValueError):
         make_request('get', 'http://python.org/', version='1.c')
