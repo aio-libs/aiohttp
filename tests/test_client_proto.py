@@ -3,7 +3,8 @@ from unittest import mock
 
 from yarl import URL
 
-from aiohttp.client_exceptions import ClientOSError, ClientResponseError
+from aiohttp.client_exceptions import (ClientOSError, ClientResponseError,
+                                       ServerDisconnectedError)
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 
@@ -41,6 +42,23 @@ def test_client_proto_bad_message(loop):
     assert proto.should_close
     assert transport.close.called
     assert isinstance(proto.exception(), ClientResponseError)
+
+
+@asyncio.coroutine
+def test_uncompleted_message(loop):
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
+    proto.set_response_params(read_until_eof=True)
+
+    proto.data_received(b'HTTP/1.1 301 Moved Permanently\r\n'
+                        b'Location: http://python.org/')
+    proto.connection_lost(None)
+
+    exc = proto.exception()
+    assert isinstance(exc, ServerDisconnectedError)
+    assert exc.message.code == 301
+    assert dict(exc.message.headers) == {'Location': 'http://python.org/'}
 
 
 @asyncio.coroutine

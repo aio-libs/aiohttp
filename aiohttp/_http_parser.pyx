@@ -46,6 +46,7 @@ cdef class HttpParser:
         size_t _max_headers
         bint _response_with_body
 
+        bint    _started
         object  _url
         str     _path
         str     _reason
@@ -235,6 +236,10 @@ cdef class HttpParser:
                 raise PayloadEncodingError(desc.decode('latin-1'))
             else:
                 self._payload.feed_eof()
+        elif self._started:
+            self._on_headers_complete()
+            if self._messages:
+                return self._messages[-1][0]
 
     def feed_data(self, data):
         cdef:
@@ -305,6 +310,7 @@ cdef class HttpResponseParserC(HttpParser):
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
+    pyparser._started = True
     pyparser._headers = []
     pyparser._raw_headers = []
     return 0
@@ -414,6 +420,7 @@ cdef int cb_on_body(cparser.http_parser* parser,
 cdef int cb_on_message_complete(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
+        pyparser._started = False
         pyparser._on_message_complete()
     except BaseException as exc:
         pyparser._last_error = exc
