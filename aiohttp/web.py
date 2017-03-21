@@ -17,7 +17,7 @@ from .abc import AbstractMatchInfo, AbstractRouter
 from .helpers import FrozenList
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
-from .signals import PostSignal, PreSignal, Signal
+from .signals import FuncSignal, PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
@@ -67,7 +67,7 @@ class Application(MutableMapping):
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
-        self._on_loop_available = Signal(self)
+        self._on_loop_available = FuncSignal(self)
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
@@ -113,7 +113,7 @@ class Application(MutableMapping):
                 "web.Application instance initialized with different loop")
 
         self._loop = loop
-        self._on_loop_available.send()
+        self._on_loop_available.send(self)
 
         # set loop debug
         if self._debug is ...:

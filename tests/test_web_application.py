@@ -45,6 +45,16 @@ def test_set_loop_with_different_loops(loop):
         app._set_loop(loop=object())
 
 
+def test_on_loop_available(loop):
+    app = web.Application()
+
+    cb = mock.Mock()
+    app.on_loop_available.append(cb)
+
+    app._set_loop(loop)
+    cb.assert_called_with(app)
+
+
 @pytest.mark.parametrize('debug', [True, False])
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(debug=debug)

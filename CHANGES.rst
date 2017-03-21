@@ -2,6 +2,11 @@ Changes
 =======
 
 
+2.0.2 (2017-03-21)
+------------------
+
+- Fixed Application.on_loop_available signal #1739
+
 - Remove debug code
 
 
