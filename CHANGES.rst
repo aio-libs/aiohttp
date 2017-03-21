@@ -6,6 +6,7 @@ Changes
 
 - Content disposition with semicolon in filename #917
 
+- Added `request_info` to response object and `ClientResponseError`.
 
 2.0.1 (2017-03-21)
 ------------------

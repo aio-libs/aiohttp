@@ -1060,6 +1060,11 @@ Response object
       :return: *BODY* as *JSON* data parsed by *loads* parameter or
                ``None`` if *BODY* is empty or contains white-spaces only.
 
+    .. attribute:: request_info
+
+       A namedtuple with request URL and headers from :class:`ClientRequest`
+       object.
+
 
 ClientWebSocketResponse
 -----------------------
