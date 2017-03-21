@@ -32,6 +32,7 @@ class BadContentDispositionParam(RuntimeWarning):
 
 
 def parse_content_disposition(header):
+
     def is_token(string):
         return string and TOKEN >= set(string)
 
@@ -63,7 +64,9 @@ def parse_content_disposition(header):
         return None, {}
 
     params = {}
-    for item in parts:
+    while parts:
+        item = parts.pop(0)
+
         if '=' not in item:
             warnings.warn(BadContentDispositionHeader(header))
             return None, {}
@@ -102,9 +105,22 @@ def parse_content_disposition(header):
                 continue
 
         else:
+            failed = True
             if is_quoted(value):
+                failed = False
                 value = unescape(value[1:-1].lstrip('\\/'))
-            elif not is_token(value):
+            elif is_token(value):
+                failed = False
+            elif parts:
+                # maybe just ; in filename, in any case this is just
+                # one case fix, for proper fix we need to redesign parser
+                _value = '%s;%s' % (value, parts[0])
+                if is_quoted(_value):
+                    parts.pop(0)
+                    value = unescape(_value[1:-1].lstrip('\\/'))
+                    failed = False
+
+            if failed:
                 warnings.warn(BadContentDispositionHeader(header))
                 return None, {}
 
