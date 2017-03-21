@@ -215,6 +215,17 @@ class Application(MutableMapping):
     def router(self):
         return self._router
 
+    def route(self, path, method=hdrs.METH_GET,
+              *, name=None, expect_handler=None):
+        """ Add route to path """
+
+        def wrapper(handler):
+            resource = self._router.add_resource(path, name=name)
+            resource.add_route(method, handler, expect_handler=None)
+            return handler
+
+        return wrapper
+
     @property
     def middlewares(self):
         return self._middlewares

@@ -3,8 +3,8 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import helpers, log, web
-from aiohttp.abc import AbstractRouter
+from aiohttp import hdrs, helpers, log, web
+from aiohttp.abc import AbstractRouter, abstractmethod
 
 
 def test_app_ctor(loop):
@@ -109,6 +109,36 @@ def test_non_default_router():
     router = mock.Mock(spec=AbstractRouter)
     app = web.Application(router=router)
     assert router is app.router
+
+
+class MockAbstractRouter(AbstractRouter):
+
+    @abstractmethod
+    def add_resource(self, oath, name=None):
+        pass
+
+
+def test_add_route(loop):
+    router = mock.Mock(spec=MockAbstractRouter)
+    app = web.Application(router=router)
+
+    @app.route('/index.html')
+    def get(req):
+        pass
+
+    router.add_resource.assert_called_with(
+        '/index.html', name=None)
+    router.add_resource.return_value.add_route(
+        hdrs.METH_GET, get, expect_handler=None)
+
+    @app.route('/index.html', hdrs.METH_POST, name='test')
+    def post(req):
+        pass
+
+    router.add_resource.assert_called_with(
+        '/index.html', name='test')
+    router.add_resource.return_value.add_route(
+        hdrs.METH_POST, post, expect_handler=None)
 
 
 def test_logging():
