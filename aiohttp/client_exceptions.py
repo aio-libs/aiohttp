@@ -20,21 +20,18 @@ class ClientError(Exception):
 
 
 class ClientResponseError(ClientError):
-    """Connection error during reading response."""
+    """Connection error during reading response.
 
-    code = 0
-    message = ''
-    headers = None
+    :param request_info: instance of RequestInfo
+    """
 
-    def __init__(self, *, code=None, message='', headers=None,
-                 request_info=None):
-        if code is not None:
-            self.code = code
-            self.message = message
-            self.headers = headers
-            self.request_info = request_info
+    def __init__(self, request_info, *, code=0, message='', headers=None):
+        self.request_info = request_info
+        self.code = code
+        self.message = message
+        self.headers = headers
 
-        super().__init__("%s, message='%s'" % (self.code, message))
+        super().__init__("%s, message='%s'" % (code, message))
 
 
 class ClientPayloadError(ClientError):

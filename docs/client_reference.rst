@@ -973,7 +973,7 @@ Response object
 
    .. attribute:: charset
 
-      Read-only property that specifies the *encoding* for the request's BODY.
+   Read-only property that specifies the *encoding* for the request's BODY.
 
       The value is parsed from the *Content-Type* HTTP header.
 
@@ -1330,7 +1330,10 @@ Hierarchy of exceptions:
 
 * `ClientError` - Base class for all client specific exceptions
 
- - `ClientResponseError` - exceptions that could happen after we get response from server
+ - `ClientResponseError` - exceptions that could happen after we get response from server.
+
+   .. attribute:: request_info
+                  Instance of `RequestInfo` object, contains information about request.
 
   * `WSServerHandshakeError` - web socket server response error
 
@@ -1347,6 +1350,9 @@ Hierarchy of exceptions:
         - `ServerConnectionError` - server connection related errors
 
       * `ServerDisconnectedError` - server disconnected
+
+        .. attribute:: message
+           Partially parsed http message (optional)
 
       * `ServerTimeoutError` - server operation timeout, (read timeout, etc)
 

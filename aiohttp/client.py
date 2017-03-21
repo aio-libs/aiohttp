@@ -16,8 +16,7 @@ from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError,
-                                ClientResponseError, ServerTimeoutError,
-                                WSServerHandshakeError)
+                                ServerTimeoutError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
@@ -239,10 +238,6 @@ class ClientSession:
                             raise
                     except ClientError:
                         raise
-                    except http.HttpProcessingError as exc:
-                        raise ClientResponseError(
-                            code=exc.code,
-                            message=exc.message, headers=exc.headers) from exc
                     except OSError as exc:
                         raise ClientOSError(*exc.args) from exc
 
@@ -390,18 +385,21 @@ class ClientSession:
             # check handshake
             if resp.status != 101:
                 raise WSServerHandshakeError(
+                    resp.request_info,
                     message='Invalid response status',
                     code=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
                 raise WSServerHandshakeError(
+                    resp.request_info,
                     message='Invalid upgrade header',
                     code=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
                 raise WSServerHandshakeError(
+                    resp.request_info,
                     message='Invalid connection header',
                     code=resp.status,
                     headers=resp.headers)
@@ -412,6 +410,7 @@ class ClientSession:
                 hashlib.sha1(sec_key + WS_KEY).digest()).decode()
             if key != match:
                 raise WSServerHandshakeError(
+                    resp.request_info,
                     message='Invalid challenge response',
                     code=resp.status,
                     headers=resp.headers)
