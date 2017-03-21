@@ -448,6 +448,7 @@ def test_response_request_info_empty():
     )
     assert response.request_info is None
 
+
 def test_request_info_in_exception():
     url = 'http://def-cl-resp.org'
     headers = {'Content-Type': 'application/json;charset=cp1251'}
