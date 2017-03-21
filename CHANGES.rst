@@ -1,11 +1,18 @@
 Changes
 =======
 
-
 2.1.0 (2017-xx-xx)
 ------------------
 
 - Content disposition with semicolon in filename #917
+
+
+2.0.1 (2017-03-21)
+------------------
+
+- Fix allow-head to include name on route #1737
+
+- Fixed AttributeError in WebSocketResponse.can_prepare #1736
 
 
 2.0.0 (2017-03-20)

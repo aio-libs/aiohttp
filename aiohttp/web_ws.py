@@ -136,7 +136,7 @@ class WebSocketResponse(StreamResponse):
             raise RuntimeError('Already started')
         try:
             _, _, _, _, protocol = do_handshake(
-                request.method, request.headers, request.transport,
+                request.method, request.headers, request._protocol.writer,
                 self._protocols)
         except HttpProcessingError:
             return WebSocketReady(False, None)
