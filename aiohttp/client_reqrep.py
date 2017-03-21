@@ -621,7 +621,8 @@ class ClientResponse(HeadersMixin):
             raise ClientResponseError(
                 code=self.status,
                 message=self.reason,
-                headers=self.headers)
+                headers=self.headers,
+                request_info=self.request_info)
 
     def _cleanup_writer(self):
         if self._writer is not None and not self._writer.done():

@@ -173,6 +173,7 @@ RequestInfo
 
 `ClientResponse` object contains :attr:`~ClientResponse.request_info` property,
 which contains request fields: `url` and `headers`.
+On `raise_for_status` structure is copied to `ClientResponseError` instance.
 
 
 Custom Headers
