@@ -425,6 +425,26 @@ def test_timeout_handle_cb_exc(loop):
     assert not handle._callbacks
 
 
+def test_timer_context_cancelled():
+    with mock.patch('aiohttp.helpers.asyncio') as m_asyncio:
+        m_asyncio.TimeoutError = asyncio.TimeoutError
+        loop = mock.Mock()
+        ctx = helpers.TimerContext(loop)
+        ctx.timeout()
+
+        with pytest.raises(asyncio.TimeoutError):
+            with ctx:
+                pass
+
+        assert m_asyncio.Task.current_task.return_value.cancel.called
+
+
+def test_timer_context_no_task(loop):
+    with pytest.raises(RuntimeError):
+        with helpers.TimerContext(loop):
+            pass
+
+
 # ----------------------------------- FrozenList ----------------------
 
 
@@ -478,6 +498,12 @@ def test_ceil_timeout(loop):
     with helpers.CeilTimeout(0, loop=loop) as timeout:
         assert timeout._timeout is None
         assert timeout._cancel_handler is None
+
+
+def test_ceil_timeout_no_task(loop):
+    with pytest.raises(RuntimeError):
+        with helpers.CeilTimeout(10, loop=loop):
+            pass
 
 
 # -------------------------------- ContentDisposition -------------------

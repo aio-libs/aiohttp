@@ -13,7 +13,7 @@ from .test_utils import (RawTestServer, TestClient, TestServer,
 
 try:
     import uvloop
-except:
+except:  # pragma: no cover
     uvloop = None
 
 
@@ -31,7 +31,7 @@ def pytest_addoption(parser):
 @pytest.fixture
 def fast(request):
     """ --fast config option """
-    return request.config.getoption('--fast')
+    return request.config.getoption('--fast')  # pragma: no cover
 
 
 @contextlib.contextmanager
@@ -77,20 +77,20 @@ def pytest_configure(config):
 
     without_uvloop = False
     if fast:
-        without_uvloop = True
+        without_uvloop = True  # pragma: no cover
 
-    if config.getoption('--without-uvloop'):
+    if config.getoption('--without-uvloop'):  # pragma: no cover
         without_uvloop = True
 
     LOOP_FACTORIES.clear()
     LOOP_FACTORY_IDS.clear()
-    if uvloop_only and uvloop is not None:
+    if uvloop_only and uvloop is not None:  # pragma: no cover
         LOOP_FACTORIES.append(uvloop.new_event_loop)
         LOOP_FACTORY_IDS.append('uvloop')
-    elif without_uvloop:
+    elif without_uvloop:  # pragma: no cover
         LOOP_FACTORIES.append(asyncio.new_event_loop)
         LOOP_FACTORY_IDS.append('pyloop')
-    else:
+    else:  # pragma: no cover
         LOOP_FACTORIES.append(asyncio.new_event_loop)
         LOOP_FACTORY_IDS.append('pyloop')
         if uvloop is not None:
@@ -112,7 +112,7 @@ def loop(request):
 
     with loop_context(request.param, fast=fast) as _loop:
         if debug:
-            _loop.set_debug(True)
+            _loop.set_debug(True)  # pragma: no cover
         yield _loop
 
 

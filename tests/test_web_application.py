@@ -67,6 +67,16 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
                            debug=debug)
 
 
+def test_app_make_handler_args(loop, mocker):
+    app = web.Application(handler_args={'test': True})
+    srv = mocker.patch('aiohttp.web.Server')
+
+    app.make_handler(loop=loop)
+    srv.assert_called_with(app._handle,
+                           request_factory=app._make_request,
+                           loop=loop, debug=False, test=True)
+
+
 @asyncio.coroutine
 def test_app_register_on_finish():
     app = web.Application()
