@@ -53,7 +53,7 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-if sys.version_info < (3, 5):
+if sys.version_info < (3, 5):  # pragma: no cover
     noop = tuple
 
     coroutines = asyncio.coroutines
@@ -134,7 +134,7 @@ if PY_352:
     def create_future(loop):
         return loop.create_future()
 else:
-    def create_future(loop):
+    def create_future(loop):  # pragma: no cover
         """Compatibility wrapper for the loop.create_future() call introduced in
         3.5.2."""
         return asyncio.Future(loop=loop)
@@ -686,8 +686,8 @@ class TimerContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._tasks:
             task = self._tasks.pop()
-        else:
-            task = None
+        else:  # pragma: no cover
+            task = None  # something is really wrong
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             for task in self._tasks:

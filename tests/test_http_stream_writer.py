@@ -18,13 +18,14 @@ if has_ipv6:
 
 # nodelay
 
-def test_nodelay_default(loop):
+def test_nodelay_and_cork_default(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
     proto = mock.Mock()
     writer = StreamWriter(proto, transport, loop)
     assert not writer.tcp_nodelay
+    assert not writer.tcp_cork
     assert not s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
@@ -73,6 +74,20 @@ def test_set_nodelay_enable_and_disable(loop):
     writer.set_tcp_nodelay(False)
     assert not writer.tcp_nodelay
     assert not s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+
+
+@pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
+def test_set_nodelay_and_cork(loop):
+    transport = mock.Mock()
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    transport.get_extra_info.return_value = s
+    proto = mock.Mock()
+    writer = StreamWriter(proto, transport, loop)
+    writer.set_tcp_cork(True)
+    writer.set_tcp_nodelay(True)
+    assert writer.tcp_nodelay
+    assert not writer.tcp_cork
+    assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
 @pytest.mark.skipif(not has_ipv6, reason="IPv6 is not available")

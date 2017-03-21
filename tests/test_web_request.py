@@ -50,6 +50,10 @@ def test_ctor(make_request):
     assert req.transport is protocol.transport
     assert req.headers == headers
     assert req.raw_headers == ((b'Foo', b'bar'),)
+    assert req.task is req._task
+
+    with pytest.warns(DeprecationWarning):
+        assert req.GET is req.query
 
 
 def test_doubleslashes(make_request):

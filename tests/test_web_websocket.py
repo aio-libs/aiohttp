@@ -95,7 +95,6 @@ def test_nonstarted_close():
 
 @asyncio.coroutine
 def test_nonstarted_receive_str():
-
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.receive_str()
@@ -103,7 +102,6 @@ def test_nonstarted_receive_str():
 
 @asyncio.coroutine
 def test_nonstarted_receive_bytes():
-
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.receive_bytes()
@@ -118,7 +116,6 @@ def test_nonstarted_receive_json():
 
 @asyncio.coroutine
 def test_receive_str_nonstring(make_request):
-
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)

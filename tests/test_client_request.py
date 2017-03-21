@@ -106,6 +106,12 @@ def test_version_err(make_request):
         make_request('get', 'http://python.org/', version='1.c')
 
 
+def test_https_proxy(make_request):
+    with pytest.raises(ValueError):
+        make_request(
+            'get', 'http://python.org/', proxy=URL('https://proxy.org'))
+
+
 def test_keep_alive(make_request):
     req = make_request('get', 'http://python.org/', version=(0, 9))
     assert not req.keep_alive()
@@ -1014,6 +1020,21 @@ def test_custom_response_class(loop, conn):
     assert 'customized!' == resp.read()
     yield from req.close()
     resp.close()
+
+
+@asyncio.coroutine
+def test_oserror_on_write_bytes(loop, conn):
+    req = ClientRequest(
+        'POST', URL('http://python.org/'), loop=loop)
+
+    writer = mock.Mock()
+    writer.write.side_effect = OSError
+
+    yield from req.write_bytes(writer, conn)
+
+    assert conn.protocol.set_exception.called
+    exc = conn.protocol.set_exception.call_args[0][0]
+    assert isinstance(exc, aiohttp.ClientOSError)
 
 
 @asyncio.coroutine

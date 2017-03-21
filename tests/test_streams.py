@@ -854,6 +854,15 @@ def test_on_eof(loop):
     assert on_eof.called
 
 
+def test_on_eof_empty_reader(loop):
+    reader = streams.EmptyStreamReader()
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+
+    assert on_eof.called
+
+
 def test_on_eof_exc_in_callback(loop):
     reader = streams.StreamReader(loop=loop)
 
@@ -865,6 +874,16 @@ def test_on_eof_exc_in_callback(loop):
     reader.feed_eof()
     assert on_eof.called
     assert not reader._eof_callbacks
+
+
+def test_on_eof_exc_in_callback_empty_stream_reader(loop):
+    reader = streams.EmptyStreamReader()
+
+    on_eof = mock.Mock()
+    on_eof.side_effect = ValueError
+
+    reader.on_eof(on_eof)
+    assert on_eof.called
 
 
 def test_on_eof_eof_is_set(loop):

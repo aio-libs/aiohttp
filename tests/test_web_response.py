@@ -67,6 +67,12 @@ def test_stream_response_ctor():
     assert 200 == resp.status
     assert resp.keep_alive is None
 
+    assert resp.task is None
+
+    req = mock.Mock()
+    resp._req = req
+    assert resp.task is req.task
+
 
 def test_content_length():
     resp = StreamResponse()

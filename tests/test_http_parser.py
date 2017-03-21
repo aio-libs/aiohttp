@@ -556,6 +556,12 @@ def test_parse_length_payload(response):
     assert b'data' == b''.join(d for d in payload._buffer)
 
 
+def test_parse_no_length_payload(parser):
+    text = b'PUT / HTTP/1.1\r\n\r\n'
+    msg, payload = parser.feed_data(text)[0][0]
+    assert payload.is_eof()
+
+
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):
@@ -570,6 +576,13 @@ class TestParsePayload(unittest.TestCase):
 
         self.assertTrue(out.is_eof())
         self.assertEqual([(bytearray(b'data'), 4)], list(out._buffer))
+
+    def test_parse_no_body(self):
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        p = HttpPayloadParser(out, method='PUT')
+
+        self.assertTrue(out.is_eof())
+        self.assertTrue(p.done)
 
     def test_parse_length_payload_eof(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
