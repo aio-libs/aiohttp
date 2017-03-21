@@ -1057,6 +1057,13 @@ class ParseContentDispositionTestCase(unittest.TestCase):
         self.assertEqual(None, disptype)
         self.assertEqual({}, params)
 
+    def test_semicolon(self):
+        disptype, params = parse_content_disposition(
+            'form-data; name="data"; filename="file ; name.mp4"')
+        self.assertEqual(disptype, 'form-data')
+        self.assertEqual(
+            params, {'name': 'data', 'filename': 'file ; name.mp4'})
+
     def test_inlwithasciifilename(self):
         disptype, params = parse_content_disposition(
             'inline; filename="foo.html"')
