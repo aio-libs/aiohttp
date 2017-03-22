@@ -386,6 +386,7 @@ class ClientSession:
             if resp.status != 101:
                 raise WSServerHandshakeError(
                     resp.request_info,
+                    resp.history,
                     message='Invalid response status',
                     code=resp.status,
                     headers=resp.headers)
@@ -393,6 +394,7 @@ class ClientSession:
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
                 raise WSServerHandshakeError(
                     resp.request_info,
+                    resp.history,
                     message='Invalid upgrade header',
                     code=resp.status,
                     headers=resp.headers)
@@ -400,6 +402,7 @@ class ClientSession:
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
                 raise WSServerHandshakeError(
                     resp.request_info,
+                    resp.history,
                     message='Invalid connection header',
                     code=resp.status,
                     headers=resp.headers)
@@ -411,6 +414,7 @@ class ClientSession:
             if key != match:
                 raise WSServerHandshakeError(
                     resp.request_info,
+                    resp.history,
                     message='Invalid challenge response',
                     code=resp.status,
                     headers=resp.headers)
