@@ -10,6 +10,8 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+- Added `history` to `ClientResponseError`. #1741
+
 
 2.0.2 (2017-03-21)
 ------------------

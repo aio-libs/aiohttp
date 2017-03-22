@@ -548,7 +548,8 @@ class ClientResponse(HeadersMixin):
                     raise ClientResponseError(
                         self.request_info,
                         code=exc.code,
-                        message=exc.message, headers=exc.headers) from exc
+                        message=exc.message, headers=exc.headers,
+                        history=self.history) from exc
 
                 if (message.code < 100 or
                         message.code > 199 or message.code == 101):
@@ -634,7 +635,8 @@ class ClientResponse(HeadersMixin):
                 self.request_info,
                 code=self.status,
                 message=self.reason,
-                headers=self.headers)
+                headers=self.headers,
+                history=self.history)
 
     def _cleanup_writer(self):
         if self._writer is not None and not self._writer.done():
@@ -709,7 +711,8 @@ class ClientResponse(HeadersMixin):
                     self.request_info,
                     message=('Attempt to decode JSON with '
                              'unexpected mimetype: %s' % ctype),
-                    headers=self.headers)
+                    headers=self.headers,
+                    history=self.history)
 
         stripped = self._content.strip()
         if not stripped:
