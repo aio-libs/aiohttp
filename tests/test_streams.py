@@ -694,6 +694,18 @@ class DataQueueMixin:
             streams.EofStream,
             self.loop.run_until_complete, self.buffer.read())
 
+    def test_read_exc(self):
+        item = object()
+        self.buffer.feed_data(item)
+        self.buffer.set_exception(ValueError)
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
+
+        data = self.loop.run_until_complete(read_task)
+        self.assertIs(item, data)
+
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, self.buffer.read())
+
     def test_read_exception(self):
         self.buffer.set_exception(ValueError())
 

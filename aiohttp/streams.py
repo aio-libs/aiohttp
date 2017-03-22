@@ -480,9 +480,6 @@ class DataQueue:
     @asyncio.coroutine
     def read(self):
         if not self._buffer and not self._eof:
-            if self._exception is not None:
-                raise self._exception
-
             assert not self._waiter
             self._waiter = helpers.create_future(self._loop)
             try:
