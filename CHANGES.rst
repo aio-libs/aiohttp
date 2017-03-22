@@ -8,6 +8,8 @@ Changes
 
 - Added `request_info` to response object and `ClientResponseError`. #1733
 
+- Dropped "%O" in access logger #1673
+
 
 2.0.2 (2017-03-21)
 ------------------

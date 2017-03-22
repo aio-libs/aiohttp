@@ -227,8 +227,7 @@ class AccessLogger:
         %P  The process ID of the child that serviced the request
         %r  First line of request
         %s  Response status code
-        %b  Size of response in bytes, excluding HTTP headers
-        %O  Bytes sent, including headers
+        %b  Size of response in bytes, including HTTP headers
         %T  Time taken to serve the request, in seconds
         %Tf Time taken to serve the request, in seconds with floating fraction
             in .06f format
@@ -245,7 +244,6 @@ class AccessLogger:
         'r': 'first_request_line',
         's': 'response_status',
         'b': 'response_size',
-        'O': 'bytes_sent',
         'T': 'request_time',
         'Tf': 'request_time_frac',
         'D': 'request_time_micro',
