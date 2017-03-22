@@ -727,6 +727,7 @@ class TCPConnector(BaseConnector):
                     if resp.status != 200:
                         raise ClientHttpProxyError(
                             proxy_resp.request_info,
+                            resp.history,
                             code=resp.status,
                             message=resp.reason,
                             headers=resp.headers)
