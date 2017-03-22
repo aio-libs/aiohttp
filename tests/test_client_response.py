@@ -509,7 +509,7 @@ def test_no_redirect_history_in_exception():
     response.reason = 'CONFLICT'
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
-    assert [] == cm.value.history
+    assert () == cm.value.history
 
 
 def test_redirect_history_in_exception():

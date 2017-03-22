@@ -31,7 +31,7 @@ class ClientResponseError(ClientError):
         self.code = code
         self.message = message
         self.headers = headers
-        self.history = history if history is not None else []
+        self.history = history if history is not None else ()
 
         super().__init__("%s, message='%s'" % (code, message))
 
