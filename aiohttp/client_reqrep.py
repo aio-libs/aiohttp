@@ -546,7 +546,7 @@ class ClientResponse(HeadersMixin):
                     (message, payload) = yield from self._protocol.read()
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
-                        self.request_info,
+                        self.request_info, self.history,
                         code=exc.code,
                         message=exc.message, headers=exc.headers) from exc
 
@@ -632,6 +632,7 @@ class ClientResponse(HeadersMixin):
         if 400 <= self.status:
             raise ClientResponseError(
                 self.request_info,
+                self.history,
                 code=self.status,
                 message=self.reason,
                 headers=self.headers)
@@ -707,6 +708,7 @@ class ClientResponse(HeadersMixin):
             if content_type not in ctype:
                 raise ClientResponseError(
                     self.request_info,
+                    self.history,
                     message=('Attempt to decode JSON with '
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
