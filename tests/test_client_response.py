@@ -491,3 +491,61 @@ def test_request_info_in_exception():
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
     assert cm.value.request_info == response.request_info
+
+
+def test_no_redirect_history_in_exception():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert () == cm.value.history
+
+
+def test_redirect_history_in_exception():
+    hist_url = 'http://def-cl-resp.org'
+    url = 'http://def-cl-resp.org/index.htm'
+    hist_headers = {'Content-Type': 'application/json;charset=cp1251',
+                    'Location': url
+                    }
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+
+    hist_response = ClientResponse(
+        'get',
+        URL(hist_url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+
+    hist_response.headers = hist_headers
+    hist_response.status = 301
+    hist_response.reason = 'REDIRECT'
+
+    response._history = [hist_response]
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert [hist_response] == cm.value.history
