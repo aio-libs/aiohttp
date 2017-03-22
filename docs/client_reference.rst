@@ -1335,6 +1335,9 @@ Hierarchy of exceptions:
    .. attribute:: request_info
                   Instance of `RequestInfo` object, contains information about request.
 
+   .. attribute:: history
+                  History from `ClientResponse` object, if available, else empty list.
+
   * `WSServerHandshakeError` - web socket server response error
 
     - `ClientHttpProxyError` - proxy response
