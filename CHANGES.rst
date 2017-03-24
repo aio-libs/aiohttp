@@ -7,6 +7,8 @@ Changes
 
 - Call https website through proxy will cause error #1745
 
+- Fix exception on multipart/form-data post if content-type is not set #1743
+
 
 2.0.2 (2017-03-21)
 ------------------
