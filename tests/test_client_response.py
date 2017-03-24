@@ -173,6 +173,19 @@ def test_response_eof_upgraded(loop):
 
 
 @asyncio.coroutine
+def test_response_eof_after_connection_detach(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    response._closed = False
+    conn = response._connection = mock.Mock()
+    conn.protocol = None
+
+    response._response_eof()
+    assert conn.release.called
+    assert response._connection is None
+
+
+@asyncio.coroutine
 def test_text(loop):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop)

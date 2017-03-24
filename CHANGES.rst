@@ -2,6 +2,12 @@ Changes
 =======
 
 
+2.0.3 (2017-03-24)
+------------------
+
+- Call https website through proxy will cause error #1745
+
+
 2.0.2 (2017-03-21)
 ------------------
 
