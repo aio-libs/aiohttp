@@ -12,6 +12,8 @@ Changes
 
 - Added `history` to `ClientResponseError`. #1741
 
+- Added `default_headers` property to `ClientSession`.  #1746
+
 
 2.0.2 (2017-03-21)
 ------------------

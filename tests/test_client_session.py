@@ -68,6 +68,7 @@ def test_init_headers_simple_dict(create_session):
                                       "h2": "header2"})
     assert (sorted(session._default_headers.items()) ==
             ([("H1", "header1"), ("H2", "header2")]))
+    assert session.default_headers == session._default_headers
 
 
 def test_init_headers_list_of_tuples(create_session):

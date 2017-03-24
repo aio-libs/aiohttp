@@ -128,6 +128,11 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: connector
 
+   .. attribute:: default_headers
+      Getter for default session headers (object type: ``CIMultiDict``).
+
+      .. versionadded:: 2.1
+
    :class:`aiohttp.connector.BaseConnector` derived instance used
       for the session.
 
