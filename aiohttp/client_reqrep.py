@@ -587,8 +587,10 @@ class ClientResponse(HeadersMixin):
             return
 
         if self._connection is not None:
-            # websocket
-            if self._connection.protocol.upgraded:
+            # websocket, protocol could be None because
+            # connection could be detached
+            if (self._connection.protocol is not None and
+                    self._connection.protocol.upgraded):
                 return
 
             self._connection.release()

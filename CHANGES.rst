@@ -1,6 +1,7 @@
 Changes
 =======
 
+
 2.1.0 (2017-xx-xx)
 ------------------
 
@@ -8,9 +9,17 @@ Changes
 
 - Added `request_info` to response object and `ClientResponseError`. #1733
 
+- Added `history` to `ClientResponseError`. #1741
+
 - Dropped "%O" in access logger #1673
 
-- Added `history` to `ClientResponseError`. #1741
+
+2.0.3 (2017-03-24)
+------------------
+
+- Call https website through proxy will cause error #1745
+
+- Fix exception on multipart/form-data post if content-type is not set #1743
 
 
 2.0.2 (2017-03-21)
