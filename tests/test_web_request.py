@@ -336,6 +336,28 @@ def test_make_too_big_request_adjust_limit(loop):
 
 
 @asyncio.coroutine
+def test_multipart_formdata(loop):
+    payload = StreamReader(loop=loop)
+    payload.feed_data(b"""-----------------------------326931944431359\r
+Content-Disposition: form-data; name="a"\r
+\r
+b\r
+-----------------------------326931944431359\r
+Content-Disposition: form-data; name="c"\r
+\r
+d\r
+-----------------------------326931944431359--\r\n""")
+    content_type = "multipart/form-data; boundary="\
+                   "---------------------------326931944431359"
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/',
+                              headers={'CONTENT-TYPE': content_type},
+                              payload=payload)
+    result = yield from req.post()
+    assert dict(result) == {'a': 'b', 'c': 'd'}
+
+
+@asyncio.coroutine
 def test_make_too_big_request_limit_None(loop):
     payload = StreamReader(loop=loop)
     large_file = 1024 ** 2 * b'x'
