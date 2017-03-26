@@ -96,7 +96,7 @@ class FormData:
 
         charset = self._charset if self._charset is not None else 'utf-8'
         return payload.BytesPayload(
-            urlencode(data, doseq=True).encode(charset),
+            urlencode(data, doseq=True, encoding=charset).encode(),
             content_type='application/x-www-form-urlencoded')
 
     def _gen_form_data(self):
