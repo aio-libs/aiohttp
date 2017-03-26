@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import os
 import socket
 import stat
@@ -58,6 +59,7 @@ class Application(MutableMapping):
         self._secure_proxy_ssl_header = None
         self._loop = loop
         self._handler_args = handler_args
+        self._module = None
         self.logger = logger
 
         self._middlewares = FrozenList(middlewares)
@@ -220,6 +222,15 @@ class Application(MutableMapping):
         """ Add route to path """
 
         def wrapper(handler):
+            module = inspect.getmodule(handler)
+            if self._module is None:
+                self._module = module
+            else:
+                if module is not self._module:
+                    raise TypeError(
+                        'Application.route decorator could be used only '
+                        'in one python module')
+
             resource = self._router.add_resource(path, name=name)
             resource.add_route(method, handler, expect_handler=None)
             return handler

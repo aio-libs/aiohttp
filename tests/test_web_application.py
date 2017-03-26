@@ -141,6 +141,15 @@ def test_add_route(loop):
         hdrs.METH_POST, post, expect_handler=None)
 
 
+def test_add_route_different_module(loop):
+    from test_web_application_helpers import app_test
+
+    with pytest.raises(TypeError):
+        @app_test.route('/404')
+        def get(req):
+            pass
+
+
 def test_logging():
     logger = mock.Mock()
     app = web.Application()
