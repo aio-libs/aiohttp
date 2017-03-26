@@ -1321,35 +1321,37 @@ Reading a response content may raise a :exc:`ClientPayloadError` exception. This
 indicates errors specific to the payload encoding. Such as invalid compressed data,
 malformed chunked-encoded chunks or not enough data that satisfy the content-length header.
 
+All exceptions are available as attributes in `aiohttp` module.
+
 Hierarchy of exceptions:
 
-* `ClientError` - Base class for all client specific exceptions
+* `aiohttp.ClientError` - Base class for all client specific exceptions
 
- - `ClientResponseError` - exceptions that could happen after we get response from server
+  - `aiohttp.ClientResponseError` - exceptions that could happen after we get response from server.
 
-  * `WSServerHandshakeError` - web socket server response error
+     - `aiohttp.WSServerHandshakeError` - web socket server response error
 
-    - `ClientHttpProxyError` - proxy response
+     - `aiohttp.ClientHttpProxyError` - proxy response
 
- - `ClientConnectionError` - exceptions related to low-level connection problems
+  - `aiohttp.ClientConnectionError` - exceptions related to low-level connection problems
 
-  * `ClientOSError` - subset of connection errors that are initiated by an OSError exception
+    - `aiohttp.ClientOSError` - subset of connection errors that are initiated by an OSError exception
 
-    - `ClientConnectorError` - connector related exceptions
+      - `aiohttp.ClientConnectorError` - connector related exceptions
+ 
+         - `aiohttp.ClientProxyConnectionError` - proxy connection initialization error
 
-      * `ClientProxyConnectionError` - proxy connection initialization error
+    - `aiohttp.ServerConnectionError` - server connection related errors
 
-        - `ServerConnectionError` - server connection related errors
+    - `aiohttp.ServerDisconnectedError` - server disconnected
 
-      * `ServerDisconnectedError` - server disconnected
+    - `aiohttp.ServerTimeoutError` - server operation timeout, (read timeout, etc)
 
-      * `ServerTimeoutError` - server operation timeout, (read timeout, etc)
+    - `aiohttp.ServerFingerprintMismatch` - server fingerprint mismatch
 
-      * `ServerFingerprintMismatch` - server fingerprint mismatch
-
- - `ClientPayloadError` - This exception can only be raised while reading the response
-   payload if one of these errors occurs: invalid compression, malformed chunked encoding or
-   not enough data that satisfy content-length header.
+  - `aiohttp.ClientPayloadError` - This exception can only be raised while reading the response
+     payload if one of these errors occurs: invalid compression, malformed chunked encoding or
+     not enough data that satisfy content-length header.
 
 
 .. disqus::
