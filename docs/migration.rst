@@ -58,6 +58,7 @@ Reading a response content may raise a ClientPayloadError exception. This except
 indicates errors specific to the payload encoding. Such as invalid compressed data,
 malformed chunked-encoded chunks or not enough data that satisfy the content-length header.
 
+All exceptions are moved from `aiohttp.errors` module to top level `aiohttp` module.
 
 New hierarchy of exceptions:
 
