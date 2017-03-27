@@ -1096,6 +1096,30 @@ def test_POST_DATA_with_charset(loop, test_client):
 
 
 @asyncio.coroutine
+def test_POST_DATA_formdats_with_charset(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        mp = yield from request.post()
+        assert 'name' in mp
+        from pprint import pprint
+        pprint(dict(request.headers))
+        return web.Response(text=mp['name'])
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    form = aiohttp.FormData(charset='koi8-r')
+    form.add_field('name', 'текст')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'текст'
+    resp.close()
+
+
+@asyncio.coroutine
 def test_POST_DATA_with_charset_post(loop, test_client):
     @asyncio.coroutine
     def handler(request):
@@ -1347,6 +1371,9 @@ def test_POST_FILES_SINGLE(loop, test_client, fname):
         assert request.content_type in ['application/pgp-keys',
                                         'text/plain',
                                         'application/octet-stream']
+        assert request.headers['content-disposition'] == (
+            "inline; filename=\"sample.key\"; filename*=utf-8''sample.key")
+
         return web.HTTPOk()
 
     app = web.Application()
