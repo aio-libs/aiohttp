@@ -1371,6 +1371,34 @@ def test_POST_FILES_SINGLE(loop, test_client, fname):
         assert request.content_type in ['application/pgp-keys',
                                         'text/plain',
                                         'application/octet-stream']
+        assert 'content-disposition' not in request.headers
+
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with fname.open() as f:
+        resp = yield from client.post('/', data=f)
+        assert 200 == resp.status
+        resp.close()
+
+
+@asyncio.coroutine
+def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
+
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.text()
+        with fname.open('r') as f:
+            content = f.read()
+            assert content == data
+            # if system cannot determine 'application/pgp-keys' MIME type
+            # then use 'application/octet-stream' default
+        assert request.content_type in ['application/pgp-keys',
+                                        'text/plain',
+                                        'application/octet-stream']
         assert request.headers['content-disposition'] == (
             "inline; filename=\"sample.key\"; filename*=utf-8''sample.key")
 
@@ -1381,7 +1409,8 @@ def test_POST_FILES_SINGLE(loop, test_client, fname):
     client = yield from test_client(app)
 
     with fname.open() as f:
-        resp = yield from client.post('/', data=f)
+        resp = yield from client.post(
+            '/', data=aiohttp.get_payload(f, disposition='inline'))
         assert 200 == resp.status
         resp.close()
 

@@ -254,7 +254,7 @@ class ClientRequest:
             body = body()
 
         try:
-            body = payload.PAYLOAD_REGISTRY.get(body)
+            body = payload.PAYLOAD_REGISTRY.get(body, disposition=None)
         except payload.LookupError:
             body = FormData(body)()
 

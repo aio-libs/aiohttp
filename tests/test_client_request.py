@@ -599,6 +599,15 @@ def test_content_type_auto_header_content_length_no_skip(loop, conn):
     resp.close()
 
 
+def test_urlencoded_formdata_charset(loop, conn):
+    req = ClientRequest(
+        'post', URL('http://python.org'),
+        data=aiohttp.FormData({'hey': 'you'}, charset='koi8-r'), loop=loop)
+    req.send(conn)
+    assert 'application/x-www-form-urlencoded; charset=koi8-r' == \
+        req.headers.get('CONTENT-TYPE')
+
+
 @asyncio.coroutine
 def test_post_data(loop, conn):
     for meth in ClientRequest.POST_METHODS:
