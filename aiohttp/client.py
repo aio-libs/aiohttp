@@ -654,7 +654,7 @@ class _WSRequestContextManager(_BaseRequestContextManager):
             yield from self._resp.close()
 
 
-class _DetachedRequestContextManager(_RequestContextManager):
+class _SessionRequestContextManager(_RequestContextManager):
 
     __slots__ = _RequestContextManager.__slots__ + ('_session', )
 
@@ -679,7 +679,7 @@ class _DetachedRequestContextManager(_RequestContextManager):
                 raise
 
     def __del__(self):
-        self._session.detach()
+        self._session.close()
 
 
 def request(method, url, *,
@@ -743,7 +743,7 @@ def request(method, url, *,
         loop=loop, cookies=cookies, version=version,
         connector=connector, connector_owner=connector_owner)
 
-    return _DetachedRequestContextManager(
+    return _SessionRequestContextManager(
         session._request(method, url,
                          params=params,
                          data=data,
