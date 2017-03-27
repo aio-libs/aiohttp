@@ -17,6 +17,8 @@ Changes
 2.0.4 (2017-03-27)
 ------------------
 
+- Memory leak with aiohttp.request #1756
+
 - Encoding is always UTF-8 in POST data #1750
 
 - Do not add "Content-Disposition" header by default #1755
