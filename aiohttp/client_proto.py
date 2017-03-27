@@ -51,6 +51,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         if transport is not None:
             transport.close()
             self.transport = None
+            self._payload = None
         return transport
 
     def is_connected(self):
