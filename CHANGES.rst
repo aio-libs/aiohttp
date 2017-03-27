@@ -15,6 +15,8 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+- Headers from body are not in Request headers anymore
+
 
 2.0.3 (2017-03-24)
 ------------------
