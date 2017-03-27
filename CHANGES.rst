@@ -11,9 +11,15 @@ Changes
 
 - Added `history` to `ClientResponseError`. #1741
 
+- Dropped "%O" in access logger #1673
+
+
+2.0.4 (2017-03-27)
+------------------
+
 - Encoding is always UTF-8 in POST data #1750
 
-- Dropped "%O" in access logger #1673
+- Do not add "Content-Disposition" header by default #1755
 
 
 2.0.3 (2017-03-24)

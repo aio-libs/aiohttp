@@ -68,8 +68,8 @@ class Payload(ABC):
     _headers = None
     _content_type = 'application/octet-stream'
 
-    def __init__(self, value, *, headers=None,
-                 content_type=sentinel, filename=None, encoding=None):
+    def __init__(self, value, *, headers=None, content_type=sentinel,
+                 filename=None, encoding=None, **kwargs):
         self._value = value
         self._encoding = encoding
         self._filename = filename
@@ -177,14 +177,14 @@ class StringPayload(BytesPayload):
 
 class IOBasePayload(Payload):
 
-    def __init__(self, value, disptype='inline', *args, **kwargs):
+    def __init__(self, value, disposition='attachment', *args, **kwargs):
         if 'filename' not in kwargs:
             kwargs['filename'] = guess_filename(value)
 
         super().__init__(value, *args, **kwargs)
 
-        if self._filename is not None:
-            self.set_content_disposition(disptype, filename=self._filename)
+        if self._filename is not None and disposition is not None:
+            self.set_content_disposition(disposition, filename=self._filename)
 
     @asyncio.coroutine
     def write(self, writer):
