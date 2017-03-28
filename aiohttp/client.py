@@ -43,6 +43,8 @@ class ClientSession:
     _source_traceback = None
     _connector = None
 
+    requote_redirect_url = True
+
     def __init__(self, *, connector=None, loop=None, cookies=None,
                  headers=None, skip_auto_headers=None,
                  auth=None, json_serialize=json.dumps,
@@ -272,7 +274,8 @@ class ClientSession:
                                 "a redirect [{0.status}] status "
                                 "but response lacks a Location "
                                 "or URI HTTP header".format(resp))
-                        r_url = URL(r_url)
+                        r_url = URL(
+                            r_url, encoded=not self.requote_redirect_url)
 
                         scheme = r_url.scheme
                         if scheme not in ('http', 'https', ''):

@@ -11,6 +11,8 @@ Changes
 
 - Added `history` to `ClientResponseError`. #1741
 
+- Allow to disable redirect url re-quoting #1474
+
 - Dropped "%O" in access logger #1673
 
 

@@ -143,6 +143,14 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 1.0
 
+   .. attribute:: requote_redirect_url
+
+      aiohttp re quote's redirect urls by default, but some servers
+      require exact url from location header. to disable `re-quote` system
+      set `requote_redirect_url` to `False`.
+
+      .. note:: this parameter affects all subsequent requests.
+
    .. attribute:: loop
 
       A loop instance used for session creation.
