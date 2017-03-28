@@ -181,7 +181,7 @@ WebRequest and WebResponse
 4. `FileSender` api is dropped, it is replaced with more general `FileResponse` class::
 
      async def handle(request):
-         return web.FileResponse('path-to-file.txt)
+         return web.FileResponse('path-to-file.txt')
 
 
 RequestPayloadError
