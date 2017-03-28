@@ -49,6 +49,26 @@ Other HTTP methods are available as well::
    keep-alives (both are on by default) may speed up total performance.
 
 
+JSON Request
+------------
+
+Any of session's request methods like `request`, `get`, `post` etc accept
+`json` parameter::
+
+  async with aiohttp.ClientSession() as session:
+      async with session.post(json={'test': 'object})
+
+
+By default session uses python's standard `json` module for serialization.
+But it is possible to use different `serializer`. `ClientSession` accepts `json_serialize`
+parameter::
+
+  import ujson
+
+  async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
+      async with session.post(json={'test': 'object})
+
+
 Passing Parameters In URLs
 --------------------------
 
