@@ -82,6 +82,7 @@ Jeroen van der Heijden
 Jesus Cea
 Jinkyu Yi
 Joel Watts
+Johan Lorenzo
 Joongi Kim
 Julien Duponchelle
 Junjie Tao

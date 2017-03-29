@@ -275,12 +275,6 @@ class ClientRequest:
                 hdrs.CONTENT_TYPE not in skip_auto_headers):
             self.headers[hdrs.CONTENT_TYPE] = body.content_type
 
-        # copy payload headers
-        if body.headers:
-            for (key, value) in body.headers.items():
-                if key not in self.headers:
-                    self.headers[key] = value
-
     def update_expect_continue(self, expect=False):
         if expect:
             self.headers[hdrs.EXPECT] = '100-continue'
