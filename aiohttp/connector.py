@@ -145,7 +145,7 @@ class BaseConnector(object):
 
     def __init__(self, *, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
-                 disable_cleanup_closed=False, loop=None):
+                 enable_cleanup_closed=False, loop=None):
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -182,7 +182,7 @@ class BaseConnector(object):
 
         # start cleanup closed transports task
         self._cleanup_closed_handle = None
-        self._cleanup_closed_disabled = disable_cleanup_closed
+        self._cleanup_closed_disabled = not enable_cleanup_closed
         self._cleanup_closed_transports = []
         self._cleanup_closed()
 
@@ -510,10 +510,13 @@ class TCPConnector(BaseConnector):
                  resolve=sentinel, use_dns_cache=True,
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
-                 force_close=False, limit=100, limit_per_host=0, loop=None):
+                 force_close=False, limit=100, limit_per_host=0,
+                 enable_cleanup_closed=False, loop=None):
         super().__init__(keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
-                         limit=limit, limit_per_host=limit_per_host, loop=loop)
+                         limit=limit, limit_per_host=limit_per_host,
+                         enable_cleanup_closed=enable_cleanup_closed,
+                         loop=loop)
 
         if not verify_ssl and ssl_context is not None:
             raise ValueError(

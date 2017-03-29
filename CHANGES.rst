@@ -7,6 +7,8 @@ Changes
 
 - Memory leak with aiohttp.request #1756
 
+- Disable cleanup closed ssl transports by default.
+
 
 2.0.4 (2017-03-27)
 ------------------
