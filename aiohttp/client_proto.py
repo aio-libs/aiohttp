@@ -122,7 +122,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self._payload_parser = parser
 
         if self._tail:
-            data, self._tail = self._tail, None
+            data, self._tail = self._tail, b''
             self.data_received(data)
 
     def set_response_params(self, *, timer=None,
@@ -184,7 +184,8 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                     else:
                         self.feed_data((message, payload), 0)
 
-                if upgraded:
-                    self.data_received(tail)
-                else:
-                    self._tail = tail
+                if tail:
+                    if upgraded:
+                        self.data_received(tail)
+                    else:
+                        self._tail = tail
