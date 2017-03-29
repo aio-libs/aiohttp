@@ -23,6 +23,8 @@ Changes
 
 - Disable cleanup closed ssl transports by default.
 
+- Exception in request handling if the server responds before the body is sent #1761
+
 
 2.0.4 (2017-03-27)
 ------------------
