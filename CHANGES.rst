@@ -2,7 +2,7 @@ Changes
 =======
 
 
-2.0.5 (2017-03-..)
+2.0.5 (2017-03-29)
 ------------------
 
 - Memory leak with aiohttp.request #1756
