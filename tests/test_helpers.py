@@ -463,15 +463,15 @@ class TestFrozenList:
 @asyncio.coroutine
 def test_weakref_handle(loop):
     cb = mock.Mock()
-    helpers.weakref_handle(cb, 0.01, loop, False)
+    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
     yield from asyncio.sleep(0.1, loop=loop)
-    assert cb.called
+    assert cb.test.called
 
 
 @asyncio.coroutine
 def test_weakref_handle_weak(loop):
     cb = mock.Mock()
-    helpers.weakref_handle(cb, 0.01, loop, False)
+    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
     del cb
     gc.collect()
     yield from asyncio.sleep(0.1, loop=loop)

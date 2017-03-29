@@ -266,7 +266,7 @@ class BaseConnector(object):
 
         if self._conns:
             self._cleanup_handle = helpers.weakref_handle(
-                self._cleanup, timeout, self._loop)
+                self, '_cleanup', timeout, self._loop)
 
     def _cleanup_closed(self):
         """Double confirmation for transport close.
@@ -283,7 +283,8 @@ class BaseConnector(object):
 
         if not self._cleanup_closed_disabled:
             self._cleanup_closed_handle = helpers.weakref_handle(
-                self._cleanup_closed, self._cleanup_closed_period, self._loop)
+                self, '_cleanup_closed',
+                self._cleanup_closed_period, self._loop)
 
     def close(self):
         """Close all opened transports."""
@@ -471,7 +472,7 @@ class BaseConnector(object):
 
             if self._cleanup_handle is None:
                 self._cleanup_handle = helpers.weakref_handle(
-                    self._cleanup, self._keepalive_timeout, self._loop)
+                    self, '_cleanup', self._keepalive_timeout, self._loop)
 
     @asyncio.coroutine
     def _create_connection(self, req):
