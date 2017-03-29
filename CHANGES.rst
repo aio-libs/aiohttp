@@ -16,6 +16,12 @@ Changes
 - Dropped "%O" in access logger #1673
 
 
+2.0.5 (2017-03-..)
+------------------
+
+- Memory leak with aiohttp.request #1756
+
+
 2.0.4 (2017-03-27)
 ------------------
 
