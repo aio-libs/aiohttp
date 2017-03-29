@@ -691,7 +691,8 @@ TCPConnector
                         use_dns_cache=True, \
                         family=0, ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
-                        force_close=False, loop=None, local_addr=None)
+                        force_close=False, loop=None, local_addr=None, \
+                        disable_cleanup_closed=True)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -764,6 +765,11 @@ TCPConnector
       socket locally if specified.
 
       .. versionadded:: 0.21
+
+   :param tuple enable_cleanup_closed: Some ssl servers do not properly complete
+      ssl shutdown process, in that case asyncio leaks ssl connections.
+      If this parameter is set to True, aiohttp additionally aborts underlining
+      transport after 2 seconds. It is off by default.
 
    .. attribute:: verify_ssl
 
