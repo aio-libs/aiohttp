@@ -598,19 +598,23 @@ class TimeService:
         return self._loop_time
 
 
-def _weakref_handle(ref):
-    cb = ref()
-    if cb is not None:
-        cb()
+def _weakref_handle(info):
+    ref, name = info
+    ob = ref()
+    if ob is not None:
+        try:
+            getattr(ob, name)()
+        except:
+            pass
 
 
-def weakref_handle(cb, timeout, loop, ceil_timeout=True):
+def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if ceil_timeout:
             when = ceil(when)
 
-        return loop.call_at(when, _weakref_handle, weakref.ref(cb))
+        return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
 
 
 def call_later(cb, timeout, loop):
