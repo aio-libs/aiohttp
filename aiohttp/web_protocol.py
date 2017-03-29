@@ -308,7 +308,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         self._messages.append((msg, payload))
 
                 self._upgraded = upgraded
-                if upgraded:
+                if upgraded and tail:
                     self._message_tail = tail
 
         # no parser, just store

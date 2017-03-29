@@ -15,6 +15,8 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+- TypeError in data_received of client_proto #1770
+
 
 2.0.5 (2017-03-..)
 ------------------
