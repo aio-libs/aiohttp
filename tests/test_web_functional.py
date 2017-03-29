@@ -103,6 +103,25 @@ def test_head_returns_empty_body(loop, test_client):
 
 
 @asyncio.coroutine
+def test_response_before_complete(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    data = b'0' * 1024 * 1024
+
+    resp = yield from client.post('/', data=data)
+    assert 200 == resp.status
+    text = yield from resp.text()
+    assert 'OK' == text
+
+
+@asyncio.coroutine
 def test_post_form(loop, test_client):
 
     @asyncio.coroutine
