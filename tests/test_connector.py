@@ -40,8 +40,7 @@ def ssl_key():
 
 
 def test_del(loop):
-    conn = aiohttp.BaseConnector(
-        loop=loop, disable_cleanup_closed=True)
+    conn = aiohttp.BaseConnector(loop=loop)
     proto = mock.Mock(should_close=False)
     conn._release('a', proto)
     conns_impl = conn._conns
@@ -180,7 +179,7 @@ def test_get_expired(loop):
 
 
 def test_get_expired_ssl(loop):
-    conn = aiohttp.BaseConnector(loop=loop)
+    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
     assert conn._get(('localhost', 80, True)) is None
 
     proto = mock.Mock()
@@ -246,7 +245,7 @@ def test_release(loop, key):
 def test_release_ssl_transport(loop, ssl_key):
     loop.time = mock.Mock(return_value=10)
 
-    conn = aiohttp.BaseConnector(loop=loop)
+    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
     conn._release_waiter = mock.Mock()
 
     proto = mock.Mock()
@@ -475,7 +474,8 @@ def test_connect_oserr(loop):
 def test_ctor_cleanup():
     loop = mock.Mock()
     loop.time.return_value = 1.5
-    conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=10)
+    conn = aiohttp.BaseConnector(
+        loop=loop, keepalive_timeout=10, enable_cleanup_closed=True)
     assert conn._cleanup_handle is None
     assert conn._cleanup_closed_handle is not None
 
@@ -508,7 +508,7 @@ def test_cleanup_close_ssl_transport():
 
     loop = mock.Mock()
     loop.time.return_value = 300
-    conn = aiohttp.BaseConnector(loop=loop)
+    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
     conn._conns = testset
     existing_handle = conn._cleanup_handle = mock.Mock()
 
@@ -557,7 +557,7 @@ def test_cleanup3():
 
 def test_cleanup_closed(loop, mocker):
     mocker.spy(loop, 'call_at')
-    conn = aiohttp.BaseConnector(loop=loop)
+    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
 
     tr = mock.Mock()
     conn._cleanup_closed_handle = cleanup_closed_handle = mock.Mock()
@@ -571,7 +571,7 @@ def test_cleanup_closed(loop, mocker):
 
 def test_cleanup_closed_disabled(loop, mocker):
     conn = aiohttp.BaseConnector(
-        loop=loop, disable_cleanup_closed=True)
+        loop=loop, enable_cleanup_closed=False)
 
     tr = mock.Mock()
     conn._cleanup_closed_transports = [tr]
@@ -678,7 +678,7 @@ def test_close_abort_closed_transports(loop):
 
 
 def test_close_cancels_cleanup_closed_handle(loop):
-    conn = aiohttp.BaseConnector(loop=loop)
+    conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
     assert conn._cleanup_closed_handle is not None
     conn.close()
     assert conn._cleanup_closed_handle is None
