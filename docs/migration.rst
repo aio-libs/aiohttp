@@ -183,6 +183,9 @@ WebRequest and WebResponse
      async def handle(request):
          return web.FileResponse('path-to-file.txt')
 
+5. `WebSocketResponse.protocol` is renamed to `WebSocketResponse.ws_protocol`.
+   `WebSocketResponse.protocol` is instance of `RequestHandler` class.
+
 
 RequestPayloadError
 ^^^^^^^^^^^^^^^^^^^
