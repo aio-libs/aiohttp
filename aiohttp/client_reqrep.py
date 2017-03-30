@@ -588,8 +588,10 @@ class ClientResponse(HeadersMixin):
 
         if self._connection is not None:
             # websocket, protocol could be None because
-            # connection could be detached
+            # connection could be detached, and does not exist
+            # if proxied.
             if (self._connection.protocol is not None and
+                    hasattr(self._connection.protocol, 'upgraded') and
                     self._connection.protocol.upgraded):
                 return
 
