@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import datetime
+import io
 import json
 import re
 import tempfile
@@ -333,16 +334,16 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         Returns bytes object with full request content.
         """
         if self._read_bytes is None:
-            body = bytearray()
+            body = io.BytesIO()
             while True:
                 chunk = yield from self._payload.readany()
-                body.extend(chunk)
-                if self._client_max_size \
-                        and len(body) >= self._client_max_size:
-                    raise HTTPRequestEntityTooLarge
                 if not chunk:
                     break
-            self._read_bytes = bytes(body)
+                body.write(chunk)
+                if self._client_max_size \
+                        and body.tell() >= self._client_max_size:
+                    raise HTTPRequestEntityTooLarge
+            self._read_bytes = body.getvalue()
         return self._read_bytes
 
     @asyncio.coroutine

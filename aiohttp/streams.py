@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import io
 import traceback
 
 from . import helpers
@@ -234,8 +235,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        line = []
-        line_size = 0
+        line = io.BytesIO()
         not_enough = True
 
         while not_enough:
@@ -244,12 +244,11 @@ class StreamReader(AsyncStreamReaderMixin):
                 ichar = self._buffer[0].find(b'\n', offset) + 1
                 # Read from current offset to found b'\n' or to the end.
                 data = self._read_nowait_chunk(ichar - offset if ichar else -1)
-                line.append(data)
-                line_size += len(data)
+                line.write(data)
                 if ichar:
                     not_enough = False
 
-                if line_size > self._limit:
+                if line.tell() > self._limit:
                     raise ValueError('Line is too long')
 
             if self._eof:
@@ -258,7 +257,7 @@ class StreamReader(AsyncStreamReaderMixin):
             if not_enough:
                 yield from self._wait('readline')
 
-        return b''.join(line)
+        return line.getvalue()
 
     @asyncio.coroutine
     def read(self, n=-1):
@@ -286,13 +285,13 @@ class StreamReader(AsyncStreamReaderMixin):
             # collect everything in self._buffer, but that would
             # deadlock if the subprocess sends more than self.limit
             # bytes.  So just call self.readany() until EOF.
-            blocks = []
+            buf = io.BytesIO()
             while True:
                 block = yield from self.readany()
                 if not block:
                     break
-                blocks.append(block)
-            return b''.join(blocks)
+                buf.write(block)
+            return buf.getvalue()
 
         if not self._buffer and not self._eof:
             yield from self._wait('read')
@@ -314,17 +313,14 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks = []
-        while n > 0:
+        buf = io.BytesIO()
+        while buf.tell() < n:
             block = yield from self.read(n)
             if not block:
-                partial = b''.join(blocks)
-                raise asyncio.streams.IncompleteReadError(
-                    partial, len(partial) + n)
-            blocks.append(block)
-            n -= len(block)
+                raise asyncio.streams.IncompleteReadError(buf.getvalue(), n)
+            buf.write(block)
 
-        return b''.join(blocks)
+        return buf.getvalue()
 
     def read_nowait(self, n=-1):
         # default was changed to be consistent with .read(-1)
@@ -359,17 +355,15 @@ class StreamReader(AsyncStreamReaderMixin):
         return data
 
     def _read_nowait(self, n):
-        chunks = []
-
+        buf = io.BytesIO()
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
-            chunks.append(chunk)
+            buf.write(chunk)
             if n != -1:
                 n -= len(chunk)
                 if n == 0:
                     break
-
-        return b''.join(chunks) if chunks else b''
+        return buf.getvalue()
 
 
 class EmptyStreamReader(AsyncStreamReaderMixin):

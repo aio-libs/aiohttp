@@ -2,6 +2,7 @@
 
 import asyncio
 import collections
+import io
 import socket
 import zlib
 from urllib.parse import SplitResult
@@ -140,7 +141,7 @@ class PayloadWriter(AbstractPayloadWriter):
         self.output_size = 0
 
         self._eof = False
-        self._buffer = []
+        self._buffer = io.BytesIO()
         self._compress = None
         self._drain_waiter = None
 
@@ -150,14 +151,17 @@ class PayloadWriter(AbstractPayloadWriter):
         elif acquire:
             self._stream.acquire(self)
 
+    def _flush_buffer(self, keep_buffer=False):
+        chunk = self._buffer.getvalue()
+        if chunk:
+            self._transport.write(chunk)
+            if not keep_buffer:
+                self._buffer = io.BytesIO()
+
     def set_transport(self, transport):
         self._transport = transport
 
-        chunk = b''.join(self._buffer)
-        if chunk:
-            transport.write(chunk)
-            self._buffer.clear()
-
+        self._flush_buffer()
         if self._drain_waiter is not None:
             waiter, self._drain_waiter = self._drain_waiter, None
             if not waiter.done():
@@ -190,7 +194,7 @@ class PayloadWriter(AbstractPayloadWriter):
             size = len(chunk)
             self.buffer_size += size
             self.output_size += size
-            self._buffer.append(chunk)
+            self._buffer.write(chunk)
 
     def _write(self, chunk):
         size = len(chunk)
@@ -198,14 +202,13 @@ class PayloadWriter(AbstractPayloadWriter):
         self.output_size += size
 
         if self._transport is not None:
-            if self._buffer:
-                self._buffer.append(chunk)
-                self._transport.write(b''.join(self._buffer))
-                self._buffer.clear()
+            if self._buffer.tell():
+                self._buffer.write(chunk)
+                self._flush_buffer()
             else:
                 self._transport.write(chunk)
         else:
-            self._buffer.append(chunk)
+            self._buffer.write(chunk)
 
     def write(self, chunk, *, drain=True, LIMIT=64*1024):
         """Writes chunk of data to a stream.
@@ -248,11 +251,7 @@ class PayloadWriter(AbstractPayloadWriter):
         headers = status_line + ''.join(
             [k + SEP + v + END for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
-
-        size = len(headers)
-        self.buffer_size += size
-        self.output_size += size
-        self._buffer.append(headers)
+        self.buffer_data(headers)
 
     @asyncio.coroutine
     def write_eof(self, chunk=b''):
@@ -287,10 +286,7 @@ class PayloadWriter(AbstractPayloadWriter):
     @asyncio.coroutine
     def drain(self, last=False):
         if self._transport is not None:
-            if self._buffer:
-                self._transport.write(b''.join(self._buffer))
-                if not last:
-                    self._buffer.clear()
+            self._flush_buffer(keep_buffer=last)
             yield from self._stream.drain()
         else:
             # wait for transport

@@ -26,10 +26,6 @@ class SendfilePayloadWriter(PayloadWriter):
             if not waiter.done():
                 waiter.set_result(None)
 
-    def _write(self, chunk):
-        self.output_size += len(chunk)
-        self._buffer.append(chunk)
-
     def _sendfile_cb(self, fut, out_fd, in_fd,
                      offset, count, loop, registered):
         if registered:
@@ -68,7 +64,7 @@ class SendfilePayloadWriter(PayloadWriter):
 
         loop = self.loop
         try:
-            yield from loop.sock_sendall(out_socket, b''.join(self._buffer))
+            yield from loop.sock_sendall(out_socket, self._buffer.getvalue())
             fut = create_future(loop)
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
             yield from fut
