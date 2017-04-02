@@ -66,7 +66,7 @@ After that please install libraries required for development:
    $ pip install -r requirements-dev.txt
 
 We also recommend to install ipdb_ but it's on your own:
-:
+
 .. code-block:: shell
 
    $ pip install ipdb
