@@ -9,8 +9,29 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import helpers
-from aiohttp.client_reqrep import ClientResponse
+from aiohttp import helpers, http
+from aiohttp.client_reqrep import ClientResponse, RequestInfo
+
+
+@asyncio.coroutine
+def test_http_processing_error():
+    loop = mock.Mock()
+    request_info = mock.Mock()
+    response = ClientResponse(
+        'get', URL('http://del-cl-resp.org'), request_info=request_info)
+    response._post_init(loop)
+    loop.get_debug = mock.Mock()
+    loop.get_debug.return_value = True
+
+    connection = mock.Mock()
+    connection.protocol = aiohttp.DataQueue(loop=loop)
+    connection.protocol.set_response_params = mock.Mock()
+    connection.protocol.set_exception(http.HttpProcessingError())
+
+    with pytest.raises(aiohttp.ClientResponseError) as info:
+        yield from response.start(connection)
+
+    assert info.value.request_info is request_info
 
 
 def test_del():
@@ -333,8 +354,10 @@ def test_json_no_content(loop):
         'Content-Type': 'data/octet-stream'}
     response._content = b''
 
-    with pytest.raises(aiohttp.ClientResponseError):
+    with pytest.raises(aiohttp.ClientResponseError) as info:
         yield from response.json()
+
+    assert info.value.request_info == response.request_info
 
     res = yield from response.json(content_type=None)
     assert res is None
@@ -438,3 +461,104 @@ def test_charset_no_charset():
     response.headers = {'Content-Type': 'application/json'}
 
     assert response.charset is None
+
+
+def test_response_request_info():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get', URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    assert url == response.request_info.url
+    assert 'get' == response.request_info.method
+    assert headers == response.request_info.headers
+
+
+def test_response_request_info_empty():
+    url = 'http://def-cl-resp.org'
+    response = ClientResponse(
+        'get', URL(url),
+    )
+    assert response.request_info is None
+
+
+def test_request_info_in_exception():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert cm.value.request_info == response.request_info
+
+
+def test_no_redirect_history_in_exception():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert () == cm.value.history
+
+
+def test_redirect_history_in_exception():
+    hist_url = 'http://def-cl-resp.org'
+    url = 'http://def-cl-resp.org/index.htm'
+    hist_headers = {'Content-Type': 'application/json;charset=cp1251',
+                    'Location': url
+                    }
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+
+    hist_response = ClientResponse(
+        'get',
+        URL(hist_url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+
+    hist_response.headers = hist_headers
+    hist_response.status = 301
+    hist_response.reason = 'REDIRECT'
+
+    response._history = [hist_response]
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert [hist_response] == cm.value.history

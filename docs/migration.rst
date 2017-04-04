@@ -181,7 +181,10 @@ WebRequest and WebResponse
 4. `FileSender` api is dropped, it is replaced with more general `FileResponse` class::
 
      async def handle(request):
-         return web.FileResponse('path-to-file.txt)
+         return web.FileResponse('path-to-file.txt')
+
+5. `WebSocketResponse.protocol` is renamed to `WebSocketResponse.ws_protocol`.
+   `WebSocketResponse.protocol` is instance of `RequestHandler` class.
 
 5. `WebSocketResponse.protocol` is renamed to `WebSocketResponse.ws_protocol`.
    `WebSocketResponse.protocol` is instance of `RequestHandler` class.

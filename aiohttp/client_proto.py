@@ -2,7 +2,7 @@ import asyncio
 import asyncio.streams
 
 from .client_exceptions import (ClientOSError, ClientPayloadError,
-                                ClientResponseError, ServerDisconnectedError)
+                                ServerDisconnectedError)
 from .http import HttpResponseParser, StreamWriter
 from .streams import EMPTY_PAYLOAD, DataQueue
 
@@ -69,8 +69,9 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 pass
 
         try:
-            self._parser.feed_eof()
+            uncompleted = self._parser.feed_eof()
         except Exception as e:
+            uncompleted = None
             if self._payload is not None:
                 self._payload.set_exception(
                     ClientPayloadError('Response payload is not completed'))
@@ -79,7 +80,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
             if isinstance(exc, OSError):
                 exc = ClientOSError(*exc.args)
             if exc is None:
-                exc = ServerDisconnectedError()
+                exc = ServerDisconnectedError(uncompleted)
             DataQueue.set_exception(self, exc)
 
         self.transport = self.writer = None
@@ -121,7 +122,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self._payload_parser = parser
 
         if self._tail:
-            data, self._tail = self._tail, None
+            data, self._tail = self._tail, b''
             self.data_received(data)
 
     def set_response_params(self, *, timer=None,
@@ -164,9 +165,8 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                     messages, upgraded, tail = self._parser.feed_data(data)
                 except BaseException as exc:
                     self._should_close = True
-                    self.set_exception(
-                        ClientResponseError(code=400, message=str(exc)))
                     self.transport.close()
+                    self.set_exception(exc)
                     return
 
                 self._upgraded = upgraded
@@ -184,7 +184,8 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                     else:
                         self.feed_data((message, payload), 0)
 
-                if upgraded:
-                    self.data_received(tail)
-                else:
-                    self._tail = tail
+                if tail:
+                    if upgraded:
+                        self.data_received(tail)
+                    else:
+                        self._tail = tail

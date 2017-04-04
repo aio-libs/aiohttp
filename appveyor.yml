@@ -1,4 +1,4 @@
-version: 2.0dev{build}
+version: 2.0-{build}
 
 environment:
   PYPI_PASSWD:

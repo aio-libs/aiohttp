@@ -16,8 +16,7 @@ from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError,
-                                ClientResponseError, ServerTimeoutError,
-                                WSServerHandshakeError)
+                                ServerTimeoutError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
@@ -43,6 +42,8 @@ class ClientSession:
 
     _source_traceback = None
     _connector = None
+
+    requote_redirect_url = True
 
     def __init__(self, *, connector=None, loop=None, cookies=None,
                  headers=None, skip_auto_headers=None,
@@ -239,10 +240,6 @@ class ClientSession:
                             raise
                     except ClientError:
                         raise
-                    except http.HttpProcessingError as exc:
-                        raise ClientResponseError(
-                            code=exc.code,
-                            message=exc.message, headers=exc.headers) from exc
                     except OSError as exc:
                         raise ClientOSError(*exc.args) from exc
 
@@ -277,7 +274,8 @@ class ClientSession:
                                 "a redirect [{0.status}] status "
                                 "but response lacks a Location "
                                 "or URI HTTP header".format(resp))
-                        r_url = URL(r_url)
+                        r_url = URL(
+                            r_url, encoded=not self.requote_redirect_url)
 
                         scheme = r_url.scheme
                         if scheme not in ('http', 'https', ''):
@@ -390,18 +388,24 @@ class ClientSession:
             # check handshake
             if resp.status != 101:
                 raise WSServerHandshakeError(
+                    resp.request_info,
+                    resp.history,
                     message='Invalid response status',
                     code=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
                 raise WSServerHandshakeError(
+                    resp.request_info,
+                    resp.history,
                     message='Invalid upgrade header',
                     code=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
                 raise WSServerHandshakeError(
+                    resp.request_info,
+                    resp.history,
                     message='Invalid connection header',
                     code=resp.status,
                     headers=resp.headers)
@@ -412,6 +416,8 @@ class ClientSession:
                 hashlib.sha1(sec_key + WS_KEY).digest()).decode()
             if key != match:
                 raise WSServerHandshakeError(
+                    resp.request_info,
+                    resp.history,
                     message='Invalid challenge response',
                     code=resp.status,
                     headers=resp.headers)

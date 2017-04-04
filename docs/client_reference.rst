@@ -143,6 +143,14 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 1.0
 
+   .. attribute:: requote_redirect_url
+
+      aiohttp re quote's redirect urls by default, but some servers
+      require exact url from location header. to disable `re-quote` system
+      set `requote_redirect_url` to `False`.
+
+      .. note:: this parameter affects all subsequent requests.
+
    .. attribute:: loop
 
       A loop instance used for session creation.
@@ -979,7 +987,7 @@ Response object
 
    .. attribute:: charset
 
-      Read-only property that specifies the *encoding* for the request's BODY.
+   Read-only property that specifies the *encoding* for the request's BODY.
 
       The value is parsed from the *Content-Type* HTTP header.
 
@@ -1065,6 +1073,11 @@ Response object
 
       :return: *BODY* as *JSON* data parsed by *loads* parameter or
                ``None`` if *BODY* is empty or contains white-spaces only.
+
+    .. attribute:: request_info
+
+       A namedtuple with request URL and headers from :class:`ClientRequest`
+       object.
 
 
 ClientWebSocketResponse

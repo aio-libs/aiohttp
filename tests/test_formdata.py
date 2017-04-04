@@ -23,6 +23,14 @@ def writer(buf):
     return writer
 
 
+def test_formdata_multipart(buf, writer):
+    form = FormData()
+    assert not form.is_multipart
+
+    form.add_field('test', b'test', filename='test.txt')
+    assert form.is_multipart
+
+
 def test_invalid_formdata_payload():
     form = FormData()
     form.add_field('test', object(), filename='test.txt')

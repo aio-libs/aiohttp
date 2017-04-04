@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import tempfile
+import warnings
 
 import pytest
 from py import path
@@ -13,7 +14,7 @@ from .test_utils import (RawTestServer, TestClient, TestServer,
 
 try:
     import uvloop
-except:
+except:  # pragma: no cover
     uvloop = None
 
 
@@ -31,11 +32,35 @@ def pytest_addoption(parser):
 @pytest.fixture
 def fast(request):
     """ --fast config option """
-    return request.config.getoption('--fast')
+    return request.config.getoption('--fast')  # pragma: no cover
+
+
+@contextlib.contextmanager
+def _runtime_warning_context():
+    """
+    Context manager which checks for RuntimeWarnings, specifically to
+    avoid "coroutine 'X' was never awaited" warnings being missed.
+
+    If RuntimeWarnings occur in the context a RuntimeError is raised.
+    """
+    with warnings.catch_warnings(record=True) as _warnings:
+        yield
+        rw = ['{w.filename}:{w.lineno}:{w.message}'.format(w=w)
+              for w in _warnings if w.category == RuntimeWarning]
+        if rw:
+            raise RuntimeError('{} Runtime Warning{},\n{}'.format(
+                len(rw),
+                '' if len(rw) == 1 else 's',
+                '\n'.join(rw)
+            ))
 
 
 @contextlib.contextmanager
 def _passthrough_loop_context(loop, fast=False):
+    """
+    setups and tears down a loop unless one is passed in via the loop
+    argument when it's passed straight through.
+    """
     if loop:
         # loop already exists, pass it straight through
         yield loop
@@ -61,12 +86,13 @@ def pytest_pyfunc_call(pyfuncitem):
     fast = pyfuncitem.config.getoption("--fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get('loop', None)
-        with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
-            testargs = {arg: pyfuncitem.funcargs[arg]
-                        for arg in pyfuncitem._fixtureinfo.argnames}
+        with _runtime_warning_context():
+            with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
+                testargs = {arg: pyfuncitem.funcargs[arg]
+                            for arg in pyfuncitem._fixtureinfo.argnames}
 
-            task = _loop.create_task(pyfuncitem.obj(**testargs))
-            _loop.run_until_complete(task)
+                task = _loop.create_task(pyfuncitem.obj(**testargs))
+                _loop.run_until_complete(task)
 
         return True
 
@@ -77,28 +103,34 @@ def pytest_configure(config):
 
     without_uvloop = False
     if fast:
-        without_uvloop = True
+        without_uvloop = True  # pragma: no cover
 
-    if config.getoption('--without-uvloop'):
+    if config.getoption('--without-uvloop'):  # pragma: no cover
         without_uvloop = True
 
     LOOP_FACTORIES.clear()
-    if uvloop_only and uvloop is not None:
+    LOOP_FACTORY_IDS.clear()
+    if uvloop_only and uvloop is not None:  # pragma: no cover
         LOOP_FACTORIES.append(uvloop.new_event_loop)
-    elif without_uvloop:
+        LOOP_FACTORY_IDS.append('uvloop')
+    elif without_uvloop:  # pragma: no cover
         LOOP_FACTORIES.append(asyncio.new_event_loop)
-    else:
+        LOOP_FACTORY_IDS.append('pyloop')
+    else:  # pragma: no cover
         LOOP_FACTORIES.append(asyncio.new_event_loop)
+        LOOP_FACTORY_IDS.append('pyloop')
         if uvloop is not None:
             LOOP_FACTORIES.append(uvloop.new_event_loop)
+            LOOP_FACTORY_IDS.append('uvloop')
 
     asyncio.set_event_loop(None)
 
 
 LOOP_FACTORIES = []
+LOOP_FACTORY_IDS = []
 
 
-@pytest.yield_fixture(params=LOOP_FACTORIES)
+@pytest.yield_fixture(params=LOOP_FACTORIES, ids=LOOP_FACTORY_IDS)
 def loop(request):
     """Return an instance of the event loop."""
     fast = request.config.getoption('--fast')
@@ -106,7 +138,7 @@ def loop(request):
 
     with loop_context(request.param, fast=fast) as _loop:
         if debug:
-            _loop.set_debug(True)
+            _loop.set_debug(True)  # pragma: no cover
         yield _loop
 
 

@@ -27,7 +27,8 @@ ERROR = http.RawRequestMessage(
 if hasattr(socket, 'SO_KEEPALIVE'):
     def tcp_keepalive(server, transport):
         sock = transport.get_extra_info('socket')
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+        if sock is not None:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 else:
     def tcp_keepalive(server, transport):  # pragma: no cover
         pass
@@ -307,7 +308,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         self._messages.append((msg, payload))
 
                 self._upgraded = upgraded
-                if upgraded:
+                if upgraded and tail:
                     self._message_tail = tail
 
         # no parser, just store

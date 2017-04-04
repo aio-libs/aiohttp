@@ -67,6 +67,16 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
                            debug=debug)
 
 
+def test_app_make_handler_args(loop, mocker):
+    app = web.Application(handler_args={'test': True})
+    srv = mocker.patch('aiohttp.web.Server')
+
+    app.make_handler(loop=loop)
+    srv.assert_called_with(app._handle,
+                           request_factory=app._make_request,
+                           loop=loop, debug=mock.ANY, test=True)
+
+
 @asyncio.coroutine
 def test_app_register_on_finish():
     app = web.Application()
@@ -177,6 +187,18 @@ def test_app_delitem():
     assert len(app) == 1
     del app['key']
     assert len(app) == 0
+
+
+def test_app_freeze():
+    app = web.Application()
+    subapp = mock.Mock()
+    app._subapps.append(subapp)
+
+    app.freeze()
+    assert subapp.freeze.called
+
+    app.freeze()
+    assert len(subapp.freeze.call_args_list) == 1
 
 
 def test_secure_proxy_ssl_header_default():

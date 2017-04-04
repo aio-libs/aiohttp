@@ -119,7 +119,7 @@ def test_access_logger_atoms(mocker):
     utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
-    log_format = '%a %t %P %l %u %r %s %b %O %T %Tf %D'
+    log_format = '%a %t %P %l %u %r %s %b %T %Tf %D'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
     message = mock.Mock(headers={}, method="GET", path="/path", version=(1, 1))
@@ -130,9 +130,8 @@ def test_access_logger_atoms(mocker):
     access_logger.log(message, environ, response, transport, 3.1415926)
     assert not mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
-                'GET /path HTTP/1.1 200 42 42 3 3.141593 3141593')
+                'GET /path HTTP/1.1 200 42 3 3.141593 3141593')
     extra = {
-        'bytes_sent': 42,
         'first_request_line': 'GET /path HTTP/1.1',
         'process_id': '<42>',
         'remote_address': '127.0.0.2',
@@ -425,6 +424,26 @@ def test_timeout_handle_cb_exc(loop):
     assert not handle._callbacks
 
 
+def test_timer_context_cancelled():
+    with mock.patch('aiohttp.helpers.asyncio') as m_asyncio:
+        m_asyncio.TimeoutError = asyncio.TimeoutError
+        loop = mock.Mock()
+        ctx = helpers.TimerContext(loop)
+        ctx.timeout()
+
+        with pytest.raises(asyncio.TimeoutError):
+            with ctx:
+                pass
+
+        assert m_asyncio.Task.current_task.return_value.cancel.called
+
+
+def test_timer_context_no_task(loop):
+    with pytest.raises(RuntimeError):
+        with helpers.TimerContext(loop):
+            pass
+
+
 # ----------------------------------- FrozenList ----------------------
 
 
@@ -478,6 +497,12 @@ def test_ceil_timeout(loop):
     with helpers.CeilTimeout(0, loop=loop) as timeout:
         assert timeout._timeout is None
         assert timeout._cancel_handler is None
+
+
+def test_ceil_timeout_no_task(loop):
+    with pytest.raises(RuntimeError):
+        with helpers.CeilTimeout(10, loop=loop):
+            pass
 
 
 # -------------------------------- ContentDisposition -------------------

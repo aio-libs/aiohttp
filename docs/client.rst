@@ -49,6 +49,26 @@ Other HTTP methods are available as well::
    keep-alives (both are on by default) may speed up total performance.
 
 
+JSON Request
+------------
+
+Any of session's request methods like `request`, `get`, `post` etc accept
+`json` parameter::
+
+  async with aiohttp.ClientSession() as session:
+      async with session.post(json={'test': 'object})
+
+
+By default session uses python's standard `json` module for serialization.
+But it is possible to use different `serializer`. `ClientSession` accepts `json_serialize`
+parameter::
+
+  import ujson
+
+  async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
+      async with session.post(json={'test': 'object})
+
+
 Passing Parameters In URLs
 --------------------------
 
@@ -167,6 +187,13 @@ streamed to a file::
 It is not possible to use :meth:`~ClientResponse.read`,
 :meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` after
 explicit reading from :attr:`~ClientResponse.content`.
+
+RequestInfo
+-----------
+
+`ClientResponse` object contains :attr:`~ClientResponse.request_info` property,
+which contains request fields: `url` and `headers`.
+On `raise_for_status` structure is copied to `ClientResponseError` instance.
 
 
 Custom Headers

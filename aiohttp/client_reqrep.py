@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import io
 import json
 import sys
@@ -25,6 +26,10 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('ClientRequest', 'ClientResponse')
+
+
+RequestInfo = collections.namedtuple(
+    'RequestInfo', ('url', 'method', 'headers'))
 
 
 class ClientRequest:
@@ -104,6 +109,10 @@ class ClientRequest:
     @property
     def port(self):
         return self.url.port
+
+    @property
+    def request_info(self):
+        return RequestInfo(self.url, self.method, self.headers)
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
@@ -385,7 +394,9 @@ class ClientRequest:
 
         self.response = self.response_class(
             self.method, self.original_url,
-            writer=self._writer, continue100=self._continue, timer=self._timer)
+            writer=self._writer, continue100=self._continue, timer=self._timer,
+            request_info=self.request_info
+        )
 
         self.response._post_init(self.loop)
         return self.response
@@ -426,7 +437,8 @@ class ClientResponse(HeadersMixin):
     _closed = True  # to allow __del__ for non-initialized properly response
 
     def __init__(self, method, url, *,
-                 writer=None, continue100=None, timer=None):
+                 writer=None, continue100=None, timer=None,
+                 request_info=None):
         assert isinstance(url, URL)
 
         self.method = method
@@ -439,6 +451,7 @@ class ClientResponse(HeadersMixin):
         self._continue = continue100
         self._closed = True
         self._history = ()
+        self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
 
     @property
@@ -458,6 +471,10 @@ class ClientResponse(HeadersMixin):
     @property
     def _headers(self):
         return self.headers
+
+    @property
+    def request_info(self):
+        return self._request_info
 
     def _post_init(self, loop):
         self._loop = loop
@@ -525,7 +542,14 @@ class ClientResponse(HeadersMixin):
         with self._timer:
             while True:
                 # read response
-                (message, payload) = yield from self._protocol.read()
+                try:
+                    (message, payload) = yield from self._protocol.read()
+                except http.HttpProcessingError as exc:
+                    raise ClientResponseError(
+                        self.request_info, self.history,
+                        code=exc.code,
+                        message=exc.message, headers=exc.headers) from exc
+
                 if (message.code < 100 or
                         message.code > 199 or message.code == 101):
                     break
@@ -609,6 +633,8 @@ class ClientResponse(HeadersMixin):
     def raise_for_status(self):
         if 400 <= self.status:
             raise ClientResponseError(
+                self.request_info,
+                self.history,
                 code=self.status,
                 message=self.reason,
                 headers=self.headers)
@@ -683,6 +709,8 @@ class ClientResponse(HeadersMixin):
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
             if content_type not in ctype:
                 raise ClientResponseError(
+                    self.request_info,
+                    self.history,
                     message=('Attempt to decode JSON with '
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
