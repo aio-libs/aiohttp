@@ -17,6 +17,8 @@ Changes
 
 - TypeError in data_received of ResponseHandler #1770
 
+- Keeping blank values for `request.post()` #1765
+
 
 2.0.5 (2017-03-..)
 ------------------
