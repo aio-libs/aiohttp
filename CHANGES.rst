@@ -107,6 +107,12 @@ Changes
   passed #1786
 
 
+2.0.6 (2017-04-xx)
+------------------
+
+- Keeping blank values for `request.post()` #1765
+
+
 2.0.5 (2017-03-29)
 ------------------
 
