@@ -427,6 +427,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 out.extend(
                     parse_qsl(
                         data.rstrip().decode(charset),
+                        keep_blank_values=True,
                         encoding=charset))
 
         self._post = MultiDictProxy(out)
