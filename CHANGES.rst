@@ -15,10 +15,16 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+
+2.0.6 (2017-04-04)
+------------------
+
+- Keeping blank values for `request.post()` #1765
+
 - TypeError in data_received of ResponseHandler #1770
 
 
-2.0.5 (2017-03-..)
+2.0.5 (2017-03-29)
 ------------------
 
 - Memory leak with aiohttp.request #1756
