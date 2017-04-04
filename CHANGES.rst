@@ -7,7 +7,7 @@ Changes
 
 - Keeping blank values for `request.post()` #1765
 
-- TypeError in data_received of client_proto #1770
+- TypeError in ResponseHandler.data_received #1770
 
 
 2.0.5 (2017-03-29)
