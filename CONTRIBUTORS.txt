@@ -94,6 +94,7 @@ Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
+Lu Gong
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
