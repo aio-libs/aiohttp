@@ -2,10 +2,12 @@ Changes
 =======
 
 
-2.0.6 (2017-04-xx)
+2.0.6 (2017-04-04)
 ------------------
 
 - Keeping blank values for `request.post()` #1765
+
+- TypeError in data_received of client_proto #1770
 
 
 2.0.5 (2017-03-29)
