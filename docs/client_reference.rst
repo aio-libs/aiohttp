@@ -1348,10 +1348,6 @@ Hierarchy of exceptions:
 
   - `aiohttp.ClientResponseError` - exceptions that could happen after we get response from server.
 
-      `request_info` - Instance of `RequestInfo` object, contains information about request.
-
-      `history` - History from `ClientResponse` object, if available, else empty tuple.
-
      - `aiohttp.WSServerHandshakeError` - web socket server response error
 
      - `aiohttp.ClientHttpProxyError` - proxy response
@@ -1367,8 +1363,6 @@ Hierarchy of exceptions:
     - `aiohttp.ServerConnectionError` - server connection related errors
 
     - `aiohttp.ServerDisconnectedError` - server disconnected
-
-      `message` - Partially parsed http message (optional)
 
     - `aiohttp.ServerTimeoutError` - server operation timeout, (read timeout, etc)
 

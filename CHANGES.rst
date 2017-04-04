@@ -2,25 +2,13 @@ Changes
 =======
 
 
-2.1.0 (2017-xx-xx)
+2.0.6 (2017-04-xx)
 ------------------
-
-- Content disposition with semicolon in filename #917
-
-- Added `request_info` to response object and `ClientResponseError`. #1733
-
-- Added `history` to `ClientResponseError`. #1741
-
-- Allow to disable redirect url re-quoting #1474
-
-- Dropped "%O" in access logger #1673
-
-- TypeError in data_received of ResponseHandler #1770
 
 - Keeping blank values for `request.post()` #1765
 
 
-2.0.5 (2017-03-..)
+2.0.5 (2017-03-29)
 ------------------
 
 - Memory leak with aiohttp.request #1756

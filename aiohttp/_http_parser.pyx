@@ -282,7 +282,7 @@ cdef class HttpParser:
         if self._upgraded:
             return messages, True, data[nb:]
         else:
-            return messages, False, None
+            return messages, False, b''
 
 
 cdef class HttpRequestParserC(HttpParser):
