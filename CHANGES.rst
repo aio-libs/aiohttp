@@ -15,6 +15,9 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+- Fix ``web.run_app`` not to bind to default host-port pair if only socket is
+  passed #1786
+
 
 2.0.6 (2017-04-04)
 ------------------
