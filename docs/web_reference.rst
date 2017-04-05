@@ -216,7 +216,7 @@ and :ref:`aiohttp-web-signals` handlers.
          right borders are set, the real logic for case of open bounds
          is more complex)::
 
-            rng = request.http_rangea
+            rng = request.http_range
             with open(filename, 'rb') as f:
                 f.seek(rng.start)
                 return f.read(rng.stop-rng.start)
