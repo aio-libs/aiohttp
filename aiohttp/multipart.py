@@ -404,7 +404,9 @@ class BodyPartReader(object):
         if not data:
             return None
         encoding = encoding or self.get_charset(default='utf-8')
-        return parse_qsl(data.rstrip().decode(encoding), encoding=encoding)
+        return parse_qsl(data.rstrip().decode(encoding),
+                         keep_blank_values=True,
+                         encoding=encoding)
 
     def at_eof(self):
         """Returns ``True`` if the boundary was reached or
