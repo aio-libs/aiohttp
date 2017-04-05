@@ -72,6 +72,7 @@ mock_server_multi = [
 mock_server_default_8989 = [
     mock.call(mock.ANY, '0.0.0.0', 8989, ssl=None, backlog=128)
 ]
+mock_socket = mock.Mock(getsockname=lambda: ('mock-socket', 123))
 mixed_bindings_tests = (
     (
         "Nothing Specified",
@@ -136,7 +137,27 @@ mixed_bindings_tests = (
         [mock.call(mock.ANY, ('127.0.0.1', '192.168.1.1'), 8000, ssl=None,
                    backlog=128)],
         mock_unix_server_multi
-    )
+    ),
+    (
+        "Only socket",
+        {"sock": [mock_socket]},
+        [mock.call(mock.ANY, ssl=None, sock=mock_socket, backlog=128)],
+        [],
+    ),
+    (
+        "Socket, port",
+        {"sock": [mock_socket], "port": 8765},
+        [mock.call(mock.ANY, '0.0.0.0', 8765, ssl=None, backlog=128),
+         mock.call(mock.ANY, sock=mock_socket, ssl=None, backlog=128)],
+        [],
+    ),
+    (
+        "Socket, Host, No port",
+        {"sock": [mock_socket], "host": 'localhost'},
+        [mock.call(mock.ANY, 'localhost', 8080, ssl=None, backlog=128),
+         mock.call(mock.ANY, sock=mock_socket, ssl=None, backlog=128)],
+        [],
+    ),
 )
 mixed_bindings_test_ids = [test[0] for test in mixed_bindings_tests]
 mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
