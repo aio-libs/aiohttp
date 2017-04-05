@@ -113,7 +113,7 @@ Changes
 - Fix ``web.run_app`` not to bind to default host-port pair if only socket is
   passed #1786
 
-- Keeping blank values for `request.post()` #1765
+- Keeping blank values for `request.post()` and `multipart.form()` #1765
 
 - TypeError in ResponseHandler.data_received #1770
 
