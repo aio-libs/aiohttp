@@ -331,8 +331,15 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
     else:
         paths = path
 
+    if sock is None:
+        socks = ()
+    elif not isinstance(sock, Iterable):
+        socks = (sock,)
+    else:
+        socks = sock
+
     if host is None:
-        if paths and not port:
+        if (paths or socks) and not port:
             hosts = ()
         else:
             hosts = ("0.0.0.0",)
@@ -344,13 +351,6 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
 
     if hosts and port is None:
         port = 8443 if ssl_context else 8080
-
-    if sock is None:
-        socks = ()
-    elif not isinstance(sock, Iterable):
-        socks = (sock,)
-    else:
-        socks = sock
 
     server_creations = []
     uris = [str(base_url.with_host(host)) for host in hosts]
