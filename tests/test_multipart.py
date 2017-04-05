@@ -464,26 +464,26 @@ class PartReaderTestCase(TestCase):
     def test_read_form(self):
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
-            Stream(b'foo=bar&foo=baz&boo=zoo\r\n--:--'))
+            Stream(b'foo=bar&foo=baz&boo=\r\n--:--'))
         result = yield from obj.form()
-        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')],
+        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', '')],
                          result)
 
     def test_read_form_encoding(self):
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
-            Stream('foo=bar&foo=baz&boo=zoo\r\n--:--'.encode('cp1251')))
+            Stream('foo=bar&foo=baz&boo=\r\n--:--'.encode('cp1251')))
         result = yield from obj.form(encoding='cp1251')
-        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')],
+        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', '')],
                          result)
 
     def test_read_form_guess_encoding(self):
         obj = aiohttp.multipart.BodyPartReader(
             self.boundary,
             {CONTENT_TYPE: 'application/x-www-form-urlencoded; charset=utf-8'},
-            Stream('foo=bar&foo=baz&boo=zoo\r\n--:--'.encode('utf-8')))
+            Stream('foo=bar&foo=baz&boo=\r\n--:--'.encode('utf-8')))
         result = yield from obj.form()
-        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')],
+        self.assertEqual([('foo', 'bar'), ('foo', 'baz'), ('boo', '')],
                          result)
 
     def test_read_form_while_closed(self):

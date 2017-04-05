@@ -15,16 +15,16 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
-- Fix ``web.run_app`` not to bind to default host-port pair if only socket is
-  passed #1786
-
 
 2.0.6 (2017-04-04)
 ------------------
 
-- Keeping blank values for `request.post()` #1765
+- Keeping blank values for `request.post()` and `multipart.form()` #1765
 
 - TypeError in data_received of ResponseHandler #1770
+
+- Fix ``web.run_app`` not to bind to default host-port pair if only socket is
+  passed #1786
 
 
 2.0.5 (2017-03-29)
