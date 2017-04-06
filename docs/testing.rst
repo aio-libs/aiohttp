@@ -205,9 +205,9 @@ functionality, the AioHTTPTestCase is provided::
     class MyAppTestCase(AioHTTPTestCase):
 
         async def get_application(self):
-            """Override the get_app method to return your application.
             """
-            # it's important to use the loop passed here.
+            Override the get_app method to return your application.
+            """
             return web.Application()
 
         # the unittest_run_loop decorator can be used in tandem with
