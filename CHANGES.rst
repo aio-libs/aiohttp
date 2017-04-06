@@ -2,7 +2,7 @@ Changes
 =======
 
 
-2.0.6 (2017-04-04)
+2.0.6 (2017-04-06)
 ------------------
 
 - Fix ``web.run_app`` not to bind to default host-port pair if only socket is
