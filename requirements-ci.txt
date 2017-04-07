@@ -7,7 +7,7 @@ sphinx==1.5.5
 cython==0.25.2
 chardet==2.3.0
 isort==4.2.5
-tox==2.6.0
+tox==2.7.0
 multidict==2.1.4
 async-timeout==1.2.0
 sphinxcontrib-asyncio==0.2.0
