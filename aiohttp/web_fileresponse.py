@@ -6,6 +6,7 @@ import pathlib
 from . import hdrs
 from .helpers import create_future
 from .http_writer import PayloadWriter
+from .log import server_logger
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
                              HTTPRequestRangeNotSatisfiable)
 from .web_response import StreamResponse
@@ -36,6 +37,7 @@ class SendfilePayloadWriter(PayloadWriter):
             loop.remove_writer(out_fd)
         if fut.cancelled():
             return
+
         try:
             n = os.sendfile(out_fd, in_fd, offset, count)
             if n == 0:  # EOF reached
@@ -72,6 +74,9 @@ class SendfilePayloadWriter(PayloadWriter):
             fut = create_future(loop)
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
             yield from fut
+        except:
+            server_logger.debug('Socket error')
+            self._transport.close()
         finally:
             out_socket.close()
 
