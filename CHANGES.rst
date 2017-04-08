@@ -13,6 +13,8 @@ Changes
 
 - Allow to disable redirect url re-quoting #1474
 
+- Cancel websocket heartbeat on close #1793
+
 - Dropped "%O" in access logger #1673
 
 
