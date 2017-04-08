@@ -80,11 +80,10 @@ class WebSocketResponse(StreamResponse):
                 self._pong_not_received, self._pong_heartbeat, self._loop)
 
     def _pong_not_received(self):
-        self._closed = True
-        self._close_code = 1006
-        self._exception = asyncio.TimeoutError()
-
-        if self._req is not None:
+        if self._req is not None and self._req.transport is not None:
+            self._closed = True
+            self._close_code = 1006
+            self._exception = asyncio.TimeoutError()
             self._req.transport.close()
 
     @asyncio.coroutine
@@ -202,6 +201,8 @@ class WebSocketResponse(StreamResponse):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
 
+        self._cancel_heartbeat()
+
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
@@ -209,7 +210,6 @@ class WebSocketResponse(StreamResponse):
             yield from self._waiting
 
         if not self._closed:
-            self._cancel_heartbeat()
             self._closed = True
             try:
                 self._writer.close(code, message)
@@ -270,8 +270,8 @@ class WebSocketResponse(StreamResponse):
                     with Timeout(
                             timeout or self._receive_timeout, loop=self._loop):
                         msg = yield from self._reader.read()
-                finally:
                     self._reset_heartbeat()
+                finally:
                     waiter = self._waiting
                     self._waiting = None
                     waiter.set_result(True)
