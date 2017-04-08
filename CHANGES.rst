@@ -17,6 +17,8 @@ Changes
 
 - Handle RuntimeError from transport #1790
 
+- Handle socket error in FileResponse #1773
+
 - Dropped "%O" in access logger #1673
 
 
