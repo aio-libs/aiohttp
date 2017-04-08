@@ -341,6 +341,33 @@ def test_handle_error__utf(make_srv, buf, transport, loop, request_handler):
 
 
 @asyncio.coroutine
+def test_unhandled_runtime_error(make_srv, loop, transport, request_handler):
+
+    @asyncio.coroutine
+    def handle(request):
+        resp = web.Response()
+        resp.write_eof = mock.Mock()
+        resp.write_eof.side_effect = RuntimeError
+        return resp
+
+    srv = make_srv(lingering_time=0)
+    srv.debug = True
+    srv.connection_made(transport)
+    srv.logger.exception = mock.Mock()
+    request_handler.side_effect = handle
+
+    srv.data_received(
+        b'GET / HTTP/1.0\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: 0\r\n\r\n')
+
+    yield from srv._request_handlers[0]
+    assert request_handler.called
+    srv.logger.exception.assert_called_with(
+        "Unhandled runtime exception", exc_info=mock.ANY)
+
+
+@asyncio.coroutine
 def test_handle_uncompleted(
         make_srv, loop, transport, handle_with_error, request_handler):
     closed = False

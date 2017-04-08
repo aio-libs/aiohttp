@@ -467,6 +467,11 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         self.log_debug('Uncompleted request.')
                         self.close()
 
+            except RuntimeError as exc:
+                if self.debug:
+                    self.log_exception(
+                        'Unhandled runtime exception', exc_info=exc)
+                self.force_close()
             except Exception as exc:
                 self.log_exception('Unhandled exception', exc_info=exc)
                 self.force_close()
