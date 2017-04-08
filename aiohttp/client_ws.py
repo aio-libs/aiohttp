@@ -64,10 +64,11 @@ class ClientWebSocketResponse:
                 self._pong_not_received, self._pong_heartbeat, self._loop)
 
     def _pong_not_received(self):
-        self._closed = True
-        self._close_code = 1006
-        self._exception = asyncio.TimeoutError()
-        self._response.close()
+        if not self._closed:
+            self._closed = True
+            self._close_code = 1006
+            self._exception = asyncio.TimeoutError()
+            self._response.close()
 
     @property
     def closed(self):
@@ -174,14 +175,14 @@ class ClientWebSocketResponse:
                 return WS_CLOSED_MESSAGE
 
             try:
+                self._waiting = create_future(self._loop)
                 try:
-                    self._waiting = create_future(self._loop)
                     with Timeout(
                             timeout or self._receive_timeout,
                             loop=self._loop):
                         msg = yield from self._reader.read()
-                finally:
                     self._reset_heartbeat()
+                finally:
                     waiter = self._waiting
                     self._waiting = None
                     waiter.set_result(True)
