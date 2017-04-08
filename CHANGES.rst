@@ -15,6 +15,8 @@ Changes
 
 - Cancel websocket heartbeat on close #1793
 
+- Handle RuntimeError from transport #1790
+
 - Dropped "%O" in access logger #1673
 
 
