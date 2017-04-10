@@ -85,6 +85,9 @@ clean:
 	@rm -f aiohttp/_parser.*.so
 	@rm -f aiohttp/_parser.*.pyd
 	@rm -rf .tox
+	@rm -f .develop
+	@rm -f .flake
+	@rm -f .install-deps
 
 doc:
 	@make -C docs html SPHINXOPTS="-W -E"
