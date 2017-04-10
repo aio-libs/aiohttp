@@ -553,6 +553,7 @@ class TestStreamReader(unittest.TestCase):
         def cb():
             stream.feed_data(b'chunk1')
             stream.feed_data(b'chunk2')
+            stream.feed_eof()
         self.loop.call_soon(cb)
 
         data = self.loop.run_until_complete(stream.readone())
@@ -560,6 +561,9 @@ class TestStreamReader(unittest.TestCase):
 
         data = self.loop.run_until_complete(stream.readone())
         self.assertEqual(b'chunk2', data)
+
+        data = self.loop.run_until_complete(stream.read())
+        self.assertEqual(b'', data)
 
     def test___repr__(self):
         stream = self._make_one()
