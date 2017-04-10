@@ -21,6 +21,7 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+- Updating function unittest_run_loop to provide *args, **kwargs. Usefull with other decorators, for example @patch. #1804
 
 2.0.6 (2017-04-04)
 ------------------
