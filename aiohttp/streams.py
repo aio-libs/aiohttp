@@ -310,6 +310,16 @@ class StreamReader(AsyncStreamReaderMixin):
         return self._read_nowait(-1)
 
     @asyncio.coroutine
+    def readone(self):
+        if self._exception is not None:
+            raise self._exception
+
+        if not self._buffer and not self._eof:
+            yield from self._wait('readone')
+
+        return self._read_nowait_chunk(-1)
+
+    @asyncio.coroutine
     def readexactly(self, n):
         if self._exception is not None:
             raise self._exception
