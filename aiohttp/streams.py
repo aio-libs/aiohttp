@@ -64,6 +64,14 @@ class AsyncStreamReaderMixin:
             """
             return AsyncStreamIterator(self.readany)
 
+        def iter_chunks(self):
+            """Returns an asynchronous iterator that yields chunks of the
+            size as received by the server.
+
+            Python-3.5 available for Python 3.5+ only
+            """
+            return AsyncStreamIterator(self.readone)
+
 
 class StreamReader(AsyncStreamReaderMixin):
     """An enhancement of asyncio.StreamReader.
