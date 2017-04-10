@@ -546,6 +546,21 @@ class TestStreamReader(unittest.TestCase):
 
         self.assertRaises(RuntimeError, stream.read_nowait)
 
+    def test_readone(self):
+
+        stream = self._make_one()
+
+        def cb():
+            stream.feed_data(b'chunk1')
+            stream.feed_data(b'chunk2')
+        self.loop.call_soon(cb)
+
+        data = self.loop.run_until_complete(stream.readone())
+        self.assertEqual(b'chunk1', data)
+
+        data = self.loop.run_until_complete(stream.readone())
+        self.assertEqual(b'chunk2', data)
+
     def test___repr__(self):
         stream = self._make_one()
         self.assertEqual("<StreamReader>", repr(stream))
