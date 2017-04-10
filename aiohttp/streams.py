@@ -425,6 +425,10 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
         return b''
 
     @asyncio.coroutine
+    def readone(self):
+        return b''
+
+    @asyncio.coroutine
     def readexactly(self, n):
         raise asyncio.streams.IncompleteReadError(b'', n)
 
@@ -563,6 +567,14 @@ class FlowControlStreamReader(StreamReader):
     def readany(self):
         try:
             return (yield from super().readany())
+        finally:
+            if self._size < self._b_limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
+
+    @asyncio.coroutine
+    def readone(self):
+        try:
+            return (yield from super().readone())
         finally:
             if self._size < self._b_limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()

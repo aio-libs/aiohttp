@@ -68,6 +68,21 @@ class TestFlowControlStreamReader(unittest.TestCase):
         self.assertEqual(res, b'data')
         self.assertTrue(r._protocol.resume_reading.called)
 
+    def test_readone(self):
+        r = self._make_one()
+        r.feed_data(b'data', 4)
+        res = self.loop.run_until_complete(r.readone())
+        self.assertEqual(res, b'data')
+        self.assertFalse(r._protocol.resume_reading.called)
+
+    def test_readone_resume_paused(self):
+        r = self._make_one()
+        r._protocol._reading_paused = True
+        r.feed_data(b'data', 4)
+        res = self.loop.run_until_complete(r.readone())
+        self.assertEqual(res, b'data')
+        self.assertTrue(r._protocol.resume_reading.called)
+
     def test_readexactly(self):
         r = self._make_one()
         r.feed_data(b'data', 4)
