@@ -70,7 +70,7 @@ class AsyncStreamReaderMixin:
 
             Python-3.5 available for Python 3.5+ only
             """
-            return AsyncStreamIterator(self.readone)
+            return AsyncStreamIterator(self.readchunk)
 
 
 class StreamReader(AsyncStreamReaderMixin):
@@ -318,12 +318,12 @@ class StreamReader(AsyncStreamReaderMixin):
         return self._read_nowait(-1)
 
     @asyncio.coroutine
-    def readone(self):
+    def readchunk(self):
         if self._exception is not None:
             raise self._exception
 
         if not self._buffer and not self._eof:
-            yield from self._wait('readone')
+            yield from self._wait('readchunk')
 
         return self._read_nowait_chunk(-1)
 
@@ -433,7 +433,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
         return b''
 
     @asyncio.coroutine
-    def readone(self):
+    def readchunk(self):
         return b''
 
     @asyncio.coroutine
@@ -580,9 +580,9 @@ class FlowControlStreamReader(StreamReader):
                 self._protocol.resume_reading()
 
     @asyncio.coroutine
-    def readone(self):
+    def readchunk(self):
         try:
-            return (yield from super().readone())
+            return (yield from super().readchunk())
         finally:
             if self._size < self._b_limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
