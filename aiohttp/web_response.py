@@ -388,7 +388,7 @@ class StreamResponse(HeadersMixin):
         if self._eof_sent:
             raise RuntimeError("Cannot call write() after write_eof()")
         if self._payload_writer is None:
-            raise RuntimeError("Cannot call write() before start()")
+            raise RuntimeError("Cannot call write() before prepare()")
 
         return self._payload_writer.write(data)
 
