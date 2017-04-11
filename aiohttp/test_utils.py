@@ -402,7 +402,7 @@ class AioHTTPTestCase(unittest.TestCase):
         return TestClient(self.app, loop=self.loop)
 
 
-def unittest_run_loop(func):
+def unittest_run_loop(func, *args, **kwargs):
     """A decorator dedicated to use with asynchronous methods of an
     AioHTTPTestCase.
 
@@ -410,9 +410,9 @@ def unittest_run_loop(func):
     the self.loop of the AioHTTPTestCase.
     """
 
-    @functools.wraps(func)
+    @functools.wraps(func, *args, **kwargs)
     def new_func(self):
-        return self.loop.run_until_complete(func(self))
+        return self.loop.run_until_complete(func(self, *args, **kwargs))
 
     return new_func
 
