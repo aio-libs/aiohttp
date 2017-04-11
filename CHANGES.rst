@@ -23,6 +23,8 @@ Changes
 
 - Added `args` and `kwargs` to `unittest_run_loop`. Useful with other decorators, for example `@patch`. #1803
 
+- Added `iter_chunks` to response.content object. #1805
+
 
 2.0.6 (2017-04-04)
 ------------------
