@@ -84,6 +84,7 @@ Jesus Cea
 Jinkyu Yi
 Joel Watts
 Joongi Kim
+Julia Tsemusheva
 Julien Duponchelle
 Junjie Tao
 Justas Trimailovas
@@ -169,4 +170,3 @@ Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг
 Семён Марьясин
-Julia Tsemusheva
