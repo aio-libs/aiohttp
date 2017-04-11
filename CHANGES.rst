@@ -21,6 +21,8 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+- Added `args` and `kwargs` to `unittest_run_loop`. Useful with other decorators, for example `@patch`. #1803
+
 - Added `iter_chunks` to response.content object. #1805
 
 
