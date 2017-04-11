@@ -3,6 +3,7 @@ Contributors
 
 A. Jesse Jiryu Davis
 Adam Mills
+Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov

@@ -21,6 +21,8 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
+- Added `iter_chunks` to response.content object. #1805
+
 
 2.0.6 (2017-04-04)
 ------------------
