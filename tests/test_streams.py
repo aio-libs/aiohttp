@@ -546,6 +546,25 @@ class TestStreamReader(unittest.TestCase):
 
         self.assertRaises(RuntimeError, stream.read_nowait)
 
+    def test_readchunk(self):
+
+        stream = self._make_one()
+
+        def cb():
+            stream.feed_data(b'chunk1')
+            stream.feed_data(b'chunk2')
+            stream.feed_eof()
+        self.loop.call_soon(cb)
+
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'chunk1', data)
+
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'chunk2', data)
+
+        data = self.loop.run_until_complete(stream.read())
+        self.assertEqual(b'', data)
+
     def test___repr__(self):
         stream = self._make_one()
         self.assertEqual("<StreamReader>", repr(stream))
@@ -616,6 +635,8 @@ class TestEmptyStreamReader(unittest.TestCase):
             self.loop.run_until_complete(s.readline()), b'')
         self.assertEqual(
             self.loop.run_until_complete(s.readany()), b'')
+        self.assertEqual(
+            self.loop.run_until_complete(s.readchunk()), b'')
         self.assertRaises(
             asyncio.IncompleteReadError,
             self.loop.run_until_complete, s.readexactly(10))

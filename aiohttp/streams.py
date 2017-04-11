@@ -64,6 +64,14 @@ class AsyncStreamReaderMixin:
             """
             return AsyncStreamIterator(self.readany)
 
+        def iter_chunks(self):
+            """Returns an asynchronous iterator that yields chunks of the
+            size as received by the server.
+
+            Python-3.5 available for Python 3.5+ only
+            """
+            return AsyncStreamIterator(self.readchunk)
+
 
 class StreamReader(AsyncStreamReaderMixin):
     """An enhancement of asyncio.StreamReader.
@@ -310,6 +318,16 @@ class StreamReader(AsyncStreamReaderMixin):
         return self._read_nowait(-1)
 
     @asyncio.coroutine
+    def readchunk(self):
+        if self._exception is not None:
+            raise self._exception
+
+        if not self._buffer and not self._eof:
+            yield from self._wait('readchunk')
+
+        return self._read_nowait_chunk(-1)
+
+    @asyncio.coroutine
     def readexactly(self, n):
         if self._exception is not None:
             raise self._exception
@@ -412,6 +430,10 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
 
     @asyncio.coroutine
     def readany(self):
+        return b''
+
+    @asyncio.coroutine
+    def readchunk(self):
         return b''
 
     @asyncio.coroutine
@@ -553,6 +575,14 @@ class FlowControlStreamReader(StreamReader):
     def readany(self):
         try:
             return (yield from super().readany())
+        finally:
+            if self._size < self._b_limit and self._protocol._reading_paused:
+                self._protocol.resume_reading()
+
+    @asyncio.coroutine
+    def readchunk(self):
+        try:
+            return (yield from super().readchunk())
         finally:
             if self._size < self._b_limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
