@@ -558,7 +558,7 @@ class Response(StreamResponse):
 
     @content_length.setter
     def content_length(self, value):
-        super().content_length = value
+        raise RuntimeError("Content length is set automatically")
 
     @asyncio.coroutine
     def write_eof(self):

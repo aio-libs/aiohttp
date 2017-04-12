@@ -833,6 +833,12 @@ def test_assign_nonstr_text():
     assert 4 == resp.content_length
 
 
+def test_response_set_content_length():
+    resp = Response()
+    with pytest.raises(RuntimeError):
+        resp.content_length = 1
+
+
 @asyncio.coroutine
 def test_send_headers_for_empty_body(buf, writer):
     req = make_request('GET', '/', payload_writer=writer)
