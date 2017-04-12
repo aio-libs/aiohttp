@@ -35,6 +35,7 @@ install:
   - sudo apt-get install enchant
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
+  - pip install --upgrade setuptools-git
   - pip install -r requirements-ci.txt
   - pip install aiodns
   - pip install codecov

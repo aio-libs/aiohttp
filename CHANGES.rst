@@ -1,6 +1,17 @@
 Changes
 =======
 
+2.0.7 (2017-04-12)
+------------------
+
+- Fix pypi distribution
+
+- Fix exception description #1807
+
+- Handle socket error in FileResponse #1773
+
+- Cancel websocket heartbeat on close #1793
+
 
 2.0.6 (2017-04-06)
 ------------------
