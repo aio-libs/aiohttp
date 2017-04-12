@@ -13,17 +13,25 @@ Changes
 
 - Allow to disable redirect url re-quoting #1474
 
-- Cancel websocket heartbeat on close #1793
-
 - Handle RuntimeError from transport #1790
-
-- Handle socket error in FileResponse #1773
 
 - Dropped "%O" in access logger #1673
 
 - Added `args` and `kwargs` to `unittest_run_loop`. Useful with other decorators, for example `@patch`. #1803
 
 - Added `iter_chunks` to response.content object. #1805
+
+
+2.0.7 (2017-04-12)
+------------------
+
+- Fix *pypi* distribution
+
+- Fix exception description #1807
+
+- Handle socket error in FileResponse #1773
+
+- Cancel websocket heartbeat on close #1793
 
 
 2.0.6 (2017-04-04)
