@@ -64,7 +64,7 @@ First configure HTTP server itself:
    http {
      server {
        listen 80;
-     client_max_body_size 4G;
+       client_max_body_size 4G;
 
        server example.com;
 
