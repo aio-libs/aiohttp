@@ -304,7 +304,7 @@ By default aiohttp uses own defaults::
 
    '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
 
-For more information please read :ref:`Format Specification for Accees
+For more information please read :ref:`Format Specification for Access
 Log <aiohttp-logging-access-log-format-spec>`.
 
 .. disqus::
