@@ -641,8 +641,11 @@ class TimeoutHandle:
             return self._loop.call_at(at, self.__call__)
 
     def timer(self):
-        timer = TimerContext(self._loop)
-        self.register(timer.timeout)
+        if self._timeout is not None and self._timeout > 0:
+            timer = TimerContext(self._loop)
+            self.register(timer.timeout)
+        else:
+            timer = TimerNoop()
         return timer
 
     def __call__(self):
