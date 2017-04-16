@@ -21,6 +21,8 @@ Changes
 
 - Added `iter_chunks` to response.content object. #1805
 
+- Avoid creating TimerContext when there is no timeout to allow compatibility with Tornado. #1817 #1180
+
 
 2.0.7 (2017-04-12)
 ------------------
