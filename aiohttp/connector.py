@@ -17,6 +17,12 @@ from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .resolver import DefaultResolver
 
+try:
+    from time import monotonic
+except ImportError:
+    from time import time as monotonic
+
+
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
 
 HASHFUNC_BY_DIGESTLEN = {
@@ -495,6 +501,7 @@ class TCPConnector(BaseConnector):
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
+    ttl_dns_cache - Max seconds having cached a DNS entry, None forever.
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 
@@ -507,7 +514,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=sentinel, use_dns_cache=True,
+                 resolve=sentinel, use_dns_cache=True, ttl_dns_cache=None,
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
@@ -543,7 +550,9 @@ class TCPConnector(BaseConnector):
         self._resolver = resolver
 
         self._use_dns_cache = use_dns_cache
+        self._ttl_dns_cache = ttl_dns_cache
         self._cached_hosts = {}
+        self._cached_hosts_timestamp = {}
         self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
@@ -595,11 +604,20 @@ class TCPConnector(BaseConnector):
         """Remove specified host/port or clear all dns local cache."""
         if host is not None and port is not None:
             self._cached_hosts.pop((host, port), None)
+            self._cached_hosts_timestamp.pop((host, port), None)
         elif host is not None or port is not None:
             raise ValueError("either both host and port "
                              "or none of them are allowed")
         else:
             self._cached_hosts.clear()
+            self._cached_hosts_timestamp.clear()
+
+    def _dns_entry_expired(self, key):
+        if self._ttl_dns_cache is None:
+            return False
+        return (
+            self._cached_hosts_timestamp[key] + self._ttl_dns_cache
+        ) < monotonic()
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
@@ -610,9 +628,10 @@ class TCPConnector(BaseConnector):
         if self._use_dns_cache:
             key = (host, port)
 
-            if key not in self._cached_hosts:
+            if key not in self._cached_hosts or (self._dns_entry_expired(key)):
                 self._cached_hosts[key] = yield from \
                     self._resolver.resolve(host, port, family=self._family)
+                self._cached_hosts_timestamp[key] = monotonic()
 
             return self._cached_hosts[key]
         else:

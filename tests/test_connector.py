@@ -374,6 +374,36 @@ def test_tcp_connector_resolve_host_twice_use_dns_cache(loop):
     assert res is res2
 
 
+@asyncio.coroutine
+def test_tcp_connector_resolve_host_twice_dns_cache_not_expired(loop):
+    conn = aiohttp.TCPConnector(
+        loop=loop,
+        use_dns_cache=True,
+        ttl_dns_cache=60
+    )
+
+    res = yield from conn._resolve_host('localhost', 8080)
+    res2 = yield from conn._resolve_host('localhost', 8080)
+
+    assert res is res2
+
+
+@asyncio.coroutine
+def test_tcp_connector_resolve_host_twice_dns_cache_expired(loop):
+    conn = aiohttp.TCPConnector(
+        loop=loop,
+        use_dns_cache=True,
+        ttl_dns_cache=0.1
+    )
+
+    res = yield from conn._resolve_host('localhost', 8080)
+    yield from asyncio.sleep(0.2)
+    res2 = yield from conn._resolve_host('localhost', 8080)
+
+    assert res is not res2
+    assert res == res2
+
+
 def test_get_pop_empty_conns(loop):
     # see issue #473
     conn = aiohttp.BaseConnector(loop=loop)
@@ -606,13 +636,18 @@ def test_tcp_connector_clear_dns_cache(loop):
     conn = aiohttp.TCPConnector(loop=loop)
     info = object()
     conn._cached_hosts[('localhost', 123)] = info
+    conn._cached_hosts_timestamp[('localhost', 123)] = 100
     conn._cached_hosts[('localhost', 124)] = info
+    conn._cached_hosts_timestamp[('localhost', 124)] = 101
     conn.clear_dns_cache('localhost', 123)
     assert conn.cached_hosts == {('localhost', 124): info}
+    assert conn._cached_hosts_timestamp == {('localhost', 124): 101}
     conn.clear_dns_cache('localhost', 123)
     assert conn.cached_hosts == {('localhost', 124): info}
+    assert conn._cached_hosts_timestamp == {('localhost', 124): 101}
     conn.clear_dns_cache()
     assert conn.cached_hosts == {}
+    assert conn._cached_hosts_timestamp == {}
 
 
 def test_tcp_connector_clear_dns_cache_bad_args(loop):
