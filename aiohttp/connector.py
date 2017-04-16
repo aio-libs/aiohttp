@@ -6,6 +6,7 @@ import traceback
 import warnings
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
+from time import monotonic
 from types import MappingProxyType
 
 from . import hdrs, helpers
@@ -16,11 +17,6 @@ from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .resolver import DefaultResolver
-
-try:
-    from time import monotonic
-except ImportError:
-    from time import time as monotonic
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
