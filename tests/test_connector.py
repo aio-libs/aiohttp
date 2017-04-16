@@ -397,7 +397,7 @@ def test_tcp_connector_resolve_host_twice_dns_cache_expired(loop):
     )
 
     res = yield from conn._resolve_host('localhost', 8080)
-    yield from asyncio.sleep(0.2)
+    yield from asyncio.sleep(0.2, loop=loop)
     res2 = yield from conn._resolve_host('localhost', 8080)
 
     assert res is not res2
