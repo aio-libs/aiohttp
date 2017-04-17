@@ -14,7 +14,9 @@ In order to implement a web server, first create a
 
 A request handler is a :ref:`coroutine <coroutine>` or regular function that
 accepts a :class:`Request` instance as its only parameter and returns a
-:class:`Response` instance::
+:class:`Response` instance:
+
+.. code-block:: python
 
    from aiohttp import web
 
