@@ -6,7 +6,6 @@ import traceback
 import warnings
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
-from time import monotonic
 from types import MappingProxyType
 
 from . import hdrs, helpers
@@ -510,7 +509,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=sentinel, use_dns_cache=True, ttl_dns_cache=None,
+                 resolve=sentinel, use_dns_cache=True, ttl_dns_cache=10,
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
@@ -613,7 +612,7 @@ class TCPConnector(BaseConnector):
             return False
         return (
             self._cached_hosts_timestamp[key] + self._ttl_dns_cache
-        ) < monotonic()
+        ) < self._loop.time()
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
@@ -627,7 +626,7 @@ class TCPConnector(BaseConnector):
             if key not in self._cached_hosts or (self._dns_entry_expired(key)):
                 self._cached_hosts[key] = yield from \
                     self._resolver.resolve(host, port, family=self._family)
-                self._cached_hosts_timestamp[key] = monotonic()
+                self._cached_hosts_timestamp[key] = self._loop.time()
 
             return self._cached_hosts[key]
         else:
