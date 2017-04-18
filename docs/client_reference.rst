@@ -689,7 +689,7 @@ TCPConnector
 
 .. class:: TCPConnector(*, verify_ssl=True, fingerprint=None,\
                         use_dns_cache=True, \
-                        ttl_dns_cache=None, \
+                        ttl_dns_cache=10, \
                         family=0, ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
                         force_close=False, loop=None, local_addr=None, \
@@ -732,7 +732,7 @@ TCPConnector
          The default is changed to ``True``
 
    :param int ttl_dns_cache: expire after some seconds the DNS entries, ``None``
-      by default therefore cached forever.
+      means cached forever. By default 10 seconds.
 
       By default DNS entries are cached forever, in some environments the IP
       addresses related to a specific HOST can change after a specific time. Use 
