@@ -345,7 +345,7 @@ def test_release_close(loop):
 
 
 @asyncio.coroutine
-def test_tcp_connector_resolve_host_use_dns_cache(loop):
+def test_tcp_connector_resolve_host(loop):
     conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
 
     res = yield from conn._resolve_host('localhost', 8080)
@@ -365,21 +365,11 @@ def test_tcp_connector_resolve_host_use_dns_cache(loop):
 
 
 @asyncio.coroutine
-def test_tcp_connector_resolve_host_twice_use_dns_cache(loop):
-    conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
-
-    res = yield from conn._resolve_host('localhost', 8080)
-    res2 = yield from conn._resolve_host('localhost', 8080)
-
-    assert res is res2
-
-
-@asyncio.coroutine
-def test_tcp_connector_resolve_host_twice_dns_cache_not_expired(loop):
+def test_tcp_connector_dns_cache_not_expired(loop):
     conn = aiohttp.TCPConnector(
         loop=loop,
         use_dns_cache=True,
-        ttl_dns_cache=60
+        ttl_dns_cache=10
     )
 
     res = yield from conn._resolve_host('localhost', 8080)
@@ -389,19 +379,26 @@ def test_tcp_connector_resolve_host_twice_dns_cache_not_expired(loop):
 
 
 @asyncio.coroutine
-def test_tcp_connector_resolve_host_twice_dns_cache_expired(loop):
+def test_tcp_connector_dns_cache_forever(loop):
     conn = aiohttp.TCPConnector(
         loop=loop,
         use_dns_cache=True,
-        ttl_dns_cache=0.1
+        ttl_dns_cache=None
     )
 
     res = yield from conn._resolve_host('localhost', 8080)
-    yield from asyncio.sleep(0.2, loop=loop)
+    res2 = yield from conn._resolve_host('localhost', 8080)
+    assert res is res2
+
+
+@asyncio.coroutine
+def test_tcp_connector_use_dns_cache_disabled(loop):
+    conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=False)
+
+    res = yield from conn._resolve_host('localhost', 8080)
     res2 = yield from conn._resolve_host('localhost', 8080)
 
     assert res is not res2
-    assert res == res2
 
 
 def test_get_pop_empty_conns(loop):
