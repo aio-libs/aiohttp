@@ -689,6 +689,7 @@ TCPConnector
 
 .. class:: TCPConnector(*, verify_ssl=True, fingerprint=None,\
                         use_dns_cache=True, \
+                        ttl_dns_cache=10, \
                         family=0, ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
                         force_close=False, loop=None, local_addr=None, \
@@ -729,6 +730,16 @@ TCPConnector
       .. versionchanged:: 1.0
 
          The default is changed to ``True``
+
+   :param int ttl_dns_cache: expire after some seconds the DNS entries, ``None``
+      means cached forever. By default 10 seconds.
+
+      By default DNS entries are cached forever, in some environments the IP
+      addresses related to a specific HOST can change after a specific time. Use 
+      this option to keep the DNS cache updated refreshing each entry after N
+      seconds.
+
+      .. versionadded:: 2.0.8
 
    :param aiohttp.abc.AbstractResolver resolver: Custom resolver
       instance to use.  ``aiohttp.DefaultResolver`` by
