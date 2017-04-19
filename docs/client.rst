@@ -555,7 +555,17 @@ aiohttp supports proxy. You have to use
                               proxy="http://some.proxy.com") as resp:
            print(resp.status)
 
-it also supports proxy authorization::
+Contrary to the ``requests`` library, it won't read environment variables by
+default. But you can do so by setting :attr:`proxy_from_env` to True.
+It will use the ``getproxies()`` method from ``urllib`` and thus read the
+value of the ``$url-scheme_proxy`` variable::
+
+   async with aiohttp.ClientSession() as session:
+       async with session.get("http://python.org",
+                              proxy_from_env=True) as resp:
+           print(resp.status)
+
+It also supports proxy authorization::
 
    async with aiohttp.ClientSession() as session:
        proxy_auth = aiohttp.BasicAuth('user', 'pass')

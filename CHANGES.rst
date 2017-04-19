@@ -23,6 +23,8 @@ Changes
 
 - Avoid creating TimerContext when there is no timeout to allow compatibility with Tornado. #1817 #1180
 
+- Add `proxy_from_env` to `ClientRequest` to read from environment variables. #1791
+
 
 2.0.7 (2017-04-12)
 ------------------

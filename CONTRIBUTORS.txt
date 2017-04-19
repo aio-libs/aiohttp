@@ -109,6 +109,7 @@ Martin Melka
 Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
+Matthieu Rigal
 Michael Ihnatenko
 Mikhail Kashkin
 Mikhail Lukyanchenko

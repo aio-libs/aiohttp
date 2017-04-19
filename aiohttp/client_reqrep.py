@@ -64,7 +64,7 @@ class ClientRequest:
                  auth=None, version=http.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
-                 proxy=None, proxy_auth=None, proxy_from_env=None,
+                 proxy=None, proxy_auth=None, proxy_from_env=False,
                  timer=None):
 
         if loop is None:
