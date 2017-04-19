@@ -292,7 +292,10 @@ class ClientRequest:
         if expect:
             self._continue = helpers.create_future(self.loop)
 
-    def update_proxy(self, proxy, proxy_auth):
+    def update_proxy(self, proxy, proxy_auth, proxy_from_env):
+        if proxy_from_env and not proxy:
+            proxy_url = getproxies().get(self.original_url.scheme)
+            proxy = URL(proxy_url) if proxy_url else None
         if proxy and not proxy.scheme == 'http':
             raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
