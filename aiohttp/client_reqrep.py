@@ -6,6 +6,7 @@ import sys
 import traceback
 import warnings
 from http.cookies import CookieError, Morsel
+from urllib.request import getproxies
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -63,7 +64,8 @@ class ClientRequest:
                  auth=None, version=http.HttpVersion11, compress=None,
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
-                 proxy=None, proxy_auth=None, timer=None):
+                 proxy=None, proxy_auth=None, proxy_from_env=False,
+                 timer=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -96,7 +98,7 @@ class ClientRequest:
         self.update_cookies(cookies)
         self.update_content_encoding(data)
         self.update_auth(auth)
-        self.update_proxy(proxy, proxy_auth)
+        self.update_proxy(proxy, proxy_auth, proxy_from_env)
 
         self.update_body_from_data(data, skip_auto_headers)
         self.update_transfer_encoding()
@@ -290,7 +292,10 @@ class ClientRequest:
         if expect:
             self._continue = helpers.create_future(self.loop)
 
-    def update_proxy(self, proxy, proxy_auth):
+    def update_proxy(self, proxy, proxy_auth, proxy_from_env):
+        if proxy_from_env and not proxy:
+            proxy_url = getproxies().get(self.original_url.scheme)
+            proxy = URL(proxy_url) if proxy_url else None
         if proxy and not proxy.scheme == 'http':
             raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
