@@ -25,6 +25,8 @@ Changes
 
 - Add `proxy_from_env` to `ClientRequest` to read from environment variables. #1791
 
+- Add DummyCookieJar helper. #1830
+
 
 2.0.7 (2017-04-12)
 ------------------
