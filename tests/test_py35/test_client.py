@@ -118,7 +118,8 @@ async def test_aiohttp_request(loop, test_server):
     (100, None),
     (200, None)
 ])
-async def test_no_timeout_using_semaphore(loop, test_server, semaphore_value, conn_limit):
+async def test_no_timeout_using_semaphore(loop, test_server,
+                                          semaphore_value, conn_limit):
 
     async def handler(request):
         resp = web.Response()
@@ -140,15 +141,17 @@ async def test_no_timeout_using_semaphore(loop, test_server, semaphore_value, co
     if conn_limit is not None:
         conn_kwargs['limit'] = conn_limit
     connector = aiohttp.TCPConnector(**conn_kwargs)
-    # if limit is set to 0, or the semaphore is smaller than read_timeout/resp_timeout times connector limit: OK!
+    # If limit is set to 0, or the semaphore is smaller than ratio
+    # read_timeout/resp_timeout times connector limit: should work!
     if conn_limit == 0 or semaphore_value < 2 * connector._limit:
         context_manager = noop_context_manager()
-    # else we expect a Timeout from future
+    # Else we expect a Timeout from future
     else:
         context_manager = pytest.raises(futures.TimeoutError)
     with context_manager:
-        async with aiohttp.ClientSession(connector=connector, loop=loop) as session:
+        async with aiohttp.ClientSession(connector=connector,
+                                         loop=loop) as session:
             for i in range(semaphore_value * 3):
-                rows.append(asyncio.ensure_future(read_resp(session, server, semaphore),
-                                                  loop=loop))
+                rows.append(asyncio.ensure_future(
+                    read_resp(session, server, semaphore), loop=loop))
             await asyncio.gather(*rows)
