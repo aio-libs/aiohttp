@@ -142,6 +142,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self.url.scheme
 
+    @property
+    def secure(self):
+        """A bool indicating if the request is handled with SSL or
+        'secure_proxy_ssl_header' is matching
+
+        """
+        return self.url.scheme == 'https'
+
     @reify
     def _scheme(self):
         if self._transport.get_extra_info('sslcontext'):

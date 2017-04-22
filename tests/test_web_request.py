@@ -223,11 +223,13 @@ def test___repr___non_ascii_path(make_request):
 def test_http_scheme(make_request):
     req = make_request('GET', '/')
     assert "http" == req.scheme
+    assert req.secure is False
 
 
 def test_https_scheme_by_ssl_transport(make_request):
     req = make_request('GET', '/', sslcontext=True)
     assert "https" == req.scheme
+    assert req.secure is True
 
 
 def test_https_scheme_by_secure_proxy_ssl_header(make_request):
@@ -235,6 +237,7 @@ def test_https_scheme_by_secure_proxy_ssl_header(make_request):
                        secure_proxy_ssl_header=('X-HEADER', '1'),
                        headers=CIMultiDict({'X-HEADER': '1'}))
     assert "https" == req.scheme
+    assert req.secure is True
 
 
 def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
@@ -242,6 +245,7 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
                        secure_proxy_ssl_header=('X-HEADER', '1'),
                        headers=CIMultiDict({'X-HEADER': '0'}))
     assert "http" == req.scheme
+    assert req.secure is False
 
 
 def test_raw_headers(make_request):
