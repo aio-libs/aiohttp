@@ -79,6 +79,16 @@ and :ref:`aiohttp-web-signals` handlers.
 
          Use :attr:`url` (``request.url.scheme``) instead.
 
+   .. attribute:: secure
+
+      A boolean indicating if transport for request handling is
+      *SSL* or ``secure_proxy_ssl_header`` is matching,
+      e.g. if ``request.url.scheme == 'https'``
+
+      Read-only :class:`bool` property.
+
+      .. seealso:: :attr:`scheme`
+
    .. attribute:: host
 
       *HOST* header of request, Read-only property.
