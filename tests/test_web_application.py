@@ -206,9 +206,16 @@ def test_secure_proxy_ssl_header_default():
     assert app._secure_proxy_ssl_header is None
 
 
-@asyncio.coroutine
 def test_secure_proxy_ssl_header_non_default(loop):
     app = web.Application()
     hdr = ('X-Forwarded-Proto', 'https')
     app.make_handler(secure_proxy_ssl_header=hdr, loop=loop)
+    assert app._secure_proxy_ssl_header is hdr
+
+
+def test_secure_proxy_ssl_header_init(loop):
+    hdr = ('X-Forwarded-Proto', 'https')
+    app = web.Application(secure_proxy_ssl_header=hdr)
+    assert app._secure_proxy_ssl_header is hdr
+    app.make_handler(loop=loop)
     assert app._secure_proxy_ssl_header is hdr
