@@ -99,6 +99,9 @@ The client session supports the context manager protocol for self closing.
       One example is not processing cookies at all when working in
       proxy mode.
 
+      If no cookie processing is needed, a :class:`aiohttp.helpers.DummyCookieJar`
+      instance can be provided.
+
       .. versionadded:: 0.22
 
    :param callable json_serialize: Json `serializer` function. (:func:`json.dumps` by default)
