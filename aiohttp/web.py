@@ -42,10 +42,15 @@ __all__ = (web_protocol.__all__ +
 
 
 class Application(MutableMapping):
-
-    def __init__(self, *, logger=web_logger, router=None, middlewares=(),
-                 handler_args=None, client_max_size=1024**2,
-                 loop=None, debug=...):
+    def __init__(self, *,
+                 logger=web_logger,
+                 router=None,
+                 middlewares=(),
+                 handler_args=None,
+                 client_max_size=1024**2,
+                 secure_proxy_ssl_header=None,
+                 loop=None,
+                 debug=...):
         if router is None:
             router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
@@ -55,7 +60,7 @@ class Application(MutableMapping):
 
         self._debug = debug
         self._router = router
-        self._secure_proxy_ssl_header = None
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
@@ -229,7 +234,8 @@ class Application(MutableMapping):
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        if secure_proxy_ssl_header:
+            self._secure_proxy_ssl_header = secure_proxy_ssl_header
         return Server(self._handle, request_factory=self._make_request,
                       loop=self.loop, **kwargs)
 
