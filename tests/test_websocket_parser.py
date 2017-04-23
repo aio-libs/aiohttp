@@ -33,7 +33,8 @@ def build_frame(message, opcode, use_mask=False, noheader=False):
     if use_mask:  # pragma: no cover
         mask = random.randrange(0, 0xffffffff)
         mask = mask.to_bytes(4, 'big')
-        message = _websocket_mask(mask, bytearray(message))
+        message = bytearray(message)
+        _websocket_mask(mask, message)
         if noheader:
             return message
         else:
@@ -342,39 +343,42 @@ def test_continuation_with_close_empty(out, parser):
     assert res == (WSMessage(WSMsgType.TEXT, 'line1line2', ''), 10)
 
 
-websocket_mask_data = bytearray(
-    b'some very long data for masking by websocket')
+websocket_mask_data = b'some very long data for masking by websocket'
 websocket_mask_mask = b'1234'
 websocket_mask_masked = (b'B]^Q\x11DVFH\x12_[_U\x13PPFR\x14W]A\x14\\S@_X'
                          b'\\T\x14SK\x13CTP@[RYV@')
 
 
 def test_websocket_mask_python():
-    ret = http_websocket._websocket_mask_python(
-        websocket_mask_mask, websocket_mask_data)
-    assert ret == websocket_mask_masked
+    message = bytearray(websocket_mask_data)
+    http_websocket._websocket_mask_python(
+        websocket_mask_mask, message)
+    assert message == websocket_mask_masked
 
 
 @pytest.mark.skipif(not hasattr(http_websocket, '_websocket_mask_cython'),
                     reason='Requires Cython')
 def test_websocket_mask_cython():
-    ret = http_websocket._websocket_mask_cython(
-        websocket_mask_mask, websocket_mask_data)
-    assert ret == websocket_mask_masked
+    message = bytearray(websocket_mask_data)
+    http_websocket._websocket_mask_cython(
+        websocket_mask_mask, message)
+    assert message == websocket_mask_masked
 
 
 def test_websocket_mask_python_empty():
-    ret = http_websocket._websocket_mask_python(
-        websocket_mask_mask, bytearray())
-    assert ret == bytearray()
+    message = bytearray()
+    http_websocket._websocket_mask_python(
+        websocket_mask_mask, message)
+    assert message == bytearray()
 
 
 @pytest.mark.skipif(not hasattr(http_websocket, '_websocket_mask_cython'),
                     reason='Requires Cython')
 def test_websocket_mask_cython_empty():
-    ret = http_websocket._websocket_mask_cython(
-        websocket_mask_mask, bytearray())
-    assert ret == bytearray()
+    message = bytearray()
+    http_websocket._websocket_mask_cython(
+        websocket_mask_mask, message)
+    assert message == bytearray()
 
 
 def test_msgtype_aliases():
