@@ -128,11 +128,12 @@ def _websocket_mask_python(mask, data):
     assert isinstance(data, bytearray), data
     assert len(mask) == 4, mask
 
-    a, b, c, d = (_XOR_TABLE[n] for n in mask)
-    data[::4] = data[::4].translate(a)
-    data[1::4] = data[1::4].translate(b)
-    data[2::4] = data[2::4].translate(c)
-    data[3::4] = data[3::4].translate(d)
+    if data:
+        a, b, c, d = (_XOR_TABLE[n] for n in mask)
+        data[::4] = data[::4].translate(a)
+        data[1::4] = data[1::4].translate(b)
+        data[2::4] = data[2::4].translate(c)
+        data[3::4] = data[3::4].translate(d)
 
 
 if NO_EXTENSIONS:
