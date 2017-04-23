@@ -44,5 +44,3 @@ def _websocket_mask_cython(bytes mask, bytearray data):
 
     for i in range(0, data_len):
         in_buf[i] ^= mask_buf[i]
-
-    return data
