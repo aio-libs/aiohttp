@@ -1,6 +1,5 @@
-Contributors
-------------
 
+------------
 A. Jesse Jiryu Davis
 Adam Mills
 Alec Hanefeld
@@ -8,6 +7,9 @@ Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
 Alex Hayes
+Alex Key
+Alex Khomchenko
+Alex Lisovoy
 Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
@@ -19,9 +21,6 @@ Alexandru Mihai
 Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
-Alex Key
-Alex Khomchenko
-Alex Lisovoy
 Amy Boyle
 Andrei Ursulenko
 Andrej Antonov
@@ -43,6 +42,7 @@ Chris AtLee
 Chris Laws
 Chris Moore
 Christopher Schmitt
+Contributors
 Daniel García
 Daniel Nelson
 Danny Song
@@ -122,10 +122,10 @@ Nikolay Novik
 Olaf Conradi
 Pahaz Blinov
 Pankaj Pandey
-Pawel Miech
 Pau Freixes
 Paul Colomiets
 Paulus Schoutsen
+Pawel Miech
 Philipp A.
 Rafael Viotti
 Raúl Cumplido
@@ -133,9 +133,9 @@ Required Field
 Robert Lu
 Roman Podoliaka
 Samuel Colvin
+Sean Hunt
 Sebastian Hanula
 Sebastian Hüther
-Sean Hunt
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
@@ -164,9 +164,10 @@ Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
+W. Trevor King
+Will McGugan
 Willem de Groot
 Wilson Ong
-W. Trevor King
 Yannick Koechlin
 Young-Ho Cha
 Yury Selivanov
