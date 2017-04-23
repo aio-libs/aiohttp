@@ -108,13 +108,18 @@ class WebSocketError(Exception):
 native_byteorder = sys.byteorder
 
 
+# Used by _websocket_mask_python
+_XOR_TABLE = [bytes(a ^ b for a in range(256)) for b in range(256)]
+
+
 def _websocket_mask_python(mask, data):
     """Websocket masking function.
 
-    `mask` is a `bytes` object of length 4; `data` is a `bytes` object
-    of any length.  Returns a `bytes` object of the same length as
-    `data` with the mask applied as specified in section 5.3 of RFC
-    6455.
+    `mask` is a `bytes` object of length 4; `data` is a `bytearray`
+    object of any length. The contents of `data` are masked with `mask`,
+    as specified in section 5.3 of RFC 6455.
+
+    Note that this function mutates the `data` argument.
 
     This pure-python implementation may be replaced by an optimized
     version when available.
@@ -122,14 +127,13 @@ def _websocket_mask_python(mask, data):
     """
     assert isinstance(data, bytearray), data
     assert len(mask) == 4, mask
-    datalen = len(data)
-    if datalen == 0:
-        # everything work without this, but may be changed later in Python.
-        return bytearray()
-    data = int.from_bytes(data, native_byteorder)
-    mask = int.from_bytes(mask * (datalen // 4) + mask[: datalen % 4],
-                          native_byteorder)
-    return (data ^ mask).to_bytes(datalen, native_byteorder)
+
+    if data:
+        a, b, c, d = (_XOR_TABLE[n] for n in mask)
+        data[::4] = data[::4].translate(a)
+        data[1::4] = data[1::4].translate(b)
+        data[2::4] = data[2::4].translate(c)
+        data[3::4] = data[3::4].translate(d)
 
 
 if NO_EXTENSIONS:
@@ -394,8 +398,7 @@ class WebSocketReader:
 
                 if self._payload_length == 0:
                     if self._has_mask:
-                        payload = _websocket_mask(
-                            self._frame_mask, payload)
+                        _websocket_mask(self._frame_mask, payload)
 
                     frames.append(
                         (self._frame_fin, self._frame_opcode, payload))
@@ -442,7 +445,8 @@ class WebSocketWriter:
         if use_mask:
             mask = self.randrange(0, 0xffffffff)
             mask = mask.to_bytes(4, 'big')
-            message = _websocket_mask(mask, bytearray(message))
+            message = bytearray(message)
+            _websocket_mask(mask, message)
             self.writer.write(header + mask + message)
             self._output_size += len(header) + len(mask) + len(message)
         else:
