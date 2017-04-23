@@ -1101,8 +1101,6 @@ def test_POST_DATA_formdats_with_charset(loop, test_client):
     def handler(request):
         mp = yield from request.post()
         assert 'name' in mp
-        from pprint import pprint
-        pprint(dict(request.headers))
         return web.Response(text=mp['name'])
 
     app = web.Application()
