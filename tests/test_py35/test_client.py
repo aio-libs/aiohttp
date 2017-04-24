@@ -108,31 +108,41 @@ async def test_aiohttp_request(loop, test_server):
     assert resp.connection is None
 
 
-@pytest.mark.parametrize("semaphore_value, conn_limit", [
-    (100, 200),
-    (200, 200),
-    (100, 100),
-    (200, 100),
-    (100, 0),
-    (200, 0),
-    (100, None),
-    (200, None)
+@pytest.mark.parametrize("semaphore_value, conn_limit, rows_multiplier", [
+    # (100, 200),
+    # (200, 200),
+    # (100, 100),
+    # (200, 100),
+    # (100, 0),
+    # (200, 0),
+    (100, None, 3),
+    (100, None, 10),
+    # (100, None, 20),
+    # (100, None, 100),
+    # (200, None),
 ])
 async def test_no_timeout_using_semaphore(loop, test_server,
-                                          semaphore_value, conn_limit):
+                                          semaphore_value, conn_limit, rows_multiplier):
 
     async def handler(request):
         resp = web.Response()
-        await asyncio.sleep(0.05, loop=loop)
+        await asyncio.sleep(2, loop=loop)
+        return resp
+
+    async def proxy(request):
+        resp = web.Response()
+        await asyncio.sleep(2, loop=loop)
         return resp
 
     async def read_resp(session, server, semaphore):
         async with semaphore:
-            resp = await session.get(server.make_url('/'), timeout=0.1)
-            await resp.read()
+            async with session.get(server.make_url('/'), proxy=server.make_url('/foo'), timeout=5) as resp:
+            # async with session.get(server.make_url('/'), timeout=0.1) as resp:
+                await resp.read()
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
+    app.router.add_route('GET', '/foo', proxy)
     server = await test_server(app)
 
     rows = []
@@ -151,7 +161,7 @@ async def test_no_timeout_using_semaphore(loop, test_server,
     with context_manager:
         async with aiohttp.ClientSession(connector=connector,
                                          loop=loop) as session:
-            for i in range(semaphore_value * 3):
+            for i in range(semaphore_value * rows_multiplier):
                 rows.append(asyncio.ensure_future(
                     read_resp(session, server, semaphore), loop=loop))
             await asyncio.gather(*rows)
