@@ -108,60 +108,40 @@ async def test_aiohttp_request(loop, test_server):
     assert resp.connection is None
 
 
-@pytest.mark.parametrize("semaphore_value, conn_limit, rows_multiplier", [
-    # (100, 200),
-    # (200, 200),
-    # (100, 100),
-    # (200, 100),
-    # (100, 0),
-    # (200, 0),
-    (100, None, 3),
-    (100, None, 10),
-    # (100, None, 20),
-    # (100, None, 100),
-    # (200, None),
+@pytest.mark.parametrize("rows_multiplier, conn_limit", [
+    (3, None),  # passes on 1.3 and 2.x branches
+    (10, None),  # REGRESSION! passes on 1.3 and fails on 2.x branches
+    (3, 0),  # passes on 1.3 and 2.x branches
+    (10, 0),  # passes on 1.3 and 2.x branches
+    (3, 1000),  # fails on 1.3 and 2.x branches
+    (10, 1000),  # fails on 1.3 and 2.x branches
 ])
-async def test_no_timeout_using_semaphore(loop, test_server,
-                                          semaphore_value, conn_limit, rows_multiplier):
+async def test_timeout_using_conn_limit(loop, test_server,
+                                        rows_multiplier, conn_limit):
 
     async def handler(request):
         resp = web.Response()
         await asyncio.sleep(2, loop=loop)
         return resp
 
-    async def proxy(request):
-        resp = web.Response()
-        await asyncio.sleep(2, loop=loop)
-        return resp
-
-    async def read_resp(session, server, semaphore):
-        async with semaphore:
-            async with session.get(server.make_url('/'), proxy=server.make_url('/foo'), timeout=5) as resp:
-            # async with session.get(server.make_url('/'), timeout=0.1) as resp:
-                await resp.read()
+    async def read_resp(session, server):
+        # Not able to reproduce the issue with a local server
+        url = 'http://aiohttp.readthedocs.io/en/stable/'
+        async with session.get(url, timeout=4) as resp:
+            await resp.read()
 
     app = web.Application(loop=loop)
     app.router.add_route('GET', '/', handler)
-    app.router.add_route('GET', '/foo', proxy)
     server = await test_server(app)
 
     rows = []
-    semaphore = asyncio.Semaphore(semaphore_value, loop=loop)
     conn_kwargs = dict(loop=loop)
     if conn_limit is not None:
         conn_kwargs['limit'] = conn_limit
     connector = aiohttp.TCPConnector(**conn_kwargs)
-    # If limit is set to 0, or the semaphore is smaller than ratio
-    # read_timeout/resp_timeout times connector limit: should work!
-    if conn_limit == 0 or semaphore_value < 2 * connector._limit:
-        context_manager = noop_context_manager()
-    # Else we expect a Timeout from future
-    else:
-        context_manager = pytest.raises(futures.TimeoutError)
-    with context_manager:
-        async with aiohttp.ClientSession(connector=connector,
-                                         loop=loop) as session:
-            for i in range(semaphore_value * rows_multiplier):
-                rows.append(asyncio.ensure_future(
-                    read_resp(session, server, semaphore), loop=loop))
-            await asyncio.gather(*rows)
+    async with aiohttp.ClientSession(connector=connector,
+                                     loop=loop) as session:
+        for i in range(connector._limit * rows_multiplier):
+            rows.append(asyncio.ensure_future(
+                read_resp(session, server), loop=loop))
+        await asyncio.gather(*rows)
