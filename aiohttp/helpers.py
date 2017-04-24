@@ -141,6 +141,19 @@ else:
         return asyncio.Future(loop=loop)
 
 
+def current_task(loop=None):
+    if loop is None:
+        loop = asyncio.get_event_loop()
+
+    task = asyncio.Task.current_task(loop=loop)
+    if task is None:
+        if hasattr(loop, 'current_task'):
+            task = loop.current_task()
+
+    return task
+
+
+
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
@@ -677,7 +690,7 @@ class TimerContext:
         self._cancelled = False
 
     def __enter__(self):
-        task = asyncio.Task.current_task(loop=self._loop)
+        task = current_task(loop=self._loop)
         if task is None:
             raise RuntimeError('Timeout context manager should be used '
                                'inside a task')
@@ -715,7 +728,7 @@ class CeilTimeout(Timeout):
 
     def __enter__(self):
         if self._timeout is not None:
-            self._task = asyncio.Task.current_task(loop=self._loop)
+            self._task = current_task(loop=self._loop)
             if self._task is None:
                 raise RuntimeError(
                     'Timeout context manager should be used inside a task')
