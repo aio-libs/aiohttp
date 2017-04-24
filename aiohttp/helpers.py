@@ -153,7 +153,6 @@ def current_task(loop=None):
     return task
 
 
-
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
