@@ -135,6 +135,7 @@ def test_shutdown_multiple_handlers(srv, loop, transport):
     assert transport is srv.transport
 
     srv._keepalive = True
+    srv._max_concurrent_handlers = 2
     srv.data_received(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
@@ -407,7 +408,7 @@ def test_handle_uncompleted_pipe(
 
     transport.close.side_effect = close
 
-    srv = make_srv(lingering_time=0)
+    srv = make_srv(lingering_time=0, max_concurrent_handlers=2)
     srv.connection_made(transport)
     srv.logger.exception = mock.Mock()
 
@@ -744,6 +745,7 @@ def test_pipeline_multiple_messages(srv, loop, transport, request_handler):
 def test_pipeline_response_order(srv, loop, buf, transport, request_handler):
     transport.close.side_effect = partial(srv.connection_lost, None)
     srv._keepalive = True
+    srv._max_concurrent_handlers = 2
 
     processed = []
 
