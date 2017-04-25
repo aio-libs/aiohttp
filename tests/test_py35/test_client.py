@@ -1,16 +1,9 @@
 import asyncio
-from concurrent import futures
-from contextlib import contextmanager
 
 import pytest
 
 import aiohttp
 from aiohttp import web
-
-
-@contextmanager
-def noop_context_manager():
-    yield
 
 
 async def test_async_with_session(loop):
