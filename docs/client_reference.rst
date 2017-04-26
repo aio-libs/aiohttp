@@ -1107,7 +1107,7 @@ manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
-   .. comethod:: send_str(data)
+   .. method:: send_str(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
@@ -1115,7 +1115,7 @@ manually.
 
       :raise TypeError: if data is not :class:`str`
 
-   .. comethod:: send_bytes(data)
+   .. method:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
@@ -1124,7 +1124,7 @@ manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. comethod:: send_json(data, *, dumps=json.loads)
+   .. method:: send_json(data, *, dumps=json.loads)
 
       Send *data* to peer as JSON string.
 
