@@ -53,34 +53,22 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
               '?', '=', '{', '}', ' ', chr(9)}
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
+coroutines = asyncio.coroutines
+old_debug = coroutines._DEBUG
+coroutines._DEBUG = False
 
-if sys.version_info < (3, 5):  # pragma: no cover
-    noop = tuple
 
-    coroutines = asyncio.coroutines
-    old_debug = coroutines._DEBUG
-    coroutines._DEBUG = False
+@asyncio.coroutine
+def noop(*args, **kwargs):
+    return
 
-    @asyncio.coroutine
-    def deprecated_noop(message):
-        warnings.warn(message, DeprecationWarning, stacklevel=3)
 
-    coroutines._DEBUG = old_debug
+@asyncio.coroutine
+def deprecated_noop(message):
+    warnings.warn(message, DeprecationWarning, stacklevel=3)
 
-else:
-    coroutines = asyncio.coroutines
-    old_debug = coroutines._DEBUG
-    coroutines._DEBUG = False
 
-    @asyncio.coroutine
-    def noop(*args, **kwargs):
-        return
-
-    @asyncio.coroutine
-    def deprecated_noop(message):
-        warnings.warn(message, DeprecationWarning, stacklevel=3)
-
-    coroutines._DEBUG = old_debug
+coroutines._DEBUG = old_debug
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
