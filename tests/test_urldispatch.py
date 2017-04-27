@@ -539,6 +539,16 @@ def test_regular_match_info(router):
 
 
 @asyncio.coroutine
+def test_match_info_with_plus(router):
+    handler = make_handler()
+    router.add_route('GET', '/get/{version}', handler)
+
+    req = make_request('GET', '/get/1.0+test')
+    match_info = yield from router.resolve(req)
+    assert {'version': '1.0+test'} == match_info
+
+
+@asyncio.coroutine
 def test_not_found_repr(router):
     req = make_request('POST', '/path/to')
     match_info = yield from router.resolve(req)
