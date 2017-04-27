@@ -346,7 +346,7 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return {key: unquote(value) for key, value in
+            return {key: unquote(value, unsafe='+') for key, value in
                     match.groupdict().items()}
 
     def get_info(self):

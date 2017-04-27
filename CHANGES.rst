@@ -29,6 +29,8 @@ Changes
 
 - Fix assertion errors in Python 3.4 from noop helper. #1847
 
+- Do not unquote `+` in match_info values #1816
+
 
 2.0.7 (2017-04-12)
 ------------------
