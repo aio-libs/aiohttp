@@ -505,6 +505,17 @@ pass it into the connector::
   session = aiohttp.ClientSession(connector=conn)
   r = await session.get('https://example.com')
 
+If you need to verify **client-side** certificates, you can do the same thing as the previous example,
+but add another call to ``load_cret_chain`` with the key pair::
+
+  sslcontext = ssl.create_default_context(
+     cafile='/path/to/client-side-ca-bundle.crt')
+  sslcontext.load_cert_chain('/path/to/client/public/key.pem', '/path/to/client/private/key.pem')
+  conn = aiohttp.TCPConnector(ssl_context=sslcontext)
+  session = aiohttp.ClientSession(connector=conn)
+  r = await session.get('https://server-with-client-side-certificates-validaction.com')
+
+
 You may also verify certificates via MD5, SHA1, or SHA256 fingerprint::
 
   # Attempt to connect to https://www.python.org
