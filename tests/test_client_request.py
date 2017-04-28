@@ -8,7 +8,7 @@ import zlib
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy, upstr
+from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
@@ -257,7 +257,7 @@ def test_default_headers_useragent_custom(make_request):
 
 def test_skip_default_useragent_header(make_request):
     req = make_request('get', 'http://python.org/',
-                       skip_auto_headers=set([upstr('user-agent')]))
+                       skip_auto_headers=set([istr('user-agent')]))
 
     assert 'User-Agent' not in req.headers
 
