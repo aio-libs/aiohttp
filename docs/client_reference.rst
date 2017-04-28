@@ -81,7 +81,7 @@ The client session supports the context manager protocol for self closing.
       that generation. Note that ``Content-Length`` autogeneration can't
       be skipped.
 
-      Iterable of :class:`str` or :class:`~aiohttp.upstr` (optional)
+      Iterable of :class:`str` or :class:`~aiohttp.istr` (optional)
 
    :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
                                   Authorization (optional)
@@ -208,7 +208,7 @@ The client session supports the context manager protocol for self closing.
          passed. Using ``skip_auto_headers`` parameter allows to skip
          that generation.
 
-         Iterable of :class:`str` or :class:`~aiohttp.upstr`
+         Iterable of :class:`str` or :class:`~aiohttp.istr`
          (optional)
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
