@@ -482,8 +482,8 @@ The client session supports the context manager protocol for self closing.
       Close underlying connector.
 
       Release all acquired resources.
-      
-      ..versionchanged:: 2.0.7
+
+      ..versionchanged:: 2.0
 
    .. method:: detach()
 
@@ -1170,9 +1170,9 @@ manually.
       :raise TypeError: if value returned by ``dumps(data)`` is not
                         :class:`str`
 
-   .. method:: close(*, code=1000, message=b'')
+   .. comethod:: close(*, code=1000, message=b'')
 
-      A method that initiates closing handshake by sending
+      A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
       :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
       close response from server. To add a timeout to `close()` call
       just wrap the call with `asyncio.wait()` or `asyncio.wait_for()`.
@@ -1181,8 +1181,6 @@ manually.
 
       :param message: optional payload of *pong* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
-      
-      ..versionchanged:: 2.0.7
 
    .. comethod:: receive()
 
