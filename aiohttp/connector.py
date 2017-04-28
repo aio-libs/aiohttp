@@ -6,6 +6,8 @@ import traceback
 import warnings
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
+from itertools import cycle, islice
+from time import monotonic
 from types import MappingProxyType
 
 from . import hdrs, helpers
@@ -483,6 +485,55 @@ class BaseConnector(object):
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 
 
+class _DNSCacheTable:
+
+    def __init__(self, ttl=None):
+        self._addrs = {}
+        self._addrs_rr = {}
+        self._timestamps = {}
+        self._ttl = ttl
+
+    def __contains__(self, host):
+        return host in self._addrs
+
+    @property
+    def addrs(self):
+        return self._addrs
+
+    def add(self, host, addrs):
+        self._addrs[host] = addrs
+        self._addrs_rr[host] = cycle(addrs)
+
+        if self._ttl:
+            self._timestamps[host] = monotonic()
+
+    def remove(self, host):
+        self._addrs.pop(host, None)
+        self._addrs_rr.pop(host, None)
+
+        if self._ttl:
+            self._timestamps.pop(host, None)
+
+    def clear(self):
+        self._addrs.clear()
+        self._addrs_rr.clear()
+        self._timestamps.clear()
+
+    def next_addrs(self, host):
+        # Return an iterator that will get at maximum as many addrs
+        # there are for the specific host starting from the last
+        # not itereated addr.
+        return islice(self._addrs_rr[host], len(self._addrs[host]))
+
+    def expired(self, host):
+        if self._ttl is None:
+            return False
+
+        return (
+            self._timestamps[host] + self._ttl
+        ) < monotonic()
+
+
 class TCPConnector(BaseConnector):
     """TCP connector.
 
@@ -545,9 +596,7 @@ class TCPConnector(BaseConnector):
         self._resolver = resolver
 
         self._use_dns_cache = use_dns_cache
-        self._ttl_dns_cache = ttl_dns_cache
-        self._cached_hosts = {}
-        self._cached_hosts_timestamp = {}
+        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
         self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
@@ -593,26 +642,17 @@ class TCPConnector(BaseConnector):
     @property
     def cached_hosts(self):
         """Read-only dict of cached DNS record."""
-        return MappingProxyType(self._cached_hosts)
+        return MappingProxyType(self._cached_hosts.addrs)
 
     def clear_dns_cache(self, host=None, port=None):
         """Remove specified host/port or clear all dns local cache."""
         if host is not None and port is not None:
-            self._cached_hosts.pop((host, port), None)
-            self._cached_hosts_timestamp.pop((host, port), None)
+            self._cached_hosts.remove((host, port))
         elif host is not None or port is not None:
             raise ValueError("either both host and port "
                              "or none of them are allowed")
         else:
             self._cached_hosts.clear()
-            self._cached_hosts_timestamp.clear()
-
-    def _dns_entry_expired(self, key):
-        if self._ttl_dns_cache is None:
-            return False
-        return (
-            self._cached_hosts_timestamp[key] + self._ttl_dns_cache
-        ) < self._loop.time()
 
     @asyncio.coroutine
     def _resolve_host(self, host, port):
@@ -623,12 +663,13 @@ class TCPConnector(BaseConnector):
         if self._use_dns_cache:
             key = (host, port)
 
-            if key not in self._cached_hosts or (self._dns_entry_expired(key)):
-                self._cached_hosts[key] = yield from \
+            if key not in self._cached_hosts or\
+                    self._cached_hosts.expired(key):
+                addrs = yield from \
                     self._resolver.resolve(host, port, family=self._family)
-                self._cached_hosts_timestamp[key] = self._loop.time()
+                self._cached_hosts.add(key, addrs)
 
-            return self._cached_hosts[key]
+            return self._cached_hosts.next_addrs(key)
         else:
             res = yield from self._resolver.resolve(
                 host, port, family=self._family)

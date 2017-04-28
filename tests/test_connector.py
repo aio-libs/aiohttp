@@ -9,6 +9,7 @@ import socket
 import ssl
 import tempfile
 import unittest
+from time import sleep
 from unittest import mock
 
 import pytest
@@ -17,7 +18,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import client, helpers, web
 from aiohttp.client import ClientRequest
-from aiohttp.connector import Connection
+from aiohttp.connector import Connection, _DNSCacheTable
 from aiohttp.test_utils import unused_port
 
 
@@ -365,40 +366,57 @@ def test_tcp_connector_resolve_host(loop):
 
 
 @asyncio.coroutine
+def dns_response():
+    return ["127.0.0.1"]
+
+
+@asyncio.coroutine
 def test_tcp_connector_dns_cache_not_expired(loop):
-    conn = aiohttp.TCPConnector(
-        loop=loop,
-        use_dns_cache=True,
-        ttl_dns_cache=10
-    )
-
-    res = yield from conn._resolve_host('localhost', 8080)
-    res2 = yield from conn._resolve_host('localhost', 8080)
-
-    assert res is res2
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10
+        )
+        m_resolver().resolve.return_value = dns_response()
+        yield from conn._resolve_host('localhost', 8080)
+        yield from conn._resolve_host('localhost', 8080)
+        m_resolver().resolve.assert_called_once_with(
+            'localhost',
+            8080,
+            family=0
+        )
 
 
 @asyncio.coroutine
 def test_tcp_connector_dns_cache_forever(loop):
-    conn = aiohttp.TCPConnector(
-        loop=loop,
-        use_dns_cache=True,
-        ttl_dns_cache=None
-    )
-
-    res = yield from conn._resolve_host('localhost', 8080)
-    res2 = yield from conn._resolve_host('localhost', 8080)
-    assert res is res2
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10
+        )
+        m_resolver().resolve.return_value = dns_response()
+        yield from conn._resolve_host('localhost', 8080)
+        yield from conn._resolve_host('localhost', 8080)
+        m_resolver().resolve.assert_called_once_with(
+            'localhost',
+            8080,
+            family=0
+        )
 
 
 @asyncio.coroutine
 def test_tcp_connector_use_dns_cache_disabled(loop):
-    conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=False)
-
-    res = yield from conn._resolve_host('localhost', 8080)
-    res2 = yield from conn._resolve_host('localhost', 8080)
-
-    assert res is not res2
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=False)
+        m_resolver().resolve.return_value = dns_response()
+        yield from conn._resolve_host('localhost', 8080)
+        yield from conn._resolve_host('localhost', 8080)
+        m_resolver().resolve.assert_has_calls([
+            mock.call('localhost', 8080, family=0),
+            mock.call('localhost', 8080, family=0)
+        ])
 
 
 def test_get_pop_empty_conns(loop):
@@ -631,20 +649,15 @@ def test_tcp_connector_fingerprint_invalid(loop):
 
 def test_tcp_connector_clear_dns_cache(loop):
     conn = aiohttp.TCPConnector(loop=loop)
-    info = object()
-    conn._cached_hosts[('localhost', 123)] = info
-    conn._cached_hosts_timestamp[('localhost', 123)] = 100
-    conn._cached_hosts[('localhost', 124)] = info
-    conn._cached_hosts_timestamp[('localhost', 124)] = 101
+    hosts = ['a', 'b']
+    conn._cached_hosts.add(('localhost', 123), hosts)
+    conn._cached_hosts.add(('localhost', 124), hosts)
     conn.clear_dns_cache('localhost', 123)
-    assert conn.cached_hosts == {('localhost', 124): info}
-    assert conn._cached_hosts_timestamp == {('localhost', 124): 101}
+    assert ('localhost', 123) not in conn.cached_hosts
     conn.clear_dns_cache('localhost', 123)
-    assert conn.cached_hosts == {('localhost', 124): info}
-    assert conn._cached_hosts_timestamp == {('localhost', 124): 101}
+    assert ('localhost', 123) not in conn.cached_hosts
     conn.clear_dns_cache()
     assert conn.cached_hosts == {}
-    assert conn._cached_hosts_timestamp == {}
 
 
 def test_tcp_connector_clear_dns_cache_bad_args(loop):
@@ -1181,3 +1194,57 @@ class TestHttpClientConnector(unittest.TestCase):
             self.loop.run_until_complete(connector.connect(req))
 
         resolver.resolve.assert_not_called()
+
+
+class TestDNSCacheTable:
+
+    @pytest.fixture
+    def dns_cache_table(self):
+        return _DNSCacheTable()
+
+    def test_addrs(self, dns_cache_table):
+        dns_cache_table.add('localhost', ['127.0.0.1'])
+        dns_cache_table.add('foo', ['127.0.0.2'])
+        assert dns_cache_table.addrs == {
+            'localhost': ['127.0.0.1'],
+            'foo': ['127.0.0.2']
+        }
+
+    def test_remove(self, dns_cache_table):
+        dns_cache_table.add('localhost', ['127.0.0.1'])
+        dns_cache_table.remove('localhost')
+        assert dns_cache_table.addrs == {}
+
+    def test_clear(self, dns_cache_table):
+        dns_cache_table.add('localhost', ['127.0.0.1'])
+        dns_cache_table.clear()
+        assert dns_cache_table.addrs == {}
+
+    def test_not_expired_ttl_None(self, dns_cache_table):
+        dns_cache_table.add('localhost', ['127.0.0.1'])
+        assert not dns_cache_table.expired('localhost')
+
+    def test_not_expired_ttl(self):
+        dns_cache_table = _DNSCacheTable(ttl=0.1)
+        dns_cache_table.add('localhost', ['127.0.0.1'])
+        assert not dns_cache_table.expired('localhost')
+
+    def test_expired_ttl(self):
+        dns_cache_table = _DNSCacheTable(ttl=0.1)
+        dns_cache_table.add('localhost', ['127.0.0.1'])
+        sleep(0.1)
+        assert dns_cache_table.expired('localhost')
+
+    def test_next_addrs(self, dns_cache_table):
+        dns_cache_table.add('foo', ['127.0.0.1', '127.0.0.2'])
+
+        # max elements returned are the full list of addrs
+        addrs = list(dns_cache_table.next_addrs('foo'))
+        assert addrs == ['127.0.0.1', '127.0.0.2']
+
+        # different calls to next_addrs return the hosts using
+        # a round robin strategy.
+        addrs = dns_cache_table.next_addrs('foo')
+        assert next(addrs) == '127.0.0.1'
+        addrs = dns_cache_table.next_addrs('foo')
+        assert next(addrs) == '127.0.0.2'
