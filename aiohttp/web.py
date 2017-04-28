@@ -288,7 +288,7 @@ class Application(MutableMapping):
 
         if resp is None:
             handler = match_info.handler
-            for app in match_info.apps:
+            for app in match_info.apps[::-1]:
                 for factory in app._middlewares:
                     handler = yield from factory(app, handler)
 
