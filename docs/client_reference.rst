@@ -482,6 +482,8 @@ The client session supports the context manager protocol for self closing.
       Close underlying connector.
 
       Release all acquired resources.
+      
+      ..versionchanged:: 2.0.7
 
    .. method:: detach()
 
@@ -1179,6 +1181,8 @@ manually.
 
       :param message: optional payload of *pong* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
+      
+      ..versionchanged:: 2.0.7
 
    .. comethod:: receive()
 
