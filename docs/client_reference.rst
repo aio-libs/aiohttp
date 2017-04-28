@@ -477,7 +477,7 @@ The client session supports the context manager protocol for self closing.
 
          URLs may be either :class:`str` or :class:`~yarl.URL`
 
-   .. comethod:: close()
+   .. method:: close()
 
       Close underlying connector.
 
@@ -1168,12 +1168,12 @@ manually.
       :raise TypeError: if value returned by ``dumps(data)`` is not
                         :class:`str`
 
-   .. comethod:: close(*, code=1000, message=b'')
+   .. method:: close(*, code=1000, message=b'')
 
-      A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
+      A method that initiates closing handshake by sending
       :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
-      close response from server. It add timeout to `close()` call just wrap
-      call with `asyncio.wait()` or `asyncio.wait_for()`.
+      close response from server. To add a timeout to `close()` call
+      just wrap the call with `asyncio.wait()` or `asyncio.wait_for()`.
 
       :param int code: closing code
 
