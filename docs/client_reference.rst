@@ -483,7 +483,7 @@ The client session supports the context manager protocol for self closing.
 
       Release all acquired resources.
 
-      ..versionchanged:: 2.0
+      .. versionchanged:: 2.0
 
    .. method:: detach()
 
