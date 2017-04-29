@@ -163,7 +163,7 @@ The client session supports the context manager protocol for self closing.
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
-                         max_redirects=10, version=HttpVersion(major=1, minor=1),\
+                         max_redirects=10,\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
                          timeout=5*60)
@@ -216,9 +216,6 @@ The client session supports the context manager protocol for self closing.
 
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
-
-      :param aiohttp.protocol.HttpVersion version: Request HTTP version
-                                                   (optional)
 
       :param bool compress: Set to ``True`` if request has to be compressed
          with deflate encoding. If `compress` can not be combined
