@@ -9,7 +9,6 @@ import socket
 import ssl
 import tempfile
 import unittest
-from time import sleep
 from unittest import mock
 
 import pytest
@@ -1229,10 +1228,11 @@ class TestDNSCacheTable:
         dns_cache_table.add('localhost', ['127.0.0.1'])
         assert not dns_cache_table.expired('localhost')
 
+    @asyncio.coroutine
     def test_expired_ttl(self):
         dns_cache_table = _DNSCacheTable(ttl=0.1)
         dns_cache_table.add('localhost', ['127.0.0.1'])
-        sleep(0.1)
+        yield from asyncio.sleep(0.1)
         assert dns_cache_table.expired('localhost')
 
     def test_next_addrs(self, dns_cache_table):
