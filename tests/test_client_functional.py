@@ -635,7 +635,7 @@ def test_timeout_on_session_read_timeout(loop, test_client, mocker):
     client = yield from test_client(app, connector=conn, read_timeout=0.01)
 
     with pytest.raises(asyncio.TimeoutError):
-        yield from client.get('/', timeout=None)
+        yield from client.get('/')
 
 
 @asyncio.coroutine

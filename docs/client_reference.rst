@@ -111,9 +111,10 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 2.0
 
-   :param float read_timeout: Request operations timeout. read_timeout is
+   :param float read_timeout: Request operations timeout. ``read_timeout`` is
       cumulative for all request operations (request, redirects, responses,
-      data consuming)
+      data consuming). By default, the read timeout is 5*60 seconds.
+      Use ``None`` or ``0`` to disable timeout checks.
 
    :param float conn_timeout: timeout for connection establishing
       (optional). Values ``0`` or ``None`` mean no timeout.
@@ -240,8 +241,7 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
-      :param int timeout: a timeout for IO operations, 5min by default.
-                          Use ``None`` or ``0`` to disable timeout checks.
+      :param int timeout: override the session's timeout (``read_timeout``) for IO operations.
 
       :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
@@ -714,7 +714,7 @@ TCPConnector
         server presents matches. Useful for `certificate pinning
         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
 
-        Note: use of MD5 or SHA1 digests is insecure and deprecated. 
+        Note: use of MD5 or SHA1 digests is insecure and deprecated.
 
         .. versionadded:: 0.16
 
@@ -735,7 +735,7 @@ TCPConnector
       means cached forever. By default 10 seconds.
 
       By default DNS entries are cached forever, in some environments the IP
-      addresses related to a specific HOST can change after a specific time. Use 
+      addresses related to a specific HOST can change after a specific time. Use
       this option to keep the DNS cache updated refreshing each entry after N
       seconds.
 
@@ -1372,7 +1372,7 @@ Hierarchy of exceptions:
     - `aiohttp.ClientOSError` - subset of connection errors that are initiated by an OSError exception
 
       - `aiohttp.ClientConnectorError` - connector related exceptions
- 
+
          - `aiohttp.ClientProxyConnectionError` - proxy connection initialization error
 
     - `aiohttp.ServerConnectionError` - server connection related errors
