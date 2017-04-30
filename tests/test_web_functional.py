@@ -525,7 +525,7 @@ def test_100_continue_custom_response(loop, test_client):
             if auth_err:
                 return web.HTTPForbidden()
 
-            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     form = FormData()
     form.add_field('name', b'123',

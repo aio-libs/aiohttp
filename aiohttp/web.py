@@ -283,8 +283,8 @@ class Application(MutableMapping):
         request._match_info = match_info
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
-            resp = (
-                yield from match_info.expect_handler(request))
+            resp = yield from match_info.expect_handler(request)
+            yield from request.writer.drain()
 
         if resp is None:
             handler = match_info.handler
