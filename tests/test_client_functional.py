@@ -639,7 +639,8 @@ def test_timeout_on_session_read_timeout(loop, test_client, mocker):
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_data(loop, test_client):
+def test_timeout_on_reading_data(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):
@@ -661,6 +662,8 @@ def test_timeout_on_reading_data(loop, test_client):
 
 @asyncio.coroutine
 def test_timeout_none(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse()
