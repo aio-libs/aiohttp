@@ -17,6 +17,11 @@ try:
 except:  # pragma: no cover
     uvloop = None
 
+try:
+    import tokio
+except:  # pragma: no cover
+    tokio = None
+
 
 def pytest_addoption(parser):
     parser.addoption('--fast', action='store_true', default=False,
@@ -122,6 +127,10 @@ def pytest_configure(config):
         if uvloop is not None:
             LOOP_FACTORIES.append(uvloop.new_event_loop)
             LOOP_FACTORY_IDS.append('uvloop')
+
+    if tokio is not None:
+        LOOP_FACTORIES.append(tokio.new_event_loop)
+        LOOP_FACTORY_IDS.append('tokio')
 
     asyncio.set_event_loop(None)
 

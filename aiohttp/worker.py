@@ -13,7 +13,9 @@ from gunicorn.workers import base
 
 from .helpers import AccessLogger, create_future, ensure_future
 
-__all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
+__all__ = ('GunicornWebWorker',
+           'GunicornUVLoopWebWorker',
+           'GunicornTokioWebWorker')
 
 
 class GunicornWebWorker(base.Worker):
@@ -234,5 +236,22 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
         # asyncio.get_event_loop() will create an instance
         # of uvloop event loop.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+        super().init_process()
+
+
+class GunicornTokioWebWorker(GunicornWebWorker):
+
+    def init_process(self):
+        import tokio
+
+        # Close any existing event loop before setting a
+        # new policy.
+        asyncio.get_event_loop().close()
+
+        # Setup tokio policy, so that every
+        # asyncio.get_event_loop() will create an instance
+        # of tokio event loop.
+        asyncio.set_event_loop_policy(tokio.TokioLoopPolicy())
 
         super().init_process()
