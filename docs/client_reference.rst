@@ -660,9 +660,11 @@ BaseConnector
 
       Read-only property.
 
-   .. comethod:: close()
+   .. method:: close()
 
       Close all opened connections.
+
+      .. versionadded:: 2.0
 
    .. comethod:: connect(request)
 
