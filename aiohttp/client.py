@@ -23,7 +23,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import PY_35, CeilTimeout, TimeoutHandle, deprecated_noop
+from .helpers import (PY_35, CeilTimeout, TimeoutHandle,
+                      deprecated_noop, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
@@ -52,7 +53,7 @@ class ClientSession:
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
-                 read_timeout=None, conn_timeout=None):
+                 read_timeout=sentinel, conn_timeout=None):
 
         implicit_loop = False
         if loop is None:
@@ -96,7 +97,8 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        self._read_timeout = read_timeout
+        self._read_timeout = (read_timeout if read_timeout is not sentinel
+                              else DEFAULT_TIMEOUT)
         self._conn_timeout = conn_timeout
         self._raise_for_status = raise_for_status
 
@@ -149,7 +151,7 @@ class ClientSession:
                  read_until_eof=True,
                  proxy=None,
                  proxy_auth=None,
-                 timeout=DEFAULT_TIMEOUT):
+                 timeout=sentinel):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -201,7 +203,8 @@ class ClientSession:
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
         tm = TimeoutHandle(
-            self._loop, timeout if timeout is not None else self._read_timeout)
+            self._loop,
+            timeout if timeout is not sentinel else self._read_timeout)
         handle = tm.start()
 
         timer = tm.timer()

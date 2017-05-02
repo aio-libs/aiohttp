@@ -170,6 +170,7 @@ Willem de Groot
 Wilson Ong
 Yannick Koechlin
 Young-Ho Cha
+Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг
