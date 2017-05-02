@@ -474,11 +474,13 @@ The client session supports the context manager protocol for self closing.
 
          URLs may be either :class:`str` or :class:`~yarl.URL`
 
-   .. comethod:: close()
+   .. method:: close()
 
       Close underlying connector.
 
       Release all acquired resources.
+
+      .. versionchanged:: 2.0
 
    .. method:: detach()
 
@@ -1169,8 +1171,8 @@ manually.
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
       :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
-      close response from server. It add timeout to `close()` call just wrap
-      call with `asyncio.wait()` or `asyncio.wait_for()`.
+      close response from server. To add a timeout to `close()` call
+      just wrap the call with `asyncio.wait()` or `asyncio.wait_for()`.
 
       :param int code: closing code
 
