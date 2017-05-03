@@ -115,7 +115,8 @@ class FileResponse(StreamResponse):
         # count should be an integer > 0.
 
         transport = request.transport
-        if transport.get_extra_info("sslcontext"):
+        if (transport.get_extra_info("sslcontext") or
+                transport.get_extra_info("socket") is None):
             writer = yield from self._sendfile_fallback(request, fobj, count)
         else:
             writer = request._protocol.writer.replace(
