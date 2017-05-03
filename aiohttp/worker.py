@@ -11,7 +11,7 @@ import sys
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
-from .helpers import AccessLogger, ensure_future
+from .helpers import AccessLogger, create_future, ensure_future
 
 __all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 
@@ -135,7 +135,7 @@ class GunicornWebWorker(base.Worker):
     def _wait_next_notify(self):
         self._notify_waiter_done()
 
-        self._notify_waiter = waiter = asyncio.Future(loop=self.loop)
+        self._notify_waiter = waiter = create_future(self.loop)
         self.loop.call_later(1.0, self._notify_waiter_done)
 
         return waiter

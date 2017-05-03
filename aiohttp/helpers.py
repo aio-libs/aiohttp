@@ -68,6 +68,13 @@ def deprecated_noop(message):
     warnings.warn(message, DeprecationWarning, stacklevel=3)
 
 
+try:
+    from asyncio import isfuture
+except ImportError:
+    def isfuture(fut):
+        return isinstance(fut, asyncio.Future)
+
+
 coroutines._DEBUG = old_debug
 
 
