@@ -20,5 +20,5 @@ gunicorn==19.7.1
 pygments>=2.1
 #aiodns  # Enable from .travis.yml as required c-ares will not build on windows
 twine==1.8.1
-yarl==0.10.0
+yarl==0.10.1
 -e .
