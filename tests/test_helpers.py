@@ -393,14 +393,13 @@ class TestTimeService:
         assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
 
     def test_recalc_time(self, time_service, mocker):
-        mocker.spy(time_service._loop, 'time')
-
-        time_service._time = 123
+        time = time_service._loop.time()
+        time_service._time = time
         time_service._strtime = 'asd'
         time_service._count = 1000000
         time_service._on_cb()
         assert time_service._strtime is None
-        assert time_service._time > 1234
+        assert time_service._time > time
         assert time_service._count == 0
 
 
