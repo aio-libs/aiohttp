@@ -866,7 +866,7 @@ def test_data_stream(loop, buf, conn):
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     resp = req.send(conn)
-    assert isinstance(req._writer, asyncio.Future)
+    assert helpers.isfuture(req._writer)
     yield from resp.wait_for_close()
     assert req._writer is None
 
@@ -886,7 +886,7 @@ def test_data_file(loop, buf, conn):
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     resp = req.send(conn)
-    assert isinstance(req._writer, asyncio.Future)
+    assert helpers.isfuture(req._writer)
     yield from resp.wait_for_close()
     assert req._writer is None
     assert buf.split(b'\r\n\r\n', 1)[1] == \

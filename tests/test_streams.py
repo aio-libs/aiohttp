@@ -691,7 +691,7 @@ class DataQueueMixin:
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
         waiter = self.buffer._waiter
-        self.assertIsInstance(waiter, asyncio.Future)
+        self.assertTrue(helpers.isfuture(waiter))
 
         read_task.cancel()
         self.assertRaises(
@@ -745,7 +745,7 @@ class DataQueueMixin:
     def test_read_exception_on_wait(self):
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
-        self.assertIsInstance(self.buffer._waiter, asyncio.Future)
+        self.assertTrue(helpers.isfuture(self.buffer._waiter))
 
         self.buffer.feed_eof()
         self.buffer.set_exception(ValueError())
