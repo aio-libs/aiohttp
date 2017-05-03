@@ -225,8 +225,6 @@ def test_release_acquired_closed(loop, key):
 
 
 def test_release(loop, key):
-    loop.time = mock.Mock(return_value=10)
-
     conn = aiohttp.BaseConnector(loop=loop)
     conn._release_waiter = mock.Mock()
 
@@ -237,14 +235,13 @@ def test_release(loop, key):
 
     conn._release(key, proto)
     assert conn._release_waiter.called
-    assert conn._conns[key][0] == (proto, 10)
+    assert conn._conns[key][0][0] == proto
+    assert conn._conns[key][0][1] == pytest.approx(loop.time(), abs=0.1)
     assert not conn._cleanup_closed_transports
     conn.close()
 
 
 def test_release_ssl_transport(loop, ssl_key):
-    loop.time = mock.Mock(return_value=10)
-
     conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
     conn._release_waiter = mock.Mock()
 
@@ -456,13 +453,15 @@ def test_release_close_do_not_delete_existing_connections(loop):
 
 
 def test_release_not_started(loop):
-    loop.time = mock.Mock(return_value=10)
     conn = aiohttp.BaseConnector(loop=loop)
     proto = mock.Mock(should_close=False)
     key = 1
     conn._acquired.add(proto)
     conn._release(key, proto)
-    assert conn._conns == {1: [(proto, 10)]}
+    # assert conn._conns == {1: [(proto, 10)]}
+    rec = conn._conns[1]
+    assert rec[0][0] == proto
+    assert rec[0][1] == pytest.approx(loop.time(), abs=0.01)
     assert not proto.close.called
     conn.close()
 
