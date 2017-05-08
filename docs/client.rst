@@ -139,11 +139,6 @@ You can also access the response body as bytes, for non-text requests::
 The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
-.. note::
-
-   This methods reads whole response body into memory. If you are planing
-   planing to read a lot of data consider to use streaming response.
-
 
 JSON Response Content
 ---------------------
@@ -157,6 +152,11 @@ In case that JSON decoding fails, :meth:`~ClientResponse.json` will
 raise an exception. It is possible to specify custom encoding and
 decoder functions for the :meth:`~ClientResponse.json` call.
 
+.. note::
+
+    The methods above reads the whole response body into memory. If you are
+    planning on reading a lot of data, consider using the streaming response
+    method documented below.
 
 Streaming Response Content
 --------------------------
