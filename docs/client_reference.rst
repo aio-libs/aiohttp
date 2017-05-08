@@ -617,7 +617,7 @@ BaseConnector
    :param int limit: Total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
 
-   :param int limit_by_host: limit for simultaneous connections to the same
+   :param int limit_per_host: limit for simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
       have equal ``(host, port, is_ssl)`` triple.
       If *limit* is ``None`` the connector has no limit (default: None).

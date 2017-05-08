@@ -1036,7 +1036,7 @@ def test_limit_property(loop):
     conn.close()
 
 
-def test_limit_by_host_property(loop):
+def test_limit_per_host_property(loop):
     conn = aiohttp.BaseConnector(loop=loop, limit_per_host=15)
     assert 15 == conn.limit_per_host
 
