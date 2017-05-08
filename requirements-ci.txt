@@ -1,7 +1,7 @@
 pip==9.0.1
 flake8==3.3.0
 pyflakes==1.5.0
-coverage==4.3.4
+coverage==4.4
 cchardet==2.0.1
 sphinx==1.5.5
 cython==0.25.2
