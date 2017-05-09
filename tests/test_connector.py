@@ -599,6 +599,9 @@ def test_cleanup3():
 
 
 def test_cleanup_closed(loop, mocker):
+    if not hasattr(loop, '__dict__'):
+        pytest.skip("can not override loop attributes")
+
     mocker.spy(loop, 'call_at')
     conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
 
