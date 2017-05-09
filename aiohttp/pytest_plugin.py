@@ -24,14 +24,15 @@ except:  # pragma: no cover
 
 
 def pytest_addoption(parser):
-    parser.addoption('--fast', action='store_true', default=False,
-                     help='run tests faster by disabling extra checks')
-    parser.addoption('--with-uvloop-only', action='store_true', default=False,
-                     help='run tests with uvloop only if available')
-    parser.addoption('--without-uvloop', action='store_true', default=False,
-                     help='run tests without uvloop')
-    parser.addoption('--enable-loop-debug', action='store_true', default=False,
-                     help='enable event loop debug mode')
+    parser.addoption(
+        '--fast', action='store_true', default=False,
+        help='run tests faster by disabling extra checks')
+    parser.addoption(
+        '--loop', action='append', default=[],
+        help='run tests with specific loop: pyloop, uvloop, tokio')
+    parser.addoption(
+        '--enable-loop-debug', action='store_true', default=False,
+        help='enable event loop debug mode')
 
 
 @pytest.fixture
@@ -103,34 +104,41 @@ def pytest_pyfunc_call(pyfuncitem):
 
 
 def pytest_configure(config):
-    fast = config.getoption('--fast')
-    uvloop_only = config.getoption('--with-uvloop-only')
+    loops = config.getoption('--loop')
 
-    without_uvloop = False
-    if fast:
-        without_uvloop = True  # pragma: no cover
+    factories = {'pyloop': asyncio.new_event_loop}
 
-    if config.getoption('--without-uvloop'):  # pragma: no cover
-        without_uvloop = True
+    if uvloop is not None:  # pragma: no cover
+        factories['uvloop'] = uvloop.new_event_loop
+
+    if tokio is not None:  # pragma: no cover
+        factories['tokio'] = tokio.new_event_loop
 
     LOOP_FACTORIES.clear()
     LOOP_FACTORY_IDS.clear()
-    if uvloop_only and uvloop is not None:  # pragma: no cover
-        LOOP_FACTORIES.append(uvloop.new_event_loop)
-        LOOP_FACTORY_IDS.append('uvloop')
-    elif without_uvloop:  # pragma: no cover
+
+    if loops:
+        for names in (name.split(',') for name in loops):
+            for name in names:
+                name = name.strip()
+                if name not in factories:
+                    raise ValueError(
+                        "Unknown loop '%s', available loops: %s" % (
+                            name, list(factories.keys())))
+
+                LOOP_FACTORIES.append(factories[name])
+                LOOP_FACTORY_IDS.append(name)
+    else:
         LOOP_FACTORIES.append(asyncio.new_event_loop)
         LOOP_FACTORY_IDS.append('pyloop')
-    else:  # pragma: no cover
-        LOOP_FACTORIES.append(asyncio.new_event_loop)
-        LOOP_FACTORY_IDS.append('pyloop')
-        if uvloop is not None:
+
+        if uvloop is not None:  # pragma: no cover
             LOOP_FACTORIES.append(uvloop.new_event_loop)
             LOOP_FACTORY_IDS.append('uvloop')
 
-    if tokio is not None:
-        LOOP_FACTORIES.append(tokio.new_event_loop)
-        LOOP_FACTORY_IDS.append('tokio')
+        if tokio is not None:
+            LOOP_FACTORIES.append(tokio.new_event_loop)
+            LOOP_FACTORY_IDS.append('tokio')
 
     asyncio.set_event_loop(None)
 
