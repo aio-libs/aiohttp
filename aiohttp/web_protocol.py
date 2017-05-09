@@ -238,10 +238,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._request_parser = None
         self.transport = self.writer = None
 
-        if self._payload_parser is not None:
-            self._payload_parser.feed_eof()
-            self._payload_parser = None
-
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
@@ -254,6 +250,10 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 self._error_handler.cancel()
 
         self._request_handlers = ()
+
+        if self._payload_parser is not None:
+            self._payload_parser.feed_eof()
+            self._payload_parser = None
 
     def set_parser(self, parser):
         assert self._payload_parser is None
