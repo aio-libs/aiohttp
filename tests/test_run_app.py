@@ -40,7 +40,15 @@ skip_if_no_unix_socks = pytest.mark.skipif(
 del _has_unix_domain_socks, _abstract_path_failed
 
 
+# tokio event loop does not allow to override attributes
+def skip_if_no_dict(loop):
+    if not hasattr(loop, '__dict__'):
+        pytest.skip("can not override loop attributes")
+
+
 def test_run_app_http(loop, mocker):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
@@ -181,6 +189,8 @@ def test_run_app_mixed_bindings(mocker, run_app_kwargs, expected_server_calls,
 
 
 def test_run_app_http_access_format(loop, mocker):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
@@ -198,6 +208,8 @@ def test_run_app_http_access_format(loop, mocker):
 
 
 def test_run_app_https(loop, mocker):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
@@ -216,6 +228,8 @@ def test_run_app_https(loop, mocker):
 
 
 def test_run_app_nondefault_host_port(loop, unused_port, mocker):
+    skip_if_no_dict(loop)
+
     port = unused_port()
     host = 'localhost'
 
@@ -235,6 +249,8 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
 
 
 def test_run_app_custom_backlog(loop, mocker):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
@@ -251,6 +267,8 @@ def test_run_app_custom_backlog(loop, mocker):
 
 @skip_if_no_unix_socks
 def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
 
@@ -270,6 +288,8 @@ def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
 
 @skip_if_no_unix_socks
 def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_unix_server')
     loop.call_later(0.05, loop.stop)
 
@@ -294,6 +314,8 @@ def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
     """Older asyncio event loop implementations are known to halt server
     creation when a socket path from a previous server bind still exists.
     """
+    skip_if_no_dict(loop)
+
     loop.call_later(0.05, loop.stop)
 
     app = web.Application()
@@ -386,6 +408,8 @@ def test_run_app_existing_file_conflict(loop, mocker, shorttmpdir):
 
 
 def test_run_app_preexisting_inet_socket(loop, mocker):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
@@ -410,6 +434,8 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
 
 @skip_if_no_unix_socks
 def test_run_app_preexisting_unix_socket(loop, mocker):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 
@@ -434,6 +460,8 @@ def test_run_app_preexisting_unix_socket(loop, mocker):
 
 
 def test_run_app_multiple_preexisting_sockets(loop, mocker):
+    skip_if_no_dict(loop)
+
     mocker.spy(loop, 'create_server')
     loop.call_later(0.05, loop.stop)
 

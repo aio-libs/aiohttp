@@ -147,7 +147,7 @@ LOOP_FACTORIES = []
 LOOP_FACTORY_IDS = []
 
 
-@pytest.yield_fixture(params=LOOP_FACTORIES, ids=LOOP_FACTORY_IDS)
+@pytest.fixture(params=LOOP_FACTORIES, ids=LOOP_FACTORY_IDS)
 def loop(request):
     """Return an instance of the event loop."""
     fast = request.config.getoption('--fast')
