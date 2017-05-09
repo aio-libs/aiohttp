@@ -13,7 +13,7 @@ async-timeout==1.2.1
 sphinxcontrib-asyncio==0.2.0
 sphinxcontrib-newsfeed==0.1.4
 pytest==3.0.7
-pytest-cov==2.4.0
+pytest-cov==2.5.0
 pytest-mock==1.6.0
 pytest-timeout==1.2.0
 gunicorn==19.7.1
