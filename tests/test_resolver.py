@@ -1,7 +1,7 @@
 import asyncio
 import ipaddress
 import socket
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -118,7 +118,8 @@ def test_async_resolver_query_negative_lookup(loop):
 
 
 @asyncio.coroutine
-def test_threaded_resolver_positive_lookup(loop):
+def test_threaded_resolver_positive_lookup():
+    loop = Mock()
     loop.getaddrinfo = fake_addrinfo(["127.0.0.1"])
     resolver = ThreadedResolver(loop=loop)
     real = yield from resolver.resolve('www.python.org')
@@ -126,7 +127,8 @@ def test_threaded_resolver_positive_lookup(loop):
 
 
 @asyncio.coroutine
-def test_threaded_resolver_multiple_replies(loop):
+def test_threaded_resolver_multiple_replies():
+    loop = Mock()
     ips = ['127.0.0.1', '127.0.0.2', '127.0.0.3', '127.0.0.4']
     loop.getaddrinfo = fake_addrinfo(ips)
     resolver = ThreadedResolver(loop=loop)
@@ -136,7 +138,8 @@ def test_threaded_resolver_multiple_replies(loop):
 
 
 @asyncio.coroutine
-def test_threaded_negative_lookup(loop):
+def test_threaded_negative_lookup():
+    loop = Mock()
     ips = []
     loop.getaddrinfo = fake_addrinfo(ips)
     resolver = ThreadedResolver(loop=loop)
