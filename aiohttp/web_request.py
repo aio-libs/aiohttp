@@ -151,15 +151,30 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self.url.scheme == 'https'
 
     @reify
+    def _forwarded(self):
+        forwarded = self._message.headers.get(hdrs.FORWARDED)
+        if forwarded is not None:
+            parsed = re.findall(
+                r'^by=([^;]*); +for=([^;]*); +host=([^;]*); +proto=(https?)$',
+                forwarded)
+            if parsed:
+                return parsed[0]
+        return None
+
+    @reify
     def _scheme(self):
+        proto = 'http'
         if self._transport.get_extra_info('sslcontext'):
-            return 'https'
-        secure_proxy_ssl_header = self._secure_proxy_ssl_header
-        if secure_proxy_ssl_header is not None:
-            header, value = secure_proxy_ssl_header
+            proto = 'https'
+        elif self._secure_proxy_ssl_header is not None:
+            header, value = self._secure_proxy_ssl_header
             if self.headers.get(header) == value:
-                return 'https'
-        return 'http'
+                proto = 'https'
+        elif self._forwarded:
+            _, _, _, proto = self._forwarded
+        elif hdrs.X_FORWARDED_PROTO in self._message.headers:
+            proto = self._message.headers[hdrs.X_FORWARDED_PROTO]
+        return proto
 
     @property
     def method(self):
@@ -179,16 +194,29 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def host(self):
-        """Read only property for getting *HOST* header of request.
+        """ Hostname of the request.
 
-        Returns str or None if HTTP request has no HOST header.
+        Hostname is resolved through the following headers, in this order:
+
+        - Forwarded
+        - X-Forwarded-Host
+        - Host
+
+        Returns str, or None if no hostname is found in the headers.
         """
-        return self._message.headers.get(hdrs.HOST)
+        host = None
+        if self._forwarded:
+            _, _, host, _ = self._forwarded
+        elif hdrs.X_FORWARDED_HOST in self._message.headers:
+            host = self._message.headers[hdrs.X_FORWARDED_HOST]
+        elif hdrs.HOST in self._message.headers:
+            host = self._message.headers[hdrs.HOST]
+        return host
 
     @reify
     def url(self):
         return URL('{}://{}{}'.format(self._scheme,
-                                      self._message.headers.get(hdrs.HOST),
+                                      self.host,
                                       str(self._rel_url)))
 
     @property
