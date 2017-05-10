@@ -514,7 +514,7 @@ class HttpPayloadParser:
                             size = chunk[:pos]
 
                         try:
-                            size = int(size, 16)
+                            size = int(bytes(size), 16)
                         except ValueError:
                             exc = TransferEncodingError(chunk[:pos])
                             self.payload.set_exception(exc)
