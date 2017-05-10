@@ -393,7 +393,7 @@ def test_format_task_get(test_server, loop):
     server = yield from test_server(app)
     client = aiohttp.ClientSession(loop=loop)
     task = loop.create_task(client.get(server.make_url('/')))
-    assert "{}".format(task)[:18] == "<Task pending coro"
+    assert "{}".format(task).startswith("<Task pending")
     resp = yield from task
     resp.close()
     client.close()
