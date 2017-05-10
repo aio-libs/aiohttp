@@ -313,8 +313,9 @@ class Application(MutableMapping):
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
-            access_log=access_logger, loop=None, close_loop=True):
+            access_log=access_logger, loop=None):
     """Run an app locally"""
+    user_supplied_loop = loop is not None
     if loop is None:
         loop = asyncio.get_event_loop()
 
@@ -421,7 +422,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         loop.run_until_complete(app.shutdown())
         loop.run_until_complete(handler.shutdown(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
-    if close_loop:
+    if not user_supplied_loop:
         loop.close()
 
 
