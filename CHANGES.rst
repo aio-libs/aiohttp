@@ -5,7 +5,7 @@ Changes
 2.1.0 (2017-xx-xx)
 ------------------
 
-- Add `close_loop` option to `run_app`. Useful for allowing clients to specify their own cleanup before closing the asyncio loop
+- Only call `loop.close` in `run_app` if the user did *not* supply a loop.  Useful for allowing clients to specify their own cleanup before closing the asyncio loop if they wish to tightly control loop behavior
 
 - Content disposition with semicolon in filename #917
 
