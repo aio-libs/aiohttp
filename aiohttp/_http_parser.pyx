@@ -142,7 +142,6 @@ cdef class HttpParser:
             self._header_value = val
             self._raw_header_value = raw_val
         else:
-            # This is unlikely, as mostly HTTP headers are one-line
             self._header_value += val
             self._raw_header_value += raw_val
 
@@ -374,7 +373,11 @@ cdef int cb_on_header_value(cparser.http_parser* parser,
                             const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        if length > pyparser._max_field_size:
+        if pyparser._header_value is not None:
+            if len(pyparser._header_value) + length > pyparser._max_field_size:
+                raise LineTooLong(
+                    'Header value is too long', pyparser._max_field_size)
+        elif length > pyparser._max_field_size:
             raise LineTooLong(
                 'Header value is too long', pyparser._max_field_size)
         pyparser._on_header_value(
