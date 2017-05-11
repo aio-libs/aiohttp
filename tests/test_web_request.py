@@ -248,6 +248,62 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
     assert req.secure is False
 
 
+def test_https_scheme_by_forwarded_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict(
+                           {'Forwarded': 'by=; for=; host=; proto=https'}))
+    assert "https" == req.scheme
+    assert req.secure is True
+
+
+def test_https_scheme_by_malformed_forwarded_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'Forwarded': 'malformed value'}))
+    assert "http" == req.scheme
+    assert req.secure is False
+
+
+def test_https_scheme_by_x_forwarded_proto_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'X-Forwarded-Proto': 'https'}))
+    assert "https" == req.scheme
+    assert req.secure is True
+
+
+def test_https_scheme_by_x_forwarded_proto_header_no_tls(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'X-Forwarded-Proto': 'http'}))
+    assert "http" == req.scheme
+    assert req.secure is False
+
+
+def test_host_by_forwarded_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict(
+                           {'Forwarded': 'by=; for=; host'
+                                         '=example.com; proto=https'}))
+    assert req.host == 'example.com'
+
+
+def test_host_by_forwarded_header_malformed(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'Forwarded': 'malformed value'}))
+    assert req.host is None
+
+
+def test_host_by_x_forwarded_host_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict(
+                           {'X-Forwarded-Host': 'example.com'}))
+    assert req.host == 'example.com'
+
+
+def test_host_by_host_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'Host': 'example.com'}))
+    assert req.host == 'example.com'
+
+
 def test_raw_headers(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({'X-HEADER': 'aaa'}))
