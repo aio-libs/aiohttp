@@ -31,6 +31,8 @@ Changes
 
 - Do not unquote `+` in match_info values #1816
 
+- Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and host resolution. #1134
+
 
 2.0.7 (2017-04-12)
 ------------------
