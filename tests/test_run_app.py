@@ -384,7 +384,6 @@ def test_run_app_abstract_linux_socket(loop, mocker):
     web.run_app(
         app, path=sock_path.decode('ascii', 'ignore'), loop=loop,
         print=lambda *args: None)
-    assert loop.is_closed()
 
     # New app run using same socket path
     with loop_context() as loop:
@@ -500,7 +499,6 @@ def test_run_app_multiple_preexisting_sockets(loop, mocker):
         printed = StringIO()
         web.run_app(app, loop=loop, sock=(sock1, sock2), print=printed.write)
 
-        assert not loop.is_closed()
         loop.create_server.assert_has_calls([
             mock.call(mock.ANY, sock=sock1, backlog=128, ssl=None),
             mock.call(mock.ANY, sock=sock2, backlog=128, ssl=None)
