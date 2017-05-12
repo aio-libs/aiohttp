@@ -5,10 +5,10 @@ Changes
 2.1.0 (2017-xx-xx)
 ------------------
 
-- Added support for experimental async-tokio event loop written in Rust
+- Added support for experimental `async-tokio` event loop written in Rust
   https://github.com/PyO3/tokio
 
-- Write to transport "\r\n" before closing after keepalive timeout,
+- Write to transport ``\r\n`` before closing after keepalive timeout,
   otherwise client can not detect socket disconnection. #1883
 
 - Only call `loop.close` in `run_app` if the user did *not* supply a loop.

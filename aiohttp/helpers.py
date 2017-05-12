@@ -685,6 +685,7 @@ class TimerContext:
 
     def __enter__(self):
         task = current_task(loop=self._loop)
+
         if task is None:
             raise RuntimeError('Timeout context manager should be used '
                                'inside a task')
@@ -699,20 +700,13 @@ class TimerContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self._tasks:
             task = self._tasks.pop()
-        else:  # pragma: no cover
-            task = None  # something is really wrong
 
         if exc_type is asyncio.CancelledError and self._cancelled:
-            for task in self._tasks:
-                task.cancel()
             raise asyncio.TimeoutError from None
-
-        if exc_type is None and self._cancelled and task is not None:
-            task.cancel()
 
     def timeout(self):
         if not self._cancelled:
-            for task in self._tasks:
+            for task in set(self._tasks):
                 task.cancel()
 
             self._cancelled = True
