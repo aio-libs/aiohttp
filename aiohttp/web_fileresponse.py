@@ -2,7 +2,6 @@ import asyncio
 import mimetypes
 import os
 import pathlib
-import socket
 
 from . import hdrs
 from .helpers import create_future
