@@ -5,6 +5,8 @@ Changes
 2.1.0 (2017-xx-xx)
 ------------------
 
+- Only call `loop.close` in `run_app` if the user did *not* supply a loop.  Useful for allowing clients to specify their own cleanup before closing the asyncio loop if they wish to tightly control loop behavior
+
 - Content disposition with semicolon in filename #917
 
 - Added `request_info` to response object and `ClientResponseError`. #1733
