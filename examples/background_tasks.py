@@ -31,7 +31,7 @@ async def listen_to_redis(app):
         async for msg in ch.iter(encoding='utf-8'):
             # Forward message to all connected websockets:
             for ws in app['websockets']:
-                ws.send_str('{}: {}'.format(ch.name, msg))
+                await ws.send_str('{}: {}'.format(ch.name, msg))
             print("message in {}: {}".format(ch.name, msg))
     except asyncio.CancelledError:
         pass

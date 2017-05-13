@@ -699,7 +699,7 @@ methods::
                    await ws.close()
                    break
                else:
-                   ws.send_str(msg.data + '/answer')
+                   await ws.send_str(msg.data + '/answer')
            elif msg.type == aiohttp.WSMsgType.CLOSED:
                break
            elif msg.type == aiohttp.WSMsgType.ERROR:

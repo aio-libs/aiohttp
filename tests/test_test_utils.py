@@ -30,7 +30,7 @@ def _create_example_app():
             if msg.data == 'close':
                 yield from ws.close()
             else:
-                ws.send_str(msg.data + '/answer')
+                yield from ws.send_str(msg.data + '/answer')
 
         return ws
 
