@@ -676,7 +676,7 @@ with the peer::
                 if msg.data == 'close':
                     await ws.close()
                 else:
-                    ws.send_str(msg.data + '/answer')
+                    await ws.send_str(msg.data + '/answer')
             elif msg.type == aiohttp.WSMsgType.ERROR:
                 print('ws connection closed with exception %s' %
                       ws.exception())
