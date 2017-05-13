@@ -2,7 +2,6 @@ import asyncio
 import mimetypes
 import os
 import pathlib
-import socket
 
 from . import hdrs
 from .helpers import create_future
@@ -117,8 +116,7 @@ class FileResponse(StreamResponse):
 
         transport = request.transport
         if (transport.get_extra_info("sslcontext") or
-                not isinstance(transport.get_extra_info("socket"),
-                               socket.socket)):
+                transport.get_extra_info("socket") is None):
             writer = yield from self._sendfile_fallback(request, fobj, count)
         else:
             writer = request._protocol.writer.replace(

@@ -5,6 +5,16 @@ Changes
 2.1.0 (2017-xx-xx)
 ------------------
 
+- Added support for experimental `async-tokio` event loop written in Rust
+  https://github.com/PyO3/tokio
+
+- Write to transport ``\r\n`` before closing after keepalive timeout,
+  otherwise client can not detect socket disconnection. #1883
+
+- Only call `loop.close` in `run_app` if the user did *not* supply a loop.
+  Useful for allowing clients to specify their own cleanup before closing the
+  asyncio loop if they wish to tightly control loop behavior
+
 - Content disposition with semicolon in filename #917
 
 - Added `request_info` to response object and `ClientResponseError`. #1733
@@ -32,6 +42,8 @@ Changes
 - Do not unquote `+` in match_info values #1816
 
 - Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and host resolution. #1134
+
+- Fix sub-application middlewares resolution order #1853
 
 
 2.0.7 (2017-04-12)

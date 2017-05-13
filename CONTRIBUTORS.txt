@@ -1,4 +1,4 @@
-
+Contributors
 ------------
 A. Jesse Jiryu Davis
 Adam Mills
@@ -42,7 +42,7 @@ Chris AtLee
 Chris Laws
 Chris Moore
 Christopher Schmitt
-Contributors
+Damien Nadé
 Daniel García
 Daniel Nelson
 Danny Song
@@ -56,6 +56,7 @@ Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
 Eduard Iskandarov
+Eli Ribble
 Elizabeth Leddy
 Enrique Saez
 Erich Healy

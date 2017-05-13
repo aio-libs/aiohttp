@@ -252,6 +252,6 @@ class GunicornTokioWebWorker(GunicornWebWorker):
         # Setup tokio policy, so that every
         # asyncio.get_event_loop() will create an instance
         # of tokio event loop.
-        asyncio.set_event_loop_policy(tokio.TokioLoopPolicy())
+        asyncio.set_event_loop_policy(tokio.EventLoopPolicy())
 
         super().init_process()

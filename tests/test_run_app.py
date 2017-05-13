@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import os
 import socket
@@ -57,10 +58,30 @@ def test_run_app_http(loop, mocker):
 
     web.run_app(app, loop=loop, print=lambda *args: None)
 
+    assert not loop.is_closed()
+    loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
+                                          ssl=None, backlog=128)
+    app.startup.assert_called_once_with()
+
+
+def test_run_app_close_loop(loop, mocker):
+    skip_if_no_dict(loop)
+
+    mocker.spy(loop, 'create_server')
+    loop.call_later(0.05, loop.stop)
+
+    asyncio.set_event_loop(loop)
+
+    app = web.Application()
+    mocker.spy(app, 'startup')
+
+    web.run_app(app, print=lambda *args: None)
+
     assert loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
                                           ssl=None, backlog=128)
     app.startup.assert_called_once_with()
+    asyncio.set_event_loop(None)
 
 
 mock_unix_server_single = [
@@ -200,7 +221,7 @@ def test_run_app_http_access_format(loop, mocker):
     web.run_app(app, loop=loop,
                 print=lambda *args: None, access_log_format='%a')
 
-    assert loop.is_closed()
+    assert not loop.is_closed()
     cs = loop.create_server
     cs.assert_called_with(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128)
     assert cs.call_args[0][0]._kwargs['access_log_format'] == '%a'
@@ -221,7 +242,7 @@ def test_run_app_https(loop, mocker):
     web.run_app(app, loop=loop,
                 ssl_context=ssl_context, print=lambda *args: None)
 
-    assert loop.is_closed()
+    assert not loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8443,
                                           ssl=ssl_context, backlog=128)
     app.startup.assert_called_once_with()
@@ -242,7 +263,7 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     web.run_app(app, loop=loop,
                 host=host, port=port, print=lambda *args: None)
 
-    assert loop.is_closed()
+    assert not loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, host, port,
                                           ssl=None, backlog=128)
     app.startup.assert_called_once_with()
@@ -259,7 +280,7 @@ def test_run_app_custom_backlog(loop, mocker):
 
     web.run_app(app, loop=loop, backlog=10, print=lambda *args: None)
 
-    assert loop.is_closed()
+    assert not loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
                                           ssl=None, backlog=10)
     app.startup.assert_called_once_with()
@@ -279,7 +300,7 @@ def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
     printed = StringIO()
     web.run_app(app, loop=loop, path=sock_path, print=printed.write)
 
-    assert loop.is_closed()
+    assert not loop.is_closed()
     loop.create_unix_server.assert_called_with(mock.ANY, sock_path,
                                                ssl=None, backlog=128)
     app.startup.assert_called_once_with()
@@ -302,7 +323,7 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     web.run_app(app, loop=loop, path=sock_path, ssl_context=ssl_context,
                 print=printed.write)
 
-    assert loop.is_closed()
+    assert not loop.is_closed()
     loop.create_unix_server.assert_called_with(mock.ANY, sock_path,
                                                ssl=ssl_context, backlog=128)
     app.startup.assert_called_once_with()
@@ -325,7 +346,7 @@ def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
 
     web.run_app(app, loop=loop,
                 path=sock_path_string, print=lambda *args: None)
-    assert loop.is_closed()
+    assert not loop.is_closed()
 
     if sock_path.check():
         # New app run using same socket path
@@ -363,7 +384,6 @@ def test_run_app_abstract_linux_socket(loop, mocker):
     web.run_app(
         app, path=sock_path.decode('ascii', 'ignore'), loop=loop,
         print=lambda *args: None)
-    assert loop.is_closed()
 
     # New app run using same socket path
     with loop_context() as loop:
@@ -424,7 +444,7 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
         printed = StringIO()
         web.run_app(app, loop=loop, sock=sock, print=printed.write)
 
-        assert loop.is_closed()
+        assert not loop.is_closed()
         loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
@@ -451,7 +471,7 @@ def test_run_app_preexisting_unix_socket(loop, mocker):
         printed = StringIO()
         web.run_app(app, loop=loop, sock=sock, print=printed.write)
 
-        assert loop.is_closed()
+        assert not loop.is_closed()
         loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
@@ -479,7 +499,6 @@ def test_run_app_multiple_preexisting_sockets(loop, mocker):
         printed = StringIO()
         web.run_app(app, loop=loop, sock=(sock1, sock2), print=printed.write)
 
-        assert loop.is_closed()
         loop.create_server.assert_has_calls([
             mock.call(mock.ANY, sock=sock1, backlog=128, ssl=None),
             mock.call(mock.ANY, sock=sock2, backlog=128, ssl=None)

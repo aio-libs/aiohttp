@@ -336,13 +336,15 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             if not waiter.done():
                 waiter.cancel()
 
-    def force_close(self):
+    def force_close(self, send_last_heartbeat=False):
         """Force close connection"""
         self._force_close = True
         for waiter in self._waiters:
             if not waiter.done():
                 waiter.cancel()
         if self.transport is not None:
+            if send_last_heartbeat:
+                self.transport.write(b"\r\n")
             self.transport.close()
             self.transport = None
 
@@ -368,7 +370,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         if len(self._request_handlers) == len(self._waiters):
             now = self._time_service.loop_time
             if now + 1.0 > next:
-                self.force_close()
+                self.force_close(send_last_heartbeat=True)
                 return
 
         self._keepalive_handle = self._loop.call_at(
