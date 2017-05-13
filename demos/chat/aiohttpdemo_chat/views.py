@@ -19,11 +19,11 @@ async def index(request):
     name = (random.choice(string.ascii_uppercase) +
             ''.join(random.sample(string.ascii_lowercase*10, 10)))
     log.info('%s joined.', name)
-    resp.send_str(json.dumps({'action': 'connect',
-                              'name': name}))
+    await resp.send_str(json.dumps({'action': 'connect',
+                                    'name': name}))
     for ws in request.app['sockets'].values():
-        ws.send_str(json.dumps({'action': 'join',
-                                'name': name}))
+        await ws.send_str(json.dumps({'action': 'join',
+                                      'name': name}))
     request.app['sockets'][name] = resp
 
     while True:
@@ -32,17 +32,17 @@ async def index(request):
         if msg.type == web.MsgType.text:
             for ws in request.app['sockets'].values():
                 if ws is not resp:
-                    ws.send_str(json.dumps({'action': 'sent',
-                                            'name': name,
-                                            'text': msg.data}))
+                    await ws.send_str(json.dumps({'action': 'sent',
+                                                  'name': name,
+                                                  'text': msg.data}))
         else:
             break
 
     del request.app['sockets'][name]
     log.info('%s disconnected.', name)
     for ws in request.app['sockets'].values():
-        ws.send_str(json.dumps({'action': 'disconnect',
-                                'name': name}))
+        await ws.send_str(json.dumps({'action': 'disconnect',
+                                      'name': name}))
     return resp
 
 

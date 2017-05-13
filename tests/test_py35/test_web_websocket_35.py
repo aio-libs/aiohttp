@@ -47,7 +47,7 @@ async def test_closed_async_for(loop, test_client):
         async for msg in ws:
             messages.append(msg)
             if 'stop' == msg.data:
-                ws.send_str('stopping')
+                await ws.send_str('stopping')
                 await ws.close()
 
         assert 1 == len(messages)
@@ -62,7 +62,7 @@ async def test_closed_async_for(loop, test_client):
     client = await test_client(app)
 
     ws = await client.ws_connect('/')
-    ws.send_str('stop')
+    await ws.send_str('stop')
     msg = await ws.receive()
     assert msg.type == WSMsgType.TEXT
     assert msg.data == 'stopping'

@@ -11,7 +11,7 @@ async def test_client_ws_async_for(loop, test_client):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         for i in items:
-            ws.send_str(i)
+            await ws.send_str(i)
         await ws.close()
         return ws
 
@@ -36,7 +36,7 @@ async def test_client_ws_async_with(loop, test_server):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
-        ws.send_str(msg.data + '/answer')
+        await ws.send_str(msg.data + '/answer')
         await ws.close()
         return ws
 
@@ -47,7 +47,7 @@ async def test_client_ws_async_with(loop, test_server):
 
     async with aiohttp.ClientSession(loop=loop) as client:
         async with client.ws_connect(server.make_url('/')) as ws:
-            ws.send_str('request')
+            await ws.send_str('request')
             msg = await ws.receive()
             assert msg.data == 'request/answer'
 
@@ -61,7 +61,7 @@ async def test_client_ws_async_with_send(loop, test_server):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
-        ws.send_str(msg.data + '/answer')
+        await ws.send_str(msg.data + '/answer')
         await ws.close()
         return ws
 
@@ -85,7 +85,7 @@ async def test_client_ws_async_with_shortcut(loop, test_server):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
-        ws.send_str(msg.data + '/answer')
+        await ws.send_str(msg.data + '/answer')
         await ws.close()
         return ws
 
@@ -95,7 +95,7 @@ async def test_client_ws_async_with_shortcut(loop, test_server):
 
     async with aiohttp.ClientSession(loop=loop) as client:
         async with client.ws_connect(server.make_url('/')) as ws:
-            ws.send_str('request')
+            await ws.send_str('request')
             msg = await ws.receive()
             assert msg.data == 'request/answer'
 
@@ -111,7 +111,7 @@ async def test_closed_async_for(loop, test_client):
         await ws.prepare(request)
 
         try:
-            ws.send_bytes(b'started')
+            await ws.send_bytes(b'started')
             await ws.receive_bytes()
         finally:
             closed.set_result(1)
