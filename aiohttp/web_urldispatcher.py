@@ -492,11 +492,7 @@ class StaticResource(PrefixResource):
         # sanity check
         assert filepath.is_dir()
 
-        posix_dir_len = len(self._directory.as_posix())
-
-        # remove the beginning of posix path, so it would be relative
-        # to our added static path
-        relative_path_to_dir = filepath.as_posix()[posix_dir_len:]
+        relative_path_to_dir = filepath.relative_to(self._directory).as_posix()
         index_of = "Index of /{}".format(relative_path_to_dir)
         head = "<head>\n<title>{}</title>\n</head>".format(index_of)
         h1 = "<h1>{}</h1>".format(index_of)
@@ -505,7 +501,8 @@ class StaticResource(PrefixResource):
         dir_index = filepath.iterdir()
         for _file in sorted(dir_index):
             # show file url as relative to static path
-            file_url = _file.as_posix()[posix_dir_len:]
+            file_url = self._prefix + '/' + \
+                _file.relative_to(self._directory).as_posix()
 
             # if file is a directory, add '/' to the end of the name
             if _file.is_dir():
