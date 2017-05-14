@@ -43,6 +43,8 @@ Changes
 
 - Fix sub-application middlewares resolution order #1853
 
+- Fix applications comparison #1866
+
 
 2.0.7 (2017-04-12)
 ------------------
