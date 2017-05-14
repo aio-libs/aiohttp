@@ -81,6 +81,9 @@ class Application(MutableMapping):
 
     # MutableMapping API
 
+    def __eq__(self, other):
+        return self is other
+
     def __getitem__(self, key):
         return self._state[key]
 

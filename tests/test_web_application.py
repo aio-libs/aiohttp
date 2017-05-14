@@ -219,3 +219,11 @@ def test_secure_proxy_ssl_header_init(loop):
     assert app._secure_proxy_ssl_header is hdr
     app.make_handler(loop=loop)
     assert app._secure_proxy_ssl_header is hdr
+
+
+def test_equality():
+    app1 = web.Application()
+    app2 = web.Application()
+
+    assert app1 == app1
+    assert app1 != app2
