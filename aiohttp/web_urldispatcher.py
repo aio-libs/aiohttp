@@ -501,8 +501,8 @@ class StaticResource(PrefixResource):
         dir_index = filepath.iterdir()
         for _file in sorted(dir_index):
             # show file url as relative to static path
-            file_url = self._prefix + '/' + \
-                _file.relative_to(self._directory).as_posix()
+            rel_path = _file.relative_to(self._directory).as_posix()
+            file_url = self._prefix + '/' + rel_path
 
             # if file is a directory, add '/' to the end of the name
             if _file.is_dir():
