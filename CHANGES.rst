@@ -42,7 +42,7 @@ Changes
 - Do not unquote `+` in match_info values #1816
 
 - Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and 
-host resolution. #1134
+  host resolution. #1134
 
 - Fix sub-application middlewares resolution order #1853
 
