@@ -10,14 +10,14 @@ async def test_server_ws_async_for(loop, test_server):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         async for msg in ws:
-            assert msg.type == aiohttp.MsgType.TEXT
+            assert msg.type == aiohttp.WSMsgType.TEXT
             s = msg.data
             await ws.send_str(s + '/answer')
         await ws.close()
         closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
 
@@ -28,7 +28,7 @@ async def test_server_ws_async_for(loop, test_server):
             for item in items:
                 resp.send_str(item)
                 msg = await resp.receive()
-                assert msg.type == aiohttp.MsgType.TEXT
+                assert msg.type == aiohttp.WSMsgType.TEXT
                 assert item + '/answer' == msg.data
 
             await resp.close()
@@ -47,7 +47,7 @@ async def test_closed_async_for(loop, test_client):
         async for msg in ws:
             messages.append(msg)
             if 'stop' == msg.data:
-                ws.send_str('stopping')
+                await ws.send_str('stopping')
                 await ws.close()
 
         assert 1 == len(messages)
@@ -57,12 +57,12 @@ async def test_closed_async_for(loop, test_client):
         closed.set_result(None)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = await test_client(app)
 
     ws = await client.ws_connect('/')
-    ws.send_str('stop')
+    await ws.send_str('stop')
     msg = await ws.receive()
     assert msg.type == WSMsgType.TEXT
     assert msg.data == 'stopping'

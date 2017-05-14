@@ -31,7 +31,7 @@ async def listen_to_redis(app):
         async for msg in ch.iter(encoding='utf-8'):
             # Forward message to all connected websockets:
             for ws in app['websockets']:
-                ws.send_str('{}: {}'.format(ch.name, msg))
+                await ws.send_str('{}: {}'.format(ch.name, msg))
             print("message in {}: {}".format(ch.name, msg))
     except asyncio.CancelledError:
         pass
@@ -53,7 +53,7 @@ async def cleanup_background_tasks(app):
 
 
 async def init(loop):
-    app = Application(loop=loop)
+    app = Application()
     app['websockets'] = []
     app.router.add_get('/news', websocket_handler)
     app.on_startup.append(start_background_tasks)

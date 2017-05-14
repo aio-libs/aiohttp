@@ -145,7 +145,7 @@ Here we'll use `Supervisord <http://supervisord.org/>`_ for example:
    process_name = example_%(process_num)s
 
    ; Unix socket paths are specified by command line.
-   cmd=/path/to/aiohttp_example.py --path=/tmp/example%(process_num)s.sock
+   cmd=/path/to/aiohttp_example.py --path=/tmp/example_%(process_num)s.sock
 
    ; We can just as easily pass TCP port numbers:
    ; cmd=/path/to/aiohttp_example.py --port=808%(process_num)s
@@ -225,7 +225,7 @@ Now that the virtual environment is ready, we'll proceed to install
 aiohttp and gunicorn::
 
   >> pip install gunicorn
-  >> pip install -e git+https://github.com/KeepSafe/aiohttp.git#egg=aiohttp
+  >> pip install -e git+https://github.com/aio-libs/aiohttp.git#egg=aiohttp
 
 
 Application
@@ -266,11 +266,11 @@ In this case, we will use:
   <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
 
 The custom worker subclass is defined in
-*aiohttp.worker.GunicornWebWorker* and should be used instead of the
+*aiohttp.GunicornWebWorker* and should be used instead of the
 *gaiohttp* worker provided by Gunicorn, which supports only
 aiohttp.wsgi applications::
 
-  >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.worker.GunicornWebWorker
+  >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Starting gunicorn 19.3.0
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Listening at: http://127.0.0.1:8080 (1249)
   [2015-03-11 18:27:21 +0000] [1249] [INFO] Using worker: aiohttp.worker.GunicornWebWorker
@@ -283,7 +283,7 @@ worker processes.
 
    If you want to use an alternative asyncio event loop
    `uvloop <https://github.com/MagicStack/uvloop>`_, you can use the
-   ``aiohttp.worker.GunicornUVLoopWebWorker`` worker class.
+   ``aiohttp.GunicornUVLoopWebWorker`` worker class.
 
 
 More information
@@ -304,7 +304,7 @@ By default aiohttp uses own defaults::
 
    '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
 
-For more information please read :ref:`Format Specification for Accees
+For more information please read :ref:`Format Specification for Access
 Log <aiohttp-logging-access-log-format-spec>`.
 
 .. disqus::

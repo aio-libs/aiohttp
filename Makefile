@@ -14,17 +14,16 @@ flake: .flake
 
 .flake: .install-deps $(shell find aiohttp -type f) \
                       $(shell find tests -type f) \
-                      $(shell find benchmark -type f) \
                       $(shell find examples -type f) \
                       $(shell find demos -type f)
 	@flake8 aiohttp --exclude=aiohttp/backport_cookies.py
 	@if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-	    flake8 examples tests demos benchmark && \
+	    flake8 examples tests demos && \
             python setup.py check -rms; \
 	fi
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
-            isort --diff -rc aiohttp tests benchmark examples; \
+            isort --diff -rc aiohttp tests examples; \
             false; \
 	fi
 	@touch .flake
@@ -44,8 +43,10 @@ cov cover coverage:
 	tox
 
 cov-dev: .develop
-	@py.test --cov=aiohttp --cov-report=term --cov-report=html tests
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "Run without extensions"
+	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
+	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+        @echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
 	@echo "Run without extensions"
@@ -84,6 +85,9 @@ clean:
 	@rm -f aiohttp/_parser.*.so
 	@rm -f aiohttp/_parser.*.pyd
 	@rm -rf .tox
+	@rm -f .develop
+	@rm -f .flake
+	@rm -f .install-deps
 
 doc:
 	@make -C docs html SPHINXOPTS="-W -E"

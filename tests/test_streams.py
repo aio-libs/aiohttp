@@ -546,6 +546,25 @@ class TestStreamReader(unittest.TestCase):
 
         self.assertRaises(RuntimeError, stream.read_nowait)
 
+    def test_readchunk(self):
+
+        stream = self._make_one()
+
+        def cb():
+            stream.feed_data(b'chunk1')
+            stream.feed_data(b'chunk2')
+            stream.feed_eof()
+        self.loop.call_soon(cb)
+
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'chunk1', data)
+
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'chunk2', data)
+
+        data = self.loop.run_until_complete(stream.read())
+        self.assertEqual(b'', data)
+
     def test___repr__(self):
         stream = self._make_one()
         self.assertEqual("<StreamReader>", repr(stream))
@@ -616,6 +635,8 @@ class TestEmptyStreamReader(unittest.TestCase):
             self.loop.run_until_complete(s.readline()), b'')
         self.assertEqual(
             self.loop.run_until_complete(s.readany()), b'')
+        self.assertEqual(
+            self.loop.run_until_complete(s.readchunk()), b'')
         self.assertRaises(
             asyncio.IncompleteReadError,
             self.loop.run_until_complete, s.readexactly(10))
@@ -670,7 +691,7 @@ class DataQueueMixin:
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
         waiter = self.buffer._waiter
-        self.assertIsInstance(waiter, asyncio.Future)
+        self.assertTrue(helpers.isfuture(waiter))
 
         read_task.cancel()
         self.assertRaises(
@@ -694,6 +715,18 @@ class DataQueueMixin:
             streams.EofStream,
             self.loop.run_until_complete, self.buffer.read())
 
+    def test_read_exc(self):
+        item = object()
+        self.buffer.feed_data(item)
+        self.buffer.set_exception(ValueError)
+        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
+
+        data = self.loop.run_until_complete(read_task)
+        self.assertIs(item, data)
+
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, self.buffer.read())
+
     def test_read_exception(self):
         self.buffer.set_exception(ValueError())
 
@@ -712,7 +745,7 @@ class DataQueueMixin:
     def test_read_exception_on_wait(self):
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
-        self.assertIsInstance(self.buffer._waiter, asyncio.Future)
+        self.assertTrue(helpers.isfuture(self.buffer._waiter))
 
         self.buffer.feed_eof()
         self.buffer.set_exception(ValueError())
@@ -794,7 +827,7 @@ def test_feed_data_waiters(loop):
 
     reader.feed_data(b'1')
     assert list(reader._buffer) == [b'1']
-    assert reader._buffer_size == 1
+    assert reader._size == 1
     assert reader.total_bytes == 1
 
     assert waiter.done()
@@ -843,6 +876,71 @@ def test_feed_eof_cancelled(loop):
     assert reader._eof_waiter is None
 
 
+def test_on_eof(loop):
+    reader = streams.StreamReader(loop=loop)
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+
+    assert not on_eof.called
+    reader.feed_eof()
+    assert on_eof.called
+
+
+def test_on_eof_empty_reader(loop):
+    reader = streams.EmptyStreamReader()
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+
+    assert on_eof.called
+
+
+def test_on_eof_exc_in_callback(loop):
+    reader = streams.StreamReader(loop=loop)
+
+    on_eof = mock.Mock()
+    on_eof.side_effect = ValueError
+
+    reader.on_eof(on_eof)
+    assert not on_eof.called
+    reader.feed_eof()
+    assert on_eof.called
+    assert not reader._eof_callbacks
+
+
+def test_on_eof_exc_in_callback_empty_stream_reader(loop):
+    reader = streams.EmptyStreamReader()
+
+    on_eof = mock.Mock()
+    on_eof.side_effect = ValueError
+
+    reader.on_eof(on_eof)
+    assert on_eof.called
+
+
+def test_on_eof_eof_is_set(loop):
+    reader = streams.StreamReader(loop=loop)
+    reader.feed_eof()
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+    assert on_eof.called
+    assert not reader._eof_callbacks
+
+
+def test_on_eof_eof_is_set_exception(loop):
+    reader = streams.StreamReader(loop=loop)
+    reader.feed_eof()
+
+    on_eof = mock.Mock()
+    on_eof.side_effect = ValueError
+
+    reader.on_eof(on_eof)
+    assert on_eof.called
+    assert not reader._eof_callbacks
+
+
 def test_set_exception(loop):
     reader = streams.StreamReader(loop=loop)
     waiter = reader._waiter = helpers.create_future(loop)
@@ -872,3 +970,14 @@ def test_set_exception_cancelled(loop):
     assert eof_waiter.exception() is None
     assert reader._waiter is None
     assert reader._eof_waiter is None
+
+
+def test_set_exception_eof_callbacks(loop):
+    reader = streams.StreamReader(loop=loop)
+
+    on_eof = mock.Mock()
+    reader.on_eof(on_eof)
+
+    reader.set_exception(ValueError())
+    assert not on_eof.called
+    assert not reader._eof_callbacks

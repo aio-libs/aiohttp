@@ -1,12 +1,15 @@
 Contributors
 ------------
-
 A. Jesse Jiryu Davis
 Adam Mills
+Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
 Alex Hayes
+Alex Key
+Alex Khomchenko
+Alex Lisovoy
 Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
@@ -17,9 +20,7 @@ Alexander Travov
 Alexandru Mihai
 Alexey Firsov
 Alexey Popravka
-Alex Key
-Alex Khomchenko
-Alex Lisovoy
+Alexey Stepanov
 Amy Boyle
 Andrei Ursulenko
 Andrej Antonov
@@ -41,6 +42,7 @@ Chris AtLee
 Chris Laws
 Chris Moore
 Christopher Schmitt
+Damien Nadé
 Daniel García
 Daniel Nelson
 Danny Song
@@ -54,6 +56,7 @@ Dmitry Trofimov
 Dmytro Kuznetsov
 Dustin J. Mitchell
 Eduard Iskandarov
+Eli Ribble
 Elizabeth Leddy
 Enrique Saez
 Erich Healy
@@ -67,6 +70,7 @@ Georges Dubus
 Greg Holt
 Gregory Haynes
 Günther Jena
+Hu Bo
 Hugo Herter
 Igor Pavlov
 Ingmar Steen
@@ -75,11 +79,14 @@ Jaesung Lee
 Jake Davis
 Jakub Wilk
 Jashandeep Sohi
+Jeongkyu Shin
 Jeroen van der Heijden
 Jesus Cea
 Jinkyu Yi
 Joel Watts
 Joongi Kim
+Josep Cugat
+Julia Tsemusheva
 Julien Duponchelle
 Junjie Tao
 Justas Trimailovas
@@ -91,9 +98,11 @@ Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
+Lu Gong
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Makc Belousow
 Manuel Miranda
 Marco Paolini
 Mariano Anaya
@@ -101,6 +110,7 @@ Martin Melka
 Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
+Matthieu Rigal
 Michael Ihnatenko
 Mikhail Kashkin
 Mikhail Lukyanchenko
@@ -113,19 +123,20 @@ Nikolay Novik
 Olaf Conradi
 Pahaz Blinov
 Pankaj Pandey
-Pawel Miech
 Pau Freixes
 Paul Colomiets
 Paulus Schoutsen
+Pawel Miech
 Philipp A.
 Rafael Viotti
 Raúl Cumplido
 Required Field
 Robert Lu
+Roman Podoliaka
 Samuel Colvin
+Sean Hunt
 Sebastian Hanula
 Sebastian Hüther
-Sean Hunt
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
@@ -140,6 +151,7 @@ Sviatoslav Bulbakha
 Taha Jahangir
 Taras Voinarovskyi
 Terence Honles
+Thanos Lefteris
 Thijs Vermeir
 Thomas Grainger
 Tolga Tezel
@@ -154,11 +166,13 @@ Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
+W. Trevor King
+Will McGugan
 Willem de Groot
 Wilson Ong
-W. Trevor King
 Yannick Koechlin
 Young-Ho Cha
+Yuriy Shatrov
 Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг

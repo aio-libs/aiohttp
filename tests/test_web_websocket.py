@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, helpers, signals, web
+from aiohttp import WSMessage, WSMsgType, helpers, signals
 from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
@@ -24,6 +24,7 @@ def app(loop):
 def writer():
     writer = mock.Mock()
     writer.drain.return_value = ()
+    writer.write_eof.return_value = ()
     return writer
 
 
@@ -49,7 +50,8 @@ def make_request(app, protocol, writer):
             headers['SEC-WEBSOCKET-PROTOCOL'] = 'chat, superchat'
 
         return make_mocked_request(
-            method, path, headers, app=app, protocol=protocol, writer=writer)
+            method, path, headers,
+            app=app, protocol=protocol, payload_writer=writer)
 
     return maker
 
@@ -93,7 +95,6 @@ def test_nonstarted_close():
 
 @asyncio.coroutine
 def test_nonstarted_receive_str():
-
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.receive_str()
@@ -101,7 +102,6 @@ def test_nonstarted_receive_str():
 
 @asyncio.coroutine
 def test_nonstarted_receive_bytes():
-
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         yield from ws.receive_bytes()
@@ -116,7 +116,6 @@ def test_nonstarted_receive_json():
 
 @asyncio.coroutine
 def test_receive_str_nonstring(make_request):
-
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     yield from ws.prepare(req)
@@ -505,8 +504,3 @@ def test_prepare_twice_idempotent(make_request):
     impl1 = yield from ws.prepare(req)
     impl2 = yield from ws.prepare(req)
     assert impl1 is impl2
-
-
-def test_msgtype_alias():
-    # deprecated since 1.0
-    assert web.MsgType is WSMsgType

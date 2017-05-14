@@ -26,11 +26,6 @@ except ImportError:  # pragma: no cover
 
 
 @pytest.fixture
-def loop():
-    return mock.Mock()
-
-
-@pytest.fixture
 def protocol():
     return mock.Mock()
 
@@ -77,6 +72,40 @@ test2: data\r
     assert not msg.should_close
     assert msg.compression is None
     assert not msg.upgrade
+
+
+def test_parse(parser):
+    text = b'GET /test HTTP/1.1\r\n\r\n'
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, _ = messages[0]
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+
+
+@asyncio.coroutine
+def test_parse_body(parser):
+    text = b'GET /test HTTP/1.1\r\nContent-Length: 4\r\n\r\nbody'
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    _, payload = messages[0]
+    body = yield from payload.read(4)
+    assert body == b'body'
+
+
+def test_parse_delayed(parser):
+    text = b'GET /test HTTP/1.1\r\n'
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 0
+    assert not upgrade
+
+    messages, upgrade, tail = parser.feed_data(b'\r\n')
+    assert len(messages) == 1
+    msg = messages[0][0]
+    assert msg.method == 'GET'
 
 
 def test_headers_multi_feed(parser):
@@ -527,6 +556,12 @@ def test_parse_length_payload(response):
     assert b'data' == b''.join(d for d in payload._buffer)
 
 
+def test_parse_no_length_payload(parser):
+    text = b'PUT / HTTP/1.1\r\n\r\n'
+    msg, payload = parser.feed_data(text)[0][0]
+    assert payload.is_eof()
+
+
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):
@@ -542,12 +577,21 @@ class TestParsePayload(unittest.TestCase):
         self.assertTrue(out.is_eof())
         self.assertEqual([(bytearray(b'data'), 4)], list(out._buffer))
 
+    def test_parse_no_body(self):
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        p = HttpPayloadParser(out, method='PUT')
+
+        self.assertTrue(out.is_eof())
+        self.assertTrue(p.done)
+
     def test_parse_length_payload_eof(self):
         out = aiohttp.FlowControlDataQueue(self.stream)
 
         p = HttpPayloadParser(out, length=4)
         p.feed_data(b'da')
-        p.feed_eof()
+
+        with pytest.raises(http_exceptions.ContentLengthError):
+            p.feed_eof()
 
     def test_parse_chunked_payload_size_error(self):
         out = aiohttp.FlowControlDataQueue(self.stream)

@@ -11,9 +11,11 @@ import sys
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
-from .helpers import AccessLogger, ensure_future
+from .helpers import AccessLogger, create_future, ensure_future
 
-__all__ = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
+__all__ = ('GunicornWebWorker',
+           'GunicornUVLoopWebWorker',
+           'GunicornTokioWebWorker')
 
 
 class GunicornWebWorker(base.Worker):
@@ -53,6 +55,7 @@ class GunicornWebWorker(base.Worker):
         if hasattr(self.wsgi, 'make_handler'):
             access_log = self.log.access_log if self.cfg.accesslog else None
             return app.make_handler(
+                loop=self.loop,
                 logger=self.log,
                 slow_request_timeout=self.cfg.timeout,
                 keepalive_timeout=self.cfg.keepalive,
@@ -134,7 +137,7 @@ class GunicornWebWorker(base.Worker):
     def _wait_next_notify(self):
         self._notify_waiter_done()
 
-        self._notify_waiter = waiter = asyncio.Future(loop=self.loop)
+        self._notify_waiter = waiter = create_future(self.loop)
         self.loop.call_later(1.0, self._notify_waiter_done)
 
         return waiter
@@ -233,5 +236,22 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
         # asyncio.get_event_loop() will create an instance
         # of uvloop event loop.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+        super().init_process()
+
+
+class GunicornTokioWebWorker(GunicornWebWorker):
+
+    def init_process(self):
+        import tokio
+
+        # Close any existing event loop before setting a
+        # new policy.
+        asyncio.get_event_loop().close()
+
+        # Setup tokio policy, so that every
+        # asyncio.get_event_loop() will create an instance
+        # of tokio event loop.
+        asyncio.set_event_loop_policy(tokio.EventLoopPolicy())
 
         super().init_process()

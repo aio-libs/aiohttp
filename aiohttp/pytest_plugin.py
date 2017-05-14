@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import tempfile
+import warnings
 
 import pytest
 from py import path
@@ -13,29 +14,59 @@ from .test_utils import (RawTestServer, TestClient, TestServer,
 
 try:
     import uvloop
-except:
+except:  # pragma: no cover
     uvloop = None
+
+try:
+    import tokio
+except:  # pragma: no cover
+    tokio = None
 
 
 def pytest_addoption(parser):
-    parser.addoption('--fast', action='store_true', default=False,
-                     help='run tests faster by disabling extra checks')
-    parser.addoption('--with-uvloop-only', action='store_true', default=False,
-                     help='run tests with uvloop only if available')
-    parser.addoption('--without-uvloop', action='store_true', default=False,
-                     help='run tests without uvloop')
-    parser.addoption('--enable-loop-debug', action='store_true', default=False,
-                     help='enable event loop debug mode')
+    parser.addoption(
+        '--fast', action='store_true', default=False,
+        help='run tests faster by disabling extra checks')
+    parser.addoption(
+        '--loop', action='append', default=[],
+        help='run tests with specific loop: pyloop, uvloop, tokio')
+    parser.addoption(
+        '--enable-loop-debug', action='store_true', default=False,
+        help='enable event loop debug mode')
 
 
 @pytest.fixture
 def fast(request):
     """ --fast config option """
-    return request.config.getoption('--fast')
+    return request.config.getoption('--fast')  # pragma: no cover
+
+
+@contextlib.contextmanager
+def _runtime_warning_context():
+    """
+    Context manager which checks for RuntimeWarnings, specifically to
+    avoid "coroutine 'X' was never awaited" warnings being missed.
+
+    If RuntimeWarnings occur in the context a RuntimeError is raised.
+    """
+    with warnings.catch_warnings(record=True) as _warnings:
+        yield
+        rw = ['{w.filename}:{w.lineno}:{w.message}'.format(w=w)
+              for w in _warnings if w.category == RuntimeWarning]
+        if rw:
+            raise RuntimeError('{} Runtime Warning{},\n{}'.format(
+                len(rw),
+                '' if len(rw) == 1 else 's',
+                '\n'.join(rw)
+            ))
 
 
 @contextlib.contextmanager
 def _passthrough_loop_context(loop, fast=False):
+    """
+    setups and tears down a loop unless one is passed in via the loop
+    argument when it's passed straight through.
+    """
     if loop:
         # loop already exists, pass it straight through
         yield loop
@@ -61,44 +92,62 @@ def pytest_pyfunc_call(pyfuncitem):
     fast = pyfuncitem.config.getoption("--fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get('loop', None)
-        with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
-            testargs = {arg: pyfuncitem.funcargs[arg]
-                        for arg in pyfuncitem._fixtureinfo.argnames}
+        with _runtime_warning_context():
+            with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
+                testargs = {arg: pyfuncitem.funcargs[arg]
+                            for arg in pyfuncitem._fixtureinfo.argnames}
 
-            task = _loop.create_task(pyfuncitem.obj(**testargs))
-            _loop.run_until_complete(task)
+                task = _loop.create_task(pyfuncitem.obj(**testargs))
+                _loop.run_until_complete(task)
 
         return True
 
 
 def pytest_configure(config):
-    fast = config.getoption('--fast')
-    uvloop_only = config.getoption('--with-uvloop-only')
+    loops = config.getoption('--loop')
 
-    without_uvloop = False
-    if fast:
-        without_uvloop = True
+    factories = {'pyloop': asyncio.new_event_loop}
 
-    if config.getoption('--without-uvloop'):
-        without_uvloop = True
+    if uvloop is not None:  # pragma: no cover
+        factories['uvloop'] = uvloop.new_event_loop
+
+    if tokio is not None:  # pragma: no cover
+        factories['tokio'] = tokio.new_event_loop
 
     LOOP_FACTORIES.clear()
-    if uvloop_only and uvloop is not None:
-        LOOP_FACTORIES.append(uvloop.new_event_loop)
-    elif without_uvloop:
-        LOOP_FACTORIES.append(asyncio.new_event_loop)
+    LOOP_FACTORY_IDS.clear()
+
+    if loops:
+        for names in (name.split(',') for name in loops):
+            for name in names:
+                name = name.strip()
+                if name not in factories:
+                    raise ValueError(
+                        "Unknown loop '%s', available loops: %s" % (
+                            name, list(factories.keys())))
+
+                LOOP_FACTORIES.append(factories[name])
+                LOOP_FACTORY_IDS.append(name)
     else:
         LOOP_FACTORIES.append(asyncio.new_event_loop)
-        if uvloop is not None:
+        LOOP_FACTORY_IDS.append('pyloop')
+
+        if uvloop is not None:  # pragma: no cover
             LOOP_FACTORIES.append(uvloop.new_event_loop)
+            LOOP_FACTORY_IDS.append('uvloop')
+
+        if tokio is not None:
+            LOOP_FACTORIES.append(tokio.new_event_loop)
+            LOOP_FACTORY_IDS.append('tokio')
 
     asyncio.set_event_loop(None)
 
 
 LOOP_FACTORIES = []
+LOOP_FACTORY_IDS = []
 
 
-@pytest.yield_fixture(params=LOOP_FACTORIES)
+@pytest.fixture(params=LOOP_FACTORIES, ids=LOOP_FACTORY_IDS)
 def loop(request):
     """Return an instance of the event loop."""
     fast = request.config.getoption('--fast')
@@ -106,7 +155,7 @@ def loop(request):
 
     with loop_context(request.param, fast=fast) as _loop:
         if debug:
-            _loop.set_debug(True)
+            _loop.set_debug(True)  # pragma: no cover
         yield _loop
 
 
@@ -126,11 +175,8 @@ def test_server(loop):
 
     @asyncio.coroutine
     def go(app, **kwargs):
-        assert app.loop is loop, \
-            "Application is attached to other event loop"
-
         server = TestServer(app)
-        yield from server.start_server(**kwargs)
+        yield from server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server
 
@@ -154,8 +200,8 @@ def raw_test_server(loop):
 
     @asyncio.coroutine
     def go(handler, **kwargs):
-        server = RawTestServer(handler, loop=loop)
-        yield from server.start_server(**kwargs)
+        server = RawTestServer(handler)
+        yield from server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server
 
@@ -183,22 +229,16 @@ def test_client(loop):
     def go(__param, *args, **kwargs):
         if isinstance(__param, Application):
             assert not args, "args should be empty"
-            assert __param.loop is loop, \
-                "Application is attached to other event loop"
-            client = TestClient(__param, **kwargs)
+            client = TestClient(__param, loop=loop, **kwargs)
         elif isinstance(__param, TestServer):
             assert not args, "args should be empty"
-            assert __param.app.loop is loop, \
-                "TestServer is attached to other event loop"
-            client = TestClient(__param, **kwargs)
+            client = TestClient(__param, loop=loop, **kwargs)
         elif isinstance(__param, RawTestServer):
             assert not args, "args should be empty"
-            assert __param._loop is loop, \
-                "TestServer is attached to other event loop"
-            client = TestClient(__param, **kwargs)
+            client = TestClient(__param, loop=loop, **kwargs)
         else:
             __param = __param(loop, *args, **kwargs)
-            client = TestClient(__param)
+            client = TestClient(__param, loop=loop)
 
         yield from client.start_server()
         clients.append(client)

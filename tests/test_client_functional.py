@@ -13,8 +13,7 @@ from multidict import MultiDict
 
 import aiohttp
 from aiohttp import hdrs, web
-from aiohttp.client import FingerprintMismatch
-from aiohttp.helpers import create_future
+from aiohttp.client import ServerFingerprintMismatch
 from aiohttp.multipart import MultipartWriter
 
 
@@ -37,6 +36,10 @@ def fname(here):
     return here / 'sample.key'
 
 
+def ceil(val):
+    return val
+
+
 @asyncio.coroutine
 def test_keepalive_two_requests_success(loop, test_client):
     @asyncio.coroutine
@@ -45,7 +48,7 @@ def test_keepalive_two_requests_success(loop, test_client):
         assert b'' == body
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     connector = aiohttp.TCPConnector(loop=loop, limit=1)
@@ -67,16 +70,16 @@ def test_keepalive_response_released(loop, test_client):
         assert b'' == body
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     connector = aiohttp.TCPConnector(loop=loop, limit=1)
     client = yield from test_client(app, connector=connector)
 
     resp1 = yield from client.get('/')
-    yield from resp1.release()
+    resp1.release()
     resp2 = yield from client.get('/')
-    yield from resp2.release()
+    resp2.release()
 
     assert 1 == len(client._session.connector._conns)
 
@@ -91,7 +94,7 @@ def test_keepalive_server_force_close_connection(loop, test_client):
         response.force_close()
         return response
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     connector = aiohttp.TCPConnector(loop=loop, limit=1)
@@ -106,6 +109,22 @@ def test_keepalive_server_force_close_connection(loop, test_client):
 
 
 @asyncio.coroutine
+def test_release_early(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        yield from request.read()
+        return web.Response(body=b'OK')
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/')
+    assert resp.closed
+    assert 1 == len(client._session.connector._conns)
+
+
+@asyncio.coroutine
 def test_HTTP_304(loop, test_client):
     @asyncio.coroutine
     def handler(request):
@@ -113,7 +132,7 @@ def test_HTTP_304(loop, test_client):
         assert b'' == body
         return web.Response(status=304)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -131,7 +150,7 @@ def test_HTTP_304_WITH_BODY(loop, test_client):
         assert b'' == body
         return web.Response(body=b'test', status=304)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -148,7 +167,7 @@ def test_auto_header_user_agent(loop, test_client):
         assert 'aiohttp' in request.headers['user-agent']
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -163,7 +182,7 @@ def test_skip_auto_headers_user_agent(loop, test_client):
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -179,7 +198,7 @@ def test_skip_default_auto_headers_user_agent(loop, test_client):
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app, skip_auto_headers=['user-agent'])
 
@@ -194,7 +213,7 @@ def test_skip_auto_headers_content_type(loop, test_client):
         assert hdrs.CONTENT_TYPE not in request.headers
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -214,7 +233,7 @@ def test_post_data_bytesio(loop, test_client):
         assert data == val
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('POST', '/', handler)
     client = yield from test_client(app)
 
@@ -233,11 +252,51 @@ def test_post_data_with_bytesio_file(loop, test_client):
         assert data == post_data['file'].file.read()
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('POST', '/', handler)
     client = yield from test_client(app)
 
     resp = yield from client.post('/', data={'file': io.BytesIO(data)})
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_post_data_stringio(loop, test_client):
+    data = 'some buffer'
+
+    @asyncio.coroutine
+    def handler(request):
+        assert len(data) == request.content_length
+        assert request.headers['CONTENT-TYPE'] == 'text/plain; charset=utf-8'
+        val = yield from request.text()
+        assert data == val
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('POST', '/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/', data=io.StringIO(data))
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_post_data_textio_encoding(loop, test_client):
+    data = 'текст'
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.headers['CONTENT-TYPE'] == 'text/plain; charset=koi8-r'
+        val = yield from request.text()
+        assert data == val
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('POST', '/', handler)
+    client = yield from test_client(app)
+
+    pl = aiohttp.TextIOPayload(io.StringIO(data), encoding='koi8-r')
+    resp = yield from client.post('/', data=pl)
     assert 200 == resp.status
 
 
@@ -249,7 +308,7 @@ def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     def handler(request):
         return web.HTTPOk(text='Test message')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = yield from test_server(app, ssl=ssl_ctx)
     client = yield from test_client(server, connector=connector)
@@ -282,7 +341,7 @@ def test_tcp_connector_fingerprint_ok(test_server, test_client,
     else:
         connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
                                          fingerprint=fingerprint)
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = yield from test_server(app, ssl=ssl_ctx)
     client = yield from test_client(server, connector=connector)
@@ -310,12 +369,12 @@ def test_tcp_connector_fingerprint_fail(test_server, test_client,
     connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
                                      fingerprint=bad_fingerprint)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = yield from test_server(app, ssl=ssl_ctx)
     client = yield from test_client(server, connector=connector)
 
-    with pytest.raises(FingerprintMismatch) as cm:
+    with pytest.raises(ServerFingerprintMismatch) as cm:
         yield from client.get('/')
     exc = cm.value
     assert exc.expected == bad_fingerprint
@@ -329,15 +388,15 @@ def test_format_task_get(test_server, loop):
     def handler(request):
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = yield from test_server(app)
     client = aiohttp.ClientSession(loop=loop)
     task = loop.create_task(client.get(server.make_url('/')))
-    assert "{}".format(task)[:18] == "<Task pending coro"
+    assert "{}".format(task).startswith("<Task pending")
     resp = yield from task
     resp.close()
-    yield from client.close()
+    client.close()
 
 
 @asyncio.coroutine
@@ -347,7 +406,7 @@ def test_str_params(loop, test_client):
         assert 'q=t est' in request.rel_url.query_string
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -366,7 +425,7 @@ def test_drop_params_on_redirect(loop, test_client):
         assert request.rel_url.query_string == 'a=redirect'
         return web.Response(status=200)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
     client = yield from test_client(app)
@@ -385,7 +444,7 @@ def test_drop_fragment_on_redirect(loop, test_client):
     def handler_ok(request):
         return web.Response(status=200)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
     client = yield from test_client(app)
@@ -401,7 +460,7 @@ def test_drop_fragment(loop, test_client):
     def handler_ok(request):
         return web.Response(status=200)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
     client = yield from test_client(app)
 
@@ -420,7 +479,7 @@ def test_history(loop, test_client):
     def handler_ok(request):
         return web.Response(status=200)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
     client = yield from test_client(app)
@@ -445,7 +504,7 @@ def test_keepalive_closed_by_server(loop, test_client):
         resp.force_close()
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     connector = aiohttp.TCPConnector(loop=loop, limit=1)
@@ -467,7 +526,7 @@ def test_wait_for(loop, test_client):
     def handler(request):
         return web.Response(body=b'OK')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -483,32 +542,18 @@ def test_raw_headers(loop, test_client):
     def handler(request):
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.get('/')
     assert resp.status == 200
-    assert resp.raw_headers == ((b'Content-Length', b'0'),
-                                (b'Content-Type', b'application/octet-stream'),
-                                (b'Date', mock.ANY),
-                                (b'Server', mock.ANY))
+
+    raw_headers = tuple((bytes(h), bytes(v)) for h, v in resp.raw_headers)
+    assert raw_headers == ((b'Content-Length', b'0'),
+                           (b'Content-Type', b'application/octet-stream'),
+                           (b'Date', mock.ANY),
+                           (b'Server', mock.ANY))
     resp.close()
-
-
-@asyncio.coroutine
-def test_http_request_with_version(loop, test_client):
-    @asyncio.coroutine
-    def handler(request):
-        return web.Response()
-
-    app = web.Application(loop=loop)
-    app.router.add_route('GET', '/', handler)
-    client = yield from test_client(app)
-
-    with pytest.warns(DeprecationWarning):
-        resp = yield from client.get('/', version=aiohttp.HttpVersion11)
-        assert resp.status == 200
-        resp.close()
 
 
 @asyncio.coroutine
@@ -523,17 +568,18 @@ def test_204_with_gzipped_content_encoding(loop, test_client):
         yield from resp.prepare(request)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('DELETE', '/', handler)
     client = yield from test_client(app)
 
     resp = yield from client.delete('/')
     assert resp.status == 204
-    yield from resp.release()
+    assert resp.closed
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_headers(loop, test_client):
+def test_timeout_on_reading_headers(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):
@@ -542,7 +588,7 @@ def test_timeout_on_reading_headers(loop, test_client):
         yield from resp.prepare(request)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
@@ -551,8 +597,10 @@ def test_timeout_on_reading_headers(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_conn_reading_headers(loop, test_client):
+def test_timeout_on_conn_reading_headers(loop, test_client, mocker):
     # tests case where user did not set a connection timeout
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):
@@ -561,7 +609,7 @@ def test_timeout_on_conn_reading_headers(loop, test_client):
         yield from resp.prepare(request)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     conn = aiohttp.TCPConnector(loop=loop)
@@ -572,7 +620,9 @@ def test_timeout_on_conn_reading_headers(loop, test_client):
 
 
 @asyncio.coroutine
-def test_timeout_on_session_read_timeout(loop, test_client):
+def test_timeout_on_session_read_timeout(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse()
@@ -580,35 +630,54 @@ def test_timeout_on_session_read_timeout(loop, test_client):
         yield from resp.prepare(request)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     conn = aiohttp.TCPConnector(loop=loop)
     client = yield from test_client(app, connector=conn, read_timeout=0.01)
 
     with pytest.raises(asyncio.TimeoutError):
-        yield from client.get('/', timeout=None)
+        yield from client.get('/')
 
 
 @asyncio.coroutine
-def test_timeout_on_reading_data(loop, test_client):
+def test_timeout_on_reading_data(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
         yield from resp.prepare(request)
         yield from resp.drain()
-        yield from asyncio.sleep(0.1, loop=loop)
+        yield from asyncio.sleep(0.2, loop=loop)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.01)
+    resp = yield from client.get('/', timeout=0.05)
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
+
+
+@asyncio.coroutine
+def test_timeout_none(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        yield from resp.prepare(request)
+        return resp
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/', timeout=None)
+    assert resp.status == 200
 
 
 @asyncio.coroutine
@@ -627,7 +696,7 @@ def test_readline_error_on_conn_close(loop, test_client):
                 yield from asyncio.sleep(0.5, loop=loop)
             return resp_
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
@@ -635,7 +704,7 @@ def test_readline_error_on_conn_close(loop, test_client):
         timer_started = False
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
-        with pytest.raises(aiohttp.ClientDisconnectedError):
+        with pytest.raises(aiohttp.ClientConnectionError):
             while True:
                 data = yield from resp.content.readline()
                 data = data.strip()
@@ -661,7 +730,7 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
         yield from asyncio.sleep(0.5, loop=loop)
         return resp_
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
@@ -674,7 +743,7 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
             if not data:
                 break
             assert data == b'data'
-        yield from resp.release()
+
         assert resp.content.exception() is None
 
 
@@ -687,17 +756,16 @@ def test_error_not_overwrote_on_conn_close(loop, test_client):
         yield from resp_.prepare(request)
         return resp_
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
     with aiohttp.ClientSession(loop=loop) as session:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
-        resp.content.set_exception(aiohttp.ClientRequestError())
+        resp.content.set_exception(ValueError())
 
-    yield from resp.release()
-    assert isinstance(resp.content.exception(), aiohttp.ClientRequestError)
+    assert isinstance(resp.content.exception(), ValueError)
 
 
 @asyncio.coroutine
@@ -706,7 +774,7 @@ def test_HTTP_200_OK_METHOD(loop, test_client):
     def handler(request):
         return web.Response(text=request.method)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
 
@@ -726,8 +794,6 @@ def test_HTTP_200_OK_METHOD(loop, test_client):
         else:
             assert meth.upper() == content
 
-        yield from resp.release()
-
 
 @asyncio.coroutine
 def test_HTTP_200_OK_METHOD_connector(loop, test_client):
@@ -735,14 +801,13 @@ def test_HTTP_200_OK_METHOD_connector(loop, test_client):
     def handler(request):
         return web.Response(text=request.method)
 
-    conn = aiohttp.TCPConnector(
-        conn_timeout=0.2, resolve=True, loop=loop)
+    conn = aiohttp.TCPConnector(resolve=True, loop=loop)
     conn.clear_dns_cache()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         app.router.add_route(meth.upper(), '/', handler)
-    client = yield from test_client(app, connector=conn)
+    client = yield from test_client(app, connector=conn, conn_timeout=0.2)
 
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         resp = yield from client.request(meth, '/')
@@ -758,8 +823,6 @@ def test_HTTP_200_OK_METHOD_connector(loop, test_client):
         else:
             assert meth.upper() == content
 
-        yield from resp.release()
-
 
 @asyncio.coroutine
 def test_HTTP_302_REDIRECT_GET(loop, test_client):
@@ -771,7 +834,7 @@ def test_HTTP_302_REDIRECT_GET(loop, test_client):
     def redirect(request):
         return web.HTTPFound(location='/')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_get('/redirect', redirect)
     client = yield from test_client(app)
@@ -792,7 +855,7 @@ def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     def redirect(request):
         return web.HTTPFound(location='/')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_get('/redirect', redirect)
     app.router.add_head('/', handler)
@@ -813,7 +876,7 @@ def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
     def redirect(request):
         return web.HTTPFound(location='ftp://127.0.0.1/test/')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/redirect', redirect)
     client = yield from test_client(app)
 
@@ -831,7 +894,7 @@ def test_HTTP_302_REDIRECT_POST(loop, test_client):
     def redirect(request):
         return web.HTTPFound(location='/')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
     client = yield from test_client(app)
@@ -857,7 +920,7 @@ def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
         return web.HTTPFound(location='/')
 
     data = json.dumps({'some': 'data'})
-    app = web.Application(loop=loop, debug=True)
+    app = web.Application(debug=True)
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
     client = yield from test_client(app)
@@ -882,7 +945,7 @@ def test_HTTP_307_REDIRECT_POST(loop, test_client):
         yield from request.read()
         return web.HTTPTemporaryRedirect(location='/')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     app.router.add_post('/redirect', redirect)
     client = yield from test_client(app)
@@ -909,7 +972,7 @@ def test_HTTP_302_max_redirects(loop, test_client):
         else:
             return web.HTTPFound(location='/')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_get(r'/redirect/{count:\d+}', redirect)
     client = yield from test_client(app)
@@ -927,7 +990,7 @@ def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
         return web.Response(text='&'.join(
             k+'='+v for k, v in request.query.items()))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -943,9 +1006,9 @@ def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
-            k+'='+v for k, v in request.GET.items()))
+            k+'='+v for k, v in request.query.items()))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -962,9 +1025,9 @@ def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='&'.join(
-            k+'='+v for k, v in request.GET.items()))
+            k+'='+v for k, v in request.query.items()))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -982,7 +1045,7 @@ def test_POST_DATA(loop, test_client):
         data = yield from request.post()
         return web.json_response(dict(data))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1000,7 +1063,7 @@ def test_POST_DATA_with_explicit_formdata(loop, test_client):
         data = yield from request.post()
         return web.json_response(dict(data))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1014,15 +1077,16 @@ def test_POST_DATA_with_explicit_formdata(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_DATA_with_charset(loop, test_client):
     @asyncio.coroutine
     def handler(request):
-        data = yield from request.post()
-        return web.Response(text=data['name'])
+        mp = yield from request.multipart()
+        part = yield from mp.next()
+        text = yield from part.text()
+        return web.Response(text=text)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1036,21 +1100,88 @@ def test_POST_DATA_with_charset(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
+@asyncio.coroutine
+def test_POST_DATA_formdats_with_charset(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        mp = yield from request.post()
+        assert 'name' in mp
+        return web.Response(text=mp['name'])
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    form = aiohttp.FormData(charset='koi8-r')
+    form.add_field('name', 'текст')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'текст'
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_DATA_with_charset_post(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        return web.Response(text=data['name'])
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    form = aiohttp.FormData()
+    form.add_field('name', 'текст', content_type='text/plain; charset=koi8-r')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'текст'
+    resp.close()
+
+
 @asyncio.coroutine
 def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         data = yield from request.post()
-        assert data['name'] == b'text'  # should it be str?
-        return web.Response()
+        assert data['name'] == 'text'
+        return web.Response(text=data['name'])
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'text', content_transfer_encoding='base64')
+
+    resp = yield from client.post('/', data=form)
+    assert 200 == resp.status
+    content = yield from resp.text()
+    assert content == 'text'
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_DATA_with_content_type_context_transfer_encoding(
+        loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.post()
+        assert data['name'] == 'text'
+        return web.Response(body=data['name'])
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    form = aiohttp.FormData()
+    form.add_field('name', 'text',
+                   content_type='text/plain',
+                   content_transfer_encoding='base64')
 
     resp = yield from client.post('/', data=form)
     assert 200 == resp.status
@@ -1067,7 +1198,7 @@ def test_POST_MultiDict(loop, test_client):
         assert data == MultiDict([('q', 'test1'), ('q', 'test2')])
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1084,7 +1215,7 @@ def test_POST_DATA_DEFLATE(loop, test_client):
         data = yield from request.post()
         return web.json_response(dict(data))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1108,14 +1239,13 @@ def test_POST_FILES(loop, test_client, fname):
         assert data['test'].file.read() == b'data'
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
     with fname.open() as f:
-        resp = yield from client.post('/', data={'some': f, 'test': b'data'},
-                                      chunked=True,
-                                      headers={'Transfer-Encoding': 'chunked'})
+        resp = yield from client.post(
+            '/', data={'some': f, 'test': b'data'}, chunked=True)
         assert 200 == resp.status
         resp.close()
 
@@ -1132,7 +1262,7 @@ def test_POST_FILES_DEFLATE(loop, test_client, fname):
         assert content1 == content2
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1155,7 +1285,7 @@ def test_POST_FILES_STR(loop, test_client, fname):
         assert content1 == content2
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1175,7 +1305,7 @@ def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
         assert content == data
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1196,7 +1326,7 @@ def test_POST_FILES_LIST(loop, test_client, fname):
         assert content == data['some'].file.read()
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1218,7 +1348,7 @@ def test_POST_FILES_CT(loop, test_client, fname):
         assert content == data['some'].file.read()
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1233,12 +1363,59 @@ def test_POST_FILES_CT(loop, test_client, fname):
 @asyncio.coroutine
 def test_POST_FILES_SINGLE(loop, test_client, fname):
 
-    app = web.Application(loop=loop)
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.text()
+        with fname.open('r') as f:
+            content = f.read()
+            assert content == data
+            # if system cannot determine 'application/pgp-keys' MIME type
+            # then use 'application/octet-stream' default
+        assert request.content_type in ['application/pgp-keys',
+                                        'text/plain',
+                                        'application/octet-stream']
+        assert 'content-disposition' not in request.headers
+
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
     client = yield from test_client(app)
 
     with fname.open() as f:
-        with pytest.raises(ValueError):
-            yield from client.post('/', data=f)
+        resp = yield from client.post('/', data=f)
+        assert 200 == resp.status
+        resp.close()
+
+
+@asyncio.coroutine
+def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
+
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.text()
+        with fname.open('r') as f:
+            content = f.read()
+            assert content == data
+            # if system cannot determine 'application/pgp-keys' MIME type
+            # then use 'application/octet-stream' default
+        assert request.content_type in ['application/pgp-keys',
+                                        'text/plain',
+                                        'application/octet-stream']
+        assert request.headers['content-disposition'] == (
+            "inline; filename=\"sample.key\"; filename*=utf-8''sample.key")
+
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with fname.open() as f:
+        resp = yield from client.post(
+            '/', data=aiohttp.get_payload(f, disposition='inline'))
+        assert 200 == resp.status
+        resp.close()
 
 
 @asyncio.coroutine
@@ -1256,7 +1433,7 @@ def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
                                         'application/octet-stream']
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1276,7 +1453,7 @@ def test_POST_FILES_IO(loop, test_client):
         assert data['unknown'].filename == 'unknown'
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1301,7 +1478,7 @@ def test_POST_MULTIPART(loop, test_client):
         assert data['unknown'].filename == 'unknown'
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1328,7 +1505,7 @@ def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
 
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1348,7 +1525,7 @@ def test_POST_FILES_WITH_DATA(loop, test_client, fname):
         data = yield from request.post()
         assert data['test'] == 'true'
         assert data['some'].content_type in ['application/pgp-keys',
-                                             'text/plain',
+                                             'text/plain; charset=utf-8',
                                              'application/octet-stream']
         assert data['some'].filename == fname.name
         with fname.open('rb') as f:
@@ -1356,7 +1533,7 @@ def test_POST_FILES_WITH_DATA(loop, test_client, fname):
 
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
@@ -1366,7 +1543,6 @@ def test_POST_FILES_WITH_DATA(loop, test_client, fname):
         resp.close()
 
 
-@pytest.mark.xfail
 @asyncio.coroutine
 def test_POST_STREAM_DATA(loop, test_client, fname):
     @asyncio.coroutine
@@ -1375,34 +1551,66 @@ def test_POST_STREAM_DATA(loop, test_client, fname):
         content = yield from request.read()
         with fname.open('rb') as f:
             expected = f.read()
-        assert request.content_length == str(len(expected))
-        assert content == expected
+            assert request.content_length == len(expected)
+            assert content == expected
 
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    with fname.open() as f:
-        data = f.read()
-        fut = create_future(loop)
+    with fname.open('rb') as f:
+        data_size = len(f.read())
 
-        @asyncio.coroutine
-        def stream():
-            yield from fut
-            yield data
+    @aiohttp.streamer
+    def stream(writer, fname):
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
 
-        loop.call_later(0.01, fut.set_result, None)
-
-        resp = yield from client.post(
-            '/', data=stream(),
-            headers={'Content-Length': str(len(data))})
-        assert 200 == resp.status
-        resp.close()
+    resp = yield from client.post(
+        '/', data=stream(fname), headers={'Content-Length': str(data_size)})
+    assert 200 == resp.status
+    resp.close()
 
 
-@pytest.mark.xfail
+@asyncio.coroutine
+def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/octet-stream'
+        content = yield from request.read()
+        with fname.open('rb') as f:
+            expected = f.read()
+            assert request.content_length == len(expected)
+            assert content == expected
+
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with fname.open('rb') as f:
+        data_size = len(f.read())
+
+    @aiohttp.streamer
+    def stream(writer):
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                yield from writer.write(data)
+                data = f.read(100)
+
+    resp = yield from client.post(
+        '/', data=stream, headers={'Content-Length': str(data_size)})
+    assert 200 == resp.status
+    resp.close()
+
+
 @asyncio.coroutine
 def test_POST_StreamReader(fname, loop, test_client):
     @asyncio.coroutine
@@ -1411,16 +1619,16 @@ def test_POST_StreamReader(fname, loop, test_client):
         content = yield from request.read()
         with fname.open('rb') as f:
             expected = f.read()
-        assert request.content_length == str(len(expected))
+        assert request.content_length == len(expected)
         assert content == expected
 
         return web.HTTPOk()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         data = f.read()
 
     stream = aiohttp.StreamReader(loop=loop)
@@ -1432,6 +1640,58 @@ def test_POST_StreamReader(fname, loop, test_client):
         headers={'Content-Length': str(len(data))})
     assert 200 == resp.status
     resp.close()
+
+
+@asyncio.coroutine
+def test_json(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/json'
+        data = yield from request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/', json={'some': 'data'})
+    assert 200 == resp.status
+    content = yield from resp.json()
+    assert content == {'some': 'data'}
+    resp.close()
+
+    with pytest.raises(ValueError):
+        yield from client.post('/', data="some data", json={'some': 'data'})
+
+
+@asyncio.coroutine
+def test_json_custom(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        assert request.content_type == 'application/json'
+        data = yield from request.json()
+        return web.Response(body=aiohttp.JsonPayload(data))
+
+    used = False
+
+    def dumps(obj):
+        nonlocal used
+        used = True
+        return json.dumps(obj)
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app, json_serialize=dumps)
+
+    resp = yield from client.post('/', json={'some': 'data'})
+    assert 200 == resp.status
+    assert used
+    content = yield from resp.json()
+    assert content == {'some': 'data'}
+    resp.close()
+
+    with pytest.raises(ValueError):
+        yield from client.post('/', data="some data", json={'some': 'data'})
 
 
 @asyncio.coroutine
@@ -1452,7 +1712,7 @@ def test_expect_continue(loop, test_client):
             request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
             expect_called = True
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
     client = yield from test_client(app)
 
@@ -1471,7 +1731,7 @@ def test_encoding_deflate(loop, test_client):
         resp.enable_compression(web.ContentCoding.deflate)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1491,7 +1751,7 @@ def test_encoding_gzip(loop, test_client):
         resp.enable_compression(web.ContentCoding.gzip)
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1503,6 +1763,75 @@ def test_encoding_gzip(loop, test_client):
 
 
 @asyncio.coroutine
+def test_bad_payload_compression(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.headers['Content-Encoding'] = 'gzip'
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        yield from resp.read()
+
+    resp.close()
+
+
+@asyncio.coroutine
+def test_bad_payload_chunked_encoding(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.StreamResponse()
+        resp.force_close()
+        resp._length_check = False
+        resp.headers['Transfer-Encoding'] = 'chunked'
+        writer = yield from resp.prepare(request)
+        writer.write(b'9\r\n\r\n')
+        yield from writer.write_eof()
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        yield from resp.read()
+
+    resp.close()
+
+
+@asyncio.coroutine
+def test_bad_payload_content_length(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.headers['Content-Length'] = '10000'
+        resp.force_close()
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        yield from resp.read()
+
+    resp.close()
+
+
+@asyncio.coroutine
 def test_chunked(loop, test_client):
     @asyncio.coroutine
     def handler(request):
@@ -1510,7 +1839,7 @@ def test_chunked(loop, test_client):
         resp.enable_chunked_encoding()
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1528,7 +1857,7 @@ def test_shortcuts(test_client, loop):
     def handler(request):
         return web.Response(text=request.method)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
     client = yield from test_client(lambda loop: app)
@@ -1550,8 +1879,6 @@ def test_shortcuts(test_client, loop):
         else:
             assert meth.upper() == content
 
-        yield from resp.release()
-
 
 @asyncio.coroutine
 def test_cookies(test_client, loop):
@@ -1565,7 +1892,7 @@ def test_cookies(test_client, loop):
     c = http.cookies.Morsel()
     c.set('test3', '456', '456')
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(
         app, cookies={'test1': '123', 'test2': c})
@@ -1598,7 +1925,7 @@ def test_morsel_with_attributes(test_client, loop):
     c['secure'] = True
     c['max-age'] = 1000
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app, cookies={'test2': c})
 
@@ -1620,7 +1947,7 @@ def test_set_cookies(test_client, loop):
                         'HttpOnly; Path=/')
         return ret
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -1640,7 +1967,7 @@ def test_request_conn_error(loop):
     client = aiohttp.ClientSession(loop=loop)
     with pytest.raises(aiohttp.ClientConnectionError):
         yield from client.get('http://0.0.0.0:1')
-    yield from client.close()
+    client.close()
 
 
 @pytest.mark.xfail
@@ -1651,7 +1978,7 @@ def test_broken_connection(loop, test_client):
         request.transport.close()
         return web.Response(text='answer'*1000)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
@@ -1671,12 +1998,12 @@ def test_broken_connection_2(loop, test_client):
         request.transport.close()
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(app)
 
     resp = yield from client.get('/')
-    with pytest.raises(aiohttp.ServerDisconnectedError):
+    with pytest.raises(aiohttp.ClientPayloadError):
         yield from resp.read()
     resp.close()
 
@@ -1688,7 +2015,7 @@ def test_custom_headers(loop, test_client):
         assert request.headers["x-api-key"] == "foo"
         return web.Response()
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_post('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -1708,7 +2035,7 @@ def test_redirect_to_absolute_url(loop, test_client):
     def redirect(request):
         return web.HTTPFound(location=client.make_url('/'))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_get('/redirect', redirect)
 
@@ -1724,7 +2051,7 @@ def test_redirect_without_location_header(loop, test_client):
     def handler_redirect(request):
         return web.Response(status=301)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/redirect', handler_redirect)
     client = yield from test_client(app)
 
@@ -1734,3 +2061,45 @@ def test_redirect_without_location_header(loop, test_client):
                               'a redirect [301] status but response lacks '
                               'a Location or URI HTTP header'
                               .format(client.port))
+
+
+@asyncio.coroutine
+def test_encoding_deprecated(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301)
+
+    app = web.Application()
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    with pytest.warns(DeprecationWarning):
+        yield from client.get('/', encoding='utf-8')
+
+
+@asyncio.coroutine
+def test_chunked_deprecated(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.Response(status=301)
+
+    app = web.Application()
+    app.router.add_route('GET', '/redirect', handler_redirect)
+    client = yield from test_client(app)
+
+    with pytest.warns(DeprecationWarning):
+        yield from client.get('/', chunked=1024)
+
+
+@asyncio.coroutine
+def test_raise_for_status(loop, test_client):
+    @asyncio.coroutine
+    def handler_redirect(request):
+        return web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler_redirect)
+    client = yield from test_client(app, raise_for_status=True)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        yield from client.get('/')

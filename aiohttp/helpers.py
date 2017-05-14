@@ -6,22 +6,23 @@ import binascii
 import cgi
 import datetime
 import functools
-import heapq
-import io
 import os
 import re
 import sys
 import time
+import warnings
+import weakref
 from collections import MutableSequence, namedtuple
 from functools import total_ordering
+from math import ceil
 from pathlib import Path
 from time import gmtime
-from urllib.parse import urlencode
+from urllib.parse import quote
 
 from async_timeout import timeout
-from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs
+from .abc import AbstractCookieJar
 
 try:
     from asyncio import ensure_future
@@ -38,20 +39,43 @@ else:
     from .backport_cookies import SimpleCookie  # noqa
 
 
-__all__ = ('BasicAuth', 'create_future', 'FormData', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop')
+__all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
+           'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
 
 
 sentinel = object()
 Timeout = timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
 
-if sys.version_info < (3, 5):
-    noop = tuple
-else:
-    @asyncio.coroutine
-    def noop(*args, **kwargs):
-        pass
+CHAR = set(chr(i) for i in range(0, 128))
+CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
+SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
+              '?', '=', '{', '}', ' ', chr(9)}
+TOKEN = CHAR ^ CTL ^ SEPARATORS
+
+coroutines = asyncio.coroutines
+old_debug = coroutines._DEBUG
+coroutines._DEBUG = False
+
+
+@asyncio.coroutine
+def noop(*args, **kwargs):
+    return
+
+
+@asyncio.coroutine
+def deprecated_noop(message):
+    warnings.warn(message, DeprecationWarning, stacklevel=3)
+
+
+try:
+    from asyncio import isfuture
+except ImportError:
+    def isfuture(fut):
+        return isinstance(fut, asyncio.Future)
+
+
+coroutines._DEBUG = old_debug
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -106,125 +130,22 @@ if PY_352:
     def create_future(loop):
         return loop.create_future()
 else:
-    def create_future(loop):
+    def create_future(loop):  # pragma: no cover
         """Compatibility wrapper for the loop.create_future() call introduced in
         3.5.2."""
         return asyncio.Future(loop=loop)
 
 
-class FormData:
-    """Helper class for multipart/form-data and
-    application/x-www-form-urlencoded body generation."""
+def current_task(loop=None):
+    if loop is None:
+        loop = asyncio.get_event_loop()
 
-    def __init__(self, fields=(), quote_fields=True):
-        from . import multipart
-        self._writer = multipart.MultipartWriter('form-data')
-        self._fields = []
-        self._is_multipart = False
-        self._quote_fields = quote_fields
+    task = asyncio.Task.current_task(loop=loop)
+    if task is None:
+        if hasattr(loop, 'current_task'):
+            task = loop.current_task()
 
-        if isinstance(fields, dict):
-            fields = list(fields.items())
-        elif not isinstance(fields, (list, tuple)):
-            fields = (fields,)
-        self.add_fields(*fields)
-
-    @property
-    def is_multipart(self):
-        return self._is_multipart
-
-    @property
-    def content_type(self):
-        if self._is_multipart:
-            return self._writer.headers[hdrs.CONTENT_TYPE]
-        else:
-            return 'application/x-www-form-urlencoded'
-
-    def add_field(self, name, value, *, content_type=None, filename=None,
-                  content_transfer_encoding=None):
-
-        if isinstance(value, io.IOBase):
-            self._is_multipart = True
-        elif isinstance(value, (bytes, bytearray, memoryview)):
-            if filename is None and content_transfer_encoding is None:
-                filename = name
-
-        type_options = MultiDict({'name': name})
-        if filename is not None and not isinstance(filename, str):
-            raise TypeError('filename must be an instance of str. '
-                            'Got: %s' % filename)
-        if filename is None and isinstance(value, io.IOBase):
-            filename = guess_filename(value, name)
-        if filename is not None:
-            type_options['filename'] = filename
-            self._is_multipart = True
-
-        headers = {}
-        if content_type is not None:
-            if not isinstance(content_type, str):
-                raise TypeError('content_type must be an instance of str. '
-                                'Got: %s' % content_type)
-            headers[hdrs.CONTENT_TYPE] = content_type
-            self._is_multipart = True
-        if content_transfer_encoding is not None:
-            if not isinstance(content_transfer_encoding, str):
-                raise TypeError('content_transfer_encoding must be an instance'
-                                ' of str. Got: %s' % content_transfer_encoding)
-            headers[hdrs.CONTENT_TRANSFER_ENCODING] = content_transfer_encoding
-            self._is_multipart = True
-
-        self._fields.append((type_options, headers, value))
-
-    def add_fields(self, *fields):
-        to_add = list(fields)
-
-        while to_add:
-            rec = to_add.pop(0)
-
-            if isinstance(rec, io.IOBase):
-                k = guess_filename(rec, 'unknown')
-                self.add_field(k, rec)
-
-            elif isinstance(rec, (MultiDictProxy, MultiDict)):
-                to_add.extend(rec.items())
-
-            elif isinstance(rec, (list, tuple)) and len(rec) == 2:
-                k, fp = rec
-                self.add_field(k, fp)
-
-            else:
-                raise TypeError('Only io.IOBase, multidict and (name, file) '
-                                'pairs allowed, use .add_field() for passing '
-                                'more complex parameters, got {!r}'
-                                .format(rec))
-
-    def _gen_form_urlencoded(self, encoding):
-        # form data (x-www-form-urlencoded)
-        data = []
-        for type_options, _, value in self._fields:
-            data.append((type_options['name'], value))
-
-        data = urlencode(data, doseq=True)
-        return data.encode(encoding)
-
-    def _gen_form_data(self, *args, **kwargs):
-        """Encode a list of fields using the multipart/form-data MIME format"""
-        for dispparams, headers, value in self._fields:
-            part = self._writer.append(value, headers)
-            if dispparams:
-                part.set_content_disposition(
-                    'form-data', quote_fields=self._quote_fields, **dispparams
-                )
-                # FIXME cgi.FieldStorage doesn't likes body parts with
-                # Content-Length which were sent via chunked transfer encoding
-                part.headers.pop(hdrs.CONTENT_LENGTH, None)
-        yield from self._writer.serialize()
-
-    def __call__(self, encoding):
-        if self._is_multipart:
-            return self._gen_form_data(encoding)
-        else:
-            return self._gen_form_urlencoded(encoding)
+    return task
 
 
 def parse_mimetype(mimetype):
@@ -271,6 +192,33 @@ def guess_filename(obj, default=None):
     return default
 
 
+def content_disposition_header(disptype, quote_fields=True, **params):
+    """Sets ``Content-Disposition`` header.
+
+    :param str disptype: Disposition type: inline, attachment, form-data.
+                         Should be valid extension token (see RFC 2183)
+    :param dict params: Disposition params
+    """
+    if not disptype or not (TOKEN > set(disptype)):
+        raise ValueError('bad content disposition type {!r}'
+                         ''.format(disptype))
+
+    value = disptype
+    if params:
+        lparams = []
+        for key, val in params.items():
+            if not key or not (TOKEN > set(key)):
+                raise ValueError('bad content disposition parameter'
+                                 ' {!r}={!r}'.format(key, val))
+            qval = quote(val, '') if quote_fields else val
+            lparams.append((key, '"%s"' % qval))
+            if key == 'filename':
+                lparams.append(('filename*', "utf-8''" + qval))
+        sparams = '; '.join('='.join(pair) for pair in lparams)
+        value = '; '.join((value, sparams))
+    return value
+
+
 class AccessLogger:
     """Helper object to log access.
 
@@ -287,8 +235,7 @@ class AccessLogger:
         %P  The process ID of the child that serviced the request
         %r  First line of request
         %s  Response status code
-        %b  Size of response in bytes, excluding HTTP headers
-        %O  Bytes sent, including headers
+        %b  Size of response in bytes, including HTTP headers
         %T  Time taken to serve the request, in seconds
         %Tf Time taken to serve the request, in seconds with floating fraction
             in .06f format
@@ -305,7 +252,6 @@ class AccessLogger:
         'r': 'first_request_line',
         's': 'response_status',
         'b': 'response_size',
-        'O': 'bytes_sent',
         'T': 'request_time',
         'Tf': 'request_time_frac',
         'D': 'request_time_micro',
@@ -434,7 +380,7 @@ class AccessLogger:
 
     @staticmethod
     def _format_O(args):
-        return args[2].output_length
+        return args[2].body_length
 
     @staticmethod
     def _format_T(args):
@@ -508,8 +454,6 @@ class reify:
             if inst is None:
                 return self
             raise
-
-        return val
 
     def __set__(self, inst, value):
         raise AttributeError("reified property is read-only")
@@ -601,12 +545,6 @@ class FrozenList(MutableSequence):
         self._items.insert(pos, item)
 
 
-class TimerHandle(asyncio.TimerHandle):
-
-    def cancel(self):
-        asyncio.Handle.cancel(self)
-
-
 class TimeService:
 
     def __init__(self, loop, *, interval=1.0):
@@ -617,23 +555,15 @@ class TimeService:
         self._count = 0
         self._strtime = None
         self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
-        self._scheduled = []
 
     def close(self):
         if self._cb:
             self._cb.cancel()
 
-        # cancel all scheduled handles
-        for handle in self._scheduled:
-            handle.cancel()
-
         self._cb = None
-        self._scheduled = []
         self._loop = None
 
     def _on_cb(self, reset_count=10*60):
-        self._loop_time = self._loop.time()
-
         if self._count >= reset_count:
             # reset timer every 10 minutes
             self._count = 0
@@ -641,21 +571,8 @@ class TimeService:
         else:
             self._time += self._interval
 
-        # Handle 'later' callbacks that are ready.
-        ready = []
-        end_time = self._loop_time
-        while self._scheduled:
-            handle = self._scheduled[0]
-            if handle._when >= end_time:
-                break
-            handle = heapq.heappop(self._scheduled)
-            ready.append(handle)
-
-        for handle in ready:
-            if not handle._cancelled:
-                handle._run()
-
         self._strtime = None
+        self._loop_time = ceil(self._loop.time())
         self._cb = self._loop.call_at(
             self._loop_time + self._interval, self._on_cb)
 
@@ -682,53 +599,74 @@ class TimeService:
             self._strtime = s = self._format_date_time()
         return self._strtime
 
+    @property
     def loop_time(self):
         return self._loop_time
 
-    def call_later(self, delay, callback, *args):
-        """Arrange for a callback to be called at a given time.
 
-        Return a Handle: an opaque object with a cancel() method that
-        can be used to cancel the call.
+def _weakref_handle(info):
+    ref, name = info
+    ob = ref()
+    if ob is not None:
+        try:
+            getattr(ob, name)()
+        except:
+            pass
 
-        The delay can be an int or float, expressed in seconds.  It is
-        always relative to the current time.
 
-        Any positional arguments after the callback will be passed to
-        the callback when it is called.
+def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):
+    if timeout is not None and timeout > 0:
+        when = loop.time() + timeout
+        if ceil_timeout:
+            when = ceil(when)
 
-        Time resolution is aproximatly one second.
-        """
-        return self._call_at(self._loop_time + delay, callback, *args)
+        return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
 
-    def _call_at(self, when, callback, *args):
-        """Like call_later(), but uses an absolute time.
 
-        Absolute time corresponds to the loop's time() method.
-        """
-        timer = TimerHandle(when, callback, args, self._loop)
-        heapq.heappush(self._scheduled, timer)
+def call_later(cb, timeout, loop):
+    if timeout is not None and timeout > 0:
+        when = ceil(loop.time() + timeout)
+        return loop.call_at(when, cb)
+
+
+class TimeoutHandle:
+    """ Timeout handle """
+
+    def __init__(self, loop, timeout):
+        self._timeout = timeout
+        self._loop = loop
+        self._callbacks = []
+
+    def register(self, callback, *args, **kwargs):
+        self._callbacks.append((callback, args, kwargs))
+
+    def close(self):
+        self._callbacks.clear()
+
+    def start(self):
+        if self._timeout is not None and self._timeout > 0:
+            at = ceil(self._loop.time() + self._timeout)
+            return self._loop.call_at(at, self.__call__)
+
+    def timer(self):
+        if self._timeout is not None and self._timeout > 0:
+            timer = TimerContext(self._loop)
+            self.register(timer.timeout)
+        else:
+            timer = TimerNoop()
         return timer
 
-    def timeout(self, timeout):
-        """low resolution timeout context manager.
+    def __call__(self):
+        for cb, args, kwargs in self._callbacks:
+            try:
+                cb(*args, **kwargs)
+            except:
+                pass
 
-        timeout - value in seconds or None to disable timeout logic
-        """
-        if self._loop is None:
-            raise RuntimeError
-
-        if timeout:
-            when = self._loop_time + timeout
-            ctx = _TimeServiceTimeoutContext(when, self._loop)
-            heapq.heappush(self._scheduled, ctx)
-        else:
-            ctx = _TimeServiceTimeoutNoop()
-
-        return ctx
+        self._callbacks.clear()
 
 
-class _TimeServiceTimeoutNoop:
+class TimerNoop:
 
     def __enter__(self):
         return self
@@ -737,19 +675,17 @@ class _TimeServiceTimeoutNoop:
         return False
 
 
-class _TimeServiceTimeoutContext(TimerHandle):
+class TimerContext:
     """ Low resolution timeout context manager """
 
-    def __init__(self, when, loop):
-        assert loop is not None, "loop is not set"
-
-        super().__init__(when, self.cancel, (), loop)
-
+    def __init__(self, loop):
+        self._loop = loop
         self._tasks = []
         self._cancelled = False
 
     def __enter__(self):
-        task = asyncio.Task.current_task(loop=self._loop)
+        task = current_task(loop=self._loop)
+
         if task is None:
             raise RuntimeError('Timeout context manager should be used '
                                'inside a task')
@@ -768,13 +704,25 @@ class _TimeServiceTimeoutContext(TimerHandle):
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
 
-    def cancel(self):
+    def timeout(self):
         if not self._cancelled:
-            for task in self._tasks:
+            for task in set(self._tasks):
                 task.cancel()
 
-            self._tasks = []
             self._cancelled = True
+
+
+class CeilTimeout(Timeout):
+
+    def __enter__(self):
+        if self._timeout is not None:
+            self._task = current_task(loop=self._loop)
+            if self._task is None:
+                raise RuntimeError(
+                    'Timeout context manager should be used inside a task')
+            self._cancel_handler = self._loop.call_at(
+                ceil(self._loop.time() + self._timeout), self._cancel_task)
+        return self
 
 
 class HeadersMixin:
@@ -816,3 +764,30 @@ class HeadersMixin:
             return None
         else:
             return int(l)
+
+
+class DummyCookieJar(AbstractCookieJar):
+    """Implements a dummy cookie storage.
+
+    It can be used with the ClientSession when no cookie processing is needed.
+
+    """
+
+    def __init__(self, *, loop=None):
+        super().__init__(loop=loop)
+
+    def __iter__(self):
+        while False:
+            yield None
+
+    def __len__(self):
+        return 0
+
+    def clear(self):
+        pass
+
+    def update_cookies(self, cookies, response_url=None):
+        pass
+
+    def filter_cookies(self, request_url):
+        return None

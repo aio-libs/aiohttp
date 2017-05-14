@@ -9,15 +9,40 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import helpers
-from aiohttp.client_reqrep import ClientResponse
+from aiohttp import helpers, http
+from aiohttp.client_reqrep import ClientResponse, RequestInfo
 
 
-def test_del(loop):
-    response = ClientResponse('get', URL('http://del-cl-resp.org'))
+@asyncio.coroutine
+def test_http_processing_error():
+    loop = mock.Mock()
+    request_info = mock.Mock()
+    response = ClientResponse(
+        'get', URL('http://del-cl-resp.org'), request_info=request_info)
     response._post_init(loop)
+    loop.get_debug = mock.Mock()
+    loop.get_debug.return_value = True
 
     connection = mock.Mock()
+    connection.protocol = aiohttp.DataQueue(loop=loop)
+    connection.protocol.set_response_params = mock.Mock()
+    connection.protocol.set_exception(http.HttpProcessingError())
+
+    with pytest.raises(aiohttp.ClientResponseError) as info:
+        yield from response.start(connection)
+
+    assert info.value.request_info is request_info
+
+
+def test_del():
+    loop = mock.Mock()
+    response = ClientResponse('get', URL('http://del-cl-resp.org'))
+    response._post_init(loop)
+    loop.get_debug = mock.Mock()
+    loop.get_debug.return_value = True
+
+    connection = mock.Mock()
+    response._closed = False
     response._connection = connection
     loop.set_exception_handler(lambda loop, ctx: None)
 
@@ -25,12 +50,13 @@ def test_del(loop):
         del response
         gc.collect()
 
-    connection.close.assert_called_with()
+    connection.release.assert_called_with()
 
 
 def test_close(loop):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop)
+    response._closed = False
     response._connection = mock.Mock()
     response.close()
     assert response.connection is None
@@ -76,6 +102,12 @@ def test_repr_non_ascii_reason():
         in repr(response)
 
 
+def test_url_obj_deprecated():
+    response = ClientResponse('get', URL('http://fake-host.org/'))
+    with pytest.warns(DeprecationWarning):
+        response.url_obj
+
+
 @asyncio.coroutine
 def test_read_and_release_connection(loop):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
@@ -115,7 +147,62 @@ def test_release(loop):
     content = response.content = mock.Mock()
     content.readany.return_value = fut
 
-    yield from response.release()
+    response.release()
+    assert response._connection is None
+
+
+@asyncio.coroutine
+def test_release_on_del(loop):
+    connection = mock.Mock()
+    connection.protocol.upgraded = False
+
+    def run(conn):
+        response = ClientResponse('get', URL('http://def-cl-resp.org'))
+        response._post_init(loop)
+        response._closed = False
+        response._connection = conn
+
+    run(connection)
+
+    assert connection.release.called
+
+
+@asyncio.coroutine
+def test_response_eof(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    response._closed = False
+    conn = response._connection = mock.Mock()
+    conn.protocol.upgraded = False
+
+    response._response_eof()
+    assert conn.release.called
+    assert response._connection is None
+
+
+@asyncio.coroutine
+def test_response_eof_upgraded(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+
+    conn = response._connection = mock.Mock()
+    conn.protocol.upgraded = True
+
+    response._response_eof()
+    assert not conn.release.called
+    assert response._connection is conn
+
+
+@asyncio.coroutine
+def test_response_eof_after_connection_detach(loop):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop)
+    response._closed = False
+    conn = response._connection = mock.Mock()
+    conn.protocol = None
+
+    response._response_eof()
+    assert conn.release.called
     assert response._connection is None
 
 
@@ -267,13 +354,13 @@ def test_json_no_content(loop):
         'Content-Type': 'data/octet-stream'}
     response._content = b''
 
-    with mock.patch('aiohttp.client_reqrep.client_logger') as m_log:
-        res = yield from response.json()
+    with pytest.raises(aiohttp.ClientResponseError) as info:
+        yield from response.json()
 
+    assert info.value.request_info == response.request_info
+
+    res = yield from response.json(content_type=None)
     assert res is None
-    m_log.warning.assert_called_with(
-        'Attempt to decode JSON with unexpected mimetype: %s',
-        'data/octet-stream')
 
 
 @asyncio.coroutine
@@ -338,8 +425,7 @@ def test_raise_for_status_4xx():
 
 def test_resp_host():
     response = ClientResponse('get', URL('http://del-cl-resp.org'))
-    with pytest.warns(DeprecationWarning):
-        assert 'del-cl-resp.org' == response.host
+    assert 'del-cl-resp.org' == response.host
 
 
 def test_content_type():
@@ -375,3 +461,104 @@ def test_charset_no_charset():
     response.headers = {'Content-Type': 'application/json'}
 
     assert response.charset is None
+
+
+def test_response_request_info():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get', URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    assert url == response.request_info.url
+    assert 'get' == response.request_info.method
+    assert headers == response.request_info.headers
+
+
+def test_response_request_info_empty():
+    url = 'http://def-cl-resp.org'
+    response = ClientResponse(
+        'get', URL(url),
+    )
+    assert response.request_info is None
+
+
+def test_request_info_in_exception():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert cm.value.request_info == response.request_info
+
+
+def test_no_redirect_history_in_exception():
+    url = 'http://def-cl-resp.org'
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert () == cm.value.history
+
+
+def test_redirect_history_in_exception():
+    hist_url = 'http://def-cl-resp.org'
+    url = 'http://def-cl-resp.org/index.htm'
+    hist_headers = {'Content-Type': 'application/json;charset=cp1251',
+                    'Location': url
+                    }
+    headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response = ClientResponse(
+        'get',
+        URL(url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+    response.status = 409
+    response.reason = 'CONFLICT'
+
+    hist_response = ClientResponse(
+        'get',
+        URL(hist_url),
+        request_info=RequestInfo(
+            url,
+            'get',
+            headers
+        )
+    )
+
+    hist_response.headers = hist_headers
+    hist_response.status = 301
+    hist_response.reason = 'REDIRECT'
+
+    response._history = [hist_response]
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert [hist_response] == cm.value.history

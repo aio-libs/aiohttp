@@ -1,7 +1,11 @@
+import re
+import sys
+import pytest
+
 pytest_plugins = 'pytester'
 
 
-def test_myplugin(testdir):
+def test_aiohttp_plugin(testdir):
     testdir.makepyfile("""\
 import asyncio
 import pytest
@@ -19,7 +23,7 @@ def hello(request):
 
 
 def create_app(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', hello)
     return app
 
@@ -35,7 +39,7 @@ def test_hello(test_client):
 
 @asyncio.coroutine
 def test_hello_from_app(test_client, loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', hello)
     client = yield from test_client(app)
     resp = yield from client.get('/')
@@ -72,13 +76,13 @@ def test_hello_with_fake_loop(test_client):
 @asyncio.coroutine
 def test_set_args(test_client, loop):
     with pytest.raises(AssertionError):
-        app = web.Application(loop=loop)
+        app = web.Application()
         yield from test_client(app, 1, 2, 3)
 
 
 @asyncio.coroutine
 def test_set_keyword_args(test_client, loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     with pytest.raises(TypeError):
         yield from test_client(app, param=1)
 
@@ -150,3 +154,27 @@ def test_client_failed_to_create(test_client):
     # i dont know how to fix this
     # result = testdir.runpytest('-p', 'no:sugar')
     # result.assert_outcomes(passed=11, failed=1)
+
+
+@pytest.mark.skipif(sys.version_info < (3, 5), reason='old python')
+def test_warning_checks(testdir, capsys):
+    testdir.makepyfile("""\
+import asyncio
+
+pytest_plugins = 'aiohttp.pytest_plugin'
+
+async def foobar():
+    return 123
+
+async def test_good():
+    v = await foobar()
+    assert v == 123
+
+async def test_bad():
+    foobar()
+""")
+    result = testdir.runpytest('-p', 'no:sugar', '-s')
+    result.assert_outcomes(passed=1, failed=1)
+    stdout, _ = capsys.readouterr()
+    assert ("test_warning_checks.py:__LINE__:coroutine 'foobar' was "
+            "never awaited" in re.sub('\d{2,}', '__LINE__', stdout))

@@ -18,11 +18,11 @@ def client(loop, url, name):
         while True:
             msg = yield from ws.receive()
 
-            if msg.type == aiohttp.MsgType.text:
-                ws.send_str(msg.data)
-            elif msg.type == aiohttp.MsgType.binary:
-                ws.send_bytes(msg.data)
-            elif msg.type == aiohttp.MsgType.close:
+            if msg.type == aiohttp.WSMsgType.text:
+                yield from ws.send_str(msg.data)
+            elif msg.type == aiohttp.WSMsgType.binary:
+                yield from ws.send_bytes(msg.data)
+            elif msg.type == aiohttp.WSMsgType.close:
                 yield from ws.close()
                 break
             else:

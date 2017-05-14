@@ -4,7 +4,7 @@ import asyncio
 import json
 
 from .client_exceptions import ClientError
-from .helpers import PY_35, PY_352, create_future
+from .helpers import PY_35, PY_352, Timeout, call_later, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE,
                    WebSocketError, WSMessage, WSMsgType)
 
@@ -13,7 +13,6 @@ class ClientWebSocketResponse:
 
     def __init__(self, reader, writer, protocol,
                  response, timeout, autoclose, autoping, loop, *,
-                 time_service=None,
                  receive_timeout=None, heartbeat=None):
         self._response = response
         self._conn = response.connection
@@ -21,7 +20,6 @@ class ClientWebSocketResponse:
         self._writer = writer
         self._reader = reader
         self._protocol = protocol
-        self._time_service = time_service
         self._closed = False
         self._closing = False
         self._close_code = None
@@ -31,6 +29,8 @@ class ClientWebSocketResponse:
         self._autoping = autoping
         self._heartbeat = heartbeat
         self._heartbeat_cb = None
+        if heartbeat is not None:
+            self._pong_heartbeat = heartbeat/2.0
         self._pong_response_cb = None
         self._loop = loop
         self._waiting = None
@@ -51,8 +51,8 @@ class ClientWebSocketResponse:
         self._cancel_heartbeat()
 
         if self._heartbeat is not None:
-            self._heartbeat_cb = self._time_service.call_later(
-                self._heartbeat, self._send_heartbeat)
+            self._heartbeat_cb = call_later(
+                self._send_heartbeat, self._heartbeat, self._loop)
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
@@ -60,14 +60,15 @@ class ClientWebSocketResponse:
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
-            self._pong_response_cb = self._time_service.call_later(
-                self._heartbeat/2.0, self._pong_not_received)
+            self._pong_response_cb = call_later(
+                self._pong_not_received, self._pong_heartbeat, self._loop)
 
     def _pong_not_received(self):
-        self._closed = True
-        self._close_code = 1006
-        self._exception = asyncio.TimeoutError()
-        self._response.close()
+        if not self._closed:
+            self._closed = True
+            self._close_code = 1006
+            self._exception = asyncio.TimeoutError()
+            self._response.close()
 
     @property
     def closed(self):
@@ -80,6 +81,14 @@ class ClientWebSocketResponse:
     @property
     def protocol(self):
         return self._protocol
+
+    def get_extra_info(self, name, default=None):
+        """extra info from connection transport"""
+        try:
+            return self._response.connection.transport.get_extra_info(
+                name, default)
+        except:
+            return default
 
     def exception(self):
         return self._exception
@@ -133,7 +142,7 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    with self._time_service.timeout(self._timeout):
+                    with Timeout(self._timeout, loop=self._loop):
                         msg = yield from self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
@@ -166,12 +175,13 @@ class ClientWebSocketResponse:
                 return WS_CLOSED_MESSAGE
 
             try:
+                self._waiting = create_future(self._loop)
                 try:
-                    self._waiting = create_future(self._loop)
-                    with self._time_service.timeout(
-                            timeout or self._receive_timeout):
+                    with Timeout(
+                            timeout or self._receive_timeout,
+                            loop=self._loop):
                         msg = yield from self._reader.read()
-                        self._reset_heartbeat()
+                    self._reset_heartbeat()
                 finally:
                     waiter = self._waiting
                     self._waiting = None

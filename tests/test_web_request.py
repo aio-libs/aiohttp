@@ -30,10 +30,10 @@ def test_ctor(make_request):
     assert () == req.raw_headers
     assert req.message == req._message
 
-    get = req.GET
+    get = req.query
     assert MultiDict([('a', '1'), ('b', '2')]) == get
     # second call should return the same object
-    assert get is req.GET
+    assert get is req.query
 
     assert req.keep_alive
 
@@ -50,23 +50,16 @@ def test_ctor(make_request):
     assert req.transport is protocol.transport
     assert req.headers == headers
     assert req.raw_headers == ((b'Foo', b'bar'),)
+    assert req.task is req._task
+
+    with pytest.warns(DeprecationWarning):
+        assert req.GET is req.query
 
 
 def test_doubleslashes(make_request):
     # NB: //foo/bar is an absolute URL with foo netloc and /bar path
     req = make_request('GET', '/bar//foo/')
     assert '/bar//foo/' == req.path
-
-
-def test_POST(make_request):
-    req = make_request('POST', '/')
-    with pytest.raises(RuntimeError):
-        req.POST
-
-    marker = object()
-    req._post = marker
-    assert req.POST is marker
-    assert req.POST is marker
 
 
 def test_content_type_not_specified(make_request):
@@ -99,7 +92,7 @@ def test_calc_content_type_on_getting_charset(make_request):
 def test_urlencoded_querystring(make_request):
     req = make_request('GET',
                        '/yandsearch?text=%D1%82%D0%B5%D0%BA%D1%81%D1%82')
-    assert {'text': 'текст'} == req.GET
+    assert {'text': 'текст'} == req.query
 
 
 def test_non_ascii_path(make_request):
@@ -230,11 +223,13 @@ def test___repr___non_ascii_path(make_request):
 def test_http_scheme(make_request):
     req = make_request('GET', '/')
     assert "http" == req.scheme
+    assert req.secure is False
 
 
 def test_https_scheme_by_ssl_transport(make_request):
     req = make_request('GET', '/', sslcontext=True)
     assert "https" == req.scheme
+    assert req.secure is True
 
 
 def test_https_scheme_by_secure_proxy_ssl_header(make_request):
@@ -242,6 +237,7 @@ def test_https_scheme_by_secure_proxy_ssl_header(make_request):
                        secure_proxy_ssl_header=('X-HEADER', '1'),
                        headers=CIMultiDict({'X-HEADER': '1'}))
     assert "https" == req.scheme
+    assert req.secure is True
 
 
 def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
@@ -249,6 +245,7 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
                        secure_proxy_ssl_header=('X-HEADER', '1'),
                        headers=CIMultiDict({'X-HEADER': '0'}))
     assert "http" == req.scheme
+    assert req.secure is False
 
 
 def test_raw_headers(make_request):
@@ -344,6 +341,28 @@ def test_make_too_big_request_adjust_limit(loop):
                               client_max_size=max_size)
     txt = yield from req.read()
     assert len(txt) == 1024**2 + 1
+
+
+@asyncio.coroutine
+def test_multipart_formdata(loop):
+    payload = StreamReader(loop=loop)
+    payload.feed_data(b"""-----------------------------326931944431359\r
+Content-Disposition: form-data; name="a"\r
+\r
+b\r
+-----------------------------326931944431359\r
+Content-Disposition: form-data; name="c"\r
+\r
+d\r
+-----------------------------326931944431359--\r\n""")
+    content_type = "multipart/form-data; boundary="\
+                   "---------------------------326931944431359"
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/',
+                              headers={'CONTENT-TYPE': content_type},
+                              payload=payload)
+    result = yield from req.post()
+    assert dict(result) == {'a': 'b', 'c': 'd'}
 
 
 @asyncio.coroutine

@@ -1,3 +1,53 @@
+1.3.5 (2017-03-16)
+------------------
+
+- Fixed None timeout support #1720
+
+
+1.3.4 (2017-03-14)
+------------------
+
+- Revert timeout handling in client request
+
+- Fix StreamResponse representation after eof
+
+- Fix file_sender to not fall on bad request (range out of file size)
+
+- Fix file_sender to correct stream video to Chromes
+
+- Fix NotImplementedError server exception #1703
+
+- Clearer error message for URL without a host name. #1691
+
+- Silence deprecation warning in __repr__ #1690
+
+- IDN + HTTPS = `ssl.CertificateError` #1685
+
+
+1.3.3 (2017-02-19)
+------------------
+
+- Fixed memory leak in time service #1656
+
+
+1.3.2 (2017-02-16)
+------------------
+
+- Awaiting on WebSocketResponse.send_* does not work #1645
+
+- Fix multiple calls to client ws_connect when using a shared header dict #1643
+
+- Make CookieJar.filter_cookies() accept plain string parameter. #1636
+
+
+1.3.1 (2017-02-09)
+------------------
+
+- Handle CLOSING in WebSocketResponse.__anext__
+
+- Fixed AttributeError 'drain' for server websocket handler #1613
+
+
 1.3.0 (2017-02-08)
 ------------------
 

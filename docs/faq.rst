@@ -204,7 +204,7 @@ tasks for a user in the :class:`aiohttp.web.Application` instance and
         app = aiohttp.web.Application(loop=loop)
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['handlers'] = defaultdict(set)
+        app['websockets'] = defaultdict(set)
         aiohttp.web.run_app(app, host='localhost', port=8080)
 
 

@@ -98,6 +98,26 @@ allowing a handler to serve incoming requests on a *path* having **any**
 The *HTTP method* can be queried later in the request handler using the
 :attr:`Request.method` property.
 
+By default endpoints added with :meth:`~UrlDispatcher.add_get` will accept
+``HEAD`` requests and return the same response headers as they would
+for a ``GET`` request. You can also deny ``HEAD`` requests on a route::
+
+   app.router.add_get('/', handler, allow_head=False)
+
+Here ``handler`` won't be called and the server will response with ``405``.
+
+.. note::
+
+   This is a change as of **aiohttp v2.0** to act in accordance with
+   `RFC 7231 <https://tools.ietf.org/html/rfc7231#section-4.3.2>`_.
+
+   Previous version always returned ``405`` for ``HEAD`` requests
+   to routes added with :meth:`~UrlDispatcher.add_get`.
+
+If you have handlers which perform lots of processing to write the response
+body you may wish to improve performance by skipping that processing
+in the case of ``HEAD`` requests while still taking care to respond with
+the same headers as with ``GET`` requests.
 
 .. _aiohttp-web-resource-and-route:
 
@@ -525,14 +545,16 @@ HTTP Forms are supported out of the box.
 If form's method is ``"GET"`` (``<form method="get">``) use
 :attr:`Request.query` for getting form data.
 
-For accessing to form data with ``"POST"`` method use
+To access form data with ``"POST"`` method use
 :meth:`Request.post` or :meth:`Request.multipart`.
 
 :meth:`Request.post` accepts both
 ``'application/x-www-form-urlencoded'`` and ``'multipart/form-data'``
-form's data encoding (e.g. ``<form enctype="multipart/form-data">``)
-but :meth:`Request.multipart` is especially effective for uploading
-large files (:ref:`aiohttp-web-file-upload`).
+form's data encoding (e.g. ``<form enctype="multipart/form-data">``).
+It stores files data in temporary directory. If `client_max_size` is
+specified `post` raises `ValueError` exception.
+For efficiency use :meth:`Request.multipart`, It is especially effective
+for uploading large files (:ref:`aiohttp-web-file-upload`).
 
 Values submitted by the following form:
 
@@ -654,7 +676,7 @@ with the peer::
                 if msg.data == 'close':
                     await ws.close()
                 else:
-                    ws.send_str(msg.data + '/answer')
+                    await ws.send_str(msg.data + '/answer')
             elif msg.type == aiohttp.WSMsgType.ERROR:
                 print('ws connection closed with exception %s' %
                       ws.exception())

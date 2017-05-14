@@ -10,15 +10,18 @@ from importlib import import_module
 
 from yarl import URL
 
-from . import (hdrs, web_exceptions, web_middlewares, web_request,
-               web_response, web_server, web_urldispatcher, web_ws)
+from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
+               web_protocol, web_request, web_response, web_server,
+               web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import FrozenList, sentinel
+from .helpers import FrozenList
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
-from .signals import PostSignal, PreSignal, Signal
+from .signals import FuncSignal, PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
+from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
+from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
 from .web_server import Server
@@ -26,7 +29,9 @@ from .web_urldispatcher import *  # noqa
 from .web_urldispatcher import PrefixedSubAppResource
 from .web_ws import *  # noqa
 
-__all__ = (web_request.__all__ +
+__all__ = (web_protocol.__all__ +
+           web_fileresponse.__all__ +
+           web_request.__all__ +
            web_response.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
@@ -37,22 +42,25 @@ __all__ = (web_request.__all__ +
 
 
 class Application(MutableMapping):
-
-    def __init__(self, *, logger=web_logger, router=None, middlewares=(),
-                 handler_args=None, client_max_size=1024**2,
-                 loop=None, debug=...):
-        if loop is None:
-            loop = asyncio.get_event_loop()
+    def __init__(self, *,
+                 logger=web_logger,
+                 router=None,
+                 middlewares=(),
+                 handler_args=None,
+                 client_max_size=1024**2,
+                 secure_proxy_ssl_header=None,
+                 loop=None,
+                 debug=...):
         if router is None:
             router = web_urldispatcher.UrlDispatcher()
         assert isinstance(router, AbstractRouter), router
 
-        if debug is ...:
-            debug = loop.get_debug()
+        if loop is not None:
+            warnings.warn("loop argument is deprecated", ResourceWarning)
 
         self._debug = debug
         self._router = router
-        self._secure_proxy_ssl_header = None
+        self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
@@ -60,9 +68,11 @@ class Application(MutableMapping):
         self._middlewares = FrozenList(middlewares)
         self._state = {}
         self._frozen = False
+        self._subapps = []
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
+        self._on_loop_available = FuncSignal(self)
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
@@ -96,6 +106,27 @@ class Application(MutableMapping):
         return iter(self._state)
 
     ########
+    @property
+    def loop(self):
+        return self._loop
+
+    def _set_loop(self, loop):
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        if self._loop is not None and self._loop is not loop:
+            raise RuntimeError(
+                "web.Application instance initialized with different loop")
+
+        self._loop = loop
+        self._on_loop_available.send(self)
+
+        # set loop debug
+        if self._debug is ...:
+            self._debug = loop.get_debug()
+
+        # set loop to sub applications
+        for subapp in self._subapps:
+            subapp._set_loop(loop)
 
     @property
     def frozen(self):
@@ -104,15 +135,20 @@ class Application(MutableMapping):
     def freeze(self):
         if self._frozen:
             return
+
         self._frozen = True
         self._middlewares = tuple(reversed(self._middlewares))
         self._router.freeze()
+        self._on_loop_available.freeze()
         self._on_pre_signal.freeze()
         self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
         self._on_startup.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
+
+        for subapp in self._subapps:
+            subapp.freeze()
 
     @property
     def debug(self):
@@ -147,8 +183,14 @@ class Application(MutableMapping):
         resource = PrefixedSubAppResource(prefix, subapp)
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
-        subapp.freeze()
+        self._subapps.append(subapp)
+        if self._loop is not None:
+            subapp._set_loop(self._loop)
         return resource
+
+    @property
+    def on_loop_available(self):
+        return self._on_loop_available
 
     @property
     def on_response_prepare(self):
@@ -179,38 +221,23 @@ class Application(MutableMapping):
         return self._router
 
     @property
-    def loop(self):
-        return self._loop
-
-    @property
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, *, secure_proxy_ssl_header=None, **kwargs):
-        debug = kwargs.pop('debug', sentinel)
-        if debug is not sentinel:
-            warnings.warn(
-                "`debug` parameter is deprecated. "
-                "Use Application's debug mode instead", DeprecationWarning)
-            if debug != self.debug:
-                raise ValueError(
-                    "The value of `debug` parameter conflicts with the debug "
-                    "settings of the `Application` instance. The "
-                    "application's debug mode setting should be used instead "
-                    "as a single point to setup a debug mode. For more "
-                    "information please check "
-                    "http://aiohttp.readthedocs.io/en/stable/"
-                    "web_reference.html#aiohttp.web.Application"
-                )
+    def make_handler(self, *, loop=None,
+                     secure_proxy_ssl_header=None, **kwargs):
+        self._set_loop(loop)
         self.freeze()
 
+        kwargs['debug'] = self.debug
         if self._handler_args:
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
+        if secure_proxy_ssl_header:
+            self._secure_proxy_ssl_header = secure_proxy_ssl_header
         return Server(self._handle, request_factory=self._make_request,
-                      debug=self.debug, loop=self.loop, **kwargs)
+                      loop=self.loop, **kwargs)
 
     @asyncio.coroutine
     def startup(self):
@@ -236,12 +263,10 @@ class Application(MutableMapping):
         """
         yield from self.on_cleanup.send(self)
 
-    def _make_request(self, message, payload, protocol,
+    def _make_request(self, message, payload, protocol, writer, task,
                       _cls=web_request.Request):
         return _cls(
-            message, payload, protocol,
-            protocol._time_service, protocol._request_handler,
-            loop=self._loop,
+            message, payload, protocol, writer, protocol._time_service, task,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
@@ -258,14 +283,15 @@ class Application(MutableMapping):
         request._match_info = match_info
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
-            resp = (
-                yield from match_info.expect_handler(request))
+            resp = yield from match_info.expect_handler(request)
+            yield from request.writer.drain()
 
         if resp is None:
             handler = match_info.handler
-            for app in match_info.apps:
+            for app in match_info.apps[::-1]:
                 for factory in app._middlewares:
                     handler = yield from factory(app, handler)
+
             resp = yield from handler(request)
 
         assert isinstance(resp, web_response.StreamResponse), \
@@ -284,17 +310,19 @@ class Application(MutableMapping):
         return "<Application 0x{:x}>".format(id(self))
 
 
-def run_app(app, *, host=None, port=None, path=None,
+def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
-            access_log=access_logger):
+            access_log=access_logger, loop=None):
     """Run an app locally"""
-    loop = app.loop
+    user_supplied_loop = loop is not None
+    if loop is None:
+        loop = asyncio.get_event_loop()
 
     make_handler_kwargs = dict()
     if access_log_format is not None:
         make_handler_kwargs['access_log_format'] = access_log_format
-    handler = app.make_handler(access_log=access_log,
+    handler = app.make_handler(loop=loop, access_log=access_log,
                                **make_handler_kwargs)
 
     loop.run_until_complete(app.startup())
@@ -310,8 +338,15 @@ def run_app(app, *, host=None, port=None, path=None,
     else:
         paths = path
 
+    if sock is None:
+        socks = ()
+    elif not isinstance(sock, Iterable):
+        socks = (sock,)
+    else:
+        socks = sock
+
     if host is None:
-        if paths and not port:
+        if (paths or socks) and not port:
             hosts = ()
         else:
             hosts = ("0.0.0.0",)
@@ -354,6 +389,18 @@ def run_app(app, *, host=None, port=None, path=None,
                     os.remove(path)
             except FileNotFoundError:
                 pass
+    for sock in socks:
+        server_creations.append(
+            loop.create_server(
+                handler, sock=sock, ssl=ssl_context, backlog=backlog
+            )
+        )
+
+        if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
+            uris.append('{}://unix:{}:'.format(scheme, sock.getsockname()))
+        else:
+            host, port = sock.getsockname()
+            uris.append(str(base_url.with_host(host).with_port(port)))
 
     servers = loop.run_until_complete(
         asyncio.gather(*server_creations, loop=loop)
@@ -375,7 +422,8 @@ def run_app(app, *, host=None, port=None, path=None,
         loop.run_until_complete(app.shutdown())
         loop.run_until_complete(handler.shutdown(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
-    loop.close()
+    if not user_supplied_loop:
+        loop.close()
 
 
 def main(argv):

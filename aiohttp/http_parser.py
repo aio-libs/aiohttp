@@ -10,9 +10,9 @@ from multidict import CIMultiDict, istr
 from . import hdrs
 from .helpers import NO_EXTENSIONS
 from .http_exceptions import (BadStatusLine, ContentEncodingError,
-                              InvalidHeader, LineTooLong,
+                              ContentLengthError, InvalidHeader, LineTooLong,
                               TransferEncodingError)
-from .http_message import HttpVersion, HttpVersion10
+from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
@@ -56,8 +56,9 @@ class HttpParser:
 
     def __init__(self, protocol=None, loop=None,
                  max_line_size=8190, max_headers=32768, max_field_size=8190,
-                 timer=None, code=None, method=None,
-                 readall=False, response_with_body=True):
+                 timer=None, code=None, method=None, readall=False,
+                 payload_exception=None,
+                 response_with_body=True, read_until_eof=False):
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
@@ -67,13 +68,32 @@ class HttpParser:
         self.code = code
         self.method = method
         self.readall = readall
+        self.payload_exception = payload_exception
         self.response_with_body = response_with_body
+        self.read_until_eof = read_until_eof
 
         self._lines = []
         self._tail = b''
         self._upgraded = False
         self._payload = None
         self._payload_parser = None
+
+    def feed_eof(self):
+        if self._payload_parser is not None:
+            self._payload_parser.feed_eof()
+            self._payload_parser = None
+        else:
+            # try to extract partial message
+            if self._tail:
+                self._lines.append(self._tail)
+
+            if self._lines:
+                if self._lines[-1] != '\r\n':
+                    self._lines.append('')
+                try:
+                    return self.parse_message(self._lines)
+                except:
+                    return None
 
     def feed_data(self, data,
                   SEP=b'\r\n', EMPTY=b'',
@@ -99,12 +119,10 @@ class HttpParser:
                 if pos >= start_pos:
                     # line found
                     self._lines.append(data[start_pos:pos])
+                    start_pos = pos + 2
 
                     # \r\n\r\n found
-                    start_pos = pos + 2
-                    if data[start_pos:start_pos+2] == SEP:
-                        self._lines.append(EMPTY)
-
+                    if self._lines[-1] == EMPTY:
                         try:
                             msg = self.parse_message(self._lines)
                         finally:
@@ -149,11 +167,22 @@ class HttpParser:
                                 payload, method=msg.method,
                                 compression=msg.compression, readall=True)
                         else:
-                            payload = EMPTY_PAYLOAD
+                            if (getattr(msg, 'code', 100) >= 199 and
+                                    length is None and self.read_until_eof):
+                                payload = FlowControlStreamReader(
+                                    self.protocol, timer=self.timer, loop=loop)
+                                payload_parser = HttpPayloadParser(
+                                    payload, length=length,
+                                    chunked=msg.chunked, method=method,
+                                    compression=msg.compression,
+                                    code=self.code, readall=True,
+                                    response_with_body=self.response_with_body)
+                                if not payload_parser.done:
+                                    self._payload_parser = payload_parser
+                            else:
+                                payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
-
-                        start_pos = start_pos+2
                 else:
                     self._tail = data[start_pos:]
                     data = EMPTY
@@ -167,8 +196,19 @@ class HttpParser:
             # feed payload
             elif data and start_pos < data_len:
                 assert not self._lines
-                eof, data = self._payload_parser.feed_data(
-                    data[start_pos:])
+                try:
+                    eof, data = self._payload_parser.feed_data(
+                        data[start_pos:])
+                except BaseException as exc:
+                    if self.payload_exception is not None:
+                        self._payload_parser.payload.set_exception(
+                            self.payload_exception(str(exc)))
+                    else:
+                        self._payload_parser.payload.set_exception(exc)
+
+                    eof = True
+                    data = b''
+
                 if eof:
                     start_pos = 0
                     data_len = len(data)
@@ -430,6 +470,12 @@ class HttpPayloadParser:
     def feed_eof(self):
         if self._type == ParseState.PARSE_UNTIL_EOF:
             self.payload.feed_eof()
+        elif self._type == ParseState.PARSE_LENGTH:
+            raise ContentLengthError(
+                "Not enough data for satisfy content length header.")
+        elif self._type == ParseState.PARSE_CHUNKED:
+            raise TransferEncodingError(
+                "Not enough data for satisfy transfer length header.")
 
     def feed_data(self, chunk, SEP=b'\r\n', CHUNK_EXT=b';'):
         # Read specified amount of bytes
@@ -468,7 +514,7 @@ class HttpPayloadParser:
                             size = chunk[:pos]
 
                         try:
-                            size = int(size, 16)
+                            size = int(bytes(size), 16)
                         except ValueError:
                             exc = TransferEncodingError(chunk[:pos])
                             self.payload.set_exception(exc)
@@ -545,17 +591,23 @@ class DeflateBuffer:
     def __init__(self, out, encoding):
         self.out = out
         self.size = 0
+        self.encoding = encoding
+
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
 
         self.zlib = zlib.decompressobj(wbits=zlib_mode)
+
+    def set_exception(self, exc):
+        self.out.set_exception(exc)
 
     def feed_data(self, chunk, size):
         self.size += size
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise ContentEncodingError('deflate')
+            raise ContentEncodingError(
+                'Can not decode content-encoding: %s' % self.encoding)
 
         if chunk:
             self.out.feed_data(chunk, len(chunk))

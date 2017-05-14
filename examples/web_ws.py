@@ -23,14 +23,14 @@ async def wshandler(request):
     try:
         print('Someone joined.')
         for ws in request.app['sockets']:
-            ws.send_str('Someone joined')
+            await ws.send_str('Someone joined')
         request.app['sockets'].append(resp)
 
         async for msg in resp:
             if msg.type == WSMsgType.TEXT:
                 for ws in request.app['sockets']:
                     if ws is not resp:
-                        ws.send_str(msg.data)
+                        await ws.send_str(msg.data)
             else:
                 return resp
         return resp
@@ -39,7 +39,7 @@ async def wshandler(request):
         request.app['sockets'].remove(resp)
         print('Someone disconnected.')
         for ws in request.app['sockets']:
-            ws.send_str('Someone disconnected.')
+            await ws.send_str('Someone disconnected.')
 
 
 async def on_shutdown(app):
@@ -48,7 +48,7 @@ async def on_shutdown(app):
 
 
 async def init(loop):
-    app = Application(loop=loop)
+    app = Application()
     app['sockets'] = []
     app.router.add_get('/', wshandler)
     app.on_shutdown.append(on_shutdown)

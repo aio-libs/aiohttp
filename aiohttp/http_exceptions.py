@@ -41,12 +41,20 @@ class HttpBadRequest(BadHttpMessage):
     message = 'Bad Request'
 
 
-class ContentEncodingError(BadHttpMessage):
+class PayloadEncodingError(BadHttpMessage):
+    """Base class for payload errors"""
+
+
+class ContentEncodingError(PayloadEncodingError):
     """Content encoding error."""
 
 
-class TransferEncodingError(BadHttpMessage):
+class TransferEncodingError(PayloadEncodingError):
     """transfer encoding error."""
+
+
+class ContentLengthError(PayloadEncodingError):
+    """Not enough data for satisfy content length header."""
 
 
 class LineTooLong(BadHttpMessage):

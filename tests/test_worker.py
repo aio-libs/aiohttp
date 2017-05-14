@@ -23,6 +23,12 @@ WRONG_LOG_FORMAT = '%a "%{Referrer}i" %(h)s %(l)s %s'
 ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 
 
+# tokio event loop does not allow to override attributes
+def skip_if_no_dict(loop):
+    if not hasattr(loop, '__dict__'):
+        pytest.skip("can not override loop attributes")
+
+
 class BaseTestWorker:
 
     def __init__(self):
@@ -30,6 +36,11 @@ class BaseTestWorker:
         self.exit_code = 0
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
+
+        try:
+            self.pid = 'pid'
+        except:
+            pass
 
 
 class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
@@ -179,6 +190,8 @@ def test__get_valid_log_format_exc(worker):
 
 @asyncio.coroutine
 def test__run_ok(worker, loop):
+    skip_if_no_dict(loop)
+
     worker.ppid = 1
     worker.alive = True
     worker.servers = {}
@@ -216,6 +229,8 @@ def test__run_ok(worker, loop):
                     reason="UNIX sockets are not supported")
 @asyncio.coroutine
 def test__run_ok_unix_socket(worker, loop):
+    skip_if_no_dict(loop)
+
     worker.ppid = 1
     worker.alive = True
     worker.servers = {}
@@ -332,6 +347,8 @@ def test_close_wsgi(worker, loop):
 
 @asyncio.coroutine
 def test__run_ok_no_max_requests(worker, loop):
+    skip_if_no_dict(loop)
+
     worker.ppid = 1
     worker.alive = True
     worker.servers = {}
@@ -367,6 +384,8 @@ def test__run_ok_no_max_requests(worker, loop):
 
 @asyncio.coroutine
 def test__run_ok_max_requests_exceeded(worker, loop):
+    skip_if_no_dict(loop)
+
     worker.ppid = 1
     worker.alive = True
     worker.servers = {}

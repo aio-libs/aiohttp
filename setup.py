@@ -58,7 +58,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 
 install_requires = ['chardet', 'multidict>=2.1.4',
-                    'async_timeout>=1.1.0', 'yarl>=0.9.8,<0.11']
+                    'async_timeout>=1.2.0', 'yarl>=0.10.0,<0.11']
 
 if sys.version_info < (3, 4, 2):
     raise RuntimeError("aiohttp requires Python 3.4.2+")
@@ -84,7 +84,7 @@ tests_require = install_requires + ['pytest', 'gunicorn', 'pytest-timeout']
 args = dict(
     name='aiohttp',
     version=version,
-    description='http client/server for asyncio',
+    description='Async http client/server framework (asyncio)',
     long_description='\n\n'.join((read('README.rst'), read('CHANGES.rst'))),
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
@@ -98,13 +98,15 @@ args = dict(
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
-        'Topic :: Internet :: WWW/HTTP'],
+        'Topic :: Internet :: WWW/HTTP',
+        'Framework :: AsyncIO',
+    ],
     author='Nikolay Kim',
     author_email='fafhrd91@gmail.com',
-    maintainer=', '.join(('Andrew Svetlov <andrew.svetlov@gmail.com>',
-                          'Nikolay Kim <fafhrd91@gmail.com>')),
+    maintainer=', '.join(('Nikolay Kim <fafhrd91@gmail.com>',
+                          'Andrew Svetlov <andrew.svetlov@gmail.com>')),
     maintainer_email='aio-libs@googlegroups.com',
-    url='https://github.com/KeepSafe/aiohttp/',
+    url='https://github.com/aio-libs/aiohttp/',
     license='Apache 2',
     packages=['aiohttp'],
     install_requires=install_requires,

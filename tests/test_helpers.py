@@ -1,9 +1,11 @@
 import asyncio
 import datetime
+import gc
 import sys
 from unittest import mock
 
 import pytest
+from yarl import URL
 
 from aiohttp import helpers
 
@@ -101,56 +103,7 @@ def test_basic_auth_decode_bad_base64():
         helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
 
 
-def test_invalid_formdata_params():
-    with pytest.raises(TypeError):
-        helpers.FormData('asdasf')
-
-
-def test_invalid_formdata_params2():
-    with pytest.raises(TypeError):
-        helpers.FormData('as')  # 2-char str is not allowed
-
-
-def test_invalid_formdata_content_type():
-    form = helpers.FormData()
-    invalid_vals = [0, 0.1, {}, [], b'foo']
-    for invalid_val in invalid_vals:
-        with pytest.raises(TypeError):
-            form.add_field('foo', 'bar', content_type=invalid_val)
-
-
-def test_invalid_formdata_filename():
-    form = helpers.FormData()
-    invalid_vals = [0, 0.1, {}, [], b'foo']
-    for invalid_val in invalid_vals:
-        with pytest.raises(TypeError):
-            form.add_field('foo', 'bar', filename=invalid_val)
-
-
-def test_invalid_formdata_content_transfer_encoding():
-    form = helpers.FormData()
-    invalid_vals = [0, 0.1, {}, [], b'foo']
-    for invalid_val in invalid_vals:
-        with pytest.raises(TypeError):
-            form.add_field('foo',
-                           'bar',
-                           content_transfer_encoding=invalid_val)
-
 # ------------- access logger -------------------------
-
-
-def test_formdata_field_name_is_quoted():
-    form = helpers.FormData()
-    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
-    res = b"".join(form("ascii"))
-    assert b'name="emails%5B%5D"' in res
-
-
-def test_formdata_field_name_is_not_quoted():
-    form = helpers.FormData(quote_fields=False)
-    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
-    res = b"".join(form("ascii"))
-    assert b'name="emails[]"' in res
 
 
 def test_access_logger_format():
@@ -167,21 +120,19 @@ def test_access_logger_atoms(mocker):
     utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
-    log_format = '%a %t %P %l %u %r %s %b %O %T %Tf %D'
+    log_format = '%a %t %P %l %u %r %s %b %T %Tf %D'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
     message = mock.Mock(headers={}, method="GET", path="/path", version=(1, 1))
     environ = {}
-    response = mock.Mock(headers={}, output_length=123,
-                         body_length=42, status=200)
+    response = mock.Mock(headers={}, body_length=42, status=200)
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(message, environ, response, transport, 3.1415926)
     assert not mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
-                'GET /path HTTP/1.1 200 42 123 3 3.141593 3141593')
+                'GET /path HTTP/1.1 200 42 3 3.141593 3141593')
     extra = {
-        'bytes_sent': 123,
         'first_request_line': 'GET /path HTTP/1.1',
         'process_id': '<42>',
         'remote_address': '127.0.0.2',
@@ -305,7 +256,7 @@ class TestReify:
             a.prop = 123
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason='old python')
+@pytest.mark.skipif(sys.version_info < (3, 5, 2), reason='old python')
 def test_create_future_with_new_loop():
     # We should use the new create_future() if it's available.
     mock_loop = mock.Mock()
@@ -425,15 +376,6 @@ class TestTimeService:
         assert time_service._cb is None
         assert time_service._loop is None
 
-    def test_cancel_handles_on_stop(self, time_service):
-        def cb(x):
-            return x
-
-        handle = time_service.call_later(10, cb, 'test')
-        time_service.close()
-        assert handle._cancelled
-        assert not time_service._scheduled
-
     def test_double_stopping(self, time_service):
         time_service.close()
         time_service.close()
@@ -451,89 +393,55 @@ class TestTimeService:
         assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
 
     def test_recalc_time(self, time_service, mocker):
-        mocker.spy(time_service._loop, 'time')
-
-        time_service._time = 123
+        time = time_service._loop.time()
+        time_service._time = time
         time_service._strtime = 'asd'
         time_service._count = 1000000
         time_service._on_cb()
         assert time_service._strtime is None
-        assert time_service._time > 1234
+        assert time_service._time > time
         assert time_service._count == 0
-        assert time_service._loop.time.called
 
-    def test_call_later(self, time_service):
-        time_service._loop.time = mock.Mock()
-        time_service._loop.time.return_value = 1477797232
-        time_service._loop_time = 1477797232
 
-        called = 0
+# ----------------------------------- TimeoutHandle -------------------
 
-        def cb():
-            nonlocal called
-            called += 1
+def test_timeout_handle(loop):
+    handle = helpers.TimeoutHandle(loop, 10.2)
+    cb = mock.Mock()
+    handle.register(cb)
+    assert cb == handle._callbacks[0][0]
+    handle.close()
+    assert not handle._callbacks
 
-        time_service.call_later(10, cb)
-        time_service.call_later(20, cb)
-        time_service._loop.time.return_value = 1477797232 + 11
-        time_service._on_cb()
 
-        assert called == 1
+def test_timeout_handle_cb_exc(loop):
+    handle = helpers.TimeoutHandle(loop, 10.2)
+    cb = mock.Mock()
+    handle.register(cb)
+    cb.side_effect = ValueError()
+    handle()
+    assert cb.called
+    assert not handle._callbacks
 
-        time_service._loop.time.return_value = 1477797232 + 21
-        time_service._on_cb()
 
-        assert called == 2
-        assert not time_service._scheduled
-
-    def test_call_cancel(self, time_service):
-        time_service._loop.time = mock.Mock()
-        time_service._loop.time.return_value = 1477797232
-        time_service._loop_time = 1477797232
-
-        called = 0
-
-        def cb():
-            nonlocal called
-            called += 1
-
-        handle = time_service.call_later(10, cb)
-        handle.cancel()
-        time_service._loop.time.return_value = 1477797232 + 11
-        time_service._on_cb()
-
-        assert called == 0
-        assert not time_service._scheduled
-
-    @asyncio.coroutine
-    def test_timeout(self, time_service, loop):
-        canceled_raised = False
-
-        @asyncio.coroutine
-        def long_running_task():
-            try:
-                yield from asyncio.sleep(10, loop=loop)
-            except asyncio.CancelledError:
-                nonlocal canceled_raised
-                canceled_raised = True
-                raise
+def test_timer_context_cancelled():
+    with mock.patch('aiohttp.helpers.asyncio') as m_asyncio:
+        m_asyncio.TimeoutError = asyncio.TimeoutError
+        loop = mock.Mock()
+        ctx = helpers.TimerContext(loop)
+        ctx.timeout()
 
         with pytest.raises(asyncio.TimeoutError):
-            with time_service.timeout(0.02):
-                yield from long_running_task()
-        assert canceled_raised, 'CancelledError was not raised'
+            with ctx:
+                pass
 
-    @asyncio.coroutine
-    def test_timeout_finish_in_time(self, time_service, loop):
-        @asyncio.coroutine
-        def long_running_task():
-            yield from asyncio.sleep(0.01, loop=loop)
-            return 'done'
+        assert m_asyncio.Task.current_task.return_value.cancel.called
 
-        with time_service.timeout(0.1):
-            resp = yield from long_running_task()
 
-        assert resp == 'done'
+def test_timer_context_no_task(loop):
+    with pytest.raises(RuntimeError):
+        with helpers.TimerContext(loop):
+            pass
 
 
 # ----------------------------------- FrozenList ----------------------
@@ -547,3 +455,93 @@ class TestFrozenList:
     def test_le(self):
         l = helpers.FrozenList([1])
         assert l < [2]
+
+
+# -------------------------------- CeilTimeout --------------------------
+
+
+@asyncio.coroutine
+def test_weakref_handle(loop):
+    cb = mock.Mock()
+    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
+    yield from asyncio.sleep(0.1, loop=loop)
+    assert cb.test.called
+
+
+@asyncio.coroutine
+def test_weakref_handle_weak(loop):
+    cb = mock.Mock()
+    helpers.weakref_handle(cb, 'test', 0.01, loop, False)
+    del cb
+    gc.collect()
+    yield from asyncio.sleep(0.1, loop=loop)
+
+
+def test_ceil_call_later():
+    cb = mock.Mock()
+    loop = mock.Mock()
+    loop.time.return_value = 10.1
+    helpers.call_later(cb, 10.1, loop)
+    loop.call_at.assert_called_with(21.0, cb)
+
+
+def test_ceil_call_later_no_timeout():
+    cb = mock.Mock()
+    loop = mock.Mock()
+    helpers.call_later(cb, 0, loop)
+    assert not loop.call_at.called
+
+
+@asyncio.coroutine
+def test_ceil_timeout(loop):
+    with helpers.CeilTimeout(0, loop=loop) as timeout:
+        assert timeout._timeout is None
+        assert timeout._cancel_handler is None
+
+
+def test_ceil_timeout_no_task(loop):
+    with pytest.raises(RuntimeError):
+        with helpers.CeilTimeout(10, loop=loop):
+            pass
+
+
+# -------------------------------- ContentDisposition -------------------
+
+def test_content_disposition():
+    assert (helpers.content_disposition_header('attachment', foo='bar') ==
+            'attachment; foo="bar"')
+
+
+def test_content_disposition_bad_type():
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('foo bar')
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('—Ç–µ—Å—Ç')
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('foo\x00bar')
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('')
+
+
+def test_set_content_disposition_bad_param():
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('inline', **{'foo bar': 'baz'})
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('inline', **{'—Ç–µ—Å—Ç': 'baz'})
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('inline', **{'': 'baz'})
+    with pytest.raises(ValueError):
+        helpers.content_disposition_header('inline',
+                                           **{'foo\x00bar': 'baz'})
+
+
+def test_dummy_cookie_jar(loop):
+    cookie = helpers.SimpleCookie('foo=bar; Domain=example.com;')
+    dummy_jar = helpers.DummyCookieJar(loop=loop)
+    assert len(dummy_jar) == 0
+    dummy_jar.update_cookies(cookie)
+    assert len(dummy_jar) == 0
+    with pytest.raises(StopIteration):
+        next(iter(dummy_jar))
+    assert dummy_jar.filter_cookies(URL("http://example.com/")) is None
+    dummy_jar.clear()

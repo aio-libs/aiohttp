@@ -1,2 +1,0 @@
-twisted==17.1.0
-tornado==4.4.2

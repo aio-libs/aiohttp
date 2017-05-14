@@ -259,7 +259,7 @@ def test_close(loop, ws_key, key_data):
                 assert not resp.closed
 
                 resp._reader.feed_data(
-                    aiohttp.WSMessage(aiohttp.MsgType.CLOSE, b'', b''), 0)
+                    aiohttp.WSMessage(aiohttp.WSMsgType.CLOSE, b'', b''), 0)
 
                 res = yield from resp.close()
                 writer.close.assert_called_with(1000, b'')
@@ -420,7 +420,7 @@ def test_reader_read_exception(ws_key, key_data, loop):
                 resp._reader.set_exception(exc)
 
                 msg = yield from resp.receive()
-                assert msg.type == aiohttp.MsgType.ERROR
+                assert msg.type == aiohttp.WSMsgType.ERROR
                 assert msg.type is msg.tp
                 assert resp.exception() is exc
 
@@ -506,3 +506,4 @@ def test_ws_connect_non_overlapped_protocols_2(ws_key, loop, key_data):
                 protocols=('t1', 't2', 'chat'))
 
     assert res.protocol is None
+    del res

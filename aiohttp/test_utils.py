@@ -17,7 +17,7 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import PY_35, TimeService, sentinel
+from .helpers import PY_35, noop, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Application, Request, Server, UrlMappingMatchInfo
@@ -39,8 +39,9 @@ def unused_port():
 
 
 class BaseTestServer(ABC):
-    def __init__(self, *, scheme=sentinel,
+    def __init__(self, *, scheme=sentinel, loop=None,
                  host='127.0.0.1', skip_url_asserts=False, **kwargs):
+        self._loop = loop
         self.port = None
         self.server = None
         self.handler = None
@@ -51,9 +52,10 @@ class BaseTestServer(ABC):
         self.skip_url_asserts = skip_url_asserts
 
     @asyncio.coroutine
-    def start_server(self, **kwargs):
+    def start_server(self, loop=None, **kwargs):
         if self.server:
             return
+        self._loop = loop
         self.port = unused_port()
         self._ssl = kwargs.pop('ssl', None)
         if self.scheme is sentinel:
@@ -67,10 +69,8 @@ class BaseTestServer(ABC):
                                              self.port))
 
         handler = yield from self._make_factory(**kwargs)
-        self.server = yield from self._loop.create_server(handler,
-                                                          self.host,
-                                                          self.port,
-                                                          ssl=self._ssl)
+        self.server = yield from self._loop.create_server(
+            handler, self.host, self.port, ssl=self._ssl)
 
     @abstractmethod  # pragma: no cover
     @asyncio.coroutine
@@ -120,7 +120,7 @@ class BaseTestServer(ABC):
         pass  # pragma: no cover
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server())
+        self._loop.run_until_complete(self.start_server(loop=self._loop))
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -129,7 +129,7 @@ class BaseTestServer(ABC):
     if PY_35:
         @asyncio.coroutine
         def __aenter__(self):
-            yield from self.start_server()
+            yield from self.start_server(loop=self._loop)
             return self
 
         @asyncio.coroutine
@@ -138,15 +138,16 @@ class BaseTestServer(ABC):
 
 
 class TestServer(BaseTestServer):
-    def __init__(self, app, *, scheme=sentinel, host='127.0.0.1', **kwargs):
+
+    def __init__(self, app, *,
+                 scheme=sentinel, host='127.0.0.1', **kwargs):
         self.app = app
-        self._loop = app.loop
         super().__init__(scheme=scheme, host=host, **kwargs)
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
+        self.handler = self.app.make_handler(loop=self._loop, **kwargs)
         yield from self.app.startup()
-        self.handler = self.app.make_handler(**kwargs)
         return self.handler
 
     @asyncio.coroutine
@@ -157,11 +158,9 @@ class TestServer(BaseTestServer):
 
 
 class RawTestServer(BaseTestServer):
+
     def __init__(self, handler, *,
-                 loop=None, scheme=sentinel, host='127.0.0.1', **kwargs):
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self._loop = loop
+                 scheme=sentinel, host='127.0.0.1', **kwargs):
         self._handler = handler
         super().__init__(scheme=scheme, host=host, **kwargs)
 
@@ -185,7 +184,7 @@ class TestClient:
     """
 
     def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
-                 cookie_jar=None, server_kwargs=None, **kwargs):
+                 cookie_jar=None, server_kwargs=None, loop=None, **kwargs):
         if isinstance(app_or_server, BaseTestServer):
             if scheme is not sentinel or host is not sentinel:
                 raise ValueError("scheme and host are mutable exclusive "
@@ -201,12 +200,10 @@ class TestClient:
         else:
             raise TypeError("app_or_server should be either web.Application "
                             "or TestServer instance")
-        self._loop = self._server._loop
+        self._loop = loop
         if cookie_jar is None:
-            cookie_jar = aiohttp.CookieJar(unsafe=True,
-                                           loop=self._loop)
-        kwargs['time_service'] = TimeService(self._loop, interval=0.1)
-        self._session = ClientSession(loop=self._loop,
+            cookie_jar = aiohttp.CookieJar(unsafe=True, loop=loop)
+        self._session = ClientSession(loop=loop,
                                       cookie_jar=cookie_jar,
                                       **kwargs)
         self._closed = False
@@ -215,7 +212,7 @@ class TestClient:
 
     @asyncio.coroutine
     def start_server(self):
-        yield from self._server.start_server()
+        yield from self._server.start_server(loop=self._loop)
 
     @property
     def host(self):
@@ -331,7 +328,7 @@ class TestClient:
                 resp.close()
             for ws in self._websockets:
                 yield from ws.close()
-            yield from self._session.close()
+            self._session.close()
             yield from self._server.close()
             self._closed = True
 
@@ -370,16 +367,16 @@ class AioHTTPTestCase(unittest.TestCase):
     """
 
     @asyncio.coroutine
-    def get_application(self, loop):
+    def get_application(self):
         """
         This method should be overridden
         to return the aiohttp.web.Application
         object to test.
 
         """
-        return self.get_app(loop)
+        return self.get_app()
 
-    def get_app(self, loop):
+    def get_app(self):
         """Obsolete method used to constructing web application.
 
         Use .get_application() coroutine instead
@@ -390,8 +387,7 @@ class AioHTTPTestCase(unittest.TestCase):
     def setUp(self):
         self.loop = setup_test_loop()
 
-        self.app = self.loop.run_until_complete(
-            self.get_application(self.loop))
+        self.app = self.loop.run_until_complete(self.get_application())
         self.client = self.loop.run_until_complete(self._get_client(self.app))
 
         self.loop.run_until_complete(self.client.start_server())
@@ -403,10 +399,10 @@ class AioHTTPTestCase(unittest.TestCase):
     @asyncio.coroutine
     def _get_client(self, app):
         """Return a TestClient instance."""
-        return TestClient(self.app)
+        return TestClient(self.app, loop=self.loop)
 
 
-def unittest_run_loop(func):
+def unittest_run_loop(func, *args, **kwargs):
     """A decorator dedicated to use with asynchronous methods of an
     AioHTTPTestCase.
 
@@ -414,9 +410,9 @@ def unittest_run_loop(func):
     the self.loop of the AioHTTPTestCase.
     """
 
-    @functools.wraps(func)
+    @functools.wraps(func, *args, **kwargs)
     def new_func(self):
-        return self.loop.run_until_complete(func(self))
+        return self.loop.run_until_complete(func(self, *args, **kwargs))
 
     return new_func
 
@@ -485,6 +481,7 @@ def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
                         writer=sentinel,
+                        payload_writer=sentinel,
                         protocol=sentinel,
                         transport=sentinel,
                         payload=sentinel,
@@ -497,6 +494,10 @@ def make_mocked_request(method, path, headers=None, *,
     specific conditions and errors are hard to trigger.
 
     """
+
+    task = mock.Mock()
+    loop = mock.Mock()
+    loop.create_future.return_value = ()
 
     if version < HttpVersion(1, 1):
         closing = True
@@ -527,6 +528,11 @@ def make_mocked_request(method, path, headers=None, *,
         writer = mock.Mock()
         writer.transport = transport
 
+    if payload_writer is sentinel:
+        payload_writer = mock.Mock()
+        payload_writer.write_eof.side_effect = noop
+        payload_writer.drain.side_effect = noop
+
     protocol.transport = transport
     protocol.writer = writer
 
@@ -544,13 +550,8 @@ def make_mocked_request(method, path, headers=None, *,
     time_service.timeout = mock.Mock()
     time_service.timeout.side_effect = timeout
 
-    task = mock.Mock()
-    loop = mock.Mock()
-    loop.create_future.return_value = ()
-
     req = Request(message, payload,
-                  protocol, time_service, task,
-                  loop=loop,
+                  protocol, payload_writer, time_service, task,
                   secure_proxy_ssl_header=secure_proxy_ssl_header,
                   client_max_size=client_max_size)
 

@@ -6,6 +6,14 @@ import aiohttp
 from aiohttp import hdrs, helpers, web
 
 
+@pytest.fixture
+def ceil(mocker):
+    def ceil(val):
+        return val
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+
 @asyncio.coroutine
 def test_send_recv_text(loop, test_client):
 
@@ -15,19 +23,23 @@ def test_send_recv_text(loop, test_client):
         yield from ws.prepare(request)
 
         msg = yield from ws.receive_str()
-        ws.send_str(msg+'/answer')
+        yield from ws.send_str(msg+'/answer')
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
-    resp.send_str('ask')
+    yield from resp.send_str('ask')
+
+    assert resp.get_extra_info('socket') is not None
 
     data = yield from resp.receive_str()
     assert data == 'ask/answer'
     yield from resp.close()
+
+    assert resp.get_extra_info('socket') is None
 
 
 @asyncio.coroutine
@@ -39,15 +51,15 @@ def test_send_recv_bytes_bad_type(loop, test_client):
         yield from ws.prepare(request)
 
         msg = yield from ws.receive_str()
-        ws.send_str(msg+'/answer')
+        yield from ws.send_str(msg+'/answer')
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
-    resp.send_str('ask')
+    yield from resp.send_str('ask')
 
     with pytest.raises(TypeError):
         yield from resp.receive_bytes()
@@ -63,16 +75,16 @@ def test_send_recv_bytes(loop, test_client):
         yield from ws.prepare(request)
 
         msg = yield from ws.receive_bytes()
-        ws.send_bytes(msg+b'/answer')
+        yield from ws.send_bytes(msg+b'/answer')
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     data = yield from resp.receive_bytes()
     assert data == b'ask/answer'
@@ -89,16 +101,16 @@ def test_send_recv_text_bad_type(loop, test_client):
         yield from ws.prepare(request)
 
         msg = yield from ws.receive_bytes()
-        ws.send_bytes(msg+b'/answer')
+        yield from ws.send_bytes(msg+b'/answer')
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     with pytest.raises(TypeError):
         yield from resp.receive_str()
@@ -115,11 +127,11 @@ def test_send_recv_json(loop, test_client):
         yield from ws.prepare(request)
 
         data = yield from ws.receive_json()
-        ws.send_json({'response': data['request']})
+        yield from ws.send_json({'response': data['request']})
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
@@ -143,20 +155,20 @@ def test_ping_pong(loop, test_client):
 
         msg = yield from ws.receive_bytes()
         ws.ping()
-        ws.send_bytes(msg+b'/answer')
+        yield from ws.send_bytes(msg+b'/answer')
         try:
             yield from ws.close()
         finally:
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
     resp.ping()
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
     assert msg.type == aiohttp.WSMsgType.BINARY
@@ -181,20 +193,20 @@ def test_ping_pong_manual(loop, test_client):
 
         msg = yield from ws.receive_bytes()
         ws.ping()
-        ws.send_bytes(msg+b'/answer')
+        yield from ws.send_bytes(msg+b'/answer')
         try:
             yield from ws.close()
         finally:
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoping=False)
 
     resp.ping()
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
     assert msg.type == aiohttp.WSMsgType.PONG
@@ -221,17 +233,17 @@ def test_close(loop, test_client):
         yield from ws.prepare(request)
 
         yield from ws.receive_bytes()
-        ws.send_str('test')
+        yield from ws.send_str('test')
 
         yield from ws.receive()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     closed = yield from resp.close()
     assert closed
@@ -253,7 +265,7 @@ def test_concurrent_close(loop, test_client):
         yield from ws.prepare(request)
 
         yield from ws.receive_bytes()
-        ws.send_str('test')
+        yield from ws.send_str('test')
 
         yield from client_ws.close()
 
@@ -261,12 +273,12 @@ def test_concurrent_close(loop, test_client):
         assert msg.type == aiohttp.WSMsgType.CLOSE
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     ws = client_ws = yield from client.ws_connect('/')
 
-    ws.send_bytes(b'ask')
+    yield from ws.send_bytes(b'ask')
 
     msg = yield from ws.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSING
@@ -293,12 +305,12 @@ def test_close_from_server(loop, test_client):
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
 
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSE
@@ -321,7 +333,7 @@ def test_close_manual(loop, test_client):
         yield from ws.prepare(request)
 
         yield from ws.receive_bytes()
-        ws.send_str('test')
+        yield from ws.send_str('test')
 
         try:
             yield from ws.close()
@@ -329,11 +341,11 @@ def test_close_manual(loop, test_client):
             closed.set_result(1)
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoclose=False)
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
     assert msg.data == 'test'
@@ -357,15 +369,16 @@ def test_close_timeout(loop, test_client):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
         yield from ws.receive_bytes()
-        ws.send_str('test')
-        yield from asyncio.sleep(10, loop=loop)
+        yield from ws.send_str('test')
+        yield from asyncio.sleep(1, loop=loop)
+        return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', timeout=0.2, autoclose=False)
 
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     msg = yield from resp.receive()
     assert msg.data == 'test'
@@ -384,15 +397,15 @@ def test_close_cancel(loop, test_client):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
         yield from ws.receive_bytes()
-        ws.send_str('test')
+        yield from ws.send_str('test')
         yield from asyncio.sleep(10, loop=loop)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', autoclose=False)
 
-    resp.send_bytes(b'ask')
+    yield from resp.send_bytes(b'ask')
 
     text = yield from resp.receive()
     assert text.data == 'test'
@@ -417,7 +430,7 @@ def test_override_default_headers(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     headers = {hdrs.SEC_WEBSOCKET_VERSION: '8'}
     client = yield from test_client(app)
@@ -436,11 +449,11 @@ def test_additional_headers(loop, test_client):
         ws = web.WebSocketResponse()
         yield from ws.prepare(request)
 
-        ws.send_str('answer')
+        yield from ws.send_str('answer')
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', headers={'x-hdr': 'xtra'})
@@ -462,11 +475,11 @@ def test_recv_protocol_error(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
-    resp.send_str('ask')
+    yield from resp.send_str('ask')
 
     msg = yield from resp.receive()
     assert msg.type == aiohttp.WSMsgType.ERROR
@@ -491,11 +504,11 @@ def test_recv_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
-    resp.send_str('ask')
+    yield from resp.send_str('ask')
 
     with pytest.raises(asyncio.TimeoutError):
         with aiohttp.Timeout(0.01, loop=app.loop):
@@ -515,12 +528,11 @@ def test_receive_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/', receive_timeout=0.1)
-    resp._time_service._interval = 0.05
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.receive(0.05)
@@ -539,12 +551,11 @@ def test_custom_receive_timeout(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
     resp = yield from client.ws_connect('/')
-    resp._time_service._interval = 0.05
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.receive(0.05)
@@ -553,7 +564,7 @@ def test_custom_receive_timeout(loop, test_client):
 
 
 @asyncio.coroutine
-def test_heartbeat(loop, test_client):
+def test_heartbeat(loop, test_client, ceil):
     ping_received = False
 
     @asyncio.coroutine
@@ -567,7 +578,7 @@ def test_heartbeat(loop, test_client):
         yield from ws.close()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)
@@ -580,7 +591,7 @@ def test_heartbeat(loop, test_client):
 
 
 @asyncio.coroutine
-def test_heartbeat_no_pong(loop, test_client):
+def test_heartbeat_no_pong(loop, test_client, ceil):
     ping_received = False
 
     @asyncio.coroutine
@@ -594,7 +605,7 @@ def test_heartbeat_no_pong(loop, test_client):
         yield from ws.receive()
         return ws
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
 
     client = yield from test_client(app)

@@ -13,42 +13,73 @@ def test_app_ctor(loop):
     assert app.logger is log.web_logger
 
 
-def test_app_call(loop):
-    app = web.Application(loop=loop)
+def test_app_call():
+    app = web.Application()
     assert app is app()
 
 
-def test_app_default_loop(loop):
+def test_app_default_loop():
+    app = web.Application()
+    assert app.loop is None
+
+
+def test_set_loop(loop):
+    app = web.Application()
+    app._set_loop(loop)
+    assert app.loop is loop
+
+
+def test_set_loop_default_loop(loop):
     asyncio.set_event_loop(loop)
     app = web.Application()
-    assert loop is app.loop
+    app._set_loop(None)
+    assert app.loop is loop
+
+
+def test_set_loop_with_different_loops(loop):
+    app = web.Application()
+    app._set_loop(loop)
+    assert app.loop is loop
+
+    with pytest.raises(RuntimeError):
+        app._set_loop(loop=object())
+
+
+def test_on_loop_available(loop):
+    app = web.Application()
+
+    cb = mock.Mock()
+    app.on_loop_available.append(cb)
+
+    app._set_loop(loop)
+    cb.assert_called_with(app)
 
 
 @pytest.mark.parametrize('debug', [True, False])
 def test_app_make_handler_debug_exc(loop, mocker, debug):
-    app = web.Application(loop=loop, debug=debug)
-
+    app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web.Server')
 
-    app.make_handler()
-    with pytest.warns(DeprecationWarning) as exc:
-        app.make_handler(debug=debug)
-
-    assert 'parameter is deprecated' in exc[0].message.args[0]
-    assert srv.call_count == 2
+    app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
                            loop=loop,
                            debug=debug)
 
-    with pytest.raises(ValueError) as exc:
-        app.make_handler(debug=not debug)
-    assert 'The value of `debug` parameter conflicts with the' in str(exc)
+
+def test_app_make_handler_args(loop, mocker):
+    app = web.Application(handler_args={'test': True})
+    srv = mocker.patch('aiohttp.web.Server')
+
+    app.make_handler(loop=loop)
+    srv.assert_called_with(app._handle,
+                           request_factory=app._make_request,
+                           loop=loop, debug=mock.ANY, test=True)
 
 
 @asyncio.coroutine
-def test_app_register_on_finish(loop):
-    app = web.Application(loop=loop)
+def test_app_register_on_finish():
+    app = web.Application()
     cb1 = mock.Mock()
     cb2 = mock.Mock()
     app.on_cleanup.append(cb1)
@@ -60,8 +91,7 @@ def test_app_register_on_finish(loop):
 
 @asyncio.coroutine
 def test_app_register_coro(loop):
-    app = web.Application(loop=loop)
-
+    app = web.Application()
     fut = helpers.create_future(loop)
 
     @asyncio.coroutine
@@ -75,22 +105,22 @@ def test_app_register_coro(loop):
     assert 123 == fut.result()
 
 
-def test_non_default_router(loop):
+def test_non_default_router():
     router = mock.Mock(spec=AbstractRouter)
-    app = web.Application(loop=loop, router=router)
+    app = web.Application(router=router)
     assert router is app.router
 
 
-def test_logging(loop):
+def test_logging():
     logger = mock.Mock()
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.logger = logger
     assert app.logger is logger
 
 
 @asyncio.coroutine
-def test_on_shutdown(loop):
-    app = web.Application(loop=loop)
+def test_on_shutdown():
+    app = web.Application()
     called = False
 
     @asyncio.coroutine
@@ -107,7 +137,8 @@ def test_on_shutdown(loop):
 
 @asyncio.coroutine
 def test_on_startup(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
+    app._set_loop(loop)
 
     blocking_called = False
     long_running1_called = False
@@ -150,22 +181,41 @@ def test_on_startup(loop):
     assert all_long_running_called
 
 
-def test_app_delitem(loop):
-    app = web.Application(loop=loop)
+def test_app_delitem():
+    app = web.Application()
     app['key'] = 'value'
     assert len(app) == 1
     del app['key']
     assert len(app) == 0
 
 
-def test_secure_proxy_ssl_header_default(loop):
-    app = web.Application(loop=loop)
+def test_app_freeze():
+    app = web.Application()
+    subapp = mock.Mock()
+    app._subapps.append(subapp)
+
+    app.freeze()
+    assert subapp.freeze.called
+
+    app.freeze()
+    assert len(subapp.freeze.call_args_list) == 1
+
+
+def test_secure_proxy_ssl_header_default():
+    app = web.Application()
     assert app._secure_proxy_ssl_header is None
 
 
-@asyncio.coroutine
 def test_secure_proxy_ssl_header_non_default(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     hdr = ('X-Forwarded-Proto', 'https')
-    app.make_handler(secure_proxy_ssl_header=hdr)
+    app.make_handler(secure_proxy_ssl_header=hdr, loop=loop)
+    assert app._secure_proxy_ssl_header is hdr
+
+
+def test_secure_proxy_ssl_header_init(loop):
+    hdr = ('X-Forwarded-Proto', 'https')
+    app = web.Application(secure_proxy_ssl_header=hdr)
+    assert app._secure_proxy_ssl_header is hdr
+    app.make_handler(loop=loop)
     assert app._secure_proxy_ssl_header is hdr

@@ -19,8 +19,8 @@ from aiohttp.helpers import SimpleCookie
 @pytest.fixture
 def connector(loop):
     conn = BaseConnector(loop=loop)
-    transp = mock.Mock()
-    conn._conns['a'] = [(transp, 'proto', 123)]
+    proto = mock.Mock()
+    conn._conns['a'] = [(proto, 123)]
     return conn
 
 
@@ -53,6 +53,14 @@ def params():
         chunked=True,
         expect100=True,
         read_until_eof=False)
+
+
+@asyncio.coroutine
+def test_close_deprecated(create_session):
+    session = create_session()
+
+    with pytest.warns(DeprecationWarning):
+        yield from session.close()
 
 
 def test_init_headers_simple_dict(create_session):
@@ -261,10 +269,24 @@ def test_closed(session):
     assert session.closed
 
 
-def test_connector(create_session, loop):
+def test_connector(create_session, loop, mocker):
     connector = TCPConnector(loop=loop)
+    mocker.spy(connector, 'close')
     session = create_session(connector=connector)
     assert session.connector is connector
+
+    session.close()
+    assert connector.close.called
+    connector.close()
+
+
+def test_create_connector(create_session, loop, mocker):
+    session = create_session()
+    connector = session.connector
+    mocker.spy(session.connector, 'close')
+
+    session.close()
+    assert connector.close.called
 
 
 def test_connector_loop(loop):
@@ -351,7 +373,7 @@ def test_reraise_os_error(create_session):
     @asyncio.coroutine
     def create_connection(req):
         # return self.transport, self.protocol
-        return mock.Mock(), mock.Mock()
+        return mock.Mock()
     session._connector._create_connection = create_connection
 
     with pytest.raises(aiohttp.ClientOSError) as ctx:
@@ -390,7 +412,7 @@ def test_cookie_jar_usage(loop, test_client):
         resp.set_cookie("response", "resp_value")
         return resp
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('GET', '/', handler)
     session = yield from test_client(app,
                                      cookies={"request": "req_value"},

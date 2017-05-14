@@ -11,7 +11,7 @@ If you want the full source code in advance or for comparison, check out
 the `demo source`_.
 
 .. _demo source:
-   https://github.com/KeepSafe/aiohttp/tree/master/demos/polls/
+   https://github.com/aio-libs/aiohttp/tree/master/demos/polls/
 
 
 .. _aiohttp-tutorial-setup:
@@ -34,8 +34,8 @@ command:
 
 .. code-block:: shell
 
- $ python -c 'import aiohttp; print(aiohttp.__version__)'
- 1.1.5
+ $ python3 -c 'import aiohttp; print(aiohttp.__version__)'
+ 2.0.5
 
 Project structure looks very similar to other python based web projects:
 
@@ -84,18 +84,17 @@ It is used for registering *startup*/*cleanup* signals, connecting routes etc.
 
 The following code creates an application::
 
-   import asyncio
    from aiohttp import web
 
-   loop = asyncio.get_event_loop()
-   app = web.Application(loop=loop)
+
+   app = web.Application()
    web.run_app(app, host='127.0.0.1', port=8080)
 
 Save it under ``aiohttpdemo_polls/main.py`` and start the server:
 
 .. code-block:: shell
 
-   $ python main.py  
+   $ python3 main.py  
    
 You'll see the following output on the command line:
 
@@ -138,13 +137,11 @@ Now we should create a route for this ``index`` view. Put this into ``aiohttpdem
 
 Also, we should call ``setup_routes`` function somewhere, and the best place is in the ``main.py`` ::
 
-   import asyncio
    from aiohttp import web
    from routes import setup_routes
 
 
-   loop = asyncio.get_event_loop()
-   app = web.Application(loop=loop)
+   app = web.Application()
    setup_routes(app)
    web.run_app(app, host='127.0.0.1', port=8080)
 

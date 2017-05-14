@@ -10,7 +10,7 @@ It is the grand basement for libraries built *on top* of aiohttp.
 This page is a list of these tools.
 
 Please feel free to add your open sourced library if it's not enlisted
-yet by making Pull Request to https://github.com/KeepSafe/aiohttp/
+yet by making Pull Request to https://github.com/aio-libs/aiohttp/
 
 - Q. Why do you might want to include your awesome library into the list?
 

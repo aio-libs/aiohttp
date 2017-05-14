@@ -66,7 +66,7 @@ After that please install libraries required for development:
    $ pip install -r requirements-dev.txt
 
 We also recommend to install ipdb_ but it's on your own:
-:
+
 .. code-block:: shell
 
    $ pip install ipdb
@@ -164,6 +164,6 @@ The End
 After finishing all steps make a GitHub_ Pull Request, thanks.
 
 
-.. _GitHub: https://github.com/KeepSafe/aiohttp
+.. _GitHub: https://github.com/aio-libs/aiohttp
 
 .. _ipdb: https://pypi.python.org/pypi/ipdb

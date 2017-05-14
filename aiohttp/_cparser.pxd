@@ -86,7 +86,8 @@ cdef extern from "../vendor/http-parser/http_parser.h":
         F_CONNECTION_UPGRADE,
         F_TRAILING,
         F_UPGRADE,
-        F_SKIPBODY
+        F_SKIPBODY,
+        F_CONTENTLENGTH
 
     enum http_method:
         DELETE, GET, HEAD, POST, PUT, CONNECT, OPTIONS, TRACE, COPY,

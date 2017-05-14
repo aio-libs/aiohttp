@@ -1,20 +1,41 @@
-http client/server for asyncio
-==============================
+Async http client/server framework
+==================================
 
-.. image:: https://raw.github.com/KeepSafe/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
+.. image:: https://raw.githubusercontent.com/aio-libs/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
   :height: 64px
   :width: 64px
   :alt: aiohttp logo
 
-.. image:: https://travis-ci.org/KeepSafe/aiohttp.svg?branch=master
-  :target:  https://travis-ci.org/KeepSafe/aiohttp
+.. image:: https://travis-ci.org/aio-libs/aiohttp.svg?branch=master
+  :target:  https://travis-ci.org/aio-libs/aiohttp
   :align: right
 
-.. image:: https://codecov.io/gh/KeepSafe/aiohttp/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/KeepSafe/aiohttp
+.. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/aio-libs/aiohttp
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
     :target: https://badge.fury.io/py/aiohttp
+
+
+aiohttp 2.0 release!
+--------------------
+
+For this release we completely refactored low-level implementation of http handling.
+Finally `uvloop` gives performance improvement. Overall performance improvement
+should be around 70-90% compared to 1.x version.
+
+We took opportunity to refactor long standing api design problems across whole package.
+Client exceptions handling has been cleaned up and now much more straight forward. Client payload
+management simplified and allows to extend with any custom type. Client connection pool
+implementation has been redesigned as well, now there is no need for actively releasing response objects,
+aiohttp handles connection release automatically.
+
+Another major change, we moved aiohttp development to public organization https://github.com/aio-libs
+
+With this amount of api changes we had to make backward incompatible changes. Please check this migration document http://aiohttp.readthedocs.io/en/latest/migration.html
+
+Please report problems or annoyance with with api to https://github.com/aio-libs/aiohttp
+
 
 Features
 --------
@@ -137,11 +158,17 @@ License
 ``aiohttp`` is offered under the Apache 2 license.
 
 
+Keepsafe
+--------
+
+The aiohttp community would like to thank Keepsafe (https://www.getkeepsafe.com) for it's support in the early days of the project.
+
+
 Source code
 ------------
 
 The latest developer version is available in a github repository:
-https://github.com/KeepSafe/aiohttp
+https://github.com/aio-libs/aiohttp
 
 Benchmarks
 ----------

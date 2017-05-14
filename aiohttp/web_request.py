@@ -1,14 +1,13 @@
 import asyncio
-import binascii
-import cgi
 import collections
 import datetime
-import io
 import json
 import re
+import tempfile
 import warnings
 from email.utils import parsedate
 from types import MappingProxyType
+from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
@@ -19,7 +18,8 @@ from .web_exceptions import HTTPRequestEntityTooLarge
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
 
-FileField = collections.namedtuple('Field', 'name filename file content_type')
+FileField = collections.namedtuple(
+    'Field', 'name filename file content_type headers')
 
 
 ############################################################
@@ -32,21 +32,19 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, time_service, task, *,
-                 loop=None, secure_proxy_ssl_header=None,
-                 client_max_size=1024**2):
-        self._loop = loop
+    def __init__(self, message, payload, protocol, writer, time_service, task,
+                 *, secure_proxy_ssl_header=None, client_max_size=1024**2):
         self._message = message
         self._protocol = protocol
         self._transport = protocol.transport
-        self._post = None
-        self._post_files_cache = None
+        self._writer = writer
 
         self._payload = payload
         self._headers = message.headers
         self._method = message.method
         self._version = message.version
-
+        self._rel_url = message.url
+        self._post = None
         self._read_bytes = None
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
@@ -55,8 +53,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
-
-        self._rel_url = message.url
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -90,9 +86,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             message,
             self._payload,
             self._protocol,
+            self._writer,
             self._time_service,
             self._task,
-            loop=self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     @property
@@ -106,6 +102,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @property
     def transport(self):
         return self._protocol.transport
+
+    @property
+    def writer(self):
+        return self._writer
 
     @property
     def message(self):
@@ -142,6 +142,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self.url.scheme
 
+    @property
+    def secure(self):
+        """A bool indicating if the request is handled with SSL or
+        'secure_proxy_ssl_header' is matching
+
+        """
+        return self.url.scheme == 'https'
+
     @reify
     def _scheme(self):
         if self._transport.get_extra_info('sslcontext'):
@@ -175,9 +183,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         Returns str or None if HTTP request has no HOST header.
         """
-        warnings.warn("host property is deprecated, "
-                      "use .url.host instead",
-                      DeprecationWarning)
         return self._message.headers.get(hdrs.HOST)
 
     @reify
@@ -217,34 +222,19 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.query
 
     @property
+    def GET(self):
+        """A multidict with all the variables in the query string."""
+        warnings.warn("GET property is deprecated, use .query instead",
+                      DeprecationWarning)
+        return self._rel_url.query
+
+    @property
     def query_string(self):
         """The query string in the URL.
 
         E.g., id=10
         """
         return self._rel_url.query_string
-
-    @property
-    def GET(self):
-        """A multidict with all the variables in the query string.
-
-        Lazy property.
-        """
-        warnings.warn("GET property is deprecated, use .query instead",
-                      DeprecationWarning)
-        return self._rel_url.query
-
-    @reify
-    def POST(self):
-        """A multidict with all the variables in the POST parameters.
-
-        post() methods has to be called before using this attribute.
-        """
-        warnings.warn("POST property is deprecated, use .post() instead",
-                      DeprecationWarning)
-        if self._post is None:
-            raise RuntimeError("POST is not available before post()")
-        return self._post
 
     @property
     def headers(self):
@@ -397,51 +387,56 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        if self.content_type.startswith('multipart/'):
-            warnings.warn('To process multipart requests use .multipart'
-                          ' coroutine instead.', DeprecationWarning)
-
-        body = yield from self.read()
-        content_charset = self.charset or 'utf-8'
-
-        environ = {'REQUEST_METHOD': self._method,
-                   'CONTENT_LENGTH': str(len(body)),
-                   'QUERY_STRING': '',
-                   'CONTENT_TYPE': self._headers.get(hdrs.CONTENT_TYPE)}
-
-        fs = cgi.FieldStorage(fp=io.BytesIO(body),
-                              environ=environ,
-                              keep_blank_values=True,
-                              encoding=content_charset)
-
-        supported_transfer_encoding = {
-            'base64': binascii.a2b_base64,
-            'quoted-printable': binascii.a2b_qp
-        }
-
         out = MultiDict()
-        _count = 1
-        for field in fs.list or ():
-            transfer_encoding = field.headers.get(
-                hdrs.CONTENT_TRANSFER_ENCODING, None)
-            if field.filename:
-                ff = FileField(field.name,
-                               field.filename,
-                               field.file,  # N.B. file closed error
-                               field.type)
-                if self._post_files_cache is None:
-                    self._post_files_cache = {}
-                self._post_files_cache[field.name+str(_count)] = field
-                _count += 1
-                out.add(field.name, ff)
-            else:
-                value = field.value
-                if transfer_encoding in supported_transfer_encoding:
-                    # binascii accepts bytes
-                    value = value.encode('utf-8')
-                    value = supported_transfer_encoding[
-                        transfer_encoding](value)
-                out.add(field.name, value)
+
+        if content_type == 'multipart/form-data':
+            multipart = yield from self.multipart()
+
+            field = yield from multipart.next()
+            while field is not None:
+                size = 0
+                max_size = self._client_max_size
+                content_type = field.headers.get(hdrs.CONTENT_TYPE)
+
+                if field.filename:
+                    # store file in temp file
+                    tmp = tempfile.TemporaryFile()
+                    chunk = yield from field.read_chunk(size=2**16)
+                    while chunk:
+                        chunk = field.decode(chunk)
+                        tmp.write(chunk)
+                        size += len(chunk)
+                        if max_size > 0 and size > max_size:
+                            raise ValueError(
+                                'Maximum request body size exceeded')
+                        chunk = yield from field.read_chunk(size=2**16)
+                    tmp.seek(0)
+
+                    ff = FileField(field.name, field.filename,
+                                   tmp, content_type, field.headers)
+                    out.add(field.name, ff)
+                else:
+                    value = yield from field.read(decode=True)
+                    if content_type is None or \
+                            content_type.startswith('text/'):
+                        charset = field.get_charset(default='utf-8')
+                        value = value.decode(charset)
+                    out.add(field.name, value)
+                    size += len(value)
+                    if max_size > 0 and size > max_size:
+                        raise ValueError(
+                            'Maximum request body size exceeded')
+
+                field = yield from multipart.next()
+        else:
+            data = yield from self.read()
+            if data:
+                charset = self.charset or 'utf-8'
+                out.extend(
+                    parse_qsl(
+                        data.rstrip().decode(charset),
+                        keep_blank_values=True,
+                        encoding=charset))
 
         self._post = MultiDictProxy(out)
         return self._post

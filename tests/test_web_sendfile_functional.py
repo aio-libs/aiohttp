@@ -6,7 +6,6 @@ import pytest
 
 import aiohttp
 from aiohttp import web
-from aiohttp.file_sender import FileSender
 
 try:
     import ssl
@@ -17,7 +16,7 @@ except:
 @pytest.fixture(params=['sendfile', 'fallback'], ids=['sendfile', 'fallback'])
 def sender(request):
     def maker(*args, **kwargs):
-        ret = FileSender(*args, **kwargs)
+        ret = web.FileResponse(*args, **kwargs)
         if request.param == 'fallback':
             ret._sendfile = ret._sendfile_fallback
         return ret
@@ -30,10 +29,30 @@ def test_static_file_ok(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    txt = yield from resp.text()
+    assert 'file content' == txt.rstrip()
+    assert 'application/octet-stream' == resp.headers['Content-Type']
+    assert resp.headers.get('Content-Encoding') is None
+    yield from resp.release()
+
+
+@asyncio.coroutine
+def test_static_file_ok_string_path(loop, test_client, sender):
+    filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
+
+    @asyncio.coroutine
+    def handler(request):
+        return sender(str(filepath))
+
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -49,7 +68,7 @@ def test_static_file_ok(loop, test_client, sender):
 @asyncio.coroutine
 def test_static_file_not_exists(loop, test_client):
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     client = yield from test_client(lambda loop: app)
 
     resp = yield from client.get('/fake')
@@ -60,7 +79,7 @@ def test_static_file_not_exists(loop, test_client):
 @asyncio.coroutine
 def test_static_file_name_too_long(loop, test_client):
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     client = yield from test_client(lambda loop: app)
 
     resp = yield from client.get('/x*500')
@@ -71,7 +90,7 @@ def test_static_file_name_too_long(loop, test_client):
 @asyncio.coroutine
 def test_static_file_upper_directory(loop, test_client):
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     client = yield from test_client(lambda loop: app)
 
     resp = yield from client.get('/../../')
@@ -85,10 +104,9 @@ def test_static_file_with_content_type(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -109,10 +127,9 @@ def test_static_file_with_content_encoding(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -134,10 +151,9 @@ def test_static_file_if_modified_since(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -159,10 +175,9 @@ def test_static_file_if_modified_since_past_date(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -180,10 +195,9 @@ def test_static_file_if_modified_since_invalid_date(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -201,10 +215,9 @@ def test_static_file_if_modified_since_future_date(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender().send(request, filepath)
-        return resp
+        return sender(filepath)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -225,7 +238,7 @@ def test_static_file_ssl(loop, test_server, test_client):
         os.path.join(dirname, 'sample.crt'),
         os.path.join(dirname, 'sample.key')
     )
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_static('/static', dirname)
     server = yield from test_server(app, ssl=ssl_ctx)
     conn = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
@@ -246,7 +259,7 @@ def test_static_file_directory_traversal_attack(loop, test_client):
     relpath = '../README.rst'
     assert os.path.isfile(os.path.join(dirname, relpath))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_static('/static', dirname)
     client = yield from test_client(app)
 
@@ -283,7 +296,7 @@ def test_static_file_huge(loop, test_client, tmpdir):
 
     file_st = os.stat(str(tmpdir.join(filename)))
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_static('/static', str(tmpdir))
     client = yield from test_client(app)
 
@@ -312,10 +325,9 @@ def test_static_file_range(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -359,10 +371,9 @@ def test_static_file_range_end_bigger_than_size(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -384,15 +395,35 @@ def test_static_file_range_end_bigger_than_size(loop, test_client, sender):
 
 
 @asyncio.coroutine
+def test_static_file_range_beyond_eof(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
+
+    @asyncio.coroutine
+    def handler(request):
+        return sender(filepath, chunk_size=16)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    # Ensure the whole file requested in parts is correct
+    response = yield from client.get(
+        '/', headers={'Range': 'bytes=1000000-1200000'})
+
+    assert response.status == 206, \
+        "failed 'bytes=1000000-1200000': %s" % response.reason
+    assert response.headers['content-length'] == '0'
+
+
+@asyncio.coroutine
 def test_static_file_range_tail(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
@@ -413,10 +444,9 @@ def test_static_file_invalid_range(loop, test_client, sender):
 
     @asyncio.coroutine
     def handler(request):
-        resp = yield from sender(chunk_size=16).send(request, filepath)
-        return resp
+        return sender(filepath, chunk_size=16)
 
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_get('/', handler)
     client = yield from test_client(lambda loop: app)
 
