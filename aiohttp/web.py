@@ -58,6 +58,10 @@ class Application(MutableMapping):
         if loop is not None:
             warnings.warn("loop argument is deprecated", ResourceWarning)
 
+        if secure_proxy_ssl_header is not None:
+            warnings.warn(
+                "secure_proxy_ssl_header is deprecated", ResourceWarning)
+
         self._debug = debug
         self._router = router
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
