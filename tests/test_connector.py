@@ -1232,9 +1232,9 @@ class TestDNSCacheTable:
 
     @asyncio.coroutine
     def test_expired_ttl(self, loop):
-        dns_cache_table = _DNSCacheTable(ttl=0.1)
+        dns_cache_table = _DNSCacheTable(ttl=0.01)
         dns_cache_table.add('localhost', ['127.0.0.1'])
-        yield from asyncio.sleep(0.1, loop=loop)
+        yield from asyncio.sleep(0.01, loop=loop)
         assert dns_cache_table.expired('localhost')
 
     def test_next_addrs(self, dns_cache_table):
