@@ -535,14 +535,20 @@ class HttpPayloadParser:
                     required = self._chunk_size
                     chunk_len = len(chunk)
 
-                    if required >= chunk_len:
-                        self._chunk_size = required - chunk_len
-                        if self._chunk_size == 0:
-                            self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
-
+                    if required == chunk_len:
+                        # We have read just enough data, feed decoded
+                        # chunk, wait for chunk eof and return.
+                        self._chunk_size = 0
+                        self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
                         self.payload.feed_data(chunk, chunk_len)
                         return False, None
+                    if required > chunk_len:
+                        # We have not read enough data, wait for more data.
+                        self._chunk_tail = chunk
+                        return False, None
                     else:
+                        # We have read more data than required, feed
+                        # decoded chunk and continue
                         self._chunk_size = 0
                         self.payload.feed_data(chunk[:required], required)
                         chunk = chunk[required:]
