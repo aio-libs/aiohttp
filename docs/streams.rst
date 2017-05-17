@@ -152,7 +152,7 @@ Helpers
 
    :param bytes data: data to push back into the stream.
 
-   .. warning:: The method doesn't wake up waiters.
+   .. warning:: The method does not wake up waiters.
 
       E.g. :meth:`~StreamReader.read()` will not be resumed.
 

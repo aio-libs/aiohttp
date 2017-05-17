@@ -811,7 +811,7 @@ WebSocketResponse
                          message from client, and handle
                          :const:`~aiohttp.WSMsgType.PONG`
                          responses from client.
-                         Note that server doesn't send
+                         Note that server does not send
                          :const:`~aiohttp.WSMsgType.PING`
                          requests, you need to do this explicitly
                          using :meth:`ping` method.

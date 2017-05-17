@@ -169,8 +169,8 @@ Success! For now your working directory should look like this:
 Configuration files
 -------------------
 
-aiohttp is configuration agnostic. It means the library doesn't
-require any configuration approach and doesn't have builtin support
+aiohttp is configuration agnostic. It means the library does not
+require any configuration approach and does not have builtin support
 for any config schema.
 
 But please take into account these facts:
@@ -178,7 +178,7 @@ But please take into account these facts:
    1. 99% of servers have configuration files.
 
    2. Every product (except Python-based solutions like Django and
-      Flask) doesn't store config files as part as source code.
+      Flask) does not store config files as part as source code.
 
       For example Nginx has own configuration files stored by default
       under ``/etc/nginx`` folder.

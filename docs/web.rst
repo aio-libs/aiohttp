@@ -1077,7 +1077,7 @@ Web server response may have one of the following states:
    portion of data since data will be sent using minimum
    frames count.
 
-   If OS doesn't support **CORK** mode (neither ``socket.TCP_CORK``
+   If OS does not support **CORK** mode (neither ``socket.TCP_CORK``
    nor ``socket.TCP_NOPUSH`` exists) the mode is equal to *Nagle's
    enabled* one. The most widespread OS without **CORK** support is
    *Windows*.
