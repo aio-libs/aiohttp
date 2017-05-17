@@ -55,7 +55,7 @@ body part headers: this allows you to filter parts by their attributes::
         metadata = await part.json()
         continue
 
-Nor :class:`BodyPartReader` or :class:`MultipartReader` instances doesn't
+Nor :class:`BodyPartReader` or :class:`MultipartReader` instances does not
 read the whole body part data without explicitly asking for.
 :class:`BodyPartReader` provides a set of helpers methods
 to fetch popular content types in friendly way:
@@ -80,10 +80,10 @@ from it::
     if part.filename != 'secret.txt':
         continue
 
-If current body part doesn't matches your expectation and you want to skip it
+If current body part does not matches your expectation and you want to skip it
 - just continue a loop to start a next iteration of it. Here is where magic
 happens. Before fetching the next body part ``await reader.next()`` it
-ensures that the previous one was read completely. If it wasn't, all its content
+ensures that the previous one was read completely. If it was not, all its content
 sends to the void in term to fetch the next part. So you don't have to care
 about cleanup routines while you're within a loop.
 
@@ -192,7 +192,7 @@ Hacking Multipart
 
 The Internet is full of terror and sometimes you may find a server which
 implements multipart support in strange ways when an oblivious solution
-doesn't work.
+does not work.
 
 For instance, is server used `cgi.FieldStorage`_ then you have to ensure that
 no body part contains a `Content-Length` header::
@@ -201,7 +201,7 @@ no body part contains a `Content-Length` header::
         part.headers.pop(aiohttp.hdrs.CONTENT_LENGTH, None)
 
 On the other hand, some server may require to specify `Content-Length` for the
-whole multipart request. `aiohttp` doesn't do that since it sends multipart
+whole multipart request. `aiohttp` does not do that since it sends multipart
 using chunked transfer encoding by default. To overcome this issue, you have
 to serialize a :class:`MultipartWriter` by our own in the way to calculate its
 size::

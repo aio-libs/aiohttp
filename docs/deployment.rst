@@ -24,7 +24,7 @@ Just call :func:`aiohttp.web.run_app` function passing
 
 
 The method is very simple and could be the best solution in some
-trivial cases. But it doesn't utilize all CPU cores.
+trivial cases. But it does not utilize all CPU cores.
 
 For running multiple aiohttp server instances use *reverse proxies*.
 
@@ -50,7 +50,7 @@ Nginx configuration
 --------------------
 
 Here is short extraction about writing Nginx configuration file.
-It doesn't cover all available Nginx options.
+It does not cover all available Nginx options.
 
 For full reference read `Nginx tutorial
 <https://www.nginx.com/resources/admin-guide/>`_ and `official Nginx
@@ -195,7 +195,7 @@ pre-fork worker model.  Gunicorn launches your app as worker processes
 for handling incoming requests.
 
 In opposite to deployment with :ref:`bare Nginx
-<aiohttp-deployment-nginx-supervisord>` the solution doesn't need to
+<aiohttp-deployment-nginx-supervisord>` the solution does not need to
 manually run several aiohttp processes and use tool like supervisord
 for monitoring it. But nothing is for free: running aiohttp
 application under gunicorn is slightly slower.

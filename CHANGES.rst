@@ -131,7 +131,7 @@ Changes
 - `response.json()` raises `ClientReponseError` exception if response's
   content type does not match #1723
 
-- Cleanup timer and loop handle on any client exception.
+  - Cleanup timer and loop handle on any client exception.
 
 - Deprecate `loop` parameter for Application's constructor
 
