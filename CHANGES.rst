@@ -52,6 +52,9 @@ Changes
 
 - Make test server more reliable #1896
 
+- Pure-python-only fix for partial chunk decoding #1899
+
+
 2.0.7 (2017-04-12)
 ------------------
 
