@@ -385,13 +385,13 @@ def test_force_compression_no_accept_gzip():
 
 
 @asyncio.coroutine
-def test_delete_content_length_if_compression_enabled():
+def test_change_content_length_if_compression_enabled():
     req = make_request('GET', '/')
     resp = Response(body=b'answer')
     resp.enable_compression(ContentCoding.gzip)
 
     yield from resp.prepare(req)
-    assert resp.content_length is None
+    assert resp.content_length != len(b'answer')
 
 
 @asyncio.coroutine
