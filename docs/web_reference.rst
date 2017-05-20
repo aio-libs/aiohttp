@@ -2106,7 +2106,7 @@ Utilities
    :param loop: an *event loop* used for running the application
                 (``None`` by default).
 
-                If the loop is not explicittly specified the function
+                If the loop is not explicitly specified the function
                 closes it by :meth:`~asyncio.AbstractEventLoop.close` call but
                 **does nothing** for **non-default** loop.
 
