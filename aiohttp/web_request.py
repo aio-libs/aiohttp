@@ -3,6 +3,7 @@ import collections
 import datetime
 import json
 import re
+import string
 import tempfile
 import warnings
 from email.utils import parsedate
@@ -22,6 +23,35 @@ __all__ = ('BaseRequest', 'FileField', 'Request')
 FileField = collections.namedtuple(
     'Field', 'name filename file content_type headers')
 
+_TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+\-.^_`|~"
+# notice the escape of '-' to prevent interpretation as range
+
+_TOKEN = r'[{tchar}]*'.format(tchar=_TCHAR)
+
+_QDTEXT = r'[{}]'.format(
+    r''.join(chr(c) for c in (0x09, 0x20, 0x21, *range(0x23, 0x7F))))
+# qdtext includes 0x5C to escape 0x5D ('\]')
+# qdtext excludes obs-text (because obsoleted, and encoding not specified)
+
+_QUOTED_PAIR = r'\\[\t {tchar}]'.format(tchar=_TCHAR)
+
+_QUOTED_STRING = r'"(?:{quoted_pair}|{qdtext})*"'.format(
+    qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR)
+
+_FORWARDED_PARAMS = (
+    r'[bB][yY]|[fF][oO][rR]|[hH][oO][sS][tT]|[pP][rR][oO][tT][oO]')
+
+_FORWARDED_PAIR = (
+    r'^ *({forwarded_params})=({token}|{quoted_string}) *$'.format(
+        forwarded_params=_FORWARDED_PARAMS,
+        token=_TOKEN,
+        quoted_string=_QUOTED_STRING))
+# allow whitespace as specified in RFC 7239 section 7.1
+
+_QUOTED_PAIR_REPLACE_RE = re.compile(r'\\([\t {tchar}])'.format(tchar=_TCHAR))
+# same pattern as _QUOTED_PAIR but contains a capture group
+
+_FORWARDED_PAIR_RE = re.compile(_FORWARDED_PAIR)
 
 ############################################################
 # HTTP Request
@@ -152,15 +182,45 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self.url.scheme == 'https'
 
     @reify
-    def _forwarded(self):
-        forwarded = self._message.headers.get(hdrs.FORWARDED)
-        if forwarded is not None:
-            parsed = re.findall(
-                r'^by=([^;]*); +for=([^;]*); +host=([^;]*); +proto=(https?)$',
-                forwarded)
-            if parsed:
-                return parsed[0]
-        return None
+    def forwarded(self):
+        """ A frozendict containing parsed Forwarded header(s).
+
+        Makes an effort to parse Forwarded headers as specified by RFC 7239:
+
+        - It adds all parameters (by, for, host, proto) in the order it finds
+          them; starting at the topmost / first added 'Forwarded' header, at
+          the leftmost / first-added parwameter.
+        - It checks that the value has valid syntax in general as specified in
+          section 4: either a 'token' or a 'quoted-string'.
+        - It un-escapes found escape sequences.
+        - It does NOT validate 'by' and 'for' contents as specified in section
+          6.
+        - It does NOT validate 'host' contents (Host ABNF).
+        - It does NOT validate 'proto' contents for valid URI scheme names.
+
+        Returns a dict(by=tuple(...), for=tuple(...), host=tuple(...),
+        proto=tuple(...), ) 
+        """
+        params = {'by': [], 'for': [], 'host': [], 'proto': []}
+        if hdrs.FORWARDED in self._message.headers:
+            for forwarded_elm in self._message.headers.getall(hdrs.FORWARDED):
+                if len(forwarded_elm):
+                    forwarded_pairs = tuple(
+                        _FORWARDED_PAIR_RE.findall(pair)
+                        for pair in forwarded_elm.split(';'))
+                    for forwarded_pair in forwarded_pairs:
+                        if len(forwarded_pair) != 1:
+                            # non-compliant syntax, ignore
+                            continue
+                        param = forwarded_pair[0][0].lower()
+                        value = forwarded_pair[0][1]
+                        if len(value) and value[0] == '"':
+                            # quoted string: replace quotes and escape
+                            # sequences
+                            value = _QUOTED_PAIR_REPLACE_RE.sub(
+                                r'\1', value[1:-1])
+                        params[param].append(value)
+        return params
 
     @reify
     def _scheme(self):
@@ -171,8 +231,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             header, value = self._secure_proxy_ssl_header
             if self.headers.get(header) == value:
                 proto = 'https'
-        elif self._forwarded:
-            _, _, _, proto = self._forwarded
+        elif self.forwarded['proto']:
+            proto = self.forwarded['proto'][0]
         elif hdrs.X_FORWARDED_PROTO in self._message.headers:
             proto = self._message.headers[hdrs.X_FORWARDED_PROTO]
         return proto
@@ -206,8 +266,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         Returns str, or None if no hostname is found in the headers.
         """
         host = None
-        if self._forwarded:
-            _, _, host, _ = self._forwarded
+        if self.forwarded['host']:
+            host = self.forwarded['host'][0]
         elif hdrs.X_FORWARDED_HOST in self._message.headers:
             host = self._message.headers[hdrs.X_FORWARDED_HOST]
         elif hdrs.HOST in self._message.headers:
