@@ -29,17 +29,23 @@ def tmp_dir_path(request):
     return tmp_dir
 
 
-@pytest.mark.parametrize("show_index,status,data",
-                         [(False, 403, None),
-                          (True, 200,
-                           b'<html>\n<head>\n<title>Index of /</title>\n'
-                           b'</head>\n<body>\n<h1>Index of /</h1>\n<ul>\n'
+@pytest.mark.parametrize("show_index,status,prefix,data",
+                         [(False, 403, '/', None),
+                          (True, 200, '/',
+                           b'<html>\n<head>\n<title>Index of /.</title>\n'
+                           b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
                            b'<li><a href="/my_dir">my_dir/</a></li>\n'
                            b'<li><a href="/my_file">my_file</a></li>\n'
+                           b'</ul>\n</body>\n</html>'),
+                          (True, 200, '/static',
+                           b'<html>\n<head>\n<title>Index of /.</title>\n'
+                           b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
+                           b'<li><a href="/static/my_dir">my_dir/</a></li>\n'
+                           b'<li><a href="/static/my_file">my_file</a></li>\n'
                            b'</ul>\n</body>\n</html>')])
 @asyncio.coroutine
 def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
-                                       show_index, status, data):
+                                       show_index, status, prefix, data):
     """
     Tests the operation of static file server.
     Try to access the root of static file server, and make
@@ -61,11 +67,11 @@ def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static('/', tmp_dir_path, show_index=show_index)
+    app.router.add_static(prefix, tmp_dir_path, show_index=show_index)
     client = yield from test_client(app)
 
     # Request the root of the static directory.
-    r = yield from client.get('/')
+    r = yield from client.get(prefix)
     assert r.status == status
 
     if data:

@@ -27,13 +27,16 @@ Changes
 
 - Dropped "%O" in access logger #1673
 
-- Added `args` and `kwargs` to `unittest_run_loop`. Useful with other decorators, for example `@patch`. #1803
+- Added `args` and `kwargs` to `unittest_run_loop`. Useful with other
+  decorators, for example `@patch`. #1803
 
 - Added `iter_chunks` to response.content object. #1805
 
-- Avoid creating TimerContext when there is no timeout to allow compatibility with Tornado. #1817 #1180
+- Avoid creating TimerContext when there is no timeout to allow
+  compatibility with Tornado. #1817 #1180
 
-- Add `proxy_from_env` to `ClientRequest` to read from environment variables. #1791
+- Add `proxy_from_env` to `ClientRequest` to read from environment
+  variables. #1791
 
 - Add DummyCookieJar helper. #1830
 
@@ -46,6 +49,11 @@ Changes
 
 - Fix sub-application middlewares resolution order #1853
 
+- Fix applications comparison #1866
+
+- Fix static location in index when prefix is used #1662
+
+- Make test server more reliable #1896
 
 2.0.7 (2017-04-12)
 ------------------
@@ -77,7 +85,8 @@ Changes
 
 - Disable cleanup closed ssl transports by default.
 
-- Exception in request handling if the server responds before the body is sent #1761
+- Exception in request handling if the server responds before the body
+  is sent #1761
 
 
 2.0.4 (2017-03-27)
@@ -119,12 +128,13 @@ Changes
 
 - Added `json` to `ClientSession.request()` method #1726
 
-- Added session's `raise_for_status` parameter, automatically calls raise_for_status() on any request. #1724
+- Added session's `raise_for_status` parameter, automatically calls
+  raise_for_status() on any request. #1724
 
 - `response.json()` raises `ClientReponseError` exception if response's
   content type does not match #1723
 
-- Cleanup timer and loop handle on any client exception.
+  - Cleanup timer and loop handle on any client exception.
 
 - Deprecate `loop` parameter for Application's constructor
 
@@ -177,7 +187,8 @@ Changes
 
 - Dropped: `aiohttp.protocol.HttpPrefixParser`  #1590
 
-- Dropped: Servers response's `.started`, `.start()` and `.can_start()` method  #1591
+- Dropped: Servers response's `.started`, `.start()` and
+  `.can_start()` method #1591
 
 - Dropped:  Adding `sub app` via `app.router.add_subapp()` is deprecated
   use `app.add_subapp()` instead #1592
@@ -195,7 +206,8 @@ Changes
 - Dropped: `ServerHttpProtocol.keep_alive_timeout` attribute and
   `keep-alive`, `keep_alive_on`, `timeout`, `log` constructor parameters #1606
 
-- Dropped: `TCPConnector's`` `.resolve`, `.resolved_hosts`, `.clear_resolved_hosts()`
-  attributes and `resolve` constructor  parameter #1607
+- Dropped: `TCPConnector's`` `.resolve`, `.resolved_hosts`,
+  `.clear_resolved_hosts()` attributes and `resolve` constructor
+  parameter #1607
 
 - Dropped `ProxyConnector` #1609

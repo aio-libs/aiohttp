@@ -1,11 +1,11 @@
 pip==9.0.1
 flake8==3.3.0
 pyflakes==1.5.0
-coverage==4.4
-cchardet==2.0.1
-sphinx==1.5.5
+coverage==4.4.1
+cchardet==2.1.0
+sphinx==1.6.1
 cython==0.25.2
-chardet==3.0.2
+chardet==3.0.3
 isort==4.2.5
 tox==2.7.0
 multidict==2.1.5

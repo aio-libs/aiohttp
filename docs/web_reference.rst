@@ -811,7 +811,7 @@ WebSocketResponse
                          message from client, and handle
                          :const:`~aiohttp.WSMsgType.PONG`
                          responses from client.
-                         Note that server doesn't send
+                         Note that server does not send
                          :const:`~aiohttp.WSMsgType.PING`
                          requests, you need to do this explicitly
                          using :meth:`ping` method.
@@ -2104,6 +2104,13 @@ Utilities
    :param access_log_format: access log format, see
                              :ref:`aiohttp-logging-access-log-format-spec`
                              for details.
+
+   :param loop: an *event loop* used for running the application
+                (``None`` by default).
+
+                If the loop is not explicitly specified the function
+                closes it by :meth:`~asyncio.AbstractEventLoop.close` call but
+                **does nothing** for **non-default** loop.
 
 
 Constants

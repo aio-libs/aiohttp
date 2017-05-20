@@ -73,6 +73,7 @@ Gregory Haynes
 Günther Jena
 Hu Bo
 Hugo Herter
+Igor Davydenko
 Igor Pavlov
 Ingmar Steen
 Jacob Champion
@@ -153,6 +154,7 @@ Taha Jahangir
 Taras Voinarovskyi
 Terence Honles
 Thanos Lefteris
+Thijs Vermeir
 Thomas Grainger
 Tolga Tezel
 Vaibhav Sagar
