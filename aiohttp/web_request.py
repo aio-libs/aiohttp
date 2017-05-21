@@ -199,7 +199,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - It does NOT validate 'proto' contents for valid URI scheme names.
 
         Returns a dict(by=tuple(...), for=tuple(...), host=tuple(...),
-        proto=tuple(...), ) 
+        proto=tuple(...), )
         """
         params = {'by': [], 'for': [], 'host': [], 'proto': []}
         if hdrs.FORWARDED in self._message.headers:
