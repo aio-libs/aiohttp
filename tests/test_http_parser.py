@@ -14,6 +14,7 @@ from aiohttp import http_exceptions, streams
 from aiohttp.http_parser import (DeflateBuffer, HttpPayloadParser,
                                  HttpRequestParserPy, HttpResponseParserPy)
 
+
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
 

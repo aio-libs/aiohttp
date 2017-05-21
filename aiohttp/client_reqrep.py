@@ -20,6 +20,7 @@ from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import FlowControlStreamReader
 
+
 try:
     import cchardet as chardet
 except ImportError:  # pragma: no cover

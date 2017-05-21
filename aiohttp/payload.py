@@ -12,6 +12,7 @@ from .helpers import (content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
 from .streams import DEFAULT_LIMIT, DataQueue, EofStream, StreamReader
 
+
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'BytesPayload', 'StringPayload', 'StreamReaderPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',

@@ -18,6 +18,7 @@ from .web_exceptions import HTTPException
 from .web_request import BaseRequest
 from .web_response import Response
 
+
 __all__ = ('RequestHandler', 'RequestPayloadError')
 
 ERROR = http.RawRequestMessage(
