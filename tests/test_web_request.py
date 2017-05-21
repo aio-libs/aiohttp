@@ -251,23 +251,26 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
 def test_single_forwarded_header(make_request):
     header = 'by=identifier; for=identifier; host=identifier; proto=identifier'
     req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
-    assert req.forwarded['by'] == ['identifier',]
-    assert req.forwarded['for'] == ['identifier',]
-    assert req.forwarded['host'] == ['identifier',]
-    assert req.forwarded['proto'] == ['identifier',]
+    assert req.forwarded['by'] == ['identifier']
+    assert req.forwarded['for'] == ['identifier']
+    assert req.forwarded['host'] == ['identifier']
+    assert req.forwarded['proto'] == ['identifier']
+
 
 def test_single_forwarded_header_camelcase(make_request):
     header = 'bY=identifier; fOr=identifier; HOst=identifier; pRoTO=identifier'
     req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
-    assert req.forwarded['by'] == ['identifier',]
-    assert req.forwarded['for'] == ['identifier',]
-    assert req.forwarded['host'] == ['identifier',]
-    assert req.forwarded['proto'] == ['identifier',]
+    assert req.forwarded['by'] == ['identifier']
+    assert req.forwarded['for'] == ['identifier']
+    assert req.forwarded['host'] == ['identifier']
+    assert req.forwarded['proto'] == ['identifier']
+
 
 def test_single_forwarded_header_single_param(make_request):
     header = 'BY=identifier'
     req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
-    assert req.forwarded['by'] == ['identifier',]
+    assert req.forwarded['by'] == ['identifier']
+
 
 def test_single_forwarded_header_multiple_param(make_request):
     header = 'By=identifier1;BY=identifier2;  By=identifier3;   BY=identifier4'
@@ -275,10 +278,12 @@ def test_single_forwarded_header_multiple_param(make_request):
     assert req.forwarded['by'] == ['identifier1', 'identifier2', 'identifier3',
                                    'identifier4']
 
+
 def test_single_forwarded_header_quoted_escaped(make_request):
     header = 'Proto=identifier; pROTO="\lala lan\d\~ 123\!&"'
     req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
     assert req.forwarded['proto'] == ['identifier', 'lala land~ 123!&']
+
 
 def test_multiple_forwarded_headers(make_request):
     headers = CIMultiDict()
