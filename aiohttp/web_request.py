@@ -201,26 +201,23 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         Returns a dict(by=tuple(...), for=tuple(...), host=tuple(...),
         proto=tuple(...), )
         """
-        params = {'by': [], 'for': [], 'host': [], 'proto': []}
-        if hdrs.FORWARDED in self._message.headers:
-            for forwarded_elm in self._message.headers.getall(hdrs.FORWARDED):
-                if len(forwarded_elm):
-                    forwarded_pairs = tuple(
-                        _FORWARDED_PAIR_RE.findall(pair)
-                        for pair in forwarded_elm.split(';'))
-                    for forwarded_pair in forwarded_pairs:
-                        if len(forwarded_pair) != 1:
-                            # non-compliant syntax, ignore
-                            continue
-                        param = forwarded_pair[0][0].lower()
-                        value = forwarded_pair[0][1]
-                        if len(value) and value[0] == '"':
-                            # quoted string: replace quotes and escape
-                            # sequences
-                            value = _QUOTED_PAIR_REPLACE_RE.sub(
-                                r'\1', value[1:-1])
-                        params[param].append(value)
-        return params
+        params = MultiDict({'by': [], 'for': [], 'host': [], 'proto': []})
+        for forwarded_elm in self._message.headers.getall(hdrs.FORWARDED, ()):
+            forwarded_pairs = (_FORWARDED_PAIR_RE.findall(pair)
+                               for pair in forwarded_elm.split(';'))
+            for forwarded_pair in forwarded_pairs:
+                if len(forwarded_pair) != 1:
+                    # non-compliant syntax, ignore
+                    continue
+                param = forwarded_pair[0][0].lower()
+                value = forwarded_pair[0][1]
+                if value and value[0] == '"':
+                    # quoted string: replace quotes and escape
+                    # sequences
+                    value = _QUOTED_PAIR_REPLACE_RE.sub(
+                        r'\1', value[1:-1])
+                params[param].append(value)
+        return MultiDictProxy(params)
 
     @reify
     def _scheme(self):
