@@ -208,14 +208,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 if len(forwarded_pair) != 1:
                     # non-compliant syntax, ignore
                     continue
-                param = forwarded_pair[0][0].lower()
-                value = forwarded_pair[0][1]
+                param, value = forwarded_pair[0]
                 if value and value[0] == '"':
                     # quoted string: replace quotes and escape
                     # sequences
                     value = _QUOTED_PAIR_REPLACE_RE.sub(
                         r'\1', value[1:-1])
-                params[param].append(value)
+                params[param.lower()].append(value)
         return MultiDictProxy(params)
 
     @reify
