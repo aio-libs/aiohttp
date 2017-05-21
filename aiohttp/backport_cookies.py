@@ -40,6 +40,7 @@ import re  # pragma: no cover
 import string  # pragma: no cover
 from http.cookies import CookieError, Morsel  # pragma: no cover
 
+
 __all__ = ["CookieError", "BaseCookie", "SimpleCookie"]  # pragma: no cover
 
 _nulljoin = ''.join  # pragma: no cover

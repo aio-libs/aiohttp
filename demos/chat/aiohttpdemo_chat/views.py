@@ -6,6 +6,7 @@ import string
 import aiohttp_jinja2
 from aiohttp import web
 
+
 log = logging.getLogger(__name__)
 
 

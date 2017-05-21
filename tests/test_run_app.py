@@ -3,7 +3,6 @@ import contextlib
 import os
 import socket
 import ssl
-
 from io import StringIO
 from unittest import mock
 from uuid import uuid4

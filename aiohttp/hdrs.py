@@ -1,6 +1,7 @@
 """HTTP Headers constants."""
 from multidict import istr
 
+
 METH_ANY = '*'
 METH_CONNECT = 'CONNECT'
 METH_HEAD = 'HEAD'

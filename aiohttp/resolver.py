@@ -3,6 +3,7 @@ import socket
 
 from .abc import AbstractResolver
 
+
 __all__ = ('ThreadedResolver', 'AsyncResolver', 'DefaultResolver')
 
 try:

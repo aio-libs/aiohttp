@@ -1,5 +1,6 @@
 from .web_response import Response
 
+
 __all__ = (
     'HTTPException',
     'HTTPError',

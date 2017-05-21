@@ -5,8 +5,8 @@ import json
 
 from .client_exceptions import ClientError
 from .helpers import PY_35, PY_352, Timeout, call_later, create_future
-from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE,
-                   WebSocketError, WSMessage, WSMsgType)
+from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
+                   WSMessage, WSMsgType)
 
 
 class ClientWebSocketResponse:

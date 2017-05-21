@@ -6,6 +6,7 @@ import collections
 
 import aiohttp
 
+
 try:
     import signal
 except ImportError:

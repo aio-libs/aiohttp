@@ -5,6 +5,7 @@ import pytest
 
 from aiohttp.http_writer import CORK, PayloadWriter, StreamWriter
 
+
 has_ipv6 = socket.has_ipv6
 if has_ipv6:
     # The socket.has_ipv6 flag may be True if Python was built with IPv6

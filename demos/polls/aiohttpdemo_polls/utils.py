@@ -1,5 +1,6 @@
 import trafaret as T
 
+
 primitive_ip_regexp = r'^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$'
 
 TRAFARET = T.Dict({

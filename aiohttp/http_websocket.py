@@ -15,6 +15,7 @@ from .helpers import NO_EXTENSIONS, noop
 from .http_exceptions import HttpBadRequest, HttpProcessingError
 from .log import ws_logger
 
+
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
            'WebSocketReader', 'WebSocketWriter', 'do_handshake',
            'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode')
