@@ -5,6 +5,7 @@ import pytest
 
 from aiohttpdemo_polls.main import init
 
+
 BASE_DIR = pathlib.Path(__file__).parent.parent
 
 

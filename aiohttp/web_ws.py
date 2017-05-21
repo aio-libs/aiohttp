@@ -5,12 +5,13 @@ from collections import namedtuple
 from . import hdrs
 from .helpers import PY_35, PY_352, Timeout, call_later, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
-                   WebSocketError, WebSocketReader,
-                   WSMessage, WSMsgType, do_handshake)
+                   WebSocketError, WebSocketReader, WSMessage, WSMsgType,
+                   do_handshake)
 from .streams import FlowControlDataQueue
 from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
                              HTTPMethodNotAllowed)
 from .web_response import StreamResponse
+
 
 __all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
 
