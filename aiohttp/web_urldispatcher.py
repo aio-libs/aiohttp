@@ -30,6 +30,7 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'StaticResource', 'View')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
+PATH_SEP = re.escape('/')
 
 
 class AbstractResource(Sized, Iterable):
@@ -329,7 +330,7 @@ class DynamicResource(Resource):
 
     def __init__(self, pattern, formatter, *, name=None):
         super().__init__(name=name)
-        assert pattern.pattern.startswith('\\/')
+        assert pattern.pattern.startswith(PATH_SEP)
         assert formatter.startswith('/')
         self._pattern = pattern
         self._formatter = formatter
