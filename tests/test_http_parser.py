@@ -557,6 +557,22 @@ def test_parse_length_payload(response):
     assert b'data' == b''.join(d for d in payload._buffer)
 
 
+@asyncio.coroutine
+def test_parse_payload_response_partial_chunk(loop, protocol, response_cls):
+    parser = response_cls(protocol, loop)
+    text = (b'HTTP/1.1 200 Ok\r\n'
+            b'Transfer-Encoding: chunked\r\n\r\n'
+            b'4\r\n'
+            b'da')
+
+    msg, payload = parser.feed_data(text)[0][0]
+    asyncio.set_event_loop(loop)
+    done, pending = yield from asyncio.wait(
+        [payload.iter_any().__anext__()], timeout=2)
+    assert not done
+    assert pending
+
+
 def test_parse_no_length_payload(parser):
     text = b'PUT / HTTP/1.1\r\n\r\n'
     msg, payload = parser.feed_data(text)[0][0]
