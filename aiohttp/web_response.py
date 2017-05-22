@@ -628,7 +628,8 @@ class Response(StreamResponse):
             self._compressed_body = compressobj.compress(self._body) +\
                 compressobj.flush()
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._headers[hdrs.CONTENT_LENGTH] = str(len(self._compressed_body))
+            self._headers[hdrs.CONTENT_LENGTH] = \
+                str(len(self._compressed_body))
 
 
 def json_response(data=sentinel, *, text=None, body=None, status=200,

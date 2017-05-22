@@ -391,7 +391,53 @@ def test_change_content_length_if_compression_enabled():
     resp.enable_compression(ContentCoding.gzip)
 
     yield from resp.prepare(req)
-    assert resp.content_length != len(b'answer')
+    assert resp.content_length is not None and \
+        resp.content_length != len(b'answer')
+
+
+@asyncio.coroutine
+def test_set_content_length_if_compression_enabled():
+    req = make_request('GET', '/')
+    resp = Response(body=b'answer')
+    resp.enable_compression(ContentCoding.gzip)
+
+    yield from resp.prepare(req)
+    assert resp.content_length is not None
+
+
+@asyncio.coroutine
+def test_remove_content_length_if_compression_enabled_http11():
+    writer = mock.Mock()
+
+    def write_headers(status_line, headers):
+        assert hdrs.CONTENT_LENGTH not in headers
+        assert headers.get(hdrs.TRANSFER_ENCODING, '') == 'chunked'
+
+    writer.write_headers.side_effect = write_headers
+    req = make_request('GET', '/', payload_writer=writer)
+    resp = StreamResponse()
+    resp.content_length = 123
+    resp.enable_compression(ContentCoding.gzip)
+    yield from resp.prepare(req)
+    assert resp.content_length is None
+
+
+@asyncio.coroutine
+def test_remove_content_length_if_compression_enabled_http10():
+    writer = mock.Mock()
+
+    def write_headers(status_line, headers):
+        assert hdrs.CONTENT_LENGTH not in headers
+        assert hdrs.TRANSFER_ENCODING not in headers
+
+    writer.write_headers.side_effect = write_headers
+    req = make_request('GET', '/', version=HttpVersion10,
+                       payload_writer=writer)
+    resp = StreamResponse()
+    resp.content_length = 123
+    resp.enable_compression(ContentCoding.gzip)
+    yield from resp.prepare(req)
+    assert resp.content_length is None
 
 
 @asyncio.coroutine
