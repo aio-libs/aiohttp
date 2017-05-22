@@ -3,7 +3,9 @@ import collections
 import datetime
 import json
 import re
+import string
 import tempfile
+import types
 import warnings
 from email.utils import parsedate
 from types import MappingProxyType
@@ -22,6 +24,34 @@ __all__ = ('BaseRequest', 'FileField', 'Request')
 FileField = collections.namedtuple(
     'Field', 'name filename file content_type headers')
 
+_TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
+# '-' at the end to prevent interpretation as range in a char class
+
+_TOKEN = r'[{tchar}]*'.format(tchar=_TCHAR)
+
+_QDTEXT = r'[{}]'.format(
+    r''.join(chr(c) for c in (0x09, 0x20, 0x21) + tuple(range(0x23, 0x7F))))
+# qdtext includes 0x5C to escape 0x5D ('\]')
+# qdtext excludes obs-text (because obsoleted, and encoding not specified)
+
+_QUOTED_PAIR = r'\\[\t !-~]'
+
+_QUOTED_STRING = r'"(?:{quoted_pair}|{qdtext})*"'.format(
+    qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR)
+
+_FORWARDED_PARAMS = (
+    r'[bB][yY]|[fF][oO][rR]|[hH][oO][sS][tT]|[pP][rR][oO][tT][oO]')
+
+_FORWARDED_PAIR = (
+    r'^({forwarded_params})=({token}|{quoted_string})$'.format(
+        forwarded_params=_FORWARDED_PARAMS,
+        token=_TOKEN,
+        quoted_string=_QUOTED_STRING))
+
+_QUOTED_PAIR_REPLACE_RE = re.compile(r'\\([\t !-~])')
+# same pattern as _QUOTED_PAIR but contains a capture group
+
+_FORWARDED_PAIR_RE = re.compile(_FORWARDED_PAIR)
 
 ############################################################
 # HTTP Request
@@ -152,15 +182,73 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self.url.scheme == 'https'
 
     @reify
+    def forwarded(self):
+        """ A tuple containing all parsed Forwarded header(s).
+
+        Makes an effort to parse Forwarded headers as specified by RFC 7239:
+
+        - It adds one (immutable) dictionary per Forwarded 'field-value', ie
+          per proxy. The element corresponds to the data in the Forwarded
+          field-value added by the first proxy encountered by the client. Each
+          subsequent item corresponds to those added by later proxies.
+        - It checks that every value has valid syntax in general as specified
+          in section 4: either a 'token' or a 'quoted-string'.
+        - It un-escapes found escape sequences.
+        - It does NOT validate 'by' and 'for' contents as specified in section
+          6.
+        - It does NOT validate 'host' contents (Host ABNF).
+        - It does NOT validate 'proto' contents for valid URI scheme names.
+
+        Returns a tuple containing one or more immutable dicts
+        """
+        def _parse_forwarded(forwarded_headers):
+            for field_value in forwarded_headers:
+                # by=...;for=..., For=..., BY=...
+                for forwarded_elm in field_value.split(','):
+                    # by=...;for=...
+                    fvparams = dict()
+                    forwarded_pairs = (
+                        _FORWARDED_PAIR_RE.findall(pair)
+                        for pair in forwarded_elm.strip().split(';'))
+                    for forwarded_pair in forwarded_pairs:
+                        # by=...
+                        if len(forwarded_pair) != 1:
+                            # non-compliant syntax
+                            break
+                        param, value = forwarded_pair[0]
+                        if param.lower() in fvparams:
+                            # duplicate param in field-value
+                            break
+                        if value and value[0] == '"':
+                            # quoted string: replace quotes and escape
+                            # sequences
+                            value = _QUOTED_PAIR_REPLACE_RE.sub(
+                                r'\1', value[1:-1])
+                        fvparams[param.lower()] = value
+                    else:
+                        yield types.MappingProxyType(fvparams)
+                        continue
+                    yield dict()
+
+        return tuple(
+            _parse_forwarded(self._message.headers.getall(hdrs.FORWARDED, ())))
+
+    @reify
     def _scheme(self):
+        proto = None
         if self._transport.get_extra_info('sslcontext'):
-            return 'https'
-        secure_proxy_ssl_header = self._secure_proxy_ssl_header
-        if secure_proxy_ssl_header is not None:
-            header, value = secure_proxy_ssl_header
+            proto = 'https'
+        elif self._secure_proxy_ssl_header is not None:
+            header, value = self._secure_proxy_ssl_header
             if self.headers.get(header) == value:
-                return 'https'
-        return 'http'
+                proto = 'https'
+        else:
+            proto = next(
+                (f['proto'] for f in self.forwarded if 'proto' in f), None
+            )
+            if not proto and hdrs.X_FORWARDED_PROTO in self._message.headers:
+                proto = self._message.headers[hdrs.X_FORWARDED_PROTO]
+        return proto or 'http'
 
     @property
     def method(self):
@@ -180,16 +268,29 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def host(self):
-        """Read only property for getting *HOST* header of request.
+        """ Hostname of the request.
 
-        Returns str or None if HTTP request has no HOST header.
+        Hostname is resolved through the following headers, in this order:
+
+        - Forwarded
+        - X-Forwarded-Host
+        - Host
+
+        Returns str, or None if no hostname is found in the headers.
         """
-        return self._message.headers.get(hdrs.HOST)
+        host = next(
+            (f['host'] for f in self.forwarded if 'host' in f), None
+        )
+        if not host and hdrs.X_FORWARDED_HOST in self._message.headers:
+            host = self._message.headers[hdrs.X_FORWARDED_HOST]
+        elif hdrs.HOST in self._message.headers:
+            host = self._message.headers[hdrs.HOST]
+        return host
 
     @reify
     def url(self):
         return URL('{}://{}{}'.format(self._scheme,
-                                      self._message.headers.get(hdrs.HOST),
+                                      self.host,
                                       str(self._rel_url)))
 
     @property
