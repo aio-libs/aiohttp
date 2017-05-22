@@ -1,6 +1,7 @@
 """HTTP Headers constants."""
 from multidict import istr
 
+
 METH_ANY = '*'
 METH_CONNECT = 'CONNECT'
 METH_HEAD = 'HEAD'
@@ -50,6 +51,7 @@ DIGEST = istr('DIGEST')
 ETAG = istr('ETAG')
 EXPECT = istr('EXPECT')
 EXPIRES = istr('EXPIRES')
+FORWARDED = istr('FORWARDED')
 FROM = istr('FROM')
 HOST = istr('HOST')
 IF_MATCH = istr('IF-MATCH')
@@ -89,3 +91,5 @@ VIA = istr('VIA')
 WANT_DIGEST = istr('WANT-DIGEST')
 WARNING = istr('WARNING')
 WWW_AUTHENTICATE = istr('WWW-AUTHENTICATE')
+X_FORWARDED_HOST = istr('X-FORWARDED-HOST')
+X_FORWARDED_PROTO = istr('X-FORWARDED-PROTO')

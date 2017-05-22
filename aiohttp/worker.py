@@ -13,6 +13,7 @@ from gunicorn.workers import base
 
 from .helpers import AccessLogger, create_future, ensure_future
 
+
 __all__ = ('GunicornWebWorker',
            'GunicornUVLoopWebWorker',
            'GunicornTokioWebWorker')

@@ -83,7 +83,7 @@ following code::
     params = {'key1': 'value1', 'key2': 'value2'}
     async with session.get('http://httpbin.org/get',
                            params=params) as resp:
-                           assert resp.url == 'http://httpbin.org/get?key2=value2&key1=value1'
+        assert str(resp.url) == 'http://httpbin.org/get?key2=value2&key1=value1'
 
 You can see that the URL has been correctly encoded by printing the URL.
 
@@ -97,14 +97,14 @@ that case you can specify multiple values for each key::
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
                            params=params) as r:
-        assert r.url == 'http://httpbin.org/get?key=value2&key=value1'
+        assert str(r.url) == 'http://httpbin.org/get?key=value2&key=value1'
 
 You can also pass :class:`str` content as param, but beware -- content
 is not encoded by library. Note that ``+`` is not encoded::
 
     async with session.get('http://httpbin.org/get',
                            params='key=value+1') as r:
-            assert r.url == 'http://httpbin.org/get?key=value+1'
+            assert str(r.url) == 'http://httpbin.org/get?key=value+1'
 
 Response Content
 ----------------
@@ -308,7 +308,7 @@ send large files without reading them into memory.
 As a simple case, simply provide a file-like object for your body::
 
     with open('massive-body', 'rb') as f:
-       await session.post('http://some.url/streamed', data=f)
+       await session.post('http://httpbin.org/post', data=f)
 
 
 Or you can use `aiohttp.streamer` object::

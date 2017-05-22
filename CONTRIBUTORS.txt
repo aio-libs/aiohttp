@@ -62,6 +62,7 @@ Enrique Saez
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
+Evert Lammerts
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
@@ -72,6 +73,7 @@ Gregory Haynes
 Günther Jena
 Hu Bo
 Hugo Herter
+Igor Davydenko
 Igor Pavlov
 Ingmar Steen
 Jacob Champion

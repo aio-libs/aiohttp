@@ -66,8 +66,10 @@ and :ref:`aiohttp-web-signals` handlers.
 
       A string representing the scheme of the request.
 
-      The scheme is ``'https'`` if transport for request handling is
-      *SSL* or ``secure_proxy_ssl_header`` is matching.
+      The scheme is ``'https'`` if transport for request handling is *SSL*, if
+      ``secure_proxy_ssl_header`` is matching (deprecated), if the ``proto``
+      portion of a ``Forward`` header is present and contains ``https``, or if
+      an ``X-Forwarded-Proto`` header is present and contains ``https``.
 
       ``'http'`` otherwise.
 
@@ -81,9 +83,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: secure
 
-      A boolean indicating if transport for request handling is
-      *SSL* or ``secure_proxy_ssl_header`` is matching,
-      e.g. if ``request.url.scheme == 'https'``
+      Shorthand for ``request.url.scheme == 'https'``
 
       Read-only :class:`bool` property.
 
@@ -811,7 +811,7 @@ WebSocketResponse
                          message from client, and handle
                          :const:`~aiohttp.WSMsgType.PONG`
                          responses from client.
-                         Note that server doesn't send
+                         Note that server does not send
                          :const:`~aiohttp.WSMsgType.PING`
                          requests, you need to do this explicitly
                          using :meth:`ping` method.
@@ -1049,7 +1049,7 @@ WebSocketResponse
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
-             
+
 
 WebSocketReady
 ^^^^^^^^^^^^^^
@@ -1233,11 +1233,13 @@ duplicated like one using :meth:`Application.copy`.
                  If param is ``None`` :func:`asyncio.get_event_loop`
                  used for getting default event loop.
 
-    :param tuple secure_proxy_ssl_header: Secure proxy SSL header. Can
-      be used to detect request scheme,
-      e.g. ``secure_proxy_ssl_header=('X-Forwarded-Proto', 'https')``.
+    :param tuple secure_proxy_ssl_header: Default: ``None``.
 
-      Default: ``None``.
+      .. deprecated:: 2.1
+
+        See ``request.url.scheme`` for built-in resolution of the current
+        scheme using the standard and de-facto standard headers.
+
     :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
     :param int keepalive_timeout: Number of seconds before closing Keep-Alive
       connection. Default: ``75`` seconds (NGINX's default value).
@@ -2102,6 +2104,13 @@ Utilities
    :param access_log_format: access log format, see
                              :ref:`aiohttp-logging-access-log-format-spec`
                              for details.
+
+   :param loop: an *event loop* used for running the application
+                (``None`` by default).
+
+                If the loop is not explicitly specified the function
+                closes it by :meth:`~asyncio.AbstractEventLoop.close` call but
+                **does nothing** for **non-default** loop.
 
 
 Constants

@@ -29,6 +29,7 @@ from .web_urldispatcher import *  # noqa
 from .web_urldispatcher import PrefixedSubAppResource
 from .web_ws import *  # noqa
 
+
 __all__ = (web_protocol.__all__ +
            web_fileresponse.__all__ +
            web_request.__all__ +
@@ -57,6 +58,10 @@ class Application(MutableMapping):
 
         if loop is not None:
             warnings.warn("loop argument is deprecated", ResourceWarning)
+
+        if secure_proxy_ssl_header is not None:
+            warnings.warn(
+                "secure_proxy_ssl_header is deprecated", ResourceWarning)
 
         self._debug = debug
         self._router = router

@@ -85,7 +85,7 @@
 
 - Do not pause transport during set_parser stage #1211
 
-- Lingering close doesn't terminate before timeout #1559
+- Lingering close does not terminate before timeout #1559
 
 - `setsockopt` may raise `OSError` exception if socket is closed already #1595
 
@@ -206,7 +206,7 @@
 - Make `TestServer.make_url` compatible with `yarl.URL` #1389
 
 - Generate informative exception on redirects from server which
-  doesn't provide redirection headers #1396
+  does not provide redirection headers #1396
 
 
 1.1.3 (2016-11-10)
@@ -546,7 +546,7 @@
 0.22.1 (07-16-2016)
 -------------------
 
-- Large cookie expiration/max-age doesn't break an event loop from now
+- Large cookie expiration/max-age does not break an event loop from now
   (fixes #967)
 
 
@@ -950,7 +950,7 @@
   `StreamResponse.prepare()` coroutine #525
 
   `.start()` is still supported but responses begun with `.start()`
-  doesn't call signal for response preparing to be sent.
+  does not call signal for response preparing to be sent.
 
 - Add `StreamReader.__repr__`
 
@@ -1131,7 +1131,7 @@
 
 - Add `response_class` parameter to `ws_connect()` #367
 
-- `ProxyConnector` doesn't support keep-alive requests by default
+- `ProxyConnector` does not support keep-alive requests by default
   starting from now #368
 
 - Add `connector.force_close` property
@@ -1277,7 +1277,7 @@
 
 - Server has 75 seconds keepalive timeout now, was non-keepalive by default.
 
-- Application doesn't accept `**kwargs` anymore (#243).
+- Application does not accept `**kwargs` anymore (#243).
 
 - Request is inherited from dict now for making per-request storage to
   middlewares (#242).
@@ -1326,7 +1326,7 @@
 
 - Added POST attribute
 
-- Response processing refactoring: constructor doesn't accept Request
+- Response processing refactoring: constructor does not accept Request
   instance anymore.
 
 - Pass application instance to finish callback

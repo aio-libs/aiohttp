@@ -44,11 +44,19 @@ Changes
 
 - Do not unquote `+` in match_info values #1816
 
+- Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and
+  host resolution. #1134
+
 - Fix sub-application middlewares resolution order #1853
 
 - Fix applications comparison #1866
 
 - Fix static location in index when prefix is used #1662
+
+- Make test server more reliable #1896
+
+- Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and
+  host resolution. #1134
 
 
 2.0.7 (2017-04-12)
@@ -130,7 +138,7 @@ Changes
 - `response.json()` raises `ClientReponseError` exception if response's
   content type does not match #1723
 
-- Cleanup timer and loop handle on any client exception.
+  - Cleanup timer and loop handle on any client exception.
 
 - Deprecate `loop` parameter for Application's constructor
 

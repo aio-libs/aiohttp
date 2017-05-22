@@ -12,8 +12,8 @@ import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
-from aiohttp.web_urldispatcher import (AbstractResource, ResourceRoute,
-                                       SystemRoute, View,
+from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
+                                       ResourceRoute, SystemRoute, View,
                                        _defaultExpectHandler)
 
 
@@ -495,8 +495,11 @@ def test_add_route_with_invalid_re(router):
     with pytest.raises(ValueError) as ctx:
         router.add_route('GET', r'/handler/{to:+++}', handler)
     s = str(ctx.value)
-    assert s.startswith(
-        "Bad pattern '\/handler\/(?P<to>+++)': nothing to repeat")
+    assert s.startswith("Bad pattern '" +
+                        PATH_SEP +
+                        "handler" +
+                        PATH_SEP +
+                        "(?P<to>+++)': nothing to repeat")
     assert ctx.value.__cause__ is None
 
 
@@ -798,7 +801,7 @@ def test_match_info_get_info_dynamic(router):
     req = make_request('GET', '/value')
     info = yield from router.resolve(req)
     assert info.get_info() == {
-        'pattern': re.compile('\\/(?P<a>[^{}/]+)'),
+        'pattern': re.compile(PATH_SEP+'(?P<a>[^{}/]+)'),
         'formatter': '/{a}'}
 
 
@@ -809,7 +812,10 @@ def test_match_info_get_info_dynamic2(router):
     req = make_request('GET', '/path/to')
     info = yield from router.resolve(req)
     assert info.get_info() == {
-        'pattern': re.compile('\\/(?P<a>[^{}/]+)\\/(?P<b>[^{}/]+)'),
+        'pattern': re.compile(PATH_SEP +
+                              '(?P<a>[^{}/]+)' +
+                              PATH_SEP +
+                              '(?P<b>[^{}/]+)'),
         'formatter': '/{a}/{b}'}
 
 

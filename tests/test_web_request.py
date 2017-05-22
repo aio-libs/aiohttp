@@ -248,6 +248,116 @@ def test_https_scheme_by_secure_proxy_ssl_header_false_test(make_request):
     assert req.secure is False
 
 
+def test_single_forwarded_header(make_request):
+    header = 'by=identifier;for=identifier;host=identifier;proto=identifier'
+    req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded[0]['by'] == 'identifier'
+    assert req.forwarded[0]['for'] == 'identifier'
+    assert req.forwarded[0]['host'] == 'identifier'
+    assert req.forwarded[0]['proto'] == 'identifier'
+
+
+def test_single_forwarded_header_camelcase(make_request):
+    header = 'bY=identifier;fOr=identifier;HOst=identifier;pRoTO=identifier'
+    req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded[0]['by'] == 'identifier'
+    assert req.forwarded[0]['for'] == 'identifier'
+    assert req.forwarded[0]['host'] == 'identifier'
+    assert req.forwarded[0]['proto'] == 'identifier'
+
+
+def test_single_forwarded_header_single_param(make_request):
+    header = 'BY=identifier'
+    req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded[0]['by'] == 'identifier'
+
+
+def test_single_forwarded_header_multiple_param(make_request):
+    header = 'By=identifier1,BY=identifier2,  By=identifier3 ,  BY=identifier4'
+    req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
+    assert len(req.forwarded) == 4
+    assert req.forwarded[0]['by'] == 'identifier1'
+    assert req.forwarded[1]['by'] == 'identifier2'
+    assert req.forwarded[2]['by'] == 'identifier3'
+    assert req.forwarded[3]['by'] == 'identifier4'
+
+
+def test_single_forwarded_header_quoted_escaped(make_request):
+    header = 'BY=identifier;pROTO="\lala lan\d\~ 123\!&"'
+    req = make_request('GET', '/', headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded[0]['by'] == 'identifier'
+    assert req.forwarded[0]['proto'] == 'lala land~ 123!&'
+
+
+def test_multiple_forwarded_headers(make_request):
+    headers = CIMultiDict()
+    headers.add('Forwarded', 'By=identifier1;for=identifier2, BY=identifier3')
+    headers.add('Forwarded', 'By=identifier4;fOr=identifier5')
+    req = make_request('GET', '/', headers=headers)
+    assert len(req.forwarded) == 3
+    assert req.forwarded[0]['by'] == 'identifier1'
+    assert req.forwarded[0]['for'] == 'identifier2'
+    assert req.forwarded[1]['by'] == 'identifier3'
+    assert req.forwarded[2]['by'] == 'identifier4'
+    assert req.forwarded[2]['for'] == 'identifier5'
+
+
+def test_https_scheme_by_forwarded_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict(
+                           {'Forwarded': 'by=;for=;host=;proto=https'}))
+    assert "https" == req.scheme
+    assert req.secure is True
+
+
+def test_https_scheme_by_malformed_forwarded_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'Forwarded': 'malformed value'}))
+    assert "http" == req.scheme
+    assert req.secure is False
+
+
+def test_https_scheme_by_x_forwarded_proto_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'X-Forwarded-Proto': 'https'}))
+    assert "https" == req.scheme
+    assert req.secure is True
+
+
+def test_https_scheme_by_x_forwarded_proto_header_no_tls(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'X-Forwarded-Proto': 'http'}))
+    assert "http" == req.scheme
+    assert req.secure is False
+
+
+def test_host_by_forwarded_header(make_request):
+    headers = CIMultiDict()
+    headers.add('Forwarded', 'By=identifier1;for=identifier2, BY=identifier3')
+    headers.add('Forwarded', 'by=;for=;host=example.com')
+    req = make_request('GET', '/', headers=headers)
+    assert req.host == 'example.com'
+
+
+def test_host_by_forwarded_header_malformed(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'Forwarded': 'malformed value'}))
+    assert req.host is None
+
+
+def test_host_by_x_forwarded_host_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict(
+                           {'X-Forwarded-Host': 'example.com'}))
+    assert req.host == 'example.com'
+
+
+def test_host_by_host_header(make_request):
+    req = make_request('GET', '/',
+                       headers=CIMultiDict({'Host': 'example.com'}))
+    assert req.host == 'example.com'
+
+
 def test_raw_headers(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({'X-HEADER': 'aaa'}))

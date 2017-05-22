@@ -66,7 +66,7 @@ WebSocket utilities
 
        An endpoint (client) is terminating the
        connection because it has expected the server to negotiate one or
-       more extension, but the server didn't return them in the response
+       more extension, but the server did not return them in the response
        message of the WebSocket handshake.  The list of extensions that
        are needed should appear in the /reason/ part of the Close frame.
        Note that this status code is not used by the server, because it

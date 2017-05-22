@@ -360,7 +360,7 @@ time consuming operation is very tricky matter.
 
 If you need global compression -- write own custom middleware. Or
 enable compression in NGINX (you are deploying aiohttp behind reverse
-proxy, isn't it).
+proxy, is not it).
 
 
 .. disqus::
