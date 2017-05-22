@@ -298,7 +298,7 @@ class StreamResponse(HeadersMixin):
 
     def _do_start_compression(self, coding):
         if coding != ContentCoding.identity:
-            self._headers[hdrs.CONTENT_ENCODING] = coding.value
+            self.headers[hdrs.CONTENT_ENCODING] = coding.value
             self._payload_writer.enable_compression(coding.value)
             # Compressed payload may have different content length,
             # remove the header
@@ -347,13 +347,13 @@ class StreamResponse(HeadersMixin):
         version = request.version
         writer = self._payload_writer = request._writer
 
-        if self._compression:
-            self._start_compression(request)
-
         headers = self._headers
         for cookie in self._cookies.values():
             value = cookie.output(header='')[1:]
             headers.add(SET_COOKIE, value)
+
+        if self._compression:
+            self._start_compression(request)
 
         if self._chunked:
             if version != HttpVersion11:
