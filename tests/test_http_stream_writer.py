@@ -339,6 +339,7 @@ def test_replace_available(loop):
 def test_concurrent_drains(loop):
     # high limit for write buffer is about 4 MB
     PACKET = b'1234567890' * 1024 * 1024
+
     fut0 = asyncio.Future(loop=loop)
     fut1 = asyncio.Future(loop=loop)
     fut2 = asyncio.Future(loop=loop)
@@ -352,9 +353,12 @@ def test_concurrent_drains(loop):
     @asyncio.coroutine
     def read(reader, writer):
         yield from fut1
-        for i in range(5):
-            print('before read', i)
-            yield from reader.read()
+        ret = object()
+        res = b''
+        while ret:
+            ret = yield from reader.read()
+            res += ret
+        assert res == PACKET*3
         fut2.set_result(None)
 
     server = yield from asyncio.start_server(read, '127.0.0.1', 0)
@@ -372,29 +376,25 @@ def test_concurrent_drains(loop):
     def write():
         nonlocal started, finished
         started += 1
-        if started == 5:
+        if started == 3:
             fut0.set_result(None)
-        print('write')
         tr.write(PACKET)
-        print('before drain')
         yield from stream.drain()
-        print('after drain')
         finished += 1
-        if finished == 5:
+        if finished == 3:
             fut3.set_result(None)
 
-    tasks = [loop.create_task(write()) for i in range(5)]
+    tasks = [loop.create_task(write()) for i in range(3)]
 
-    print('-----------------------------')
     yield from fut0
-    assert started == 5
+    assert started == 3
     assert finished == 0
     fut1.set_result(None)
     yield from fut3
     tr.close()
     yield from fut2
-    assert started == 5
-    assert finished == 5
+    assert started == 3
+    assert finished == 3
 
     tr.close()
 
