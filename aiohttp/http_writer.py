@@ -4,6 +4,7 @@ import asyncio
 import collections
 import socket
 import zlib
+from collections import deque
 from urllib.parse import SplitResult
 
 import yarl
@@ -39,6 +40,8 @@ class StreamWriter:
         self._waiters = []
         self.available = True
         self.transport = transport
+        self._is_drain = False
+        self._drain_waiters = deque()
 
     def acquire(self, writer):
         if self.available:
@@ -125,7 +128,18 @@ class StreamWriter:
           yield from w.drain()
         """
         if self._protocol.transport is not None:
-            yield from self._protocol._drain_helper()
+            if self._is_drain:
+                fut = asyncio.Future(loop=self._loop)
+                self._drain_waiters.append(fut)
+                yield from fut
+            self._is_drain = True
+            try:
+                yield from self._protocol._drain_helper()
+            finally:
+                self._is_drain = False
+                if self._drain_waiters:
+                    fut = self._drain_waiters.popleft()
+                    fut.set_result(None)
 
 
 class PayloadWriter(AbstractPayloadWriter):
