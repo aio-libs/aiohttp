@@ -89,11 +89,42 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :attr:`scheme`
 
+   .. attribute:: forwarded
+
+      A tuple containing all parsed Forwarded header(s).
+
+      Makes an effort to parse Forwarded headers as specified by :rfc:`7239`:
+
+      - It adds one (immutable) dictionary per Forwarded ``field-value``, i.e.
+        per proxy. The element corresponds to the data in the Forwarded
+        ``field-value`` added by the first proxy encountered by the client.
+        Each subsequent item corresponds to those added by later proxies.
+      - It checks that every value has valid syntax in general as specified
+        in :rfc:`7239#section-4`: either a ``token`` or a ``quoted-string``.
+      - It un-escapes ``quoted-pairs``.
+      - It does NOT validate 'by' and 'for' contents as specified in
+        :rfc:`7239#section-6`.
+      - It does NOT validate ``host`` contents (Host ABNF).
+      - It does NOT validate ``proto`` contents for valid URI scheme names.
+
+      Returns a tuple containing one or more ``MappingProxy`` objects
+
+      .. seealso:: :attr:`scheme`
+
+      .. seealso:: :attr:`host`
+
    .. attribute:: host
 
-      *HOST* header of request, Read-only property.
+      Host name of the request.
 
-      Returns :class:`str` or ``None`` if HTTP request has no *HOST* header.
+      Host name is resolved through the following headers, in this order:
+
+      - *Forwarded*
+      - *X-Forwarded-Host*
+      - *Host*
+
+      Returns  :class:`str`, or ``None`` if no host name is found in the
+      headers.
 
    .. attribute:: path_qs
 
