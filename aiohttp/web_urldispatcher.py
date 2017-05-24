@@ -1,6 +1,7 @@
 import abc
 import asyncio
 import collections
+import functools
 import inspect
 import keyword
 import os
@@ -893,3 +894,56 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         super().freeze()
         for resource in self._resources:
             resource.freeze()
+
+
+def _reg_http_method(func, method, **kwargs):
+    if not hasattr(func, '__aiohttp_data__'):
+        func.__aiohttp_data__ = {}
+    func.__aiohttp_data__[method] = kwargs
+    return func
+
+
+def head(**kwargs):
+    def wrapper(func):
+        @functools.wraps(func)
+        def wrapped(**kwargs):
+            return _reg_http_method(func, hdrs.METH_HEAD, **kwargs)
+        return wrapped
+    return wrapper
+
+
+def add_get(self, *args, name=None, allow_head=True, **kwargs):
+    """
+    Shortcut for add_route with method GET, if allow_head is true another
+    route is added allowing head requests to the same endpoint
+    """
+    if allow_head:
+        # it name is not None append -head to avoid it conflicting with
+        # the GET route below
+        head_name = name and '{}-head'.format(name)
+        self.add_route(hdrs.METH_HEAD, *args, name=head_name, **kwargs)
+    return self.add_route(hdrs.METH_GET, *args, name=name, **kwargs)
+
+def add_post(self, *args, **kwargs):
+    """
+    Shortcut for add_route with method POST
+    """
+    return self.add_route(hdrs.METH_POST, *args, **kwargs)
+
+def add_put(self, *args, **kwargs):
+    """
+    Shortcut for add_route with method PUT
+    """
+    return self.add_route(hdrs.METH_PUT, *args, **kwargs)
+
+def add_patch(self, *args, **kwargs):
+    """
+    Shortcut for add_route with method PATCH
+    """
+    return self.add_route(hdrs.METH_PATCH, *args, **kwargs)
+
+def add_delete(self, *args, **kwargs):
+    """
+    Shortcut for add_route with method DELETE
+    """
+    return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
