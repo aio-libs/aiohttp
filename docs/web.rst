@@ -62,6 +62,12 @@ accepts a list of any non-parsed command-line arguments and returns an
         return app
 
 
+.. tip::
+
+   The :mod:`aiohttp.web` server requires no additional configuration to be
+   deployed in production environments.
+
+
 .. _aiohttp-web-handler:
 
 Handler
