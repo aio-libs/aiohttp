@@ -364,7 +364,8 @@ def test_concurrent_drains(loop):
     server = yield from asyncio.start_server(read, '127.0.0.1', 0, loop=loop)
     port = server.sockets[0].getsockname()[1]
 
-    tr, pr = yield from loop.create_connection(Proto, '127.0.0.1', port)
+    tr, pr = yield from loop.create_connection(lambda: Proto(loop=loop),
+                                               '127.0.0.1', port)
 
     stream = StreamWriter(pr, tr, loop)
     tr.set_write_buffer_limits(1, 1)
