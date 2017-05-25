@@ -788,6 +788,7 @@ HTTP Exception hierarchy chart::
            * 417 - HTTPExpectationFailed
            * 421 - HTTPMisdirectedRequest
            * 422 - HTTPUnprocessableEntity
+           * 424 - HTTPFailedDependency
            * 426 - HTTPUpgradeRequired
            * 428 - HTTPPreconditionRequired
            * 429 - HTTPTooManyRequests
