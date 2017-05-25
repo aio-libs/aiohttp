@@ -802,6 +802,7 @@ HTTP Exception hierarchy chart::
            * 504 - HTTPGatewayTimeout
            * 505 - HTTPVersionNotSupported
            * 506 - HTTPVariantAlsoNegotiates
+           * 507 - HTTPInsufficientStorage
            * 510 - HTTPNotExtended
            * 511 - HTTPNetworkAuthenticationRequired
 

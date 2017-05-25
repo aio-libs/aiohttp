@@ -56,6 +56,7 @@ __all__ = (
     'HTTPGatewayTimeout',
     'HTTPVersionNotSupported',
     'HTTPVariantAlsoNegotiates',
+    'HTTPInsufficientStorage',
     'HTTPNotExtended',
     'HTTPNetworkAuthenticationRequired',
 )
@@ -350,6 +351,10 @@ class HTTPVersionNotSupported(HTTPServerError):
 
 class HTTPVariantAlsoNegotiates(HTTPServerError):
     status_code = 506
+
+
+class HTTPInsufficientStorage(HTTPServerError):
+    status_code = 507
 
 
 class HTTPNotExtended(HTTPServerError):
