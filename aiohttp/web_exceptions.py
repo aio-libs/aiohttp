@@ -41,6 +41,7 @@ __all__ = (
     'HTTPRequestRangeNotSatisfiable',
     'HTTPExpectationFailed',
     'HTTPMisdirectedRequest',
+    'HTTPUnprocessableEntity',
     'HTTPUpgradeRequired',
     'HTTPPreconditionRequired',
     'HTTPTooManyRequests',
@@ -269,6 +270,10 @@ class HTTPExpectationFailed(HTTPClientError):
 
 class HTTPMisdirectedRequest(HTTPClientError):
     status_code = 421
+
+
+class HTTPUnprocessableEntity(HTTPClientError):
+    status_code = 422
 
 
 class HTTPUpgradeRequired(HTTPClientError):
