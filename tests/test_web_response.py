@@ -479,8 +479,7 @@ def test_remove_content_length_if_compression_enabled_on_payload_http11():
 
     writer.write_headers.side_effect = write_headers
     req = make_request('GET', '/', payload_writer=writer)
-    payload = BytesPayload(b'answer')
-    payload.headers['X-Test-Header'] = 'test'
+    payload = BytesPayload(b'answer', headers={"X-Test-Header": "test"})
     resp = Response(body=payload)
     assert resp.content_length == 6
     resp.body = resp
