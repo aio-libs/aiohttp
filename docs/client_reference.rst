@@ -746,11 +746,11 @@ TCPConnector
 
       .. versionadded:: 2.0.8
 
-   :param int throttle_dns: When simultanious requests get into the server and
-      there is a miss in the cache only one request wll end up making the DNS
-      resolution . By default False.
+   :param int throttle_dns: When simultaneous requests get into the server and
+      there is a miss in the cache only one request will end up making the DNS
+      resolution. By default False.
 
-      .. versionadded:: 2.1.0
+      .. versionadded:: 2.2.0
 
    :param aiohttp.abc.AbstractResolver resolver: Custom resolver
       instance to use.  ``aiohttp.DefaultResolver`` by
