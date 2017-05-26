@@ -2,7 +2,7 @@ Changes
 =======
 
 
-2.1.0 (2017-xx-xx)
+2.1.0 (2017-05-26)
 ------------------
 
 - Added support for experimental `async-tokio` event loop written in Rust
