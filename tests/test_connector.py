@@ -432,7 +432,7 @@ def test_tcp_connector_dns_not_throttle_requests(loop, dns_response):
         m_resolver().resolve.return_value = dns_response()
         helpers.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
         helpers.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
-        yield from asyncio.sleep(0)
+        yield from asyncio.sleep(0, loop=loop)
         c = mock.call('localhost', 8080, family=0)
         m_resolver().resolve.assert_has_calls([c, c])
 
@@ -459,7 +459,7 @@ def test_tcp_connector_dns_throttle_requests(loop, dns_response):
         m_resolver().resolve.return_value = dns_response()
         helpers.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
         helpers.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
-        yield from asyncio.sleep(0)
+        yield from asyncio.sleep(0, loop=loop)
         m_resolver().resolve.assert_called_once_with(
             'localhost',
             8080,
@@ -486,7 +486,7 @@ def test_tcp_connector_dns_throttle_requests_exception_spread(loop):
             conn._resolve_host('localhost', 8080),
             loop=loop
         )
-        yield from asyncio.sleep(0)
+        yield from asyncio.sleep(0, loop=loop)
         assert r1.exception() == e
         assert r2.exception() == e
 

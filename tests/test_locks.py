@@ -7,8 +7,8 @@ from aiohttp.locks import Event
 class TestEvent:
 
     @asyncio.coroutine
-    def test_set_exception(self):
-        ev = Event()
+    def test_set_exception(self, loop):
+        ev = Event(loop=loop)
 
         @asyncio.coroutine
         def c():
@@ -26,8 +26,8 @@ class TestEvent:
         assert t.result() == e
 
     @asyncio.coroutine
-    def test_set(self):
-        ev = Event()
+    def test_set(self, loop):
+        ev = Event(loop=loop)
 
         @asyncio.coroutine
         def c():
