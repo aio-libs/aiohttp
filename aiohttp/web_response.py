@@ -525,10 +525,7 @@ class Response(StreamResponse):
             # set content-length header if needed
             if not self._chunked and CONTENT_LENGTH not in headers:
                 size = body.size
-                if size is None:
-                    if CONTENT_LENGTH in headers:
-                        del headers[CONTENT_LENGTH]
-                elif size is not None and CONTENT_LENGTH not in headers:
+                if size is not None:
                     headers[CONTENT_LENGTH] = str(size)
 
             # set content-type

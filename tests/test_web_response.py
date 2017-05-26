@@ -411,7 +411,9 @@ def test_set_content_length_if_compression_enabled():
     resp.enable_compression(ContentCoding.gzip)
 
     yield from resp.prepare(req)
-    assert resp.content_length is not None
+    assert resp.content_length == 26
+    del resp.headers[hdrs.CONTENT_LENGTH]
+    assert resp.content_length == 26
 
 
 @asyncio.coroutine
@@ -450,6 +452,24 @@ def test_remove_content_length_if_compression_enabled_http10():
 
 
 @asyncio.coroutine
+def test_force_compression_identity():
+    writer = mock.Mock()
+
+    def write_headers(status_line, headers):
+        assert hdrs.CONTENT_LENGTH in headers
+        assert hdrs.TRANSFER_ENCODING not in headers
+
+    writer.write_headers.side_effect = write_headers
+    req = make_request('GET', '/',
+                       payload_writer=writer)
+    resp = StreamResponse()
+    resp.content_length = 123
+    resp.enable_compression(ContentCoding.identity)
+    yield from resp.prepare(req)
+    assert resp.content_length == 123
+
+
+@asyncio.coroutine
 def test_remove_content_length_if_compression_enabled_on_payload_http11():
     writer = mock.Mock()
 
@@ -459,7 +479,11 @@ def test_remove_content_length_if_compression_enabled_on_payload_http11():
 
     writer.write_headers.side_effect = write_headers
     req = make_request('GET', '/', payload_writer=writer)
-    resp = Response(body=BytesPayload(b'answer'))
+    payload = BytesPayload(b'answer')
+    payload.headers['X-Test-Header'] = 'test'
+    resp = Response(body=payload)
+    assert resp.content_length == 6
+    resp.body = resp
     resp.enable_compression(ContentCoding.gzip)
     yield from resp.prepare(req)
     assert resp.content_length is None
