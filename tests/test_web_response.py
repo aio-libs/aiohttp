@@ -482,7 +482,7 @@ def test_remove_content_length_if_compression_enabled_on_payload_http11():
     payload = BytesPayload(b'answer', headers={"X-Test-Header": "test"})
     resp = Response(body=payload)
     assert resp.content_length == 6
-    resp.body = resp
+    resp.body = payload
     resp.enable_compression(ContentCoding.gzip)
     yield from resp.prepare(req)
     assert resp.content_length is None
