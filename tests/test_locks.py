@@ -40,3 +40,11 @@ class TestEvent:
         ev.set()
         yield from asyncio.sleep(0, loop=loop)
         assert t.result() == 1
+
+        # next lines help to get the 100% coverage.
+        ev.set()
+        ev.clear()
+        t = helpers.ensure_future(c(), loop=loop)
+        yield from asyncio.sleep(0, loop=loop)
+        t.cancel()
+        ev.set()
