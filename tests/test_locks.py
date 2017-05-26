@@ -20,10 +20,10 @@ class TestEvent:
             return 1
 
         t = helpers.ensure_future(c(), loop=loop)
-        yield from asyncio.sleep(0)
+        yield from asyncio.sleep(0, loop=loop)
         e = Exception()
         ev.set(exc=e)
-        yield from asyncio.sleep(0)
+        yield from asyncio.sleep(0, loop=loop)
         assert t.result() == e
 
     @asyncio.coroutine
@@ -36,7 +36,7 @@ class TestEvent:
             return 1
 
         t = helpers.ensure_future(c(), loop=loop)
-        yield from asyncio.sleep(0)
+        yield from asyncio.sleep(0, loop=loop)
         ev.set()
-        yield from asyncio.sleep(0)
+        yield from asyncio.sleep(0, loop=loop)
         assert t.result() == 1
