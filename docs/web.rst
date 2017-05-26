@@ -787,6 +787,8 @@ HTTP Exception hierarchy chart::
            * 416 - HTTPRequestRangeNotSatisfiable
            * 417 - HTTPExpectationFailed
            * 421 - HTTPMisdirectedRequest
+           * 422 - HTTPUnprocessableEntity
+           * 424 - HTTPFailedDependency
            * 426 - HTTPUpgradeRequired
            * 428 - HTTPPreconditionRequired
            * 429 - HTTPTooManyRequests
@@ -800,6 +802,7 @@ HTTP Exception hierarchy chart::
            * 504 - HTTPGatewayTimeout
            * 505 - HTTPVersionNotSupported
            * 506 - HTTPVariantAlsoNegotiates
+           * 507 - HTTPInsufficientStorage
            * 510 - HTTPNotExtended
            * 511 - HTTPNetworkAuthenticationRequired
 

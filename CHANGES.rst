@@ -58,6 +58,9 @@ Changes
 - Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and
   host resolution. #1134
 
+- Extend list of web exceptions, add HTTPUnprocessableEntity,
+  HTTPFailedDependency, HTTPInsufficientStorage status codes #1920
+
 
 2.0.7 (2017-04-12)
 ------------------
