@@ -684,7 +684,7 @@ class TCPConnector(BaseConnector):
             if key in self._throttle_dns_events:
                 yield from self._throttle_dns_events[key].wait()
             else:
-                self._throttle_dns_events[key] = Event()
+                self._throttle_dns_events[key] = Event(loop=self._loop)
                 try:
                     addrs = yield from \
                         self._resolver.resolve(host, port, family=self._family)
