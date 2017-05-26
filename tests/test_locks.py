@@ -1,6 +1,7 @@
 """Tests of custom aiohttp locks implementations"""
 import asyncio
 
+from aiohttp import helpers
 from aiohttp.locks import Event
 
 
@@ -18,7 +19,7 @@ class TestEvent:
                 return e
             return 1
 
-        t = asyncio.ensure_future(c())
+        t = helpers.ensure_future(c())
         yield from asyncio.sleep(0)
         e = Exception()
         ev.set(exc=e)
@@ -34,7 +35,7 @@ class TestEvent:
             yield from ev.wait()
             return 1
 
-        t = asyncio.ensure_future(c())
+        t = helpers.ensure_future(c())
         yield from asyncio.sleep(0)
         ev.set()
         yield from asyncio.sleep(0)
