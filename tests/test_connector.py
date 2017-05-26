@@ -363,6 +363,8 @@ def test_tcp_connector_resolve_host(loop):
 
 @asyncio.coroutine
 def dns_response():
+    # simulates a network operation
+    yield from asyncio.sleep(0)
     return ["127.0.0.1"]
 
 
@@ -413,6 +415,77 @@ def test_tcp_connector_use_dns_cache_disabled(loop):
             mock.call('localhost', 8080, family=0),
             mock.call('localhost', 8080, family=0)
         ])
+
+
+@asyncio.coroutine
+def test_tcp_connector_dns_not_throttle_requests(loop):
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10,
+            throttle_dns=False
+        )
+        m_resolver().resolve.return_value = dns_response()
+        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        yield from asyncio.sleep(0)
+        c = mock.call('localhost', 8080, family=0)
+        m_resolver().resolve.assert_has_calls([c, c])
+
+
+@asyncio.coroutine
+def test_tcp_connector_dns_throttle_requests_needs_cache_enabled(loop):
+    with pytest.raises(ValueError):
+        aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=False,
+            throttle_dns=True
+        )
+
+
+@asyncio.coroutine
+def test_tcp_connector_dns_throttle_requests(loop):
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10,
+            throttle_dns=True
+        )
+        m_resolver().resolve.return_value = dns_response()
+        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        yield from asyncio.sleep(0)
+        m_resolver().resolve.assert_called_once_with(
+            'localhost',
+            8080,
+            family=0
+        )
+
+
+@asyncio.coroutine
+def test_tcp_connector_dns_throttle_requests_exception_spread(loop):
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10,
+            throttle_dns=True
+        )
+        e = Exception()
+        m_resolver().resolve.side_effect = e
+        r1 = asyncio.ensure_future(
+            conn._resolve_host('localhost', 8080),
+            loop=loop
+        )
+        r2 = asyncio.ensure_future(
+            conn._resolve_host('localhost', 8080),
+            loop=loop
+        )
+        yield from asyncio.sleep(0)
+        assert r1.exception() == e
+        assert r2.exception() == e
 
 
 def test_get_pop_empty_conns(loop):

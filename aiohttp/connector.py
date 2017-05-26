@@ -17,6 +17,7 @@ from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
+from .locks import Event
 from .resolver import DefaultResolver
 
 
@@ -556,6 +557,8 @@ class TCPConnector(BaseConnector):
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
+    throttle_dns - throttle simultaneously DNS requests at the
+        same host, disabled by default.
     loop - Optional event loop.
     """
 
@@ -564,7 +567,8 @@ class TCPConnector(BaseConnector):
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
-                 enable_cleanup_closed=False, loop=None):
+                 enable_cleanup_closed=False, throttle_dns=False,
+                 loop=None):
         super().__init__(keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
                          limit=limit, limit_per_host=limit_per_host,
@@ -575,6 +579,10 @@ class TCPConnector(BaseConnector):
             raise ValueError(
                 "Either disable ssl certificate validation by "
                 "verify_ssl=False or specify ssl_context, not both.")
+
+        if not use_dns_cache and throttle_dns:
+            raise ValueError(
+                "Throttle DNS only works when use_dns_cache is enabled")
 
         self._verify_ssl = verify_ssl
 
@@ -597,6 +605,8 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._throttle_dns = throttle_dns
+        self._throttle_dns_events = {}
         self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
@@ -660,20 +670,39 @@ class TCPConnector(BaseConnector):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
-        if self._use_dns_cache:
-            key = (host, port)
+        if not self._use_dns_cache:
+            return (yield from self._resolver.resolve(
+                host, port, family=self._family))
 
-            if key not in self._cached_hosts or\
-                    self._cached_hosts.expired(key):
-                addrs = yield from \
-                    self._resolver.resolve(host, port, family=self._family)
-                self._cached_hosts.add(key, addrs)
+        key = (host, port)
 
+        if (key in self._cached_hosts) and\
+                (not self._cached_hosts.expired(key)):
             return self._cached_hosts.next_addrs(key)
+
+        if self._throttle_dns:
+            if key in self._throttle_dns_events:
+                yield from self._throttle_dns_events[key].wait()
+            else:
+                self._throttle_dns_events[key] = Event()
+                try:
+                    addrs = yield from \
+                        self._resolver.resolve(host, port, family=self._family)
+                    self._cached_hosts.add(key, addrs)
+                    self._throttle_dns_events[key].set()
+                except Exception as e:
+                    # any DNS exception, independently of the implementation
+                    # is set for the waiters to raise the same exception.
+                    self._throttle_dns_events[key].set(exc=e)
+                    raise
+                finally:
+                    self._throttle_dns_events.pop(key)
         else:
-            res = yield from self._resolver.resolve(
-                host, port, family=self._family)
-            return res
+            addrs = yield from \
+                self._resolver.resolve(host, port, family=self._family)
+            self._cached_hosts.add(key, addrs)
+
+        return self._cached_hosts.next_addrs(key)
 
     @asyncio.coroutine
     def _create_connection(self, req):
