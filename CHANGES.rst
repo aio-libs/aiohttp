@@ -4,7 +4,9 @@ Changes
 2.2.0 (2017-xx-xx)
 ------------------
 
--
+- Added support for throttling DNS request, avoiding the dogpile effect
+  when there is a miss in the DNS cache and many requests get into the
+  connector at the same time.
 
 -
 
