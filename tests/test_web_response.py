@@ -470,6 +470,23 @@ def test_force_compression_identity():
 
 
 @asyncio.coroutine
+def test_force_compression_identity_response():
+    writer = mock.Mock()
+
+    def write_headers(status_line, headers):
+        assert headers[hdrs.CONTENT_LENGTH] == "6"
+        assert hdrs.TRANSFER_ENCODING not in headers
+
+    writer.write_headers.side_effect = write_headers
+    req = make_request('GET', '/',
+                       payload_writer=writer)
+    resp = Response(body=b'answer')
+    resp.enable_compression(ContentCoding.identity)
+    yield from resp.prepare(req)
+    assert resp.content_length == 6
+
+
+@asyncio.coroutine
 def test_remove_content_length_if_compression_enabled_on_payload_http11():
     writer = mock.Mock()
 
