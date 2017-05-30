@@ -1,6 +1,12 @@
 Changes
 =======
 
+2.0.8 (2017-XX-XX)
+------------------
+
+- Remove Content-Length when enabling chunked encoding
+
+
 2.0.7 (2017-04-12)
 ------------------
 

@@ -112,6 +112,7 @@ class StreamResponse(HeadersMixin):
         self._chunked = True
         if chunk_size is not None:
             warnings.warn('Chunk size is deprecated #1615', DeprecationWarning)
+        self._headers.pop(hdrs.CONTENT_LENGTH, None)
 
     def enable_compression(self, force=None):
         """Enables response compression encoding."""
