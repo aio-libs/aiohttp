@@ -89,6 +89,15 @@ def test_drop_content_length_header_on_setting_len_to_None():
     assert 'Content-Length' not in resp.headers
 
 
+def test_drop_content_length_header_on_setting_chunked():
+    resp = StreamResponse()
+
+    resp.content_length = 1
+    assert "1" == resp.headers['Content-Length']
+    resp.enable_chunked_encoding()
+    assert 'Content-Length' not in resp.headers
+
+
 def test_set_content_length_to_None_on_non_set():
     resp = StreamResponse()
 
