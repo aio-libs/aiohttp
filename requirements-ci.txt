@@ -3,7 +3,7 @@ flake8==3.3.0
 pyflakes==1.5.0
 coverage==4.4.1
 cchardet==2.1.0
-sphinx==1.6.1
+sphinx==1.6.2
 cython==0.25.2
 chardet==3.0.3
 isort==4.2.5
