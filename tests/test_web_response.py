@@ -889,6 +889,20 @@ def test_send_set_cookie_header(buf, writer):
                     'Server: .+\r\n\r\n', txt)
 
 
+@asyncio.coroutine
+def test_consecutive_write_eof():
+    req = make_request('GET', '/')
+    data = b'data'
+    resp = Response(body=data)
+
+    yield from resp.prepare(req)
+    with mock.patch('aiohttp.web.StreamResponse.write_eof') as super_write_eof:
+        yield from resp.write_eof()
+        resp._eof_sent = True
+        yield from resp.write_eof()
+        super_write_eof.assert_called_once_with(data)
+
+
 def test_set_text_with_content_type():
     resp = Response()
     resp.content_type = "text/html"
