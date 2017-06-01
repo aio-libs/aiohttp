@@ -4,6 +4,8 @@ Changes
 2.2.0 (2017-xx-xx)
 ------------------
 
+- Add doc for add_head, update doc for add_get. #1944
+
 - Fixed consecutive calls for `Response.write_eof`.
 
 -
