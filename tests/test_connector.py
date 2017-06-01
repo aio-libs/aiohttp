@@ -638,7 +638,9 @@ def test_tcp_connector_ctor(loop):
 
 def test_tcp_connector_ctor_fingerprint_valid(loop):
     valid = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
-    conn = aiohttp.TCPConnector(loop=loop, fingerprint=valid)
+    # md5 and sha1 are deprecated
+    with pytest.warns(DeprecationWarning):
+        conn = aiohttp.TCPConnector(loop=loop, fingerprint=valid)
     assert conn.fingerprint == valid
 
 
