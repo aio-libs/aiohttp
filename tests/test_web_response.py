@@ -86,6 +86,14 @@ def test_content_length_setter():
     assert 234 == resp.content_length
 
 
+def test_content_length_setter_with_enable_chunked_encoding():
+    resp = StreamResponse()
+
+    resp.enable_chunked_encoding()
+    with pytest.raises(RuntimeError):
+        resp.content_length = 234
+
+
 def test_drop_content_length_header_on_setting_len_to_None():
     resp = StreamResponse()
 
@@ -221,6 +229,14 @@ def test_chunked_encoding():
 
     msg = yield from resp.prepare(req)
     assert msg.chunked
+
+
+def test_enable_chunked_encoding_with_content_length():
+    resp = StreamResponse()
+
+    resp.content_length = 234
+    with pytest.raises(RuntimeError):
+        resp.enable_chunked_encoding()
 
 
 @asyncio.coroutine
