@@ -897,9 +897,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
 
 def _reg_http_method(func, method, **kwargs):
-    if not hasattr(func, '__aiohttp_data__'):
-        func.__aiohttp_data__ = {}
-    func.__aiohttp_data__[method] = kwargs
+    if not hasattr(func, '__aiohttp_web__'):
+        func.__aiohttp_web__ = {}
+    func.__aiohttp_web__[method] = kwargs
     return func
 
 
@@ -912,7 +912,7 @@ def head(**kwargs):
     return wrapper
 
 
-def add_get(self, *args, name=None, allow_head=True, **kwargs):
+def get(self, *args, name=None, allow_head=True, **kwargs):
     """
     Shortcut for add_route with method GET, if allow_head is true another
     route is added allowing head requests to the same endpoint
@@ -924,11 +924,13 @@ def add_get(self, *args, name=None, allow_head=True, **kwargs):
         self.add_route(hdrs.METH_HEAD, *args, name=head_name, **kwargs)
     return self.add_route(hdrs.METH_GET, *args, name=name, **kwargs)
 
+
 def add_post(self, *args, **kwargs):
     """
     Shortcut for add_route with method POST
     """
     return self.add_route(hdrs.METH_POST, *args, **kwargs)
+
 
 def add_put(self, *args, **kwargs):
     """
@@ -936,11 +938,13 @@ def add_put(self, *args, **kwargs):
     """
     return self.add_route(hdrs.METH_PUT, *args, **kwargs)
 
+
 def add_patch(self, *args, **kwargs):
     """
     Shortcut for add_route with method PATCH
     """
     return self.add_route(hdrs.METH_PATCH, *args, **kwargs)
+
 
 def add_delete(self, *args, **kwargs):
     """
