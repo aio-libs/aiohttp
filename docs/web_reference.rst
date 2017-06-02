@@ -2085,10 +2085,11 @@ Utilities
 
 
 .. function:: run_app(app, *, host=None, port=None, path=None, \
-                      loop=None, shutdown_timeout=60.0, \
+                      sock=None, shutdown_timeout=60.0, \
                       ssl_context=None, print=print, backlog=128, \
                       access_log_format=None, \
-                      access_log=aiohttp.log.access_logger)
+                      access_log=aiohttp.log.access_logger, \
+                      handle_signals=True, loop=None)
 
    A utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2154,6 +2155,9 @@ Utilities
    :param access_log_format: access log format, see
                              :ref:`aiohttp-logging-access-log-format-spec`
                              for details.
+
+   :param bool handle_signals: override signal TERM handling to gracefully
+                               exit the application.
 
    :param loop: an *event loop* used for running the application
                 (``None`` by default).
