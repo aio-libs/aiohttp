@@ -4,7 +4,7 @@ Changes
 2.2.0 (2017-xx-xx)
 ------------------
 
--
+- Fixed consecutive calls for `Response.write_eof`.
 
 -
 
