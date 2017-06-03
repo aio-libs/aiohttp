@@ -4,36 +4,48 @@ services:
 
 language: python
 
-python:
-  # python3.4.2 has bug in http.cookies module, aiohttp provides fix
-  - 3.4.2
-  - 3.4.3
-  - 3.5.2
-  # - 3.5.3
-  - 3.5
-  - 3.6
-  # - 3.7-dev
-  # - 'nightly'
+addons:
+  apt:
+    packages:
+    - enchant
 
-os:
-  - linux
-#   - osx   # doesn't work on MacOSX -- the system has no Python installed
+# doesn't work on MacOSX out of the box -- the system has no Python installed
+# there's a workaround to use `language: generic` and install it, but it's slow
+os: linux
 
-matrix:
+jobs:
   allow_failures:
-    - python: '3.6-dev'
-    - python: 'nightly'
-    - os: osx
+  - python: 3.6-dev
+  - python: nightly
 
-cache:
-  directories:
-  - $HOME/.cache/pip
+  include:
+  # python3.4.2 has bug in http.cookies module, aiohttp provides fix
+  - python: 3.4.2
+  - python: 3.4.3
+  - python: 3.5.2
+  # - 3.5.3
+  - python: 3.5
+  - python: &mainstream_python 3.6
+  - python: 3.6-dev
+  - python: nightly
 
-before_cache:
-  - rm -f $HOME/.cache/pip/log/debug.log
+  - stage: deploy (PYPI upload itself runs only for tagged commits)
+    python: *mainstream_python
+    deploy:
+      provider: pypi
+      user: andrew.svetlov
+      password:
+        secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
+      distributions: sdist
+      on:
+        tags: true
+        all_branches: true
+
+cache: pip
+
+before_cache: rm -f $HOME/.cache/pip/log/debug.log
 
 install:
-  - sudo apt-get install enchant
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install --upgrade setuptools-git
@@ -56,14 +68,3 @@ script:
 after_success:
   - codecov
   - ./tools/run_docker.sh
-
-deploy:
-  provider: pypi
-  user: andrew.svetlov
-  password:
-    secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
-  distributions: "sdist"
-  on:
-    tags: true
-    all_branches: true
-    python: 3.6
