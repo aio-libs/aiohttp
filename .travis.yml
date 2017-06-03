@@ -31,6 +31,9 @@ jobs:
 
   - stage: deploy (PYPI upload itself runs only for tagged commits)
     python: *mainstream_python
+    install: skip
+    script: skip
+    after_success: skip
     deploy:
       provider: pypi
       user: andrew.svetlov
