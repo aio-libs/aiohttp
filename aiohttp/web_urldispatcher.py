@@ -831,7 +831,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path - folder with files
 
         """
-        # TODO: implement via PrefixedResource, not ResourceAdapter
         assert prefix.startswith('/')
         if prefix.endswith('/'):
             prefix = prefix[:-1]
