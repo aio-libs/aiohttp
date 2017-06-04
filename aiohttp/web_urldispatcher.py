@@ -7,7 +7,7 @@ import keyword
 import os
 import re
 import warnings
-from collections.abc import Container, Iterable, Sized
+from collections.abc import Container, Iterable, Sized, namedtuple
 from pathlib import Path
 from types import MappingProxyType
 
@@ -32,6 +32,8 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 PATH_SEP = re.escape('/')
+
+RouteInfo = namedtuple('RouteInfo', 'method, path, handler, kwargs')
 
 
 class AbstractResource(Sized, Iterable):
@@ -895,59 +897,77 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         for resource in self._resources:
             resource.freeze()
 
+    def add_routes(self, routes):
+        for route in routes:
+            assert route.method in hdrs.METH_ALL
+            reg = getattr(self, 'add_'+route.method.lower())
+            reg(route.path, route.handler, **route.kwargs)
 
-def _reg_http_method(func, method, **kwargs):
-    if not hasattr(func, '__aiohttp_web__'):
-        func.__aiohttp_web__ = {}
-    func.__aiohttp_web__[method] = kwargs
-    return func
+    def scan(self, package):
+        pass
 
 
-def head(**kwargs):
-    def wrapper(func):
-        @functools.wraps(func)
+def _make_route(method, path, handler, **kwargs):
+    return RouteInfo(method, path, handler, kwargs)
+
+
+def _make_wrapper(method, path, kwargs):
+    def wrapper(handler):
+        @functools.wraps(handler)
         def wrapped(**kwargs):
-            return _reg_http_method(func, hdrs.METH_HEAD, **kwargs)
+            if hasattr(handler, '__aiohttp_web__'):
+                raise ValueError('Handler {handler!r} is registered already '
+                                 'as [{method}] {path} {kwargs}'.format(
+                                     handler=handler,
+                                     method=method,
+                                     path=path,
+                                     kwargs=kwargs))
+            handler.__aiohttp_web__ = _make_route(method, path,
+                                                  handler, kwargs)
+            return handler
         return wrapped
     return wrapper
 
 
-def get(self, *args, name=None, allow_head=True, **kwargs):
-    """
-    Shortcut for add_route with method GET, if allow_head is true another
-    route is added allowing head requests to the same endpoint
-    """
-    if allow_head:
-        # it name is not None append -head to avoid it conflicting with
-        # the GET route below
-        head_name = name and '{}-head'.format(name)
-        self.add_route(hdrs.METH_HEAD, *args, name=head_name, **kwargs)
-    return self.add_route(hdrs.METH_GET, *args, name=name, **kwargs)
+def head(path, handler=None, **kwargs):
+    if handler is None:
+        return _make_wrapper(hdrs.METH_HEAD, path, **kwargs)
+    else:
+        return _make_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
 
-def add_post(self, *args, **kwargs):
-    """
-    Shortcut for add_route with method POST
-    """
-    return self.add_route(hdrs.METH_POST, *args, **kwargs)
+def get(path, handler=None, *, name=None, allow_head=True, **kwargs):
+    if handler is None:
+        return _make_wrapper(hdrs.METH_GET, path, name=name,
+                             allow_head=allow_head, **kwargs)
+    else:
+        return _make_route(path, handler, name=name,
+                            allow_head=allow_head, **kwargs)
 
 
-def add_put(self, *args, **kwargs):
-    """
-    Shortcut for add_route with method PUT
-    """
-    return self.add_route(hdrs.METH_PUT, *args, **kwargs)
+def post(path, handler=None, **kwargs):
+    if handler is None:
+        return _make_wrapper(hdrs.METH_POST, path, **kwargs)
+    else:
+        return _make_route(hdrs.METH_POST, path, handler, **kwargs)
 
 
-def add_patch(self, *args, **kwargs):
-    """
-    Shortcut for add_route with method PATCH
-    """
-    return self.add_route(hdrs.METH_PATCH, *args, **kwargs)
+def put(path, handler=None, **kwargs):
+    if handler is None:
+        return _make_wrapper(hdrs.METH_PUT, path, **kwargs)
+    else:
+        return _make_route(hdrs.METH_PUT, path, handler, **kwargs)
 
 
-def add_delete(self, *args, **kwargs):
-    """
-    Shortcut for add_route with method DELETE
-    """
-    return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
+def patch(path, handler=None, **kwargs):
+    if handler is None:
+        return _make_wrapper(hdrs.METH_PATCH, path, **kwargs)
+    else:
+        return _make_route(hdrs.METH_PATCH, path, handler, **kwargs)
+
+
+def delete(path, handler=None, **kwargs):
+    if handler is None:
+        return _make_wrapper(hdrs.METH_DELETE, path, **kwargs)
+    else:
+        return _make_route(hdrs.METH_DELETE, path, handler, **kwargs)
