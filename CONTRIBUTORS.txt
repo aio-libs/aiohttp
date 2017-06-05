@@ -2,6 +2,7 @@ Contributors
 ------------
 A. Jesse Jiryu Davis
 Adam Mills
+Adrián Chaves
 Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
