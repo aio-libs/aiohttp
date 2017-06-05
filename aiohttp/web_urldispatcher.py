@@ -7,6 +7,7 @@ import os
 import re
 import warnings
 from collections.abc import Container, Iterable, Sized
+from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 
@@ -106,6 +107,7 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
+            @wraps(handler)
             @asyncio.coroutine
             def handler_wrapper(*args, **kwargs):
                 result = old_handler(*args, **kwargs)
