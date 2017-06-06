@@ -136,6 +136,8 @@ Changes
 
 - Fix exception on multipart/form-data post if content-type is not set #1743
 
+- Added `default_headers` property to `ClientSession`.  #1746
+
 
 2.0.2 (2017-03-21)
 ------------------

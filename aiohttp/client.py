@@ -131,6 +131,11 @@ class ClientSession:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
+    @property
+    def default_headers(self) -> CIMultiDict:
+        """default headers getter."""
+        return self._default_headers
+
     def request(self, method, url, **kwargs):
         """Perform HTTP request."""
         return _RequestContextManager(self._request(method, url, **kwargs))
