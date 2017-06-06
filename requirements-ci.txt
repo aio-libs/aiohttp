@@ -6,7 +6,7 @@ cchardet==2.1.0
 sphinx==1.6.2
 cython==0.25.2
 chardet==3.0.3
-isort==4.2.13
+isort==4.2.14
 tox==2.7.0
 multidict==2.1.6
 async-timeout==1.2.1
