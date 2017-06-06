@@ -8,6 +8,9 @@ Changes
 
 - Fixed consecutive calls for `Response.write_eof`.
 
+- Retain method attributes (e.g. :code:`__doc__`) when registering synchronous
+  handlers for resources. #1953
+
 -
 
 -
