@@ -78,9 +78,6 @@ Changes
 
 - Make test server more reliable #1896
 
-- Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and
-  host resolution. #1134
-
 - Extend list of web exceptions, add HTTPUnprocessableEntity,
   HTTPFailedDependency, HTTPInsufficientStorage status codes #1920
 
