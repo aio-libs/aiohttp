@@ -344,6 +344,9 @@ class ClientRequest:
             new_exc.__context__ = exc
             new_exc.__cause__ = exc
             conn.protocol.set_exception(new_exc)
+        except asyncio.CancelledError as exc:
+            if not conn.closed:
+                conn.protocol.set_exception(exc)
         except Exception as exc:
             conn.protocol.set_exception(exc)
         finally:
