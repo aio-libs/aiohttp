@@ -21,6 +21,11 @@ from .helpers import (PY_35, CeilTimeout, TimeoutHandle, deprecated_noop,
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
+# required to avoid flake F405
+from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
+                                WSServerHandshakeError)
+from .client_reqrep import ClientRequest, ClientResponse
+from .connector import TCPConnector
 
 # backwards compatibility client imports
 from .client_exceptions import *  # noqa
