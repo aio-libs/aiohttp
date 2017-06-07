@@ -231,7 +231,9 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter = helpers.create_future(self._loop)
         try:
             if self._timer:
-                with self._timer:
+                with self._timer, \
+                     helpers.CeilTimeout(self._timer.info.get('read_timeout'),
+                                         loop=self._loop):
                     yield from waiter
             else:
                 yield from waiter

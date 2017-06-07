@@ -14,20 +14,18 @@ from yarl import URL
 
 from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
-from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
-                                WSServerHandshakeError)
-from .client_reqrep import *  # noqa
-from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .connector import *  # noqa
-from .connector import TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (PY_35, CeilTimeout, TimeoutHandle, deprecated_noop,
                       sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
+
+# backwards compatibility client imports
+from .client_exceptions import *  # noqa
+from .client_reqrep import *  # noqa
+from .connector import *  # noqa
 
 __all__ = (client_exceptions.__all__ +  # noqa
            client_reqrep.__all__ +  # noqa
@@ -98,8 +96,17 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        self._read_timeout = (read_timeout if read_timeout is not sentinel
-                              else DEFAULT_TIMEOUT)
+
+        if isinstance(read_timeout, (tuple, list)):
+            assert len(read_timeout) == 2
+            self._read_timeout, self._total_read_timeout = read_timeout
+        elif read_timeout is sentinel:
+            self._read_timeout = None
+            self._total_read_timeout = DEFAULT_TIMEOUT
+        else:
+            self._read_timeout = None
+            self._total_read_timeout = read_timeout
+
         self._conn_timeout = conn_timeout
         self._raise_for_status = raise_for_status
 
@@ -205,7 +212,8 @@ class ClientSession:
         # (request, redirects, responses, data consuming)
         tm = TimeoutHandle(
             self._loop,
-            timeout if timeout is not sentinel else self._read_timeout)
+            timeout if timeout is not sentinel else self._total_read_timeout,
+            {'read_timeout': self._read_timeout})
         handle = tm.start()
 
         timer = tm.timer()

@@ -19,7 +19,7 @@ from pathlib import Path
 from time import gmtime
 from urllib.parse import quote
 
-from async_timeout import timeout
+import async_timeout
 
 from . import hdrs
 from .abc import AbstractCookieJar
@@ -34,6 +34,7 @@ PY_34 = sys.version_info < (3, 5)
 PY_35 = sys.version_info >= (3, 5)
 PY_352 = sys.version_info >= (3, 5, 2)
 
+# Here for backwards compatibility client imports
 if sys.version_info >= (3, 4, 3):
     from http.cookies import SimpleCookie  # noqa
 else:
@@ -45,7 +46,7 @@ __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
 
 
 sentinel = object()
-Timeout = timeout
+Timeout = async_timeout.timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
 
 CHAR = set(chr(i) for i in range(0, 128))
@@ -630,12 +631,23 @@ def call_later(cb, timeout, loop):
         return loop.call_at(when, cb)
 
 
+# TODO: this should ideally be a bucket of time which is pulled from when we're
+# actually waiting from data from the server instead of a fixed amount of time
+# from when it's started as we can't assume clients will immediately read the
+# body after we return the response obj.
 class TimeoutHandle:
     """ Timeout handle """
 
-    def __init__(self, loop, timeout):
+    def __init__(self, loop, timeout, context_info=None):
+        """
+        Constructs a TimeoutHandle
+        :param loop: asyncio loop
+        :param timeout: fixed timeout in seconds from point `start` is called.
+        :param context_info: info to be sent to each `TimerContext` created
+        """
         self._timeout = timeout
         self._loop = loop
+        self._context_info = context_info or {}
         self._callbacks = []
 
     def register(self, callback, *args, **kwargs):
@@ -651,10 +663,10 @@ class TimeoutHandle:
 
     def timer(self):
         if self._timeout is not None and self._timeout > 0:
-            timer = TimerContext(self._loop)
+            timer = TimerContext(self._loop, self._context_info)
             self.register(timer.timeout)
         else:
-            timer = TimerNoop()
+            timer = TimerNoop(self._context_info)
         return timer
 
     def __call__(self):
@@ -668,6 +680,8 @@ class TimeoutHandle:
 
 
 class TimerNoop:
+    def __init__(self, context_info=None):
+        self._context_info = context_info
 
     def __enter__(self):
         return self
@@ -675,12 +689,17 @@ class TimerNoop:
     def __exit__(self, exc_type, exc_val, exc_tb):
         return False
 
+    @property
+    def info(self):
+        return self._context_info
+
 
 class TimerContext:
     """ Low resolution timeout context manager """
 
-    def __init__(self, loop):
+    def __init__(self, loop, info=None):
         self._loop = loop
+        self._info = info
         self._tasks = []
         self._cancelled = False
 
@@ -711,6 +730,10 @@ class TimerContext:
                 task.cancel()
 
             self._cancelled = True
+
+    @property
+    def info(self):
+        return self._info
 
 
 class CeilTimeout(Timeout):
