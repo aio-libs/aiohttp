@@ -1,8 +1,31 @@
 Changes
 =======
 
+2.2.0 (2017-xx-xx)
+------------------
 
-2.1.0 (2017-xx-xx)
+- Add doc for add_head, update doc for add_get. #1944
+
+- Retain method attributes (e.g. :code:`__doc__`) when registering synchronous
+  handlers for resources. #1953
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+2.1.0 (2017-05-26)
 ------------------
 
 - Added support for experimental `async-tokio` event loop written in Rust
@@ -55,8 +78,8 @@ Changes
 
 - Make test server more reliable #1896
 
-- Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and
-  host resolution. #1134
+- Extend list of web exceptions, add HTTPUnprocessableEntity,
+  HTTPFailedDependency, HTTPInsufficientStorage status codes #1920
 
 
 2.0.7 (2017-04-12)

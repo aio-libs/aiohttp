@@ -7,6 +7,7 @@ import os
 import re
 import warnings
 from collections.abc import Container, Iterable, Sized
+from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 
@@ -106,6 +107,7 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
+            @wraps(handler)
             @asyncio.coroutine
             def handler_wrapper(*args, **kwargs):
                 result = old_handler(*args, **kwargs)
@@ -831,7 +833,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path - folder with files
 
         """
-        # TODO: implement via PrefixedResource, not ResourceAdapter
         assert prefix.startswith('/')
         if prefix.endswith('/'):
             prefix = prefix[:-1]
@@ -845,13 +846,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self.register_resource(resource)
         return resource
 
-    def add_head(self, *args, **kwargs):
+    def add_head(self, path, handler, **kwargs):
         """
         Shortcut for add_route with method HEAD
         """
-        return self.add_route(hdrs.METH_HEAD, *args, **kwargs)
+        return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
-    def add_get(self, *args, name=None, allow_head=True, **kwargs):
+    def add_get(self, path, handler, *, name=None, allow_head=True, **kwargs):
         """
         Shortcut for add_route with method GET, if allow_head is true another
         route is added allowing head requests to the same endpoint
@@ -860,32 +861,34 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             # it name is not None append -head to avoid it conflicting with
             # the GET route below
             head_name = name and '{}-head'.format(name)
-            self.add_route(hdrs.METH_HEAD, *args, name=head_name, **kwargs)
-        return self.add_route(hdrs.METH_GET, *args, name=name, **kwargs)
+            self.add_route(hdrs.METH_HEAD, path, handler,
+                           name=head_name, **kwargs)
+        return self.add_route(hdrs.METH_GET, path, handler, name=name,
+                              **kwargs)
 
-    def add_post(self, *args, **kwargs):
+    def add_post(self, path, handler, **kwargs):
         """
         Shortcut for add_route with method POST
         """
-        return self.add_route(hdrs.METH_POST, *args, **kwargs)
+        return self.add_route(hdrs.METH_POST, path, handler, **kwargs)
 
-    def add_put(self, *args, **kwargs):
+    def add_put(self, path, handler, **kwargs):
         """
         Shortcut for add_route with method PUT
         """
-        return self.add_route(hdrs.METH_PUT, *args, **kwargs)
+        return self.add_route(hdrs.METH_PUT, path, handler, **kwargs)
 
-    def add_patch(self, *args, **kwargs):
+    def add_patch(self, path, handler, **kwargs):
         """
         Shortcut for add_route with method PATCH
         """
-        return self.add_route(hdrs.METH_PATCH, *args, **kwargs)
+        return self.add_route(hdrs.METH_PATCH, path, handler, **kwargs)
 
-    def add_delete(self, *args, **kwargs):
+    def add_delete(self, path, handler, **kwargs):
         """
         Shortcut for add_route with method DELETE
         """
-        return self.add_route(hdrs.METH_DELETE, *args, **kwargs)
+        return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
     def freeze(self):
         super().freeze()

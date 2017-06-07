@@ -2,6 +2,7 @@ Contributors
 ------------
 A. Jesse Jiryu Davis
 Adam Mills
+Adrián Chaves
 Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
@@ -149,6 +150,7 @@ Stanislas Plum
 Stanislav Prokop
 Stephen Granade
 Steven Seguin
+Sunghyun Hwang
 Sviatoslav Bulbakha
 Taha Jahangir
 Taras Voinarovskyi

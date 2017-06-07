@@ -89,11 +89,42 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :attr:`scheme`
 
+   .. attribute:: forwarded
+
+      A tuple containing all parsed Forwarded header(s).
+
+      Makes an effort to parse Forwarded headers as specified by :rfc:`7239`:
+
+      - It adds one (immutable) dictionary per Forwarded ``field-value``, i.e.
+        per proxy. The element corresponds to the data in the Forwarded
+        ``field-value`` added by the first proxy encountered by the client.
+        Each subsequent item corresponds to those added by later proxies.
+      - It checks that every value has valid syntax in general as specified
+        in :rfc:`7239#section-4`: either a ``token`` or a ``quoted-string``.
+      - It un-escapes ``quoted-pairs``.
+      - It does NOT validate 'by' and 'for' contents as specified in
+        :rfc:`7239#section-6`.
+      - It does NOT validate ``host`` contents (Host ABNF).
+      - It does NOT validate ``proto`` contents for valid URI scheme names.
+
+      Returns a tuple containing one or more ``MappingProxy`` objects
+
+      .. seealso:: :attr:`scheme`
+
+      .. seealso:: :attr:`host`
+
    .. attribute:: host
 
-      *HOST* header of request, Read-only property.
+      Host name of the request.
 
-      Returns :class:`str` or ``None`` if HTTP request has no *HOST* header.
+      Host name is resolved through the following headers, in this order:
+
+      - *Forwarded*
+      - *X-Forwarded-Host*
+      - *Host*
+
+      Returns  :class:`str`, or ``None`` if no host name is found in the
+      headers.
 
    .. attribute:: path_qs
 
@@ -1444,14 +1475,26 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
-   .. method:: add_get(path, *args, **kwargs)
+   .. method:: add_get(path, handler, *, name=None, allow_head=True, **kwargs)
 
       Shortcut for adding a GET handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'GET'``.
 
+      If *allow_head* is ``True`` (default) the route for method HEAD
+      is added with the same handler as for GET.
+
+      If *name* is provided the name for HEAD route is suffixed with
+      ``'-head'``. For example ``router.add_get(path, handler,
+      name='route')`` call adds two routes: first for GET with name
+      ``'route'`` and second for HEAD with name ``'route-head'``.
+
       .. versionadded:: 1.0
 
-   .. method:: add_post(path, *args, **kwargs)
+      .. versionchanged:: 2.0
+
+         *allow_head* parameter added.
+
+   .. method:: add_post(path, handler, **kwargs)
 
       Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
 
@@ -1460,21 +1503,28 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionadded:: 1.0
 
-   .. method:: add_put(path, *args, **kwargs)
+   .. method:: add_head(path, handler, **kwargs)
+
+      Shortcut for adding a HEAD handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'HEAD'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_put(path, handler, **kwargs)
 
       Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PUT'``.
 
       .. versionadded:: 1.0
 
-   .. method:: add_patch(path, *args, **kwargs)
+   .. method:: add_patch(path, handler, **kwargs)
 
       Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PATCH'``.
 
       .. versionadded:: 1.0
 
-   .. method:: add_delete(path, *args, **kwargs)
+   .. method:: add_delete(path, handler, **kwargs)
 
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
