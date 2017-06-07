@@ -8,14 +8,15 @@ import os
 import sys
 import traceback
 import warnings
-
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
+
 from yarl import URL
 
 # NOTE: * imports are for client backwards compatibility and imports from star
 #       imports are to avoid flake errors due to star imports
-from . import connector as connector_mod
+
 from . import client_exceptions, client_reqrep, hdrs, http, payload
+from . import connector as connector_mod
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
                                 WSServerHandshakeError)
@@ -29,7 +30,6 @@ from .helpers import (PY_35, CeilTimeout, TimeoutHandle, deprecated_noop,
                       sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
-
 
 __all__ = (client_exceptions.__all__ +  # noqa
            client_reqrep.__all__ +  # noqa
