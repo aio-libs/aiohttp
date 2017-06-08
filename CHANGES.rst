@@ -105,6 +105,17 @@ Changes
   passed #1786
 
 
+2.0.6 (2017-04-06)
+------------------
+
+- Fix ``web.run_app`` not to bind to default host-port pair if only socket is
+  passed #1786
+
+- Keeping blank values for `request.post()` and `multipart.form()` #1765
+
+- TypeError in ResponseHandler.data_received #1770
+
+
 2.0.5 (2017-03-29)
 ------------------
 
@@ -116,10 +127,24 @@ Changes
   is sent #1761
 
 
+2.0.5 (2017-03-29)
+------------------
+
+- Memory leak with aiohttp.request #1756
+
+
 2.0.4 (2017-03-27)
 ------------------
 
 - Memory leak with aiohttp.request #1756
+
+- Encoding is always UTF-8 in POST data #1750
+
+- Do not add "Content-Disposition" header by default #1755
+
+
+2.0.4 (2017-03-27)
+------------------
 
 - Encoding is always UTF-8 in POST data #1750
 
