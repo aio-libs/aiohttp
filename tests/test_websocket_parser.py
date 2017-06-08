@@ -12,7 +12,7 @@ from aiohttp.http_websocket import (PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2,
                                     _websocket_mask)
 
 
-def build_frame(message, opcode, use_mask=False, noheader=False):
+def build_frame(message, opcode, use_mask=False, noheader=False, is_fin=True):
     """Send a frame over the websocket with message as its payload."""
     msg_length = len(message)
     if use_mask:  # pragma: no cover
@@ -20,15 +20,20 @@ def build_frame(message, opcode, use_mask=False, noheader=False):
     else:
         mask_bit = 0
 
+    if is_fin:
+        header_first_byte = 0x80 | opcode
+    else:
+        header_first_byte = opcode
+
     if msg_length < 126:
         header = PACK_LEN1(
-            0x80 | opcode, msg_length | mask_bit)
+            header_first_byte, msg_length | mask_bit)
     elif msg_length < (1 << 16):  # pragma: no cover
         header = PACK_LEN2(
-            0x80 | opcode, 126 | mask_bit, msg_length)
+            header_first_byte, 126 | mask_bit, msg_length)
     else:
         header = PACK_LEN3(
-            0x80 | opcode, 127 | mask_bit, msg_length)
+            header_first_byte, 127 | mask_bit, msg_length)
 
     if use_mask:  # pragma: no cover
         mask = random.randrange(0, 0xffffffff)
@@ -114,13 +119,6 @@ def test_parse_frame_header_reversed_bits(out, parser):
 def test_parse_frame_header_control_frame(out, parser):
     with pytest.raises(WebSocketError):
         parser.parse_frame(struct.pack('!BB', 0b00001000, 0b00000000))
-        raise out.exception()
-
-
-def test_parse_frame_header_continuation(out, parser):
-    with pytest.raises(WebSocketError):
-        parser._frame_fin = True
-        parser.parse_frame(struct.pack('!BB', 0b00000000, 0b00000000))
         raise out.exception()
 
 
@@ -234,13 +232,21 @@ def test_simple_binary(out, parser):
     assert res == ((WSMsgType.BINARY, b'binary', ''), 6)
 
 
-def test_continuation(out, parser):
-    parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
-        (1, WSMsgType.CONTINUATION, b'line2')]
+def test_fragmentation_header(out, parser):
+    data = build_frame(b'a', WSMsgType.TEXT)
+    parser._feed_data(data[:1])
+    parser._feed_data(data[1:])
 
-    parser._feed_data(b'')
+    res = out._buffer[0]
+    assert res == (WSMessage(WSMsgType.TEXT, 'a', ''), 1)
+
+
+def test_continuation(out, parser):
+    data1 = build_frame(b'line1', WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(data1)
+
+    data2 = build_frame(b'line2', WSMsgType.CONTINUATION)
+    parser._feed_data(data2)
 
     res = out._buffer[0]
     assert res == (WSMessage(WSMsgType.TEXT, 'line1line2', ''), 10)
@@ -254,7 +260,15 @@ def test_continuation_with_ping(out, parser):
         (1, WSMsgType.CONTINUATION, b'line2'),
     ]
 
-    parser.feed_data(b'')
+    data1 = build_frame(b'line1', WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(data1)
+
+    data2 = build_frame(b'', WSMsgType.PING)
+    parser._feed_data(data2)
+
+    data3 = build_frame(b'line2', WSMsgType.CONTINUATION)
+    parser._feed_data(data3)
+
     res = out._buffer[0]
     assert res == (WSMessage(WSMsgType.PING, b'', ''), 0)
     res = out._buffer[1]

@@ -11,7 +11,7 @@ Changes
 
 -
 
--
+- Fix websocket issues caused by frame fragmentation. #1962
 
 -
 
