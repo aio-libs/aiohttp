@@ -5,7 +5,7 @@ coverage==4.4.1
 cchardet==2.1.0
 sphinx==1.6.2
 cython==0.25.2
-chardet==3.0.3
+chardet==3.0.4
 isort==4.2.15
 tox==2.7.0
 multidict==2.1.6
