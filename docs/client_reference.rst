@@ -111,10 +111,11 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 2.0
 
-   :param float read_timeout: Request operations timeout. ``read_timeout`` is
-      cumulative for all request operations (request, redirects, responses,
-      data consuming). By default, the read timeout is 5*60 seconds.
-      Use ``None`` or ``0`` to disable timeout checks.
+   :param float read_timeout: Request operations timeout. Can be tuple or single value.
+       If tuple represents: (read_chunk_timeout, total_read_timeout).  Otherwise total_read_timeout.
+       ``total_read_timeout`` is cumulative for all request operations (request, redirects, responses,
+       data consuming). It assumes you read all the body immediately after getting the response.
+       By default, the read timeout is 5*60 seconds. Use ``None`` or ``0`` to disable timeout checks.
 
    :param float conn_timeout: timeout for connection establishing
       (optional). Values ``0`` or ``None`` mean no timeout.
