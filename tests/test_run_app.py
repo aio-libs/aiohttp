@@ -1,8 +1,12 @@
 import asyncio
 import contextlib
 import os
+import platform
+import signal
 import socket
 import ssl
+import subprocess
+import sys
 from io import StringIO
 from unittest import mock
 from uuid import uuid4
@@ -44,6 +48,11 @@ del _has_unix_domain_socks, _abstract_path_failed
 def skip_if_no_dict(loop):
     if not hasattr(loop, '__dict__'):
         pytest.skip("can not override loop attributes")
+
+
+def skip_if_on_windows():
+    if platform.system() == "Windows":
+        pytest.skip("the test is not valid for Windows")
 
 
 def test_run_app_http(loop, mocker):
@@ -505,3 +514,35 @@ def test_run_app_multiple_preexisting_sockets(loop, mocker):
         app.startup.assert_called_once_with()
         assert "http://0.0.0.0:{}".format(port1) in printed.getvalue()
         assert "http://0.0.0.0:{}".format(port2) in printed.getvalue()
+
+
+_script_test_signal = """
+from aiohttp import web
+
+app = web.Application()
+web.run_app(app, host=())
+"""
+
+
+def test_sigint(loop, mocker):
+    skip_if_on_windows()
+
+    proc = subprocess.Popen([sys.executable, "-u", "-c", _script_test_signal],
+                            stdout=subprocess.PIPE)
+    for line in proc.stdout:
+        if line.startswith(b"======== Running on"):
+            break
+    proc.send_signal(signal.SIGINT)
+    assert proc.wait() == 0
+
+
+def test_sigterm(loop, mocker):
+    skip_if_on_windows()
+
+    proc = subprocess.Popen([sys.executable, "-u", "-c", _script_test_signal],
+                            stdout=subprocess.PIPE)
+    for line in proc.stdout:
+        if line.startswith(b"======== Running on"):
+            break
+    proc.terminate()
+    assert proc.wait() == 0
