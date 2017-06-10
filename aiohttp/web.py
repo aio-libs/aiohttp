@@ -7,6 +7,7 @@ import sys
 import warnings
 from argparse import ArgumentParser
 from collections import Iterable, MutableMapping
+from contextlib import contextmanager
 from importlib import import_module
 
 from yarl import URL
@@ -327,6 +328,30 @@ def raise_graceful_exit():
     raise GracefulExit()
 
 
+@contextmanager
+def send_startup_shutdown_signals(app, loop):
+    loop.run_until_complete(app.startup())
+    try:
+        yield
+    finally:
+        loop.run_until_complete(app.cleanup())
+
+
+@contextmanager
+def create_servers(server_creations, loop):
+    servers = loop.run_until_complete(
+        asyncio.gather(*server_creations, loop=loop)
+    )
+    try:
+        yield servers
+    finally:
+        server_closures = []
+        for srv in servers:
+            srv.close()
+            server_closures.append(srv.wait_closed())
+        loop.run_until_complete(asyncio.gather(*server_closures, loop=loop))
+
+
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
@@ -342,110 +367,108 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
     handler = app.make_handler(loop=loop, access_log=access_log,
                                **make_handler_kwargs)
 
-    loop.run_until_complete(app.startup())
+    with send_startup_shutdown_signals(app, loop):
 
-    scheme = 'https' if ssl_context else 'http'
-    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+        scheme = 'https' if ssl_context else 'http'
+        base_url = URL('{}://localhost'.format(scheme)).with_port(port)
 
-    if path is None:
-        paths = ()
-    elif isinstance(path, (str, bytes, bytearray, memoryview))\
-            or not isinstance(path, Iterable):
-        paths = (path,)
-    else:
-        paths = path
-
-    if sock is None:
-        socks = ()
-    elif not isinstance(sock, Iterable):
-        socks = (sock,)
-    else:
-        socks = sock
-
-    if host is None:
-        if (paths or socks) and not port:
-            hosts = ()
+        if path is None:
+            paths = ()
+        elif isinstance(path, (str, bytes, bytearray, memoryview))\
+                or not isinstance(path, Iterable):
+            paths = (path,)
         else:
-            hosts = ("0.0.0.0",)
-    elif isinstance(host, (str, bytes, bytearray, memoryview))\
-            or not isinstance(host, Iterable):
-        hosts = (host,)
-    else:
-        hosts = host
+            paths = path
 
-    if hosts and port is None:
-        port = 8443 if ssl_context else 8080
-
-    server_creations = []
-    uris = [str(base_url.with_host(host)) for host in hosts]
-    if hosts:
-        # Multiple hosts bound to same server is available in most loop
-        # implementations, but only send multiple if we have multiple.
-        host_binding = hosts[0] if len(hosts) == 1 else hosts
-        server_creations.append(
-            loop.create_server(
-                handler, host_binding, port, ssl=ssl_context, backlog=backlog
-            )
-        )
-    for path in paths:
-        # Most loop implementations don't support multiple paths bound in same
-        # server, so create a server for each.
-        server_creations.append(
-            loop.create_unix_server(
-                handler, path, ssl=ssl_context, backlog=backlog
-            )
-        )
-        uris.append('{}://unix:{}:'.format(scheme, path))
-
-        # Clean up prior socket path if stale and not abstract.
-        # CPython 3.5.3+'s event loop already does this. See
-        # https://github.com/python/asyncio/issues/425
-        if path[0] not in (0, '\x00'):  # pragma: no branch
-            try:
-                if stat.S_ISSOCK(os.stat(path).st_mode):
-                    os.remove(path)
-            except FileNotFoundError:
-                pass
-    for sock in socks:
-        server_creations.append(
-            loop.create_server(
-                handler, sock=sock, ssl=ssl_context, backlog=backlog
-            )
-        )
-
-        if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
-            uris.append('{}://unix:{}:'.format(scheme, sock.getsockname()))
+        if sock is None:
+            socks = ()
+        elif not isinstance(sock, Iterable):
+            socks = (sock,)
         else:
-            host, port = sock.getsockname()
-            uris.append(str(base_url.with_host(host).with_port(port)))
+            socks = sock
 
-    servers = loop.run_until_complete(
-        asyncio.gather(*server_creations, loop=loop)
-    )
+        if host is None:
+            if (paths or socks) and not port:
+                hosts = ()
+            else:
+                hosts = ("0.0.0.0",)
+        elif isinstance(host, (str, bytes, bytearray, memoryview))\
+                or not isinstance(host, Iterable):
+            hosts = (host,)
+        else:
+            hosts = host
 
-    if handle_signals:
+        if hosts and port is None:
+            port = 8443 if ssl_context else 8080
+
+        server_creations = []
+        uris = [str(base_url.with_host(host)) for host in hosts]
+        if hosts:
+            # Multiple hosts bound to same server is available in most loop
+            # implementations, but only send multiple if we have multiple.
+            host_binding = hosts[0] if len(hosts) == 1 else hosts
+            server_creations.append(
+                loop.create_server(
+                    handler, host_binding, port, ssl=ssl_context,
+                    backlog=backlog
+                )
+            )
+        for path in paths:
+            # Most loop implementations don't support multiple paths bound in
+            # same server, so create a server for each.
+            server_creations.append(
+                loop.create_unix_server(
+                    handler, path, ssl=ssl_context, backlog=backlog
+                )
+            )
+            uris.append('{}://unix:{}:'.format(scheme, path))
+
+            # Clean up prior socket path if stale and not abstract.
+            # CPython 3.5.3+'s event loop already does this. See
+            # https://github.com/python/asyncio/issues/425
+            if path[0] not in (0, '\x00'):  # pragma: no branch
+                try:
+                    if stat.S_ISSOCK(os.stat(path).st_mode):
+                        os.remove(path)
+                except FileNotFoundError:
+                    pass
+        for sock in socks:
+            server_creations.append(
+                loop.create_server(
+                    handler, sock=sock, ssl=ssl_context, backlog=backlog
+                )
+            )
+
+            if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
+                uris.append('{}://unix:{}:'.format(scheme, sock.getsockname()))
+            else:
+                host, port = sock.getsockname()
+                uris.append(str(base_url.with_host(host).with_port(port)))
+
         try:
-            loop.add_signal_handler(signal.SIGINT, raise_graceful_exit)
-            loop.add_signal_handler(signal.SIGTERM, raise_graceful_exit)
-        except NotImplementedError:  # pragma: no cover
-            # add_signal_handler is not implemented on Windows
-            pass
 
-    try:
-        print("======== Running on {} ========\n"
-              "(Press CTRL+C to quit)".format(', '.join(uris)))
-        loop.run_forever()
-    except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
-        pass
-    finally:
-        server_closures = []
-        for srv in servers:
-            srv.close()
-            server_closures.append(srv.wait_closed())
-        loop.run_until_complete(asyncio.gather(*server_closures, loop=loop))
-        loop.run_until_complete(app.shutdown())
-        loop.run_until_complete(handler.shutdown(shutdown_timeout))
-        loop.run_until_complete(app.cleanup())
+            with create_servers(server_creations, loop):
+
+                if handle_signals:
+                    try:
+                        loop.add_signal_handler(signal.SIGINT,
+                                                raise_graceful_exit)
+                        loop.add_signal_handler(signal.SIGTERM,
+                                                raise_graceful_exit)
+                    except NotImplementedError:  # pragma: no cover
+                        # add_signal_handler is not implemented on Windows
+                        pass
+
+                    print("======== Running on {} ========\n"
+                          "(Press CTRL+C to quit)".format(', '.join(uris)))
+                    loop.run_forever()
+
+        except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+            pass
+        finally:
+            loop.run_until_complete(app.shutdown())
+            loop.run_until_complete(handler.shutdown(shutdown_timeout))
+
     if not user_supplied_loop:
         loop.close()
 
