@@ -9,7 +9,7 @@ Changes
 - Retain method attributes (e.g. :code:`__doc__`) when registering synchronous
   handlers for resources. #1953
 
--
+- Added signal TERM handling in `run_app` to gracefully exit #1932
 
 - Fix websocket issues caused by frame fragmentation. #1962
 

@@ -37,6 +37,7 @@ Brett Cannon
 Brian C. Lane
 Brian Muller
 Carl George
+Cecile Tonglet
 Chien-Wei Huang
 Chih-Yuan Chen
 Chris AtLee
