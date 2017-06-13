@@ -13,6 +13,8 @@ Changes
 
 - Fix websocket issues caused by frame fragmentation. #1962
 
+- Raise RuntimeError is you try to set the Content Length and enable
+  chunked encoding at the same time #1941
 -
 
 -
@@ -23,7 +25,6 @@ Changes
 
 -
 
-- Raise RuntimeError is you try to set the Content Length and enable chunked encoding at the same time
 
 2.1.0 (2017-05-26)
 ------------------
