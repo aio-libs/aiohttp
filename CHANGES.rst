@@ -85,7 +85,6 @@ Changes
 
 2.0.7 (2017-04-12)
 ------------------
-
 - Fix *pypi* distribution
 
 - Fix exception description #1807
