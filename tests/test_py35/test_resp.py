@@ -24,7 +24,7 @@ async def test_await(test_server, loop):
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    async with aiohttp.ClientSession(loop=loop) as session:
         resp = await session.get(server.make_url('/'))
         assert resp.status == 200
         assert resp.connection is not None
@@ -102,7 +102,7 @@ async def test_context_manager_close_on_release(test_server, loop, mocker):
     app.router.add_route('GET', '/', handler)
     server = await test_server(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    async with aiohttp.ClientSession(loop=loop) as session:
         resp = await session.get(server.make_url('/'))
         proto = resp.connection._protocol
         mocker.spy(proto, 'close')
@@ -128,6 +128,6 @@ async def test_iter_any(test_server, loop):
     app.router.add_route('POST', '/', handler)
     server = await test_server(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    async with aiohttp.ClientSession(loop=loop) as session:
         async with await session.post(server.make_url('/'), data=data) as resp:
             assert resp.status == 200
