@@ -1,5 +1,6 @@
 import asyncio
 import os
+import signal
 import socket
 import stat
 import sys
@@ -318,22 +319,31 @@ class Application(MutableMapping):
         return "<Application 0x{:x}>".format(id(self))
 
 
+class GracefulExit(SystemExit):
+    code = 1
+
+
+def raise_graceful_exit():
+    raise GracefulExit()
+
+
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
-            access_log=access_logger, loop=None):
+            access_log=access_logger, handle_signals=True, loop=None):
     """Run an app locally"""
     user_supplied_loop = loop is not None
     if loop is None:
         loop = asyncio.get_event_loop()
+
+    app._set_loop(loop)
+    loop.run_until_complete(app.startup())
 
     make_handler_kwargs = dict()
     if access_log_format is not None:
         make_handler_kwargs['access_log_format'] = access_log_format
     handler = app.make_handler(loop=loop, access_log=access_log,
                                **make_handler_kwargs)
-
-    loop.run_until_complete(app.startup())
 
     scheme = 'https' if ssl_context else 'http'
     base_url = URL('{}://localhost'.format(scheme)).with_port(port)
@@ -414,12 +424,19 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         asyncio.gather(*server_creations, loop=loop)
     )
 
-    print("======== Running on {} ========\n"
-          "(Press CTRL+C to quit)".format(', '.join(uris)))
+    if handle_signals:
+        try:
+            loop.add_signal_handler(signal.SIGINT, raise_graceful_exit)
+            loop.add_signal_handler(signal.SIGTERM, raise_graceful_exit)
+        except NotImplementedError:  # pragma: no cover
+            # add_signal_handler is not implemented on Windows
+            pass
 
     try:
+        print("======== Running on {} ========\n"
+              "(Press CTRL+C to quit)".format(', '.join(uris)))
         loop.run_forever()
-    except KeyboardInterrupt:  # pragma: no cover
+    except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
         pass
     finally:
         server_closures = []

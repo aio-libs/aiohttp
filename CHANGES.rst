@@ -6,7 +6,20 @@ Changes
 
 - Add doc for add_head, update doc for add_get. #1944
 
--
+- Retain method attributes (e.g. :code:`__doc__`) when registering synchronous
+  handlers for resources. #1953
+
+- Added signal TERM handling in `run_app` to gracefully exit #1932
+
+- Fix websocket issues caused by frame fragmentation. #1962
+
+- Raise RuntimeError is you try to set the Content Length and enable
+  chunked encoding at the same time #1941
+
+- Use CIMultiDict for ClientRequest.skip_auto_headers #1970
+
+- Fix wrong startup sequence: test server and `run_app()` are not raise
+  `DeprecationWarning` now #1947
 
 -
 
@@ -14,15 +27,6 @@ Changes
 
 -
 
--
-
--
-
--
-
--
-
--
 
 2.1.0 (2017-05-26)
 ------------------
@@ -77,16 +81,12 @@ Changes
 
 - Make test server more reliable #1896
 
-- Use Forwarded, X-Forwarded-Scheme and X-Forwarded-Host for better scheme and
-  host resolution. #1134
-
 - Extend list of web exceptions, add HTTPUnprocessableEntity,
   HTTPFailedDependency, HTTPInsufficientStorage status codes #1920
 
 
 2.0.7 (2017-04-12)
 ------------------
-
 - Fix *pypi* distribution
 
 - Fix exception description #1807

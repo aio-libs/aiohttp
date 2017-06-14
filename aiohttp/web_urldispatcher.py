@@ -7,7 +7,9 @@ import keyword
 import os
 import re
 import warnings
-from collections.abc import Container, Iterable, Sized, namedtuple
+from collections import namedtuple
+from collections.abc import Container, Iterable, Sized
+from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 
@@ -109,6 +111,7 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
+            @wraps(handler)
             @asyncio.coroutine
             def handler_wrapper(*args, **kwargs):
                 result = old_handler(*args, **kwargs)
@@ -834,7 +837,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         path - folder with files
 
         """
-        # TODO: implement via PrefixedResource, not ResourceAdapter
         assert prefix.startswith('/')
         if prefix.endswith('/'):
             prefix = prefix[:-1]
@@ -942,7 +944,7 @@ def get(path, handler=None, *, name=None, allow_head=True, **kwargs):
                              allow_head=allow_head, **kwargs)
     else:
         return _make_route(path, handler, name=name,
-                            allow_head=allow_head, **kwargs)
+                           allow_head=allow_head, **kwargs)
 
 
 def post(path, handler=None, **kwargs):

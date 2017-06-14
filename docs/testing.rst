@@ -533,7 +533,7 @@ for accessing to the server.
    .. attribute:: scheme
 
       A *scheme* for tested application, ``'http'`` for non-protected
-      run and ``'htttps'`` for TLS encrypted server.
+      run and ``'https'`` for TLS encrypted server.
 
    .. attribute:: host
 
@@ -637,7 +637,7 @@ Test Client
    .. attribute:: scheme
 
       A *scheme* for tested application, ``'http'`` for non-protected
-      run and ``'htttps'`` for TLS encrypted server.
+      run and ``'https'`` for TLS encrypted server.
 
    .. attribute:: host
 
