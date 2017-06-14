@@ -413,7 +413,7 @@ def unittest_run_loop(func, *args, **kwargs):
     """
 
     @functools.wraps(func, *args, **kwargs)
-    def new_func(self):
+    def new_func(self, *args, **kwargs):
         return self.loop.run_until_complete(func(self, *args, **kwargs))
 
     return new_func

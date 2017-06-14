@@ -15,7 +15,8 @@ Changes
 
 - Raise RuntimeError is you try to set the Content Length and enable
   chunked encoding at the same time #1941
--
+
+- Small update for `unittest_run_loop`
 
 -
 
