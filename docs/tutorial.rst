@@ -3,7 +3,7 @@
 Server Tutorial
 ===============
 
-Are you going to learn *aiohttp* but don't where to start? We have
+Are you going to learn *aiohttp* but don't know where to start? We have
 example for you. Polls application is a great example for getting
 started with aiohttp.
 
