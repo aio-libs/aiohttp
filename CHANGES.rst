@@ -18,7 +18,7 @@ Changes
 
 - Use CIMultiDict for ClientRequest.skip_auto_headers #1970
 
--
+- Make sure cleanup signal is sent if startup signal has been sent
 
 -
 
