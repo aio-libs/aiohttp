@@ -18,7 +18,8 @@ Changes
 
 - Use CIMultiDict for ClientRequest.skip_auto_headers #1970
 
--
+- Fix wrong startup sequence: test server doesn't raise
+  `DeprecationWarning` now #1947
 
 -
 
