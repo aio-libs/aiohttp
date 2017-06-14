@@ -336,13 +336,14 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
     if loop is None:
         loop = asyncio.get_event_loop()
 
+    app._set_loop(loop)
+    loop.run_until_complete(app.startup())
+
     make_handler_kwargs = dict()
     if access_log_format is not None:
         make_handler_kwargs['access_log_format'] = access_log_format
     handler = app.make_handler(loop=loop, access_log=access_log,
                                **make_handler_kwargs)
-
-    loop.run_until_complete(app.startup())
 
     scheme = 'https' if ssl_context else 'http'
     base_url = URL('{}://localhost'.format(scheme)).with_port(port)
