@@ -15,7 +15,8 @@ Changes
 
 - Raise RuntimeError is you try to set the Content Length and enable
   chunked encoding at the same time #1941
--
+
+- Use CIMultiDict for ClientRequest.skip_auto_headers #1970
 
 -
 
