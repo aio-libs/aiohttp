@@ -10,6 +10,25 @@ from yarl import URL
 from aiohttp import helpers
 
 
+# -------------------- coro guard --------------------------------
+
+
+@asyncio.coroutine
+def test_warn():
+    with pytest.warns(DeprecationWarning) as ctx:
+        helpers.deprecated_noop('Text')
+    assert str(ctx.list[0].message) == 'Text'
+
+
+@asyncio.coroutine
+def test_no_warn_on_await():
+    with pytest.warns(None) as ctx:
+        yield from helpers.deprecated_noop('Text')
+    assert not ctx.list
+
+
+# ------------------- parse_mimetype ----------------------------------
+
 def test_parse_mimetype_1():
     assert helpers.parse_mimetype('') == ('', '', '', {})
 

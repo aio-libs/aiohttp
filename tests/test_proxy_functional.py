@@ -63,10 +63,13 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
 
 @asyncio.coroutine
 def _request(method, url, loop=None, **kwargs):
-    with aiohttp.ClientSession(loop=loop) as client:
+    client = aiohttp.ClientSession(loop=loop)
+    try:
         resp = yield from client.request(method, url, **kwargs)
         yield from resp.release()
         return resp
+    finally:
+        yield from client.close()
 
 
 @pytest.fixture()
