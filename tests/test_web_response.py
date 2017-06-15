@@ -245,7 +245,8 @@ def test_chunk_size():
     resp = StreamResponse()
     assert not resp.chunked
 
-    resp.enable_chunked_encoding(chunk_size=8192)
+    with pytest.warns(DeprecationWarning):
+        resp.enable_chunked_encoding(chunk_size=8192)
     assert resp.chunked
 
     msg = yield from resp.prepare(req)
