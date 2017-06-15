@@ -83,7 +83,6 @@ def noop(*args, **kwargs):
     return
 
 
-@asyncio.coroutine
 def deprecated_noop(message):
     return _CoroGuard(noop(), message)
 
