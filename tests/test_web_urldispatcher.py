@@ -313,7 +313,7 @@ def test_system_route():
 
 
 @asyncio.coroutine
-def test_412_is_returned(loop, test_client):
+def test_412_is_returned(test_client):
 
     class MyRouter(abc.AbstractRouter):
 
@@ -321,7 +321,7 @@ def test_412_is_returned(loop, test_client):
         def resolve(self, request):
             raise web.HTTPPreconditionFailed()
 
-    app = web.Application(router=MyRouter(), loop=loop)
+    app = web.Application(router=MyRouter())
 
     client = yield from test_client(app)
 
