@@ -18,7 +18,10 @@ Changes
 
 - Small update for `unittest_run_loop`
 
--
+- Use CIMultiDict for ClientRequest.skip_auto_headers #1970
+
+- Fix wrong startup sequence: test server and `run_app()` are not raise
+  `DeprecationWarning` now #1947
 
 -
 
@@ -86,7 +89,6 @@ Changes
 
 2.0.7 (2017-04-12)
 ------------------
-
 - Fix *pypi* distribution
 
 - Fix exception description #1807

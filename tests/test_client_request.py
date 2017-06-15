@@ -630,7 +630,7 @@ def test_pass_falsy_data(loop):
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data={}, loop=loop)
-        req.update_body_from_data.assert_called_once_with({}, frozenset())
+        req.update_body_from_data.assert_called_once_with({})
     yield from req.close()
 
 

@@ -101,7 +101,7 @@ class ClientRequest:
         self.update_auth(auth)
         self.update_proxy(proxy, proxy_auth, proxy_from_env)
 
-        self.update_body_from_data(data, skip_auto_headers)
+        self.update_body_from_data(data)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
@@ -160,8 +160,10 @@ class ClientRequest:
                 self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers):
-        self.skip_auto_headers = skip_auto_headers
-        used_headers = set(self.headers) | skip_auto_headers
+        self.skip_auto_headers = CIMultiDict(
+            (hdr, None) for hdr in skip_auto_headers)
+        used_headers = self.headers.copy()
+        used_headers.extend(self.skip_auto_headers)
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
@@ -248,7 +250,7 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, body, skip_auto_headers):
+    def update_body_from_data(self, body):
         if not body:
             return
 
@@ -275,7 +277,7 @@ class ClientRequest:
 
         # set content-type
         if (hdrs.CONTENT_TYPE not in self.headers and
-                hdrs.CONTENT_TYPE not in skip_auto_headers):
+                hdrs.CONTENT_TYPE not in self.skip_auto_headers):
             self.headers[hdrs.CONTENT_TYPE] = body.content_type
 
         # copy payload headers

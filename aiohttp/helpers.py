@@ -54,6 +54,25 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
               '?', '=', '{', '}', ' ', chr(9)}
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
+
+class _CoroGuard:
+    __slots__ = ('_coro', '_msg', '_awaited')
+
+    def __init__(self, coro, msg):
+        self._coro = coro
+        self._msg = msg
+        self._awaited = False
+
+    def __iter__(self):
+        self._awaited = True
+        return self._coro.__iter__()
+
+    def __del__(self):
+        self._coro = None
+        if not self._awaited:
+            warnings.warn(self._msg, DeprecationWarning)
+
+
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG
 coroutines._DEBUG = False
@@ -64,9 +83,11 @@ def noop(*args, **kwargs):
     return
 
 
-@asyncio.coroutine
 def deprecated_noop(message):
-    warnings.warn(message, DeprecationWarning, stacklevel=3)
+    return _CoroGuard(noop(), message)
+
+
+coroutines._DEBUG = old_debug
 
 
 try:
@@ -74,9 +95,6 @@ try:
 except ImportError:
     def isfuture(fut):
         return isinstance(fut, asyncio.Future)
-
-
-coroutines._DEBUG = old_debug
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
