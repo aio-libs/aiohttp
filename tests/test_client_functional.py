@@ -700,7 +700,7 @@ def test_readline_error_on_conn_close(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    session = aiohttp.ClientSession()
+    session = aiohttp.ClientSession(loop=loop)
     try:
         timer_started = False
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
@@ -737,7 +737,7 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    session = aiohttp.ClientSession()
+    session = aiohttp.ClientSession(loop=loop)
     try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
@@ -766,7 +766,7 @@ def test_error_not_overwrote_on_conn_close(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    session = aiohttp.ClientSession()
+    session = aiohttp.ClientSession(loop=loop)
     try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
