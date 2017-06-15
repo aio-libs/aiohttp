@@ -325,8 +325,8 @@ def test_route_plain(router):
     handler = make_handler()
     route = router.add_route('GET', '/get', handler, name='name')
     route2 = next(iter(router['name']))
-    url = route2.url()
-    assert '/get' == url
+    url = route2.url_for()
+    assert '/get' == str(url)
     assert route is route2
 
 
@@ -341,8 +341,20 @@ def test_route_dynamic(router):
                              name='name')
 
     route2 = next(iter(router['name']))
-    url = route2.url(parts={'name': 'John'})
+    with pytest.warns(DeprecationWarning):
+        url = route2.url(parts={'name': 'John'})
     assert '/get/John' == url
+    assert route is route2
+
+
+def test_route_dynamic2(router):
+    handler = make_handler()
+    route = router.add_route('GET', '/get/{name}', handler,
+                             name='name')
+
+    route2 = next(iter(router['name']))
+    url = route2.url_for(name='John')
+    assert '/get/John' == str(url)
     assert route is route2
 
 
@@ -350,7 +362,8 @@ def test_route_with_qs(router):
     handler = make_handler()
     router.add_route('GET', '/get', handler, name='name')
 
-    url = router['name'].url(query=[('a', 'b'), ('c', '1')])
+    with pytest.warns(DeprecationWarning):
+        url = router['name'].url(query=[('a', 'b'), ('c', '1')])
     assert '/get?a=b&c=1' == url
 
 
@@ -508,8 +521,8 @@ def test_route_dynamic_with_regex_spec(router):
     route = router.add_route('GET', '/get/{num:^\d+}', handler,
                              name='name')
 
-    url = route.url(parts={'num': '123'})
-    assert '/get/123' == url
+    url = route.url_for(num='123')
+    assert '/get/123' == str(url)
 
 
 def test_route_dynamic_with_regex_spec_and_trailing_slash(router):
@@ -517,16 +530,16 @@ def test_route_dynamic_with_regex_spec_and_trailing_slash(router):
     route = router.add_route('GET', '/get/{num:^\d+}/', handler,
                              name='name')
 
-    url = route.url(parts={'num': '123'})
-    assert '/get/123/' == url
+    url = route.url_for(num='123')
+    assert '/get/123/' == str(url)
 
 
 def test_route_dynamic_with_regex(router):
     handler = make_handler()
     route = router.add_route('GET', r'/{one}/{two:.+}', handler)
 
-    url = route.url(parts={'one': 1, 'two': 2})
-    assert '/1/2' == url
+    url = route.url_for(one=1, two=2)
+    assert '/1/2' == str(url)
 
 
 @asyncio.coroutine
