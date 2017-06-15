@@ -62,7 +62,7 @@ class Application(MutableMapping):
 
         if secure_proxy_ssl_header is not None:
             warnings.warn(
-                "secure_proxy_ssl_header is deprecated", ResourceWarning)
+                "secure_proxy_ssl_header is deprecated", DeprecationWarning)
 
         self._debug = debug
         self._router = router

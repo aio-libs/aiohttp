@@ -700,7 +700,8 @@ def test_readline_error_on_conn_close(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    session = aiohttp.ClientSession(loop=loop)
+    try:
         timer_started = False
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
@@ -716,6 +717,8 @@ def test_readline_error_on_conn_close(loop, test_client):
                         loop.create_task(resp.release())
                     loop.call_later(1.0, do_release)
                     timer_started = True
+    finally:
+        yield from session.close()
 
 
 @asyncio.coroutine
@@ -734,7 +737,8 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    session = aiohttp.ClientSession(loop=loop)
+    try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
         while True:
@@ -745,6 +749,8 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
             assert data == b'data'
 
         assert resp.content.exception() is None
+    finally:
+        yield from session.close()
 
 
 @asyncio.coroutine
@@ -760,10 +766,13 @@ def test_error_not_overwrote_on_conn_close(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    session = aiohttp.ClientSession(loop=loop)
+    try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
         resp.content.set_exception(ValueError())
+    finally:
+        yield from session.close()
 
     assert isinstance(resp.content.exception(), ValueError)
 
