@@ -8,7 +8,7 @@ from aiohttp.abc import AbstractRouter
 
 
 def test_app_ctor(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     assert loop is app.loop
     assert app.logger is log.web_logger
 
