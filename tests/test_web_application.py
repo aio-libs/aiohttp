@@ -8,7 +8,8 @@ from aiohttp.abc import AbstractRouter
 
 
 def test_app_ctor(loop):
-    app = web.Application()
+    with pytest.warns(ResourceWarning):
+        app = web.Application(loop=loop)
     assert loop is app.loop
     assert app.logger is log.web_logger
 
@@ -215,7 +216,8 @@ def test_secure_proxy_ssl_header_non_default(loop):
 
 def test_secure_proxy_ssl_header_init(loop):
     hdr = ('X-Forwarded-Proto', 'https')
-    app = web.Application(secure_proxy_ssl_header=hdr)
+    with pytest.warns(DeprecationWarning):
+        app = web.Application(secure_proxy_ssl_header=hdr)
     assert app._secure_proxy_ssl_header is hdr
     app.make_handler(loop=loop)
     assert app._secure_proxy_ssl_header is hdr
