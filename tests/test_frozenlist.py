@@ -8,8 +8,6 @@ from aiohttp.frozenlist import FrozenList
 class TestFrozenList:
     FrozenList = FrozenList
 
-    # TODO: add a test for MutableSequence interface
-
     def test_subclass(self):
         assert issubclass(self.FrozenList, MutableSequence)
 
