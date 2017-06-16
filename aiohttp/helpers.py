@@ -12,8 +12,7 @@ import sys
 import time
 import warnings
 import weakref
-from collections import MutableSequence, namedtuple
-from functools import total_ordering
+from collections import namedtuple
 from math import ceil
 from pathlib import Path
 from time import gmtime
@@ -511,57 +510,6 @@ def is_ip_address(host):
     else:
         raise TypeError("{} [{}] is not a str or bytes"
                         .format(host, type(host)))
-
-
-@total_ordering
-class FrozenList(MutableSequence):
-
-    __slots__ = ('_frozen', '_items')
-
-    def __init__(self, items=None):
-        self._frozen = False
-        if items is not None:
-            items = list(items)
-        else:
-            items = []
-        self._items = items
-
-    def freeze(self):
-        self._frozen = True
-        self._items = tuple(self._items)
-
-    def __getitem__(self, index):
-        return self._items[index]
-
-    def __setitem__(self, index, value):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen list.")
-        self._items[index] = value
-
-    def __delitem__(self, index):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen list.")
-        del self._items[index]
-
-    def __len__(self):
-        return self._items.__len__()
-
-    def __iter__(self):
-        return self._items.__iter__()
-
-    def __reversed__(self):
-        return self._items.__reversed__()
-
-    def __eq__(self, other):
-        return list(self) == other
-
-    def __le__(self, other):
-        return list(self) <= other
-
-    def insert(self, pos, item):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen list.")
-        self._items.insert(pos, item)
 
 
 class TimeService:

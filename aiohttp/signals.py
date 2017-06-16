@@ -1,7 +1,8 @@
 import asyncio
 from itertools import count
 
-from aiohttp.helpers import FrozenList, isfuture
+from aiohttp.frozenlist import FrozenList
+from aiohttp.helpers import isfuture
 
 
 class BaseSignal(FrozenList):

@@ -463,19 +463,6 @@ def test_timer_context_no_task(loop):
             pass
 
 
-# ----------------------------------- FrozenList ----------------------
-
-
-class TestFrozenList:
-    def test_eq(self):
-        l = helpers.FrozenList([1])
-        assert l == [1]
-
-    def test_le(self):
-        l = helpers.FrozenList([1])
-        assert l < [2]
-
-
 # -------------------------------- CeilTimeout --------------------------
 
 
