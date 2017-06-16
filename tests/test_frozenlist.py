@@ -1,6 +1,6 @@
-import pytest
-
 from collections.abc import MutableSequence
+
+import pytest
 
 from aiohttp.frozenlist import FrozenList
 
