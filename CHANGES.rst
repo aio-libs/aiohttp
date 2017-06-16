@@ -140,6 +140,8 @@ Changes
 
 - Cancel websocket heartbeat on close #1793
 
+- Make enable_compression work on HTTP/1.0 #1828
+
 
 2.0.6 (2017-04-04)
 ------------------
