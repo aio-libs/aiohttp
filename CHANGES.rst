@@ -21,7 +21,7 @@ Changes
 - Fix wrong startup sequence: test server and `run_app()` are not raise
   `DeprecationWarning` now #1947
 
--
+- Make sure cleanup signal is sent if startup signal has been sent #1959
 
 -
 
