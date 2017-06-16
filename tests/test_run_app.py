@@ -546,3 +546,36 @@ def test_sigterm(loop, mocker):
             break
     proc.terminate()
     assert proc.wait() == 0
+
+
+def test_startup_cleanup_signals(loop, mocker):
+    skip_if_no_dict(loop)
+
+    mocker.spy(loop, 'create_server')
+    loop.call_later(0.05, loop.stop)
+
+    app = web.Application()
+    mocker.spy(app, 'startup')
+    mocker.spy(app, 'cleanup')
+
+    web.run_app(app, loop=loop, host=())
+
+    app.startup.assert_called_once_with()
+    app.cleanup.assert_called_once_with()
+
+
+def test_startup_cleanup_signals_even_on_failure(loop, mocker):
+    skip_if_no_dict(loop)
+
+    setattr(loop, 'create_server', mock.Mock(side_effect=RuntimeError()))
+    loop.call_later(0.05, loop.stop)
+
+    app = web.Application()
+    mocker.spy(app, 'startup')
+    mocker.spy(app, 'cleanup')
+
+    with pytest.raises(RuntimeError):
+        web.run_app(app, loop=loop)
+
+    app.startup.assert_called_once_with()
+    app.cleanup.assert_called_once_with()
