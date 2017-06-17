@@ -7,7 +7,7 @@ from .helpers import NO_EXTENSIONS
 if not NO_EXTENSIONS:
     try:
         from aiohttp._frozenlist import FrozenList
-    except ImportError:
+    except ImportError:  # pragma: no cover
         FrozenList = None
 
 
