@@ -11,7 +11,7 @@ class BaseSignal(FrozenList):
 
     @asyncio.coroutine
     def _send(self, *args, **kwargs):
-        for receiver in self._items:
+        for receiver in self:
             res = receiver(*args, **kwargs)
             if asyncio.iscoroutine(res) or isfuture(res):
                 yield from res
@@ -41,7 +41,7 @@ class Signal(BaseSignal):
         """
         Sends data to all registered receivers.
         """
-        if self._items:
+        if self:
             ordinal = None
             debug = self._app._debug
             if debug:
@@ -69,7 +69,7 @@ class FuncSignal(BaseSignal):
         """
         Sends data to all registered receivers.
         """
-        for receiver in self._items:
+        for receiver in self:
             receiver(*args, **kwargs)
 
 
