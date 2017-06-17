@@ -1,9 +1,18 @@
 from collections.abc import MutableSequence
 from functools import total_ordering
 
+from .helpers import NO_EXTENSIONS
+
+
+if not NO_EXTENSIONS:
+    try:
+        from aiohttp._frozenlist import FrozenList
+    except ImportError:
+        FrozenList = None
+
 
 @total_ordering
-class FrozenList(MutableSequence):
+class PyFrozenList(MutableSequence):
 
     __slots__ = ('_frozen', '_items')
 
@@ -58,3 +67,7 @@ class FrozenList(MutableSequence):
     def __repr__(self):
         return '<FrozenList(frozen={}, {!r})>'.format(self._frozen,
                                                       self._items)
+
+
+if NO_EXTENSIONS or FrozenList is None:
+    FrozenList = PyFrozenList
