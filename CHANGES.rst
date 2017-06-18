@@ -23,7 +23,7 @@ Changes
 
 - Make sure cleanup signal is sent if startup signal has been sent #1959
 
--
+- Fixed server keep-alive handler, could cause 100% cpu utilization #1955
 
 -
 

@@ -570,6 +570,10 @@ class TimeService:
     def loop_time(self):
         return self._loop_time
 
+    @property
+    def interval(self):
+        return self._interval
+
 
 def _weakref_handle(info):
     ref, name = info
