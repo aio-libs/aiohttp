@@ -34,6 +34,8 @@ Changes
 
 - Support `deflate` encoding implemented in `httpbin.org/deflate` #1918
 
+- Fix BadStatusLine caused by extra `CRLF` after `POST` data #1792
+
 
 2.1.0 (2017-05-26)
 ------------------
