@@ -282,7 +282,8 @@ class BodyPartReader(object):
         if self._read_bytes == self._length:
             self._at_eof = True
         if self._at_eof:
-            assert b'\r\n' == (yield from self._content.readline()), \
+            clrf = yield from self._content.readline()
+            assert b'\r\n' == clrf, \
                 'reader did not read all the data or it is malformed'
         return chunk
 
