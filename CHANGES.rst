@@ -32,6 +32,8 @@ Changes
 
 - Fixed `ClientPayloadError` with blank `Content-Encoding` header #1931
 
+- Support `deflate` encoding implemented in `httpbin.org/deflate` #1918
+
 
 2.1.0 (2017-05-26)
 ------------------
