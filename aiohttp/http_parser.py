@@ -117,6 +117,11 @@ class HttpParser:
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
                 pos = data.find(SEP, start_pos)
+                # consume \r\n
+                if pos == start_pos and not self._lines:
+                    start_pos = pos + 2
+                    continue
+
                 if pos >= start_pos:
                     # line found
                     self._lines.append(data[start_pos:pos])
