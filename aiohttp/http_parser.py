@@ -5,7 +5,7 @@ import zlib
 from enum import IntEnum
 
 import yarl
-from multidict import CIMultiDict, istr
+from multidict import CIMultiDict
 
 from . import hdrs
 from .helpers import NO_EXTENSIONS
@@ -287,7 +287,7 @@ class HttpParser:
                         self.max_field_size)
 
             bvalue = bvalue.strip()
-            name = istr(bname.decode('utf-8', 'surrogateescape'))
+            name = bname.decode('utf-8', 'surrogateescape')
             value = bvalue.decode('utf-8', 'surrogateescape')
 
             headers.add(name, value)
