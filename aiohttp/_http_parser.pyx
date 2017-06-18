@@ -168,11 +168,12 @@ cdef class HttpParser:
         if SEC_WEBSOCKET_KEY1 in headers:
             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
-        encoding = headers.get(CONTENT_ENCODING)
-        if encoding:
-           encoding = encoding.lower()
-           if encoding not in SUPPORTED:
-                encoding = None
+        encoding = None
+        enc = headers.get(CONTENT_ENCODING)
+        if enc:
+            enc = enc.lower()
+            if enc in SUPPORTED:
+                encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             msg = RawRequestMessage(
