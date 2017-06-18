@@ -14,6 +14,7 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.client import ServerFingerprintMismatch
+from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
 
@@ -643,12 +644,14 @@ def test_timeout_on_session_read_timeout(loop, test_client, mocker):
 @asyncio.coroutine
 def test_timeout_on_reading_data(loop, test_client, mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+    fut = create_future(loop=loop)
 
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
         yield from resp.prepare(request)
         yield from resp.drain()
+        fut.set_result(None)
         yield from asyncio.sleep(0.2, loop=loop)
         return resp
 
@@ -657,6 +660,7 @@ def test_timeout_on_reading_data(loop, test_client, mocker):
     client = yield from test_client(app)
 
     resp = yield from client.get('/', timeout=0.05)
+    yield from fut
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
