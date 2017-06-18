@@ -25,7 +25,8 @@ Changes
 
 - Fixed server keep-alive handler, could cause 100% cpu utilization #1955
 
--
+- Connection can be destroyed before response get processed if
+  `await aiohttp.request(..)` is used #1981
 
 
 2.1.0 (2017-05-26)
