@@ -28,6 +28,8 @@ Changes
 - Connection can be destroyed before response get processed if
   `await aiohttp.request(..)` is used #1981
 
+- MultipartReader doesn't work with -OO #1969
+
 
 2.1.0 (2017-05-26)
 ------------------
