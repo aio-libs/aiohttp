@@ -46,6 +46,7 @@ css
 ctor
 Ctrl
 cythonized
+cpu
 DER
 de
 dict

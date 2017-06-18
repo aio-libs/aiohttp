@@ -689,7 +689,11 @@ class _SessionRequestContextManager(_RequestContextManager):
                 raise
 
     def __del__(self):
-        self._session.close()
+        # in case of "resp = aiohttp.request(...)"
+        # _SessionRequestContextManager get destroyed before resp get processed
+        # and connection has to stay alive during this time
+        # ClientSession.detach just cleans up connector attribute
+        self._session.detach()
 
 
 def request(method, url, *,
