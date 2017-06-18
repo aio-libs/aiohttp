@@ -20,7 +20,9 @@ ext = '.pyx' if USE_CYTHON else '.c'
 extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
               Extension('aiohttp._http_parser',
                         ['aiohttp/_http_parser' + ext,
-                         'vendor/http-parser/http_parser.c'],)]
+                         'vendor/http-parser/http_parser.c'],),
+              Extension('aiohttp._frozenlist',
+                        ['aiohttp/_frozenlist' + ext])]
 
 
 if USE_CYTHON:

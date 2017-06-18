@@ -15,7 +15,7 @@ from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
                web_protocol, web_request, web_response, web_server,
                web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import FrozenList
+from .frozenlist import FrozenList
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
 from .signals import FuncSignal, PostSignal, PreSignal, Signal
