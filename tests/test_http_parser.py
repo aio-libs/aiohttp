@@ -231,6 +231,14 @@ def test_conn_upgrade(parser):
     assert upgrade
 
 
+def test_compression_empty(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-encoding: \r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression is None
+
+
 def test_compression_deflate(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'content-encoding: deflate\r\n\r\n')
@@ -252,7 +260,7 @@ def test_compression_unknown(parser):
             b'content-encoding: compress\r\n\r\n')
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
-    assert not msg.compression
+    assert msg.compression is None
 
 
 def test_headers_connect(parser):
