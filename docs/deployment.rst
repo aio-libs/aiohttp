@@ -66,7 +66,7 @@ First configure HTTP server itself:
        listen 80;
        client_max_body_size 4G;
 
-       server example.com;
+       server_name example.com;
 
        location / {
          proxy_set_header Host $http_host;
