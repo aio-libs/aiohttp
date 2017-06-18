@@ -593,6 +593,7 @@ class DeflateBuffer:
         self.out = out
         self.size = 0
         self.encoding = encoding
+        self._started_decoding = False
 
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
@@ -607,10 +608,19 @@ class DeflateBuffer:
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise ContentEncodingError(
-                'Can not decode content-encoding: %s' % self.encoding)
+            if not self._started_decoding and self.encoding == 'deflate':
+                self.zlib = zlib.decompressobj()
+                try:
+                    chunk = self.zlib.decompress(chunk)
+                except Exception:
+                    raise ContentEncodingError(
+                        'Can not decode content-encoding: %s' % self.encoding)
+            else:
+                raise ContentEncodingError(
+                    'Can not decode content-encoding: %s' % self.encoding)
 
         if chunk:
+            self._started_decoding = True
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self):
