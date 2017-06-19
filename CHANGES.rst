@@ -36,6 +36,8 @@ Changes
 
 - Fix BadStatusLine caused by extra `CRLF` after `POST` data #1792
 
+- Keep a reference to ClientSession in response object #1985
+
 
 2.1.0 (2017-05-26)
 ------------------
