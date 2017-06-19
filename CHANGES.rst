@@ -18,6 +18,8 @@ Changes
 - Raise RuntimeError is you try to set the Content Length and enable
   chunked encoding at the same time #1941
 
+- Small update for `unittest_run_loop`
+
 - Use CIMultiDict for ClientRequest.skip_auto_headers #1970
 
 - Fix wrong startup sequence: test server and `run_app()` are not raise
