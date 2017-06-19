@@ -6,6 +6,8 @@ Changes
 
 - Add doc for add_head, update doc for add_get. #1944
 
+- Fixed consecutive calls for `Response.write_eof`.
+
 - Retain method attributes (e.g. :code:`__doc__`) when registering synchronous
   handlers for resources. #1953
 
