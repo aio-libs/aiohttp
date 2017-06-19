@@ -50,7 +50,8 @@ def test_on_loop_available(loop):
     app = web.Application()
 
     cb = mock.Mock()
-    app.on_loop_available.append(cb)
+    with pytest.warns(DeprecationWarning):
+        app.on_loop_available.append(cb)
 
     app._set_loop(loop)
     cb.assert_called_with(app)

@@ -38,6 +38,14 @@ Changes
 
 - Fix BadStatusLine caused by extra `CRLF` after `POST` data #1792
 
+-
+
+- Deprecate undocumented app.on_loop_available signal #1978
+
+-
+
+-
+
 
 2.1.0 (2017-05-26)
 ------------------
