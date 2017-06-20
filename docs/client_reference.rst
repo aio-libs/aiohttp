@@ -28,8 +28,8 @@ Usage example::
              assert resp.status == 200
              return await resp.text()
 
-     async def main(loop):
-         async with aiohttp.ClientSession(loop=loop) as client:
+     async def main():
+         async with aiohttp.ClientSession() as client:
              html = await fetch(client)
              print(html)
 
@@ -45,7 +45,8 @@ The client session supports the context manager protocol for self closing.
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=func:`json.dumps`, \
                          version=aiohttp.HttpVersion11, \
-                         cookie_jar=None, read_timeout=None, conn_timeout=None, \
+                         cookie_jar=None, read_timeout=None, \
+                         conn_timeout=None, \
                          raise_for_status=False)
 
    The class for creating client sessions and making requests.
@@ -62,6 +63,8 @@ The client session supports the context manager protocol for self closing.
 
       :func:`asyncio.get_event_loop` is used for getting default event
       loop otherwise.
+
+      .. deprecated:: 2.0
 
    :param dict cookies: Cookies to send with the request (optional)
 
@@ -500,7 +503,8 @@ keepaliving, cookies and complex connection stuff like properly configured SSL
 certification chaining.
 
 
-.. coroutinefunction:: request(method, url, *, params=None, data=None, json=None,\
+.. coroutinefunction:: request(method, url, *, params=None, data=None, \
+                               json=None,\
                                headers=None, cookies=None, auth=None, \
                                allow_redirects=True, max_redirects=10, \
                                encoding='utf-8', \
@@ -558,10 +562,9 @@ certification chaining.
    :param loop: :ref:`event loop<asyncio-event-loop>`
                 used for processing HTTP requests.
                 If param is ``None``, :func:`asyncio.get_event_loop`
-                is used for getting default event loop, but we strongly
-                recommend to use explicit loops everywhere.
-                (optional)
+                is used for getting default event loop.
 
+      .. deprecated:: 2.0
 
    :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
@@ -628,9 +631,9 @@ BaseConnector
    :param loop: :ref:`event loop<asyncio-event-loop>`
       used for handling connections.
       If param is ``None``, :func:`asyncio.get_event_loop`
-      is used for getting default event loop, but we strongly
-      recommend to use explicit loops everywhere.
-      (optional)
+      is used for getting default event loop.
+
+      .. deprecated:: 2.0
 
    .. attribute:: closed
 
@@ -1301,6 +1304,8 @@ CookieJar
 
    :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
       See :class:`aiohttp.abc.AbstractCookieJar`
+
+      .. deprecated:: 2.0
 
    .. method:: update_cookies(cookies, response_url=None)
 
