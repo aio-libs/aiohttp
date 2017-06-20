@@ -1104,7 +1104,7 @@ def test_custom_req_rep(loop):
                                        self.url,
                                        writer=self._writer,
                                        continue100=self._continue)
-            resp._post_init(self.loop)
+            resp._post_init(self.loop, mock.Mock())
             self.response = resp
             nonlocal called
             called = True

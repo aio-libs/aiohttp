@@ -72,7 +72,7 @@ def test_client_protocol_readuntil_eof(loop):
     proto.data_received(b'HTTP/1.1 200 Ok\r\n\r\n')
 
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop)
+    response._post_init(loop, mock.Mock())
     yield from response.start(conn, read_until_eof=True)
 
     assert not response.content.is_eof()

@@ -222,7 +222,8 @@ class ClientSession:
                         compress=compress, chunked=chunked,
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
-                        proxy=proxy, proxy_auth=proxy_auth, timer=timer)
+                        proxy=proxy, proxy_auth=proxy_auth, timer=timer,
+                        session=self)
 
                     # connection timeout
                     try:
@@ -687,13 +688,6 @@ class _SessionRequestContextManager(_RequestContextManager):
             except:
                 self._session.close()
                 raise
-
-    def __del__(self):
-        # in case of "resp = aiohttp.request(...)"
-        # _SessionRequestContextManager get destroyed before resp get processed
-        # and connection has to stay alive during this time
-        # ClientSession.detach just cleans up connector attribute
-        self._session.detach()
 
 
 def request(method, url, *,
