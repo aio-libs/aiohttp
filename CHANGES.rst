@@ -6,6 +6,8 @@ Changes
 
 - Add doc for add_head, update doc for add_get. #1944
 
+- Fixed consecutive calls for `Response.write_eof`.
+
 - Retain method attributes (e.g. :code:`__doc__`) when registering synchronous
   handlers for resources. #1953
 
@@ -15,6 +17,8 @@ Changes
 
 - Raise RuntimeError is you try to set the Content Length and enable
   chunked encoding at the same time #1941
+
+- Small update for `unittest_run_loop`
 
 - Use CIMultiDict for ClientRequest.skip_auto_headers #1970
 
@@ -37,6 +41,14 @@ Changes
 - Fix BadStatusLine caused by extra `CRLF` after `POST` data #1792
 
 - Keep a reference to ClientSession in response object #1985
+
+-
+
+- Deprecate undocumented app.on_loop_available signal #1978
+
+-
+
+-
 
 
 2.1.0 (2017-05-26)
