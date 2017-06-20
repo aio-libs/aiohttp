@@ -1,7 +1,7 @@
 Changes
 =======
 
-2.2.0 (2017-xx-xx)
+2.2.0 (2017-06-20)
 ------------------
 
 - Add doc for add_head, update doc for add_get. #1944
@@ -40,15 +40,10 @@ Changes
 
 - Fix BadStatusLine caused by extra `CRLF` after `POST` data #1792
 
-- Keep a reference to ClientSession in response object #1985
+- Keep a reference to `ClientSession` in response object #1985
 
--
+- Deprecate undocumented `app.on_loop_available` signal #1978
 
-- Deprecate undocumented app.on_loop_available signal #1978
-
--
-
--
 
 
 2.1.0 (2017-05-26)
