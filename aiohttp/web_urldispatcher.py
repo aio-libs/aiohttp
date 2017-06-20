@@ -1,7 +1,6 @@
 import abc
 import asyncio
 import collections
-import functools
 import inspect
 import keyword
 import os
@@ -37,7 +36,15 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 PATH_SEP = re.escape('/')
 
-RouteInfo = namedtuple('RouteInfo', 'method, path, handler, kwargs')
+
+class RouteInfo(namedtuple('_RouteInfo', 'method, path, handler, kwargs')):
+    def register(self, router):
+        if self.method in hdrs.METH_ALL:
+            reg = getattr(router, 'add_'+self.method.lower())
+            reg(self.path, self.handler, **self.kwargs)
+        else:
+            router.add_route(self.method, self.path, self.handler,
+                             **self.kwargs)
 
 
 class AbstractResource(Sized, Iterable):
@@ -903,9 +910,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def add_routes(self, routes):
         for route in routes:
-            assert route.method in hdrs.METH_ALL
-            reg = getattr(self, 'add_'+route.method.lower())
-            reg(route.path, route.handler, **route.kwargs)
+            route.register(self)
 
     def scan(self, package):
         prefix = package + '.'
@@ -915,8 +920,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                     obj = getattr(mod, name)
                     route = getattr(obj, '__aiohttp_web__', None)
                     if route is not None:
-                        reg = getattr(self, 'add_'+route.method.lower())
-                        reg(route.path, route.handler, **route.kwargs)
+                        route.register(self)
 
 
 def _make_route(method, path, handler, **kwargs):
