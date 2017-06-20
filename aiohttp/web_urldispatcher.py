@@ -31,7 +31,7 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
            'StaticResource', 'View',
-           'head', 'get', 'post', 'patch', 'put', 'delete')
+           'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 PATH_SEP = re.escape('/')
@@ -909,6 +909,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             resource.freeze()
 
     def add_routes(self, routes):
+        # TODO: add_table maybe?
         for route in routes:
             route.register(self)
 
