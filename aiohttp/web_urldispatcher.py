@@ -6,6 +6,7 @@ import inspect
 import keyword
 import os
 import re
+import sys
 import warnings
 from collections import namedtuple
 from collections.abc import Container, Iterable, Sized
@@ -30,7 +31,8 @@ from .web_response import Response, StreamResponse
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View')
+           'StaticResource', 'View',
+           'head', 'get', 'post', 'patch', 'put', 'delete')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 PATH_SEP = re.escape('/')
@@ -906,70 +908,63 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             reg(route.path, route.handler, **route.kwargs)
 
     def scan(self, package):
-        pass
+        prefix = package + '.'
+        for modname, mod in sys.modules.items():
+            if modname == package or modname.startswith(prefix):
+                for name in dir(mod):
+                    obj = getattr(mod, name)
+                    route = getattr(obj, '__aiohttp_web__', None)
+                    if route is not None:
+                        reg = getattr(self, 'add_'+route.method.lower())
+                        reg(route.path, route.handler, **route.kwargs)
 
 
 def _make_route(method, path, handler, **kwargs):
     return RouteInfo(method, path, handler, kwargs)
 
 
-def _make_wrapper(method, path, kwargs):
+def _make_wrapper(method, path, **kwargs):
     def wrapper(handler):
-        @functools.wraps(handler)
-        def wrapped(**kwargs):
-            if hasattr(handler, '__aiohttp_web__'):
-                raise ValueError('Handler {handler!r} is registered already '
-                                 'as [{method}] {path} {kwargs}'.format(
-                                     handler=handler,
-                                     method=method,
-                                     path=path,
-                                     kwargs=kwargs))
-            handler.__aiohttp_web__ = _make_route(method, path,
-                                                  handler, kwargs)
-            return handler
-        return wrapped
+        if hasattr(handler, '__aiohttp_web__'):
+            raise ValueError('Handler {handler!r} is registered already '
+                             'as [{method}] {path} {kwargs}'.format(
+                                 handler=handler,
+                                 method=method,
+                                 path=path,
+                                 kwargs=kwargs))
+        handler.__aiohttp_web__ = _make_route(method, path,
+                                              handler, **kwargs)
+        return handler
     return wrapper
 
 
-def head(path, handler=None, **kwargs):
+def route(method, path, handler=None, **kwargs):
     if handler is None:
-        return _make_wrapper(hdrs.METH_HEAD, path, **kwargs)
+        return _make_wrapper(method, path, **kwargs)
     else:
-        return _make_route(hdrs.METH_HEAD, path, handler, **kwargs)
+        return _make_route(method, path, handler, **kwargs)
+
+
+def head(path, handler=None, **kwargs):
+    return route(hdrs.METH_HEAD, path, handler, **kwargs)
 
 
 def get(path, handler=None, *, name=None, allow_head=True, **kwargs):
-    if handler is None:
-        return _make_wrapper(hdrs.METH_GET, path, name=name,
-                             allow_head=allow_head, **kwargs)
-    else:
-        return _make_route(path, handler, name=name,
-                           allow_head=allow_head, **kwargs)
+    return route(hdrs.METH_GET, path, handler,
+                 allow_head=allow_head, **kwargs)
 
 
 def post(path, handler=None, **kwargs):
-    if handler is None:
-        return _make_wrapper(hdrs.METH_POST, path, **kwargs)
-    else:
-        return _make_route(hdrs.METH_POST, path, handler, **kwargs)
+    return route(hdrs.METH_POST, path, handler, **kwargs)
 
 
 def put(path, handler=None, **kwargs):
-    if handler is None:
-        return _make_wrapper(hdrs.METH_PUT, path, **kwargs)
-    else:
-        return _make_route(hdrs.METH_PUT, path, handler, **kwargs)
+    return route(hdrs.METH_PUT, path, handler, **kwargs)
 
 
 def patch(path, handler=None, **kwargs):
-    if handler is None:
-        return _make_wrapper(hdrs.METH_PATCH, path, **kwargs)
-    else:
-        return _make_route(hdrs.METH_PATCH, path, handler, **kwargs)
+    return route(hdrs.METH_PATCH, path, handler, **kwargs)
 
 
 def delete(path, handler=None, **kwargs):
-    if handler is None:
-        return _make_wrapper(hdrs.METH_DELETE, path, **kwargs)
-    else:
-        return _make_route(hdrs.METH_DELETE, path, handler, **kwargs)
+    return route(hdrs.METH_DELETE, path, handler, **kwargs)
