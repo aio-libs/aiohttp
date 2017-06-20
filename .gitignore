@@ -19,8 +19,10 @@
 .noseids
 .tox
 .vimrc
-aiohttp/_multidict.c
-aiohttp/_multidict.html
+aiohttp/_frozenlist.c
+aiohttp/_frozenlist.html
+aiohttp/_websocket.c
+aiohttp/_websocket.html
 aiohttp/_http_parser.c
 bin
 build
@@ -40,8 +42,6 @@ sources
 var/*
 venv
 virtualenv.py
-aiohttp/_websocket.c
-aiohttp/_websocket.html
 .install-deps
 .develop
 .gitconfig

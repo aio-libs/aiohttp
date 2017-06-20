@@ -1174,7 +1174,12 @@ duplicated like one using :meth:`Application.copy`.
 
    :param debug: Switches debug mode.
 
-   :param loop: loop parameter is deprecated. loop is get set during freeze stage.
+   :param loop: event loop
+
+      .. deprecated:: 2.0
+
+         The parameter is deprecated. Loop is get set during freeze
+         stage.
 
    .. attribute:: router
 
@@ -1264,6 +1269,8 @@ duplicated like one using :meth:`Application.copy`.
                  If param is ``None`` :func:`asyncio.get_event_loop`
                  used for getting default event loop.
 
+       .. deprecated:: 2.0
+
     :param tuple secure_proxy_ssl_header: Default: ``None``.
 
       .. deprecated:: 2.1
@@ -1309,7 +1316,7 @@ duplicated like one using :meth:`Application.copy`.
 
        loop = asyncio.get_event_loop()
 
-       app = Application(loop=loop)
+       app = Application()
 
        # setup route table
        # app.router.add_route(...)
@@ -2193,7 +2200,8 @@ Middlewares
 Normalize path middleware
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: normalize_path_middleware(*, append_slash=True, merge_slashes=True)
+.. function:: normalize_path_middleware(*, \
+                                        append_slash=True, merge_slashes=True)
 
   Middleware that normalizes the path of a request. By normalizing
   it means:
@@ -2206,11 +2214,11 @@ Normalize path middleware
   and 3) both merge_slashes and append_slash. If the path resolves with
   at least one of those conditions, it will redirect to the new path.
 
-  If append_slash is True append slash when needed. If a resource is
+  If *append_slash* is True append slash when needed. If a resource is
   defined with trailing slash and the request comes without it, it will
   append it automatically.
 
-  If merge_slashes is True, merge multiple consecutive slashes in the
+  If *merge_slashes* is True, merge multiple consecutive slashes in the
   path into one.
 
 

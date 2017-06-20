@@ -5,7 +5,7 @@ import zlib
 from enum import IntEnum
 
 import yarl
-from multidict import CIMultiDict, istr
+from multidict import CIMultiDict
 
 from . import hdrs
 from .helpers import NO_EXTENSIONS
@@ -117,6 +117,11 @@ class HttpParser:
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
                 pos = data.find(SEP, start_pos)
+                # consume \r\n
+                if pos == start_pos and not self._lines:
+                    start_pos = pos + 2
+                    continue
+
                 if pos >= start_pos:
                     # line found
                     self._lines.append(data[start_pos:pos])
@@ -287,7 +292,7 @@ class HttpParser:
                         self.max_field_size)
 
             bvalue = bvalue.strip()
-            name = istr(bname.decode('utf-8', 'surrogateescape'))
+            name = bname.decode('utf-8', 'surrogateescape')
             value = bvalue.decode('utf-8', 'surrogateescape')
 
             headers.add(name, value)
@@ -593,6 +598,7 @@ class DeflateBuffer:
         self.out = out
         self.size = 0
         self.encoding = encoding
+        self._started_decoding = False
 
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
@@ -607,10 +613,19 @@ class DeflateBuffer:
         try:
             chunk = self.zlib.decompress(chunk)
         except Exception:
-            raise ContentEncodingError(
-                'Can not decode content-encoding: %s' % self.encoding)
+            if not self._started_decoding and self.encoding == 'deflate':
+                self.zlib = zlib.decompressobj()
+                try:
+                    chunk = self.zlib.decompress(chunk)
+                except Exception:
+                    raise ContentEncodingError(
+                        'Can not decode content-encoding: %s' % self.encoding)
+            else:
+                raise ContentEncodingError(
+                    'Can not decode content-encoding: %s' % self.encoding)
 
         if chunk:
+            self._started_decoding = True
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self):

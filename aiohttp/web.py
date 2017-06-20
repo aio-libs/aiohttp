@@ -15,7 +15,7 @@ from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
                web_protocol, web_request, web_response, web_server,
                web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
-from .helpers import FrozenList
+from .frozenlist import FrozenList
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
 from .signals import FuncSignal, PostSignal, PreSignal, Signal
@@ -62,7 +62,7 @@ class Application(MutableMapping):
 
         if secure_proxy_ssl_header is not None:
             warnings.warn(
-                "secure_proxy_ssl_header is deprecated", ResourceWarning)
+                "secure_proxy_ssl_header is deprecated", DeprecationWarning)
 
         self._debug = debug
         self._router = router
@@ -199,6 +199,8 @@ class Application(MutableMapping):
 
     @property
     def on_loop_available(self):
+        warnings.warn("on_loop_available is deprecated and will be removed",
+                      DeprecationWarning, stacklevel=2)
         return self._on_loop_available
 
     @property
@@ -327,23 +329,8 @@ def raise_graceful_exit():
     raise GracefulExit()
 
 
-def run_app(app, *, host=None, port=None, path=None, sock=None,
-            shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128, access_log_format=None,
-            access_log=access_logger, handle_signals=True, loop=None):
-    """Run an app locally"""
-    user_supplied_loop = loop is not None
-    if loop is None:
-        loop = asyncio.get_event_loop()
-
-    app._set_loop(loop)
-    loop.run_until_complete(app.startup())
-
-    make_handler_kwargs = dict()
-    if access_log_format is not None:
-        make_handler_kwargs['access_log_format'] = access_log_format
-    handler = app.make_handler(loop=loop, access_log=access_log,
-                               **make_handler_kwargs)
+def _make_server_creators(handler, *, loop, ssl_context,
+                          host, port, path, sock, backlog):
 
     scheme = 'https' if ssl_context else 'http'
     base_url = URL('{}://localhost'.format(scheme)).with_port(port)
@@ -419,33 +406,61 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         else:
             host, port = sock.getsockname()
             uris.append(str(base_url.with_host(host).with_port(port)))
+    return server_creations, uris
 
-    servers = loop.run_until_complete(
-        asyncio.gather(*server_creations, loop=loop)
-    )
 
-    if handle_signals:
-        try:
-            loop.add_signal_handler(signal.SIGINT, raise_graceful_exit)
-            loop.add_signal_handler(signal.SIGTERM, raise_graceful_exit)
-        except NotImplementedError:  # pragma: no cover
-            # add_signal_handler is not implemented on Windows
-            pass
+def run_app(app, *, host=None, port=None, path=None, sock=None,
+            shutdown_timeout=60.0, ssl_context=None,
+            print=print, backlog=128, access_log_format=None,
+            access_log=access_logger, handle_signals=True, loop=None):
+    """Run an app locally"""
+    user_supplied_loop = loop is not None
+    if loop is None:
+        loop = asyncio.get_event_loop()
+
+    app._set_loop(loop)
+    loop.run_until_complete(app.startup())
 
     try:
-        print("======== Running on {} ========\n"
-              "(Press CTRL+C to quit)".format(', '.join(uris)))
-        loop.run_forever()
-    except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
-        pass
+        make_handler_kwargs = dict()
+        if access_log_format is not None:
+            make_handler_kwargs['access_log_format'] = access_log_format
+        handler = app.make_handler(loop=loop, access_log=access_log,
+                                   **make_handler_kwargs)
+
+        server_creations, uris = _make_server_creators(
+            handler,
+            loop=loop, ssl_context=ssl_context,
+            host=host, port=port, path=path, sock=sock,
+            backlog=backlog)
+        servers = loop.run_until_complete(
+            asyncio.gather(*server_creations, loop=loop)
+        )
+
+        if handle_signals:
+            try:
+                loop.add_signal_handler(signal.SIGINT, raise_graceful_exit)
+                loop.add_signal_handler(signal.SIGTERM, raise_graceful_exit)
+            except NotImplementedError:  # pragma: no cover
+                # add_signal_handler is not implemented on Windows
+                pass
+
+        try:
+            print("======== Running on {} ========\n"
+                  "(Press CTRL+C to quit)".format(', '.join(uris)))
+            loop.run_forever()
+        except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+            pass
+        finally:
+            server_closures = []
+            for srv in servers:
+                srv.close()
+                server_closures.append(srv.wait_closed())
+            loop.run_until_complete(
+                asyncio.gather(*server_closures, loop=loop))
+            loop.run_until_complete(app.shutdown())
+            loop.run_until_complete(handler.shutdown(shutdown_timeout))
     finally:
-        server_closures = []
-        for srv in servers:
-            srv.close()
-            server_closures.append(srv.wait_closed())
-        loop.run_until_complete(asyncio.gather(*server_closures, loop=loop))
-        loop.run_until_complete(app.shutdown())
-        loop.run_until_complete(handler.shutdown(shutdown_timeout))
         loop.run_until_complete(app.cleanup())
     if not user_supplied_loop:
         loop.close()

@@ -60,7 +60,7 @@ def test_close_deprecated(create_session):
     session = create_session()
 
     with pytest.warns(DeprecationWarning):
-        yield from session.close()
+        session.close()
 
 
 def test_init_headers_simple_dict(create_session):
@@ -348,8 +348,9 @@ def test_del(connector, loop):
 
 
 def test_context_manager(connector, loop):
-    with ClientSession(loop=loop, connector=connector) as session:
-        pass
+    with pytest.warns(DeprecationWarning):
+        with ClientSession(loop=loop, connector=connector) as session:
+            pass
 
     assert session.closed
 
@@ -386,14 +387,15 @@ def test_reraise_os_error(create_session):
 @asyncio.coroutine
 def test_request_ctx_manager_props(loop):
     yield from asyncio.sleep(0, loop=loop)  # to make it a task
-    with aiohttp.ClientSession(loop=loop) as client:
-        ctx_mgr = client.get('http://example.com')
+    with pytest.warns(DeprecationWarning):
+        with aiohttp.ClientSession(loop=loop) as client:
+            ctx_mgr = client.get('http://example.com')
 
-        next(ctx_mgr)
-        assert isinstance(ctx_mgr.gi_frame, types.FrameType)
-        assert not ctx_mgr.gi_running
-        assert isinstance(ctx_mgr.gi_code, types.CodeType)
-        yield from asyncio.sleep(0.1, loop=loop)
+            next(ctx_mgr)
+            assert isinstance(ctx_mgr.gi_frame, types.FrameType)
+            assert not ctx_mgr.gi_running
+            assert isinstance(ctx_mgr.gi_code, types.CodeType)
+            yield from asyncio.sleep(0.1, loop=loop)
 
 
 @asyncio.coroutine

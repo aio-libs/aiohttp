@@ -12,8 +12,7 @@ import sys
 import time
 import warnings
 import weakref
-from collections import MutableSequence, namedtuple
-from functools import total_ordering
+from collections import namedtuple
 from math import ceil
 from pathlib import Path
 from time import gmtime
@@ -54,6 +53,25 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
               '?', '=', '{', '}', ' ', chr(9)}
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
+
+class _CoroGuard:
+    __slots__ = ('_coro', '_msg', '_awaited')
+
+    def __init__(self, coro, msg):
+        self._coro = coro
+        self._msg = msg
+        self._awaited = False
+
+    def __iter__(self):
+        self._awaited = True
+        return self._coro.__iter__()
+
+    def __del__(self):
+        self._coro = None
+        if not self._awaited:
+            warnings.warn(self._msg, DeprecationWarning)
+
+
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG
 coroutines._DEBUG = False
@@ -64,9 +82,11 @@ def noop(*args, **kwargs):
     return
 
 
-@asyncio.coroutine
 def deprecated_noop(message):
-    warnings.warn(message, DeprecationWarning, stacklevel=3)
+    return _CoroGuard(noop(), message)
+
+
+coroutines._DEBUG = old_debug
 
 
 try:
@@ -74,9 +94,6 @@ try:
 except ImportError:
     def isfuture(fut):
         return isinstance(fut, asyncio.Future)
-
-
-coroutines._DEBUG = old_debug
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -495,57 +512,6 @@ def is_ip_address(host):
                         .format(host, type(host)))
 
 
-@total_ordering
-class FrozenList(MutableSequence):
-
-    __slots__ = ('_frozen', '_items')
-
-    def __init__(self, items=None):
-        self._frozen = False
-        if items is not None:
-            items = list(items)
-        else:
-            items = []
-        self._items = items
-
-    def freeze(self):
-        self._frozen = True
-        self._items = tuple(self._items)
-
-    def __getitem__(self, index):
-        return self._items[index]
-
-    def __setitem__(self, index, value):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen list.")
-        self._items[index] = value
-
-    def __delitem__(self, index):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen list.")
-        del self._items[index]
-
-    def __len__(self):
-        return self._items.__len__()
-
-    def __iter__(self):
-        return self._items.__iter__()
-
-    def __reversed__(self):
-        return self._items.__reversed__()
-
-    def __eq__(self, other):
-        return list(self) == other
-
-    def __le__(self, other):
-        return list(self) <= other
-
-    def insert(self, pos, item):
-        if self._frozen:
-            raise RuntimeError("Cannot modify frozen list.")
-        self._items.insert(pos, item)
-
-
 class TimeService:
 
     def __init__(self, loop, *, interval=1.0):
@@ -603,6 +569,10 @@ class TimeService:
     @property
     def loop_time(self):
         return self._loop_time
+
+    @property
+    def interval(self):
+        return self._interval
 
 
 def _weakref_handle(info):

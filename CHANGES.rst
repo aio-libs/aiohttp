@@ -1,10 +1,39 @@
 Changes
 =======
 
-2.2.0 (2017-xx-xx)
+2.3.0 (2017-xx-xx)
+------------------
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+-
+
+2.2.0 (2017-06-20)
 ------------------
 
 - Add doc for add_head, update doc for add_get. #1944
+
+- Fixed consecutive calls for `Response.write_eof`.
 
 - Retain method attributes (e.g. :code:`__doc__`) when registering synchronous
   handlers for resources. #1953
@@ -16,16 +45,32 @@ Changes
 - Raise RuntimeError is you try to set the Content Length and enable
   chunked encoding at the same time #1941
 
+- Small update for `unittest_run_loop`
+
 - Use CIMultiDict for ClientRequest.skip_auto_headers #1970
 
 - Fix wrong startup sequence: test server and `run_app()` are not raise
   `DeprecationWarning` now #1947
 
--
+- Make sure cleanup signal is sent if startup signal has been sent #1959
 
--
+- Fixed server keep-alive handler, could cause 100% cpu utilization #1955
 
--
+- Connection can be destroyed before response get processed if
+  `await aiohttp.request(..)` is used #1981
+
+- MultipartReader does not work with -OO #1969
+
+- Fixed `ClientPayloadError` with blank `Content-Encoding` header #1931
+
+- Support `deflate` encoding implemented in `httpbin.org/deflate` #1918
+
+- Fix BadStatusLine caused by extra `CRLF` after `POST` data #1792
+
+- Keep a reference to `ClientSession` in response object #1985
+
+- Deprecate undocumented `app.on_loop_available` signal #1978
+
 
 
 2.1.0 (2017-05-26)

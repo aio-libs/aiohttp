@@ -569,6 +569,8 @@ class Response(StreamResponse):
 
     @asyncio.coroutine
     def write_eof(self):
+        if self._eof_sent:
+            return
         body = self._body
         if body is not None:
             if (self._req._method == hdrs.METH_HEAD or

@@ -245,7 +245,8 @@ def test_chunk_size():
     resp = StreamResponse()
     assert not resp.chunked
 
-    resp.enable_chunked_encoding(chunk_size=8192)
+    with pytest.warns(DeprecationWarning):
+        resp.enable_chunked_encoding(chunk_size=8192)
     assert resp.chunked
 
     msg = yield from resp.prepare(req)
@@ -903,6 +904,20 @@ def test_send_set_cookie_header(buf, writer):
                     'Content-Type: application/octet-stream\r\n'
                     'Date: .+\r\n'
                     'Server: .+\r\n\r\n', txt)
+
+
+@asyncio.coroutine
+def test_consecutive_write_eof():
+    req = make_request('GET', '/')
+    data = b'data'
+    resp = Response(body=data)
+
+    yield from resp.prepare(req)
+    with mock.patch('aiohttp.web.StreamResponse.write_eof') as super_write_eof:
+        yield from resp.write_eof()
+        resp._eof_sent = True
+        yield from resp.write_eof()
+        super_write_eof.assert_called_once_with(data)
 
 
 def test_set_text_with_content_type():
