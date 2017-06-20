@@ -914,7 +914,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
     def scan(self, package):
         prefix = package + '.'
-        for modname, mod in sys.modules.items():
+        for modname, mod in sorted(sys.modules.items()):
             if modname == package or modname.startswith(prefix):
                 for name in dir(mod):
                     obj = getattr(mod, name)
