@@ -40,6 +40,8 @@ Changes
 
 - Fix BadStatusLine caused by extra `CRLF` after `POST` data #1792
 
+- Keep a reference to ClientSession in response object #1985
+
 -
 
 - Deprecate undocumented app.on_loop_available signal #1978
