@@ -19,11 +19,11 @@ def test_get(router):
     router.add_routes([web.get('/', handler)])
     assert len(router.routes()) == 2  # GET and HEAD
 
-    route = list(router.routes())[0]
+    route = list(router.routes())[1]
     assert route.handler is handler
     assert route.method == 'GET'
 
-    route2 = list(router.routes())[1]
+    route2 = list(router.routes())[0]
     assert route2.handler is handler
     assert route2.method == 'HEAD'
 
@@ -97,9 +97,9 @@ def test_route(router):
     def handler(request):
         pass
 
-    router.add_routes([web.route('OPTIONS', '/', handler)])
+    router.add_routes([web.route('OTHER', '/', handler)])
     assert len(router.routes()) == 1
 
     route = list(router.routes())[0]
     assert route.handler is handler
-    assert route.method == 'OPTIONS'
+    assert route.method == 'OTHER'
