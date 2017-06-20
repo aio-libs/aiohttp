@@ -303,8 +303,7 @@ done by the following coroutine::
            host=conf['host'],
            port=conf['port'],
            minsize=conf['minsize'],
-           maxsize=conf['maxsize'],
-           loop=app.loop)
+           maxsize=conf['maxsize'])
        app['db'] = engine
 
 The best place for connecting to DB is
