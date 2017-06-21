@@ -523,22 +523,6 @@ def test_remove_content_length_if_compression_enabled_on_payload_http10():
 
 
 @asyncio.coroutine
-def test_remove_content_length_if_chunked():
-    writer = mock.Mock()
-
-    def write_headers(status_line, headers):
-        assert hdrs.CONTENT_LENGTH not in headers
-        assert headers[hdrs.TRANSFER_ENCODING] == 'chunked'
-
-    writer.write_headers.side_effect = write_headers
-    req = make_request('GET', '/', payload_writer=writer)
-    resp = StreamResponse()
-    resp.content_length = 123
-    resp.enable_chunked_encoding()
-    yield from resp.prepare(req)
-
-
-@asyncio.coroutine
 def test_content_length_on_chunked():
     req = make_request('GET', '/')
     resp = Response(body=b'answer')
