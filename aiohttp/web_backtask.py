@@ -2,7 +2,22 @@ import asyncio
 import async_timeout
 
 
-class BackgroundManager:
+class TaskWrapper:
+    __slots__ = ('_task', '_manager')
+
+    def __init__(self, task, manager):
+        self._task = task
+        self._manager = manager
+
+    @property
+    def task(self):
+        return self._task
+
+    def __await__(self):
+        return self._task.__await__()
+
+
+class BackTaskManager:
     def __init__(self, *, loop):
         self._loop = loop
         self._tasks = set()
@@ -16,11 +31,8 @@ class BackgroundManager:
     def __iter__(self):
         return iter(list(self._tasks))
 
-    def count(self):
-        return len(self._tasks)
-
     def __len__(self):
-        return self.count()
+        return len(self._tasks)
 
     async def wait(self, timeout=None):
         """Wait for completion"""
@@ -33,3 +45,10 @@ class BackgroundManager:
 
     def _on_complete(self, task):
         self._tasks.remove(task)
+
+    def default_error_handler(self, task):
+        context = {'message': ("Task {!r} has failed with exception "
+                               "but the error was not "
+                               "explicitly handled".format(task)),
+                   'task': task}
+        self._loop.call_exception_handler(context)
