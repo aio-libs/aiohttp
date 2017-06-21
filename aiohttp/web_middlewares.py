@@ -54,7 +54,14 @@ def normalize_path_middleware(
 
             if isinstance(request.match_info.route, SystemRoute):
                 paths_to_check = []
-                path = request.raw_path
+                if '?' in request.raw_path:
+                    path, query = request.raw_path.split('?', 1)
+                    if query:
+                        query = '?' + query
+                else:
+                    query = ''
+                    path = request.raw_path
+
                 if merge_slashes:
                     paths_to_check.append(re.sub('//+', '/', path))
                 if append_slash and not request.path.endswith('/'):
@@ -67,7 +74,7 @@ def normalize_path_middleware(
                     resolves, request = yield from _check_request_resolves(
                         request, path)
                     if resolves:
-                        return redirect_class(request.path)
+                        return redirect_class(request.path + query)
 
             return (yield from handler(request))
 

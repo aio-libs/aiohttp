@@ -173,6 +173,7 @@ Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
+Vladyslav Bondar
 W. Trevor King
 Will McGugan
 Willem de Groot
