@@ -22,6 +22,7 @@ def test_get(router):
     route = list(router.routes())[1]
     assert route.handler is handler
     assert route.method == 'GET'
+    assert str(route.url_for()) == '/'
 
     route2 = list(router.routes())[0]
     assert route2.handler is handler
@@ -39,6 +40,7 @@ def test_head(router):
     route = list(router.routes())[0]
     assert route.handler is handler
     assert route.method == 'HEAD'
+    assert str(route.url_for()) == '/'
 
 
 def test_post(router):
@@ -51,6 +53,7 @@ def test_post(router):
     route = list(router.routes())[0]
     assert route.handler is handler
     assert route.method == 'POST'
+    assert str(route.url_for()) == '/'
 
 
 def test_put(router):
@@ -64,6 +67,7 @@ def test_put(router):
     route = list(router.routes())[0]
     assert route.handler is handler
     assert route.method == 'PUT'
+    assert str(route.url_for()) == '/'
 
 
 def test_patch(router):
@@ -77,6 +81,7 @@ def test_patch(router):
     route = list(router.routes())[0]
     assert route.handler is handler
     assert route.method == 'PATCH'
+    assert str(route.url_for()) == '/'
 
 
 def test_delete(router):
@@ -90,6 +95,7 @@ def test_delete(router):
     route = list(router.routes())[0]
     assert route.handler is handler
     assert route.method == 'DELETE'
+    assert str(route.url_for()) == '/'
 
 
 def test_route(router):
@@ -103,3 +109,4 @@ def test_route(router):
     route = list(router.routes())[0]
     assert route.handler is handler
     assert route.method == 'OTHER'
+    assert str(route.url_for()) == '/'
