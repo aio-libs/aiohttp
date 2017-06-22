@@ -5,10 +5,9 @@ import inspect
 import keyword
 import os
 import re
-import sys
 import warnings
 from collections import namedtuple
-from collections.abc import Container, Iterable, Sized
+from collections.abc import Container, Iterable, Sequence, Sized
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
@@ -30,7 +29,7 @@ from .web_response import Response, StreamResponse
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View',
+           'StaticResource', 'View', 'RouteDef',
            'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
@@ -909,67 +908,81 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             resource.freeze()
 
     def add_routes(self, routes):
+        """Append routes to route table.
+
+        Parameter should be a sequence of RouteInfo objects.
+        """
         # TODO: add_table maybe?
         for route in routes:
             route.register(self)
 
-    def scan(self, package):
-        prefix = package + '.'
-        for modname, mod in sorted(sys.modules.items()):
-            if modname == package or modname.startswith(prefix):
-                for name in dir(mod):
-                    obj = getattr(mod, name)
-                    route = getattr(obj, '__aiohttp_web__', None)
-                    if route is not None:
-                        route.register(self)
 
-
-def _make_route(method, path, handler, **kwargs):
+def route(method, path, handler, **kwargs):
     return RouteInfo(method, path, handler, kwargs)
 
 
-def _make_wrapper(method, path, **kwargs):
-    def wrapper(handler):
-        if hasattr(handler, '__aiohttp_web__'):
-            raise ValueError('Handler {handler!r} is registered already '
-                             'as [{method}] {path} {kwargs}'.format(
-                                 handler=handler,
-                                 method=method,
-                                 path=path,
-                                 kwargs=kwargs))
-        handler.__aiohttp_web__ = _make_route(method, path,
-                                              handler, **kwargs)
-        return handler
-    return wrapper
-
-
-def route(method, path, handler=None, **kwargs):
-    if handler is None:
-        return _make_wrapper(method, path, **kwargs)
-    else:
-        return _make_route(method, path, handler, **kwargs)
-
-
-def head(path, handler=None, **kwargs):
+def head(path, handler, **kwargs):
     return route(hdrs.METH_HEAD, path, handler, **kwargs)
 
 
-def get(path, handler=None, *, name=None, allow_head=True, **kwargs):
+def get(path, handler, *, name=None, allow_head=True, **kwargs):
     return route(hdrs.METH_GET, path, handler,
                  allow_head=allow_head, **kwargs)
 
 
-def post(path, handler=None, **kwargs):
+def post(path, handler, **kwargs):
     return route(hdrs.METH_POST, path, handler, **kwargs)
 
 
-def put(path, handler=None, **kwargs):
+def put(path, handler, **kwargs):
     return route(hdrs.METH_PUT, path, handler, **kwargs)
 
 
-def patch(path, handler=None, **kwargs):
+def patch(path, handler, **kwargs):
     return route(hdrs.METH_PATCH, path, handler, **kwargs)
 
 
-def delete(path, handler=None, **kwargs):
+def delete(path, handler, **kwargs):
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
+
+
+class RouteDef(Sequence):
+    """Route definition table"""
+    def __init__(self):
+        self._items = []
+
+    def __getitem__(self, index):
+        return self._items[index]
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def __len__(self):
+        return len(self._items)
+
+    def __contains__(self, item):
+        return item in self._items
+
+    def route(self, method, path, **kwargs):
+        def inner(handler):
+            self._items.append(RouteInfo(method, path, handler, kwargs))
+            return handler
+        return inner
+
+    def head(self, path, **kwargs):
+        return self.route(hdrs.METH_HEAD, path, **kwargs)
+
+    def get(self, path, **kwargs):
+        return self.route(hdrs.METH_GET, path, **kwargs)
+
+    def post(self, path, **kwargs):
+        return self.route(hdrs.METH_POST, path, **kwargs)
+
+    def put(self, path, **kwargs):
+        return self.route(hdrs.METH_PUT, path, **kwargs)
+
+    def patch(self, path, **kwargs):
+        return self.route(hdrs.METH_PATCH, path, **kwargs)
+
+    def delete(self, path, **kwargs):
+        return self.route(hdrs.METH_DELETE, path, **kwargs)

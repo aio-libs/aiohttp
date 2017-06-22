@@ -110,3 +110,126 @@ def test_route(router):
     assert route.handler is handler
     assert route.method == 'OTHER'
     assert str(route.url_for()) == '/'
+
+
+def test_head_deco(router):
+    routes = web.RouteDef()
+
+    @routes.head('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'HEAD'
+    assert str(route.url_for()) == '/path'
+
+
+def test_get_deco(router):
+    routes = web.RouteDef()
+
+    @routes.get('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 2
+
+    route1 = list(router.routes())[0]
+    assert route1.method == 'HEAD'
+    assert str(route1.url_for()) == '/path'
+
+    route2 = list(router.routes())[1]
+    assert route2.method == 'GET'
+    assert str(route2.url_for()) == '/path'
+
+
+def test_post_deco(router):
+    routes = web.RouteDef()
+
+    @routes.post('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'POST'
+    assert str(route.url_for()) == '/path'
+
+
+def test_put_deco(router):
+    routes = web.RouteDef()
+
+    @routes.put('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'PUT'
+    assert str(route.url_for()) == '/path'
+
+
+def test_patch_deco(router):
+    routes = web.RouteDef()
+
+    @routes.patch('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'PATCH'
+    assert str(route.url_for()) == '/path'
+
+
+def test_delete_deco(router):
+    routes = web.RouteDef()
+
+    @routes.delete('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'DELETE'
+    assert str(route.url_for()) == '/path'
+
+
+def test_route_deco(router):
+    routes = web.RouteDef()
+
+    @routes.route('OTHER', '/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == 'OTHER'
+    assert str(route.url_for()) == '/path'
