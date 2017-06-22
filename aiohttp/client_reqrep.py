@@ -161,7 +161,7 @@ class ClientRequest:
 
     def update_auto_headers(self, skip_auto_headers):
         self.skip_auto_headers = CIMultiDict(
-            (hdr, None) for hdr in skip_auto_headers)
+            (hdr, None) for hdr in sorted(skip_auto_headers))
         used_headers = self.headers.copy()
         used_headers.extend(self.skip_auto_headers)
 
