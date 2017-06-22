@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from aiohttp import web
-from aiohttp.web_urldispatcher import UrlDispatcher
+from aiohttp.web_urldispatcher import UrlDispatcher, RouteDef
 
 
 @pytest.fixture
@@ -246,6 +246,6 @@ def test_routedef_sequence_protocol():
     assert len(routes) == 1
 
     info = routes[0]
-    assert isinstance(info, web.RouteDef)
+    assert isinstance(info, RouteDef)
     assert info in routes
     assert list(routes)[0] is info

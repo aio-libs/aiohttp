@@ -29,7 +29,7 @@ from .web_response import Response, StreamResponse
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View', 'RoutesDef', 'RouteDef',
+           'StaticResource', 'View', 'RoutesDef',
            'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
@@ -37,6 +37,8 @@ PATH_SEP = re.escape('/')
 
 
 class RouteDef(namedtuple('_RouteDef', 'method, path, handler, kwargs')):
+    # TODO: add __repr__
+
     def register(self, router):
         if self.method in hdrs.METH_ALL:
             reg = getattr(router, 'add_'+self.method.lower())
@@ -950,6 +952,8 @@ class RoutesDef(Sequence):
     """Route definition table"""
     def __init__(self):
         self._items = []
+
+    # TODO: add __repr__
 
     def __getitem__(self, index):
         return self._items[index]
