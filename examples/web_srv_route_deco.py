@@ -9,7 +9,7 @@ import textwrap
 from aiohttp import web
 
 
-routes = web.RouteDef()
+routes = web.RoutesDef()
 
 
 @routes.get('/')

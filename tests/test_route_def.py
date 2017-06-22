@@ -113,7 +113,7 @@ def test_route(router):
 
 
 def test_head_deco(router):
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.head('/path')
     @asyncio.coroutine
@@ -130,7 +130,7 @@ def test_head_deco(router):
 
 
 def test_get_deco(router):
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.get('/path')
     @asyncio.coroutine
@@ -151,7 +151,7 @@ def test_get_deco(router):
 
 
 def test_post_deco(router):
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.post('/path')
     @asyncio.coroutine
@@ -168,7 +168,7 @@ def test_post_deco(router):
 
 
 def test_put_deco(router):
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.put('/path')
     @asyncio.coroutine
@@ -185,7 +185,7 @@ def test_put_deco(router):
 
 
 def test_patch_deco(router):
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.patch('/path')
     @asyncio.coroutine
@@ -202,7 +202,7 @@ def test_patch_deco(router):
 
 
 def test_delete_deco(router):
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.delete('/path')
     @asyncio.coroutine
@@ -219,7 +219,7 @@ def test_delete_deco(router):
 
 
 def test_route_deco(router):
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.route('OTHER', '/path')
     @asyncio.coroutine
@@ -236,7 +236,7 @@ def test_route_deco(router):
 
 
 def test_routedef_sequence_protocol():
-    routes = web.RouteDef()
+    routes = web.RoutesDef()
 
     @routes.delete('/path')
     @asyncio.coroutine
