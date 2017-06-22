@@ -29,14 +29,14 @@ from .web_response import Response, StreamResponse
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View', 'RoutesDef', 'RouteInfo',
+           'StaticResource', 'View', 'RoutesDef', 'RouteDef',
            'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 PATH_SEP = re.escape('/')
 
 
-class RouteInfo(namedtuple('_RouteInfo', 'method, path, handler, kwargs')):
+class RouteDef(namedtuple('_RouteDef', 'method, path, handler, kwargs')):
     def register(self, router):
         if self.method in hdrs.METH_ALL:
             reg = getattr(router, 'add_'+self.method.lower())
@@ -910,7 +910,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_routes(self, routes):
         """Append routes to route table.
 
-        Parameter should be a sequence of RouteInfo objects.
+        Parameter should be a sequence of RouteDef objects.
         """
         # TODO: add_table maybe?
         for route in routes:
@@ -918,7 +918,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
 
 def route(method, path, handler, **kwargs):
-    return RouteInfo(method, path, handler, kwargs)
+    return RouteDef(method, path, handler, kwargs)
 
 
 def head(path, handler, **kwargs):
@@ -965,7 +965,7 @@ class RoutesDef(Sequence):
 
     def route(self, method, path, **kwargs):
         def inner(handler):
-            self._items.append(RouteInfo(method, path, handler, kwargs))
+            self._items.append(RouteDef(method, path, handler, kwargs))
             return handler
         return inner
 
