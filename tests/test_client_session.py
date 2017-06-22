@@ -67,7 +67,7 @@ def test_init_headers_simple_dict(create_session):
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})
     assert (sorted(session._default_headers.items()) ==
-            ([("H1", "header1"), ("H2", "header2")]))
+            ([("h1", "header1"), ("h2", "header2")]))
 
 
 def test_init_headers_list_of_tuples(create_session):
@@ -126,8 +126,7 @@ def test_merge_headers(create_session):
     headers = session._prepare_headers({"h1": "h1"})
 
     assert isinstance(headers, CIMultiDict)
-    assert headers == CIMultiDict([("h2", "header2"),
-                                   ("h1", "h1")])
+    assert headers == {"h1": "h1", "h2": "header2"}
 
 
 def test_merge_headers_with_multi_dict(create_session):
@@ -135,8 +134,7 @@ def test_merge_headers_with_multi_dict(create_session):
                                       "h2": "header2"})
     headers = session._prepare_headers(MultiDict([("h1", "h1")]))
     assert isinstance(headers, CIMultiDict)
-    assert headers == CIMultiDict([("h2", "header2"),
-                                   ("h1", "h1")])
+    assert headers == {"h1": "h1", "h2": "header2"}
 
 
 def test_merge_headers_with_list_of_tuples(create_session):
@@ -144,8 +142,7 @@ def test_merge_headers_with_list_of_tuples(create_session):
                                       "h2": "header2"})
     headers = session._prepare_headers([("h1", "h1")])
     assert isinstance(headers, CIMultiDict)
-    assert headers == CIMultiDict([("h2", "header2"),
-                                   ("h1", "h1")])
+    assert headers == {"h1": "h1", "h2": "header2"}
 
 
 def test_merge_headers_with_list_of_tuples_duplicated_names(create_session):
@@ -156,9 +153,9 @@ def test_merge_headers_with_list_of_tuples_duplicated_names(create_session):
                                         ("h1", "v2")])
 
     assert isinstance(headers, CIMultiDict)
-    assert headers == CIMultiDict([("H2", "header2"),
-                                   ("H1", "v1"),
-                                   ("H1", "v2")])
+    assert list(sorted(headers.items())) == [("h1", "v1"),
+                                             ("h1", "v2"),
+                                             ("h2", "header2")]
 
 
 def test_http_GET(session, params):
