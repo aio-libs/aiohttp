@@ -1756,11 +1756,49 @@ def test_encoding_deflate(loop, test_client):
 
 
 @asyncio.coroutine
+def test_encoding_deflate_nochunk(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.enable_compression(web.ContentCoding.deflate)
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'text'
+    resp.close()
+
+
+@asyncio.coroutine
 def test_encoding_gzip(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         resp = web.Response(text='text')
         resp.enable_chunked_encoding()
+        resp.enable_compression(web.ContentCoding.gzip)
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'text'
+    resp.close()
+
+
+@asyncio.coroutine
+def test_encoding_gzip_nochunk(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
         resp.enable_compression(web.ContentCoding.gzip)
         return resp
 
