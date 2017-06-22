@@ -302,8 +302,7 @@ class StreamResponse(HeadersMixin):
             self._payload_writer.enable_compression(coding.value)
             # Compressed payload may have different content length,
             # remove the header
-            if hdrs.CONTENT_LENGTH in self._headers:
-                del self._headers[hdrs.CONTENT_LENGTH]
+            self._headers.popall(hdrs.CONTENT_LENGTH, None)
 
     def _start_compression(self, request):
         if self._compression_force:
