@@ -27,7 +27,7 @@ if sys.version_info >= (3, 5):
             del sys.modules[mod.__name__]
 else:
     @pytest.fixture
-    def create_module(name):
+    def create_module():
         from imp import new_module
 
         mods = []
