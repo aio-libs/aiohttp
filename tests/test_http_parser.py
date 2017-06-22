@@ -66,8 +66,8 @@ test2: data\r
     assert len(messages) == 1
     msg = messages[0][0]
 
-    assert list(msg.headers.items()) == [('Test', 'line continue'),
-                                         ('Test2', 'data')]
+    assert list(msg.headers.items()) == [('test', 'line continue'),
+                                         ('test2', 'data')]
     assert msg.raw_headers == ((b'test', b'line continue'),
                                (b'test2', b'data'))
     assert not msg.should_close
@@ -134,7 +134,7 @@ def test_headers_multi_feed(parser):
     assert len(messages) == 1
 
     msg = messages[0][0]
-    assert list(msg.headers.items()) == [('Test', 'line continue')]
+    assert list(msg.headers.items()) == [('test', 'line continue')]
     assert msg.raw_headers == ((b'test', b'line continue'),)
     assert not msg.should_close
     assert msg.compression is None
