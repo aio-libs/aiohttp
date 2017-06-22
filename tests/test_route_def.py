@@ -233,3 +233,19 @@ def test_route_deco(router):
     route = list(router.routes())[0]
     assert route.method == 'OTHER'
     assert str(route.url_for()) == '/path'
+
+
+def test_routedef_sequence_protocol():
+    routes = web.RouteDef()
+
+    @routes.delete('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    assert len(routes) == 1
+
+    info = routes[0]
+    assert isinstance(info, web.RouteInfo)
+    assert info in routes
+    assert list(routes)[0] is info

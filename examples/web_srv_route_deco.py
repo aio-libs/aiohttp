@@ -9,7 +9,10 @@ import textwrap
 from aiohttp import web
 
 
-@web.get('/')
+routes = web.RouteDef()
+
+
+@routes.get('/')
 async def intro(request):
     txt = textwrap.dedent("""\
         Type {url}/hello/John  {url}/simple or {url}/change_body
@@ -24,12 +27,12 @@ async def intro(request):
     return resp
 
 
-@web.get('/simple')
+@routes.get('/simple')
 async def simple(request):
     return web.Response(text="Simple answer")
 
 
-@web.get('/change_body')
+@routes.get('/change_body')
 async def change_body(request):
     resp = web.Response()
     resp.body = b"Body changed"
@@ -37,7 +40,7 @@ async def change_body(request):
     return resp
 
 
-@web.get('/hello')
+@routes.get('/hello')
 async def hello(request):
     resp = web.StreamResponse()
     name = request.match_info.get('name', 'Anonymous')
@@ -52,7 +55,7 @@ async def hello(request):
 
 async def init():
     app = web.Application()
-    app.router.scan('__main__')
+    app.router.add_routes(routes)
     return app
 
 loop = asyncio.get_event_loop()
