@@ -4,7 +4,10 @@ Changes
 2.3.0 (2017-xx-xx)
 ------------------
 
--
+- Improvement for `normalize_path_middleware`. Added possibility to handle
+  URLs with query string. #1995
+
+- Make enable_compression work on HTTP/1.0 #1828
 
 -
 

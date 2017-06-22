@@ -49,7 +49,7 @@ def test_ctor(make_request):
     assert req.protocol is protocol
     assert req.transport is protocol.transport
     assert req.headers == headers
-    assert req.raw_headers == ((b'Foo', b'bar'),)
+    assert req.raw_headers == ((b'FOO', b'bar'),)
     assert req.task is req._task
 
     with pytest.warns(DeprecationWarning):
@@ -361,7 +361,7 @@ def test_host_by_host_header(make_request):
 def test_raw_headers(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({'X-HEADER': 'aaa'}))
-    assert req.raw_headers == ((b'X-Header', b'aaa'),)
+    assert req.raw_headers == ((b'X-HEADER', b'aaa'),)
 
 
 def test_rel_url(make_request):
