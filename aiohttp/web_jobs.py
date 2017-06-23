@@ -45,8 +45,15 @@ class Job:
             with async_timeout.timeout(timeout=self._manager._timeout,
                                        loop=self._loop):
                 yield from self._task
-        except (asyncio.CancelledError, asyncio.TimeoutError):
+        except asyncio.CancelledError:
             pass
+        except asyncio.TimeoutError as exc:
+            context = {'message': "Job closing reached timeout",
+                       'job': self,
+                       'exception': exc}
+            if self._source_traceback is not None:
+                context['source_traceback'] = self._source_traceback
+            self._manager.call_exception_handler(context)
 
     def _done_callback(self, task):
         self._manager._jobs.remove(self)
