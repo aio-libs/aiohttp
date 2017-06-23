@@ -18,6 +18,8 @@ class Job:
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(2))
+        else:
+            self._source_traceback = None
 
         task.add_done_callback(self._done_callback)
         manager._jobs.add(self)
@@ -28,6 +30,10 @@ class Job:
     @asyncio.coroutine
     def wait(self, timeout=None):
         self._explicit_wait = True
+        return (yield from self._wait(timeout))
+
+    @asyncio.coroutine
+    def _wait(self, timeout):
         try:
             with async_timeout.timeout(timeout=timeout, loop=self._loop):
                 return (yield from self._task)
@@ -57,8 +63,6 @@ class Job:
 
     def _done_callback(self, task):
         self._manager._jobs.remove(self)
-        self._manager = None  # drop backref
-        # TODO: process task exception
         exc = task.exception()
         if exc is not None and not self._explicit_wait:
             context = {'message': "Job processing failed",
@@ -67,6 +71,7 @@ class Job:
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
             self._manager.call_exception_handler(context)
+        self._manager = None  # drop backref
 
 
 class JobRunner(Container):
@@ -95,7 +100,7 @@ class JobRunner(Container):
         jobs = self._jobs
         if not jobs:
             return
-        yield from asyncio.wait([job.wait(timeout) for job in jobs],
+        yield from asyncio.wait([job._wait(timeout) for job in jobs],
                                 loop=self._loop)
 
     @asyncio.coroutine
