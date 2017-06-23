@@ -114,10 +114,9 @@ class JobRunner(Container):
     @asyncio.coroutine
     def close(self):
         jobs = self._jobs
-        if not jobs:
-            return
-        yield from asyncio.gather(*[job.close() for job in jobs],
-                                  loop=self._loop, return_exceptions=True)
+        if jobs:
+            yield from asyncio.gather(*[job.close() for job in jobs],
+                                      loop=self._loop, return_exceptions=True)
         self._failed_tasks.put_nowait(None)
         yield from self._failed_waiter
 
@@ -147,7 +146,7 @@ class JobRunner(Container):
         # a coroutine for waiting failed tasks
         # without awaiting for failed tasks async raises a warning
         while True:
-            task = self._failed_tasks.get()
+            task = yield from self._failed_tasks.get()
             if task is None:
                 return  # closing
             try:
