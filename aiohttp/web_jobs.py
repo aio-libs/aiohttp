@@ -58,7 +58,7 @@ class Job:
         except asyncio.CancelledError:
             pass
         except asyncio.TimeoutError as exc:
-            context = {'message': "Job closing reached timeout",
+            context = {'message': "Job closing timed out",
                        'job': self,
                        'exception': exc}
             if self._source_traceback is not None:
