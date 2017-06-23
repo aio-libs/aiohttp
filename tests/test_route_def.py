@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from aiohttp import web
-from aiohttp.web_urldispatcher import UrlDispatcher, RouteDef
+from aiohttp.web_urldispatcher import RouteDef, UrlDispatcher
 
 
 @pytest.fixture
