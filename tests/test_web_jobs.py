@@ -85,6 +85,9 @@ def test_exception_non_waited_job(runner, loop):
 
     assert len(runner) == 0
 
-    exc_handler.assert_called_with({'exception': exc,
-                                    'job': mock.ANY,
-                                    'message': 'Job processing failed'})
+    expect = {'exception': exc,
+              'job': mock.ANY,
+              'message': 'Job processing failed'}
+    if loop.get_debug():
+        expect['source_traceback'] = mock.ANY
+    exc_handler.assert_called_with(expect)
