@@ -6,13 +6,17 @@ from collections.abc import Container
 import async_timeout
 
 
+def create_task(coro, loop):
+    return loop.create_task(coro)
+
+
 class Job:
     __slots__ = ('_task', '_manager', '_loop', '_explicit_wait',
                  '_source_traceback')
 
     def __init__(self, coro, manager, loop):
         self._loop = loop
-        self._task = task = self._loop.create_task(coro)
+        self._task = task = create_task(coro, loop)
         self._explicit_wait = False
         self._manager = manager
 
@@ -62,7 +66,8 @@ class Job:
             self._manager.call_exception_handler(context)
 
     def _done_callback(self, task):
-        self._manager._jobs.remove(self)
+        runner = self._manager
+        runner._jobs.remove(self)
         exc = task.exception()
         if exc is not None and not self._explicit_wait:
             context = {'message': "Job processing failed",
@@ -70,7 +75,8 @@ class Job:
                        'exception': exc}
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
-            self._manager.call_exception_handler(context)
+            runner.call_exception_handler(context)
+            runner._failed_tasks.put_nowait(task)
         self._manager = None  # drop backref
 
 
@@ -80,6 +86,8 @@ class JobRunner(Container):
         self._jobs = set()
         self._timeout = timeout
         self._exception_handler = None
+        self._failed_tasks = asyncio.Queue(loop=loop)
+        self._failed_waiter = create_task(self._wait_failed(), loop)
 
     def exec(self, coro):
         job = Job(coro, self, self._loop)
@@ -100,16 +108,18 @@ class JobRunner(Container):
         jobs = self._jobs
         if not jobs:
             return
-        yield from asyncio.wait([job._wait(timeout) for job in jobs],
-                                loop=self._loop)
+        yield from asyncio.gather(*[job._wait(timeout) for job in jobs],
+                                  loop=self._loop, return_exceptions=True)
 
     @asyncio.coroutine
     def close(self):
         jobs = self._jobs
         if not jobs:
             return
-        yield from asyncio.wait([job.close() for job in jobs],
-                                loop=self._loop)
+        yield from asyncio.gather(*[job.close() for job in jobs],
+                                  loop=self._loop, return_exceptions=True)
+        self._failed_tasks.put_nowait(None)
+        yield from self._failed_waiter
 
     def get_timeout(self):
         return self._timeout
@@ -131,3 +141,19 @@ class JobRunner(Container):
             raise TypeError('A callable object or None is expected, '
                             'got {!r}'.format(handler))
         self._exception_handler = handler
+
+    @asyncio.coroutine
+    def _wait_failed(self):
+        # a coroutine for waiting failed tasks
+        # without awaiting for failed tasks async raises a warning
+        while True:
+            task = self._failed_tasks.get()
+            if task is None:
+                return  # closing
+            try:
+                yield from task
+            except Exception as exc:
+                # cleanup a warning
+                # self.call_exception_handler() is already called
+                # by Job._add_done_callback
+                pass

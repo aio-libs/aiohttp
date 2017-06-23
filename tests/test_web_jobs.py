@@ -70,6 +70,7 @@ def test_exception_in_explicit_waiting(runner, loop):
 @asyncio.coroutine
 def test_exception_non_waited_job(runner, loop):
     exc = RuntimeError()
+
     @asyncio.coroutine
     def coro():
         yield from asyncio.sleep(0, loop=loop)
@@ -84,6 +85,6 @@ def test_exception_non_waited_job(runner, loop):
 
     assert len(runner) == 0
 
-    exc_handler.assert_called_with({'exception': RuntimeError(),
+    exc_handler.assert_called_with({'exception': exc,
                                     'job': mock.ANY,
                                     'message': 'Job processing failed'})
