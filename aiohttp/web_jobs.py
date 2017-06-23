@@ -7,13 +7,13 @@ import async_timeout
 
 
 class Job:
-    __slots__ = ('_task', '_manager', '_loop', '_explicit_await',
+    __slots__ = ('_task', '_manager', '_loop', '_explicit_wait',
                  '_source_traceback')
 
     def __init__(self, coro, manager, loop):
         self._loop = loop
         self._task = task = self._loop.create_task(coro)
-        self._explicit_await = False
+        self._explicit_wait = False
         self._manager = manager
 
         if loop.get_debug():
@@ -27,7 +27,7 @@ class Job:
 
     @asyncio.coroutine
     def wait(self, timeout=None):
-        self._explicit_await = True
+        self._explicit_wait = True
         try:
             with async_timeout.timeout(timeout=timeout, loop=self._loop):
                 return (yield from self._task)
@@ -36,27 +36,24 @@ class Job:
             raise exc
 
     def done(self):
-        return self._task is None
+        return self._task.done()
 
     @asyncio.coroutine
     def close(self):
-        if self._task is None:
-            return
         self._task.cancel()
         try:
             with async_timeout.timeout(timeout=self._manager._timeout,
                                        loop=self._loop):
                 yield from self._task
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, asyncio.TimeoutError):
             pass
 
     def _done_callback(self, task):
         self._manager._jobs.remove(self)
         self._manager = None  # drop backref
-        self._task = None
         # TODO: process task exception
         exc = task.exception()
-        if exc is not None and not self._explicit_await:
+        if exc is not None and not self._explicit_wait:
             context = {'message': "Job processing failed",
                        'job': self,
                        'exception': exc}
