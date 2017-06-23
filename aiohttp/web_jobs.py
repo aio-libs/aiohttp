@@ -106,6 +106,9 @@ class JobRunner(Container):
     def __contains__(self, job):
         return job in self._jobs
 
+    def __repr__(self):
+        return '<JobRunner: {} jobs>'.format(len(self))
+
     @asyncio.coroutine
     def wait(self, timeout=None):
         """Wait for completion"""

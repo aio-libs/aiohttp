@@ -97,3 +97,26 @@ def test_close_timeout(runner):
     assert runner.close_timeout == 0.1
     runner.close_timeout = 1
     assert runner.close_timeout == 1
+
+
+@asyncio.coroutine
+def test_job_repr(runner, loop):
+    @asyncio.coroutine
+    def coro():
+        return
+
+    job = runner.exec(coro())
+    assert repr(job).startswith('<Job')
+    assert repr(job).endswith('>')
+
+
+@asyncio.coroutine
+def test_runner_repr(runner, loop):
+    @asyncio.coroutine
+    def coro():
+        return
+
+    assert repr(runner) == '<JobRunner: 0 jobs>'
+
+    runner.exec(coro())
+    assert repr(runner) == '<JobRunner: 1 jobs>'
