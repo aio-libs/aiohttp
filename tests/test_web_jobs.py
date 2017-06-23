@@ -1,6 +1,6 @@
 import asyncio
-import pytest
 
+import pytest
 
 from aiohttp.web_jobs import JobRunner
 

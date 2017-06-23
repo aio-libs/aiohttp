@@ -1,6 +1,6 @@
 import asyncio
-import traceback
 import sys
+import traceback
 from collections.abc import Container
 
 import async_timeout
