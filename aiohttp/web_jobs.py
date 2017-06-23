@@ -35,6 +35,9 @@ class Job:
             yield from self.close()
             raise exc
 
+    def done(self):
+        return self._task is None
+
     @asyncio.coroutine
     def close(self):
         if self._task is None:
@@ -62,7 +65,7 @@ class Job:
             self._manager.call_exception_handler(context)
 
 
-class JobManager(Container):
+class JobRunner(Container):
     def __init__(self, *, loop, timeout=0.1):
         self._loop = loop
         self._jobs = set()
@@ -85,21 +88,30 @@ class JobManager(Container):
     @asyncio.coroutine
     def wait(self, timeout=None):
         """Wait for completion"""
-        yield from asyncio.wait([job.wait(timeout) for job in self._jobs],
+        jobs = self._jobs
+        if not jobs:
+            return
+        yield from asyncio.wait([job.wait(timeout) for job in jobs],
                                 loop=self._loop)
 
     @asyncio.coroutine
     def close(self):
-        yield from asyncio.wait([job.close() for job in self._jobs],
+        jobs = self._jobs
+        if not jobs:
+            return
+        yield from asyncio.wait([job.close() for job in jobs],
                                 loop=self._loop)
 
-    def default_exception_handler(self, context):
-        self._loop.call_exception_handler(context)
+    def get_timeout(self):
+        return self._timeout
+
+    def set_timeout(self, timeout):
+        self._timeout = timeout
 
     def call_exception_handler(self, context):
         handler = self._exception_handler
         if handler is None:
-            handler = self.default_exception_handler
+            handler = self._loop.call_exception_handler
         return handler(context)
 
     def get_exception_handler(self):
@@ -110,9 +122,3 @@ class JobManager(Container):
             raise TypeError('A callable object or None is expected, '
                             'got {!r}'.format(handler))
         self._exception_handler = handler
-
-    def get_timeout(self):
-        return self._timeout
-
-    def set_timeout(self, timeout):
-        self._timeout = timeout
