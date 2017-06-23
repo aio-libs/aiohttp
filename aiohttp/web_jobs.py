@@ -68,15 +68,19 @@ class Job:
     def _done_callback(self, task):
         runner = self._manager
         runner._jobs.remove(self)
-        exc = task.exception()
-        if exc is not None and not self._explicit_wait:
-            context = {'message': "Job processing failed",
-                       'job': self,
-                       'exception': exc}
-            if self._source_traceback is not None:
-                context['source_traceback'] = self._source_traceback
-            runner.call_exception_handler(context)
-            runner._failed_tasks.put_nowait(task)
+        try:
+            exc = task.exception()
+        except asyncio.CancelledError:
+            pass
+        else:
+            if exc is not None and not self._explicit_wait:
+                context = {'message': "Job processing failed",
+                           'job': self,
+                           'exception': exc}
+                if self._source_traceback is not None:
+                    context['source_traceback'] = self._source_traceback
+                runner.call_exception_handler(context)
+                runner._failed_tasks.put_nowait(task)
         self._manager = None  # drop backref
 
 
@@ -120,10 +124,12 @@ class JobRunner(Container):
         self._failed_tasks.put_nowait(None)
         yield from self._failed_waiter
 
-    def get_timeout(self):
+    @property
+    def close_timeout(self):
         return self._timeout
 
-    def set_timeout(self, timeout):
+    @close_timeout.setter
+    def close_timeout(self, timeout):
         self._timeout = timeout
 
     def call_exception_handler(self, context):

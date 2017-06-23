@@ -91,3 +91,9 @@ def test_exception_non_waited_job(runner, loop):
     if loop.get_debug():
         expect['source_traceback'] = mock.ANY
     exc_handler.assert_called_with(expect)
+
+
+def test_close_timeout(runner):
+    assert runner.close_timeout == 0.1
+    runner.close_timeout = 1
+    assert runner.close_timeout == 1
