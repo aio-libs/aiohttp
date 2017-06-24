@@ -23,7 +23,7 @@ def test_exec(runner, loop):
     def coro():
         yield from asyncio.sleep(1, loop=loop)
     job = runner.exec(coro())
-    assert not job.done()
+    assert not job.closed
 
     assert len(runner) == 1
     assert list(runner) == [job]
@@ -39,7 +39,7 @@ def test_exec_retval(runner, loop):
     ret = yield from job.wait()
     assert ret == 1
 
-    assert job.done()
+    assert job.closed
 
     assert len(runner) == 0
     assert list(runner) == []
@@ -60,7 +60,7 @@ def test_exception_in_explicit_waiting(runner, loop):
     with pytest.raises(RuntimeError):
         yield from job.wait()
 
-    assert job.done()
+    assert job.closed
 
     assert len(runner) == 0
     assert list(runner) == []
@@ -117,10 +117,10 @@ def test_runner_repr(runner, loop):
     def coro():
         return
 
-    assert repr(runner) == '<JobRunner: 0 jobs>'
+    assert repr(runner) == '<JobRunner: jobs=0>'
 
     runner.exec(coro())
-    assert repr(runner) == '<JobRunner: 1 jobs>'
+    assert repr(runner) == '<JobRunner: jobs=1>'
 
 
 @asyncio.coroutine
@@ -137,7 +137,7 @@ def test_close_jobs(runner, loop):
 
     job = runner.exec(coro())
     yield from runner.close()
-    assert job.done()
+    assert job.closed
 
 
 def test_exception_handler_api(runner):
@@ -168,12 +168,12 @@ def test_wait_with_timeout(runner, loop):
     job = runner.exec(coro())
     with pytest.raises(asyncio.TimeoutError):
         yield from job.wait(0.01)
-    assert job.done()
+    assert job.closed
     assert len(runner) == 0
 
 
 @asyncio.coroutine
-def test_timeout_on_closing(runner, loop):
+def xtest_timeout_on_closing(runner, loop):
 
     @asyncio.coroutine
     def coro():
@@ -181,18 +181,93 @@ def test_timeout_on_closing(runner, loop):
             yield from asyncio.shield(asyncio.sleep(1, loop=loop),
                                       loop=loop)
         except:
-            import ipdb;ipdb.set_trace()
-            print('1')
-            yield from fut1
-            print('2')
-            fut2.set_result(None)
+            import ipdb
+            ipdb.set_trace()
 
     exc_handler = mock.Mock()
     runner.set_exception_handler(exc_handler)
     runner.close_timeout = 0.01
     job = runner.exec(coro())
     yield from job.close()
-    assert job.done()
+    assert job.closed
     expect = {}
-    assert exc_handler.called
-    exc_handler.assert_called_with()#runner, expect)
+    exc_handler.assert_called_with(runner, expect)
+
+
+def test_concurrency(runner):
+    assert runner.concurrency == 100
+    runner.concurrency = 2
+    assert runner.concurrency == 2
+
+
+@asyncio.coroutine
+def test_runner_councurrency_limit(runner, loop):
+    @asyncio.coroutine
+    def coro(fut):
+        yield from fut
+
+    runner.concurrency = 1
+    assert runner.active == 0
+
+    fut1 = create_future(loop)
+    job1 = runner.exec(coro(fut1))
+
+    assert runner.active == 1
+    assert 'pending' not in repr(job1)
+    assert 'closed' not in repr(job1)
+
+    fut2 = create_future(loop)
+    job2 = runner.exec(coro(fut2))
+
+    assert runner.active == 1
+    assert 'pending' in repr(job2)
+    assert 'closed' not in repr(job2)
+
+    fut1.set_result(None)
+    yield from job1.wait()
+
+    assert runner.active == 1
+    assert 'pending' not in repr(job1)
+    assert 'closed' in repr(job1)
+    assert 'pending' not in repr(job2)
+    assert 'closed' not in repr(job2)
+
+    fut2.set_result(None)
+    yield from job2.wait()
+
+    assert runner.active == 0
+    assert 'pending' not in repr(job1)
+    assert 'closed' in repr(job1)
+    assert 'pending' not in repr(job2)
+    assert 'closed' in repr(job2)
+
+
+@asyncio.coroutine
+def test_resume_closed_task(runner, loop):
+    @asyncio.coroutine
+    def coro(fut):
+        yield from fut
+
+    runner.concurrency = 1
+    assert runner.active == 0
+
+    fut1 = create_future(loop)
+    job1 = runner.exec(coro(fut1))
+
+    assert runner.active == 1
+
+    fut2 = create_future(loop)
+    job2 = runner.exec(coro(fut2))
+
+    assert runner.active == 1
+
+    yield from job2.close()
+    assert job2.closed
+    assert 'closed' in repr(job2)
+    assert 'pending' not in repr(job2)
+
+    fut1.set_result(None)
+    yield from job1.wait()
+
+    assert runner.active == 0
+    assert len(runner) == 0

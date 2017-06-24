@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import traceback
+from collections import deque
 from collections.abc import Container
 
 import async_timeout
@@ -11,25 +12,31 @@ def create_task(coro, loop):
 
 
 class Job:
-    __slots__ = ('_task', '_runner', '_loop', '_explicit_wait',
-                 '_source_traceback')
+    _source_traceback = None
+    _closed = False
+    _explicit_wait = False
+    _task = None
 
     def __init__(self, coro, manager, loop):
         self._loop = loop
-        self._task = task = create_task(coro, loop)
-        self._explicit_wait = False
+        self._coro = coro
         self._runner = manager
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(2))
-        else:
-            self._source_traceback = None
 
-        task.add_done_callback(self._done_callback)
-        manager._jobs.add(self)
+    def _start(self):
+        assert not self._closed
+        self._task = create_task(self._coro, self._loop)
+        self._task.add_done_callback(self._done_callback)
 
     def __repr__(self):
-        return '<Job {!r}>'.format(self._task)
+        info = []
+        if self._closed:
+            info.append('closed')
+        elif self._task is None:
+            info.append('pending')
+        return '<Job coro=<{}>>'.format(' '.join(info), self._coro)
 
     @asyncio.coroutine
     def wait(self, timeout=None):
@@ -45,12 +52,17 @@ class Job:
             yield from self.close()
             raise exc
 
-    def done(self):
-        return self._task.done()
+    @property
+    def closed(self):
+        return self._closed
 
     @asyncio.coroutine
     def close(self):
-        if self._task.done():
+        if self._task is None:
+            self._closed = True
+            self._runner._done(self, True)
+            return
+        if self._closed:
             return
         self._task.cancel()
         # self._runner is None after _done_callback()
@@ -62,7 +74,6 @@ class Job:
         except asyncio.CancelledError:
             pass
         except asyncio.TimeoutError as exc:
-            import ipdb;ipdb.set_trace()
             context = {'message': "Job closing timed out",
                        'job': self,
                        'exception': exc}
@@ -72,7 +83,7 @@ class Job:
 
     def _done_callback(self, task):
         runner = self._runner
-        runner._jobs.remove(self)
+        runner._done(self, False)
         try:
             exc = task.exception()
         except asyncio.CancelledError:
@@ -87,19 +98,29 @@ class Job:
                 runner.call_exception_handler(context)
                 runner._failed_tasks.put_nowait(task)
         self._runner = None  # drop backref
+        self._closed = True
 
 
 class JobRunner(Container):
-    def __init__(self, *, loop, timeout=0.1):
+    def __init__(self, *, loop, timeout=0.1, concurrency=100):
         self._loop = loop
         self._jobs = set()
         self._timeout = timeout
+        self._concurrency = concurrency
         self._exception_handler = None
         self._failed_tasks = asyncio.Queue(loop=loop)
         self._failed_waiter = create_task(self._wait_failed(), loop)
+        self._pending = deque()
+        self._active = 0
 
     def exec(self, coro):
         job = Job(coro, self, self._loop)
+        self._jobs.add(job)
+        if self._active < self._concurrency:
+            self._active += 1
+            job._start()
+        else:
+            self._pending.append(job)
         return job
 
     def __iter__(self):
@@ -112,7 +133,7 @@ class JobRunner(Container):
         return job in self._jobs
 
     def __repr__(self):
-        return '<JobRunner: {} jobs>'.format(len(self))
+        return '<JobRunner: jobs={}>'.format(len(self))
 
     @asyncio.coroutine
     def wait(self, timeout=None):
@@ -131,6 +152,18 @@ class JobRunner(Container):
                                       loop=self._loop, return_exceptions=True)
         self._failed_tasks.put_nowait(None)
         yield from self._failed_waiter
+
+    @property
+    def concurrency(self):
+        return self._concurrency
+
+    @concurrency.setter
+    def concurrency(self, concurrency):
+        self._concurrency = concurrency
+
+    @property
+    def active(self):
+        return self._active
 
     @property
     def close_timeout(self):
@@ -155,6 +188,17 @@ class JobRunner(Container):
             raise TypeError('A callable object or None is expected, '
                             'got {!r}'.format(handler))
         self._exception_handler = handler
+
+    def _done(self, job, pending):
+        self._jobs.remove(job)
+        if not pending:
+            self._active -= 1
+        while self._active < self._concurrency and self._pending:
+            new_job = self._pending.popleft()
+            if new_job.closed:
+                continue
+            new_job._start()
+            self._active += 1
 
     @asyncio.coroutine
     def _wait_failed(self):
