@@ -90,7 +90,7 @@ def test_exception_non_waited_job(runner, loop):
               'message': 'Job processing failed'}
     if loop.get_debug():
         expect['source_traceback'] = mock.ANY
-    exc_handler.assert_called_with(expect)
+    exc_handler.assert_called_with(runner, expect)
 
 
 def test_close_timeout(runner):
@@ -120,3 +120,52 @@ def test_runner_repr(runner, loop):
 
     runner.exec(coro())
     assert repr(runner) == '<JobRunner: 1 jobs>'
+
+
+@asyncio.coroutine
+def test_wait_without_jobs(runner):
+    yield from runner.wait()
+    assert not runner
+
+
+@asyncio.coroutine
+def test_close_jobs(runner, loop):
+    @asyncio.coroutine
+    def coro():
+        yield from asyncio.sleep(1, loop=loop)
+
+    job = runner.exec(coro())
+    yield from runner.close()
+    assert job.done()
+
+
+def test_exception_handler_api(runner):
+    assert runner.get_exception_handler() is None
+    handler = mock.Mock()
+    runner.set_exception_handler(handler)
+    assert runner.get_exception_handler() is handler
+    with pytest.raises(TypeError):
+        runner.set_exception_handler(1)
+    runner.set_exception_handler(None)
+    assert runner.get_exception_handler() is None
+
+
+def test_exception_handler_default(runner, loop):
+    handler = mock.Mock()
+    loop.set_exception_handler(handler)
+    d = {'a': 'b'}
+    runner.call_exception_handler(d)
+    handler.assert_called_with(loop, d)
+
+
+@asyncio.coroutine
+def test_wait_with_timeout(runner, loop):
+    @asyncio.coroutine
+    def coro():
+        yield from asyncio.sleep(1, loop=loop)
+
+    job = runner.exec(coro())
+    with pytest.raises(asyncio.TimeoutError):
+        yield from job.wait(0.01)
+    assert job.done()
+    assert len(runner) == 0

@@ -11,14 +11,14 @@ def create_task(coro, loop):
 
 
 class Job:
-    __slots__ = ('_task', '_manager', '_loop', '_explicit_wait',
+    __slots__ = ('_task', '_runner', '_loop', '_explicit_wait',
                  '_source_traceback')
 
     def __init__(self, coro, manager, loop):
         self._loop = loop
         self._task = task = create_task(coro, loop)
         self._explicit_wait = False
-        self._manager = manager
+        self._runner = manager
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(2))
@@ -50,9 +50,11 @@ class Job:
 
     @asyncio.coroutine
     def close(self):
+        if self._task.done():
+            return
         self._task.cancel()
         try:
-            with async_timeout.timeout(timeout=self._manager._timeout,
+            with async_timeout.timeout(timeout=self._runner._timeout,
                                        loop=self._loop):
                 yield from self._task
         except asyncio.CancelledError:
@@ -63,10 +65,10 @@ class Job:
                        'exception': exc}
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
-            self._manager.call_exception_handler(context)
+            self._runner.call_exception_handler(context)
 
     def _done_callback(self, task):
-        runner = self._manager
+        runner = self._runner
         runner._jobs.remove(self)
         try:
             exc = task.exception()
@@ -81,7 +83,7 @@ class Job:
                     context['source_traceback'] = self._source_traceback
                 runner.call_exception_handler(context)
                 runner._failed_tasks.put_nowait(task)
-        self._manager = None  # drop backref
+        self._runner = None  # drop backref
 
 
 class JobRunner(Container):
@@ -138,8 +140,9 @@ class JobRunner(Container):
     def call_exception_handler(self, context):
         handler = self._exception_handler
         if handler is None:
-            handler = self._loop.call_exception_handler
-        return handler(context)
+            handler = self._loop.call_exception_handler(context)
+        else:
+            handler(self, context)
 
     def get_exception_handler(self):
         return self._exception_handler
