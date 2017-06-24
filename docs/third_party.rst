@@ -49,7 +49,7 @@ aiohttp extensions
 - `pytest-aiohttp <https://github.com/aio-libs/pytest-aiohttp>`_
   pytest plugin for aiohttp support.
 
-- `aiohttp-mako <https://github.com/aio-libs/aiohttp-mako>`_ mako
+- `aiohttp-mako <https://github.com/aio-libs/aiohttp-mako>`_ Mako
   template renderer for aiohttp.web.
 
 - `aiohttp-jinja2 <https://github.com/aio-libs/aiohttp-jinja2>`_ Jinja2
@@ -131,9 +131,8 @@ period ask to raise he status.
   <https://github.com/CenterForOpenScience/aiohttpretty>`_ A simple
   asyncio compatible httpretty mock using aiohttp.
 
-- `aioresponses <https://github.com/pnuckowski/aioresponses>`_
-  Aioresponses is a helper for mock/fake web requests in python
-  aiohttp package.
+- `aioresponses <https://github.com/pnuckowski/aioresponses>`_ a
+  helper for mock/fake web requests in python aiohttp package.
 
 - `aiohttp-transmute
   <https://github.com/toumorokoshi/aiohttp-transmute>`_ A transmute
@@ -143,7 +142,8 @@ period ask to raise he status.
   Package to build routes using swagger specification.
 
 - `aiohttp-login <https://github.com/imbolc/aiohttp-login>`_
-  Registration and authorization (including social) for aiohttp apps.
+  Registration and authorization (including social) for aiohttp
+  applications.
 
 - `aiohttp_utils <https://github.com/sloria/aiohttp_utils>`_ Handy
   utilities for building aiohttp.web applications.
@@ -156,13 +156,13 @@ period ask to raise he status.
 
 - `aiohttp_autoreload
   <https://github.com/anti1869/aiohttp_autoreload>`_ Makes aiohttp
-  server autoreload on source code change.
+  server auto-reload on source code change.
 
 - `gidgethub <https://github.com/brettcannon/gidgethub>`_ An async
   GitHub API library for Python.
 
 - `aiohttp_jrpc <https://github.com/zloidemon/aiohttp_jrpc>`_ aiohttp
-  jsonrpc service.
+  JSON-RPC service.
 
 - `fbemissary <https://github.com/cdunklau/fbemissary>`_ A bot
   framework for the Facebook Messenger platform, built on asyncio and
@@ -175,14 +175,14 @@ period ask to raise he status.
   tornado reloader to asyncio.
 
 - `aiohttp_babel <https://github.com/jie/aiohttp_babel>`_ Babel
-  localisation support for aiohttp.
+  localization support for aiohttp.
 
 - `python-mocket <https://github.com/mindflayer/python-mocket>`_ a
   socket mock framework - for all kinds of socket animals, web-clients
   included.
 
 - `aioraft <https://github.com/lisael/aioraft>`_ asyncio RAFT
-  algorithm bassed on aiohttp.
+  algorithm based on aiohttp.
 
 - `home-assistant <https://github.com/home-assistant/home-assistant>`_
   Open-source home automation platform running on Python 3.
