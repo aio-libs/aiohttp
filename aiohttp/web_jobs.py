@@ -114,7 +114,7 @@ class JobRunner(Container):
         self._active = 0
         self._closed = False
 
-    def exec(self, coro):
+    def run(self, coro):
         job = Job(coro, self, self._loop)
         self._jobs.add(job)
         if self._active < self._concurrency:
