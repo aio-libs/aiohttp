@@ -43,13 +43,7 @@ async def listen_to_redis(app):
 
 
 async def start_background_tasks(app):
-    app['redis_listener'] = app.loop.create_task(listen_to_redis(app))
-
-
-async def cleanup_background_tasks(app):
-    print('cleanup background tasks...')
-    app['redis_listener'].cancel()
-    await app['redis_listener']
+    await app.jobs.run(listen_to_redis(app))
 
 
 async def init(loop):
@@ -57,7 +51,6 @@ async def init(loop):
     app['websockets'] = []
     app.router.add_get('/news', websocket_handler)
     app.on_startup.append(start_background_tasks)
-    app.on_cleanup.append(cleanup_background_tasks)
     app.on_shutdown.append(on_shutdown)
     return app
 
