@@ -6,9 +6,10 @@ from collections.abc import Container
 
 import async_timeout
 
+from .helpers import ensure_future
 
-def create_task(coro, loop):
-    return loop.create_task(coro)
+
+__all__ = ['JobRunner']
 
 
 class Job:
@@ -27,7 +28,7 @@ class Job:
 
     def _start(self):
         assert not self._closed
-        self._task = create_task(self._coro, self._loop)
+        self._task = ensure_future(self._coro, loop=self._loop)
         self._task.add_done_callback(self._done_callback)
 
     def __repr__(self):
@@ -36,15 +37,14 @@ class Job:
             info.append('closed')
         elif self._task is None:
             info.append('pending')
-        return '<Job coro=<{}>>'.format(' '.join(info), self._coro)
+        info = ' '.join(info)
+        if info:
+            info += ' '
+        return '<Job {}coro=<{}>>'.format(info, self._coro)
 
     @asyncio.coroutine
     def wait(self, timeout=None):
         self._explicit_wait = True
-        return (yield from self._wait(timeout))
-
-    @asyncio.coroutine
-    def _wait(self, timeout):
         try:
             with async_timeout.timeout(timeout=timeout, loop=self._loop):
                 return (yield from self._task)
@@ -102,16 +102,17 @@ class Job:
 
 
 class JobRunner(Container):
-    def __init__(self, *, loop, timeout=0.1, concurrency=100):
+    def __init__(self, *, loop):
         self._loop = loop
         self._jobs = set()
-        self._timeout = timeout
-        self._concurrency = concurrency
+        self._timeout = 0.1
+        self._concurrency = 100
         self._exception_handler = None
         self._failed_tasks = asyncio.Queue(loop=loop)
-        self._failed_waiter = create_task(self._wait_failed(), loop)
+        self._failed_waiter = ensure_future(self._wait_failed(), loop=loop)
         self._pending = deque()
         self._active = 0
+        self._closed = False
 
     def exec(self, coro):
         job = Job(coro, self, self._loop)
@@ -133,25 +134,29 @@ class JobRunner(Container):
         return job in self._jobs
 
     def __repr__(self):
-        return '<JobRunner: jobs={}>'.format(len(self))
+        info = []
+        if self._closed:
+            info.append('closed')
+        info = ' '.join(info)
+        if info:
+            info += ' '
+        return '<JobRunner {}jobs={}>'.format(info, len(self))
 
-    @asyncio.coroutine
-    def wait(self, timeout=None):
-        """Wait for completion"""
-        jobs = self._jobs
-        if not jobs:
-            return
-        yield from asyncio.gather(*[job._wait(timeout) for job in jobs],
-                                  loop=self._loop, return_exceptions=True)
+    @property
+    def closed(self):
+        return self._closed
 
     @asyncio.coroutine
     def close(self):
+        if self._closed:
+            return
         jobs = self._jobs
         if jobs:
             yield from asyncio.gather(*[job.close() for job in jobs],
                                       loop=self._loop, return_exceptions=True)
         self._failed_tasks.put_nowait(None)
         yield from self._failed_waiter
+        self._closed = True
 
     @property
     def concurrency(self):

@@ -82,7 +82,7 @@ def test_exception_non_waited_job(runner, loop):
     runner.exec(coro())
     assert len(runner) == 1
 
-    yield from runner.wait()
+    yield from asyncio.sleep(0.01, loop=loop)
 
     assert len(runner) == 0
 
@@ -117,16 +117,13 @@ def test_runner_repr(runner, loop):
     def coro():
         return
 
-    assert repr(runner) == '<JobRunner: jobs=0>'
+    assert repr(runner) == '<JobRunner jobs=0>'
 
     runner.exec(coro())
-    assert repr(runner) == '<JobRunner: jobs=1>'
+    assert repr(runner) == '<JobRunner jobs=1>'
 
-
-@asyncio.coroutine
-def test_wait_without_jobs(runner):
-    yield from runner.wait()
-    assert not runner
+    yield from runner.close()
+    assert repr(runner) == '<JobRunner closed jobs=0>'
 
 
 @asyncio.coroutine
@@ -135,9 +132,12 @@ def test_close_jobs(runner, loop):
     def coro():
         yield from asyncio.sleep(1, loop=loop)
 
+    assert not runner.closed
+
     job = runner.exec(coro())
     yield from runner.close()
     assert job.closed
+    assert runner.closed
 
 
 def test_exception_handler_api(runner):

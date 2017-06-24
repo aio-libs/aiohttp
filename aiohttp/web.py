@@ -21,6 +21,7 @@ from .log import access_logger, web_logger
 from .signals import FuncSignal, PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
+from .web_jobs import JobRunner
 from .web_middlewares import *  # noqa
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
@@ -75,6 +76,7 @@ class Application(MutableMapping):
         self._state = {}
         self._frozen = False
         self._subapps = []
+        self._jobs = None
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
@@ -133,6 +135,8 @@ class Application(MutableMapping):
         if self._debug is ...:
             self._debug = loop.get_debug()
 
+        self._jobs = JobRunner(loop=loop)
+
         # set loop to sub applications
         for subapp in self._subapps:
             subapp._set_loop(loop)
@@ -162,6 +166,10 @@ class Application(MutableMapping):
     @property
     def debug(self):
         return self._debug
+
+    @property
+    def jobs(self):
+        return self._jobs
 
     def _reg_subapp_signals(self, subapp):
 
@@ -265,6 +273,7 @@ class Application(MutableMapping):
         Should be called before cleanup()
         """
         yield from self.on_shutdown.send(self)
+        yield from self._jobs.close()
 
     @asyncio.coroutine
     def cleanup(self):
