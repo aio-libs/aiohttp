@@ -45,7 +45,5 @@ class Server:
         self._connections.clear()
         self.time_service.close()
 
-    finish_connections = shutdown
-
     def __call__(self):
         return RequestHandler(self, loop=self._loop, **self._kwargs)

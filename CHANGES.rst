@@ -9,7 +9,7 @@ Changes
 
 - Make enable_compression work on HTTP/1.0 #1828
 
--
+- Drop deprecated `Server.finish_connections`
 
 -
 

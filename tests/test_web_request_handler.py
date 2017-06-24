@@ -34,7 +34,7 @@ def test_connections(loop):
 
 
 @asyncio.coroutine
-def test_finish_connection_no_timeout(loop):
+def test_shutdown_no_timeout(loop):
     app = web.Application()
     manager = app.make_handler(loop=loop)
 
@@ -43,7 +43,7 @@ def test_finish_connection_no_timeout(loop):
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
-    yield from manager.finish_connections()
+    yield from manager.shutdown()
 
     manager.connection_lost(handler, None)
     assert manager.connections == []
@@ -51,7 +51,7 @@ def test_finish_connection_no_timeout(loop):
 
 
 @asyncio.coroutine
-def test_finish_connection_timeout(loop):
+def test_shutdown_timeout(loop):
     app = web.Application()
     manager = app.make_handler(loop=loop)
 
@@ -60,7 +60,7 @@ def test_finish_connection_timeout(loop):
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
-    yield from manager.finish_connections(timeout=0.1)
+    yield from manager.shutdown(timeout=0.1)
 
     manager.connection_lost(handler, None)
     assert manager.connections == []

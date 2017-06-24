@@ -1102,7 +1102,7 @@ class TestHttpClientConnector(unittest.TestCase):
 
     def tearDown(self):
         if self.handler:
-            self.loop.run_until_complete(self.handler.finish_connections())
+            self.loop.run_until_complete(self.handler.shutdown())
         self.loop.stop()
         self.loop.run_forever()
         self.loop.close()

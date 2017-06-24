@@ -1391,19 +1391,6 @@ A protocol factory compatible with
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
 
-   .. coroutinemethod:: Server.finish_connections(timeout)
-
-      .. deprecated:: 1.2
-
-         A deprecated alias for :meth:`shutdown`.
-
-   .. versionchanged:: 1.2
-
-      ``Server`` was called ``RequestHandlerFactory`` before ``aiohttp==1.2``.
-
-      The rename has no deprecation period but it's safe: no user
-      should instantiate the class by hands.
-
 
 Router
 ^^^^^^
