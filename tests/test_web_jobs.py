@@ -18,11 +18,12 @@ def test_ctor(runner):
     assert len(runner) == 0
 
 
+@asyncio.coroutine
 def test_run(runner, loop):
     @asyncio.coroutine
     def coro():
         yield from asyncio.sleep(1, loop=loop)
-    job = runner.run(coro())
+    job = yield from runner.run(coro())
     assert not job.closed
 
     assert len(runner) == 1
@@ -35,7 +36,7 @@ def test_run_retval(runner, loop):
     @asyncio.coroutine
     def coro():
         return 1
-    job = runner.run(coro())
+    job = yield from runner.run(coro())
     ret = yield from job.wait()
     assert ret == 1
 
@@ -55,7 +56,7 @@ def test_exception_in_explicit_waiting(runner, loop):
 
     exc_handler = mock.Mock()
     runner.set_exception_handler(exc_handler)
-    job = runner.run(coro())
+    job = yield from runner.run(coro())
 
     with pytest.raises(RuntimeError):
         yield from job.wait()
@@ -79,7 +80,7 @@ def test_exception_non_waited_job(runner, loop):
 
     exc_handler = mock.Mock()
     runner.set_exception_handler(exc_handler)
-    runner.run(coro())
+    yield from runner.run(coro())
     assert len(runner) == 1
 
     yield from asyncio.sleep(0.01, loop=loop)
@@ -106,7 +107,7 @@ def test_job_repr(runner, loop):
     def coro():
         return
 
-    job = runner.run(coro())
+    job = yield from runner.run(coro())
     assert repr(job).startswith('<Job')
     assert repr(job).endswith('>')
 
@@ -119,7 +120,7 @@ def test_runner_repr(runner, loop):
 
     assert repr(runner) == '<JobRunner jobs=0>'
 
-    runner.run(coro())
+    yield from runner.run(coro())
     assert repr(runner) == '<JobRunner jobs=1>'
 
     yield from runner.close()
@@ -134,7 +135,7 @@ def test_close_jobs(runner, loop):
 
     assert not runner.closed
 
-    job = runner.run(coro())
+    job = yield from runner.run(coro())
     yield from runner.close()
     assert job.closed
     assert runner.closed
@@ -165,7 +166,7 @@ def test_wait_with_timeout(runner, loop):
     def coro():
         yield from asyncio.sleep(1, loop=loop)
 
-    job = runner.run(coro())
+    job = yield from runner.run(coro())
     with pytest.raises(asyncio.TimeoutError):
         yield from job.wait(0.01)
     assert job.closed
@@ -188,7 +189,7 @@ def test_timeout_on_closing(runner, loop):
     exc_handler = mock.Mock()
     runner.set_exception_handler(exc_handler)
     runner.close_timeout = 0.01
-    job = runner.run(coro())
+    job = yield from runner.run(coro())
     yield from asyncio.sleep(0.001, loop=loop)
     yield from job.close()
     assert job.closed
@@ -217,14 +218,14 @@ def test_runner_councurrency_limit(runner, loop):
     assert runner.active_count == 0
 
     fut1 = create_future(loop)
-    job1 = runner.run(coro(fut1))
+    job1 = yield from runner.run(coro(fut1))
 
     assert runner.active_count == 1
     assert 'pending' not in repr(job1)
     assert 'closed' not in repr(job1)
 
     fut2 = create_future(loop)
-    job2 = runner.run(coro(fut2))
+    job2 = yield from runner.run(coro(fut2))
 
     assert runner.active_count == 1
     assert 'pending' in repr(job2)
@@ -259,12 +260,12 @@ def test_resume_closed_task(runner, loop):
     assert runner.active_count == 0
 
     fut1 = create_future(loop)
-    job1 = runner.run(coro(fut1))
+    job1 = yield from runner.run(coro(fut1))
 
     assert runner.active_count == 1
 
     fut2 = create_future(loop)
-    job2 = runner.run(coro(fut2))
+    job2 = yield from runner.run(coro(fut2))
 
     assert runner.active_count == 1
 

@@ -114,6 +114,7 @@ class JobRunner(Container):
         self._active = 0
         self._closed = False
 
+    @asyncio.coroutine
     def run(self, coro):
         job = Job(coro, self, self._loop)
         self._jobs.add(job)
