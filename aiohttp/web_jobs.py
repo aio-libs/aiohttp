@@ -53,6 +53,8 @@ class Job:
         if self._task.done():
             return
         self._task.cancel()
+        # self._runner is None after _done_callback()
+        runner = self._runner
         try:
             with async_timeout.timeout(timeout=self._runner._timeout,
                                        loop=self._loop):
@@ -60,12 +62,13 @@ class Job:
         except asyncio.CancelledError:
             pass
         except asyncio.TimeoutError as exc:
+            import ipdb;ipdb.set_trace()
             context = {'message': "Job closing timed out",
                        'job': self,
                        'exception': exc}
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
-            self._runner.call_exception_handler(context)
+            runner.call_exception_handler(context)
 
     def _done_callback(self, task):
         runner = self._runner

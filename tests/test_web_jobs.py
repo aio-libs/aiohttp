@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 
+from aiohttp.helpers import create_future
 from aiohttp.web_jobs import JobRunner
 
 
@@ -169,3 +170,29 @@ def test_wait_with_timeout(runner, loop):
         yield from job.wait(0.01)
     assert job.done()
     assert len(runner) == 0
+
+
+@asyncio.coroutine
+def test_timeout_on_closing(runner, loop):
+
+    @asyncio.coroutine
+    def coro():
+        try:
+            yield from asyncio.shield(asyncio.sleep(1, loop=loop),
+                                      loop=loop)
+        except:
+            import ipdb;ipdb.set_trace()
+            print('1')
+            yield from fut1
+            print('2')
+            fut2.set_result(None)
+
+    exc_handler = mock.Mock()
+    runner.set_exception_handler(exc_handler)
+    runner.close_timeout = 0.01
+    job = runner.exec(coro())
+    yield from job.close()
+    assert job.done()
+    expect = {}
+    assert exc_handler.called
+    exc_handler.assert_called_with()#runner, expect)
