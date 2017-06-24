@@ -173,24 +173,31 @@ def test_wait_with_timeout(runner, loop):
 
 
 @asyncio.coroutine
-def xtest_timeout_on_closing(runner, loop):
+def test_timeout_on_closing(runner, loop):
+
+    fut1 = create_future(loop)
+    fut2 = create_future(loop)
 
     @asyncio.coroutine
     def coro():
         try:
-            yield from asyncio.shield(asyncio.sleep(1, loop=loop),
-                                      loop=loop)
-        except:
-            import ipdb
-            ipdb.set_trace()
+            yield from fut1
+        except asyncio.CancelledError:
+            yield from fut2
 
     exc_handler = mock.Mock()
     runner.set_exception_handler(exc_handler)
     runner.close_timeout = 0.01
     job = runner.exec(coro())
+    yield from asyncio.sleep(0.001, loop=loop)
     yield from job.close()
     assert job.closed
-    expect = {}
+    assert fut1.cancelled()
+    expect = {'message': 'Job closing timed out',
+              'job': job,
+              'exception': mock.ANY}
+    if loop.get_debug():
+        expect['source_traceback'] = mock.ANY
     exc_handler.assert_called_with(runner, expect)
 
 
