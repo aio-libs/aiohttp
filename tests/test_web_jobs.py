@@ -83,7 +83,7 @@ def test_exception_non_waited_job(runner, loop):
     yield from runner.run(coro())
     assert len(runner) == 1
 
-    yield from asyncio.sleep(0.01, loop=loop)
+    yield from asyncio.sleep(0.05, loop=loop)
 
     assert len(runner) == 0
 
