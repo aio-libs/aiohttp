@@ -24,6 +24,7 @@ BasicAuth
 BodyPartReader
 builtin
 BytesIO
+botocore
 cchardet
 cChardet
 charset
@@ -62,6 +63,7 @@ env
 environ
 eof
 epoll
+Facebook
 fallback
 filename
 finalizers
@@ -78,6 +80,7 @@ highlevel
 hostnames
 HTTPException
 HttpProcessingError
+httpretty
 https
 incapsulates
 impl
@@ -106,6 +109,7 @@ localhost
 login
 lookup
 lookups
+Mako
 manylinux
 metadata
 middleware
@@ -128,6 +132,7 @@ Nginx
 Nikolay
 noop
 nowait
+OAuth
 optimizations
 os
 outcoming
@@ -221,6 +226,7 @@ utils
 uvloop
 vcvarsall
 waituntil
+webapp
 websocket
 websockets
 Websockets
