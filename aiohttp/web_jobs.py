@@ -162,7 +162,7 @@ class JobRunner(Container):
         self._concurrency = concurrency
 
     @property
-    def active(self):
+    def active_count(self):
         return self._active
 
     @property

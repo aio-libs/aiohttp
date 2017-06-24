@@ -207,26 +207,26 @@ def test_runner_councurrency_limit(runner, loop):
         yield from fut
 
     runner.concurrency = 1
-    assert runner.active == 0
+    assert runner.active_count == 0
 
     fut1 = create_future(loop)
     job1 = runner.exec(coro(fut1))
 
-    assert runner.active == 1
+    assert runner.active_count == 1
     assert 'pending' not in repr(job1)
     assert 'closed' not in repr(job1)
 
     fut2 = create_future(loop)
     job2 = runner.exec(coro(fut2))
 
-    assert runner.active == 1
+    assert runner.active_count == 1
     assert 'pending' in repr(job2)
     assert 'closed' not in repr(job2)
 
     fut1.set_result(None)
     yield from job1.wait()
 
-    assert runner.active == 1
+    assert runner.active_count == 1
     assert 'pending' not in repr(job1)
     assert 'closed' in repr(job1)
     assert 'pending' not in repr(job2)
@@ -235,7 +235,7 @@ def test_runner_councurrency_limit(runner, loop):
     fut2.set_result(None)
     yield from job2.wait()
 
-    assert runner.active == 0
+    assert runner.active_count == 0
     assert 'pending' not in repr(job1)
     assert 'closed' in repr(job1)
     assert 'pending' not in repr(job2)
@@ -249,17 +249,17 @@ def test_resume_closed_task(runner, loop):
         yield from fut
 
     runner.concurrency = 1
-    assert runner.active == 0
+    assert runner.active_count == 0
 
     fut1 = create_future(loop)
     job1 = runner.exec(coro(fut1))
 
-    assert runner.active == 1
+    assert runner.active_count == 1
 
     fut2 = create_future(loop)
     job2 = runner.exec(coro(fut2))
 
-    assert runner.active == 1
+    assert runner.active_count == 1
 
     yield from job2.close()
     assert job2.closed
@@ -269,5 +269,5 @@ def test_resume_closed_task(runner, loop):
     fut1.set_result(None)
     yield from job1.wait()
 
-    assert runner.active == 0
+    assert runner.active_count == 0
     assert len(runner) == 0
