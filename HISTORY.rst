@@ -1,11 +1,11 @@
 1.3.5 (2017-03-16)
-------------------
+==================
 
 - Fixed None timeout support #1720
 
 
 1.3.4 (2017-03-14)
-------------------
+==================
 
 - Revert timeout handling in client request
 
@@ -25,13 +25,13 @@
 
 
 1.3.3 (2017-02-19)
-------------------
+==================
 
 - Fixed memory leak in time service #1656
 
 
 1.3.2 (2017-02-16)
-------------------
+==================
 
 - Awaiting on WebSocketResponse.send_* does not work #1645
 
@@ -41,7 +41,7 @@
 
 
 1.3.1 (2017-02-09)
-------------------
+==================
 
 - Handle CLOSING in WebSocketResponse.__anext__
 
@@ -49,9 +49,10 @@
 
 
 1.3.0 (2017-02-08)
-------------------
+==================
 
-- Multipart writer validates the data on append instead of on a request send #920
+- Multipart writer validates the data on append instead of on a
+  request send #920
 
 - Multipart reader accepts multipart messages with or without their epilogue
   to consistently handle valid and legacy behaviors #1526 #1581
@@ -75,9 +76,11 @@
 
 - Having a `:` or `@` in a route does not work #1552
 
-- Added `receive_timeout` timeout for websocket to receive complete message. #1325
+- Added `receive_timeout` timeout for websocket to receive complete
+  message. #1325
 
-- Added `heartbeat` parameter for websocket to automatically send `ping` message. #1024 #777
+- Added `heartbeat` parameter for websocket to automatically send
+  `ping` message. #1024 #777
 
 - Remove `web.Application` dependency from `web.UrlDispatcher` #1510
 
@@ -109,15 +112,16 @@
 - Close response connection if we can not consume whole http
   message during client response release
 
-- Abort closed ssl client transports, broken servers can keep socket open un-limit time #1568
+- Abort closed ssl client transports, broken servers can keep socket
+  open un-limit time #1568
 
 - Log warning instead of `RuntimeError` is websocket connection is closed.
 
 - Deprecated: `aiohttp.protocol.HttpPrefixParser`
   will be removed in 1.4 #1590
 
-- Deprecated: Servers response's `.started`, `.start()` and `.can_start()` method
-  will be removed in 1.4 #1591
+- Deprecated: Servers response's `.started`, `.start()` and
+  `.can_start()` method will be removed in 1.4 #1591
 
 - Deprecated: Adding `sub app` via `app.router.add_subapp()` is deprecated
   use `app.add_subapp()` instead, will be removed in 1.4 #1592
@@ -131,7 +135,7 @@
 
 
 1.2.0 (2016-12-17)
-------------------
+==================
 
 - Extract `BaseRequest` from `web.Request`, introduce `web.Server`
   (former `RequestHandlerFactory`), introduce new low-level web server
@@ -190,18 +194,18 @@
 
 
 1.1.6 (2016-11-28)
-------------------
+==================
 
 - Fix `BodyPartReader.read_chunk` bug about returns zero bytes before
   `EOF` #1428
 
 1.1.5 (2016-11-16)
-------------------
+==================
 
 - Fix static file serving in fallback mode #1401
 
 1.1.4 (2016-11-14)
-------------------
+==================
 
 - Make `TestServer.make_url` compatible with `yarl.URL` #1389
 
@@ -210,13 +214,13 @@
 
 
 1.1.3 (2016-11-10)
-------------------
+==================
 
 - Support *root* resources for sub-applications #1379
 
 
 1.1.2 (2016-11-08)
-------------------
+==================
 
 - Allow starting variables with an underscore #1379
 
@@ -227,12 +231,12 @@
 - Don't propagate pre and post signals to sub-application #1377
 
 1.1.1 (2016-11-04)
-------------------
+==================
 
 - Fix documentation generation #1120
 
 1.1.0 (2016-11-03)
-------------------
+==================
 
 - Drop deprecated `WSClientDisconnectedError` (BACKWARD INCOMPATIBLE)
 
@@ -332,21 +336,21 @@
 - Implement `web.Request.clone()` #1361
 
 1.0.5 (2016-10-11)
-------------------
+==================
 
 - Fix StreamReader._read_nowait to return all available
   data up to the requested amount #1297
 
 
 1.0.4 (2016-09-22)
-------------------
+==================
 
 - Fix FlowControlStreamReader.read_nowait so that it checks
   whether the transport is paused #1206
 
 
 1.0.2 (2016-09-22)
-------------------
+==================
 
 - Make CookieJar compatible with 32-bit systems #1188
 
@@ -358,7 +362,7 @@
 
 
 1.0.1 (2016-09-16)
-------------------
+==================
 
 - Restore `aiohttp.web.MsgType` alias for `aiohttp.WSMsgType` for sake
   of backward compatibility #1178
@@ -377,7 +381,7 @@
 
 
 1.0.0 (2016-09-16)
--------------------
+==================
 
 - Change default size for client session's connection pool from
   unlimited to 20 #977
@@ -519,18 +523,18 @@
 
 
 0.22.5 (08-02-2016)
--------------------
+===================
 
 - Pin miltidict version to >=1.2.2
 
 0.22.3 (07-26-2016)
--------------------
+===================
 
 - Do not filter cookies if unsafe flag provided #1005
 
 
 0.22.2 (07-23-2016)
--------------------
+===================
 
 - Suppress CancelledError when Timeout raises TimeoutError #970
 
@@ -544,14 +548,14 @@
 
 
 0.22.1 (07-16-2016)
--------------------
+===================
 
 - Large cookie expiration/max-age does not break an event loop from now
   (fixes #967)
 
 
 0.22.0 (07-15-2016)
--------------------
+===================
 
 - Fix bug in serving static directory #803
 
@@ -648,18 +652,18 @@
 - Dup a socket for sendfile usage #964
 
 0.21.6 (05-05-2016)
--------------------
+===================
 
 - Drop initial query parameters on redirects #853
 
 
 0.21.5 (03-22-2016)
--------------------
+===================
 
 - Fix command line arg parsing #797
 
 0.21.4 (03-12-2016)
--------------------
+===================
 
 - Fix ResourceAdapter: don't add method to allowed if resource is not
   match #826
@@ -667,13 +671,13 @@
 - Fix Resource: append found method to returned allowed methods
 
 0.21.2 (02-16-2016)
--------------------
+===================
 
 - Fix a regression: support for handling ~/path in static file routes was
   broken #782
 
 0.21.1 (02-10-2016)
--------------------
+===================
 
 - Make new resources classes public #767
 
@@ -682,7 +686,7 @@
 - Fix cmd-line parameter names in doc
 
 0.21.0 (02-04-2016)
---------------------
+===================
 
 - Introduce on_shutdown signal #722
 
@@ -756,7 +760,7 @@
 - Add local socket binding for TCPConnector #678
 
 0.20.2 (01-07-2016)
---------------------
+===================
 
 - Enable use of `await` for a class based view #717
 
@@ -765,7 +769,7 @@
 - Fix memory leak in headers processing (thanks to Marco Paolini) #723
 
 0.20.1 (12-30-2015)
--------------------
+===================
 
 - Raise RuntimeError is Timeout context manager was used outside of
   task context.
@@ -776,7 +780,7 @@
 
 
 0.20.0 (12-28-2015)
--------------------
+===================
 
 - Extend list of web exceptions, add HTTPMisdirectedRequest,
   HTTPUpgradeRequired, HTTPPreconditionRequired, HTTPTooManyRequests,
@@ -827,7 +831,7 @@
 
 
 0.19.0 (11-25-2015)
--------------------
+===================
 
 - Memory leak in ParserBuffer #579
 
@@ -875,29 +879,29 @@
 - Add Timeout context manager #611
 
 0.18.4 (13-11-2015)
--------------------
+===================
 
 - Relax rule for router names again by adding dash to allowed
   characters: they may contain identifiers, dashes, dots and columns
 
 0.18.3 (25-10-2015)
--------------------
+===================
 
 - Fix formatting for _RequestContextManager helper #590
 
 0.18.2 (22-10-2015)
--------------------
+===================
 
 - Fix regression for OpenSSL < 1.0.0 #583
 
 0.18.1 (20-10-2015)
--------------------
+===================
 
 - Relax rule for router names: they may contain dots and columns
   starting from now
 
 0.18.0 (19-10-2015)
--------------------
+===================
 
 - Use errors.HttpProcessingError.message as HTTP error reason and
   message #459
@@ -974,14 +978,14 @@
 - Added `async for` support for aiohttp stream #542
 
 0.17.4 (09-29-2015)
--------------------
+===================
 
 - Properly parse URL path in aiohttp.web.Request #489
 
 - Add missing coroutine decorator, the client api is await-compatible now
 
 0.17.3 (08-28-2015)
----------------------
+===================
 
 - Remove Content-Length header on compressed responses #450
 
@@ -992,19 +996,19 @@
 - Fix connection pooling #473
 
 0.17.2 (08-11-2015)
----------------------
+===================
 
 - Don't forget to pass `data` argument forward #462
 
 - Fix multipart read bytes count #463
 
 0.17.1 (08-10-2015)
----------------------
+===================
 
 - Fix multidict comparison to arbitrary abc.Mapping
 
 0.17.0 (08-04-2015)
----------------------
+===================
 
 - Make StaticRoute support Last-Modified and If-Modified-Since headers #386
 
@@ -1059,31 +1063,31 @@
 
 
 0.16.6 (07-15-2015)
--------------------
+===================
 
 - Skip compilation on Windows if vcvarsall.bat cannot be found #438
 
 0.16.5 (06-13-2015)
--------------------
+===================
 
 - Get rid of all comprehensions and yielding in _multidict #410
 
 
 0.16.4 (06-13-2015)
--------------------
+===================
 
 - Don't clear current exception in multidict's `__repr__` (cythonized
   versions) #410
 
 
 0.16.3 (05-30-2015)
--------------------
+===================
 
 - Fix StaticRoute vulnerability to directory traversal attacks #380
 
 
 0.16.2 (05-27-2015)
--------------------
+===================
 
 - Update python version required for `__del__` usage: it's actually
   3.4.1 instead of 3.4.0
@@ -1093,12 +1097,12 @@
 
 
 0.16.1 (05-27-2015)
--------------------
+===================
 
 - Fix regression in static file handling #377
 
 0.16.0 (05-26-2015)
--------------------
+===================
 
 - Unset waiter future after cancellation #363
 
@@ -1142,7 +1146,7 @@
 
 
 0.15.3 (04-22-2015)
--------------------
+===================
 
 - Fix graceful shutdown handling
 
@@ -1150,7 +1154,7 @@
 
 
 0.15.2 (04-19-2015)
--------------------
+===================
 
 - Flow control subsystem refactoring
 
@@ -1172,7 +1176,7 @@
 
 
 0.15.1 (03-31-2015)
--------------------
+===================
 
 - Pass Autobahn Testsuite tests
 
@@ -1188,7 +1192,7 @@
 
 
 0.15.0 (03-27-2015)
--------------------
+===================
 
 - Client WebSockets support
 
@@ -1214,19 +1218,19 @@
 
 
 0.14.4 (01-29-2015)
--------------------
+===================
 
 - Fix issue with error during constructing of url with regex parts #264
 
 
 0.14.3 (01-28-2015)
--------------------
+===================
 
 - Use path='/' by default for cookies #261
 
 
 0.14.2 (01-23-2015)
--------------------
+===================
 
 - Connections leak in BaseConnector #253
 
@@ -1236,7 +1240,7 @@
 
 
 0.14.1 (01-15-2015)
--------------------
+===================
 
 - HttpMessage._add_default_headers does not overwrite existing headers #216
 
@@ -1284,7 +1288,7 @@
 
 
 0.13.1 (12-31-2014)
---------------------
+===================
 
 - Add `aiohttp.web.StreamResponse.started` property #213
 
@@ -1295,7 +1299,7 @@
 
 
 0.13.0 (12-29-2014)
--------------------
+===================
 
 - `StreamResponse.charset` converts value to lower-case on assigning.
 
@@ -1314,7 +1318,7 @@
 
 
 0.12.0 (12-12-2014)
--------------------
+===================
 
 - Deep refactoring of `aiohttp.web` in backward-incompatible manner.
   Sorry, we have to do this.
@@ -1347,7 +1351,7 @@
 
 
 0.11.0 (11-29-2014)
--------------------
+===================
 
 - Support named routes in `aiohttp.web.UrlDispatcher` #179
 
@@ -1355,13 +1359,13 @@
 
 
 0.10.2 (11-19-2014)
--------------------
+===================
 
 - Don't unquote `environ['PATH_INFO']` in wsgi.py #177
 
 
 0.10.1 (11-17-2014)
--------------------
+===================
 
 - aiohttp.web.HTTPException and descendants now files response body
   with string like `404: NotFound`
@@ -1371,7 +1375,7 @@
 
 
 0.10.0 (11-13-2014)
--------------------
+===================
 
 - Add aiohttp.web subpackage for highlevel HTTP server support.
 
@@ -1389,13 +1393,13 @@
 
 
 0.9.3 (10-30-2014)
-------------------
+==================
 
 - Fix compatibility with asyncio 3.4.1+ #170
 
 
 0.9.2 (10-16-2014)
-------------------
+==================
 
 - Improve redirect handling #157
 
@@ -1405,7 +1409,7 @@
 
 
 0.9.1 (08-30-2014)
-------------------
+==================
 
 - Added MultiDict support for client request params and data #114.
 
@@ -1419,7 +1423,7 @@
 
 
 0.9.0 (07-08-2014)
-------------------
+==================
 
 - Better client basic authentication support #112.
 
@@ -1434,13 +1438,13 @@
 
 
 0.8.4 (07-04-2014)
-------------------
+==================
 
 - Change ProxyConnector authorization parameters.
 
 
 0.8.3 (07-03-2014)
-------------------
+==================
 
 - Publish TCPConnector properties: verify_ssl, family, resolve, resolved_hosts.
 
@@ -1450,7 +1454,7 @@
 
 
 0.8.2 (06-22-2014)
-------------------
+==================
 
 - Make ProxyConnector.proxy immutable property.
 
@@ -1462,7 +1466,7 @@
 
 
 0.8.1 (06-18-2014)
-------------------
+==================
 
 - Use case insensitive multidict for server request/response headers.
 
@@ -1476,7 +1480,7 @@
 
 
 0.8.0 (06-06-2014)
-------------------
+==================
 
 - Add support for utf-8 values in HTTP headers
 
@@ -1494,13 +1498,13 @@
 
 
 0.7.3 (05-20-2014)
-------------------
+==================
 
 - Simple HTTP proxy support.
 
 
 0.7.2 (05-14-2014)
-------------------
+==================
 
 - Get rid of `__del__` methods
 
@@ -1508,7 +1512,7 @@
 
 
 0.7.1 (04-28-2014)
-------------------
+==================
 
 - Do not unquote client request urls.
 
@@ -1521,7 +1525,7 @@
 
 
 0.7.0 (04-16-2014)
-------------------
+==================
 
 - Connection flow control.
 
@@ -1531,7 +1535,7 @@
 
 
 0.6.5 (03-29-2014)
-------------------
+==================
 
 - Added client session reuse timeout.
 
@@ -1543,13 +1547,13 @@
 
 
 0.6.4 (02-27-2014)
-------------------
+==================
 
 - Log content-length missing warning only for put and post requests.
 
 
 0.6.3 (02-27-2014)
-------------------
+==================
 
 - Better support for server exit.
 
@@ -1557,7 +1561,7 @@
 
 
 0.6.2 (02-18-2014)
-------------------
+==================
 
 - Fix trailing char in allowed_methods.
 
@@ -1565,7 +1569,7 @@
 
 
 0.6.1 (02-17-2014)
-------------------
+==================
 
 - Added utility method HttpResponse.read_and_close()
 
@@ -1575,13 +1579,13 @@
 
 
 0.6.0 (02-12-2014)
-------------------
+==================
 
 - Better handling for process exit.
 
 
 0.5.0 (01-29-2014)
-------------------
+==================
 
 - Allow to use custom HttpRequest client class.
 
@@ -1593,20 +1597,20 @@
 
 
 0.4.4 (11-15-2013)
-------------------
+==================
 
 - Resolve only AF_INET family, because it is not clear how to pass
   extra info to asyncio.
 
 
 0.4.3 (11-15-2013)
-------------------
+==================
 
 - Allow to wait completion of request with `HttpResponse.wait_for_close()`
 
 
 0.4.2 (11-14-2013)
-------------------
+==================
 
 - Handle exception in client request stream.
 
@@ -1614,13 +1618,13 @@
 
 
 0.4.1 (11-12-2013)
-------------------
+==================
 
 - Added client support for `expect: 100-continue` header.
 
 
 0.4 (11-06-2013)
-----------------
+================
 
 - Added custom wsgi application close procedure
 
@@ -1628,7 +1632,7 @@
 
 
 0.3 (11-04-2013)
-----------------
+================
 
 - Added PortMapperWorker
 
@@ -1642,6 +1646,6 @@
 
 
 0.2
----
+===
 
 - Fix packaging
