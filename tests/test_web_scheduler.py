@@ -287,3 +287,23 @@ def test_resume_closed_task(scheduler, loop):
 
     assert scheduler.active_count == 0
     assert len(scheduler) == 0
+
+
+@asyncio.coroutine
+def test_concurreny_disabled(scheduler, loop):
+    fut1 = create_future(loop)
+    fut2 = create_future(loop)
+
+    @asyncio.coroutine
+    def coro():
+        fut1.set_result(None)
+        yield from fut2
+
+    scheduler.concurrency = None
+    job = yield from scheduler.run(coro())
+    yield from fut1
+    assert scheduler.active_count == 1
+
+    fut2.set_result(None)
+    yield from job.wait()
+    assert scheduler.active_count == 0

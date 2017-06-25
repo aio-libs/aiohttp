@@ -114,7 +114,7 @@ class Scheduler(Container):
     @asyncio.coroutine
     def run(self, coro):
         job = Job(coro, self, self._loop)
-        if self.active_count < self._concurrency:
+        if self._concurrency is None or self.active_count < self._concurrency:
             job._start()
         else:
             self._pending.append(job)
@@ -201,7 +201,9 @@ class Scheduler(Container):
         self._jobs.remove(job)
         if pending:
             self._pending.remove(job)
-        while self._pending and self.active_count < self._concurrency:
+        while (self._pending and
+               (self._concurrency is None or
+                self.active_count < self._concurrency)):
             new_job = self._pending.popleft()
             if new_job.closed:
                 continue
