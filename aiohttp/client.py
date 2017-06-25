@@ -26,6 +26,7 @@ from .cookiejar import CookieJar
 from .helpers import (PY_35, CeilTimeout, TimeoutHandle, deprecated_noop,
                       sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
+from .http_exceptions import RedirectURLError
 from .streams import FlowControlDataQueue
 
 
@@ -274,7 +275,7 @@ class ClientSession:
                         r_url = (resp.headers.get(hdrs.LOCATION) or
                                  resp.headers.get(hdrs.URI))
                         if r_url is None:
-                            raise RuntimeError(
+                            raise RedirectURLError(
                                 "{0.method} {0.url} returns "
                                 "a redirect [{0.status}] status "
                                 "but response lacks a Location "
