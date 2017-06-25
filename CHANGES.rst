@@ -1,35 +1,17 @@
 Changes
 =======
 
-2.3.0 (2017-xx-xx)
-------------------
+..
+    You should *NOT* be adding new change log entries to this file, this
+    file is managed by towncrier. You *may* edit previous change logs to
+    fix problems like typo corrections or such.
+    To add a new change log entry, please see
+    https://pip.pypa.io/en/latest/development/#adding-a-news-entry
+    we named the news folder "changes".
 
-- Improvement for `normalize_path_middleware`. Added possibility to handle
-  URLs with query string. #1995
+.. towncrier release notes start
 
-- Make enable_compression work on HTTP/1.0 #1828
 
-- Drop deprecated `Server.finish_connections`
-
--
-
--
-
--
-
--
-
--
-
--
-
--
-
--
-
--
-
--
 
 2.2.0 (2017-06-20)
 ------------------
