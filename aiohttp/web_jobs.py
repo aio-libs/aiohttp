@@ -61,6 +61,7 @@ class Job:
         if self._task is None:
             self._closed = True
             self._runner._done(self, True)
+            self._runner = None
             return
         if self._closed:
             return
