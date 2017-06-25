@@ -9,19 +9,16 @@ import async_timeout
 from .helpers import ensure_future
 
 
-__all__ = ['JobRunner']
-
-
 class Job:
     _source_traceback = None
     _closed = False
     _explicit_wait = False
     _task = None
 
-    def __init__(self, coro, manager, loop):
+    def __init__(self, coro, runner, loop):
         self._loop = loop
         self._coro = coro
-        self._runner = manager
+        self._runner = runner
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(2))
@@ -69,7 +66,7 @@ class Job:
         # self._runner is None after _done_callback()
         runner = self._runner
         try:
-            with async_timeout.timeout(timeout=self._runner._timeout,
+            with async_timeout.timeout(timeout=self._runner._close_timeout,
                                        loop=self._loop):
                 yield from self._task
         except asyncio.CancelledError:
@@ -106,7 +103,7 @@ class JobRunner(Container):
     def __init__(self, *, loop):
         self._loop = loop
         self._jobs = set()
-        self._timeout = 0.1
+        self._close_timeout = 0.1
         self._concurrency = 100
         self._exception_handler = None
         self._failed_tasks = asyncio.Queue(loop=loop)
@@ -156,6 +153,8 @@ class JobRunner(Container):
         if jobs:
             yield from asyncio.gather(*[job.close() for job in jobs],
                                       loop=self._loop, return_exceptions=True)
+        self._pending.clear()
+        self._jobs.clear()
         self._failed_tasks.put_nowait(None)
         yield from self._failed_waiter
         self._closed = True
@@ -174,11 +173,11 @@ class JobRunner(Container):
 
     @property
     def close_timeout(self):
-        return self._timeout
+        return self._close_timeout
 
     @close_timeout.setter
     def close_timeout(self, timeout):
-        self._timeout = timeout
+        self._close_timeout = timeout
 
     def call_exception_handler(self, context):
         handler = self._exception_handler
