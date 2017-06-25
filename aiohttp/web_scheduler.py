@@ -113,6 +113,8 @@ class Scheduler(Container):
 
     @asyncio.coroutine
     def run(self, coro):
+        if self._closed:
+            raise RuntimeError("Scheduling a new job after closing")
         job = Job(coro, self, self._loop)
         if self._concurrency is None or self.active_count < self._concurrency:
             job._start()
@@ -147,6 +149,7 @@ class Scheduler(Container):
     def close(self):
         if self._closed:
             return
+        self._closed = True
         jobs = self._jobs
         if jobs:
             yield from asyncio.gather(*[job.close() for job in jobs],
@@ -155,7 +158,6 @@ class Scheduler(Container):
         self._jobs.clear()
         self._failed_tasks.put_nowait(None)
         yield from self._failed_waiter
-        self._closed = True
 
     @property
     def concurrency(self):

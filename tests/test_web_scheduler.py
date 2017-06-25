@@ -307,3 +307,15 @@ def test_concurreny_disabled(scheduler, loop):
     fut2.set_result(None)
     yield from job.wait()
     assert scheduler.active_count == 0
+
+
+@asyncio.coroutine
+def test_run_after_close(scheduler, loop):
+    @asyncio.coroutine
+    def coro():
+        pass
+
+    yield from scheduler.close()
+
+    with pytest.raises(RuntimeError):
+        yield from scheduler.run(coro())
