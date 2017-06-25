@@ -1,0 +1,4 @@
+[tool.towncrier]
+package = "aiohttp"
+filename = "CHANGES.rst"
+directory = "changelog/"
