@@ -30,8 +30,10 @@ flake: .flake
 	fi
 	@touch .flake
 
+check_changes:
+	@./tools/check_changes.py
 
-.develop: .install-deps $(shell find aiohttp -type f) .flake
+.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes
 	@pip install -e .
 	@touch .develop
 
