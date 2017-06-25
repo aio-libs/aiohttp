@@ -319,3 +319,45 @@ def test_run_after_close(scheduler, loop):
 
     with pytest.raises(RuntimeError):
         yield from scheduler.run(coro())
+
+
+@asyncio.coroutine
+def test_penging_property(scheduler, loop):
+    @asyncio.coroutine
+    def coro(fut):
+        yield from fut
+
+    scheduler.concurrency = 1
+    assert scheduler.active_count == 0
+    assert scheduler.pending_count == 0
+
+    fut1 = create_future(loop)
+    job1 = yield from scheduler.run(coro(fut1))
+
+    assert not job1.pending
+
+    fut1 = create_future(loop)
+    job1 = yield from scheduler.run(coro(fut1))
+
+    assert job1.pending
+
+
+@asyncio.coroutine
+def test_active_property(scheduler, loop):
+    @asyncio.coroutine
+    def coro(fut):
+        yield from fut
+
+    scheduler.concurrency = 1
+    assert scheduler.active_count == 0
+    assert scheduler.pending_count == 0
+
+    fut1 = create_future(loop)
+    job1 = yield from scheduler.run(coro(fut1))
+
+    assert job1.active
+
+    fut1 = create_future(loop)
+    job1 = yield from scheduler.run(coro(fut1))
+
+    assert not job1.active

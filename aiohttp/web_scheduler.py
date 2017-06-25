@@ -53,6 +53,14 @@ class Job:
     def closed(self):
         return self._closed
 
+    @property
+    def pending(self):
+        return self._task is None
+
+    @property
+    def active(self):
+        return not self.closed and not self.pending
+
     @asyncio.coroutine
     def close(self):
         if self._task is None:
