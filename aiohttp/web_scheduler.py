@@ -109,18 +109,16 @@ class Scheduler(Container):
         self._failed_tasks = asyncio.Queue(loop=loop)
         self._failed_waiter = ensure_future(self._wait_failed(), loop=loop)
         self._pending = deque()
-        self._active = 0
         self._closed = False
 
     @asyncio.coroutine
     def run(self, coro):
         job = Job(coro, self, self._loop)
-        self._jobs.add(job)
-        if self._active < self._concurrency:
-            self._active += 1
+        if self.active_count < self._concurrency:
             job._start()
         else:
             self._pending.append(job)
+        self._jobs.add(job)
         return job
 
     def __iter__(self):
@@ -169,11 +167,11 @@ class Scheduler(Container):
 
     @property
     def active_count(self):
-        return self._active
+        return len(self._jobs) - len(self._pending)
 
     @property
     def pending_count(self):
-        return len(self._jobs) - self._active
+        return len(self._pending)
 
     @property
     def close_timeout(self):
@@ -201,14 +199,13 @@ class Scheduler(Container):
 
     def _done(self, job, pending):
         self._jobs.remove(job)
-        if not pending:
-            self._active -= 1
-        while self._active < self._concurrency and self._pending:
+        if pending:
+            self._pending.remove(job)
+        while self._pending and self.active_count < self._concurrency:
             new_job = self._pending.popleft()
             if new_job.closed:
                 continue
             new_job._start()
-            self._active += 1
 
     @asyncio.coroutine
     def _wait_failed(self):
