@@ -126,7 +126,7 @@ def test_on_shutdown(loop):
     called = False
     app._set_loop(loop)
 
-    assert not app.jobs.closed
+    assert not app.scheduler.closed
 
     @asyncio.coroutine
     def on_shutdown(app_param):
@@ -138,7 +138,7 @@ def test_on_shutdown(loop):
 
     yield from app.shutdown()
     assert called
-    assert app.jobs.closed
+    assert app.scheduler.closed
 
 
 @asyncio.coroutine

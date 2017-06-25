@@ -15,10 +15,10 @@ class Job:
     _explicit_wait = False
     _task = None
 
-    def __init__(self, coro, runner, loop):
+    def __init__(self, coro, scheduler, loop):
         self._loop = loop
         self._coro = coro
-        self._runner = runner
+        self._scheduler = scheduler
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(2))
@@ -57,16 +57,16 @@ class Job:
     def close(self):
         if self._task is None:
             self._closed = True
-            self._runner._done(self, True)
-            self._runner = None
+            self._scheduler._done(self, True)
+            self._scheduler = None
             return
         if self._closed:
             return
         self._task.cancel()
-        # self._runner is None after _done_callback()
-        runner = self._runner
+        # self._scheduler is None after _done_callback()
+        scheduler = self._scheduler
         try:
-            with async_timeout.timeout(timeout=self._runner._close_timeout,
+            with async_timeout.timeout(timeout=self._scheduler._close_timeout,
                                        loop=self._loop):
                 yield from self._task
         except asyncio.CancelledError:
@@ -77,11 +77,11 @@ class Job:
                        'exception': exc}
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
-            runner.call_exception_handler(context)
+            scheduler.call_exception_handler(context)
 
     def _done_callback(self, task):
-        runner = self._runner
-        runner._done(self, False)
+        scheduler = self._scheduler
+        scheduler._done(self, False)
         try:
             exc = task.exception()
         except asyncio.CancelledError:
@@ -93,13 +93,13 @@ class Job:
                            'exception': exc}
                 if self._source_traceback is not None:
                     context['source_traceback'] = self._source_traceback
-                runner.call_exception_handler(context)
-                runner._failed_tasks.put_nowait(task)
+                scheduler.call_exception_handler(context)
+                scheduler._failed_tasks.put_nowait(task)
         self._runner = None  # drop backref
         self._closed = True
 
 
-class JobRunner(Container):
+class Scheduler(Container):
     def __init__(self, *, loop):
         self._loop = loop
         self._jobs = set()
@@ -139,7 +139,7 @@ class JobRunner(Container):
         info = ' '.join(info)
         if info:
             info += ' '
-        return '<JobRunner {}jobs={}>'.format(info, len(self))
+        return '<Scheduler {}jobs={}>'.format(info, len(self))
 
     @property
     def closed(self):
@@ -170,6 +170,10 @@ class JobRunner(Container):
     @property
     def active_count(self):
         return self._active
+
+    @property
+    def pending_count(self):
+        return len(self._jobs) - self._active
 
     @property
     def close_timeout(self):
