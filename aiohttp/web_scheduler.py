@@ -6,7 +6,7 @@ from collections.abc import Container
 
 import async_timeout
 
-from .helpers import ensure_future
+from .helpers import create_future, ensure_future
 
 
 class Job:
@@ -19,14 +19,22 @@ class Job:
         self._loop = loop
         self._coro = coro
         self._scheduler = scheduler
+        self._started = create_future(loop)
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(2))
 
+    @asyncio.coroutine
     def _start(self):
         assert not self._closed
         self._task = ensure_future(self._coro, loop=self._loop)
         self._task.add_done_callback(self._done_callback)
+        # we need a context switch for making sure that at least the
+        # first instruction from self._coro was executed.
+        # It's crucial because we do guarantee that the coroutine
+        # always could catch CancelledError inside itself.
+        yield from asyncio.sleep(0, loop=self._loop)
+        self._started.set_result(None)
 
     def __repr__(self):
         info = []
@@ -63,13 +71,10 @@ class Job:
 
     @asyncio.coroutine
     def close(self):
-        if self._task is None:
-            self._closed = True
-            self._scheduler._done(self, True)
-            self._scheduler = None
-            return
         if self._closed:
             return
+        if self._task is None:
+            yield from self._start()
         self._task.cancel()
         # self._scheduler is None after _done_callback()
         scheduler = self._scheduler
@@ -115,21 +120,28 @@ class Scheduler(Container):
         self._concurrency = 100
         self._exception_handler = None
         self._failed_tasks = asyncio.Queue(loop=loop)
-        self._failed_waiter = ensure_future(self._wait_failed(), loop=loop)
+        self._failed_task = ensure_future(self._wait_failed(), loop=loop)
+        self._starting_jobs = asyncio.Queue(loop=loop)
+        self._starting_task = ensure_future(self._wait_starting(), loop=loop)
+        self._lock = asyncio.Lock(loop=loop)
         self._pending = deque()
         self._closed = False
 
     @asyncio.coroutine
     def run(self, coro):
-        if self._closed:
-            raise RuntimeError("Scheduling a new job after closing")
-        job = Job(coro, self, self._loop)
-        if self._concurrency is None or self.active_count < self._concurrency:
-            job._start()
-        else:
-            self._pending.append(job)
-        self._jobs.add(job)
-        return job
+        with (yield from self._lock):
+            if self._closed:
+                raise RuntimeError("Scheduling a new job after closing")
+            job = Job(coro, self, self._loop)
+            should_start = (self._concurrency is None or
+                            self.active_count < self._concurrency)
+            self._jobs.add(job)
+            if should_start:
+                self._starting_jobs.put_nowait(job)
+                yield from job._started
+            else:
+                self._pending.append(job)
+            return job
 
     def __iter__(self):
         return iter(list(self._jobs))
@@ -157,15 +169,21 @@ class Scheduler(Container):
     def close(self):
         if self._closed:
             return
-        self._closed = True
-        jobs = self._jobs
-        if jobs:
-            yield from asyncio.gather(*[job.close() for job in jobs],
-                                      loop=self._loop, return_exceptions=True)
-        self._pending.clear()
-        self._jobs.clear()
-        self._failed_tasks.put_nowait(None)
-        yield from self._failed_waiter
+        with (yield from self._lock):
+            self._closed = True  # prevent adding new jobs
+            self._starting_jobs.put_nowait(None)
+            # wait for starting all requested jobs except pendings
+            yield from self._starting_task
+
+            jobs = self._jobs
+            if jobs:
+                yield from asyncio.gather(
+                    *[job.close() for job in jobs],
+                    loop=self._loop, return_exceptions=True)
+            self._pending.clear()
+            self._jobs.clear()
+            self._failed_tasks.put_nowait(None)
+            yield from self._failed_task
 
     @property
     def concurrency(self):
@@ -211,13 +229,18 @@ class Scheduler(Container):
         self._jobs.remove(job)
         if pending:
             self._pending.remove(job)
-        while (self._pending and
-               (self._concurrency is None or
-                self.active_count < self._concurrency)):
+        if not self._pending:
+            return
+        if self._concurrency is None:
+            ntodo = len(self._pending)
+        else:
+            ntodo = self._concurrency - self.active_count
+        i = 0
+        while i < ntodo:
             new_job = self._pending.popleft()
             if new_job.closed:
                 continue
-            new_job._start()
+            self._starting_jobs.put_nowait(new_job)
 
     @asyncio.coroutine
     def _wait_failed(self):
@@ -228,9 +251,19 @@ class Scheduler(Container):
             if task is None:
                 return  # closing
             try:
-                yield from task
+                yield from task  # should raise exception
             except Exception as exc:
-                # cleanup a warning
+                # Cleanup a warning
                 # self.call_exception_handler() is already called
                 # by Job._add_done_callback
+                # Thus we caught an task exception and we are good citizens
                 pass
+
+    @asyncio.coroutine
+    def _wait_starting(self):
+        # a coroutine for waiting task start requests.
+        while True:
+            job = yield from self._starting_jobs.get()
+            if job is None:
+                return  # closing
+            yield from job._start()
