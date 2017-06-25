@@ -1,3 +1,4 @@
+=======
 Changes
 =======
 
@@ -14,7 +15,7 @@ Changes
 
 
 2.2.0 (2017-06-20)
-------------------
+==================
 
 - Add doc for add_head, update doc for add_get. #1944
 
@@ -59,7 +60,7 @@ Changes
 
 
 2.1.0 (2017-05-26)
-------------------
+==================
 
 - Added support for experimental `async-tokio` event loop written in Rust
   https://github.com/PyO3/tokio
@@ -116,7 +117,8 @@ Changes
 
 
 2.0.7 (2017-04-12)
-------------------
+==================
+
 - Fix *pypi* distribution
 
 - Fix exception description #1807
@@ -127,7 +129,7 @@ Changes
 
 
 2.0.6 (2017-04-04)
-------------------
+==================
 
 - Keeping blank values for `request.post()` and `multipart.form()` #1765
 
@@ -138,7 +140,7 @@ Changes
 
 
 2.0.5 (2017-03-29)
-------------------
+==================
 
 - Memory leak with aiohttp.request #1756
 
@@ -149,7 +151,7 @@ Changes
 
 
 2.0.4 (2017-03-27)
-------------------
+==================
 
 - Memory leak with aiohttp.request #1756
 
@@ -159,7 +161,7 @@ Changes
 
 
 2.0.3 (2017-03-24)
-------------------
+==================
 
 - Call https website through proxy will cause error #1745
 
@@ -167,7 +169,7 @@ Changes
 
 
 2.0.2 (2017-03-21)
-------------------
+==================
 
 - Fixed Application.on_loop_available signal #1739
 
@@ -175,7 +177,7 @@ Changes
 
 
 2.0.1 (2017-03-21)
-------------------
+==================
 
 - Fix allow-head to include name on route #1737
 
@@ -183,7 +185,7 @@ Changes
 
 
 2.0.0 (2017-03-20)
-------------------
+==================
 
 - Added `json` to `ClientSession.request()` method #1726
 
@@ -199,7 +201,7 @@ Changes
 
 
 `2.0.0rc1` (2017-03-15)
------------------------
+=======================
 
 - Properly handle payload errors #1710
 
