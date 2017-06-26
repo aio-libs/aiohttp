@@ -57,10 +57,6 @@ class ContentLengthError(PayloadEncodingError):
     """Not enough data for satisfy content length header."""
 
 
-class RedirectURLError(BadHttpMessage):
-    """A redirect response lacks a Location or URI HTTP header"""
-
-
 class LineTooLong(BadHttpMessage):
 
     def __init__(self, line, limit='Unknown'):

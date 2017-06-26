@@ -15,7 +15,8 @@ from yarl import URL
 from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
+from .client_exceptions import (ClientError, ClientOSError,
+                                ClientRedirectError, ServerTimeoutError,
                                 WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
@@ -26,7 +27,6 @@ from .cookiejar import CookieJar
 from .helpers import (PY_35, CeilTimeout, TimeoutHandle, deprecated_noop,
                       sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
-from .http_exceptions import RedirectURLError
 from .streams import FlowControlDataQueue
 
 
@@ -275,11 +275,10 @@ class ClientSession:
                         r_url = (resp.headers.get(hdrs.LOCATION) or
                                  resp.headers.get(hdrs.URI))
                         if r_url is None:
-                            raise RedirectURLError(
-                                "{0.method} {0.url} returns "
-                                "a redirect [{0.status}] status "
-                                "but response lacks a Location "
-                                "or URI HTTP header".format(resp))
+                            raise ClientRedirectError(
+                                resp.request_info,
+                                history,
+                                resp.status)
                         r_url = URL(
                             r_url, encoded=not self.requote_redirect_url)
 
