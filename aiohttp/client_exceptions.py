@@ -12,7 +12,7 @@ __all__ = (
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
     'ServerFingerprintMismatch',
 
-    'ClientResponseError', 'ClientPayloadError',
+    'ClientResponseError', 'ClientRedirectError', 'ClientPayloadError',
     'ClientHttpProxyError', 'WSServerHandshakeError')
 
 
@@ -35,6 +35,18 @@ class ClientResponseError(ClientError):
         self.history = history
 
         super().__init__("%s, message='%s'" % (code, message))
+
+
+class ClientRedirectError(ClientResponseError):
+    """Redirection error.
+
+    Response is a redirect but Location or URI HTTP headers are
+    missing
+
+    """
+    def __init__(self, request_info, history, code):
+        super().__init__(request_info, history, code=code,
+                         message="Response has no Location or URI header")
 
 
 class ClientPayloadError(ClientError):

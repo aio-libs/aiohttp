@@ -1430,6 +1430,9 @@ Hierarchy of exceptions:
 
       `history` - History from `ClientResponse` object, if available, else empty tuple.
 
+     - `aiohttp.ClientRedirectError` - Response is a redirect but
+       ``Location`` or ``URI`` headers are missing.
+
      - `aiohttp.WSServerHandshakeError` - web socket server response error
 
      - `aiohttp.ClientHttpProxyError` - proxy response
