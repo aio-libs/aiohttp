@@ -277,7 +277,7 @@ class ClientSession:
                         if r_url is None:
                             raise ClientRedirectError(
                                 resp.request_info,
-                                history,
+                                resp.history,
                                 resp.status)
                         r_url = URL(
                             r_url, encoded=not self.requote_redirect_url)

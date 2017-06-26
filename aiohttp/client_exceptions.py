@@ -1,6 +1,6 @@
 """HTTP related errors."""
 
-from asyncio import TimeoutError
+import asyncio
 
 
 __all__ = (
@@ -47,10 +47,6 @@ class ClientRedirectError(ClientResponseError):
     def __init__(self, request_info, history, code):
         super().__init__(request_info, history, code=code,
                          message="Response has no Location or URI header")
-
-
-class ClientPayloadError(ClientError):
-    """Response payload error."""
 
 
 class WSServerHandshakeError(ClientResponseError):
@@ -101,7 +97,7 @@ class ServerDisconnectedError(ServerConnectionError):
         self.message = message
 
 
-class ServerTimeoutError(ServerConnectionError, TimeoutError):
+class ServerTimeoutError(ServerConnectionError, asyncio.TimeoutError):
     """Server timeout error."""
 
 
@@ -118,3 +114,7 @@ class ServerFingerprintMismatch(ServerConnectionError):
         return '<{} expected={} got={} host={} port={}>'.format(
             self.__class__.__name__, self.expected, self.got,
             self.host, self.port)
+
+
+class ClientPayloadError(ClientError):
+    """Response payload error."""
