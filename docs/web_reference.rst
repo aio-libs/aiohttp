@@ -144,7 +144,8 @@ and :ref:`aiohttp-web-signals` handlers.
    .. attribute:: raw_path
 
       The URL including raw *PATH INFO* without the host or scheme.
-      Warning, the path may be quoted and may contains non valid URL characters, e.g.
+      Warning, the path may be quoted and may contains non valid URL
+      characters, e.g.
       ``/my%2Fpath%7Cwith%21some%25strange%24characters``.
 
       For unquoted version please take a look on :attr:`path`.
