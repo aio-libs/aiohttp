@@ -87,7 +87,3 @@ Web-Socket for every *path*.
 
 The example is very basic: it always return ``200 OK`` response, real
 life code should be much more complex.
-
-
-.. disqus::
-  :title: aiohttp.web low-level server

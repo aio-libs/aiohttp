@@ -767,7 +767,3 @@ Utilities
 
 .. _pytest: http://pytest.org/latest/
 .. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp
-
-
-.. disqus::
-  :title: aiohttp testing

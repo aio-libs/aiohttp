@@ -329,7 +329,3 @@ And this gives us a more cleaner solution::
 
 .. _cgi.FieldStorage: https://docs.python.org/3.4/library/cgi.html
 .. _mimetypes: https://docs.python.org/3.4/library/mimetypes.html
-
-
-.. disqus::
-  :title: aiohttp suppport for multipart encoding

@@ -1324,7 +1324,3 @@ Documentation and a complete tutorial of creating and running an app
 locally are available at aiohttp-devtools_.
 
 .. _aiohttp-devtools: https://github.com/aio-libs/aiohttp-devtools
-
-
-.. disqus::
-  :title: aiohttp server usage

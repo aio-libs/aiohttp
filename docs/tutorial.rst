@@ -461,6 +461,3 @@ Registered overrides are trivial Jinja2 template renderers::
        return response
 
 .. seealso:: :ref:`aiohttp-web-middlewares`
-
-.. disqus::
-  :title: aiohttp server tutorial

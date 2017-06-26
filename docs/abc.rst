@@ -146,7 +146,3 @@ Abstract Cookie Jar
 
       :return: :class:`http.cookies.SimpleCookie` with filtered
          cookies for given URL.
-
-
-.. disqus::
-  :title: aiohttp abstact base classes

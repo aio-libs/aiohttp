@@ -117,7 +117,3 @@ To use different logger name please specify *logger* parameter
 
 .. _access_logformat:
     http://docs.gunicorn.org/en/stable/settings.html#access-log-format
-
-
-.. disqus::
-  :title: aiohttp logging

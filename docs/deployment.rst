@@ -306,6 +306,3 @@ By default aiohttp uses own defaults::
 
 For more information please read :ref:`Format Specification for Access
 Log <aiohttp-logging-access-log-format-spec>`.
-
-.. disqus::
-  :title: aiohttp deployment with gunicorn

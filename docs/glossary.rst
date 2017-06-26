@@ -96,8 +96,3 @@
       A library for operating with URL objects.
 
       https://pypi.python.org/pypi/yarl
-
-
-
-.. disqus::
-  :title: aiohttp glossary

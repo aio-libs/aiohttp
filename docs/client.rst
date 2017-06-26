@@ -739,7 +739,3 @@ reading procedures::
 
    Timeout is cumulative time, it includes all operations like sending request,
    redirects, response parsing, consuming response, etc.
-
-
-.. disqus::
-  :title: aiohttp client usage
