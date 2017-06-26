@@ -1,4 +1,4 @@
--r requirements-ci.txt
+-r requirements/ci.txt
 ipdb==0.10.3
 pytest-sugar==0.8.0
 ipython==6.1.0
