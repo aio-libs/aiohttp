@@ -49,7 +49,7 @@ For standard python *venv*:
    $ python3 -m venv venv
    $ . venv/bin/activate
 
-For *virtualenvwrapper* (my choice):
+For *virtualenvwrapper*:
 
 .. code-block:: shell
 
@@ -65,23 +65,16 @@ After that please install libraries required for development:
 
    $ pip install -r requirements-dev.txt
 
-We also recommend to install ipdb_ but it's on your own:
-
-.. code-block:: shell
-
-   $ pip install ipdb
-
 .. note::
-  If you plan to use ``ipdb`` within the test suite, execute:
+  If you plan to use ``pdb`` or ``ipdb`` within the test suite, execute:
 
 .. code-block:: shell
 
-    $ py.test tests -s -p no:timeout
+    $ py.test tests -s
 
-  command to run the tests with disabled timeout guard and output
-  capturing.
+  command to run the tests with disabled output capturing.
 
-Congratulations, you are ready to run the test suite
+Congratulations, you are ready to run the test suite!
 
 
 Run aiohttp test suite
