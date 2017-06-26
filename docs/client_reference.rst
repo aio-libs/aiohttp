@@ -1403,7 +1403,7 @@ CookieJar
 
 
 Client exceptions
-^^^^^^^^^^^^^^^^^
+-----------------
 
 Exception hierarchy has been significantly modified in version
 2.0. aiohttp defines only exceptions that covers connection handling
@@ -1418,43 +1418,145 @@ chunks or not enough data that satisfy the content-length header.
 
 All exceptions are available as members of *aiohttp* module.
 
-Hierarchy of exceptions:
+.. exception:: ClientError
 
-* :exc:`aiohttp.ClientError` - Base class for all client specific exceptions
+   Base class for all client specific exceptions.
 
-  - :exc:`aiohttp.ClientResponseError` - exceptions that could happen after
-    we get response from server.
+   Derived from :exc:`Exception`
 
-      `request_info` - Instance of `RequestInfo` object, contains
-      information about request.
 
-      `history` - History from `ClientResponse` object, if available, else empty tuple.
+Response errors
+^^^^^^^^^^^^^^^
 
-     - `aiohttp.ClientRedirectError` - Response is a redirect but
-       ``Location`` or ``URI`` headers are missing.
+.. exception:: ClientResponseError
 
-     - `aiohttp.WSServerHandshakeError` - web socket server response error
+   These exceptions could happen after we get response from server.
 
-     - `aiohttp.ClientHttpProxyError` - proxy response
+   Derived from :exc:`ClientError`
 
-  - `aiohttp.ClientConnectionError` - exceptions related to low-level connection problems
+   .. attribute:: request_info
 
-    - `aiohttp.ClientOSError` - subset of connection errors that are initiated by an OSError exception
+      Instance of :class:`RequestInfo` object, contains information
+      about request.
 
-      - `aiohttp.ClientConnectorError` - connector related exceptions
+   .. attribute:: history
 
-         - `aiohttp.ClientProxyConnectionError` - proxy connection initialization error
+      History from failed response, if available, else empty tuple.
 
-    - `aiohttp.ServerConnectionError` - server connection related errors
+      A :class:`tuple` of :class:`ClientResponse` objects used for
+      handle redirection responses.
 
-    - `aiohttp.ServerDisconnectedError` - server disconnected
 
-      `message` - Partially parsed http message (optional)
+.. class:: ClientRedirectError
 
-    - `aiohttp.ServerTimeoutError` - server operation timeout, (read timeout, etc)
+   Response is a redirect but ``Location`` or ``URI`` headers are missing.
 
-    - `aiohttp.ServerFingerprintMismatch` - server fingerprint mismatch
+   Derived from :exc:`ClientResponseError`
 
-  - `aiohttp.ClientPayloadError` - This exception can only be raised while reading the response
-     payload if one of these errors occurs: invalid compression, malformed chunked encoding or
-     not enough data that satisfy content-length header.
+.. class:: WSServerHandshakeError
+
+   Web socket server response error.
+
+   Derived from :exc:`ClientResponseError`
+
+
+.. class:: ClientHttpProxyError
+
+   Proxy response error.
+
+   Derived from :exc:`ClientResponseError`
+
+Connection errors
+^^^^^^^^^^^^^^^^^
+
+.. class:: ClientConnectionError
+
+   These exceptions related to low-level connection problems.
+
+
+   Derived from :exc:`ClientError`
+
+.. class:: ClientOSError
+
+   Subset of connection errors that are initiated by an :exc:`OSError`
+   exception.
+
+   Derived from :exc:`ClientConnectionError` and :exc:`OSError`
+
+.. class:: ClientConnectorError
+
+   Connector related exceptions.
+
+   Derived from :exc:`ClientOSError`
+
+.. class:: ClientProxyConnectionError
+
+   Derived from :exc:`ClientConnectonError`
+
+.. class:: ServerConnectionError
+
+   Derived from :exc:`ClientConnectonError`
+
+
+.. class:: ServerDisconnectedError
+
+   Server disconnected.
+
+   Derived from :exc:`ServerDisconnectonError`
+
+   .. attribute:: message
+
+      Partially parsed HTTP message (optional).
+
+
+.. class:: ServerTimeoutError
+
+   Server operation timeout: read timeout, etc.
+
+   Derived from :exc:`ServerConnectonError` and :exc:`asyncio.TimeoutError`
+
+.. class:: ServerFingerprintMismatch
+
+   Server fingerprint mismatch.
+
+   Derived from :exc:`ServerConnectonError`
+
+
+.. class:: ClientPayloadError
+
+   This exception can only be raised while reading the response
+   payload if one of these errors occurs:
+
+   1. invalid compression
+   2. malformed chunked encoding
+   3. not enough data that satisfy ``Content-Length`` HTTP header.
+
+   Derived from :exc:`ClientError`
+
+Hierarchy of exceptions
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* :exc:`ClientError`
+
+  * :exc:`ClientResponseError`
+
+    * :exc:`ClientRedirectError`
+    * :exc:`WSServerHandshakeError`
+    * :exc:`ClientHttpProxyError`
+
+  * :exc:`ClientConnectionError`
+
+    * :exc:`ClientOSError`
+
+      * :exc:`ClientConnectorError`
+
+         * :exc:`ClientProxyConnectionError`
+
+      * :exc:`ServerConnectionError`
+
+         * :exc:`ServerDisconnectedError`
+         * :exc:`ServerTimeoutError`
+
+      * :exc:`ServerFingerprintMismatch`
+
+  * :exc:`ClientPayloadError`
