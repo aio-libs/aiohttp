@@ -660,7 +660,7 @@ def test_timeout_on_reading_data(loop, test_client, mocker):
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.05)
+    resp = yield from client.get('/', timeout=0.1)
     yield from fut
 
     with pytest.raises(asyncio.TimeoutError):
