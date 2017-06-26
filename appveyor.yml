@@ -13,17 +13,17 @@ environment:
     - PYTHON: "C:\\Python36-x64"
 
 install:
-  - "build.cmd %PYTHON%\\python.exe -m pip install wheel"
-  - "build.cmd %PYTHON%\\python.exe -m pip install twine"
-  - "build.cmd %PYTHON%\\python.exe -m pip install -r requirements-ci.txt"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install twine"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements-ci.txt"
 
 build: false
 
 test_script:
-  - "build.cmd %PYTHON%\\python.exe setup.py test"
+  - "tools/build.cmd %PYTHON%\\python.exe setup.py test"
 
 after_test:
-  - "build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe setup.py bdist_wheel"
 
 artifacts:
   - path: dist\*
