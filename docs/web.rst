@@ -193,7 +193,7 @@ You can also specify a custom regex in the form ``{identifier:regex}``::
 .. note::
 
    Regex should match against *percent encoded* URL
-   (``request.rel_url_raw_path``). E.g. *space character* is encoded
+   (``request.raw_path``). E.g. *space character* is encoded
    as ``%20``.
 
    According to
