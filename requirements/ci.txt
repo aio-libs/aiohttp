@@ -11,7 +11,6 @@ tox==2.7.0
 multidict==3.1.0
 async-timeout==1.2.1
 sphinxcontrib-asyncio==0.2.0
-sphinxcontrib-newsfeed==0.1.4
 pytest==3.1.2
 pytest-cov==2.5.1
 pytest-mock==1.6.0

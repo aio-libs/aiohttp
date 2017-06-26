@@ -1458,7 +1458,3 @@ Hierarchy of exceptions:
   - `aiohttp.ClientPayloadError` - This exception can only be raised while reading the response
      payload if one of these errors occurs: invalid compression, malformed chunked encoding or
      not enough data that satisfy content-length header.
-
-
-.. disqus::
-   :title: aiohttp client reference

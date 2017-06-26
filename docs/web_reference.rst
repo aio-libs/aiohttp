@@ -2208,7 +2208,3 @@ Normalize path middleware
 
   If *merge_slashes* is True, merge multiple consecutive slashes in the
   path into one.
-
-
-.. disqus::
-  :title: aiohttp server reference

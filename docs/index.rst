@@ -221,7 +221,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-.. disqus::
-  :title: aiohttp documentation
