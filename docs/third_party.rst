@@ -1,3 +1,5 @@
+.. _aiohttp-3rd-party:
+
 Third-Party libraries
 =====================
 
