@@ -2,8 +2,8 @@
 
 all: test
 
-.install-deps: requirements-dev.txt
-	@pip install -U -r requirements-dev.txt
+.install-deps: requirements/dev.txt
+	@pip install -U -r requirements/dev.txt
 	@touch .install-deps
 
 isort:
@@ -102,6 +102,6 @@ doc-spelling:
 
 install:
 	@pip install -U pip
-	@pip install -Ur requirements-dev.txt
+	@pip install -Ur requirements/dev.txt
 
 .PHONY: all build flake test vtest cov clean doc

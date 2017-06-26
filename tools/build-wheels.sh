@@ -3,7 +3,7 @@ PYTHON_VERSIONS="cp34-cp34m cp35-cp35m cp36-cp36m"
 
 echo "Compile wheels"
 for PYTHON in ${PYTHON_VERSIONS}; do
-    /opt/python/${PYTHON}/bin/pip install -r /io/requirements-wheel.txt
+    /opt/python/${PYTHON}/bin/pip install -r /io/requirements/wheel.txt
     /opt/python/${PYTHON}/bin/pip wheel /io/ -w /io/dist/
 done
 

@@ -37,7 +37,7 @@ install:
   - pip install --upgrade pip wheel
   - pip install --upgrade setuptools
   - pip install --upgrade setuptools-git
-  - pip install -r requirements-ci.txt
+  - pip install -r requirements/ci.txt
   - pip install aiodns
   - pip install codecov
   - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then

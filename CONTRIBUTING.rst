@@ -63,7 +63,7 @@ After that please install libraries required for development:
 
 .. code-block:: shell
 
-   $ pip install -r requirements-dev.txt
+   $ pip install -r requirements/dev.txt
 
 .. note::
   If you plan to use ``pdb`` or ``ipdb`` within the test suite, execute:
