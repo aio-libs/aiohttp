@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
     import chardet
 
 
-__all__ = ('ClientRequest', 'ClientResponse')
+__all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo')
 
 
 RequestInfo = collections.namedtuple(

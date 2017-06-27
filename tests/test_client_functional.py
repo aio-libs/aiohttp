@@ -12,8 +12,7 @@ import pytest
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import hdrs, web
-from aiohttp.client import ServerFingerprintMismatch
+from aiohttp import ClientRedirectError, ServerFingerprintMismatch, hdrs, web
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
@@ -659,7 +658,7 @@ def test_timeout_on_reading_data(loop, test_client, mocker):
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.05)
+    resp = yield from client.get('/', timeout=0.1)
     yield from fut
 
     with pytest.raises(asyncio.TimeoutError):
@@ -2106,12 +2105,10 @@ def test_redirect_without_location_header(loop, test_client):
     app.router.add_route('GET', '/redirect', handler_redirect)
     client = yield from test_client(app)
 
-    with pytest.raises(RuntimeError) as ctx:
+    with pytest.raises(ClientRedirectError) as ctx:
         yield from client.get('/redirect')
-    assert str(ctx.value) == ('GET http://127.0.0.1:{}/redirect returns '
-                              'a redirect [301] status but response lacks '
-                              'a Location or URI HTTP header'
-                              .format(client.port))
+    expected_msg = 'Response has no Location or URI header'
+    assert str(ctx.value.message) == expected_msg
 
 
 @asyncio.coroutine

@@ -2,8 +2,8 @@
 
 all: test
 
-.install-deps: requirements-dev.txt
-	@pip install -U -r requirements-dev.txt
+.install-deps: requirements/dev.txt
+	@pip install -U -r requirements/dev.txt
 	@touch .install-deps
 
 isort:
@@ -30,8 +30,10 @@ flake: .flake
 	fi
 	@touch .flake
 
+check_changes:
+	@./tools/check_changes.py
 
-.develop: .install-deps $(shell find aiohttp -type f) .flake
+.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes
 	@pip install -e .
 	@touch .develop
 
@@ -100,6 +102,6 @@ doc-spelling:
 
 install:
 	@pip install -U pip
-	@pip install -Ur requirements-dev.txt
+	@pip install -Ur requirements/dev.txt
 
 .PHONY: all build flake test vtest cov clean doc

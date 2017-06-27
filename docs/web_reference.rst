@@ -144,7 +144,8 @@ and :ref:`aiohttp-web-signals` handlers.
    .. attribute:: raw_path
 
       The URL including raw *PATH INFO* without the host or scheme.
-      Warning, the path may be quoted and may contains non valid URL characters, e.g.
+      Warning, the path may be quoted and may contains non valid URL
+      characters, e.g.
       ``/my%2Fpath%7Cwith%21some%25strange%24characters``.
 
       For unquoted version please take a look on :attr:`path`.
@@ -2197,17 +2198,18 @@ Normalize path middleware
       - Double slashes are replaced by one.
 
   The middleware returns as soon as it finds a path that resolves
-  correctly. The order if all enabled is 1) merge_slashes, 2) append_slash
-  and 3) both merge_slashes and append_slash. If the path resolves with
-  at least one of those conditions, it will redirect to the new path.
+  correctly. The order if all enabled is:
 
-  If *append_slash* is True append slash when needed. If a resource is
+    1. *merge_slashes*
+    2. *append_slash*
+    3. both *merge_slashes* and *append_slash*
+
+  If the path resolves with at least one of those conditions, it will
+  redirect to the new path.
+
+  If *append_slash* is ``True`` append slash when needed. If a resource is
   defined with trailing slash and the request comes without it, it will
   append it automatically.
 
-  If *merge_slashes* is True, merge multiple consecutive slashes in the
+  If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
   path into one.
-
-
-.. disqus::
-  :title: aiohttp server reference

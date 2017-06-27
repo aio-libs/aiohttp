@@ -1,7 +1,7 @@
 if [ ! -z $TRAVIS_TAG ] && [ -z $PYTHONASYNCIODEBUG ] && [ -z $AIOHTTP_NO_EXTENSIONS] ;then
     echo "x86_64"
     docker pull quay.io/pypa/manylinux1_x86_64
-    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/build-wheels.sh
+    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/tools/build-wheels.sh
     echo "Dist folder content is:"
     for f in dist/aiohttp*manylinux1_x86_64.whl
     do
@@ -13,7 +13,7 @@ if [ ! -z $TRAVIS_TAG ] && [ -z $PYTHONASYNCIODEBUG ] && [ -z $AIOHTTP_NO_EXTENS
 
     echo "i686"
     docker pull quay.io/pypa/manylinux1_i686
-    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_i686 linux32 /io/build-wheels.sh
+    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_i686 linux32 /io/tools/build-wheels.sh
     echo "Dist folder content is:"
     for f in dist/aiohttp*manylinux1_i686.whl
     do

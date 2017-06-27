@@ -209,6 +209,7 @@ Contents
    deployment
    faq
    third_party
+   built_with
    essays
    contributing
    changes
@@ -220,7 +221,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-.. disqus::
-  :title: aiohttp documentation
