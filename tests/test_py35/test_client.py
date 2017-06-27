@@ -13,13 +13,6 @@ async def test_async_with_session(loop):
     assert session.closed
 
 
-async def test_session_await_close(loop):
-    session = aiohttp.ClientSession(loop=loop)
-
-    with pytest.warns(DeprecationWarning):
-        await session.close()
-
-
 async def test_close_resp_on_error_async_with_session(loop, test_server):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
