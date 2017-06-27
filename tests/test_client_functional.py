@@ -12,7 +12,7 @@ import pytest
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import ClientRedirectError, ServerFingerprintMismatch, hdrs, web
+from aiohttp import ServerFingerprintMismatch, hdrs, web
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
@@ -2097,18 +2097,19 @@ def test_redirect_to_absolute_url(loop, test_client):
 
 @asyncio.coroutine
 def test_redirect_without_location_header(loop, test_client):
+    body = b'redirect'
+
     @asyncio.coroutine
     def handler_redirect(request):
-        return web.Response(status=301)
+        return web.Response(status=301, body=body)
 
     app = web.Application()
     app.router.add_route('GET', '/redirect', handler_redirect)
     client = yield from test_client(app)
 
-    with pytest.raises(ClientRedirectError) as ctx:
-        yield from client.get('/redirect')
-    expected_msg = 'Response has no Location or URI header'
-    assert str(ctx.value.message) == expected_msg
+    resp = yield from client.get('/redirect')
+    data = yield from resp.read()
+    assert data == body
 
 
 @asyncio.coroutine

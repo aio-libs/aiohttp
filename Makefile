@@ -1,9 +1,11 @@
 # Some simple testing tasks (sorry, UNIX only).
 
+pytest := python3 -m pytest
+
 all: test
 
 .install-deps: requirements/dev.txt
-	@pip install -U -r requirements/dev.txt
+	@pip3 install -U -r requirements/dev.txt
 	@touch .install-deps
 
 isort:
@@ -19,9 +21,9 @@ flake: .flake
                       $(shell find examples -type f) \
                       $(shell find demos -type f)
 	@flake8 aiohttp --exclude=aiohttp/backport_cookies.py
-	@if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
+	@if python3 -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
 	    flake8 examples tests demos && \
-            python setup.py check -rms; \
+            python3 setup.py check -rms; \
 	fi
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
@@ -34,31 +36,31 @@ check_changes:
 	@./tools/check_changes.py
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes
-	@pip install -e .
+	@pip3 install -e .
 	@touch .develop
 
 test: .develop
-	@py.test -q ./tests
+	$(pytest) -q ./tests
 
 vtest: .develop
-	@py.test -s -v ./tests
+	$(pytest) -s -v ./tests
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
-	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@AIOHTTP_NO_EXTENSIONS=1 $(pytest) --cov=aiohttp tests
+	$(pytest) --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
         @echo "open file://`pwd`/coverage/index.html"
 
 cov-dev-full: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
+	@AIOHTTP_NO_EXTENSIONS=1 $(pytest) --cov=aiohttp tests
 	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
+	@PYTHONASYNCIODEBUG=1 $(pytest) --cov=aiohttp --cov-append tests
 	@echo "Regular run"
-	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	$(pytest) --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 	@echo "open file://`pwd`/coverage/index.html"
 
 clean:
@@ -75,7 +77,7 @@ clean:
 	@rm -rf build
 	@rm -rf cover
 	@make -C docs clean
-	@python setup.py clean
+	@python3 setup.py clean
 	@rm -f aiohttp/_multidict.html
 	@rm -f aiohttp/_multidict.c
 	@rm -f aiohttp/_multidict.*.so
@@ -101,7 +103,7 @@ doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W -E"
 
 install:
-	@pip install -U pip
-	@pip install -Ur requirements/dev.txt
+	@pip3 install -U pip
+	@pip3 install -Ur requirements/dev.txt
 
 .PHONY: all build flake test vtest cov clean doc

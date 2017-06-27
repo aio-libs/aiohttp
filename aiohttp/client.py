@@ -15,8 +15,7 @@ from yarl import URL
 from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError,
-                                ClientRedirectError, ServerTimeoutError,
+from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
                                 WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
@@ -275,10 +274,9 @@ class ClientSession:
                         r_url = (resp.headers.get(hdrs.LOCATION) or
                                  resp.headers.get(hdrs.URI))
                         if r_url is None:
-                            raise ClientRedirectError(
-                                resp.request_info,
-                                resp.history,
-                                resp.status)
+                            # see github.com/aio-libs/aiohttp/issues/2022
+                            break
+
                         r_url = URL(
                             r_url, encoded=not self.requote_redirect_url)
 
