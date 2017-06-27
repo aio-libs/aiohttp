@@ -3,7 +3,6 @@
 import asyncio
 
 import aioredis
-
 from aiohttp.web import Application, WebSocketResponse, run_app
 
 
