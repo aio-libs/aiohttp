@@ -73,7 +73,7 @@ class _CoroGuard:
 
     def __del__(self):
         self._coro = None
-        if not self._awaited:
+        if self._awaited:
             warnings.warn(self._msg, DeprecationWarning)
 
 

@@ -60,7 +60,7 @@ def test_close_deprecated(create_session):
     session = create_session()
 
     with pytest.warns(DeprecationWarning):
-        session.close()
+        yield from session.close()
 
 
 def test_init_headers_simple_dict(create_session):
