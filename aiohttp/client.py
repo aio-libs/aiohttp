@@ -15,7 +15,8 @@ from yarl import URL
 from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
+from .client_exceptions import (ClientError, ClientOSError,
+                                ClientRedirectError, ServerTimeoutError,
                                 WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
@@ -222,7 +223,8 @@ class ClientSession:
                         compress=compress, chunked=chunked,
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
-                        proxy=proxy, proxy_auth=proxy_auth, timer=timer)
+                        proxy=proxy, proxy_auth=proxy_auth, timer=timer,
+                        session=self)
 
                     # connection timeout
                     try:
@@ -273,11 +275,10 @@ class ClientSession:
                         r_url = (resp.headers.get(hdrs.LOCATION) or
                                  resp.headers.get(hdrs.URI))
                         if r_url is None:
-                            raise RuntimeError(
-                                "{0.method} {0.url} returns "
-                                "a redirect [{0.status}] status "
-                                "but response lacks a Location "
-                                "or URI HTTP header".format(resp))
+                            raise ClientRedirectError(
+                                resp.request_info,
+                                resp.history,
+                                resp.status)
                         r_url = URL(
                             r_url, encoded=not self.requote_redirect_url)
 
@@ -687,9 +688,6 @@ class _SessionRequestContextManager(_RequestContextManager):
             except:
                 self._session.close()
                 raise
-
-    def __del__(self):
-        self._session.close()
 
 
 def request(method, url, *,

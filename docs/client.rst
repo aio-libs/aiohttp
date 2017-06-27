@@ -730,7 +730,7 @@ reading procedures::
 
     import async_timeout
 
-    with async_timeout.timeout(0.001, loop=session.loop):
+    with async_timeout.timeout(0.001):
         async with session.get('https://github.com') as r:
             await r.text()
 
@@ -739,7 +739,3 @@ reading procedures::
 
    Timeout is cumulative time, it includes all operations like sending request,
    redirects, response parsing, consuming response, etc.
-
-
-.. disqus::
-  :title: aiohttp client usage

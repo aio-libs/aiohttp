@@ -37,12 +37,14 @@ Brett Cannon
 Brian C. Lane
 Brian Muller
 Carl George
+Cecile Tonglet
 Chien-Wei Huang
 Chih-Yuan Chen
 Chris AtLee
 Chris Laws
 Chris Moore
 Christopher Schmitt
+Claudiu Popa
 Damien Nadé
 Daniel García
 Daniel Nelson
@@ -91,6 +93,7 @@ Joongi Kim
 Josep Cugat
 Julia Tsemusheva
 Julien Duponchelle
+Jungkook Park
 Junjie Tao
 Justas Trimailovas
 Justin Turner Arthur
@@ -129,6 +132,7 @@ Pankaj Pandey
 Pau Freixes
 Paul Colomiets
 Paulus Schoutsen
+Pavel Kamaev
 Pawel Miech
 Philipp A.
 Rafael Viotti
@@ -170,6 +174,7 @@ Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
+Vladyslav Bondar
 W. Trevor King
 Will McGugan
 Willem de Groot

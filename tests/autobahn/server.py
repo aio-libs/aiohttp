@@ -45,7 +45,7 @@ def main(loop):
 @asyncio.coroutine
 def finish(app, srv, handler):
     srv.close()
-    yield from handler.finish_connections()
+    yield from handler.shutdown()
     yield from srv.wait_closed()
 
 

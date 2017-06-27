@@ -66,7 +66,7 @@ First configure HTTP server itself:
        listen 80;
        client_max_body_size 4G;
 
-       server example.com;
+       server_name example.com;
 
        location / {
          proxy_set_header Host $http_host;
@@ -145,10 +145,10 @@ Here we'll use `Supervisord <http://supervisord.org/>`_ for example:
    process_name = example_%(process_num)s
 
    ; Unix socket paths are specified by command line.
-   cmd=/path/to/aiohttp_example.py --path=/tmp/example_%(process_num)s.sock
+   commmand=/path/to/aiohttp_example.py --path=/tmp/example_%(process_num)s.sock
 
    ; We can just as easily pass TCP port numbers:
-   ; cmd=/path/to/aiohttp_example.py --port=808%(process_num)s
+   ; command=/path/to/aiohttp_example.py --port=808%(process_num)s
 
    user=nobody
    autostart=true
@@ -306,6 +306,3 @@ By default aiohttp uses own defaults::
 
 For more information please read :ref:`Format Specification for Access
 Log <aiohttp-logging-access-log-format-spec>`.
-
-.. disqus::
-  :title: aiohttp deployment with gunicorn

@@ -224,17 +224,17 @@ class WebSocketReader:
                     WSMessage(WSMsgType.PONG, payload, ''), len(payload))
 
             elif opcode not in (
-                    WSMsgType.TEXT, WSMsgType.BINARY) and not self._opcode:
+                    WSMsgType.TEXT, WSMsgType.BINARY) and self._opcode is None:
                 raise WebSocketError(
                     WSCloseCode.PROTOCOL_ERROR,
                     "Unexpected opcode={!r}".format(opcode))
             else:
                 # load text/binary
-
                 if not fin:
                     # got partial frame payload
                     if opcode != WSMsgType.CONTINUATION:
                         self._opcode = opcode
+
                     self._partial.append(payload)
                 else:
                     # previous frame was non finished
@@ -248,12 +248,14 @@ class WebSocketReader:
 
                     if opcode == WSMsgType.CONTINUATION:
                         opcode = self._opcode
+                        self._opcode = None
 
-                    self._partial.append(payload)
+                    payload_merged = b''.join(self._partial) + payload
+                    self._partial.clear()
 
                     if opcode == WSMsgType.TEXT:
                         try:
-                            text = b''.join(self._partial).decode('utf-8')
+                            text = payload_merged.decode('utf-8')
                             self.queue.feed_data(
                                 WSMessage(WSMsgType.TEXT, text, ''), len(text))
                         except UnicodeDecodeError as exc:
@@ -261,26 +263,22 @@ class WebSocketReader:
                                 WSCloseCode.INVALID_TEXT,
                                 'Invalid UTF-8 text message') from exc
                     else:
-                        data = b''.join(self._partial)
                         self.queue.feed_data(
-                            WSMessage(WSMsgType.BINARY, data, ''), len(data))
-
-                    self._start_opcode = None
-                    self._partial.clear()
+                            WSMessage(WSMsgType.BINARY, payload_merged, ''),
+                            len(payload_merged))
 
         return False, b''
 
-    def parse_frame(self, buf, continuation=False, EMPTY=b''):
+    def parse_frame(self, buf):
         """Return the next frame from the socket."""
         frames = []
         if self._tail:
-            buf, self._tail = self._tail + buf, EMPTY
+            buf, self._tail = self._tail + buf, b''
 
         start_pos = 0
         buf_length = len(buf)
 
         while True:
-
             # read header
             if self._state == WSParserState.READ_HEADER:
                 if buf_length - start_pos >= 2:
@@ -311,15 +309,6 @@ class WebSocketReader:
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
                             'Received fragmented control frame')
-
-                    continuation = not self._frame_fin
-                    if (fin == 0 and
-                            opcode == WSMsgType.CONTINUATION and
-                            not continuation):
-                        raise WebSocketError(
-                            WSCloseCode.PROTOCOL_ERROR,
-                            'Received new fragment frame with non-zero '
-                            'opcode {!r}'.format(opcode))
 
                     has_mask = (second_byte >> 7) & 1
                     length = (second_byte) & 0x7f
@@ -408,6 +397,8 @@ class WebSocketReader:
                     self._state = WSParserState.READ_HEADER
                 else:
                     break
+
+        self._tail = buf[start_pos:]
 
         return frames
 

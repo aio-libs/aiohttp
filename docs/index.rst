@@ -57,13 +57,13 @@ Client example::
             async with session.get(url) as response:
                 return await response.text()
 
-    async def main(loop):
-        async with aiohttp.ClientSession(loop=loop) as session:
+    async def main():
+        async with aiohttp.ClientSession() as session:
             html = await fetch(session, 'http://python.org')
             print(html)
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(loop))
+    loop.run_until_complete(main())
 
 Server example::
 
@@ -209,6 +209,7 @@ Contents
    deployment
    faq
    third_party
+   built_with
    essays
    contributing
    changes
@@ -220,7 +221,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-.. disqus::
-  :title: aiohttp documentation

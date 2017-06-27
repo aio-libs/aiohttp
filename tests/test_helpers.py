@@ -10,6 +10,25 @@ from yarl import URL
 from aiohttp import helpers
 
 
+# -------------------- coro guard --------------------------------
+
+
+@asyncio.coroutine
+def test_warn():
+    with pytest.warns(DeprecationWarning) as ctx:
+        helpers.deprecated_noop('Text')
+    assert str(ctx.list[0].message) == 'Text'
+
+
+@asyncio.coroutine
+def test_no_warn_on_await():
+    with pytest.warns(None) as ctx:
+        yield from helpers.deprecated_noop('Text')
+    assert not ctx.list
+
+
+# ------------------- parse_mimetype ----------------------------------
+
 def test_parse_mimetype_1():
     assert helpers.parse_mimetype('') == ('', '', '', {})
 
@@ -442,19 +461,6 @@ def test_timer_context_no_task(loop):
     with pytest.raises(RuntimeError):
         with helpers.TimerContext(loop):
             pass
-
-
-# ----------------------------------- FrozenList ----------------------
-
-
-class TestFrozenList:
-    def test_eq(self):
-        l = helpers.FrozenList([1])
-        assert l == [1]
-
-    def test_le(self):
-        l = helpers.FrozenList([1])
-        assert l < [2]
 
 
 # -------------------------------- CeilTimeout --------------------------

@@ -193,7 +193,7 @@ You can also specify a custom regex in the form ``{identifier:regex}``::
 .. note::
 
    Regex should match against *percent encoded* URL
-   (``request.rel_url_raw_path``). E.g. *space character* is encoded
+   (``request.raw_path``). E.g. *space character* is encoded
    as ``%20``.
 
    According to
@@ -414,7 +414,7 @@ supported by the *aiohttp* authors.
 Using it is rather simple. First, setup a *jinja2 environment* with a call
 to :func:`aiohttp_jinja2.setup`::
 
-    app = web.Application(loop=self.loop)
+    app = web.Application()
     aiohttp_jinja2.setup(app,
         loader=jinja2.FileSystemLoader('/path/to/templates/folder'))
 
@@ -1201,10 +1201,10 @@ handler. Such as listening to message queue or other network message/event
 sources (e.g. ZeroMQ, Redis Pub/Sub, AMQP, etc.) to react to received messages
 within the application.
 
-For example the background task could listen to ZeroMQ on :data:`zmq.SUB` socket,
-process and forward retrieved messages to clients connected via WebSocket
-that are stored somewhere in the application
-(e.g. in the :obj:`application['websockets']` list).
+For example the background task could listen to ZeroMQ on
+:data:`zmq.SUB` socket, process and forward retrieved messages to
+clients connected via WebSocket that are stored somewhere in the
+application (e.g. in the :obj:`application['websockets']` list).
 
 To run such short and long running background tasks aiohttp provides an
 ability to register :attr:`Application.on_startup` signal handler(s) that
@@ -1293,8 +1293,7 @@ After that attach the :mod:`aiohttp_debugtoolbar` middleware to your
     import aiohttp_debugtoolbar
     from aiohttp_debugtoolbar import toolbar_middleware_factory
 
-    app = web.Application(loop=loop,
-                          middlewares=[toolbar_middleware_factory])
+    app = web.Application(middlewares=[toolbar_middleware_factory])
     aiohttp_debugtoolbar.setup(app)
 
 The toolbar is ready to use. Enjoy!!!
@@ -1315,16 +1314,13 @@ Install via ``pip``:
 
     $ pip install aiohttp-devtools
 
-   * ``runserver`` provides a development server with auto-reload, live-reload, static file serving and
-  aiohttp_debugtoolbar_ integration.
-   * ``start`` is a `cookiecutter command which does the donkey work of creating new :mod:`aiohttp.web`
-  Applications.
+   * ``runserver`` provides a development server with auto-reload,
+  live-reload, static file serving and aiohttp_debugtoolbar_
+  integration.
+   * ``start`` is a `cookiecutter command which does the donkey work
+  of creating new :mod:`aiohttp.web` Applications.
 
-Documentation and a complete tutorial of creating and running an app locally are available at
-aiohttp-devtools_.
+Documentation and a complete tutorial of creating and running an app
+locally are available at aiohttp-devtools_.
 
-.. _aiohttp-devtools: https://github.com/samuelcolvin/aiohttp-devtools
-
-
-.. disqus::
-  :title: aiohttp server usage
+.. _aiohttp-devtools: https://github.com/aio-libs/aiohttp-devtools

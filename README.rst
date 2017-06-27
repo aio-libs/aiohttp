@@ -1,3 +1,4 @@
+==================================
 Async http client/server framework
 ==================================
 
@@ -18,27 +19,34 @@ Async http client/server framework
 
 
 aiohttp 2.0 release!
---------------------
+====================
 
-For this release we completely refactored low-level implementation of http handling.
-Finally `uvloop` gives performance improvement. Overall performance improvement
-should be around 70-90% compared to 1.x version.
+For this release we completely refactored low-level implementation of
+http handling.  Finally `uvloop` gives performance
+improvement. Overall performance improvement should be around 70-90%
+compared to 1.x version.
 
-We took opportunity to refactor long standing api design problems across whole package.
-Client exceptions handling has been cleaned up and now much more straight forward. Client payload
-management simplified and allows to extend with any custom type. Client connection pool
-implementation has been redesigned as well, now there is no need for actively releasing response objects,
-aiohttp handles connection release automatically.
+We took opportunity to refactor long standing api design problems
+across whole package.  Client exceptions handling has been cleaned up
+and now much more straight forward. Client payload management
+simplified and allows to extend with any custom type. Client
+connection pool implementation has been redesigned as well, now there
+is no need for actively releasing response objects, aiohttp handles
+connection release automatically.
 
-Another major change, we moved aiohttp development to public organization https://github.com/aio-libs
+Another major change, we moved aiohttp development to public
+organization https://github.com/aio-libs
 
-With this amount of api changes we had to make backward incompatible changes. Please check this migration document http://aiohttp.readthedocs.io/en/latest/migration.html
+With this amount of api changes we had to make backward incompatible
+changes. Please check this migration document
+http://aiohttp.readthedocs.io/en/latest/migration.html
 
-Please report problems or annoyance with with api to https://github.com/aio-libs/aiohttp
+Please report problems or annoyance with with api to
+https://github.com/aio-libs/aiohttp
 
 
 Features
---------
+========
 
 - Supports both client and server side of HTTP protocol.
 - Supports both client and server Web-Sockets out-of-the-box.
@@ -46,10 +54,10 @@ Features
 
 
 Getting started
----------------
+===============
 
 Client
-^^^^^^
+------
 
 To retrieve something from the web:
 
@@ -74,7 +82,7 @@ To retrieve something from the web:
 
 
 Server
-^^^^^^
+------
 
 This is simple usage example:
 
@@ -124,17 +132,17 @@ should be replaced by::
         ret = yield from f()
 
 Documentation
--------------
+=============
 
 https://aiohttp.readthedocs.io/
 
 Discussion list
----------------
+===============
 
 *aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
 
 Requirements
-------------
+============
 
 - Python >= 3.4.2
 - async-timeout_
@@ -153,25 +161,27 @@ recommended for sake of speed).
 .. _cChardet: https://pypi.python.org/pypi/cchardet
 
 License
--------
+=======
 
 ``aiohttp`` is offered under the Apache 2 license.
 
 
 Keepsafe
---------
+========
 
-The aiohttp community would like to thank Keepsafe (https://www.getkeepsafe.com) for it's support in the early days of the project.
+The aiohttp community would like to thank Keepsafe
+(https://www.getkeepsafe.com) for it's support in the early days of
+the project.
 
 
 Source code
-------------
+===========
 
 The latest developer version is available in a github repository:
 https://github.com/aio-libs/aiohttp
 
 Benchmarks
-----------
+==========
 
 If you are interested in by efficiency, AsyncIO community maintains a
 list of benchmarks on the official wiki:

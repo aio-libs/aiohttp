@@ -66,8 +66,8 @@ test2: data\r
     assert len(messages) == 1
     msg = messages[0][0]
 
-    assert list(msg.headers.items()) == [('Test', 'line continue'),
-                                         ('Test2', 'data')]
+    assert list(msg.headers.items()) == [('test', 'line continue'),
+                                         ('test2', 'data')]
     assert msg.raw_headers == ((b'test', b'line continue'),
                                (b'test2', b'data'))
     assert not msg.should_close
@@ -90,6 +90,16 @@ def test_parse(parser):
 @asyncio.coroutine
 def test_parse_body(parser):
     text = b'GET /test HTTP/1.1\r\nContent-Length: 4\r\n\r\nbody'
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    _, payload = messages[0]
+    body = yield from payload.read(4)
+    assert body == b'body'
+
+
+@asyncio.coroutine
+def test_parse_body_with_CRLF(parser):
+    text = b'\r\nGET /test HTTP/1.1\r\nContent-Length: 4\r\n\r\nbody'
     messages, upgrade, tail = parser.feed_data(text)
     assert len(messages) == 1
     _, payload = messages[0]
@@ -124,7 +134,7 @@ def test_headers_multi_feed(parser):
     assert len(messages) == 1
 
     msg = messages[0][0]
-    assert list(msg.headers.items()) == [('Test', 'line continue')]
+    assert list(msg.headers.items()) == [('test', 'line continue')]
     assert msg.raw_headers == ((b'test', b'line continue'),)
     assert not msg.should_close
     assert msg.compression is None
@@ -231,6 +241,14 @@ def test_conn_upgrade(parser):
     assert upgrade
 
 
+def test_compression_empty(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-encoding: \r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression is None
+
+
 def test_compression_deflate(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'content-encoding: deflate\r\n\r\n')
@@ -252,7 +270,7 @@ def test_compression_unknown(parser):
             b'content-encoding: compress\r\n\r\n')
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
-    assert not msg.compression
+    assert msg.compression is None
 
 
 def test_headers_connect(parser):
@@ -620,6 +638,18 @@ class TestParsePayload(unittest.TestCase):
         p = HttpPayloadParser(
             out, length=length, compression='deflate')
         p.feed_data(self._COMPRESSED)
+        self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
+        self.assertTrue(out.is_eof())
+
+    def test_http_payload_parser_deflate_no_wbits(self):
+        comp = zlib.compressobj()
+        COMPRESSED = b''.join([comp.compress(b'data'), comp.flush()])
+
+        length = len(COMPRESSED)
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        p = HttpPayloadParser(
+            out, length=length, compression='deflate')
+        p.feed_data(COMPRESSED)
         self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
         self.assertTrue(out.is_eof())
 

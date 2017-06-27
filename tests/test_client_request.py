@@ -630,7 +630,7 @@ def test_pass_falsy_data(loop):
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data={}, loop=loop)
-        req.update_body_from_data.assert_called_once_with({}, frozenset())
+        req.update_body_from_data.assert_called_once_with({})
     yield from req.close()
 
 
@@ -1104,7 +1104,7 @@ def test_custom_req_rep(loop):
                                        self.url,
                                        writer=self._writer,
                                        continue100=self._continue)
-            resp._post_init(self.loop)
+            resp._post_init(self.loop, mock.Mock())
             self.response = resp
             nonlocal called
             called = True
