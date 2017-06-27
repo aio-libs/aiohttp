@@ -61,9 +61,6 @@ def test_exception_in_explicit_waiting(scheduler, loop):
     with pytest.raises(RuntimeError):
         yield from job.wait()
 
-    import ipdb; ipdb.set_trace()
-
-
     assert job.closed
 
     assert len(scheduler) == 0
@@ -119,7 +116,7 @@ def test_job_repr(scheduler, loop):
 def test_scheduler_repr(scheduler, loop):
     @asyncio.coroutine
     def coro():
-        return
+        yield from asyncio.sleep(1, loop=loop)
 
     assert repr(scheduler) == '<Scheduler jobs=0>'
 
@@ -364,7 +361,6 @@ def test_active_property(scheduler, loop):
     job1 = yield from scheduler.run(coro(fut1))
 
     assert not job1.active
-
 
 
 @asyncio.coroutine

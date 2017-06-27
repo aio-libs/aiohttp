@@ -53,8 +53,7 @@ class Job:
         try:
             with async_timeout.timeout(timeout=timeout, loop=self._loop):
                 return (yield from self._task)
-        except asyncio.TimeoutError as exc:
-            import ipdb;ipdb.set_trace()
+        except Exception as exc:
             yield from self.close()
             raise exc
 
@@ -76,7 +75,11 @@ class Job:
             return
         if self._task is None:
             yield from self._start()
-        self._task.cancel()
+        if not self._task.done():
+            self._task.cancel()
+        if self._task.exception() is not None:
+            # Iterate a loop to execute _done_callback
+            yield from asyncio.sleep(0, loop=self._loop)
         # self._scheduler is None after _done_callback()
         scheduler = self._scheduler
         try:
@@ -95,7 +98,6 @@ class Job:
 
     def _done_callback(self, task):
         scheduler = self._scheduler
-        import ipdb; ipdb.set_trace()
         scheduler._done(self, False)
         try:
             exc = task.exception()
