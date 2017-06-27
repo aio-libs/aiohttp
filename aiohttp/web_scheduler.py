@@ -75,10 +75,10 @@ class Job:
             return
         if self._task is None:
             yield from self._start()
+        self._closed = True
         if not self._task.done():
             self._task.cancel()
-        if self._task.exception() is not None:
-            # Iterate a loop to execute _done_callback
+            # Iterate a loop to execute _done_callback if needed
             yield from asyncio.sleep(0, loop=self._loop)
         # self._scheduler is None after _done_callback()
         scheduler = self._scheduler
@@ -241,6 +241,8 @@ class Scheduler(Container):
             ntodo = self._concurrency - self.active_count
         i = 0
         while i < ntodo:
+            if not self._pending:
+                return
             new_job = self._pending.popleft()
             if new_job.closed:
                 continue
