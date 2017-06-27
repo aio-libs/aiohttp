@@ -13,10 +13,11 @@ from yarl import URL
 
 from . import hdrs, helpers, http, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
-                                ClientResponseError)
+                                ClientResponseError, ServerTimeoutError)
 from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
-from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
+from .http import (SERVER_SOFTWARE, HttpVersion10, HttpVersion11,
+                   PayloadWriter, CeilTimeout)
 from .log import client_logger
 from .streams import FlowControlStreamReader
 
@@ -32,6 +33,164 @@ __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo')
 
 RequestInfo = collections.namedtuple(
     'RequestInfo', ('url', 'method', 'headers'))
+
+
+class ClientStreamRequest:
+    def __init__(self, session, method, url,
+                 *, data, headers, proxy, proxy_auth):
+        self._session = session
+        self._loop = session.loop
+        self._method = method
+        self._url = url
+        self._data = data
+        self._proxy = proxy
+        self._proxy_auth = proxy_auth
+        self._headers = headers
+
+    @property
+    def method(self):
+        return self._method
+
+    @property
+    def url(self):
+        return self._url
+
+    @property
+    def ssl(self):
+        return self._url.scheme in ('http', 'https')
+
+    @property
+    def host(self):
+        return self._url.host
+
+    @property
+    def port(self):
+        return self._url.port
+
+    @property
+    def headers(self):
+        return self._headers
+
+    @asyncio.coroutine
+    def connect(self):
+        # connection timeout
+        try:
+            with CeilTimeout(self._session._conn_timeout, loop=self._loop):
+                if self._proxy:
+                    conn = yield from self._connect_proxy()
+                else:
+                    conn = yield from self._session._connector.connect(self)
+        except asyncio.TimeoutError as exc:
+            raise ServerTimeoutError(
+                'Connection timeout '
+                'to host {0}'.format(self._url)) from exc
+
+        conn.writer.set_tcp_nodelay(True)
+
+    @asyncio.coroutine
+    def send_headers(self):
+        pass
+
+    @asyncio.coroutine
+    def write(self):
+        pass
+
+    @asyncio.coroutine
+    def send_trailers(self, headers):
+        pass
+
+    @asyncio.coroutine
+    def write_eof(self):
+        pass
+
+    @asyncio.coroutine
+    def close(self):
+        pass
+
+    @asyncio.coroutine
+    def release(self):
+        pass
+
+    @asyncio.coroutine
+    def start_response(self):
+        pass
+
+    def enable_chunked(self):
+        pass
+
+    def enable_compression(self):
+        pass
+
+    @asyncio.coroutine
+    def _connect_proxy(self):
+        proxy_req = ClientRequest(
+            hdrs.METH_GET, self.proxy,
+            headers={hdrs.HOST: self.headers[hdrs.HOST]},
+            auth=self.proxy_auth,
+            loop=self._loop)
+        try:
+            # create connection to proxy server
+            transport, proto = yield from self._create_direct_connection(
+                proxy_req)
+        except OSError as exc:
+            raise ClientProxyConnectionError(*exc.args) from exc
+
+        auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
+        if auth is not None:
+            if not req.ssl:
+                req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+            else:
+                proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+
+        if req.ssl:
+            # For HTTPS requests over HTTP proxy
+            # we must notify proxy to tunnel connection
+            # so we send CONNECT command:
+            #   CONNECT www.python.org:443 HTTP/1.1
+            #   Host: www.python.org
+            #
+            # next we must do TLS handshake and so on
+            # to do this we must wrap raw socket into secure one
+            # asyncio handles this perfectly
+            proxy_req.method = hdrs.METH_CONNECT
+            proxy_req.url = req.url
+            key = (req.host, req.port, req.ssl)
+            conn = Connection(self, key, proto, self._loop)
+            proxy_resp = proxy_req.send(conn)
+            try:
+                resp = yield from proxy_resp.start(conn, True)
+            except:
+                proxy_resp.close()
+                conn.close()
+                raise
+            else:
+                conn._protocol = None
+                conn._transport = None
+                try:
+                    if resp.status != 200:
+                        raise ClientHttpProxyError(
+                            proxy_resp.request_info,
+                            resp.history,
+                            code=resp.status,
+                            message=resp.reason,
+                            headers=resp.headers)
+                    rawsock = transport.get_extra_info('socket', default=None)
+                    if rawsock is None:
+                        raise RuntimeError(
+                            "Transport does not expose socket instance")
+                    # Duplicate the socket, so now we can close proxy transport
+                    rawsock = rawsock.dup()
+                finally:
+                    transport.close()
+
+                transport, proto = yield from self._loop.create_connection(
+                    self._factory, ssl=self.ssl_context, sock=rawsock,
+                    server_hostname=req.host)
+            finally:
+                proxy_resp.close()
+
+        return transport, proto
+
 
 
 class ClientRequest:
