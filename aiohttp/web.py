@@ -16,7 +16,8 @@ from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
                web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
-from .http import HttpVersion  # noqa
+from .helpers import TimeService
+from .http import HttpVersion, RawRequestMessage  # noqa
 from .log import access_logger, web_logger
 from .signals import FuncSignal, PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
@@ -313,9 +314,32 @@ class Application(MutableMapping):
                   for app in match_info.apps])
         return resp
 
-    def __call__(self):
-        """gunicorn compatibility"""
-        return self
+    async def __call__(self, message, channels):
+        """uvicorn compatibility"""
+        aio_message = RawRequestMessage(
+            method=message['method'],
+            path=message['path'],
+            version=message['http_version'],
+            headers=dict(message['headers']),
+            raw_headers=dict(message['headers']),
+            should_close=False,
+            compression=False,
+            upgrade=False,
+            chunked=False,
+            url=URL(message['path'])
+        )
+        protocol = channels['reply']._protocol
+        protocol._time_service = TimeService(self._loop)
+        request = self._make_request(aio_message, None, protocol, None, None)
+        response = await self._handle(request)
+        await channels['reply'].send({
+            'status': response.status,
+            'headers': [
+                (key.encode(), value.encode())
+                for key, value in response.headers.items()
+            ],
+            'content': response.body
+        })
 
     def __repr__(self):
         return "<Application 0x{:x}>".format(id(self))
