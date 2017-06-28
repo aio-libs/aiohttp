@@ -1,3 +1,2 @@
-ClientRedirectError is no longer raised
-
-responses to redirects without Location header are returned
+Responses to redirects without Location header are returned instead of raising
+a RuntimeError
