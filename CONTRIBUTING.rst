@@ -1,3 +1,5 @@
+.. _aiohttp-contributing:
+
 Contributing
 ============
 
@@ -18,9 +20,11 @@ Workflow is pretty straightforward:
 
   3. Make sure all tests passed
 
-  4. Commit changes to own aiohttp clone
+  4. Add a file into ``changes`` folder (:ref:`aiohttp-contributing-changes`).
 
-  5. Make pull request from github page for your clone against master branch
+  5. Commit changes to own aiohttp clone
+
+  6. Make pull request from github page for your clone against master branch
 
   .. note::
      If your PR has long history or many commits
