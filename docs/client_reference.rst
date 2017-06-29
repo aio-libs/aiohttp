@@ -1447,12 +1447,6 @@ Response errors
       handle redirection responses.
 
 
-.. class:: ClientRedirectError
-
-   Response is a redirect but ``Location`` or ``URI`` headers are missing.
-
-   Derived from :exc:`ClientResponseError`
-
 .. class:: WSServerHandshakeError
 
    Web socket server response error.
@@ -1540,7 +1534,6 @@ Hierarchy of exceptions
 
   * :exc:`ClientResponseError`
 
-    * :exc:`ClientRedirectError`
     * :exc:`WSServerHandshakeError`
     * :exc:`ClientHttpProxyError`
 
