@@ -136,10 +136,18 @@ Documentation
 
 https://aiohttp.readthedocs.io/
 
-Discussion list
-===============
+Communication channels
+======================
 
 *aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
+Feel free to post your questions and ideas here.
+
+*gitter chat* https://gitter.im/aio-libs/Lobby
+
+We support `Stack Overflow
+<https://stackoverflow.com/questions/tagged/aiohttp>`_.
+Please add *aiohttp* tag to your question there.
 
 Requirements
 ============
