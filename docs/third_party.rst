@@ -118,6 +118,12 @@ period ask to raise he status.
 - `aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_
   Swagger API Documentation builder for aiohttp server.
 
+- `aiohttp-swaggerify <https://github.com/dchaplinsky/aiohttp_swaggerify>`_
+  Library to automatically generate swagger2.0 definition for aiohttp endpoints.
+
+- `aiohttp-validate <https://github.com/dchaplinsky/aiohttp_validate>`_
+  Simple library that helps you validate your API endpoints requests/responses with json schema.
+
 - `raven-aiohttp <https://github.com/getsentry/raven-aiohttp>`_ An
   aiohttp transport for raven-python (Sentry client).
 
