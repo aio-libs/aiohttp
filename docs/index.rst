@@ -214,8 +214,7 @@ Contents
    testing
    deployment
    faq
-   third_party
-   built_with
+   external
    essays
    contributing
    changes

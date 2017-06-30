@@ -14,9 +14,9 @@ This page is a list of these tools.
 Please feel free to add your open sourced library if it's not enlisted
 yet by making Pull Request to https://github.com/aio-libs/aiohttp/
 
-- Q. Why do you might want to include your awesome library into the list?
+* Why do you might want to include your awesome library into the list?
 
-- A. Just because the list increases your library visibility. People
+* Just because the list increases your library visibility. People
   will have an easy way to find it.
 
 
