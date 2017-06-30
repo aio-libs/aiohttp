@@ -142,9 +142,9 @@ External links
 * `Third party libraries
   <http://aiohttp.readthedocs.io/en/latest/third_party.html>`_
 * `Built with aiohttp
-  http://aiohttp.readthedocs.io/en/latest/built_with.html`_
+  <http://aiohttp.readthedocs.io/en/latest/built_with.html>`_
 * `Powered by aiohttp
-  http://aiohttp.readthedocs.io/en/latest/powered_by.html`_
+  <http://aiohttp.readthedocs.io/en/latest/powered_by.html>`_
 
 Feel free to make a Pull Request for adding your link to these pages!
 
