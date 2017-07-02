@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -z $TRAVIS_TAG ] || [ ! -z $PYTHONASYNCIODEBUG ] || [ ! -z $AIOHTTP_NO_EXTENSIONS ]
+if [ -z $TRAVIS_TAG ] || [ -n $PYTHONASYNCIODEBUG ] || [ -n $AIOHTTP_NO_EXTENSIONS ]
 then
     exit 1
 fi
