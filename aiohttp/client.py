@@ -535,7 +535,7 @@ class ClientSession:
                 self._connector.close()
             self._connector = None
 
-        return deprecated_noop('ClientSession.close() is not coroutine')
+        return deprecated_noop('ClientSession.close() is a coroutine')
 
     @property
     def closed(self):
