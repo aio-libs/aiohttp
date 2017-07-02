@@ -14,6 +14,7 @@ addons:
 os: linux
 
 jobs:
+  fast_finish: true
   allow_failures:
   - python: 3.6-dev
   - python: nightly
