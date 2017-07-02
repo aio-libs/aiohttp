@@ -29,5 +29,5 @@ do
     done
 
     echo "Cleanup"
-    docker run --rm -v `pwd`:/io "quay.io/pypa/manylinux1_${arch}" rm -rf /io/dist
+    rm -rf ./dist
 done
