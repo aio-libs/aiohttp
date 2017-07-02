@@ -68,4 +68,4 @@ script:
 
 after_success:
   - codecov
-  - ./tools/run_docker.sh
+  - ./tools/run_docker.sh "aiohttp"
