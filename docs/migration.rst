@@ -140,7 +140,6 @@ Various
    does not match, it raises :exc:`aiohttp.ClientResponseError` exception.
    To disable content type check you can pass ``None`` as `content_type` parameter.
 
-7. `ClientSession.close()` is a regular function returning None, not a coroutine.
 
 
 

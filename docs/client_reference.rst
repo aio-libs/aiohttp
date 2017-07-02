@@ -474,13 +474,11 @@ The client session supports the context manager protocol for self closing.
 
          URLs may be either :class:`str` or :class:`~yarl.URL`
 
-   .. method:: close()
+   .. comethod:: close()
 
       Close underlying connector.
 
       Release all acquired resources.
-
-      .. versionchanged:: 2.0
 
    .. method:: detach()
 
