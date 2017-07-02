@@ -121,9 +121,12 @@ def test_logging():
 
 
 @asyncio.coroutine
-def test_on_shutdown():
+def test_on_shutdown(loop):
     app = web.Application()
     called = False
+    app._set_loop(loop)
+
+    assert not app.scheduler.closed
 
     @asyncio.coroutine
     def on_shutdown(app_param):
@@ -135,6 +138,7 @@ def test_on_shutdown():
 
     yield from app.shutdown()
     assert called
+    assert app.scheduler.closed
 
 
 @asyncio.coroutine

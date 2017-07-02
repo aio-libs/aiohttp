@@ -25,6 +25,7 @@ from .web_middlewares import *  # noqa
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
+from .web_scheduler import Scheduler
 from .web_server import Server
 from .web_urldispatcher import *  # noqa
 from .web_urldispatcher import PrefixedSubAppResource
@@ -75,6 +76,7 @@ class Application(MutableMapping):
         self._state = {}
         self._frozen = False
         self._subapps = []
+        self._scheduler = None
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
@@ -133,6 +135,8 @@ class Application(MutableMapping):
         if self._debug is ...:
             self._debug = loop.get_debug()
 
+        self._scheduler = Scheduler(loop=loop)
+
         # set loop to sub applications
         for subapp in self._subapps:
             subapp._set_loop(loop)
@@ -162,6 +166,10 @@ class Application(MutableMapping):
     @property
     def debug(self):
         return self._debug
+
+    @property
+    def scheduler(self):
+        return self._scheduler
 
     def _reg_subapp_signals(self, subapp):
 
@@ -265,6 +273,7 @@ class Application(MutableMapping):
         Should be called before cleanup()
         """
         yield from self.on_shutdown.send(self)
+        yield from self._scheduler.close()
 
     @asyncio.coroutine
     def cleanup(self):
