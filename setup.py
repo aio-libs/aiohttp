@@ -60,7 +60,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 
 install_requires = ['chardet', 'multidict>=3.0.0',
-                    'async_timeout>=1.2.0', 'yarl>=0.11.0']
+                    'async_timeout>=1.2.0', 'yarl>=0.11']
 
 
 def read(f):
