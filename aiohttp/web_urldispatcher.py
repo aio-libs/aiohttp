@@ -5,7 +5,9 @@ import inspect
 import keyword
 import os
 import re
+import sys
 import warnings
+from collections import namedtuple
 from collections.abc import Container, Iterable, Sized
 from functools import wraps
 from pathlib import Path
@@ -28,10 +30,21 @@ from .web_response import Response, StreamResponse
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View')
+           'StaticResource', 'View',
+           'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 PATH_SEP = re.escape('/')
+
+
+class RouteInfo(namedtuple('_RouteInfo', 'method, path, handler, kwargs')):
+    def register(self, router):
+        if self.method in hdrs.METH_ALL:
+            reg = getattr(router, 'add_'+self.method.lower())
+            reg(self.path, self.handler, **self.kwargs)
+        else:
+            router.add_route(self.method, self.path, self.handler,
+                             **self.kwargs)
 
 
 class AbstractResource(Sized, Iterable):
@@ -894,3 +907,69 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         super().freeze()
         for resource in self._resources:
             resource.freeze()
+
+    def add_routes(self, routes):
+        # TODO: add_table maybe?
+        for route in routes:
+            route.register(self)
+
+    def scan(self, package):
+        prefix = package + '.'
+        for modname, mod in sorted(sys.modules.items()):
+            if modname == package or modname.startswith(prefix):
+                for name in dir(mod):
+                    obj = getattr(mod, name)
+                    route = getattr(obj, '__aiohttp_web__', None)
+                    if route is not None:
+                        route.register(self)
+
+
+def _make_route(method, path, handler, **kwargs):
+    return RouteInfo(method, path, handler, kwargs)
+
+
+def _make_wrapper(method, path, **kwargs):
+    def wrapper(handler):
+        if hasattr(handler, '__aiohttp_web__'):
+            raise ValueError('Handler {handler!r} is registered already '
+                             'as [{method}] {path} {kwargs}'.format(
+                                 handler=handler,
+                                 method=method,
+                                 path=path,
+                                 kwargs=kwargs))
+        handler.__aiohttp_web__ = _make_route(method, path,
+                                              handler, **kwargs)
+        return handler
+    return wrapper
+
+
+def route(method, path, handler=None, **kwargs):
+    if handler is None:
+        return _make_wrapper(method, path, **kwargs)
+    else:
+        return _make_route(method, path, handler, **kwargs)
+
+
+def head(path, handler=None, **kwargs):
+    return route(hdrs.METH_HEAD, path, handler, **kwargs)
+
+
+def get(path, handler=None, *, name=None, allow_head=True, **kwargs):
+    return route(hdrs.METH_GET, path, handler,
+                 allow_head=allow_head, **kwargs)
+
+
+def post(path, handler=None, **kwargs):
+    return route(hdrs.METH_POST, path, handler, **kwargs)
+
+
+def put(path, handler=None, **kwargs):
+    return route(hdrs.METH_PUT, path, handler, **kwargs)
+
+
+def patch(path, handler=None, **kwargs):
+    return route(hdrs.METH_PATCH, path, handler, **kwargs)
+
+
+def delete(path, handler=None, **kwargs):
+    return route(hdrs.METH_DELETE, path, handler, **kwargs)
