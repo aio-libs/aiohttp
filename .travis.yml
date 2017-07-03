@@ -2,6 +2,16 @@ sudo: false
 
 language: python
 
+install:
+- &upgrade_python_toolset pip install --upgrade pip setuptools wheel
+- pip install -U -r requirements/ci.txt
+
+script:
+- make cov-dev-full
+
+after_success:
+- codecov
+
 _helpers:
 - &mainstream_python 3.6
 - &_mainstream_python_base
@@ -9,6 +19,9 @@ _helpers:
 - &_doc_base
   stage: doc
   <<: *_mainstream_python_base
+  install:
+  - *upgrade_python_toolset
+  - pip install -U -r requirements/doc.txt -r requirements/doc-spelling.txt
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:
@@ -64,13 +77,3 @@ jobs:
 cache: pip
 
 before_cache: rm -f $HOME/.cache/pip/log/debug.log
-
-install:
-  - pip install --upgrade pip setuptools wheel
-  - pip install -U -r requirements/ci.txt
-
-script:
-  - make cov-dev-full
-
-after_success:
-  - codecov
