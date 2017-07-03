@@ -6,10 +6,14 @@ _helpers:
 - &mainstream_python 3.6
 - &_mainstream_python_base
   python: *mainstream_python
-addons:
-  apt:
-    packages:
-    - enchant
+- &_doc_base
+  stage: doc
+  <<: *_mainstream_python_base
+  after_failure: cat docs/_build/spelling/output.txt
+  addons:
+    apt:
+      packages:
+      - enchant
 
 # doesn't work on MacOSX out of the box -- the system has no Python installed
 # there's a workaround to use `language: generic` and install it, but it's slow
@@ -31,6 +35,13 @@ jobs:
   - <<: *_mainstream_python_base
   - python: 3.6-dev
   - python: nightly
+
+  - <<: *_doc_base
+    script:
+    - make doc
+  - <<: *_doc_base
+    script:
+    - make doc-spelling
 
   - stage: deploy (PYPI upload itself runs only for tagged commits)
     python: *mainstream_python
@@ -60,11 +71,6 @@ install:
 
 script:
   - make cov-dev-full
-
-  - if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then
-        make doc;
-        make doc-spelling;
-    fi
 
 after_success:
   - codecov
