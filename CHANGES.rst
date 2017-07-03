@@ -12,6 +12,18 @@ Changes
 
 .. towncrier release notes start
 
+2.2.2 (2017-07-03)
+==================
+
+- Allow `await session.close()` along with `yield from session.close()`
+
+
+2.2.1 (2017-07-02)
+==================
+
+- Relax `yarl` requirement to 0.11+
+
+- Backport #2026: `session.close` *is* a coroutine (#2029)
 
 
 2.2.0 (2017-06-20)

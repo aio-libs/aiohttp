@@ -1,3 +1,5 @@
+.. _aiohttp-built-with:
+
 Built with aiohttp
 ==================
 
@@ -16,5 +18,4 @@ You can also add a **Built with aiohttp** link somewhere in your
 project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 
 
-- `Molotov <http://molotov.readthedocs.io>`_ Load testing tool.
-
+* `Molotov <http://molotov.readthedocs.io>`_ Load testing tool.

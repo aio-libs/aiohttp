@@ -7,14 +7,14 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
 
-import yarl
 from multidict import CIMultiDict
+from yarl import URL
 
 from aiohttp import hdrs
 from .http_exceptions import (
     BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError,
     PayloadEncodingError, ContentLengthError, TransferEncodingError)
-from .http_writer import HttpVersion, HttpVersion10, HttpVersion11, URL
+from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
 from .http_parser import RawRequestMessage, RawResponseMessage, DeflateBuffer
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
@@ -329,7 +329,7 @@ cdef int cb_on_url(cparser.http_parser* parser,
         pyparser._path = path
 
         if pyparser._cparser.method == 5:  # CONNECT
-            pyparser._url = yarl.URL(path)
+            pyparser._url = URL(path)
         else:
             pyparser._url = _parse_url(at[:length], length)
     except BaseException as ex:
@@ -486,6 +486,8 @@ def _parse_url(char* buf_data, size_t length):
         str path = None
         str query = None
         str fragment = None
+        str user = None
+        str password = None
         str userinfo = None
         object result = None
         int off
@@ -541,7 +543,11 @@ def _parse_url(char* buf_data, size_t length):
                 ln = parsed.field_data[<int>cparser.UF_USERINFO].len
                 userinfo = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
 
-            return URL(schema, host, port, path, query, fragment, userinfo)
+                user, sep, password = userinfo.partition(':')
+
+            return URL.build(scheme=schema,
+                             user=user, password=password, host=host, port=port,
+                             path=path, query=query, fragment=fragment)
         else:
             raise InvalidURLError("invalid url {!r}".format(buf_data))
     finally:

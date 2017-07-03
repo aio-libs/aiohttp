@@ -136,10 +136,31 @@ Documentation
 
 https://aiohttp.readthedocs.io/
 
-Discussion list
-===============
+External links
+==============
+
+* `Third party libraries
+  <http://aiohttp.readthedocs.io/en/latest/third_party.html>`_
+* `Built with aiohttp
+  <http://aiohttp.readthedocs.io/en/latest/built_with.html>`_
+* `Powered by aiohttp
+  <http://aiohttp.readthedocs.io/en/latest/powered_by.html>`_
+
+Feel free to make a Pull Request for adding your link to these pages!
+
+
+Communication channels
+======================
 
 *aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
+
+Feel free to post your questions and ideas here.
+
+*gitter chat* https://gitter.im/aio-libs/Lobby
+
+We support `Stack Overflow
+<https://stackoverflow.com/questions/tagged/aiohttp>`_.
+Please add *aiohttp* tag to your question there.
 
 Requirements
 ============

@@ -491,13 +491,11 @@ The client session supports the context manager protocol for self closing.
 
          URLs may be either :class:`str` or :class:`~yarl.URL`
 
-   .. method:: close()
+   .. comethod:: close()
 
       Close underlying connector.
 
       Release all acquired resources.
-
-      .. versionchanged:: 2.0
 
    .. method:: detach()
 
@@ -1447,12 +1445,6 @@ Response errors
       handle redirection responses.
 
 
-.. class:: ClientRedirectError
-
-   Response is a redirect but ``Location`` or ``URI`` headers are missing.
-
-   Derived from :exc:`ClientResponseError`
-
 .. class:: WSServerHandshakeError
 
    Web socket server response error.
@@ -1540,7 +1532,6 @@ Hierarchy of exceptions
 
   * :exc:`ClientResponseError`
 
-    * :exc:`ClientRedirectError`
     * :exc:`WSServerHandshakeError`
     * :exc:`ClientHttpProxyError`
 
