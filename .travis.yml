@@ -1,6 +1,4 @@
 sudo: false
-services:
-  - docker
 
 language: python
 
@@ -32,8 +30,11 @@ jobs:
 
   - stage: deploy (PYPI upload itself runs only for tagged commits)
     python: *mainstream_python
+    services:
+    - docker
     install: skip
-    script: skip
+    script:
+    - ./tools/run_docker.sh "aiohttp"
     after_success: skip
     deploy:
       provider: pypi
@@ -69,4 +70,3 @@ script:
 
 after_success:
   - codecov
-  - ./tools/run_docker.sh "aiohttp"
