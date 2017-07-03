@@ -4,8 +4,8 @@ import string
 import zlib
 from enum import IntEnum
 
-import yarl
 from multidict import CIMultiDict
+from yarl import URL
 
 from . import hdrs
 from .helpers import NO_EXTENSIONS
@@ -375,7 +375,7 @@ class HttpRequestParserPy(HttpParser):
 
         return RawRequestMessage(
             method, path, version, headers, raw_headers,
-            close, compression, upgrade, chunked, yarl.URL(path))
+            close, compression, upgrade, chunked, URL(path))
 
 
 class HttpResponseParserPy(HttpParser):
