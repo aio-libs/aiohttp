@@ -66,6 +66,11 @@ class _CoroGuard:
         self._awaited = True
         return self._coro.__iter__()
 
+    if PY_35:
+        def __await__(self):
+            self._awaited = True
+            return (yield from self._coro)
+
     def __del__(self):
         self._coro = None
         if not self._awaited:
