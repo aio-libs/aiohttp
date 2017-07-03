@@ -14,7 +14,6 @@ environment:
 
 install:
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install wheel"
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install twine"
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 build: false

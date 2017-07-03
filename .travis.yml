@@ -55,14 +55,8 @@ cache: pip
 before_cache: rm -f $HOME/.cache/pip/log/debug.log
 
 install:
-  - pip install --upgrade pip wheel
-  - pip install --upgrade setuptools
-  - pip install --upgrade setuptools-git
-  - pip install -r requirements/ci.txt
-  - pip install aiodns
-  - pip install codecov
-  - pip install 'uvloop; python_version>="3.5"'
-  - pip install sphinxcontrib-spelling
+  - pip install --upgrade pip setuptools wheel
+  - pip install -U -r requirements/ci.txt
 
 script:
   - make cov-dev-full
