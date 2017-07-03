@@ -1,3 +1,4 @@
+import asyncio
 import socket
 from unittest import mock
 
@@ -332,3 +333,72 @@ def test_replace_available(loop):
     payload2 = stream.replace(payload, PayloadWriter)
     assert payload2._transport is transport
     assert payload2 not in stream._waiters
+
+
+@asyncio.coroutine
+def test_concurrent_drains(loop):
+    # high limit for write buffer is about 4 MB
+    PACKET = b'1234567890' * 1024 * 1024
+
+    fut0 = asyncio.Future(loop=loop)
+    fut1 = asyncio.Future(loop=loop)
+    fut2 = asyncio.Future(loop=loop)
+    fut3 = asyncio.Future(loop=loop)
+
+    class Proto(asyncio.streams.FlowControlMixin):
+        def connection_made(self, transport):
+            super().connection_made(transport)
+            self.transport = transport
+
+    @asyncio.coroutine
+    def read(reader, writer):
+        yield from fut1
+        ret = object()
+        res = b''
+        while ret:
+            ret = yield from reader.read()
+            res += ret
+        assert res == PACKET*3
+        fut2.set_result(None)
+
+    server = yield from asyncio.start_server(read, '127.0.0.1', 0, loop=loop)
+    port = server.sockets[0].getsockname()[1]
+
+    tr, pr = yield from loop.create_connection(lambda: Proto(loop=loop),
+                                               '127.0.0.1', port)
+
+    stream = StreamWriter(pr, tr, loop)
+    tr.set_write_buffer_limits(1, 1)
+
+    started = 0
+    finished = 0
+
+    @asyncio.coroutine
+    def write():
+        nonlocal started, finished
+        started += 1
+        if started == 3:
+            fut0.set_result(None)
+        tr.write(PACKET)
+        yield from stream.drain()
+        finished += 1
+        if finished == 3:
+            fut3.set_result(None)
+
+    tasks = [loop.create_task(write()) for i in range(3)]
+
+    yield from fut0
+    assert started == 3
+    assert finished == 0
+    fut1.set_result(None)
+    yield from fut3
+    tr.close()
+    yield from fut2
+    assert started == 3
+    assert finished == 3
+
+    tr.close()
+
+    yield from asyncio.gather(*tasks, loop=loop)
+    server.close()
+    yield from server.wait_closed()
