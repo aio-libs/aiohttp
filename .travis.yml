@@ -1,5 +1,8 @@
 sudo: false
 
+dist: trusty
+group: edge
+
 language: python
 
 install:
