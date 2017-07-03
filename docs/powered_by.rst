@@ -11,3 +11,4 @@ make a Pull Request!
 * https://www.farmersbusinessnetwork.com
 * `Home Assistant <https://home-assistant.io>`_
 * KeepSafe https://www.getkeepsafe.com/
+* Skyscanner Hotels https://www.skyscanner.net/hotels
