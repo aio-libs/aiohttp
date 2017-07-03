@@ -24,4 +24,3 @@ yarl==0.12.0
 aiodns; platform_system!="Windows"  # required c-ares will not build on windows
 codecov; platform_system!="Windows"  # We only use it in Travis CI
 uvloop; python_version>="3.5" and platform_system!="Windows"  # MagicStack/uvloop#14
-sphinxcontrib-spelling; platform_system!="Windows"  # We only use it in Travis CI
