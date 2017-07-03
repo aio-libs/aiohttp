@@ -2,6 +2,10 @@ sudo: false
 
 language: python
 
+_helpers:
+- &mainstream_python 3.6
+- &_mainstream_python_base
+  python: *mainstream_python
 addons:
   apt:
     packages:
@@ -24,7 +28,7 @@ jobs:
   - python: 3.5.2
   # - 3.5.3
   - python: 3.5
-  - python: &mainstream_python 3.6
+  - <<: *_mainstream_python_base
   - python: 3.6-dev
   - python: nightly
 
