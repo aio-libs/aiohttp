@@ -1,6 +1,11 @@
 Changes
 =======
 
+2.2.2 (2017-07-03)
+------------------
+
+- Allow `await session.close()` along with `yield from session.close()`
+
 2.2.1 (2017-07-02)
 ------------------
 
