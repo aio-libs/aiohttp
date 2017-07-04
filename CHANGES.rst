@@ -12,6 +12,11 @@ Changes
 
 .. towncrier release notes start
 
+2.2.3 (2017-07-04)
+==================
+
+- Fix `_CoroGuard` for python 3.4
+
 2.2.2 (2017-07-03)
 ==================
 
