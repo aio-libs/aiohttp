@@ -62,6 +62,7 @@ class _CoroGuard:
         self._msg = msg
         self._awaited = False
 
+    @asyncio.coroutine
     def __iter__(self):
         self._awaited = True
         return self._coro.__iter__()
@@ -75,6 +76,14 @@ class _CoroGuard:
         self._coro = None
         if not self._awaited:
             warnings.warn(self._msg, DeprecationWarning)
+
+
+if not PY_35:
+    try:
+        from asyncio import coroutines
+        coroutines._COROUTINE_TYPES += (_CoroGuard,)
+    except:  # pragma: no cover
+        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
 
 
 coroutines = asyncio.coroutines
