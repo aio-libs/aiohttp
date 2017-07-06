@@ -584,7 +584,7 @@ class ClientSession:
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_val, exc_tb):
-            yield from self.close()
+            return self.close()
 
 
 if PY_35:
