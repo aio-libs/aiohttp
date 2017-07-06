@@ -441,6 +441,11 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     """
     loop = loop_factory()
     asyncio.set_event_loop(None)
+    if sys.platform != "win32":
+        policy = asyncio.get_event_loop_policy()
+        watcher = asyncio.SafeChildWatcher()
+        watcher.attach_loop(loop)
+        policy.set_child_watcher(watcher)
     return loop
 
 
