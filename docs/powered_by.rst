@@ -12,3 +12,4 @@ make a Pull Request!
 * `Home Assistant <https://home-assistant.io>`_
 * KeepSafe https://www.getkeepsafe.com/
 * Skyscanner Hotels https://www.skyscanner.net/hotels
+* Ocean S.A. https://ocean.io/
