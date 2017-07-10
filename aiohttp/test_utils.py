@@ -401,7 +401,7 @@ class AioHTTPTestCase(unittest.TestCase):
     @asyncio.coroutine
     def _get_client(self, app):
         """Return a TestClient instance."""
-        return TestClient(self.app, loop=self.loop)
+        return TestClient(app, loop=self.loop)
 
 
 def unittest_run_loop(func, *args, **kwargs):
