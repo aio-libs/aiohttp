@@ -243,6 +243,10 @@ functionality, the AioHTTPTestCase is provided::
 
        an aiohttp test client, :class:`TestClient` instance.
 
+    .. attribute:: server
+
+       an aiohttp test server, :class:`TestServer` instance.
+
     .. attribute:: loop
 
        The event loop in which the application and server are running.
@@ -251,6 +255,20 @@ functionality, the AioHTTPTestCase is provided::
 
        The application returned by :meth:`get_app`
        (:class:`aiohttp.web.Application` instance).
+
+    .. comethod:: get_client()
+
+       This async method can be overridden to return the :class:`TestClient`
+       object used in the test.
+
+       :return: :class:`TestClient` instance.
+
+    .. comethod:: get_server()
+
+       This async method can be overridden to return the :class:`TestServer`
+       object used in the test.
+
+       :return: :class:`TestServer` instance.
 
     .. comethod:: get_application()
 

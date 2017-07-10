@@ -20,7 +20,7 @@ from . import ClientSession, hdrs
 from .helpers import PY_35, noop, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Application, Request, Server, UrlMappingMatchInfo
+from .web import Request, Server, UrlMappingMatchInfo
 
 
 def run_briefly(loop):
@@ -185,23 +185,11 @@ class TestClient:
 
     """
 
-    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
-                 cookie_jar=None, server_kwargs=None, loop=None, **kwargs):
-        if isinstance(app_or_server, BaseTestServer):
-            if scheme is not sentinel or host is not sentinel:
-                raise ValueError("scheme and host are mutable exclusive "
-                                 "with TestServer parameter")
-            self._server = app_or_server
-        elif isinstance(app_or_server, Application):
-            scheme = "http" if scheme is sentinel else scheme
-            host = '127.0.0.1' if host is sentinel else host
-            server_kwargs = server_kwargs or {}
-            self._server = TestServer(
-                app_or_server,
-                scheme=scheme, host=host, **server_kwargs)
-        else:
-            raise TypeError("app_or_server should be either web.Application "
-                            "or TestServer instance")
+    def __init__(self, server, *, cookie_jar=None, loop=None, **kwargs):
+        if not isinstance(server, BaseTestServer):
+            raise TypeError("server must be web.Application TestServer "
+                            "instance, found type: %r" % type(server))
+        self._server = server
         self._loop = loop
         if cookie_jar is None:
             cookie_jar = aiohttp.CookieJar(unsafe=True, loop=loop)
@@ -390,7 +378,9 @@ class AioHTTPTestCase(unittest.TestCase):
         self.loop = setup_test_loop()
 
         self.app = self.loop.run_until_complete(self.get_application())
-        self.client = self.loop.run_until_complete(self._get_client(self.app))
+        self.server = self.loop.run_until_complete(self.get_server(self.app))
+        self.client = self.loop.run_until_complete(
+            self.get_client(self.server))
 
         self.loop.run_until_complete(self.client.start_server())
 
@@ -399,9 +389,14 @@ class AioHTTPTestCase(unittest.TestCase):
         teardown_test_loop(self.loop)
 
     @asyncio.coroutine
-    def _get_client(self, app):
+    def get_server(self, app):
+        """Return a TestServer instance."""
+        return TestServer(app, loop=self.loop)
+
+    @asyncio.coroutine
+    def get_client(self, server):
         """Return a TestClient instance."""
-        return TestClient(app, loop=self.loop)
+        return TestClient(server, loop=self.loop)
 
 
 def unittest_run_loop(func, *args, **kwargs):
