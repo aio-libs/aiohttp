@@ -68,13 +68,6 @@ def test_close_deprecated(create_session):
         session.close()
 
 
-def test_close_run_until_complete_deprecated(create_session, loop):
-    session = create_session()
-
-    with pytest.warns(DeprecationWarning):
-        loop.run_until_complete(session.close())
-
-
 def test_init_headers_simple_dict(create_session):
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})

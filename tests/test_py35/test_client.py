@@ -20,6 +20,13 @@ async def test_session_close_awaitable(loop):
     assert session.closed
 
 
+def test_close_run_until_complete_deprecated(create_session, loop):
+    session = create_session()
+
+    with pytest.warns(DeprecationWarning):
+        loop.run_until_complete(session.close())
+
+
 async def test_close_resp_on_error_async_with_session(loop, test_server):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
