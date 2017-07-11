@@ -20,8 +20,8 @@ async def test_session_close_awaitable(loop):
     assert session.closed
 
 
-def test_close_run_until_complete_deprecated(create_session, loop):
-    session = create_session()
+def test_close_run_until_complete_deprecated(loop):
+    session = aiohttp.ClientSession(loop=loop)
 
     with pytest.warns(DeprecationWarning):
         loop.run_until_complete(session.close())
