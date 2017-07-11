@@ -290,7 +290,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :param rel_url: url to use, :class:`str` or :class:`~yarl.URL`
 
-      :param headers: :class:`~multidict.CIMultidict` or compatible
+      :param headers: :class:`~multidict.CIMultiDict` or compatible
                       headers container.
 
       :return: a cloned :class:`Request` instance.
@@ -569,7 +569,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.CIMultiiDct` instance
+      :class:`~multidict.CIMultiDict` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies

@@ -73,7 +73,7 @@ The client session supports the context manager protocol for self closing.
                    May be either *iterable of key-value pairs* or
                    :class:`~collections.abc.Mapping`
                    (e.g. :class:`dict`,
-                   :class:`~aiohttp.CIMultiDict`).
+                   :class:`~multidict.CIMultiDict`).
 
    :param skip_auto_headers: set of headers for which autogeneration
       should be skipped.
@@ -997,7 +997,7 @@ Response object
    .. attribute:: headers
 
       A case-insensitive multidict proxy with HTTP headers of
-      response, :class:`CIMultiDictProxy`.
+      response, :class:`~multidict.CIMultiDictProxy`.
 
    .. attribute:: raw_headers
 
