@@ -7,7 +7,7 @@ aiohttp is used to build useful libraries built on top of it,
 and there's a page dedicated to list them: :ref:`aiohttp-3rd-party`.
 
 There are also projects that leverage the power of aiohttp to
-provide end-user tools, like command lines or softwares with
+provide end-user tools, like command lines or software with
 full user interfaces.
 
 This page aims to list those projects. If you are using aiohttp

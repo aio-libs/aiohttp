@@ -99,7 +99,7 @@ Database drivers
 Others
 ------
 
-The list of libs which are exists but not enlisted in former categories.
+The list of libraries which are exists but not enlisted in former categories.
 
 They are may be perfect or not -- we don't know.
 
