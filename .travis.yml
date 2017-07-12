@@ -65,7 +65,15 @@ jobs:
     - docker
     install: skip
     script:
-    - ./tools/run_docker.sh "aiohttp"
+    - |
+      if [ -n "$TRAVIS_TAG" ]
+      then
+        echo Proceeding to build wheels
+        ./tools/run_docker.sh "aiohttp"
+      else
+        echo Not building wheels
+        exit 0
+      fi
     after_success: skip
     deploy:
       provider: pypi
