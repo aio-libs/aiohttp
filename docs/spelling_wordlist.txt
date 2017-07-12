@@ -32,6 +32,7 @@ Changelog
 charset
 charsetdetect
 chunked
+chunking
 CIMultiDict
 ClientSession
 cls
@@ -49,10 +50,13 @@ cpu
 css
 ctor
 Ctrl
+Cython
 cythonized
 de
 deduplicate
+deprecations
 DER
+Dev
 dict
 Dict
 django
@@ -67,6 +71,8 @@ environ
 eof
 epoll
 Facebook
+# de-facto:
+facto
 fallback
 filename
 finalizers
@@ -90,6 +96,7 @@ incapsulates
 Indices
 infos
 inline
+intaking
 io
 ip
 IP
@@ -118,6 +125,8 @@ metadata
 middleware
 middlewares
 miltidict
+misbehaviors
+misformed
 Mongo
 msg
 MsgType
@@ -145,6 +154,7 @@ param
 params
 pathlib
 ping
+pipelining
 pluggable
 plugin
 poller
@@ -157,11 +167,13 @@ PRs
 pubsub
 py
 pyenv
+pyflakes
 pytest
 Pytest
 readonly
 readpayload
 rebase
+redirections
 Redis
 refactor
 Refactor
@@ -170,6 +182,7 @@ refactoring
 regex
 regexps
 regexs
+reloader
 renderer
 renderers
 repo
@@ -180,6 +193,7 @@ resolvers
 reusage
 Runit
 sa
+Satisfiable
 schemas
 sendfile
 serializable
@@ -188,6 +202,7 @@ skipuntil
 SocketSocketTransport
 ssl
 SSLContext
+startup
 subclasses
 submodules
 subpackage

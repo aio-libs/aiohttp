@@ -986,7 +986,7 @@ Response object
       Reading from the stream may raise
       :exc:`aiohttp.ClientPayloadError` if the response object is
       closed before response receives all data or in case if any
-      transfer encoding related errors like mis-formed chunked
+      transfer encoding related errors like misformed chunked
       encoding of broken compression data.
 
    .. attribute:: cookies
