@@ -14,3 +14,5 @@ make a Pull Request!
 * Skyscanner Hotels https://www.skyscanner.net/hotels
 * Ocean S.A. https://ocean.io/
 * GNS3 http://gns3.com
+* TutorCruncher socket https://tutorcruncher.com/features/tutorcruncher-socket/
+* Morpheus messaging microservice https://github.com/tutorcruncher/morpheus
