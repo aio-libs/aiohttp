@@ -16,10 +16,10 @@ autodetection
 autogenerates
 autogeneration
 awaitable
-Backport
-BaseEventLoop
 backend
 backends
+Backport
+BaseEventLoop
 basename
 BasicAuth
 BodyPartReader
@@ -54,6 +54,7 @@ Cython
 cythonized
 de
 deduplicate
+# de-facto:
 deprecations
 DER
 Dev
@@ -72,7 +73,6 @@ environ
 eof
 epoll
 Facebook
-# de-facto:
 facto
 fallback
 filename
@@ -201,6 +201,7 @@ sendfile
 serializable
 shourtcuts
 skipuntil
+Skyscanner
 SocketSocketTransport
 ssl
 SSLContext
@@ -259,4 +260,3 @@ WSMessage
 WSMsgType
 wss
 www
-Skyscanner
