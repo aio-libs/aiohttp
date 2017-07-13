@@ -8,6 +8,7 @@ alives
 api
 app
 arg
+Arsenic
 async
 asyncio
 auth
