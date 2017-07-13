@@ -194,3 +194,5 @@ period ask to raise he status.
 
 - `home-assistant <https://github.com/home-assistant/home-assistant>`_
   Open-source home automation platform running on Python 3.
+
+- `https://github.com/Rapptz/discord.py`_ Discord client library.
