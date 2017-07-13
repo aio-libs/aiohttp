@@ -19,3 +19,4 @@ project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 
 
 * `Molotov <http://molotov.readthedocs.io>`_ Load testing tool.
+* `Arsenic <https://github.com/hde/arsenic>`_ Async WebDriver.
