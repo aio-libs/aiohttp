@@ -1,8 +1,5 @@
 sudo: false
 
-dist: trusty
-group: edge
-
 language: python
 
 install:
@@ -61,6 +58,8 @@ jobs:
 
   - stage: deploy (PYPI upload itself runs only for tagged commits)
     python: *mainstream_python
+    dist: trusty
+    group: edge
     services:
     - docker
     install: skip
