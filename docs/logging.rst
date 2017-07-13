@@ -38,7 +38,7 @@ instance to override default logger.
 
 .. note::
 
-   Use ``app.make_handler(access_log=None)`` for disabling access logs.
+   Use ``web.run_app(app, access_log=None)`` for disabling access logs.
 
 
 Other parameter called *access_log_format* may be used for specifying log
