@@ -59,6 +59,7 @@ DER
 Dev
 dict
 Dict
+Discord
 django
 Django
 dns
