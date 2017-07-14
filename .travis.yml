@@ -7,7 +7,9 @@ install:
 - pip install -U -r requirements/ci.txt
 
 script:
-- make cov-dev-full
+- make cov-ci-no-ext
+- make cov-ci-aio-debug
+- make cov-ci-run
 
 after_success:
 - codecov
