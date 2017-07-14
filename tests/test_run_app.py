@@ -566,3 +566,16 @@ def test_startup_cleanup_signals_even_on_failure(loop, mocker):
 
     app.startup.assert_called_once_with()
     app.cleanup.assert_called_once_with()
+
+
+def test_exception_during_startup_prevents_running(loop, mocker):
+    skip_if_no_dict(loop)
+
+    app = web.Application()
+    app.on_startup.append(mock.Mock(side_effect=RuntimeError()))
+    mocker.spy(app, 'cleanup')
+
+    with pytest.raises(RuntimeError):
+        web.run_app(app, loop=loop, host=(), print=stopper(loop))
+
+    app.cleanup.assert_called_once_with()

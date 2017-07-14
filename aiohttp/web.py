@@ -420,9 +420,10 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         loop = asyncio.get_event_loop()
 
     app._set_loop(loop)
-    loop.run_until_complete(app.startup())
 
     try:
+        loop.run_until_complete(app.startup())
+
         make_handler_kwargs = dict()
         if access_log_format is not None:
             make_handler_kwargs['access_log_format'] = access_log_format
