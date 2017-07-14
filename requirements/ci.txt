@@ -16,5 +16,5 @@ pytest-mock==1.6.0
 gunicorn==19.7.1
 #aiodns  # Enable from .travis.yml as required c-ares will not build on windows
 twine==1.9.1
-yarl==0.11.0
+yarl==0.11.1
 -e .
