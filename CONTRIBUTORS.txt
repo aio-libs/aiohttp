@@ -178,6 +178,7 @@ Will McGugan
 Willem de Groot
 Wilson Ong
 Yannick Koechlin
+Yegor Roganov
 Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov
