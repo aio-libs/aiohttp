@@ -69,20 +69,12 @@ jobs:
     - |
       if [ -z "$TRAVIS_TAG" ]
       then
-        echo Not building wheels "(before cache)"
+        echo Not building wheels
         exit 0
       fi
     install: skip
     script:
-    - |
-      if [ -n "$TRAVIS_TAG" ]
-      then
-        echo Proceeding to build wheels
-        ./tools/run_docker.sh "aiohttp"
-      else
-        echo Not building wheels
-        exit 0
-      fi
+    - ./tools/run_docker.sh "aiohttp"
     after_success: skip
     deploy:
       provider: pypi
