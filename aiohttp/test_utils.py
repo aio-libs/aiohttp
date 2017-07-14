@@ -384,9 +384,20 @@ class AioHTTPTestCase(unittest.TestCase):
 
         self.loop.run_until_complete(self.client.start_server())
 
+        self.loop.run_until_complete(self.setUpAsync())
+
+    @asyncio.coroutine
+    def setUpAsync(self):
+        pass
+
     def tearDown(self):
+        self.loop.run_until_complete(self.tearDownAsync())
         self.loop.run_until_complete(self.client.close())
         teardown_test_loop(self.loop)
+
+    @asyncio.coroutine
+    def tearDownAsync(self):
+        pass
 
     @asyncio.coroutine
     def get_server(self, app):

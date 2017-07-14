@@ -278,6 +278,16 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`aiohttp.web.Application` instance.
 
+    .. comethod:: setUpAsync()
+
+       This async method do nothing by default and can be overriden to execute
+       asynchronous code during the setUp stage of the TestCase.
+
+    .. comethod:: tearDownAsync()
+
+       This async method do nothing by default and can be overriden to execute
+       asynchronous code during the tearDown stage of the TestCase.
+
     .. method:: setUp()
 
        Standard test initialization method.

@@ -1,1 +1,1 @@
-Added `get_client` and `get_server` methods to AioHTTPTestCase
+Added `get_client`, `get_server`, `setUpAsync` and `tearDownAsync` methods to AioHTTPTestCase
