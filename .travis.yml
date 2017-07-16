@@ -22,9 +22,16 @@ _helpers:
 - &mainstream_python 3.6
 - &_mainstream_python_base
   python: *mainstream_python
+- &_reset_steps
+  env: []
+  before_install: skip
+  install: skip
+  script: skip
+  after_success: skip
 - &_doc_base
   stage: doc
   <<: *_mainstream_python_base
+  <<: *_reset_steps
   install:
   - *upgrade_python_toolset
   - pip install -U -r requirements/dev.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
@@ -61,6 +68,7 @@ jobs:
 
   - stage: deploy (PYPI upload itself runs only for tagged commits)
     python: *mainstream_python
+    <<: *_reset_steps
     dist: trusty
     group: edge
     services:
@@ -73,10 +81,8 @@ jobs:
         echo Not building wheels
         exit 0
       fi
-    install: skip
     script:
     - ./tools/run_docker.sh "aiohttp"
-    after_success: skip
     deploy:
       provider: pypi
       # `skip_cleanup: true` is required to preserve binary wheels, built
