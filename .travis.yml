@@ -32,7 +32,7 @@ _helpers:
   addons:
     apt:
       packages:
-      - enchant
+      - libenchant-dev
 
 # doesn't work on MacOSX out of the box -- the system has no Python installed
 # there's a workaround to use `language: generic` and install it, but it's slow
