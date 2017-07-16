@@ -57,9 +57,6 @@ jobs:
 
   - <<: *_doc_base
     script:
-    - make doc
-  - <<: *_doc_base
-    script:
     - make doc-spelling
 
   - stage: deploy (PYPI upload itself runs only for tagged commits)
