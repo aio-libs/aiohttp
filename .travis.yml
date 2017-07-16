@@ -2,6 +2,14 @@ sudo: false
 
 language: python
 
+python:
+# python3.4.2 has bug in http.cookies module, aiohttp provides fix for it
+- 3.4.2
+- 3.4.3
+- 3.5.2
+- 3.5
+- &mainstream_python 3.6
+
 install:
 - &upgrade_python_toolset pip install --upgrade pip setuptools wheel
 - pip install -U -r requirements/ci.txt
@@ -19,7 +27,6 @@ after_success:
 - codecov
 
 _helpers:
-- &mainstream_python 3.6
 - &_mainstream_python_base
   python: *mainstream_python
 - &_reset_steps
@@ -52,13 +59,6 @@ jobs:
   - python: nightly
 
   include:
-  # python3.4.2 has bug in http.cookies module, aiohttp provides fix
-  - python: 3.4.2
-  - python: 3.4.3
-  - python: 3.5.2
-  # - 3.5.3
-  - python: 3.5
-  - <<: *_mainstream_python_base
   - python: 3.6-dev
   - python: nightly
 
@@ -67,7 +67,7 @@ jobs:
     - make doc-spelling
 
   - stage: deploy (PYPI upload itself runs only for tagged commits)
-    python: *mainstream_python
+    <<: *_mainstream_python_base
     <<: *_reset_steps
     dist: trusty
     group: edge
