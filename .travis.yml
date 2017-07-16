@@ -92,6 +92,8 @@ jobs:
       # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
       # it is default that Travis PYPI provider has `skip_upload_docs: true`
       # set by default.
+      # Besides above, we don't do cleanup of `dist/*`, because it's being done
+      # by Travis CI PYPI deployment provider after upload, unconditionally.
       on:
         tags: true
         all_branches: true
