@@ -62,24 +62,38 @@ def test_raw_server_handler_timeout(raw_test_server, test_client):
 
 @asyncio.coroutine
 def test_raw_server_do_not_swallow_exceptions(raw_test_server, test_client):
-    exc = None
 
     @asyncio.coroutine
     def handler(request):
-        raise exc
+        raise asyncio.CancelledError()
 
     logger = mock.Mock()
     server = yield from raw_test_server(handler, logger=logger)
     cli = yield from test_client(server)
 
-    for _exc, msg in (
-            (asyncio.CancelledError("error"),
-             'Ignored premature client disconnection'),):
-        exc = _exc
-        with pytest.raises(client.ServerDisconnectedError):
-            yield from cli.get('/path/to')
+    with pytest.raises(client.ServerDisconnectedError):
+        yield from cli.get('/path/to')
 
-        logger.debug.assert_called_with(msg)
+    logger.debug.assert_called_with('Ignored premature client disconnection')
+
+
+@asyncio.coroutine
+def test_raw_server_cancelled_in_write_eof(raw_test_server, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text=str(request.rel_url))
+        resp.write_eof = mock.Mock(side_effect=asyncio.CancelledError("error"))
+        return resp
+
+    logger = mock.Mock()
+    server = yield from raw_test_server(handler, logger=logger)
+    cli = yield from test_client(server)
+
+    with pytest.raises(client.ServerDisconnectedError):
+        yield from cli.get('/path/to')
+
+    logger.debug.assert_called_with('Ignored premature client disconnection ')
 
 
 @asyncio.coroutine
