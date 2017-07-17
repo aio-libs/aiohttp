@@ -181,6 +181,31 @@ def test_url_escaping(loop, test_client, registered_path, request_url):
 
 
 @asyncio.coroutine
+def test_handler_metadata_persistence():
+    """
+    Tests accessing metadata of a handler after registering it on the app
+    router.
+    """
+    app = web.Application()
+
+    @asyncio.coroutine
+    def async_handler(_):
+        """Doc"""
+        return web.Response()
+
+    def sync_handler(_):
+        """Doc"""
+        return web.Response()
+
+    app.router.add_get('/async', async_handler)
+    app.router.add_get('/sync', sync_handler)
+
+    for resource in app.router.resources():
+        for route in resource:
+            assert route.handler.__doc__ == 'Doc'
+
+
+@asyncio.coroutine
 def test_unauthorized_folder_access(tmp_dir_path, loop, test_client):
     """
     Tests the unauthorized access to a folder of static file server.
@@ -288,7 +313,7 @@ def test_system_route():
 
 
 @asyncio.coroutine
-def test_412_is_returned(loop, test_client):
+def test_412_is_returned(test_client):
 
     class MyRouter(abc.AbstractRouter):
 
@@ -296,7 +321,7 @@ def test_412_is_returned(loop, test_client):
         def resolve(self, request):
             raise web.HTTPPreconditionFailed()
 
-    app = web.Application(router=MyRouter(), loop=loop)
+    app = web.Application(router=MyRouter())
 
     client = yield from test_client(app)
 

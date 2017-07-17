@@ -766,9 +766,8 @@ class TCPConnector(BaseConnector):
         except OSError as exc:
             raise ClientProxyConnectionError(*exc.args) from exc
 
-        if hdrs.AUTHORIZATION in proxy_req.headers:
-            auth = proxy_req.headers[hdrs.AUTHORIZATION]
-            del proxy_req.headers[hdrs.AUTHORIZATION]
+        auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
+        if auth is not None:
             if not req.ssl:
                 req.headers[hdrs.PROXY_AUTHORIZATION] = auth
             else:

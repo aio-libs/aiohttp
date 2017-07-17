@@ -198,7 +198,3 @@ aiohttp.signals module
     :members:
     :undoc-members:
     :show-inheritance:
-
-
-.. disqus::
-  :title: aiohttp helpers api

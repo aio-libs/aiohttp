@@ -118,7 +118,11 @@ class TestNormalizePathMiddleware:
         ('/resource1', 200),
         ('/resource1/', 404),
         ('/resource2', 200),
-        ('/resource2/', 200)
+        ('/resource2/', 200),
+        ('/resource1?p1=1&p2=2', 200),
+        ('/resource1/?p1=1&p2=2', 404),
+        ('/resource2?p1=1&p2=2', 200),
+        ('/resource2/?p1=1&p2=2', 200)
     ])
     def test_add_trailing_when_necessary(
             self, path, status, cli):
@@ -134,7 +138,11 @@ class TestNormalizePathMiddleware:
         ('/resource1', 200),
         ('/resource1/', 404),
         ('/resource2', 404),
-        ('/resource2/', 200)
+        ('/resource2/', 200),
+        ('/resource1?p1=1&p2=2', 200),
+        ('/resource1/?p1=1&p2=2', 404),
+        ('/resource2?p1=1&p2=2', 404),
+        ('/resource2/?p1=1&p2=2', 200)
     ])
     def test_no_trailing_slash_when_disabled(
             self, path, status, cli):
@@ -153,7 +161,13 @@ class TestNormalizePathMiddleware:
         ('//resource1//a//b/', 404),
         ('///resource1//a//b', 200),
         ('/////resource1/a///b', 200),
-        ('/////resource1/a//b/', 404)
+        ('/////resource1/a//b/', 404),
+        ('/resource1/a/b?p=1', 200),
+        ('//resource1//a//b?p=1', 200),
+        ('//resource1//a//b/?p=1', 404),
+        ('///resource1//a//b?p=1', 200),
+        ('/////resource1/a///b?p=1', 200),
+        ('/////resource1/a//b/?p=1', 404),
     ])
     def test_merge_slash(self, path, status, cli):
         extra_middlewares = [
@@ -179,7 +193,22 @@ class TestNormalizePathMiddleware:
         ('///resource2//a//b', 200),
         ('///resource2//a//b/', 200),
         ('/////resource2/a///b', 200),
-        ('/////resource2/a///b/', 200)
+        ('/////resource2/a///b/', 200),
+        ('/resource1/a/b?p=1', 200),
+        ('/resource1/a/b/?p=1', 404),
+        ('//resource2//a//b?p=1', 200),
+        ('//resource2//a//b/?p=1', 200),
+        ('///resource1//a//b?p=1', 200),
+        ('///resource1//a//b/?p=1', 404),
+        ('/////resource1/a///b?p=1', 200),
+        ('/////resource1/a///b/?p=1', 404),
+        ('/resource2/a/b?p=1', 200),
+        ('//resource2//a//b?p=1', 200),
+        ('//resource2//a//b/?p=1', 200),
+        ('///resource2//a//b?p=1', 200),
+        ('///resource2//a//b/?p=1', 200),
+        ('/////resource2/a///b?p=1', 200),
+        ('/////resource2/a///b/?p=1', 200)
     ])
     def test_append_and_merge_slash(self, path, status, cli):
         extra_middlewares = [

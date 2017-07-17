@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
     import chardet
 
 
-__all__ = ('ClientRequest', 'ClientResponse')
+__all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo')
 
 
 RequestInfo = collections.namedtuple(
@@ -66,14 +66,14 @@ class ClientRequest:
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None, proxy_from_env=False,
-                 timer=None):
+                 timer=None, session=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
 
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
-
+        self._session = session
         if params:
             q = MultiDict(url.query)
             url2 = url.with_query(params)
@@ -101,7 +101,7 @@ class ClientRequest:
         self.update_auth(auth)
         self.update_proxy(proxy, proxy_auth, proxy_from_env)
 
-        self.update_body_from_data(data, skip_auto_headers)
+        self.update_body_from_data(data)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
@@ -160,8 +160,10 @@ class ClientRequest:
                 self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers):
-        self.skip_auto_headers = skip_auto_headers
-        used_headers = set(self.headers) | skip_auto_headers
+        self.skip_auto_headers = CIMultiDict(
+            (hdr, None) for hdr in sorted(skip_auto_headers))
+        used_headers = self.headers.copy()
+        used_headers.extend(self.skip_auto_headers)
 
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
@@ -248,7 +250,7 @@ class ClientRequest:
 
         self.headers[hdrs.AUTHORIZATION] = auth.encode()
 
-    def update_body_from_data(self, body, skip_auto_headers):
+    def update_body_from_data(self, body):
         if not body:
             return
 
@@ -275,7 +277,7 @@ class ClientRequest:
 
         # set content-type
         if (hdrs.CONTENT_TYPE not in self.headers and
-                hdrs.CONTENT_TYPE not in skip_auto_headers):
+                hdrs.CONTENT_TYPE not in self.skip_auto_headers):
             self.headers[hdrs.CONTENT_TYPE] = body.content_type
 
         # copy payload headers
@@ -344,6 +346,9 @@ class ClientRequest:
             new_exc.__context__ = exc
             new_exc.__cause__ = exc
             conn.protocol.set_exception(new_exc)
+        except asyncio.CancelledError as exc:
+            if not conn.closed:
+                conn.protocol.set_exception(exc)
         except Exception as exc:
             conn.protocol.set_exception(exc)
         finally:
@@ -404,7 +409,7 @@ class ClientRequest:
             request_info=self.request_info
         )
 
-        self.response._post_init(self.loop)
+        self.response._post_init(self.loop, self._session)
         return self.response
 
     @asyncio.coroutine
@@ -441,6 +446,7 @@ class ClientResponse(HeadersMixin):
     # post-init stage allows to not change ctor signature
     _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
+    _session = None
 
     def __init__(self, method, url, *,
                  writer=None, continue100=None, timer=None,
@@ -482,8 +488,9 @@ class ClientResponse(HeadersMixin):
     def request_info(self):
         return self._request_info
 
-    def _post_init(self, loop):
+    def _post_init(self, loop, session):
         self._loop = loop
+        self._session = session  # store a reference to session #1985
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
@@ -649,6 +656,7 @@ class ClientResponse(HeadersMixin):
         if self._writer is not None and not self._writer.done():
             self._writer.cancel()
         self._writer = None
+        self._session = None
 
     def _notify_content(self):
         content = self.content

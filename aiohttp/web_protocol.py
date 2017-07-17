@@ -369,8 +369,9 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         # all handlers in idle state
         if len(self._request_handlers) == len(self._waiters):
+            # time_service.loop_time is ceiled to 1.0, so we check 2 intervals
             now = self._time_service.loop_time
-            if now + 1.0 > next:
+            if (now + self._time_service.interval * 2) > next:
                 self.force_close(send_last_heartbeat=True)
                 return
 
@@ -470,6 +471,9 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         self.log_debug('Uncompleted request.')
                         self.close()
 
+            except asyncio.CancelledError:
+                self.log_debug('Ignored premature client disconnection ')
+                break
             except RuntimeError as exc:
                 if self.debug:
                     self.log_exception(

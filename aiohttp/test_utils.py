@@ -148,8 +148,8 @@ class TestServer(BaseTestServer):
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
-        self.handler = self.app.make_handler(loop=self._loop, **kwargs)
         yield from self.app.startup()
+        self.handler = self.app.make_handler(loop=self._loop, **kwargs)
         return self.handler
 
     @asyncio.coroutine
@@ -330,7 +330,7 @@ class TestClient:
                 resp.close()
             for ws in self._websockets:
                 yield from ws.close()
-            self._session.close()
+            yield from self._session.close()
             yield from self._server.close()
             self._closed = True
 
@@ -401,7 +401,7 @@ class AioHTTPTestCase(unittest.TestCase):
     @asyncio.coroutine
     def _get_client(self, app):
         """Return a TestClient instance."""
-        return TestClient(self.app, loop=self.loop)
+        return TestClient(app, loop=self.loop)
 
 
 def unittest_run_loop(func, *args, **kwargs):
@@ -413,8 +413,9 @@ def unittest_run_loop(func, *args, **kwargs):
     """
 
     @functools.wraps(func, *args, **kwargs)
-    def new_func(self):
-        return self.loop.run_until_complete(func(self, *args, **kwargs))
+    def new_func(self, *inner_args, **inner_kwargs):
+        return self.loop.run_until_complete(
+            func(self, *inner_args, **inner_kwargs))
 
     return new_func
 

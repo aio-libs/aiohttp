@@ -23,8 +23,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_35, CeilTimeout, TimeoutHandle, deprecated_noop,
-                      sentinel)
+from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
+                      deprecated_noop, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
@@ -222,7 +222,8 @@ class ClientSession:
                         compress=compress, chunked=chunked,
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
-                        proxy=proxy, proxy_auth=proxy_auth, timer=timer)
+                        proxy=proxy, proxy_auth=proxy_auth, timer=timer,
+                        session=self)
 
                     # connection timeout
                     try:
@@ -273,11 +274,9 @@ class ClientSession:
                         r_url = (resp.headers.get(hdrs.LOCATION) or
                                  resp.headers.get(hdrs.URI))
                         if r_url is None:
-                            raise RuntimeError(
-                                "{0.method} {0.url} returns "
-                                "a redirect [{0.status}] status "
-                                "but response lacks a Location "
-                                "or URI HTTP header".format(resp))
+                            # see github.com/aio-libs/aiohttp/issues/2022
+                            break
+
                         r_url = URL(
                             r_url, encoded=not self.requote_redirect_url)
 
@@ -534,7 +533,7 @@ class ClientSession:
                 self._connector.close()
             self._connector = None
 
-        return deprecated_noop('ClientSession.close() is not coroutine')
+        return deprecated_noop('ClientSession.close() is a coroutine')
 
     @property
     def closed(self):
@@ -585,64 +584,22 @@ class ClientSession:
 
         @asyncio.coroutine
         def __aexit__(self, exc_type, exc_val, exc_tb):
-            self.close()
+            yield from self.close()
 
 
-if PY_35:
-    from collections.abc import Coroutine
-    base = Coroutine
-else:
-    base = object
+class _BaseRequestContextManager(_BaseCoroMixin):
 
-
-class _BaseRequestContextManager(base):
-
-    __slots__ = ('_coro', '_resp', 'send', 'throw', 'close')
+    __slots__ = ('_resp',)
 
     def __init__(self, coro):
+        super().__init__(coro)
         self._coro = coro
-        self._resp = None
-        self.send = coro.send
-        self.throw = coro.throw
-        self.close = coro.close
-
-    @property
-    def gi_frame(self):
-        return self._coro.gi_frame
-
-    @property
-    def gi_running(self):
-        return self._coro.gi_running
-
-    @property
-    def gi_code(self):
-        return self._coro.gi_code
-
-    def __next__(self):
-        return self.send(None)
-
-    @asyncio.coroutine
-    def __iter__(self):
-        resp = yield from self._coro
-        return resp
 
     if PY_35:
-        def __await__(self):
-            resp = yield from self._coro
-            return resp
-
         @asyncio.coroutine
         def __aenter__(self):
             self._resp = yield from self._coro
             return self._resp
-
-
-if not PY_35:
-    try:
-        from asyncio import coroutines
-        coroutines._COROUTINE_TYPES += (_BaseRequestContextManager,)
-    except:  # pragma: no cover
-        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
 
 
 class _RequestContextManager(_BaseRequestContextManager):
@@ -687,9 +644,6 @@ class _SessionRequestContextManager(_RequestContextManager):
             except:
                 self._session.close()
                 raise
-
-    def __del__(self):
-        self._session.close()
 
 
 def request(method, url, *,

@@ -12,8 +12,8 @@ import pytest
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import hdrs, web
-from aiohttp.client import ServerFingerprintMismatch
+from aiohttp import ServerFingerprintMismatch, hdrs, web
+from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
 
@@ -643,12 +643,14 @@ def test_timeout_on_session_read_timeout(loop, test_client, mocker):
 @asyncio.coroutine
 def test_timeout_on_reading_data(loop, test_client, mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+    fut = create_future(loop=loop)
 
     @asyncio.coroutine
     def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
         yield from resp.prepare(request)
         yield from resp.drain()
+        fut.set_result(None)
         yield from asyncio.sleep(0.2, loop=loop)
         return resp
 
@@ -656,7 +658,8 @@ def test_timeout_on_reading_data(loop, test_client, mocker):
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.05)
+    resp = yield from client.get('/', timeout=0.1)
+    yield from fut
 
     with pytest.raises(asyncio.TimeoutError):
         yield from resp.read()
@@ -700,7 +703,8 @@ def test_readline_error_on_conn_close(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    session = aiohttp.ClientSession(loop=loop)
+    try:
         timer_started = False
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
@@ -716,6 +720,8 @@ def test_readline_error_on_conn_close(loop, test_client):
                         loop.create_task(resp.release())
                     loop.call_later(1.0, do_release)
                     timer_started = True
+    finally:
+        yield from session.close()
 
 
 @asyncio.coroutine
@@ -734,7 +740,8 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    session = aiohttp.ClientSession(loop=loop)
+    try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
         while True:
@@ -745,6 +752,8 @@ def test_no_error_on_conn_close_if_eof(loop, test_client):
             assert data == b'data'
 
         assert resp.content.exception() is None
+    finally:
+        yield from session.close()
 
 
 @asyncio.coroutine
@@ -760,10 +769,13 @@ def test_error_not_overwrote_on_conn_close(loop, test_client):
     app.router.add_route('GET', '/', handler)
     server = yield from test_client(app)
 
-    with aiohttp.ClientSession(loop=loop) as session:
+    session = aiohttp.ClientSession(loop=loop)
+    try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = yield from session.get(url, headers=headers)
         resp.content.set_exception(ValueError())
+    finally:
+        yield from session.close()
 
     assert isinstance(resp.content.exception(), ValueError)
 
@@ -1743,11 +1755,49 @@ def test_encoding_deflate(loop, test_client):
 
 
 @asyncio.coroutine
+def test_encoding_deflate_nochunk(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
+        resp.enable_compression(web.ContentCoding.deflate)
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'text'
+    resp.close()
+
+
+@asyncio.coroutine
 def test_encoding_gzip(loop, test_client):
     @asyncio.coroutine
     def handler(request):
         resp = web.Response(text='text')
         resp.enable_chunked_encoding()
+        resp.enable_compression(web.ContentCoding.gzip)
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert txt == 'text'
+    resp.close()
+
+
+@asyncio.coroutine
+def test_encoding_gzip_nochunk(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        resp = web.Response(text='text')
         resp.enable_compression(web.ContentCoding.gzip)
         return resp
 
@@ -2047,20 +2097,19 @@ def test_redirect_to_absolute_url(loop, test_client):
 
 @asyncio.coroutine
 def test_redirect_without_location_header(loop, test_client):
+    body = b'redirect'
+
     @asyncio.coroutine
     def handler_redirect(request):
-        return web.Response(status=301)
+        return web.Response(status=301, body=body)
 
     app = web.Application()
     app.router.add_route('GET', '/redirect', handler_redirect)
     client = yield from test_client(app)
 
-    with pytest.raises(RuntimeError) as ctx:
-        yield from client.get('/redirect')
-    assert str(ctx.value) == ('GET http://127.0.0.1:{}/redirect returns '
-                              'a redirect [301] status but response lacks '
-                              'a Location or URI HTTP header'
-                              .format(client.port))
+    resp = yield from client.get('/redirect')
+    data = yield from resp.read()
+    assert data == body
 
 
 @asyncio.coroutine

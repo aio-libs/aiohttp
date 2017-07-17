@@ -144,7 +144,8 @@ and :ref:`aiohttp-web-signals` handlers.
    .. attribute:: raw_path
 
       The URL including raw *PATH INFO* without the host or scheme.
-      Warning, the path may be quoted and may contains non valid URL characters, e.g.
+      Warning, the path may be quoted and may contains non valid URL
+      characters, e.g.
       ``/my%2Fpath%7Cwith%21some%25strange%24characters``.
 
       For unquoted version please take a look on :attr:`path`.
@@ -289,7 +290,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :param rel_url: url to use, :class:`str` or :class:`~yarl.URL`
 
-      :param headers: :class:`~multidict.CIMultidict` or compatible
+      :param headers: :class:`~multidict.CIMultiDict` or compatible
                       headers container.
 
       :return: a cloned :class:`Request` instance.
@@ -568,7 +569,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.CIMultiiDct` instance
+      :class:`~multidict.CIMultiDict` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies
@@ -1156,25 +1157,45 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
-.. class:: Application(*, router=None, logger=<default>, \
-                       middlewares=(), debug=False, **kwargs)
+.. class:: Application(*, logger=<default>, router=None,middlewares=(), \
+                       handler_args=None, client_max_size=1024**2, \
+                       secure_proxy_ssl_header=None, loop=None, debug=...)
 
    The class inherits :class:`dict`.
-
-   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
-                  creates :class:`UrlDispatcher` by default if
-                  *router* is ``None``.
 
    :param logger: :class:`logging.Logger` instance for storing application logs.
 
                   By default the value is ``logging.getLogger("aiohttp.web")``
 
+   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
+                  creates :class:`UrlDispatcher` by default if
+                  *router* is ``None``.
+
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
-   :param debug: Switches debug mode.
+   :param handler_args: dict-like object that overrides keyword arguments of
+                        :meth:`Application.make_handler`
 
-   :param loop: loop parameter is deprecated. loop is get set during freeze stage.
+   :param client_max_size: client's maximum size in a request. If a POST
+                           request exceeds this value, it raises an
+                           `HTTPRequestEntityTooLarge` exception.
+
+   :param tuple secure_proxy_ssl_header: Default: ``None``.
+
+      .. deprecated:: 2.1
+
+        See ``request.url.scheme`` for built-in resolution of the current
+        scheme using the standard and de-facto standard headers.
+
+   :param loop: event loop
+
+      .. deprecated:: 2.0
+
+         The parameter is deprecated. Loop is get set during freeze
+         stage.
+
+   :param debug: Switches debug mode.
 
    .. attribute:: router
 
@@ -1264,6 +1285,8 @@ duplicated like one using :meth:`Application.copy`.
                  If param is ``None`` :func:`asyncio.get_event_loop`
                  used for getting default event loop.
 
+       .. deprecated:: 2.0
+
     :param tuple secure_proxy_ssl_header: Default: ``None``.
 
       .. deprecated:: 2.1
@@ -1309,7 +1332,7 @@ duplicated like one using :meth:`Application.copy`.
 
        loop = asyncio.get_event_loop()
 
-       app = Application(loop=loop)
+       app = Application()
 
        # setup route table
        # app.router.add_route(...)
@@ -1383,19 +1406,6 @@ A protocol factory compatible with
 
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
-
-   .. coroutinemethod:: Server.finish_connections(timeout)
-
-      .. deprecated:: 1.2
-
-         A deprecated alias for :meth:`shutdown`.
-
-   .. versionchanged:: 1.2
-
-      ``Server`` was called ``RequestHandlerFactory`` before ``aiohttp==1.2``.
-
-      The rename has no deprecation period but it's safe: no user
-      should instantiate the class by hands.
 
 
 Router
@@ -1475,14 +1485,26 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
-   .. method:: add_get(path, *args, **kwargs)
+   .. method:: add_get(path, handler, *, name=None, allow_head=True, **kwargs)
 
       Shortcut for adding a GET handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'GET'``.
 
+      If *allow_head* is ``True`` (default) the route for method HEAD
+      is added with the same handler as for GET.
+
+      If *name* is provided the name for HEAD route is suffixed with
+      ``'-head'``. For example ``router.add_get(path, handler,
+      name='route')`` call adds two routes: first for GET with name
+      ``'route'`` and second for HEAD with name ``'route-head'``.
+
       .. versionadded:: 1.0
 
-   .. method:: add_post(path, *args, **kwargs)
+      .. versionchanged:: 2.0
+
+         *allow_head* parameter added.
+
+   .. method:: add_post(path, handler, **kwargs)
 
       Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
 
@@ -1491,21 +1513,28 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionadded:: 1.0
 
-   .. method:: add_put(path, *args, **kwargs)
+   .. method:: add_head(path, handler, **kwargs)
+
+      Shortcut for adding a HEAD handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'HEAD'``.
+
+      .. versionadded:: 1.0
+
+   .. method:: add_put(path, handler, **kwargs)
 
       Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PUT'``.
 
       .. versionadded:: 1.0
 
-   .. method:: add_patch(path, *args, **kwargs)
+   .. method:: add_patch(path, handler, **kwargs)
 
       Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PATCH'``.
 
       .. versionadded:: 1.0
 
-   .. method:: add_delete(path, *args, **kwargs)
+   .. method:: add_delete(path, handler, **kwargs)
 
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
@@ -2066,10 +2095,11 @@ Utilities
 
 
 .. function:: run_app(app, *, host=None, port=None, path=None, \
-                      loop=None, shutdown_timeout=60.0, \
+                      sock=None, shutdown_timeout=60.0, \
                       ssl_context=None, print=print, backlog=128, \
                       access_log_format=None, \
-                      access_log=aiohttp.log.access_logger)
+                      access_log=aiohttp.log.access_logger, \
+                      handle_signals=True, loop=None)
 
    A utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2136,6 +2166,9 @@ Utilities
                              :ref:`aiohttp-logging-access-log-format-spec`
                              for details.
 
+   :param bool handle_signals: override signal TERM handling to gracefully
+                               exit the application.
+
    :param loop: an *event loop* used for running the application
                 (``None`` by default).
 
@@ -2170,7 +2203,8 @@ Middlewares
 Normalize path middleware
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. function:: normalize_path_middleware(*, append_slash=True, merge_slashes=True)
+.. function:: normalize_path_middleware(*, \
+                                        append_slash=True, merge_slashes=True)
 
   Middleware that normalizes the path of a request. By normalizing
   it means:
@@ -2179,17 +2213,18 @@ Normalize path middleware
       - Double slashes are replaced by one.
 
   The middleware returns as soon as it finds a path that resolves
-  correctly. The order if all enabled is 1) merge_slashes, 2) append_slash
-  and 3) both merge_slashes and append_slash. If the path resolves with
-  at least one of those conditions, it will redirect to the new path.
+  correctly. The order if all enabled is:
 
-  If append_slash is True append slash when needed. If a resource is
+    1. *merge_slashes*
+    2. *append_slash*
+    3. both *merge_slashes* and *append_slash*
+
+  If the path resolves with at least one of those conditions, it will
+  redirect to the new path.
+
+  If *append_slash* is ``True`` append slash when needed. If a resource is
   defined with trailing slash and the request comes without it, it will
   append it automatically.
 
-  If merge_slashes is True, merge multiple consecutive slashes in the
+  If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
   path into one.
-
-
-.. disqus::
-  :title: aiohttp server reference

@@ -843,7 +843,7 @@ def test_writer_write(buf, stream, writer):
 
          b'--:\r\n'
          b'Content-Type: multipart/mixed; boundary="::"\r\n'
-         b'X-Custom: test\r\nContent-Length: 93\r\n\r\n'
+         b'X-CUSTOM: test\r\nContent-Length: 93\r\n\r\n'
          b'--::\r\n'
          b'Content-Type: text/plain; charset=utf-8\r\n'
          b'Content-Length: 14\r\n\r\n'

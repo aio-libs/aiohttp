@@ -3,7 +3,7 @@
 Server Tutorial
 ===============
 
-Are you going to learn *aiohttp* but don't where to start? We have
+Are you going to learn *aiohttp* but don't know where to start? We have
 example for you. Polls application is a great example for getting
 started with aiohttp.
 
@@ -303,8 +303,7 @@ done by the following coroutine::
            host=conf['host'],
            port=conf['port'],
            minsize=conf['minsize'],
-           maxsize=conf['maxsize'],
-           loop=app.loop)
+           maxsize=conf['maxsize'])
        app['db'] = engine
 
 The best place for connecting to DB is
@@ -462,6 +461,3 @@ Registered overrides are trivial Jinja2 template renderers::
        return response
 
 .. seealso:: :ref:`aiohttp-web-middlewares`
-
-.. disqus::
-  :title: aiohttp server tutorial

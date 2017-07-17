@@ -1,0 +1,5 @@
+-r ci.txt
+ipdb==0.10.3
+pytest-sugar==0.8.0
+ipython==6.1.0
+towncrier==17.4.0
