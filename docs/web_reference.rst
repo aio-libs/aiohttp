@@ -290,7 +290,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :param rel_url: url to use, :class:`str` or :class:`~yarl.URL`
 
-      :param headers: :class:`~multidict.CIMultidict` or compatible
+      :param headers: :class:`~multidict.CIMultiDict` or compatible
                       headers container.
 
       :return: a cloned :class:`Request` instance.
@@ -569,7 +569,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.CIMultiiDct` instance
+      :class:`~multidict.CIMultiDict` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies
@@ -1157,23 +1157,36 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
-.. class:: Application(*, router=None, logger=<default>, \
-                       middlewares=(), debug=False, **kwargs)
+.. class:: Application(*, logger=<default>, router=None,middlewares=(), \
+                       handler_args=None, client_max_size=1024**2, \
+                       secure_proxy_ssl_header=None, loop=None, debug=...)
 
    The class inherits :class:`dict`.
-
-   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
-                  creates :class:`UrlDispatcher` by default if
-                  *router* is ``None``.
 
    :param logger: :class:`logging.Logger` instance for storing application logs.
 
                   By default the value is ``logging.getLogger("aiohttp.web")``
 
+   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
+                  creates :class:`UrlDispatcher` by default if
+                  *router* is ``None``.
+
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
-   :param debug: Switches debug mode.
+   :param handler_args: dict-like object that overrides keyword arguments of
+                        :meth:`Application.make_handler`
+
+   :param client_max_size: client's maximum size in a request. If a POST
+                           request exceeds this value, it raises an
+                           `HTTPRequestEntityTooLarge` exception.
+
+   :param tuple secure_proxy_ssl_header: Default: ``None``.
+
+      .. deprecated:: 2.1
+
+        See ``request.url.scheme`` for built-in resolution of the current
+        scheme using the standard and de-facto standard headers.
 
    :param loop: event loop
 
@@ -1181,6 +1194,8 @@ duplicated like one using :meth:`Application.copy`.
 
          The parameter is deprecated. Loop is get set during freeze
          stage.
+
+   :param debug: Switches debug mode.
 
    .. attribute:: router
 

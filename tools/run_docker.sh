@@ -1,25 +1,32 @@
-if [ ! -z $TRAVIS_TAG ] && [ -z $PYTHONASYNCIODEBUG ] && [ -z $AIOHTTP_NO_EXTENSIONS] ;then
-    echo "x86_64"
-    docker pull quay.io/pypa/manylinux1_x86_64
-    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 /io/tools/build-wheels.sh
-    echo "Dist folder content is:"
-    for f in dist/aiohttp*manylinux1_x86_64.whl
-    do
-        echo "Upload $f"
-        python -m twine upload $f --username andrew.svetlov --password $PYPI_PASSWD
-    done
-    echo "Cleanup"
-    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_x86_64 rm -rf /io/dist
-
-    echo "i686"
-    docker pull quay.io/pypa/manylinux1_i686
-    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_i686 linux32 /io/tools/build-wheels.sh
-    echo "Dist folder content is:"
-    for f in dist/aiohttp*manylinux1_i686.whl
-    do
-        echo "Upload $f"
-        python -m twine upload $f --username andrew.svetlov --password $PYPI_PASSWD
-    done
-    echo "Cleanup"
-    docker run --rm -v `pwd`:/io quay.io/pypa/manylinux1_i686 rm -rf /io/dist
+#!/bin/bash
+package_name="$1"
+if [ -z "$package_name" ]
+then
+    &>2 echo "Please pass package name as a first argument of this script ($0)"
+    exit 1
 fi
+
+manylinux1_image_prefix="quay.io/pypa/manylinux1_"
+dock_ext_args=""
+declare -A docker_pull_pids=()  # This syntax requires at least bash v4
+
+for arch in x86_64 i686
+do
+    docker pull "${manylinux1_image_prefix}${arch}" &
+    docker_pull_pids[$arch]=$!
+done
+
+for arch in x86_64 i686
+do
+    echo
+    echo
+    arch_pull_pid=${docker_pull_pids[$arch]}
+    echo waiting for docker pull pid $arch_pull_pid to complete downloading container for $arch arch...
+    wait $arch_pull_pid  # await for docker image for current arch to be pulled from hub
+    [ $arch == "i686" ] && dock_ext_args="linux32"
+
+    echo Building wheel for $arch arch
+    docker run --rm -v `pwd`:/io "${manylinux1_image_prefix}${arch}" $dock_ext_args /io/tools/build-wheels.sh "$package_name"
+
+    dock_ext_args=""  # Reset docker args, just in case
+done

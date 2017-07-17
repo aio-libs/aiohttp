@@ -8,6 +8,7 @@ alives
 api
 app
 arg
+Arsenic
 async
 asyncio
 auth
@@ -16,10 +17,10 @@ autodetection
 autogenerates
 autogeneration
 awaitable
-Backport
-BaseEventLoop
 backend
 backends
+Backport
+BaseEventLoop
 basename
 BasicAuth
 BodyPartReader
@@ -32,6 +33,7 @@ Changelog
 charset
 charsetdetect
 chunked
+chunking
 CIMultiDict
 ClientSession
 cls
@@ -49,12 +51,17 @@ cpu
 css
 ctor
 Ctrl
+Cython
 cythonized
 de
 deduplicate
+# de-facto:
+deprecations
 DER
+Dev
 dict
 Dict
+Discord
 django
 Django
 dns
@@ -67,6 +74,7 @@ environ
 eof
 epoll
 Facebook
+facto
 fallback
 filename
 finalizers
@@ -90,6 +98,7 @@ incapsulates
 Indices
 infos
 inline
+intaking
 io
 ip
 IP
@@ -115,9 +124,12 @@ lookups
 Mako
 manylinux
 metadata
+microservice
 middleware
 middlewares
 miltidict
+misbehaviors
+misformed
 Mongo
 msg
 MsgType
@@ -145,6 +157,7 @@ param
 params
 pathlib
 ping
+pipelining
 pluggable
 plugin
 poller
@@ -157,11 +170,13 @@ PRs
 pubsub
 py
 pyenv
+pyflakes
 pytest
 Pytest
 readonly
 readpayload
 rebase
+redirections
 Redis
 refactor
 Refactor
@@ -170,6 +185,7 @@ refactoring
 regex
 regexps
 regexs
+reloader
 renderer
 renderers
 repo
@@ -180,14 +196,17 @@ resolvers
 reusage
 Runit
 sa
+Satisfiable
 schemas
 sendfile
 serializable
 shourtcuts
 skipuntil
+Skyscanner
 SocketSocketTransport
 ssl
 SSLContext
+startup
 subclasses
 submodules
 subpackage
@@ -242,4 +261,3 @@ WSMessage
 WSMsgType
 wss
 www
-Skyscanner

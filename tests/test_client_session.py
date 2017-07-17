@@ -55,6 +55,11 @@ def params():
         read_until_eof=False)
 
 
+def test_close_coro(create_session, loop):
+    session = create_session()
+    loop.run_until_complete(session.close())
+
+
 @asyncio.coroutine
 def test_close_deprecated(create_session):
     session = create_session()

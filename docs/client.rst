@@ -1,7 +1,7 @@
 .. _aiohttp-client:
 
-Client
-======
+Client Usage
+============
 
 .. module:: aiohttp
 
@@ -604,7 +604,7 @@ Response Headers
 ----------------
 
 We can view the server's response :attr:`ClientResponse.headers` using
-a :class:`CIMultiDictProxy`::
+a :class:`~multidict.CIMultiDictProxy`::
 
     >>> resp.headers
     {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',

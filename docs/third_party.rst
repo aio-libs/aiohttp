@@ -99,7 +99,7 @@ Database drivers
 Others
 ------
 
-The list of libs which are exists but not enlisted in former categories.
+The list of libraries which are exists but not enlisted in former categories.
 
 They are may be perfect or not -- we don't know.
 
@@ -194,3 +194,5 @@ period ask to raise he status.
 
 - `home-assistant <https://github.com/home-assistant/home-assistant>`_
   Open-source home automation platform running on Python 3.
+
+- `discord.py <https://github.com/Rapptz/discord.py>`_ Discord client library.

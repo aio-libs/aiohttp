@@ -73,7 +73,7 @@ The client session supports the context manager protocol for self closing.
                    May be either *iterable of key-value pairs* or
                    :class:`~collections.abc.Mapping`
                    (e.g. :class:`dict`,
-                   :class:`~aiohttp.CIMultiDict`).
+                   :class:`~multidict.CIMultiDict`).
 
    :param skip_auto_headers: set of headers for which autogeneration
       should be skipped.
@@ -986,7 +986,7 @@ Response object
       Reading from the stream may raise
       :exc:`aiohttp.ClientPayloadError` if the response object is
       closed before response receives all data or in case if any
-      transfer encoding related errors like mis-formed chunked
+      transfer encoding related errors like misformed chunked
       encoding of broken compression data.
 
    .. attribute:: cookies
@@ -997,7 +997,7 @@ Response object
    .. attribute:: headers
 
       A case-insensitive multidict proxy with HTTP headers of
-      response, :class:`CIMultiDictProxy`.
+      response, :class:`~multidict.CIMultiDictProxy`.
 
    .. attribute:: raw_headers
 

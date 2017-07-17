@@ -54,22 +54,74 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-class _CoroGuard:
-    __slots__ = ('_coro', '_msg', '_awaited')
+if PY_35:
+    from collections.abc import Coroutine
+    base = Coroutine
+else:
+    base = object
+
+
+class _BaseCoroMixin(base):
+
+    __slots__ = ('_coro', 'send', 'throw', 'close')
+
+    def __init__(self, coro):
+        self._coro = coro
+        self.send = coro.send
+        self.throw = coro.throw
+        self.close = coro.close
+
+    @property
+    def gi_frame(self):
+        return self._coro.gi_frame
+
+    @property
+    def gi_running(self):
+        return self._coro.gi_running
+
+    @property
+    def gi_code(self):
+        return self._coro.gi_code
+
+    def __next__(self):
+        return self.send(None)
+
+    @asyncio.coroutine
+    def __iter__(self):
+        ret = yield from self._coro
+        return ret
+
+    if PY_35:
+        def __await__(self):
+            ret = yield from self._coro
+            return ret
+
+
+if not PY_35:
+    try:
+        from asyncio import coroutines
+        coroutines._COROUTINE_TYPES += (_BaseCoroMixin,)
+    except:  # pragma: no cover
+        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
+
+
+class _CoroGuard(_BaseCoroMixin):
+    __slots__ = ('_msg', '_awaited')
 
     def __init__(self, coro, msg):
-        self._coro = coro
+        super().__init__(coro)
         self._msg = msg
         self._awaited = False
 
+    @asyncio.coroutine
     def __iter__(self):
         self._awaited = True
-        return self._coro.__iter__()
+        return super().__iter__()
 
     if PY_35:
         def __await__(self):
             self._awaited = True
-            return (yield from self._coro)
+            return super().__await__()
 
     def __del__(self):
         self._coro = None
