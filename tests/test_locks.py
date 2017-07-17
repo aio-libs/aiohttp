@@ -77,10 +77,6 @@ class TestEvent:
         assert "waiters" in repr(ev)
 
     @asyncio.coroutine
-    def test_no_loop(self, loop):
-        Event()
-
-    @asyncio.coroutine
     def test_is_set(self, loop):
-        ev = Event()
+        ev = Event(loop=loop)
         assert not ev.is_set()
