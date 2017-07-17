@@ -694,7 +694,6 @@ TCPConnector
 .. class:: TCPConnector(*, verify_ssl=True, fingerprint=None,\
                         use_dns_cache=True, \
                         ttl_dns_cache=10, \
-                        throttle_dns=False, \
                         family=0, ssl_context=None, conn_timeout=None, \
                         keepalive_timeout=30, limit=None, \
                         force_close=False, loop=None, local_addr=None, \
@@ -745,12 +744,6 @@ TCPConnector
       seconds.
 
       .. versionadded:: 2.0.8
-
-   :param int throttle_dns: When simultaneous requests get into the server and
-      there is a miss in the cache only one request will end up making the DNS
-      resolution. By default False.
-
-      .. versionadded:: 2.2.0
 
    :param aiohttp.abc.AbstractResolver resolver: Custom resolver
       instance to use.  ``aiohttp.DefaultResolver`` by

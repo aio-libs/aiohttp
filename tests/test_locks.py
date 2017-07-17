@@ -48,3 +48,39 @@ class TestEvent:
         yield from asyncio.sleep(0, loop=loop)
         t.cancel()
         ev.set()
+
+    @asyncio.coroutine
+    def test_set_no_blocking(self, loop):
+        ev = Event(loop=loop)
+        ev.set()
+
+        @asyncio.coroutine
+        def c():
+            yield from ev.wait()
+            return 1
+
+        t = helpers.ensure_future(c(), loop=loop)
+        yield from asyncio.sleep(0, loop=loop)
+        assert t.result() == 1
+
+    @asyncio.coroutine
+    def test_repr(self, loop):
+        ev = Event(loop=loop)
+        assert "waiters" not in repr(ev)
+
+        @asyncio.coroutine
+        def c():
+            yield from ev.wait()
+
+        helpers.ensure_future(c(), loop=loop)
+        yield from asyncio.sleep(0, loop=loop)
+        assert "waiters" in repr(ev)
+
+    @asyncio.coroutine
+    def test_no_loop(self, loop):
+        Event()
+
+    @asyncio.coroutine
+    def test_is_set(self, loop):
+        ev = Event()
+        assert not ev.is_set()
