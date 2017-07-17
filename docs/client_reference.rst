@@ -47,7 +47,8 @@ The client session supports the context manager protocol for self closing.
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
-                         raise_for_status=False)
+                         raise_for_status=False,
+                         auto_decompress=True)
 
    The class for creating client sessions and making requests.
 
@@ -128,6 +129,10 @@ The client session supports the context manager protocol for self closing.
       (optional). Values ``0`` or ``None`` mean no timeout.
 
    .. versionchanged:: 1.0
+
+   :param bool auto_decompress: Automatically decompress response body
+
+   .. versionchanged:: 2.x
 
    ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
       instead.
