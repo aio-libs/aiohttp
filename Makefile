@@ -80,6 +80,14 @@ clean:
 	@rm -rf cover
 	@make -C docs clean
 	@python setup.py clean
+	@rm -f aiohttp/_frozenlist.html
+	@rm -f aiohttp/_frozenlist.c
+	@rm -f aiohttp/_frozenlist.*.so
+	@rm -f aiohttp/_frozenlist.*.pyd
+	@rm -f aiohttp/_http_parser.html
+	@rm -f aiohttp/_http_parser.c
+	@rm -f aiohttp/_http_parser.*.so
+	@rm -f aiohttp/_http_parser.*.pyd
 	@rm -f aiohttp/_multidict.html
 	@rm -f aiohttp/_multidict.c
 	@rm -f aiohttp/_multidict.*.so
