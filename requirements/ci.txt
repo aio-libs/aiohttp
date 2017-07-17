@@ -1,4 +1,4 @@
-setuptools-git
+setuptools-git==1.2
 
 -r doc.txt
 pip==9.0.1
