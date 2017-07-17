@@ -176,6 +176,12 @@ class StringPayload(BytesPayload):
             encoding=encoding, content_type=content_type, *args, **kwargs)
 
 
+class StringIOPayload(StringPayload):
+
+    def __init__(self, value, *args, **kwargs):
+        super().__init__(value.read(), *args, **kwargs)
+
+
 class IOBasePayload(Payload):
 
     def __init__(self, value, disposition='attachment', *args, **kwargs):
@@ -234,13 +240,6 @@ class TextIOPayload(IOBasePayload):
                 chunk = self._value.read(DEFAULT_LIMIT)
         finally:
             self._value.close()
-
-
-class StringIOPayload(TextIOPayload):
-
-    @property
-    def size(self):
-        return len(self._value.getvalue()) - self._value.tell()
 
 
 class BytesIOPayload(IOBasePayload):
