@@ -15,15 +15,15 @@ from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
                                 teardown_test_loop, unittest_run_loop)
 
 
-_hellow_world_str = "Hello, world"
-_hellow_world_bytes = _hellow_world_str.encode('utf-8')
-_hello_world_gz = gzip.compress(_hellow_world_bytes)
+_hello_world_str = "Hello, world"
+_hello_world_bytes = _hello_world_str.encode('utf-8')
+_hello_world_gz = gzip.compress(_hello_world_bytes)
 
 
 def _create_example_app():
     @asyncio.coroutine
     def hello(request):
-        return web.Response(body=_hellow_world_bytes)
+        return web.Response(body=_hello_world_bytes)
 
     @asyncio.coroutine
     def gzip_hello(request):
@@ -46,7 +46,7 @@ def _create_example_app():
 
     @asyncio.coroutine
     def cookie_handler(request):
-        resp = web.Response(body=_hellow_world_bytes)
+        resp = web.Response(body=_hello_world_bytes)
         resp.set_cookie('cookie', 'val')
         return resp
 
@@ -69,7 +69,7 @@ def test_full_server_scenario():
                 resp = yield from client.request("GET", "/")
                 assert resp.status == 200
                 text = yield from resp.text()
-                assert _hellow_world_str == text
+                assert _hello_world_str == text
 
             loop.run_until_complete(test_get_route())
 
@@ -85,7 +85,7 @@ def test_auto_gzip_decompress():
                 resp = yield from client.request("GET", "/gzip_hello")
                 assert resp.status == 200
                 data = yield from resp.read()
-                assert data == _hellow_world_bytes
+                assert data == _hello_world_bytes
 
             loop.run_until_complete(test_get_route())
 
@@ -116,7 +116,7 @@ def test_server_with_create_test_teardown():
                 resp = yield from client.request("GET", "/")
                 assert resp.status == 200
                 text = yield from resp.text()
-                assert _hellow_world_str == text
+                assert _hello_world_str == text
 
             loop.run_until_complete(test_get_route())
 
@@ -145,7 +145,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         request = yield from self.client.request("GET", "/")
         assert request.status == 200
         text = yield from request.text()
-        assert _hellow_world_str == text
+        assert _hello_world_str == text
 
     def test_example(self):
         @asyncio.coroutine
@@ -153,7 +153,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
             resp = yield from self.client.request("GET", "/")
             assert resp.status == 200
             text = yield from resp.text()
-            assert _hellow_world_str == text
+            assert _hello_world_str == text
 
         self.loop.run_until_complete(test_get_route())
 
@@ -184,7 +184,7 @@ def test_get_route(loop, test_client):
         resp = yield from test_client.request("GET", "/")
         assert resp.status == 200
         text = yield from resp.text()
-        assert _hellow_world_str == text
+        assert _hello_world_str == text
 
     loop.run_until_complete(test_get_route())
 
@@ -219,7 +219,7 @@ def test_test_client_methods(method, loop, test_client):
     resp = yield from getattr(test_client, method)("/")
     assert resp.status == 200
     text = yield from resp.text()
-    assert _hellow_world_str == text
+    assert _hello_world_str == text
 
 
 @asyncio.coroutine
