@@ -79,7 +79,7 @@ class HttpParser:
         self._upgraded = False
         self._payload = None
         self._payload_parser = None
-        self._auto_decompress=auto_decompress
+        self._auto_decompress = auto_decompress
 
     def feed_eof(self):
         if self._payload_parser is not None:

@@ -467,7 +467,7 @@ class ClientResponse(HeadersMixin):
         self._history = ()
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
-        self._auto_decompress=auto_decompress
+        self._auto_decompress = auto_decompress
 
     @property
     def url(self):
