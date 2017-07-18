@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 from unittest import mock
 
 import pytest
@@ -15,10 +16,13 @@ from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
 
 
 def _create_example_app():
-
     @asyncio.coroutine
     def hello(request):
         return web.Response(body=b"Hello, world")
+
+    @asyncio.coroutine
+    def gzip_hello(request):
+        return web.Response(body=gzip.compress(b"Hello, world"), headers={'Content-Encoding': 'gzip'})
 
     @asyncio.coroutine
     def websocket_handler(request):
@@ -42,6 +46,7 @@ def _create_example_app():
 
     app = web.Application()
     app.router.add_route('*', '/', hello)
+    app.router.add_route('*', '/gzip_hello', gzip_hello)
     app.router.add_route('*', '/websocket', websocket_handler)
     app.router.add_route('*', '/cookie', cookie_handler)
     return app
@@ -59,6 +64,38 @@ def test_full_server_scenario():
                 assert resp.status == 200
                 text = yield from resp.text()
                 assert "Hello, world" in text
+
+            loop.run_until_complete(test_get_route())
+
+
+def test_auto_gzip_decompress():
+    with loop_context() as loop:
+        app = _create_example_app()
+        with _TestClient(app, loop=loop) as client:
+
+            @asyncio.coroutine
+            def test_get_route():
+                nonlocal client
+                resp = yield from client.request("GET", "/gzip_hello")
+                assert resp.status == 200
+                data = yield from resp.read()
+                assert data == b"Hello, world"
+
+            loop.run_until_complete(test_get_route())
+
+
+def test_noauto_gzip_decompress():
+    with loop_context() as loop:
+        app = _create_example_app()
+        with _TestClient(app, loop=loop, auto_decompress=False) as client:
+
+            @asyncio.coroutine
+            def test_get_route():
+                nonlocal client
+                resp = yield from client.request("GET", "/")
+                assert resp.status == 200
+                data = yield from resp.read()
+                assert data == gzip.compress(b"Hello, world")
 
             loop.run_until_complete(test_get_route())
 
