@@ -2,11 +2,13 @@ abc
 aiodns
 aioes
 aiohttp
+aiohttp’s
 aiohttpdemo
 aiopg
 alives
 api
 app
+app’s
 arg
 Arsenic
 async
@@ -84,6 +86,7 @@ gethostbyname
 github
 google
 gunicorn
+gunicorn’s
 Gunicorn
 gzipped
 hackish
@@ -135,10 +138,12 @@ msg
 MsgType
 multidict
 multidicts
+multidict’s
 Multidicts
 multipart
 Multipart
 Nagle
+Nagle’s
 namedtuple
 nameservers
 namespace
@@ -173,6 +178,7 @@ pyenv
 pyflakes
 pytest
 Pytest
+quote’s
 readonly
 readpayload
 rebase
@@ -185,11 +191,14 @@ refactoring
 regex
 regexps
 regexs
+request’s
+Request’s
 reloader
 renderer
 renderers
 repo
 repr
+repr’s
 RequestContextManager
 requote
 resolvers
@@ -244,6 +253,7 @@ url
 urldispatcher
 urlencoded
 urls
+url’s
 utf
 utils
 uvloop
@@ -252,6 +262,7 @@ waituntil
 webapp
 websocket
 websockets
+websocket’s
 Websockets
 wildcard
 Workflow
