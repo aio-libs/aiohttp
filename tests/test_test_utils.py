@@ -22,7 +22,8 @@ def _create_example_app():
 
     @asyncio.coroutine
     def gzip_hello(request):
-        return web.Response(body=gzip.compress(b"Hello, world"), headers={'Content-Encoding': 'gzip'})
+        return web.Response(body=gzip.compress(b"Hello, world"),
+                            headers={'Content-Encoding': 'gzip'})
 
     @asyncio.coroutine
     def websocket_handler(request):
