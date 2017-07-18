@@ -15,6 +15,9 @@ from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
                                 teardown_test_loop, unittest_run_loop)
 
 
+_hello_world_gz = gzip.compress(b"Hello, world")
+
+
 def _create_example_app():
     @asyncio.coroutine
     def hello(request):
@@ -22,7 +25,7 @@ def _create_example_app():
 
     @asyncio.coroutine
     def gzip_hello(request):
-        return web.Response(body=gzip.compress(b"Hello, world"),
+        return web.Response(body=_hello_world_gz,
                             headers={'Content-Encoding': 'gzip'})
 
     @asyncio.coroutine
@@ -93,10 +96,10 @@ def test_noauto_gzip_decompress():
             @asyncio.coroutine
             def test_get_route():
                 nonlocal client
-                resp = yield from client.request("GET", "/")
+                resp = yield from client.request("GET", "/gzip_hello")
                 assert resp.status == 200
                 data = yield from resp.read()
-                assert data == gzip.compress(b"Hello, world")
+                assert data == _hello_world_gz
 
             loop.run_until_complete(test_get_route())
 
