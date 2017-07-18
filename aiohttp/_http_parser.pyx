@@ -57,7 +57,8 @@ cdef class HttpParser:
         object  _payload
         bint    _payload_error
         object  _payload_exception
-        object _last_error
+        object  _last_error
+        bint    _auto_decompress
 
         Py_buffer py_buf
 
