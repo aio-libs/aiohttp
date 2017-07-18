@@ -1,6 +1,8 @@
 import asyncio
 import collections
 
+from .helpers import create_future
+
 
 class Event:
     """
@@ -66,7 +68,7 @@ class Event:
         if self._value:
             return True
 
-        fut = self._loop.create_future()
+        fut = create_future(self._loop)
         self._waiters.append(fut)
         try:
             yield from fut
