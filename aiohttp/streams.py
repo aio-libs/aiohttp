@@ -323,7 +323,9 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        if not self._buffer and not self._eof:
+        if not self._buffer:
+            if self._eof:
+                return b""
             yield from self._wait('readchunk')
 
         return self._read_nowait_chunk(-1)
