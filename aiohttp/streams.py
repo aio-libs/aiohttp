@@ -104,6 +104,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._exception = None
         self._timer = timer
         self._eof_callbacks = []
+        self._chunk_buffer = None
 
     def __repr__(self):
         info = [self.__class__.__name__]
@@ -208,6 +209,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if not data:
             return
 
+        if self._chunk_buffer is not None:
+            self._chunk_buffer += data
+            return
+
         self._size += len(data)
         self._buffer.append(data)
         self.total_bytes += len(data)
@@ -217,6 +222,13 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
             if not waiter.done():
                 waiter.set_result(False)
+
+    def begin_chunk_receiving(self):
+        self._chunk_buffer = b""
+
+    def end_chunk_receiving(self):
+        data, self._chunk_buffer = self._chunk_buffer, None
+        self.feed_data(data)
 
     @asyncio.coroutine
     def _wait(self, func_name):
