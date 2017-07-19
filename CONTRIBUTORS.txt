@@ -104,6 +104,7 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
+Loïc Lajeanne
 Louis-Philippe Huberdeau
 Lu Gong
 Lubomir Gelo
