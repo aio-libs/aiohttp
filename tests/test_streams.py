@@ -562,7 +562,7 @@ class TestStreamReader(unittest.TestCase):
         data = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'chunk2', data)
 
-        data = self.loop.run_until_complete(stream.read())
+        data = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'', data)
 
     def test___repr__(self):
