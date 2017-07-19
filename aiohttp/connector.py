@@ -681,7 +681,8 @@ class TCPConnector(BaseConnector):
                 addrs = yield from \
                     asyncio.shield(self._resolver.resolve(host,
                                                           port,
-                                                          family=self._family))
+                                                          family=self._family),
+                                   loop=self._loop)
                 self._cached_hosts.add(key, addrs)
                 self._throttle_dns_events[key].set()
             except Exception as e:
