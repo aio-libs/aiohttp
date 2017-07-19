@@ -17,7 +17,7 @@ from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
-from .locks import Event
+from .locks import ErrorfulOneShotEvent
 from .resolver import DefaultResolver
 
 
@@ -675,10 +675,13 @@ class TCPConnector(BaseConnector):
         if key in self._throttle_dns_events:
             yield from self._throttle_dns_events[key].wait()
         else:
-            self._throttle_dns_events[key] = Event(loop=self._loop)
+            self._throttle_dns_events[key] = \
+                ErrorfulOneShotEvent(loop=self._loop)
             try:
                 addrs = yield from \
-                    self._resolver.resolve(host, port, family=self._family)
+                    asyncio.shield(self._resolver.resolve(host,
+                                                          port,
+                                                          family=self._family))
                 self._cached_hosts.add(key, addrs)
                 self._throttle_dns_events[key].set()
             except Exception as e:
