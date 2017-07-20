@@ -547,7 +547,6 @@ class TestStreamReader(unittest.TestCase):
         self.assertRaises(RuntimeError, stream.read_nowait)
 
     def test_readchunk(self):
-
         stream = self._make_one()
 
         def cb():
@@ -564,6 +563,18 @@ class TestStreamReader(unittest.TestCase):
 
         data = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'', data)
+
+    def test_readchunk_wait_eof(self):
+        stream = self._make_one()
+
+        def cb():
+            yield from asyncio.sleep(0.1, loop=self.loop)
+            stream.feed_eof()
+
+        asyncio.Task(cb(), loop=self.loop)
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b"", data)
+        self.assertTrue(stream.is_eof())
 
     def test___repr__(self):
         stream = self._make_one()
