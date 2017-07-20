@@ -227,6 +227,9 @@ class StreamReader(AsyncStreamReaderMixin):
         self._chunk_buffer = b""
 
     def end_chunk_receiving(self):
+        if self._chunk_buffer is None:
+            raise RuntimeError("Called end_chunk_receiving without calling "
+                               "begin_chunk_receiving first")
         data, self._chunk_buffer = self._chunk_buffer, None
         self.feed_data(data)
 

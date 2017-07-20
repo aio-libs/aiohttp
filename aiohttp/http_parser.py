@@ -538,6 +538,7 @@ class HttpPayloadParser:
                         else:
                             self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
+                            self.payload.begin_chunk_receiving()
                     else:
                         self._chunk_tail = chunk
                         return False, None
@@ -547,18 +548,17 @@ class HttpPayloadParser:
                     required = self._chunk_size
                     chunk_len = len(chunk)
 
-                    if required >= chunk_len:
+                    if required > chunk_len:
                         self._chunk_size = required - chunk_len
-                        if self._chunk_size == 0:
-                            self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
-
                         self.payload.feed_data(chunk, chunk_len)
+
                         return False, None
                     else:
                         self._chunk_size = 0
                         self.payload.feed_data(chunk[:required], required)
                         chunk = chunk[required:]
                         self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
+                        self.payload.end_chunk_receiving()
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
@@ -643,6 +643,12 @@ class DeflateBuffer:
                 raise ContentEncodingError('deflate')
 
         self.out.feed_eof()
+
+    def begin_chunk_receiving(self):
+        self.out.begin_chunk_receiving()
+
+    def end_chunk_receiving(self):
+        self.out.end_chunk_receiving()
 
 
 HttpRequestParser = HttpRequestParserPy
