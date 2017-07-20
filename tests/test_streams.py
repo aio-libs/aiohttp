@@ -576,6 +576,33 @@ class TestStreamReader(unittest.TestCase):
         self.assertEqual(b"", data)
         self.assertTrue(stream.is_eof())
 
+    def test_begin_and_end_chunk_receiving(self):
+        stream = self._make_one()
+
+        def cb():
+            stream.begin_chunk_receiving()
+            stream.feed_data(b'part1')
+            stream.feed_data(b'part2')
+            stream.end_chunk_receiving()
+            stream.begin_chunk_receiving()
+            stream.feed_data(b'part3')
+            stream.end_chunk_receiving()
+            stream.feed_eof()
+        self.loop.call_soon(cb)
+
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'part1part2', data)
+
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'part3', data)
+
+        data = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'', data)
+
+    def test_end_chunk_receiving_without_begin(self):
+        stream = self._make_one()
+        self.assertRaises(RuntimeError, stream.end_chunk_receiving)
+
     def test___repr__(self):
         stream = self._make_one()
         self.assertEqual("<StreamReader>", repr(stream))
