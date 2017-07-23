@@ -64,6 +64,25 @@ class ClientConnectorError(ClientOSError):
     Raised in :class:`aiohttp.connector.TCPConnector` if
         connection to proxy can not be established.
     """
+    def __init__(self, connection_key, os_error):
+        self._conn_key = connection_key
+        super().__init__(os_error.errno, os_error.strerror)
+
+    @property
+    def host(self):
+        return self._conn_key.host
+
+    @property
+    def port(self):
+        return self._conn_key.port
+
+    @property
+    def ssl(self):
+        return self._conn_key.ssl
+
+    def __str__(self):
+        return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} [{1}]'
+                .format(self._conn_key, self.strerror))
 
 
 class ClientProxyConnectionError(ClientConnectorError):
