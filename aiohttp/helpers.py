@@ -306,6 +306,7 @@ class AccessLogger:
     Format:
         %%  The percent sign
         %a  Remote IP-address (IP-address of proxy if using reverse proxy)
+        %f  X-Foward-For or Remote IP-address
         %t  Time when the request was started to process
         %P  The process ID of the child that serviced the request
         %r  First line of request
@@ -322,6 +323,7 @@ class AccessLogger:
     """
     LOG_FORMAT_MAP = {
         'a': 'remote_address',
+        'f': 'x_forwarded_for',
         't': 'request_time',
         'P': 'process_id',
         'r': 'first_request_line',
@@ -336,7 +338,7 @@ class AccessLogger:
     }
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
+    FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[aftPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
 
@@ -428,6 +430,13 @@ class AccessLogger:
             return peername[0]
         else:
             return peername
+
+    @staticmethod
+    def _format_f(args):
+        result = args[0].headers.get("X-Forwarded-For")
+        if result is None:
+            return AccessLogger._format_a(args)
+        return result
 
     @staticmethod
     def _format_t(args):
