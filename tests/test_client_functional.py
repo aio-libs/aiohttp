@@ -1307,11 +1307,11 @@ def test_POST_bytes(loop, test_client):
 
 @asyncio.coroutine
 def test_POST_bytes_too_large(loop, test_client):
-    body = b'0' * 2 ** 20 + 1
+    body = b'0' * (2 ** 20 + 1)
 
     @asyncio.coroutine
     def handler(request):
-        data = yield from request.read()
+        data = yield from request.content.read()
         assert body == data
         return web.HTTPOk()
 
