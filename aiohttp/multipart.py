@@ -915,7 +915,7 @@ class MultipartPayloadWriter:
                 enc_chunk, self._encoding_buffer = (
                     buffer[:div * 3], buffer[div * 3:])
                 if enc_chunk:
-                    enc_chunk = base64.b64encode(enc_chunk)
+                    enc_chunk = base64.encodebytes(enc_chunk)
                     yield from self._writer.write(enc_chunk)
         elif self._encoding == 'quoted-printable':
             yield from self._writer.write(binascii.b2a_qp(chunk))
