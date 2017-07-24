@@ -124,7 +124,7 @@ class PayloadWriter(AbstractPayloadWriter):
 
     def __init__(self, stream, loop, acquire=True):
         self._stream = stream
-        self._transport = None
+        self._transport, self._buffer = None, []
 
         self.loop = loop
         self.length = None
@@ -133,23 +133,21 @@ class PayloadWriter(AbstractPayloadWriter):
         self.output_size = 0
 
         self._eof = False
-        self._buffer = []
         self._compress = None
         self._drain_waiter = None
 
         if self._stream.available:
-            self._transport = self._stream.transport
+            self._transport, self._buffer = self._stream.transport, None
             self._stream.available = False
         elif acquire:
             self._stream.acquire(self)
 
     def set_transport(self, transport):
-        self._transport = transport
+        assert self._transport is None and self._buffer is not None
 
-        chunk = b''.join(self._buffer)
-        if chunk:
-            transport.write(chunk)
-            self._buffer.clear()
+        for b in self._buffer:
+            transport.write(b)
+        self._transport, self._buffer = transport, None
 
         if self._drain_waiter is not None:
             waiter, self._drain_waiter = self._drain_waiter, None
@@ -178,25 +176,15 @@ class PayloadWriter(AbstractPayloadWriter):
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
         self._compress = zlib.compressobj(wbits=zlib_mode)
 
-    def buffer_data(self, chunk):
-        if chunk:
-            size = len(chunk)
-            self.buffer_size += size
-            self.output_size += size
-            self._buffer.append(chunk)
-
     def _write(self, chunk):
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
 
+        # see set_transport: exactly one of _buffer or _transport is None
         if self._transport is not None:
-            if self._buffer:
-                self._buffer.append(chunk)
-                self._transport.write(b''.join(self._buffer))
-                self._buffer.clear()
-            else:
-                self._transport.write(chunk)
+            assert self._buffer is None
+            self._transport.write(chunk)
         else:
             self._buffer.append(chunk)
 
@@ -241,11 +229,7 @@ class PayloadWriter(AbstractPayloadWriter):
         headers = status_line + ''.join(
             [k + SEP + v + END for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
-
-        size = len(headers)
-        self.buffer_size += size
-        self.output_size += size
-        self._buffer.append(headers)
+        self._write(headers)
 
     async def write_eof(self, chunk=b''):
         if self._eof:
@@ -268,9 +252,9 @@ class PayloadWriter(AbstractPayloadWriter):
                     chunk = b'0\r\n\r\n'
 
         if chunk:
-            self.buffer_data(chunk)
+            self._write(chunk)
 
-        await self.drain(True)
+        await self.drain()
 
         self._eof = True
         self._transport = None
@@ -278,10 +262,6 @@ class PayloadWriter(AbstractPayloadWriter):
 
     async def drain(self, last=False):
         if self._transport is not None:
-            if self._buffer:
-                self._transport.write(b''.join(self._buffer))
-                if not last:
-                    self._buffer.clear()
             await self._stream.drain()
         else:
             # wait for transport
