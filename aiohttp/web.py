@@ -81,6 +81,7 @@ class Application(MutableMapping):
         self._on_loop_available = FuncSignal(self)
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
+        self._on_pre_serve = Signal(self)
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
         self._client_max_size = client_max_size
@@ -153,6 +154,7 @@ class Application(MutableMapping):
         self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
         self._on_startup.freeze()
+        self._on_pre_serve.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
 
@@ -175,6 +177,7 @@ class Application(MutableMapping):
             appsig.append(handler)
 
         reg_handler('on_startup')
+        reg_handler('on_pre_serve')
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
@@ -220,6 +223,10 @@ class Application(MutableMapping):
         return self._on_startup
 
     @property
+    def on_pre_serve(self):
+        return self._on_pre_serve
+
+    @property
     def on_shutdown(self):
         return self._on_shutdown
 
@@ -257,6 +264,14 @@ class Application(MutableMapping):
         Should be called in the event loop along with the request handler.
         """
         yield from self.on_startup.send(self)
+
+    @asyncio.coroutine
+    def pre_serve(self):
+        """Causes on_pre_serve signal
+
+        Should be called just before run_forever().
+        """
+        yield from self.on_pre_serve.send(self)
 
     @asyncio.coroutine
     def shutdown(self):
@@ -436,6 +451,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         servers = loop.run_until_complete(
             asyncio.gather(*server_creations, loop=loop)
         )
+        app['asyncio_servers'] = servers
 
         if handle_signals:
             try:
@@ -445,6 +461,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
                 # add_signal_handler is not implemented on Windows
                 pass
 
+        loop.run_until_complete(app.pre_serve())
         try:
             print("======== Running on {} ========\n"
                   "(Press CTRL+C to quit)".format(', '.join(uris)))
