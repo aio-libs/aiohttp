@@ -21,6 +21,7 @@ __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
 
 TOO_LARGE_BYTES_BODY = 2 ** 20
 
+
 class LookupError(Exception):
     pass
 
