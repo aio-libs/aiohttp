@@ -1287,6 +1287,46 @@ def test_POST_FILES_DEFLATE(loop, test_client, fname):
 
 
 @asyncio.coroutine
+def test_POST_bytes(loop, test_client):
+    body = b'0' * 12345
+
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.read()
+        assert body == data
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/', data=body)
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_bytes_too_large(loop, test_client):
+    body = b'0' * 2 ** 20 + 1
+
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.read()
+        assert body == data
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with pytest.warns(ResourceWarning):
+        resp = yield from client.post('/', data=body)
+
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
 def test_POST_FILES_STR(loop, test_client, fname):
     @asyncio.coroutine
     def handler(request):
