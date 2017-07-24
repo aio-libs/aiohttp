@@ -124,7 +124,8 @@ class PayloadWriter(AbstractPayloadWriter):
 
     def __init__(self, stream, loop, acquire=True):
         self._stream = stream
-        self._transport, self._buffer = None, []
+        self._transport = None
+        self._buffer = []
 
         self.loop = loop
         self.length = None
@@ -137,22 +138,33 @@ class PayloadWriter(AbstractPayloadWriter):
         self._drain_waiter = None
 
         if self._stream.available:
-            self._transport, self._buffer = self._stream.transport, None
+            self._transport = self._stream.transport
+            self._buffer = None
             self._stream.available = False
         elif acquire:
             self._stream.acquire(self)
 
     def set_transport(self, transport):
-        assert self._transport is None and self._buffer is not None
+        self._transport = transport
 
-        for b in self._buffer:
-            transport.write(b)
-        self._transport, self._buffer = transport, None
+        if self._buffer is not None:
+            for b in self._buffer:
+                transport.write(b)
+            self._buffer = None
 
         if self._drain_waiter is not None:
             waiter, self._drain_waiter = self._drain_waiter, None
             if not waiter.done():
                 waiter.set_result(None)
+
+    async def get_transport(self):
+        if self._transport is None:
+            if self._drain_waiter is None:
+                self._drain_waiter = create_future(self.loop)
+            await self._drain_waiter
+
+        assert self._transport is not None
+        return self._transport
 
     @property
     def tcp_nodelay(self):
@@ -265,7 +277,4 @@ class PayloadWriter(AbstractPayloadWriter):
             await self._stream.drain()
         else:
             # wait for transport
-            if self._drain_waiter is None:
-                self._drain_waiter = self.loop.create_future()
-
-            await self._drain_waiter
+            await self.get_transport()
