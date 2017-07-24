@@ -2462,7 +2462,7 @@ async def test_handle_keepalive_on_closed_connection(loop):
     await r.read()
     assert 1 == len(connector._conns)
 
-    with pytest.raises(aiohttp.ServerDisconnectedError):
+    with pytest.raises(aiohttp.ClientConnectionError):
         await session.request('GET', url)
     assert 0 == len(connector._conns)
 
