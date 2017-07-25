@@ -1049,3 +1049,11 @@ def test_convert_empty_path_to_slash_on_freezing(router):
     assert resource.get_info() == {'path': ''}
     router.freeze()
     assert resource.get_info() == {'path': '/'}
+
+
+def test_deprecate_non_coroutine(router):
+    def handler(request):
+        pass
+
+    with pytest.warns(DeprecationWarning):
+        router.add_route('GET', '/handler', handler)

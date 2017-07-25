@@ -107,6 +107,9 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
+            warnings.warn("Bare functions are deprecated, "
+                          "use async ones", DeprecationWarning)
+
             @wraps(handler)
             @asyncio.coroutine
             def handler_wrapper(*args, **kwargs):
