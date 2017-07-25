@@ -50,7 +50,7 @@ def _create_example_app():
 def test_full_server_scenario():
     with loop_context() as loop:
         app = _create_example_app()
-        with _TestClient(app, loop=loop) as client:
+        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
 
             @asyncio.coroutine
             def test_get_route():
@@ -66,7 +66,7 @@ def test_full_server_scenario():
 def test_server_with_create_test_teardown():
     with loop_context() as loop:
         app = _create_example_app()
-        with _TestClient(app, loop=loop) as client:
+        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
 
             @asyncio.coroutine
             def test_get_route():
@@ -85,7 +85,7 @@ def test_test_client_close_is_idempotent():
     """
     loop = setup_test_loop()
     app = _create_example_app()
-    client = _TestClient(app, loop=loop)
+    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
     loop.run_until_complete(client.close())
     loop.run_until_complete(client.close())
     teardown_test_loop(loop)
@@ -129,7 +129,7 @@ def app():
 
 @pytest.yield_fixture
 def test_client(loop, app):
-    client = _TestClient(app, loop=loop)
+    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
     loop.run_until_complete(client.start_server())
     yield client
     loop.run_until_complete(client.close())
@@ -225,7 +225,8 @@ def test_make_mocked_request_transport():
 
 def test_test_client_props(loop):
     app = _create_example_app()
-    client = _TestClient(app, loop=loop, host='localhost')
+    client = _TestClient(_TestServer(app, host='localhost', loop=loop),
+                         loop=loop)
     assert client.host == 'localhost'
     assert client.port is None
     with client:
@@ -246,20 +247,6 @@ def test_test_server_context_manager(loop):
             client.close()
 
         loop.run_until_complete(go())
-
-
-def test_client_scheme_mutually_exclusive_with_server():
-    app = _create_example_app()
-    server = _TestServer(app)
-    with pytest.raises(ValueError):
-        _TestClient(server, scheme='http')
-
-
-def test_client_host_mutually_exclusive_with_server():
-    app = _create_example_app()
-    server = _TestServer(app)
-    with pytest.raises(ValueError):
-        _TestClient(server, host='127.0.0.1')
 
 
 def test_client_unsupported_arg():
