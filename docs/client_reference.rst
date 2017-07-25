@@ -43,11 +43,12 @@ The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, json_serialize=func:`json.dumps`, \
+                         auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
-                         raise_for_status=False)
+                         raise_for_status=False, \
+                         connector_owner=True)
 
    The class for creating client sessions and making requests.
 
@@ -127,10 +128,15 @@ The client session supports the context manager protocol for self closing.
    :param float conn_timeout: timeout for connection establishing
       (optional). Values ``0`` or ``None`` mean no timeout.
 
-   .. versionchanged:: 1.0
+   :param bool connector_owner:
 
-   ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
-      instead.
+      Close connector instance on session closing.
+
+      Passing ``connector_owner=False`` to constructor allows to share
+      connection pool between sessions without sharing session state:
+      cookies etc.
+
+      .. versionadded:: 2.1
 
    .. attribute:: closed
 
