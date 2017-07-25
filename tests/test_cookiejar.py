@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import itertools
 import os
 import tempfile
 import unittest
@@ -577,3 +578,21 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         cookie = cookies_sent["invalid-expires-cookie"]
         self.assertEqual(cookie["expires"], "")
+
+    def test_cookie_not_expired_when_added_after_removal(self):
+        """Test case for https://github.com/aio-libs/aiohttp/issues/2084"""
+        timestamps = [533588.993, 533588.993, 533588.993,
+                      533588.993, 533589.093, 533589.093]
+
+        loop = mock.Mock()
+        loop.time.side_effect = itertools.chain(
+            timestamps, itertools.cycle([timestamps[-1]]))
+
+        jar = CookieJar(unsafe=True, loop=loop)
+        # Remove `foo` cookie.
+        jar.update_cookies(SimpleCookie('foo=""; Max-Age=0'))
+        # Set `foo` cookie to `bar`.
+        jar.update_cookies(SimpleCookie('foo="bar"'))
+
+        # Assert that there is a cookie.
+        assert len(jar) == 1
