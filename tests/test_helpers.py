@@ -17,7 +17,12 @@ from aiohttp import helpers
 def test_warn():
     with pytest.warns(DeprecationWarning) as ctx:
         helpers.deprecated_noop('Text')
-    assert str(ctx.list[0].message) == 'Text'
+
+    w = ctx.list[0]
+
+    assert str(w.message) == 'Text'
+    # Assert the warning points at us and not at _CoroGuard.
+    assert w.filename == __file__
 
 
 @asyncio.coroutine

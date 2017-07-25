@@ -106,6 +106,11 @@ if not PY_35:
 
 
 class _CoroGuard(_BaseCoroMixin):
+    """Only to be used with func:`deprecated_noop`.
+
+    Otherwise the stack information in the raised warning doesn't line up with
+    the user's code anymore.
+    """
     __slots__ = ('_msg', '_awaited')
 
     def __init__(self, coro, msg):
@@ -126,7 +131,7 @@ class _CoroGuard(_BaseCoroMixin):
     def __del__(self):
         self._coro = None
         if not self._awaited:
-            warnings.warn(self._msg, DeprecationWarning)
+            warnings.warn(self._msg, DeprecationWarning, stacklevel=2)
 
 
 coroutines = asyncio.coroutines

@@ -77,6 +77,7 @@ Gregory Haynes
 Günther Jena
 Hu Bo
 Hugo Herter
+Hynek Schlawack
 Igor Davydenko
 Igor Pavlov
 Ingmar Steen
