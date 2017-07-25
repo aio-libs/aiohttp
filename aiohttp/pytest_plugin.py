@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import contextlib
 import tempfile
 import warnings
@@ -9,8 +10,8 @@ from py import path
 from aiohttp.web import Application
 
 from .test_utils import unused_port as _unused_port
-from .test_utils import (RawTestServer, TestClient, TestServer, loop_context,
-                         setup_test_loop, teardown_test_loop)
+from .test_utils import (BaseTestServer, RawTestServer, TestClient, TestServer,
+                         loop_context, setup_test_loop, teardown_test_loop)
 
 
 try:
@@ -227,19 +228,22 @@ def test_client(loop):
     clients = []
 
     @asyncio.coroutine
-    def go(__param, *args, **kwargs):
+    def go(__param, *args, server_kwargs={}, **kwargs):
+
+        if isinstance(__param, collections.Callable) and \
+                not isinstance(__param, (Application, BaseTestServer)):
+            __param = __param(loop, *args, **kwargs)
+            kwargs = {}
+        else:
+            assert not args, "args should be empty"
+
         if isinstance(__param, Application):
-            assert not args, "args should be empty"
-            client = TestClient(__param, loop=loop, **kwargs)
-        elif isinstance(__param, TestServer):
-            assert not args, "args should be empty"
-            client = TestClient(__param, loop=loop, **kwargs)
-        elif isinstance(__param, RawTestServer):
-            assert not args, "args should be empty"
+            server = TestServer(__param, loop=loop, **server_kwargs)
+            client = TestClient(server, loop=loop, **kwargs)
+        elif isinstance(__param, BaseTestServer):
             client = TestClient(__param, loop=loop, **kwargs)
         else:
-            __param = __param(loop, *args, **kwargs)
-            client = TestClient(__param, loop=loop)
+            raise ValueError("Unknown argument type: %r" % type(__param))
 
         yield from client.start_server()
         clients.append(client)
