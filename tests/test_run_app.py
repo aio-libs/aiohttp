@@ -261,7 +261,7 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     skip_if_no_dict(loop)
 
     port = unused_port()
-    host = 'localhost'
+    host = '127.0.0.1'
 
     mocker.spy(loop, 'create_server')
 
