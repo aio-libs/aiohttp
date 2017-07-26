@@ -923,6 +923,7 @@ def test_writer_with_content_te_base64_no_long_lines(buf, stream, writer):
     line0 = message.split(b'\r\n')
     assert len(line0) < 80
 
+
 @asyncio.coroutine
 def test_writer_content_transfer_encoding_quote_printable(buf, stream, writer):
     writer.append('Привет, мир!',
