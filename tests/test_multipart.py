@@ -916,15 +916,12 @@ def test_writer_with_content_transfer_encoding_base64(buf, stream, writer):
 @asyncio.coroutine
 def test_writer_with_content_te_base64_no_long_lines(buf, stream, writer):
     writer.append('Time to write long lines!' * 10,
-                  {CONTENT_TRANSFER_ENCODING: 'base64'}
-    )
+                  {CONTENT_TRANSFER_ENCODING: 'base64'})
     yield from writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
     line0 = message.split(b'\r\n')
     assert len(line0) < 80
-
-
 
 @asyncio.coroutine
 def test_writer_content_transfer_encoding_quote_printable(buf, stream, writer):
