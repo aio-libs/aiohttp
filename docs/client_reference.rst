@@ -132,7 +132,7 @@ The client session supports the context manager protocol for self closing.
 
    :param bool auto_decompress: Automatically decompress response body
 
-   .. versionchanged:: 2.x
+   .. versionchanged:: 2.3
 
    ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
       instead.
