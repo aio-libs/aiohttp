@@ -243,6 +243,12 @@ functionality, the AioHTTPTestCase is provided::
 
        an aiohttp test client, :class:`TestClient` instance.
 
+    .. attribute:: server
+
+       an aiohttp test server, :class:`TestServer` instance.
+
+       .. versionadded:: 2.3.0
+
     .. attribute:: loop
 
        The event loop in which the application and server are running.
@@ -252,6 +258,24 @@ functionality, the AioHTTPTestCase is provided::
        The application returned by :meth:`get_app`
        (:class:`aiohttp.web.Application` instance).
 
+    .. comethod:: get_client()
+
+       This async method can be overridden to return the :class:`TestClient`
+       object used in the test.
+
+       :return: :class:`TestClient` instance.
+
+       .. versionadded:: 2.3.0
+
+    .. comethod:: get_server()
+
+       This async method can be overridden to return the :class:`TestServer`
+       object used in the test.
+
+       :return: :class:`TestServer` instance.
+
+       .. versionadded:: 2.3.0
+
     .. comethod:: get_application()
 
        This async method should be overridden
@@ -259,6 +283,20 @@ functionality, the AioHTTPTestCase is provided::
        object to test.
 
        :return: :class:`aiohttp.web.Application` instance.
+
+    .. comethod:: setUpAsync()
+
+       This async method do nothing by default and can be overridden to execute
+       asynchronous code during the ``setUp`` stage of the ``TestCase``.
+
+       .. versionadded:: 2.3.0
+
+    .. comethod:: tearDownAsync()
+
+       This async method do nothing by default and can be overridden to execute
+       asynchronous code during the ``tearDown`` stage of the ``TestCase``.
+
+       .. versionadded:: 2.3.0
 
     .. method:: setUp()
 
