@@ -603,6 +603,13 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
+    def close(self):
+        """Close all ongoing DNS calls."""
+        for ev in self._throttle_dns_events.values():
+            ev.cancel()
+
+        super().close()
+
     @property
     def verify_ssl(self):
         """Do check for ssl certifications?"""
@@ -676,7 +683,7 @@ class TCPConnector(BaseConnector):
             yield from self._throttle_dns_events[key].wait()
         else:
             self._throttle_dns_events[key] = \
-                ErrorfulOneShotEvent(loop=self._loop)
+                ErrorfulOneShotEvent(self._loop)
             try:
                 addrs = yield from \
                     asyncio.shield(self._resolver.resolve(host,

@@ -1,6 +1,8 @@
 """Tests of custom aiohttp locks implementations"""
 import asyncio
 
+import pytest
+
 from aiohttp import helpers
 from aiohttp.locks import ErrorfulOneShotEvent
 
@@ -23,8 +25,7 @@ class TestErrorfulOneShotEvent:
         yield from asyncio.sleep(0, loop=loop)
         e = Exception()
         ev.set(exc=e)
-        yield from asyncio.sleep(0, loop=loop)
-        assert t.result() == e
+        assert (yield from t) == e
 
     @asyncio.coroutine
     def test_set(self, loop):
@@ -38,5 +39,24 @@ class TestErrorfulOneShotEvent:
         t = helpers.ensure_future(c(), loop=loop)
         yield from asyncio.sleep(0, loop=loop)
         ev.set()
+        assert (yield from t) == 1
+
+    @asyncio.coroutine
+    def test_cancel_waiters(self, loop):
+        ev = ErrorfulOneShotEvent(loop=loop)
+
+        @asyncio.coroutine
+        def c():
+            yield from ev.wait()
+
+        t1 = helpers.ensure_future(c(), loop=loop)
+        t2 = helpers.ensure_future(c(), loop=loop)
         yield from asyncio.sleep(0, loop=loop)
-        assert t.result() == 1
+        ev.cancel()
+        ev.set()
+
+        with pytest.raises(asyncio.futures.CancelledError):
+            yield from t1
+
+        with pytest.raises(asyncio.futures.CancelledError):
+            yield from t2

@@ -462,6 +462,30 @@ def test_tcp_connector_dns_throttle_requests_exception_spread(loop):
         assert r2.exception() == e
 
 
+@asyncio.coroutine
+def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
+        loop,
+        dns_response):
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10
+        )
+        m_resolver().resolve.return_value = dns_response()
+        helpers.ensure_future(
+            conn._resolve_host('localhost', 8080), loop=loop)
+        f = helpers.ensure_future(
+            conn._resolve_host('localhost', 8080), loop=loop)
+
+        yield from asyncio.sleep(0, loop=loop)
+        conn.close()
+
+        with pytest.raises(asyncio.futures.CancelledError):
+            yield from f
+
+
 def test_get_pop_empty_conns(loop):
     # see issue #473
     conn = aiohttp.BaseConnector(loop=loop)
