@@ -16,7 +16,6 @@ class ErrorfulOneShotEvent:
         self._exc = None
         self._event = asyncio.Event(loop=loop)
         self._waiters = collections.deque()
-        self._owner = None
 
     def set(self, exc=None):
         self._exc = exc
