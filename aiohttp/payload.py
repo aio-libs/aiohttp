@@ -254,7 +254,10 @@ class BytesIOPayload(IOBasePayload):
 
     @property
     def size(self):
-        return len(self._value.getbuffer()) - self._value.tell()
+        p = self._value.tell()
+        l = self._value.seek(0, os.SEEK_END)
+        self._value.seek(p)
+        return l - p
 
 
 class BufferedReaderPayload(IOBasePayload):
