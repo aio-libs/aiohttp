@@ -374,7 +374,8 @@ conditions that hard to reproduce on real server::
                                   transport=sentinel, \
                                   payload=sentinel, \
                                   sslcontext=None, \
-                                  secure_proxy_ssl_header=None)
+                                  secure_proxy_ssl_header=None,
+                                  loop=...)
 
    Creates mocked web.Request testing purposes.
 
@@ -416,6 +417,9 @@ conditions that hard to reproduce on real server::
    :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
        combination that signifies a request is secure.
    :type secure_proxy_ssl_header: tuple
+
+   :param loop: An event loop instance, mocked loop by default.
+   :type secure_proxy_ssl_header: :class:`asyncio.AbstractEventLoop`
 
    :return: :class:`aiohttp.web.Request` object.
 
