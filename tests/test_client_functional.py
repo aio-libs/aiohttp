@@ -971,6 +971,30 @@ def test_HTTP_307_REDIRECT_POST(loop, test_client):
 
 
 @asyncio.coroutine
+def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        yield from request.read()
+        return web.HTTPPermanentRedirect(location='/')
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    app.router.add_post('/redirect', redirect)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/redirect', data={'some': 'data'})
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = yield from resp.text()
+    assert txt == 'POST'
+    resp.close()
+
+
+@asyncio.coroutine
 def test_HTTP_302_max_redirects(loop, test_client):
     @asyncio.coroutine
     def handler(request):
