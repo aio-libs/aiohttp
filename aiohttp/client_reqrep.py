@@ -13,7 +13,7 @@ from yarl import URL
 
 from . import hdrs, helpers, http, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
-                                ClientResponseError)
+                                ClientResponseError, ContentTypeError)
 from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
@@ -722,7 +722,7 @@ class ClientResponse(HeadersMixin):
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
             if content_type not in ctype:
-                raise ClientResponseError(
+                raise ContentTypeError(
                     self.request_info,
                     self.history,
                     message=('Attempt to decode JSON with '

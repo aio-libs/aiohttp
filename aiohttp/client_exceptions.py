@@ -13,6 +13,8 @@ __all__ = (
     'ServerFingerprintMismatch',
 
     'ClientResponseError', 'ClientPayloadError',
+    'ContentTypeError',
+
     'ClientHttpProxyError', 'WSServerHandshakeError')
 
 
@@ -35,6 +37,10 @@ class ClientResponseError(ClientError):
         self.history = history
 
         super().__init__("%s, message='%s'" % (code, message))
+
+
+class ContentTypeError(ClientResponseError):
+    """ContentType found is not valid."""
 
 
 class WSServerHandshakeError(ClientResponseError):
