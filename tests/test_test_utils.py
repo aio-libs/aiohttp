@@ -93,7 +93,7 @@ def test_auto_gzip_decompress():
 def test_noauto_gzip_decompress():
     with loop_context() as loop:
         app = _create_example_app()
-        with _TestClient(_TestServer(app, loop=loop), auto_decompress=False) as client:
+        with _TestClient(_TestServer(app, loop=loop), loop=loop, auto_decompress=False) as client:
 
             @asyncio.coroutine
             def test_get_route():
