@@ -100,7 +100,7 @@ class WebSocketResponse(StreamResponse):
         return payload_writer
 
     def _pre_start(self, request):
-        self._loop = request.app.loop
+        self._loop = request.loop
 
         try:
             status, headers, _, writer, protocol = do_handshake(

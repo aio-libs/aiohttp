@@ -51,7 +51,8 @@ def make_request(app, protocol, writer):
 
         return make_mocked_request(
             method, path, headers,
-            app=app, protocol=protocol, payload_writer=writer)
+            app=app, protocol=protocol, payload_writer=writer,
+            loop=app.loop)
 
     return maker
 

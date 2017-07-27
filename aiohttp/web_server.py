@@ -36,7 +36,7 @@ class Server:
     def _make_request(self, message, payload, protocol, writer, task):
         return BaseRequest(
             message, payload, protocol, writer,
-            protocol.time_service, task)
+            protocol.time_service, task, self._loop)
 
     @asyncio.coroutine
     def shutdown(self, timeout=None):

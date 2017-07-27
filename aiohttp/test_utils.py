@@ -502,7 +502,8 @@ def make_mocked_request(method, path, headers=None, *,
                         payload=sentinel,
                         sslcontext=None,
                         secure_proxy_ssl_header=None,
-                        client_max_size=1024**2):
+                        client_max_size=1024**2,
+                        loop=...):
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
@@ -511,8 +512,9 @@ def make_mocked_request(method, path, headers=None, *,
     """
 
     task = mock.Mock()
-    loop = mock.Mock()
-    loop.create_future.return_value = ()
+    if loop is ...:
+        loop = mock.Mock()
+        loop.create_future.return_value = ()
 
     if version < HttpVersion(1, 1):
         closing = True
@@ -566,7 +568,7 @@ def make_mocked_request(method, path, headers=None, *,
     time_service.timeout.side_effect = timeout
 
     req = Request(message, payload,
-                  protocol, payload_writer, time_service, task,
+                  protocol, payload_writer, time_service, task, loop,
                   secure_proxy_ssl_header=secure_proxy_ssl_header,
                   client_max_size=client_max_size)
 

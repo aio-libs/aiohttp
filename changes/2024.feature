@@ -1,0 +1,1 @@
+Provide `BaseRequest.loop` attribute

@@ -64,6 +64,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, message, payload, protocol, writer, time_service, task,
+                 loop,
                  *, secure_proxy_ssl_header=None, client_max_size=1024**2):
         self._message = message
         self._protocol = protocol
@@ -84,6 +85,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
+        self._loop = loop
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -120,6 +122,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._writer,
             self._time_service,
             self._task,
+            self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     @property
@@ -145,6 +148,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @property
     def rel_url(self):
         return self._rel_url
+
+    @property
+    def loop(self):
+        return self._loop
 
     # MutableMapping API
 

@@ -194,6 +194,14 @@ and :ref:`aiohttp-web-signals` handlers.
          if peername is not None:
              host, port = peername
 
+   .. attribute:: loop
+
+      An event loop instance used by HTTP request handling.
+
+      Read-only :class:`asyncio.AbstractEventLoop` property.
+
+      .. versionadded:: 2.3
+
    .. attribute:: cookies
 
       A multidict of all request's cookies.
@@ -820,7 +828,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, autoclose=True, \
+.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
+                             autoclose=True, \
                              autoping=True, heartbeat=None, protocols=())
 
    Class for handling server-side websockets, inherited from
@@ -834,8 +843,8 @@ WebSocketResponse
    .. versionadded:: 1.3.0
 
    To enable back-pressure from slow websocket clients treat methods
-   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as coroutines.
-   By default write buffer size is set to 64k.
+   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as
+   coroutines.  By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -850,12 +859,14 @@ WebSocketResponse
 
    .. versionadded:: 1.3.0
 
-   :param float heartbeat: Send `ping` message every `heartbeat` seconds
-                           and wait `pong` response, close connection if `pong` response
-                           is not received.
+   :param float heartbeat: Send `ping` message every `heartbeat`
+                           seconds and wait `pong` response, close
+                           connection if `pong` response is not
+                           received.
 
-   :param float receive_timeout: Timeout value for `receive` operations.
-                                 Default value is None (no timeout for receive operation)
+   :param float receive_timeout: Timeout value for `receive`
+                                 operations.  Default value is None
+                                 (no timeout for receive operation)
 
    .. versionadded:: 0.19
 
