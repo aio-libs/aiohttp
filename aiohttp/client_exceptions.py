@@ -40,7 +40,7 @@ class ClientResponseError(ClientError):
 
 
 class ContentTypeError(ClientResponseError):
-    """ ContentType found is not valid """
+    """ContentType found is not valid."""
 
 
 class WSServerHandshakeError(ClientResponseError):
