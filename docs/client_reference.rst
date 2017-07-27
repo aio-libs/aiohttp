@@ -1115,7 +1115,7 @@ Response object
       *cchardet* is not available.
 
       if response's `content-type` does not match `content_type` parameter
-      :exc:`aiohttp.ClientResponseContentTypeError` get raised.
+      :exc:`aiohttp.ContentTypeError` get raised.
       To disable content type check pass ``None`` value.
 
       :param str encoding: text encoding used for *BODY* decoding, or

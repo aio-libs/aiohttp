@@ -13,7 +13,7 @@ __all__ = (
     'ServerFingerprintMismatch',
 
     'ClientResponseError', 'ClientPayloadError',
-    'ClientResponseContentTypeError',
+    'ContentTypeError',
 
     'ClientHttpProxyError', 'WSServerHandshakeError')
 
@@ -39,7 +39,7 @@ class ClientResponseError(ClientError):
         super().__init__("%s, message='%s'" % (code, message))
 
 
-class ClientResponseContentTypeError(ClientResponseError):
+class ContentTypeError(ClientResponseError):
     """ ContentType found is not valid """
 
 

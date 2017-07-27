@@ -359,7 +359,7 @@ def test_json_invalid_content_type(loop, session):
         'Content-Type': 'data/octet-stream'}
     response._content = b''
 
-    with pytest.raises(aiohttp.ClientResponseContentTypeError) as info:
+    with pytest.raises(aiohttp.ContentTypeError) as info:
         yield from response.json()
 
     assert info.value.request_info == response.request_info
