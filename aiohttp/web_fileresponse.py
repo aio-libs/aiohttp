@@ -179,6 +179,7 @@ class FileResponse(StreamResponse):
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             self.set_status(HTTPNotModified.status_code)
+            self._length_check = False
             return (yield from super().prepare(request))
 
         ct, encoding = mimetypes.guess_type(str(filepath))
