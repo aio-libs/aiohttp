@@ -362,7 +362,8 @@ class StreamResponse(HeadersMixin):
                 del headers[CONTENT_LENGTH]
         elif self._length_check:
             writer.length = self.content_length
-            if writer.length is None and version >= HttpVersion11:
+            if (writer.length is None and version >= HttpVersion11 and
+                    self._status not in (204, 304)):
                 writer.enable_chunking()
                 headers[TRANSFER_ENCODING] = 'chunked'
                 if CONTENT_LENGTH in headers:
