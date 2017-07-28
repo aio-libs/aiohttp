@@ -20,6 +20,10 @@ _hello_world_bytes = _hello_world_str.encode('utf-8')
 _hello_world_gz = gzip.compress(_hello_world_bytes)
 
 
+class CustomClientSession(aiohttp.ClientSession):
+    pass
+
+
 def _create_example_app():
     @asyncio.coroutine
     def hello(request):
@@ -307,3 +311,16 @@ def test_server_make_url_yarl_compatibility(loop):
             make_url('http://foo.com')
         with pytest.raises(AssertionError):
             make_url(URL('http://foo.com'))
+
+
+def test_custom_client_session(test_client, loop):
+    app = _create_example_app()
+    with _TestClient(_TestServer(app, loop=loop),
+                     session_class=CustomClientSession, loop=loop) as client:
+        assert isinstance(client.session, CustomClientSession)
+
+
+def test_no_custom_client_session(test_client, loop):
+    app = _create_example_app()
+    with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
+        assert isinstance(client.session, aiohttp.ClientSession)
