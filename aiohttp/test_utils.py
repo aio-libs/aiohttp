@@ -374,7 +374,7 @@ class AioHTTPTestCase(unittest.TestCase):
         Use .get_application() coroutine instead
 
         """
-        pass  # pragma: no cover
+        raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self):
         self.loop = setup_test_loop()

@@ -324,3 +324,17 @@ def test_no_custom_client_session(test_client, loop):
     app = _create_example_app()
     with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
         assert isinstance(client.session, aiohttp.ClientSession)
+
+
+def test_testcase_no_app(testdir, loop):
+    testdir.makepyfile(
+        """
+        from aiohttp.test_utils import AioHTTPTestCase
+
+
+        class InvalidTestCase(AioHTTPTestCase):
+            def test_noop(self):
+                pass
+        """)
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(["*RuntimeError*"])
