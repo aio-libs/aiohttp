@@ -307,3 +307,17 @@ def test_server_make_url_yarl_compatibility(loop):
             make_url('http://foo.com')
         with pytest.raises(AssertionError):
             make_url(URL('http://foo.com'))
+
+
+def test_testcase_no_app(testdir, loop):
+    testdir.makepyfile(
+        """
+        from aiohttp.test_utils import AioHTTPTestCase
+
+
+        class InvalidTestCase(AioHTTPTestCase):
+            def test_noop(self):
+                pass
+        """)
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(["*RuntimeError*"])
