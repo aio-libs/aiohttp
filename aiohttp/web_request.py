@@ -288,10 +288,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         host = next(
             (f['host'] for f in self.forwarded if 'host' in f), None
         )
-        if not host and hdrs.X_FORWARDED_HOST in self._message.headers:
-            host = self._message.headers[hdrs.X_FORWARDED_HOST]
-        elif hdrs.HOST in self._message.headers:
-            host = self._message.headers[hdrs.HOST]
+        if host is None:
+            host = self._message.headers.get(hdrs.X_FORWARDED_HOST)
+        if host is None:
+            host = self._message.headers.get(hdrs.HOST)
         return host
 
     @reify
