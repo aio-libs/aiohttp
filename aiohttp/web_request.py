@@ -313,8 +313,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 ip = ips.split(',')[0].strip()
         if ip is None:
             transport = self._transport
-            if transport is None:
-                return None
             peername = transport.get_extra_info('peername')
             if isinstance(peername, (list, tuple)):
                 ip = peername[0]
