@@ -131,10 +131,10 @@ def test_basic_auth_decode_bad_base64():
 
 
 def test_access_logger_format():
-    log_format = '%T {%{SPAM}e} "%{ETag}o" %X {X} %%P %{FOO_TEST}e %{FOO1}e'
+    log_format = '%T "%{ETag}o" %X {X} %%P'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    expected = '%s {%s} "%s" %%X {X} %%%s %s %s'
+    expected = '%s "%s" %%X {X} %%%s'
     assert expected == access_logger._log_format
 
 
@@ -147,12 +147,13 @@ def test_access_logger_atoms(mocker):
     log_format = '%a %t %P %l %u %r %s %b %T %Tf %D'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    message = mock.Mock(headers={}, method="GET", path="/path", version=(1, 1))
-    environ = {}
-    response = mock.Mock(headers={}, body_length=42, status=200)
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
-    access_logger.log(message, environ, response, transport, 3.1415926)
+    request = mock.Mock(headers={}, method="GET", path_qs="/path",
+                        version=(1, 1),
+                        transport=transport)
+    response = mock.Mock(headers={}, body_length=42, status=200)
+    access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
     expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
                 'GET /path HTTP/1.1 200 42 3 3.141593 3141593')
@@ -171,19 +172,17 @@ def test_access_logger_atoms(mocker):
 
 
 def test_access_logger_dicts():
-    log_format = '%{User-Agent}i %{Content-Length}o %{SPAM}e %{None}i'
+    log_format = '%{User-Agent}i %{Content-Length}o %{None}i'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    message = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
-    environ = {"SPAM": "EGGS"}
+    request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
     response = mock.Mock(headers={"Content-Length": 123})
     transport = mock.Mock()
     transport.get_extra_info.return_value = ("127.0.0.2", 1234)
-    access_logger.log(message, environ, response, transport, 0.0)
+    access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called
-    expected = 'Mock/1.0 123 EGGS -'
+    expected = 'Mock/1.0 123 -'
     extra = {
-        'environ': {'SPAM': 'EGGS'},
         'request_header': {'None': '-'},
         'response_header': {'Content-Length': 123}
     }
@@ -195,46 +194,41 @@ def test_access_logger_unix_socket():
     log_format = '|%a|'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    message = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
-    environ = {}
-    response = mock.Mock()
     transport = mock.Mock()
     transport.get_extra_info.return_value = ""
-    access_logger.log(message, environ, response, transport, 0.0)
+    request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1),
+                        transport=transport)
+    response = mock.Mock()
+    access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called
     expected = '||'
     mock_logger.info.assert_called_with(expected, extra={'remote_address': ''})
 
 
-def test_logger_no_message_and_environ():
+def test_logger_no_message():
     mock_logger = mock.Mock()
-    mock_transport = mock.Mock()
-    mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
     access_logger = helpers.AccessLogger(mock_logger,
-                                         "%r %{FOOBAR}e %{content-type}i")
+                                         "%r %{content-type}i")
     extra_dict = {
-        'environ': {'FOOBAR': '-'},
         'first_request_line': '-',
         'request_header': {'content-type': '(no headers)'}
     }
 
-    access_logger.log(None, None, None, mock_transport, 0.0)
-    mock_logger.info.assert_called_with("- - (no headers)", extra=extra_dict)
+    access_logger.log(None, None, 0.0)
+    mock_logger.info.assert_called_with("- (no headers)", extra=extra_dict)
 
 
 def test_logger_internal_error():
     mock_logger = mock.Mock()
-    mock_transport = mock.Mock()
-    mock_transport.get_extra_info.return_value = ("127.0.0.3", 0)
     access_logger = helpers.AccessLogger(mock_logger, "%D")
-    access_logger.log(None, None, None, mock_transport, 'invalid')
+    access_logger.log(None, None, 'invalid')
     mock_logger.exception.assert_called_with("Error in logging")
 
 
 def test_logger_no_transport():
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, "%a")
-    access_logger.log(None, None, None, None, 0)
+    access_logger.log(None, None, 0)
     mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
 
 
