@@ -456,10 +456,6 @@ class AccessLogger:
         return response.body_length
 
     @staticmethod
-    def _format_O(request, response, time):
-        return response.body_length
-
-    @staticmethod
     def _format_T(request, response, time):
         return round(time)
 
