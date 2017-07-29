@@ -147,11 +147,9 @@ def test_access_logger_atoms(mocker):
     log_format = '%a %t %P %l %u %r %s %b %T %Tf %D'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    transport = mock.Mock()
-    transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     request = mock.Mock(headers={}, method="GET", path_qs="/path",
                         version=(1, 1),
-                        transport=transport)
+                        remote="127.0.0.2")
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
@@ -175,10 +173,9 @@ def test_access_logger_dicts():
     log_format = '%{User-Agent}i %{Content-Length}o %{None}i'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1))
+    request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1),
+                        remote="127.0.0.2")
     response = mock.Mock(headers={"Content-Length": 123})
-    transport = mock.Mock()
-    transport.get_extra_info.return_value = ("127.0.0.2", 1234)
     access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called
     expected = 'Mock/1.0 123 -'
@@ -194,10 +191,8 @@ def test_access_logger_unix_socket():
     log_format = '|%a|'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    transport = mock.Mock()
-    transport.get_extra_info.return_value = ""
     request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1),
-                        transport=transport)
+                        remote="")
     response = mock.Mock()
     access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called

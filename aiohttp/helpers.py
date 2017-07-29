@@ -423,14 +423,8 @@ class AccessLogger:
     def _format_a(request, response, time):
         if request is None:
             return '-'
-        transport = request.transport
-        if transport is None:
-            return '-'
-        peername = transport.get_extra_info('peername')
-        if isinstance(peername, (list, tuple)):
-            return peername[0]
-        else:
-            return peername
+        ip = request.remote
+        return ip if ip is not None else '-'
 
     @staticmethod
     def _format_t(request, response, time):

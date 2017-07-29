@@ -275,7 +275,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def host(self):
-        """ Hostname of the request.
+        """Hostname of the request.
 
         Hostname is resolved through the following headers, in this order:
 
@@ -293,6 +293,34 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         if host is None:
             host = self._message.headers.get(hdrs.HOST)
         return host
+
+    @reify
+    def remote(self):
+        """Remote IP of client initiated HTTP request.
+
+        The IP is resolved through the following headers, in this order:
+
+        - Forwarded
+        - X-Forwarded-For
+        - peername of opened socket
+        """
+        ip = next(
+            (f['for'] for f in self.forwarded if 'for' in f), None
+        )
+        if ip is None:
+            ips = self._message.headers.get(hdrs.X_FORWARDED_FOR)
+            if ips is not None:
+                ip = ips.split(',')[0].strip()
+        if ip is None:
+            transport = self._transport
+            if transport is None:
+                return None
+            peername = transport.get_extra_info('peername')
+            if isinstance(peername, (list, tuple)):
+                ip = peername[0]
+            else:
+                ip = peername
+        return ip
 
     @reify
     def url(self):

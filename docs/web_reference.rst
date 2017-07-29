@@ -126,6 +126,21 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns  :class:`str`, or ``None`` if no host name is found in the
       headers.
 
+   .. attribute:: remote
+
+      Originating IP address of a client initiated HTTP request.
+
+      The IP is resolved through the following headers, in this order:
+
+      - *Forwarded*
+      - *X-Forwarded-For*
+      - peername of opened socket
+
+      Returns :class:`str`, or ``None`` if no remote IP information is
+      provided.
+
+      .. versionadded:: 2.3
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
