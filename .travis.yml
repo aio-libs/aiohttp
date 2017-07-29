@@ -66,7 +66,7 @@ jobs:
     script:
     - make doc-spelling
 
-  - stage: deploy (PYPI upload itself runs only for tagged commits)
+  - stage: deploy to PyPI
     <<: *_mainstream_python_base
     <<: *_reset_steps
     dist: trusty
