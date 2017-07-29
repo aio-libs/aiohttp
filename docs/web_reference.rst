@@ -134,7 +134,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       - *Forwarded*
       - *X-Forwarded-For*
-      - peername of opened socket
+      - peer name of opened socket
 
       Returns :class:`str`, or ``None`` if no remote IP information is
       provided.
