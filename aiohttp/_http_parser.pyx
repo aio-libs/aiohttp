@@ -57,7 +57,8 @@ cdef class HttpParser:
         object  _payload
         bint    _payload_error
         object  _payload_exception
-        object _last_error
+        object  _last_error
+        bint    _auto_decompress
 
         Py_buffer py_buf
 
@@ -80,7 +81,7 @@ cdef class HttpParser:
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
-                   response_with_body=True):
+                   response_with_body=True, auto_decompress=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -106,6 +107,7 @@ cdef class HttpParser:
         self._max_field_size = max_field_size
         self._response_with_body = response_with_body
         self._upgraded = False
+        self._auto_decompress = auto_decompress
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
@@ -194,7 +196,7 @@ cdef class HttpParser:
             payload = EMPTY_PAYLOAD
 
         self._payload = payload
-        if encoding is not None:
+        if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(payload, encoding)
 
         if not self._response_with_body:
@@ -301,10 +303,11 @@ cdef class HttpResponseParserC(HttpParser):
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 response_with_body=True, read_until_eof=False):
+                 response_with_body=True, read_until_eof=False,
+                 auto_decompress=True):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
-                   payload_exception, response_with_body)
+                   payload_exception, response_with_body, auto_decompress)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:

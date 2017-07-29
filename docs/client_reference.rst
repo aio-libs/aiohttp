@@ -48,7 +48,8 @@ The client session supports the context manager protocol for self closing.
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
                          raise_for_status=False, \
-                         connector_owner=True)
+                         connector_owner=True, \
+                         auto_decompress=True)
 
    The class for creating client sessions and making requests.
 
@@ -137,6 +138,10 @@ The client session supports the context manager protocol for self closing.
       cookies etc.
 
       .. versionadded:: 2.1
+
+   :param bool auto_decompress: Automatically decompress response body
+
+      .. versionadded:: 2.3
 
    .. attribute:: closed
 
