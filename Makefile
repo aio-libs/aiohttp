@@ -104,6 +104,7 @@ clean:
 	@rm -f .develop
 	@rm -f .flake
 	@rm -f .install-deps
+	@rm -rf aiohttp.egg-info
 
 doc:
 	@make -C docs html SPHINXOPTS="-W -E"
