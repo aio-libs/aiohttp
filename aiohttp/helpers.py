@@ -814,7 +814,7 @@ class DummyCookieJar(AbstractCookieJar):
         return None
 
 
-def _patch_module(namespace, *, skip_list=()):
+def _patch_module(namespace):
     mod = importlib.import_module(namespace)
     names = mod.__all__
     for name in names:
@@ -829,9 +829,4 @@ def _patch_module(namespace, *, skip_list=()):
             if module == 'aiohttp':
                 # Already patched by top level import aiohttp
                 continue
-            if name.endswith(skip_list):
-                continue
-            try:
-                obj.__module__ = namespace
-            except:
-                pass
+            obj.__module__ = namespace
