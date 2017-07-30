@@ -167,6 +167,7 @@ def test_static_file_if_modified_since(loop, test_client, sender):
     resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
     body = yield from resp.read()
     assert 304 == resp.status
+    assert resp.headers.get('Content-Length') is None
     assert b'' == body
     resp.close()
 
@@ -229,6 +230,7 @@ def test_static_file_if_modified_since_future_date(loop, test_client, sender):
     resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
     body = yield from resp.read()
     assert 304 == resp.status
+    assert resp.headers.get('Content-Length') is None
     assert b'' == body
     resp.close()
 
