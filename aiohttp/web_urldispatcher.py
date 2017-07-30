@@ -31,6 +31,7 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'StaticResource', 'View')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
+ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
 
 
@@ -107,6 +108,9 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
+            warnings.warn("Bare functions are deprecated, "
+                          "use async ones", DeprecationWarning)
+
             @wraps(handler)
             @asyncio.coroutine
             def handler_wrapper(*args, **kwargs):
@@ -330,11 +334,43 @@ class PlainResource(Resource):
 
 class DynamicResource(Resource):
 
-    def __init__(self, pattern, formatter, *, name=None):
+    DYN = re.compile(r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}')
+    DYN_WITH_RE = re.compile(
+        r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
+    GOOD = r'[^{}/]+'
+
+    def __init__(self, path, *, name=None):
         super().__init__(name=name)
-        assert pattern.pattern.startswith(PATH_SEP)
+        pattern = ''
+        formatter = ''
+        for part in ROUTE_RE.split(path):
+            match = self.DYN.fullmatch(part)
+            if match:
+                pattern += '(?P<{}>{})'.format(match.group('var'), self.GOOD)
+                formatter += '{' + match.group('var') + '}'
+                continue
+
+            match = self.DYN_WITH_RE.fullmatch(part)
+            if match:
+                pattern += '(?P<{var}>{re})'.format(**match.groupdict())
+                formatter += '{' + match.group('var') + '}'
+                continue
+
+            if '{' in part or '}' in part:
+                raise ValueError("Invalid path '{}'['{}']".format(path, part))
+
+            path = URL(part).raw_path
+            formatter += path
+            pattern += re.escape(path)
+
+        try:
+            compiled = re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(
+                "Bad pattern '{}': {}".format(pattern, exc)) from None
+        assert compiled.pattern.startswith(PATH_SEP)
         assert formatter.startswith('/')
-        self._pattern = pattern
+        self._pattern = compiled
         self._formatter = formatter
 
     def add_prefix(self, prefix):
@@ -702,11 +738,6 @@ class RoutesView(Sized, Iterable, Container):
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
-    DYN = re.compile(r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}')
-    DYN_WITH_RE = re.compile(
-        r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
-    GOOD = r'[^{}/]+'
-    ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile(r'[.:-]')
 
     def __init__(self):
@@ -781,40 +812,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_resource(self, path, *, name=None):
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
-        if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
+        if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
             url = URL(path)
             resource = PlainResource(url.raw_path, name=name)
             self.register_resource(resource)
             return resource
-
-        pattern = ''
-        formatter = ''
-        for part in self.ROUTE_RE.split(path):
-            match = self.DYN.fullmatch(part)
-            if match:
-                pattern += '(?P<{}>{})'.format(match.group('var'), self.GOOD)
-                formatter += '{' + match.group('var') + '}'
-                continue
-
-            match = self.DYN_WITH_RE.fullmatch(part)
-            if match:
-                pattern += '(?P<{var}>{re})'.format(**match.groupdict())
-                formatter += '{' + match.group('var') + '}'
-                continue
-
-            if '{' in part or '}' in part:
-                raise ValueError("Invalid path '{}'['{}']".format(path, part))
-
-            path = URL(part).raw_path
-            formatter += path
-            pattern += re.escape(path)
-
-        try:
-            compiled = re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(
-                "Bad pattern '{}': {}".format(pattern, exc)) from None
-        resource = DynamicResource(compiled, formatter, name=name)
+        resource = DynamicResource(path, name=name)
         self.register_resource(resource)
         return resource
 

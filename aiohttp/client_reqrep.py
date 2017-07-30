@@ -13,7 +13,7 @@ from yarl import URL
 
 from . import hdrs, helpers, http, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
-                                ClientResponseError)
+                                ClientResponseError, ContentTypeError)
 from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
@@ -66,7 +66,7 @@ class ClientRequest:
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None, proxy_from_env=False,
-                 timer=None, session=None):
+                 timer=None, session=None, auto_decompress=True):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -88,6 +88,7 @@ class ClientRequest:
         self.length = None
         self.response_class = response_class or ClientResponse
         self._timer = timer if timer is not None else TimerNoop()
+        self._auto_decompress = auto_decompress
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -406,7 +407,8 @@ class ClientRequest:
         self.response = self.response_class(
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
-            request_info=self.request_info
+            request_info=self.request_info,
+            auto_decompress=self._auto_decompress
         )
 
         self.response._post_init(self.loop, self._session)
@@ -450,7 +452,7 @@ class ClientResponse(HeadersMixin):
 
     def __init__(self, method, url, *,
                  writer=None, continue100=None, timer=None,
-                 request_info=None):
+                 request_info=None, auto_decompress=True):
         assert isinstance(url, URL)
 
         self.method = method
@@ -465,6 +467,7 @@ class ClientResponse(HeadersMixin):
         self._history = ()
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
+        self._auto_decompress = auto_decompress
 
     @property
     def url(self):
@@ -550,7 +553,8 @@ class ClientResponse(HeadersMixin):
             timer=self._timer,
             skip_payload=self.method.lower() == 'head',
             skip_status_codes=(204, 304),
-            read_until_eof=read_until_eof)
+            read_until_eof=read_until_eof,
+            auto_decompress=self._auto_decompress)
 
         with self._timer:
             while True:
@@ -722,7 +726,7 @@ class ClientResponse(HeadersMixin):
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
             if content_type not in ctype:
-                raise ClientResponseError(
+                raise ContentTypeError(
                     self.request_info,
                     self.history,
                     message=('Attempt to decode JSON with '

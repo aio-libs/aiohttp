@@ -77,6 +77,7 @@ Gregory Haynes
 Günther Jena
 Hu Bo
 Hugo Herter
+Hynek Schlawack
 Igor Davydenko
 Igor Pavlov
 Ingmar Steen
@@ -104,6 +105,7 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
+Loïc Lajeanne
 Louis-Philippe Huberdeau
 Lu Gong
 Lubomir Gelo
@@ -136,6 +138,7 @@ Paulus Schoutsen
 Pavel Kamaev
 Pawel Miech
 Philipp A.
+Pieter van Beek
 Rafael Viotti
 Raúl Cumplido
 Required Field

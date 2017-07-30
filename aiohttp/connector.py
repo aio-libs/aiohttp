@@ -4,7 +4,7 @@ import ssl
 import sys
 import traceback
 import warnings
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from hashlib import md5, sha1, sha256
 from itertools import cycle, islice
 from time import monotonic
@@ -127,6 +127,9 @@ class _TransportPlaceholder:
 
     def close(self):
         pass
+
+
+ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
 class BaseConnector(object):
@@ -301,11 +304,11 @@ class BaseConnector(object):
             if self._loop.is_closed():
                 return noop()
 
-            # cacnel cleanup task
+            # cancel cleanup task
             if self._cleanup_handle:
                 self._cleanup_handle.cancel()
 
-            # cacnel cleanup close task
+            # cancel cleanup close task
             if self._cleanup_closed_handle:
                 self._cleanup_closed_handle.cancel()
 
@@ -339,7 +342,7 @@ class BaseConnector(object):
     @asyncio.coroutine
     def connect(self, req):
         """Get from pool or create new connection."""
-        key = (req.host, req.port, req.ssl)
+        key = ConnectionKey(req.host, req.port, req.ssl)
 
         if self._limit:
             # total calc available connections
@@ -378,10 +381,7 @@ class BaseConnector(object):
             try:
                 proto = yield from self._create_connection(req)
             except OSError as exc:
-                raise ClientConnectorError(
-                    exc.errno,
-                    'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
-                    .format(key, exc.strerror)) from exc
+                raise ClientConnectorError(key, exc) from exc
             finally:
                 self._acquired.remove(placeholder)
                 self._acquired_per_host[key].remove(placeholder)
@@ -758,10 +758,7 @@ class TCPConnector(BaseConnector):
             except OSError as e:
                 exc = e
         else:
-            raise ClientConnectorError(
-                exc.errno,
-                'Can not connect to %s:%s [%s]' %
-                (req.host, req.port, exc.strerror)) from exc
+            raise ClientConnectorError(req, exc) from exc
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):
@@ -775,7 +772,7 @@ class TCPConnector(BaseConnector):
             transport, proto = yield from self._create_direct_connection(
                 proxy_req)
         except OSError as exc:
-            raise ClientProxyConnectionError(*exc.args) from exc
+            raise ClientProxyConnectionError(proxy_req, exc) from exc
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:

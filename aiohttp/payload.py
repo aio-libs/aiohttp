@@ -3,6 +3,7 @@ import io
 import json
 import mimetypes
 import os
+import warnings
 from abc import ABC, abstractmethod
 
 from multidict import CIMultiDict
@@ -17,6 +18,8 @@ __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'BytesPayload', 'StringPayload', 'StreamReaderPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',
            'TextIOPayload', 'StringIOPayload', 'JsonPayload')
+
+TOO_LARGE_BYTES_BODY = 2 ** 20
 
 
 class LookupError(Exception):
@@ -150,6 +153,11 @@ class BytesPayload(Payload):
 
         self._size = len(value)
 
+        if self._size > TOO_LARGE_BYTES_BODY:
+            warnings.warn("Sending a large body directly with raw bytes might"
+                          " lock the event loop. You should probably pass an "
+                          "io.BytesIO object instead", ResourceWarning)
+
     @asyncio.coroutine
     def write(self, writer):
         yield from writer.write(self._value)
@@ -246,7 +254,10 @@ class BytesIOPayload(IOBasePayload):
 
     @property
     def size(self):
-        return len(self._value.getbuffer()) - self._value.tell()
+        p = self._value.tell()
+        l = self._value.seek(0, os.SEEK_END)
+        self._value.seek(p)
+        return l - p
 
 
 class BufferedReaderPayload(IOBasePayload):

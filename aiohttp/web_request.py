@@ -64,6 +64,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, message, payload, protocol, writer, time_service, task,
+                 loop,
                  *, secure_proxy_ssl_header=None, client_max_size=1024**2):
         self._message = message
         self._protocol = protocol
@@ -84,6 +85,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
+        self._loop = loop
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel):
@@ -120,6 +122,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._writer,
             self._time_service,
             self._task,
+            self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header)
 
     @property
@@ -145,6 +148,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @property
     def rel_url(self):
         return self._rel_url
+
+    @property
+    def loop(self):
+        return self._loop
 
     # MutableMapping API
 
@@ -268,7 +275,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def host(self):
-        """ Hostname of the request.
+        """Hostname of the request.
 
         Hostname is resolved through the following headers, in this order:
 
@@ -281,11 +288,37 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         host = next(
             (f['host'] for f in self.forwarded if 'host' in f), None
         )
-        if not host and hdrs.X_FORWARDED_HOST in self._message.headers:
-            host = self._message.headers[hdrs.X_FORWARDED_HOST]
-        elif hdrs.HOST in self._message.headers:
-            host = self._message.headers[hdrs.HOST]
+        if host is None:
+            host = self._message.headers.get(hdrs.X_FORWARDED_HOST)
+        if host is None:
+            host = self._message.headers.get(hdrs.HOST)
         return host
+
+    @reify
+    def remote(self):
+        """Remote IP of client initiated HTTP request.
+
+        The IP is resolved through the following headers, in this order:
+
+        - Forwarded
+        - X-Forwarded-For
+        - peername of opened socket
+        """
+        ip = next(
+            (f['for'] for f in self.forwarded if 'for' in f), None
+        )
+        if ip is None:
+            ips = self._message.headers.get(hdrs.X_FORWARDED_FOR)
+            if ips is not None:
+                ip = ips.split(',')[0].strip()
+        if ip is None:
+            transport = self._transport
+            peername = transport.get_extra_info('peername')
+            if isinstance(peername, (list, tuple)):
+                ip = peername[0]
+            else:
+                ip = peername
+        return ip
 
     @reify
     def url(self):
