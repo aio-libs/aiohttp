@@ -23,7 +23,7 @@ class ErrorfulOneShotEvent:
 
     @asyncio.coroutine
     def wait(self):
-        fut = ensure_future(self._event.wait())
+        fut = ensure_future(self._event.wait(), loop=self._loop)
         self._waiters.append(fut)
         try:
             val = yield from fut
