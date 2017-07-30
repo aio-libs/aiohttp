@@ -4,6 +4,7 @@ __version__ = '2.3.0a0'
 
 from . import hdrs  # noqa
 from .client import *  # noqa
+from .client_exceptions import * # noqa
 from .formdata import *  # noqa
 from .helpers import *  # noqa
 from .http import (HttpVersion, HttpVersion10, HttpVersion11,  # noqa
@@ -15,14 +16,16 @@ from .payload import *  # noqa
 from .payload_streamer import *  # noqa
 from .resolver import *  # noqa
 
+from .helpers import _patch_module
+
 try:
     from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
     workers = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 except ImportError:
     workers = ()
 
-
 __all__ = (client.__all__ +  # noqa
+           client_exceptions.__all__ + # noqa
            formdata.__all__ +  # noqa
            helpers.__all__ +  # noqa
            multipart.__all__ +  # noqa
@@ -33,3 +36,6 @@ __all__ = (client.__all__ +  # noqa
             'WSMsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage', 'CookieJar',
            ) + workers)
+
+
+_patch_module('aiohttp')

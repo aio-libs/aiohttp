@@ -16,6 +16,7 @@ from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
                web_urldispatcher, web_ws)
 from .abc import AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
+from .helpers import _patch_module
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
 from .signals import FuncSignal, PostSignal, PreSignal, Signal
@@ -521,6 +522,9 @@ def main(argv):
     app = func(extra_argv)
     run_app(app, host=args.hostname, port=args.port, path=args.path)
     arg_parser.exit(message="Stopped\n")
+
+
+_patch_module('aiohttp.web')
 
 
 if __name__ == "__main__":  # pragma: no branch
