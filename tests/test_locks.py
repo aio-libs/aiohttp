@@ -4,14 +4,14 @@ import asyncio
 import pytest
 
 from aiohttp import helpers
-from aiohttp.locks import ErrorfulOneShotEvent
+from aiohttp.locks import EventResultOrError
 
 
-class TestErrorfulOneShotEvent:
+class TestEventResultOrError:
 
     @asyncio.coroutine
     def test_set_exception(self, loop):
-        ev = ErrorfulOneShotEvent(loop=loop)
+        ev = EventResultOrError(loop=loop)
 
         @asyncio.coroutine
         def c():
@@ -29,7 +29,7 @@ class TestErrorfulOneShotEvent:
 
     @asyncio.coroutine
     def test_set(self, loop):
-        ev = ErrorfulOneShotEvent(loop=loop)
+        ev = EventResultOrError(loop=loop)
 
         @asyncio.coroutine
         def c():
@@ -43,7 +43,7 @@ class TestErrorfulOneShotEvent:
 
     @asyncio.coroutine
     def test_cancel_waiters(self, loop):
-        ev = ErrorfulOneShotEvent(loop=loop)
+        ev = EventResultOrError(loop=loop)
 
         @asyncio.coroutine
         def c():

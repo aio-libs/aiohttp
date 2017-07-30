@@ -4,7 +4,7 @@ import collections
 from .helpers import ensure_future
 
 
-class ErrorfulOneShotEvent:
+class EventResultOrError:
     """
     This class wrappers the Event asyncio lock allowing either awake the
     locked Tasks without any error or raising an exception.

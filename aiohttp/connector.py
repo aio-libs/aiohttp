@@ -17,7 +17,7 @@ from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
-from .locks import ErrorfulOneShotEvent
+from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
 
@@ -683,7 +683,7 @@ class TCPConnector(BaseConnector):
             yield from self._throttle_dns_events[key].wait()
         else:
             self._throttle_dns_events[key] = \
-                ErrorfulOneShotEvent(self._loop)
+                EventResultOrError(self._loop)
             try:
                 addrs = yield from \
                     asyncio.shield(self._resolver.resolve(host,
