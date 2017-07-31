@@ -58,16 +58,17 @@ class AsyncStreamReaderMixin:
             return AsyncStreamIterator(lambda: self.read(n))
 
         def iter_any(self):
-            """Returns an asynchronous iterator that yields slices of data
-            as they come.
+            """Returns an asynchronous iterator that yields all the available
+            data as soon as it is received
 
             Python-3.5 available for Python 3.5+ only
             """
             return AsyncStreamIterator(self.readany)
 
         def iter_chunks(self):
-            """Returns an asynchronous iterator that yields chunks of the
-            size as received by the server.
+            """Returns an asynchronous iterator that yields chunks of data
+            exactly as they are received by the server. If chunked transfer
+            encoding is used, yields the full HTTP chunks.
 
             Python-3.5 available for Python 3.5+ only
             """
