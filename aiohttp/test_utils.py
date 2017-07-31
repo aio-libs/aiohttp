@@ -186,7 +186,8 @@ class TestClient:
 
     """
 
-    def __init__(self, server, *, cookie_jar=None, loop=None, **kwargs):
+    def __init__(self, server, *, cookie_jar=None, loop=None,
+                 session_class=ClientSession, **kwargs):
         if not isinstance(server, BaseTestServer):
             raise TypeError("server must be web.Application TestServer "
                             "instance, found type: %r" % type(server))
@@ -194,7 +195,7 @@ class TestClient:
         self._loop = loop
         if cookie_jar is None:
             cookie_jar = aiohttp.CookieJar(unsafe=True, loop=loop)
-        self._session = ClientSession(loop=loop,
+        self._session = session_class(loop=loop,
                                       cookie_jar=cookie_jar,
                                       **kwargs)
         self._closed = False
@@ -373,7 +374,7 @@ class AioHTTPTestCase(unittest.TestCase):
         Use .get_application() coroutine instead
 
         """
-        pass  # pragma: no cover
+        raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self):
         self.loop = setup_test_loop()

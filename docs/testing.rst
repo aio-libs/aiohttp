@@ -263,6 +263,13 @@ functionality, the AioHTTPTestCase is provided::
        This async method can be overridden to return the :class:`TestClient`
        object used in the test.
 
+       For example, if you need to test your own class
+       :class:`aiohttp.ClientSession` you can override it in this way::
+
+           async def get_client(self, server):
+               return _TestClient(server, session_class=MyClientSession,
+                                  loop=self.loop)
+
        :return: :class:`TestClient` instance.
 
        .. versionadded:: 2.3.0
