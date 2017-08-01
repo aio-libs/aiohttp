@@ -1,6 +1,8 @@
 import abc
 import asyncio
+import base64
 import collections
+import hashlib
 import inspect
 import keyword
 import os
@@ -422,6 +424,7 @@ class PrefixResource(AbstractResource):
 
 
 class StaticResource(PrefixResource):
+    VERSION_KEY = 'v'
 
     def __init__(self, prefix, directory, *, name=None,
                  expect_handler=None, chunk_size=256*1024,
@@ -450,17 +453,48 @@ class StaticResource(PrefixResource):
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
 
-    def url(self, *, filename, query=None):
-        return str(self.url_for(filename=filename).with_query(query))
+    def url(self, *, filename, append_version=False, query=None):
+        # is there with_query need to be used? with_query remove previous query options
+        url = self.url_for(filename=filename, append_version=append_version)
+        if query is not None:
+            return str(url.with_query(query))
+        return str(url)
 
-    def url_for(self, *, filename):
+    def url_for(self, *, filename, append_version=False):
         if isinstance(filename, Path):
             filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
         filename = '/' + filename
         url = self._prefix + URL(filename).raw_path
-        return URL(url)
+        url = URL(url)
+        if append_version is True:
+            try:
+                if filename.startswith('/'):
+                    filename = filename[1:]
+                filepath = self._directory.joinpath(filename).resolve()
+                if not self._follow_symlinks:
+                    filepath.relative_to(self._directory)
+            except (ValueError, FileNotFoundError) as error:
+                # relatively safe
+                return url
+            except Exception as error:
+                # perm error or other kind!
+                # TODO log error here?
+                return url
+            if filepath.is_file():
+                # TODO cache file content with file watcher for cache invalidation
+                file_bytes = filepath.read_bytes()
+                h = self.get_file_hash(file_bytes)
+                url = url.with_query({self.VERSION_KEY: h})
+                return url
+        return url
+
+    def get_file_hash(self, byte_array):
+        m = hashlib.sha256()  # todo sha256 can be configurable param
+        m.update(byte_array)
+        b64 = base64.urlsafe_b64encode(m.digest())
+        return b64.decode('ascii')
 
     def get_info(self):
         return {'directory': self._directory,

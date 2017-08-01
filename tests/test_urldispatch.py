@@ -377,6 +377,24 @@ def test_add_static(router):
     assert len(resource) == 2
 
 
+def test_add_static_append_version(router):
+    """if file exists we append to query string v param with hash of that file"""
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url(filename='/data.unknown_mime_type', append_version=True)
+    assert '/st/data.unknown_mime_type?v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D' == url
+
+
+def test_add_static_append_version_non_exists_file(router):
+    """if file not exists append_version flag has no impact"""
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url(filename='/non_exists_file', append_version=True)
+    assert '/st/non_exists_file' == url
+
+
 def test_plain_not_match(router):
     handler = make_handler()
     router.add_route('GET', '/get/path', handler, name='name')
