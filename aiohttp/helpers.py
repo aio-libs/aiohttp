@@ -6,6 +6,7 @@ import binascii
 import cgi
 import datetime
 import functools
+import importlib
 import os
 import re
 import sys
@@ -811,3 +812,21 @@ class DummyCookieJar(AbstractCookieJar):
 
     def filter_cookies(self, request_url):
         return None
+
+
+def _patch_module(namespace):
+    mod = importlib.import_module(namespace)
+    names = mod.__all__
+    for name in names:
+        obj = getattr(mod, name)
+        try:
+            module = obj.__module__
+        except:
+            pass
+        else:
+            if not module.startswith('aiohttp'):
+                continue
+            if module == 'aiohttp':
+                # Already patched by top level import aiohttp
+                continue
+            obj.__module__ = namespace
