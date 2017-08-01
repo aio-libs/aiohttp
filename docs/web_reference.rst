@@ -126,6 +126,21 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns  :class:`str`, or ``None`` if no host name is found in the
       headers.
 
+   .. attribute:: remote
+
+      Originating IP address of a client initiated HTTP request.
+
+      The IP is resolved through the following headers, in this order:
+
+      - *Forwarded*
+      - *X-Forwarded-For*
+      - peer name of opened socket
+
+      Returns :class:`str`, or ``None`` if no remote IP information is
+      provided.
+
+      .. versionadded:: 2.3
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -193,6 +208,14 @@ and :ref:`aiohttp-web-signals` handlers.
          peername = request.transport.get_extra_info('peername')
          if peername is not None:
              host, port = peername
+
+   .. attribute:: loop
+
+      An event loop instance used by HTTP request handling.
+
+      Read-only :class:`asyncio.AbstractEventLoop` property.
+
+      .. versionadded:: 2.3
 
    .. attribute:: cookies
 
@@ -820,7 +843,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, autoclose=True, \
+.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
+                             autoclose=True, \
                              autoping=True, heartbeat=None, protocols=())
 
    Class for handling server-side websockets, inherited from
@@ -834,8 +858,8 @@ WebSocketResponse
    .. versionadded:: 1.3.0
 
    To enable back-pressure from slow websocket clients treat methods
-   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as coroutines.
-   By default write buffer size is set to 64k.
+   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as
+   coroutines.  By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -850,12 +874,14 @@ WebSocketResponse
 
    .. versionadded:: 1.3.0
 
-   :param float heartbeat: Send `ping` message every `heartbeat` seconds
-                           and wait `pong` response, close connection if `pong` response
-                           is not received.
+   :param float heartbeat: Send `ping` message every `heartbeat`
+                           seconds and wait `pong` response, close
+                           connection if `pong` response is not
+                           received.
 
-   :param float receive_timeout: Timeout value for `receive` operations.
-                                 Default value is None (no timeout for receive operation)
+   :param float receive_timeout: Timeout value for `receive`
+                                 operations.  Default value is None
+                                 (no timeout for receive operation)
 
    .. versionadded:: 0.19
 

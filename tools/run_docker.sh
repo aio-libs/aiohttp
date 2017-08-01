@@ -16,6 +16,9 @@ do
     docker_pull_pids[$arch]=$!
 done
 
+echo Creating dist folder with privileges of host-machine user
+mkdir dist  # This is required to be created with host-machine user privileges
+
 for arch in x86_64 i686
 do
     echo

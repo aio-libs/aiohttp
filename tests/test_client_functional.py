@@ -658,7 +658,7 @@ def test_timeout_on_reading_data(loop, test_client, mocker):
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/', timeout=0.1)
+    resp = yield from client.get('/', timeout=1)
     yield from fut
 
     with pytest.raises(asyncio.TimeoutError):
@@ -956,6 +956,30 @@ def test_HTTP_307_REDIRECT_POST(loop, test_client):
     def redirect(request):
         yield from request.read()
         return web.HTTPTemporaryRedirect(location='/')
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    app.router.add_post('/redirect', redirect)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/redirect', data={'some': 'data'})
+    assert 200 == resp.status
+    assert 1 == len(resp.history)
+    txt = yield from resp.text()
+    assert txt == 'POST'
+    resp.close()
+
+
+@asyncio.coroutine
+def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(text=request.method)
+
+    @asyncio.coroutine
+    def redirect(request):
+        yield from request.read()
+        return web.HTTPPermanentRedirect(location='/')
 
     app = web.Application()
     app.router.add_post('/', handler)
@@ -1284,6 +1308,46 @@ def test_POST_FILES_DEFLATE(loop, test_client, fname):
                                       compress='deflate')
         assert 200 == resp.status
         resp.close()
+
+
+@asyncio.coroutine
+def test_POST_bytes(loop, test_client):
+    body = b'0' * 12345
+
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.read()
+        assert body == data
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.post('/', data=body)
+    assert 200 == resp.status
+    resp.close()
+
+
+@asyncio.coroutine
+def test_POST_bytes_too_large(loop, test_client):
+    body = b'0' * (2 ** 20 + 1)
+
+    @asyncio.coroutine
+    def handler(request):
+        data = yield from request.content.read()
+        assert body == data
+        return web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = yield from test_client(app)
+
+    with pytest.warns(ResourceWarning):
+        resp = yield from client.post('/', data=body)
+
+    assert 200 == resp.status
+    resp.close()
 
 
 @asyncio.coroutine

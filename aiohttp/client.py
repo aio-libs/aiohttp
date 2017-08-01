@@ -54,7 +54,8 @@ class ClientSession:
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
-                 read_timeout=sentinel, conn_timeout=None):
+                 read_timeout=sentinel, conn_timeout=None,
+                 auto_decompress=True):
 
         implicit_loop = False
         if loop is None:
@@ -102,6 +103,7 @@ class ClientSession:
                               else DEFAULT_TIMEOUT)
         self._conn_timeout = conn_timeout
         self._raise_for_status = raise_for_status
+        self._auto_decompress = auto_decompress
 
         # Convert to list of tuples
         if headers:
@@ -223,7 +225,7 @@ class ClientSession:
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
-                        session=self)
+                        session=self, auto_decompress=self._auto_decompress)
 
                     # connection timeout
                     try:
@@ -251,7 +253,8 @@ class ClientSession:
                     self._cookie_jar.update_cookies(resp.cookies, resp.url)
 
                     # redirects
-                    if resp.status in (301, 302, 303, 307) and allow_redirects:
+                    if resp.status in (
+                            301, 302, 303, 307, 308) and allow_redirects:
                         redirects += 1
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
