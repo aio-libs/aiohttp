@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from aiohttp import web
-from aiohttp.web_urldispatcher import RouteDef, UrlDispatcher
+from aiohttp.web_urldispatcher import UrlDispatcher
 
 
 @pytest.fixture
@@ -113,7 +113,7 @@ def test_route(router):
 
 
 def test_head_deco(router):
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.head('/path')
     @asyncio.coroutine
@@ -130,7 +130,7 @@ def test_head_deco(router):
 
 
 def test_get_deco(router):
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.get('/path')
     @asyncio.coroutine
@@ -151,7 +151,7 @@ def test_get_deco(router):
 
 
 def test_post_deco(router):
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.post('/path')
     @asyncio.coroutine
@@ -168,7 +168,7 @@ def test_post_deco(router):
 
 
 def test_put_deco(router):
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.put('/path')
     @asyncio.coroutine
@@ -185,7 +185,7 @@ def test_put_deco(router):
 
 
 def test_patch_deco(router):
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.patch('/path')
     @asyncio.coroutine
@@ -202,7 +202,7 @@ def test_patch_deco(router):
 
 
 def test_delete_deco(router):
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.delete('/path')
     @asyncio.coroutine
@@ -219,7 +219,7 @@ def test_delete_deco(router):
 
 
 def test_route_deco(router):
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.route('OTHER', '/path')
     @asyncio.coroutine
@@ -236,7 +236,7 @@ def test_route_deco(router):
 
 
 def test_routedef_sequence_protocol():
-    routes = web.RoutesDef()
+    routes = web.RouteTableDef()
 
     @routes.delete('/path')
     @asyncio.coroutine
@@ -246,6 +246,6 @@ def test_routedef_sequence_protocol():
     assert len(routes) == 1
 
     info = routes[0]
-    assert isinstance(info, RouteDef)
+    assert isinstance(info, web.RouteDef)
     assert info in routes
     assert list(routes)[0] is info

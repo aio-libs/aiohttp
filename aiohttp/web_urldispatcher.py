@@ -29,7 +29,7 @@ from .web_response import Response, StreamResponse
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View', 'RoutesDef',
+           'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
            'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
@@ -948,7 +948,7 @@ def delete(path, handler, **kwargs):
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
 
 
-class RoutesDef(Sequence):
+class RouteTableDef(Sequence):
     """Route definition table"""
     def __init__(self):
         self._items = []
