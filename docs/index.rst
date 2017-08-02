@@ -199,7 +199,6 @@ Contents
 
 .. toctree::
 
-   migration
    client
    client_reference
    tutorial
