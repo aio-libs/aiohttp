@@ -38,7 +38,13 @@ PATH_SEP = re.escape('/')
 
 
 class RouteDef(namedtuple('_RouteDef', 'method, path, handler, kwargs')):
-    # TODO: add __repr__
+    def __repr__(self):
+        info = []
+        for name, value in sorted(self.kwargs.items()):
+            info += ", {}={}".format(name, value)
+        return ("<RouteDef {method} {path} -> {handler.__name__!r}"
+                "{info}>".format(method=self.method, path=self.path,
+                                 handler=self.handler, info=''.join(info)))
 
     def register(self, router):
         if self.method in hdrs.METH_ALL:
@@ -956,7 +962,8 @@ class RouteTableDef(Sequence):
     def __init__(self):
         self._items = []
 
-    # TODO: add __repr__
+    def __repr__(self):
+        return "<RouteTableDef count={}>".format(len(self._items))
 
     def __getitem__(self, index):
         return self._items[index]

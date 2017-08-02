@@ -249,3 +249,26 @@ def test_routedef_sequence_protocol():
     assert isinstance(info, web.RouteDef)
     assert info in routes
     assert list(routes)[0] is info
+
+
+def test_repr_route_def():
+    routes = web.RouteTableDef()
+
+    @routes.get('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    rd = routes[0]
+    assert repr(rd) == "<RouteDef GET /path -> 'handler'>"
+
+
+def test_repr_route_table_def():
+    routes = web.RouteTableDef()
+
+    @routes.get('/path')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    assert repr(routes) == "<RouteTableDef count=1>"
