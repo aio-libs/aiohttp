@@ -1,7 +1,7 @@
 Changes
 =======
 
-2.2.4 (2017-07-10)
+2.2.4 (2017-08-02)
 ------------------
 
 - Fix issue with synchronous session closing when using ClientSession
