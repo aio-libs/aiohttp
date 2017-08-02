@@ -13,9 +13,10 @@ aiohttp does not support custom chunking sizes. It is up to the developer
 to decide how to chunk data streams. If chunking is enabled, aiohttp
 encodes the provided chunks in the "Transfer-encoding: chunked" format.
 
-aiohttp does not enable chunked encoding automatically even if a *transfer-encoding*
-header is supplied: *chunked* has to be set explicitly. If *chunked* is set,
-then the *Transfer-encoding* and *content-length* headers are disallowed.
+aiohttp does not enable chunked encoding automatically even if a
+*transfer-encoding* header is supplied: *chunked* has to be set
+explicitly. If *chunked* is set, then the *Transfer-encoding* and
+*content-length* headers are disallowed.
 
 compression
 ^^^^^^^^^^^
@@ -29,21 +30,24 @@ Compression can not be combined with a *Content-Length* header.
 Client Connector
 ^^^^^^^^^^^^^^^^
 
-1. By default a connector object manages a total number of concurrent connections.
-   This limit was a per host rule in version 1.x. In 2.x, the `limit` parameter
-   defines how many concurrent connection connector can open and a new `limit_per_host`
-   parameter defines the limit per host. By default there is no per-host limit.
-2. BaseConnector.close is now a normal function as opposed to coroutine in version 1.x
+1. By default a connector object manages a total number of concurrent
+   connections.  This limit was a per host rule in version 1.x. In
+   2.x, the `limit` parameter defines how many concurrent connection
+   connector can open and a new `limit_per_host` parameter defines the
+   limit per host. By default there is no per-host limit.
+2. BaseConnector.close is now a normal function as opposed to
+   coroutine in version 1.x
 3. BaseConnector.conn_timeout was moved to ClientSession
 
 
 ClientResponse.release
 ^^^^^^^^^^^^^^^^^^^^^^
 
-Internal implementation was significantly redesigned. It is not required
-to call `release` on the response object. When the client fully receives the payload,
-the underlying connection automatically returns back to pool. If the payload is not
-fully read, the connection is closed
+Internal implementation was significantly redesigned. It is not
+required to call `release` on the response object. When the client
+fully receives the payload, the underlying connection automatically
+returns back to pool. If the payload is not fully read, the connection
+is closed
 
 
 Client exceptions
@@ -54,25 +58,30 @@ exceptions that covers connection handling and server response misbehaviors.
 For developer specific mistakes, aiohttp uses python standard exceptions
 like ValueError or TypeError.
 
-Reading a response content may raise a ClientPayloadError exception. This exception
-indicates errors specific to the payload encoding. Such as invalid compressed data,
-malformed chunked-encoded chunks or not enough data that satisfy the content-length header.
+Reading a response content may raise a ClientPayloadError
+exception. This exception indicates errors specific to the payload
+encoding. Such as invalid compressed data, malformed chunked-encoded
+chunks or not enough data that satisfy the content-length header.
 
-All exceptions are moved from `aiohttp.errors` module to top level `aiohttp` module.
+All exceptions are moved from `aiohttp.errors` module to top level
+`aiohttp` module.
 
 New hierarchy of exceptions:
 
 * `ClientError` - Base class for all client specific exceptions
 
-  - `ClientResponseError` - exceptions that could happen after we get response from server
+  - `ClientResponseError` - exceptions that could happen after we get
+    response from server
 
     * `WSServerHandshakeError` - web socket server response error
 
       - `ClientHttpProxyError` - proxy response
 
-  - `ClientConnectionError` - exceptions related to low-level connection problems
+  - `ClientConnectionError` - exceptions related to low-level
+    connection problems
 
-    * `ClientOSError` - subset of connection errors that are initiated by an OSError exception
+    * `ClientOSError` - subset of connection errors that are initiated
+      by an OSError exception
 
       - `ClientConnectorError` - connector related exceptions
 
@@ -86,24 +95,26 @@ New hierarchy of exceptions:
 
         * `ServerFingerprintMismatch` - server fingerprint mismatch
 
-  - `ClientPayloadError` - This exception can only be raised while reading the response
-    payload if one of these errors occurs: invalid compression, malformed chunked encoding or
-    not enough data that satisfy content-length header.
+  - `ClientPayloadError` - This exception can only be raised while
+    reading the response payload if one of these errors occurs:
+    invalid compression, malformed chunked encoding or not enough data
+    that satisfy content-length header.
 
 
 Client payload (form-data)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To unify form-data/payload handling a new `Payload` system was introduced. It handles
-customized handling of existing types and provide implementation for user-defined types.
+To unify form-data/payload handling a new `Payload` system was
+introduced. It handles customized handling of existing types and
+provide implementation for user-defined types.
 
 1. FormData.__call__ does not take an encoding arg anymore
    and its return value changes from an iterator or bytes to a Payload instance.
    aiohttp provides payload adapters for some standard types like `str`, `byte`,
    `io.IOBase`, `StreamReader` or `DataQueue`.
 
-2. a generator is not supported as data provider anymore, `streamer` can be used instead.
-   For example, to upload data from file::
+2. a generator is not supported as data provider anymore, `streamer`
+   can be used instead.  For example, to upload data from file::
 
      @aiohttp.streamer
      def file_sender(writer, file_name=None):
@@ -132,13 +143,16 @@ Various
 
 3. `aiohttp.MsgType` dropped, use `aiohttp.WSMsgType` instead.
 
-4. `ClientResponse.url` is an instance of `yarl.URL` class (`url_obj` is deprecated)
+4. `ClientResponse.url` is an instance of `yarl.URL` class (`url_obj`
+   is deprecated)
 
-5. `ClientResponse.raise_for_status()` raises :exc:`aiohttp.ClientResponseError` exception
+5. `ClientResponse.raise_for_status()` raises
+   :exc:`aiohttp.ClientResponseError` exception
 
-6. `ClientResponse.json()` is strict about response's content type. if content type
-   does not match, it raises :exc:`aiohttp.ClientResponseError` exception.
-   To disable content type check you can pass ``None`` as `content_type` parameter.
+6. `ClientResponse.json()` is strict about response's content type. if
+   content type does not match, it raises
+   :exc:`aiohttp.ClientResponseError` exception.  To disable content
+   type check you can pass ``None`` as `content_type` parameter.
 
 
 
