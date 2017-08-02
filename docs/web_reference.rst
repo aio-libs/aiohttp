@@ -2028,6 +2028,9 @@ and *405 Method Not Allowed*.
       HTTP status reason
 
 
+.. _aiohttp-web-route-def:
+
+
 RouteDef
 ^^^^^^^^
 
@@ -2128,6 +2131,8 @@ The definition is created by functions like :func:`get` or
 
    .. versionadded:: 2.3
 
+.. _aiohttp-web-route-table-def:
+
 RouteTableDef
 ^^^^^^^^^^^^^
 
@@ -2151,7 +2156,7 @@ A routes table definition used for describing routes by decorators
 
 .. class:: RouteTableDef()
 
-   A mutable sequence of :class:`RouteDef` instances (implements
+   A sequence of :class:`RouteDef` instances (implements
    :class:`abc.collections.Sequence` protocol).
 
    In addition to all standard :class:`list` methods the class
