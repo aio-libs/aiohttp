@@ -377,8 +377,9 @@ registered *route definitions* into application's router.
 
 .. seealso:: :ref:`aiohttp-web-route-table-def` reference.
 
-All tree ways (imperative, route table and decorators) are equivalent,
-you could use what do you prefer or even mix them on your own.
+All tree ways (imperative calls, route tables and decorators) are
+equivalent, you could use what do you prefer or even mix them on your
+own.
 
 .. versionadded:: 2.3
 
