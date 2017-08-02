@@ -454,7 +454,8 @@ class StaticResource(PrefixResource):
                                               expect_handler=expect_handler)}
 
     def url(self, *, filename, append_version=False, query=None):
-        # is there with_query need to be used? with_query remove previous query options
+        # is there with_query need to be used?
+        # with_query remove previous query options
         url = self.url_for(filename=filename, append_version=append_version)
         if query is not None:
             return str(url.with_query(query))
@@ -483,7 +484,8 @@ class StaticResource(PrefixResource):
                 # TODO log error here?
                 return url
             if filepath.is_file():
-                # TODO cache file content with file watcher for cache invalidation
+                # TODO cache file content
+                # with file watcher for cache invalidation
                 with open(str(filepath), mode='rb') as f:
                     file_bytes = f.read()
                 h = self.get_file_hash(file_bytes)
