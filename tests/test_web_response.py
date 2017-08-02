@@ -771,6 +771,7 @@ def test_keep_alive_http09():
     assert not resp.keep_alive
 
 
+@asyncio.coroutine
 def test_prepare_twice():
     req = make_request('GET', '/')
     resp = StreamResponse()
@@ -816,6 +817,7 @@ def test_get_nodelay_prepared():
     assert not resp.tcp_nodelay
 
 
+@asyncio.coroutine
 def test_set_nodelay_prepared():
     resp = StreamResponse()
     writer = mock.Mock()
@@ -849,6 +851,7 @@ def test_get_cork_prepared():
     assert not resp.tcp_cork
 
 
+@asyncio.coroutine
 def test_set_cork_prepared():
     resp = StreamResponse()
     writer = mock.Mock()
