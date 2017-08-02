@@ -1924,7 +1924,7 @@ Resource classes hierarchy::
    The class corresponds to resources for :ref:`static file serving
    <aiohttp-web-static-file-handling>`.
 
-   .. method:: url_for(filename)
+   .. method:: url_for(filename, append_version=False)
 
       Returns a :class:`~yarl.URL` for file path under resource prefix.
 
@@ -1934,6 +1934,12 @@ Resource classes hierarchy::
 
          E.g. an URL for ``'/prefix/dir/file.txt'`` should
          be generated as ``resource.url_for(filename='dir/file.txt')``
+
+      :param bool append_version: -- a flag for adding file version (hash) to the url query string for cache boosting
+
+         When set to ``True`` - ``v=FILE_HASH`` query string param will be added otherwise no impact
+
+         if file not found has no impact
 
       .. versionadded:: 1.1
 
