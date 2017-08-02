@@ -980,6 +980,8 @@ This can be accomplished by subscribing to the
 Signal handlers should not return a value but may modify incoming mutable
 parameters.
 
+Signal handlers will be run sequentially, in order they were added. If handler
+is asynchronous, it will be awaited before calling next one.
 
 .. warning::
 
