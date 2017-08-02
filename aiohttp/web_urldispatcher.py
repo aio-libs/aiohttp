@@ -937,7 +937,7 @@ def head(path, handler, **kwargs):
 
 
 def get(path, handler, *, name=None, allow_head=True, **kwargs):
-    return route(hdrs.METH_GET, path, handler,
+    return route(hdrs.METH_GET, path, handler, name=name,
                  allow_head=allow_head, **kwargs)
 
 
