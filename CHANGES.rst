@@ -12,6 +12,11 @@ Changes
 
 .. towncrier release notes start
 
+2.2.4 (2017-08-02)
+==================
+
+- Fix issue with synchronous session closing when using ClientSession
+  as an asynchronous context manager.  (#2063)
 
 2.2.3 (2017-07-04)
 ==================

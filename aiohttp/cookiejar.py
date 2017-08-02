@@ -74,7 +74,7 @@ class CookieJar(AbstractCookieJar):
         cookies = self._cookies
         expirations = self._expirations
         for (domain, name), when in expirations.items():
-            if when < now:
+            if when <= now:
                 cookies[domain].pop(name, None)
                 to_del.append((domain, name))
                 self._host_only_cookies.discard((domain, name))

@@ -63,6 +63,7 @@ Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
 Enrique Saez
+Eric Sheng
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
@@ -185,6 +186,7 @@ Will McGugan
 Willem de Groot
 Wilson Ong
 Yannick Koechlin
+Yegor Roganov
 Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov

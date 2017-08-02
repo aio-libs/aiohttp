@@ -1,0 +1,1 @@
+Fix issue with CookieJar incorrectly expiring cookies in some edge cases.
