@@ -484,7 +484,8 @@ class StaticResource(PrefixResource):
                 return url
             if filepath.is_file():
                 # TODO cache file content with file watcher for cache invalidation
-                file_bytes = filepath.read_bytes()
+                with open(str(filepath), mode='rb') as f:
+                    file_bytes = f.read()
                 h = self.get_file_hash(file_bytes)
                 url = url.with_query({self.VERSION_KEY: h})
                 return url
