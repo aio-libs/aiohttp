@@ -2033,7 +2033,7 @@ RouteDef
 
 Route definition, a description for not registered yet route.
 
-Could be used for filing route table by providig a list of route
+Could be used for filing route table by providing a list of route
 definitions (Django style).
 
 The definition is created by functions like :func:`get` or
