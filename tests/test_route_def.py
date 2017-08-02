@@ -263,6 +263,18 @@ def test_repr_route_def():
     assert repr(rd) == "<RouteDef GET /path -> 'handler'>"
 
 
+def test_repr_route_def_with_extra_info():
+    routes = web.RouteTableDef()
+
+    @routes.get('/path', extra='info')
+    @asyncio.coroutine
+    def handler(request):
+        pass
+
+    rd = routes[0]
+    assert repr(rd) == "<RouteDef GET /path -> 'handler', extra='info'>"
+
+
 def test_repr_route_table_def():
     routes = web.RouteTableDef()
 
