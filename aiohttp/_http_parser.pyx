@@ -7,14 +7,14 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
 
-import yarl
 from multidict import CIMultiDict
+from yarl import URL
 
 from aiohttp import hdrs
 from .http_exceptions import (
     BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError,
     PayloadEncodingError, ContentLengthError, TransferEncodingError)
-from .http_writer import HttpVersion, HttpVersion10, HttpVersion11, URL
+from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
 from .http_parser import RawRequestMessage, RawResponseMessage, DeflateBuffer
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
@@ -57,7 +57,8 @@ cdef class HttpParser:
         object  _payload
         bint    _payload_error
         object  _payload_exception
-        object _last_error
+        object  _last_error
+        bint    _auto_decompress
 
         Py_buffer py_buf
 
@@ -80,7 +81,7 @@ cdef class HttpParser:
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
-                   response_with_body=True):
+                   response_with_body=True, auto_decompress=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -106,6 +107,7 @@ cdef class HttpParser:
         self._max_field_size = max_field_size
         self._response_with_body = response_with_body
         self._upgraded = False
+        self._auto_decompress = auto_decompress
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
@@ -194,7 +196,7 @@ cdef class HttpParser:
             payload = EMPTY_PAYLOAD
 
         self._payload = payload
-        if encoding is not None:
+        if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(payload, encoding)
 
         if not self._response_with_body:
@@ -301,10 +303,11 @@ cdef class HttpResponseParserC(HttpParser):
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 response_with_body=True, read_until_eof=False):
+                 response_with_body=True, read_until_eof=False,
+                 auto_decompress=True):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
-                   payload_exception, response_with_body)
+                   payload_exception, response_with_body, auto_decompress)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
@@ -329,7 +332,7 @@ cdef int cb_on_url(cparser.http_parser* parser,
         pyparser._path = path
 
         if pyparser._cparser.method == 5:  # CONNECT
-            pyparser._url = yarl.URL(path)
+            pyparser._url = URL(path)
         else:
             pyparser._url = _parse_url(at[:length], length)
     except BaseException as ex:
@@ -486,6 +489,8 @@ def _parse_url(char* buf_data, size_t length):
         str path = None
         str query = None
         str fragment = None
+        str user = None
+        str password = None
         str userinfo = None
         object result = None
         int off
@@ -541,7 +546,11 @@ def _parse_url(char* buf_data, size_t length):
                 ln = parsed.field_data[<int>cparser.UF_USERINFO].len
                 userinfo = buf_data[off:off+ln].decode('utf-8', 'surrogateescape')
 
-            return URL(schema, host, port, path, query, fragment, userinfo)
+                user, sep, password = userinfo.partition(':')
+
+            return URL.build(scheme=schema,
+                             user=user, password=password, host=host, port=port,
+                             path=path, query=query, fragment=fragment)
         else:
             raise InvalidURLError("invalid url {!r}".format(buf_data))
     finally:

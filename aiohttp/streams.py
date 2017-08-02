@@ -326,7 +326,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if not self._buffer and not self._eof:
             yield from self._wait('readchunk')
 
-        return self._read_nowait_chunk(-1)
+        if self._buffer:
+            return self._read_nowait_chunk(-1)
+        else:
+            return b""
 
     @asyncio.coroutine
     def readexactly(self, n):

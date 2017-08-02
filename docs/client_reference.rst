@@ -43,11 +43,13 @@ The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, json_serialize=func:`json.dumps`, \
+                         auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
-                         raise_for_status=False)
+                         raise_for_status=False, \
+                         connector_owner=True, \
+                         auto_decompress=True)
 
    The class for creating client sessions and making requests.
 
@@ -73,7 +75,7 @@ The client session supports the context manager protocol for self closing.
                    May be either *iterable of key-value pairs* or
                    :class:`~collections.abc.Mapping`
                    (e.g. :class:`dict`,
-                   :class:`~aiohttp.CIMultiDict`).
+                   :class:`~multidict.CIMultiDict`).
 
    :param skip_auto_headers: set of headers for which autogeneration
       should be skipped.
@@ -102,15 +104,20 @@ The client session supports the context manager protocol for self closing.
       One example is not processing cookies at all when working in
       proxy mode.
 
-      If no cookie processing is needed, a :class:`aiohttp.helpers.DummyCookieJar`
-      instance can be provided.
+      If no cookie processing is needed, a
+      :class:`aiohttp.helpers.DummyCookieJar` instance can be
+      provided.
 
       .. versionadded:: 0.22
 
-   :param callable json_serialize: Json `serializer` function. (:func:`json.dumps` by default)
+   :param callable json_serialize: Json *serializer* callable.
 
-   :param bool raise_for_status: Automatically call `raise_for_status()` for each response.
-      (default is False)
+      By default :func:`json.dumps` function.
+
+   :param bool raise_for_status:
+
+      Automatically call :meth:`ClientResponse.raise_for_status()` for
+      each response, ``False`` by default.
 
       .. versionadded:: 2.0
 
@@ -122,10 +129,19 @@ The client session supports the context manager protocol for self closing.
    :param float conn_timeout: timeout for connection establishing
       (optional). Values ``0`` or ``None`` mean no timeout.
 
-   .. versionchanged:: 1.0
+   :param bool connector_owner:
 
-   ``.cookies`` attribute was dropped. Use :attr:`cookie_jar`
-      instead.
+      Close connector instance on session closing.
+
+      Passing ``connector_owner=False`` to constructor allows to share
+      connection pool between sessions without sharing session state:
+      cookies etc.
+
+      .. versionadded:: 2.1
+
+   :param bool auto_decompress: Automatically decompress response body
+
+      .. versionadded:: 2.3
 
    .. attribute:: closed
 
@@ -153,10 +169,12 @@ The client session supports the context manager protocol for self closing.
    .. attribute:: requote_redirect_url
 
       aiohttp re quote's redirect urls by default, but some servers
-      require exact url from location header. to disable `re-quote` system
-      set `requote_redirect_url` to `False`.
+      require exact url from location header. to disable *re-quote* system
+      set :attr:`requote_redirect_url` attribute to ``False``.
 
-      .. note:: this parameter affects all subsequent requests.
+      .. versionadded:: 2.1
+
+      .. note:: This parameter affects all subsequent requests.
 
    .. attribute:: loop
 
@@ -198,8 +216,9 @@ The client session supports the context manager protocol for self closing.
       :param data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
-      :param json: Any json compatible python object (optional). `json` and `data`
-                   parameters could not be used at the same time.
+      :param json: Any json compatible python object
+                   (optional). *json* and *data* parameters could not
+                   be used at the same time.
 
       :param dict headers: HTTP Headers to send with
                            the request (optional)
@@ -226,7 +245,8 @@ The client session supports the context manager protocol for self closing.
          with a *Content-Encoding* and *Content-Length* headers.
          ``None`` by default (optional).
 
-      :param int chunked: Enable chunked transfer encoding. It is up to the developer
+      :param int chunked: Enable chunked transfer encoding.
+         It is up to the developer
          to decide how to chunk data streams. If chunking is enabled, aiohttp
          encodes the provided chunks in the "Transfer-encoding: chunked" format.
          If *chunked* is set, then the *Transfer-encoding* and *content-length*
@@ -244,9 +264,11 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
-      :param int timeout: override the session's timeout (``read_timeout``) for IO operations.
+      :param int timeout: override the session's timeout
+                          (``read_timeout``) for IO operations.
 
-      :return ClientResponse: a :class:`client response <ClientResponse>` object.
+      :return ClientResponse: a :class:`client response <ClientResponse>`
+         object.
 
       .. versionadded:: 1.0
 
@@ -431,24 +453,27 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param float timeout: Timeout for websocket to close. 10 seconds by default
+      :param float timeout: Timeout for websocket to close. ``10`` seconds
+                            by default
 
-      :param float receive_timeout: Timeout for websocket to receive complete message.
-                                    None(unlimited) seconds by default
+      :param float receive_timeout: Timeout for websocket to receive
+                                    complete message.  ``None`` (unlimited)
+                                    seconds by default
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
-                             message from server. If `autoclose` is False
+                             message from server. If *autoclose* is False
                              them close procedure has to be handled manually
 
-      :param bool autoping: automatically send `pong` on `ping`
+      :param bool autoping: automatically send *pong* on *ping*
                             message from server
 
-      :param float heartbeat: Send `ping` message every `heartbeat` seconds
-                              and wait `pong` response, if `pong` response is not received
-                              then close connection.
+      :param float heartbeat: Send *ping* message every *heartbeat*
+                              seconds and wait *pong* response, if
+                              *pong* response is not received then
+                              close connection.
 
       :param str origin: Origin header to send to server
 
@@ -477,13 +502,11 @@ The client session supports the context manager protocol for self closing.
 
          URLs may be either :class:`str` or :class:`~yarl.URL`
 
-   .. method:: close()
+   .. comethod:: close()
 
       Close underlying connector.
 
       Release all acquired resources.
-
-      .. versionchanged:: 2.0
 
    .. method:: detach()
 
@@ -526,7 +549,7 @@ certification chaining.
    :param data: Dictionary, bytes, or file-like object to
                 send in the body of the request (optional)
 
-   :param json: Any json compatible python object (optional). `json` and `data`
+   :param json: Any json compatible python object (optional). *json* and *data*
                 parameters could not be used at the same time.
 
    :param dict headers: HTTP Headers to send with the request (optional)
@@ -598,8 +621,8 @@ There are standard connectors:
 
 All connector classes should be derived from :class:`BaseConnector`.
 
-By default all *connectors* support *keep-alive connections* (behavior is controlled by
-*force_close* constructor's parameter).
+By default all *connectors* support *keep-alive connections* (behavior
+is controlled by *force_close* constructor's parameter).
 
 
 BaseConnector
@@ -973,8 +996,9 @@ Response object
 
       Reading from the stream may raise
       :exc:`aiohttp.ClientPayloadError` if the response object is
-      closed before response receives all data or in case if any transfer encoding
-      related errors like mis-formed chunked encoding of broken compression data.
+      closed before response receives all data or in case if any
+      transfer encoding related errors like misformed chunked
+      encoding of broken compression data.
 
    .. attribute:: cookies
 
@@ -984,7 +1008,7 @@ Response object
    .. attribute:: headers
 
       A case-insensitive multidict proxy with HTTP headers of
-      response, :class:`CIMultiDictProxy`.
+      response, :class:`~multidict.CIMultiDictProxy`.
 
    .. attribute:: raw_headers
 
@@ -1031,19 +1055,25 @@ Response object
       Close underlying connection if data reading gets an error,
       release connection otherwise.
 
+      Raise an :exc:`aiohttp.ClientResponseError` if the data can't
+      be read.
+
       :return bytes: read *BODY*.
 
       .. seealso:: :meth:`close`, :meth:`release`.
 
    .. comethod:: release()
 
-      It is not required to call `release` on the response object. When the
-      client fully receives the payload, the underlying connection automatically
-      returns back to pool. If the payload is not fully read, the connection is closed
+      It is not required to call `release` on the response
+      object. When the client fully receives the payload, the
+      underlying connection automatically returns back to pool. If the
+      payload is not fully read, the connection is closed
 
    .. method:: raise_for_status()
 
-      Raise an :exc:`aiohttp.ClientResponseError` if the response status is 400 or higher.
+      Raise an :exc:`aiohttp.ClientResponseError` if the response
+      status is 400 or higher.
+
       Do nothing for success responses (less than 400).
 
    .. comethod:: text(encoding=None)
@@ -1052,7 +1082,10 @@ Response object
       specified *encoding* parameter.
 
       If *encoding* is ``None`` content encoding is autocalculated
-      using :term:`cchardet` or :term:`chardet` as fallback if
+      using ``Content-Type`` HTTP header and *chardet* tool if the
+      header is not provided by server.
+
+      :term:`cchardet` is used with fallback to :term:`chardet` if
       *cchardet* is not available.
 
       Close underlying connection if data reading gets an error,
@@ -1064,18 +1097,31 @@ Response object
 
       :return str: decoded *BODY*
 
-   .. comethod:: json(encoding=None, loads=json.loads, content_type='application/json')
+      .. note::
+
+         If response has no ``charset`` info in ``Content-Type`` HTTP
+         header :term:`cchardet` / :term:`chardet` is used for content
+         encoding autodetection.
+
+         It may hurt performance. If page encoding is known passing
+         explicit *encoding* parameter might help::
+
+            await resp.text('ISO-8859-1')
+
+   .. comethod:: json(*, encoding=None, loads=json.loads, \
+                      content_type='application/json')
 
       Read response's body as *JSON*, return :class:`dict` using
-      specified *encoding* and *loader*.
+      specified *encoding* and *loader*. If data is not still available
+      a ``read`` call will be done, 
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
       *cchardet* is not available.
 
       if response's `content-type` does not match `content_type` parameter
-      :exc:`aiohttp.ClientResponseError` get raised. To disable content type
-      check pass ``None`` value.
+      :exc:`aiohttp.ContentTypeError` get raised.
+      To disable content type check pass ``None`` value.
 
       :param str encoding: text encoding used for *BODY* decoding, or
                            ``None`` for encoding autodetection
@@ -1092,10 +1138,10 @@ Response object
       :return: *BODY* as *JSON* data parsed by *loads* parameter or
                ``None`` if *BODY* is empty or contains white-spaces only.
 
-    .. attribute:: request_info
+   .. attribute:: request_info
 
        A namedtuple with request URL and headers from :class:`ClientRequest`
-       object.
+       object, :class:`aiohttp.RequestInfo` instance.
 
 
 ClientWebSocketResponse
@@ -1240,6 +1286,27 @@ Utilities
 ---------
 
 
+RequestInfo
+^^^^^^^^^^^
+
+.. class:: RequestInfo()
+
+   A namedtuple with request URL and headers from :class:`ClientRequest`
+   object, available as :attr:`ClientResponse.request_info` attribute.
+
+   .. attribute:: url
+
+      Requested *url*, :class:`yarl.URL` instance.
+
+   .. attribute:: method
+
+      Request HTTP method like ``'GET'`` or ``'POST'``, :class:`str`.
+
+   .. attribute:: headers
+
+      HTTP headers for request, :class:`multidict.CIMultiDict` instance.
+
+
 BasicAuth
 ^^^^^^^^^
 
@@ -1249,7 +1316,7 @@ BasicAuth
 
    :param str login: login
    :param str password: password
-   :param str encoding: encoding (`'latin1'` by default)
+   :param str encoding: encoding (``'latin1'`` by default)
 
 
    Should be used for specifying authorization data in client API,
@@ -1349,55 +1416,153 @@ CookieJar
 
 
 Client exceptions
+-----------------
+
+Exception hierarchy has been significantly modified in version
+2.0. aiohttp defines only exceptions that covers connection handling
+and server response misbehaviors.  For developer specific mistakes,
+aiohttp uses python standard exceptions like :exc:`ValueError` or
+:exc:`TypeError`.
+
+Reading a response content may raise a :exc:`ClientPayloadError`
+exception. This exception indicates errors specific to the payload
+encoding. Such as invalid compressed data, malformed chunked-encoded
+chunks or not enough data that satisfy the content-length header.
+
+All exceptions are available as members of *aiohttp* module.
+
+.. exception:: ClientError
+
+   Base class for all client specific exceptions.
+
+   Derived from :exc:`Exception`
+
+
+Response errors
+^^^^^^^^^^^^^^^
+
+.. exception:: ClientResponseError
+
+   These exceptions could happen after we get response from server.
+
+   Derived from :exc:`ClientError`
+
+   .. attribute:: request_info
+
+      Instance of :class:`RequestInfo` object, contains information
+      about request.
+
+   .. attribute:: history
+
+      History from failed response, if available, else empty tuple.
+
+      A :class:`tuple` of :class:`ClientResponse` objects used for
+      handle redirection responses.
+
+
+.. class:: WSServerHandshakeError
+
+   Web socket server response error.
+
+   Derived from :exc:`ClientResponseError`
+
+
+.. class:: ClientHttpProxyError
+
+   Proxy response error.
+
+   Derived from :exc:`ClientResponseError`
+
+Connection errors
 ^^^^^^^^^^^^^^^^^
 
-Exception hierarchy has been significantly modified in version 2.0. aiohttp defines only
-exceptions that covers connection handling and server response misbehaviors.
-For developer specific mistakes, aiohttp uses python standard exceptions
-like `ValueError` or `TypeError`.
+.. class:: ClientConnectionError
 
-Reading a response content may raise a :exc:`ClientPayloadError` exception. This exception
-indicates errors specific to the payload encoding. Such as invalid compressed data,
-malformed chunked-encoded chunks or not enough data that satisfy the content-length header.
-
-All exceptions are available as attributes in `aiohttp` module.
-
-Hierarchy of exceptions:
-
-* `aiohttp.ClientError` - Base class for all client specific exceptions
-
-  - `aiohttp.ClientResponseError` - exceptions that could happen after we get response from server.
-
-      `request_info` - Instance of `RequestInfo` object, contains information about request.
-
-      `history` - History from `ClientResponse` object, if available, else empty tuple.
-
-     - `aiohttp.WSServerHandshakeError` - web socket server response error
-
-     - `aiohttp.ClientHttpProxyError` - proxy response
-
-  - `aiohttp.ClientConnectionError` - exceptions related to low-level connection problems
-
-    - `aiohttp.ClientOSError` - subset of connection errors that are initiated by an OSError exception
-
-      - `aiohttp.ClientConnectorError` - connector related exceptions
-
-         - `aiohttp.ClientProxyConnectionError` - proxy connection initialization error
-
-    - `aiohttp.ServerConnectionError` - server connection related errors
-
-    - `aiohttp.ServerDisconnectedError` - server disconnected
-
-      `message` - Partially parsed http message (optional)
-
-    - `aiohttp.ServerTimeoutError` - server operation timeout, (read timeout, etc)
-
-    - `aiohttp.ServerFingerprintMismatch` - server fingerprint mismatch
-
-  - `aiohttp.ClientPayloadError` - This exception can only be raised while reading the response
-     payload if one of these errors occurs: invalid compression, malformed chunked encoding or
-     not enough data that satisfy content-length header.
+   These exceptions related to low-level connection problems.
 
 
-.. disqus::
-   :title: aiohttp client reference
+   Derived from :exc:`ClientError`
+
+.. class:: ClientOSError
+
+   Subset of connection errors that are initiated by an :exc:`OSError`
+   exception.
+
+   Derived from :exc:`ClientConnectionError` and :exc:`OSError`
+
+.. class:: ClientConnectorError
+
+   Connector related exceptions.
+
+   Derived from :exc:`ClientOSError`
+
+.. class:: ClientProxyConnectionError
+
+   Derived from :exc:`ClientConnectonError`
+
+.. class:: ServerConnectionError
+
+   Derived from :exc:`ClientConnectonError`
+
+
+.. class:: ServerDisconnectedError
+
+   Server disconnected.
+
+   Derived from :exc:`ServerDisconnectonError`
+
+   .. attribute:: message
+
+      Partially parsed HTTP message (optional).
+
+
+.. class:: ServerTimeoutError
+
+   Server operation timeout: read timeout, etc.
+
+   Derived from :exc:`ServerConnectonError` and :exc:`asyncio.TimeoutError`
+
+.. class:: ServerFingerprintMismatch
+
+   Server fingerprint mismatch.
+
+   Derived from :exc:`ServerConnectonError`
+
+
+.. class:: ClientPayloadError
+
+   This exception can only be raised while reading the response
+   payload if one of these errors occurs:
+
+   1. invalid compression
+   2. malformed chunked encoding
+   3. not enough data that satisfy ``Content-Length`` HTTP header.
+
+   Derived from :exc:`ClientError`
+
+Hierarchy of exceptions
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* :exc:`ClientError`
+
+  * :exc:`ClientResponseError`
+
+    * :exc:`WSServerHandshakeError`
+    * :exc:`ClientHttpProxyError`
+
+  * :exc:`ClientConnectionError`
+
+    * :exc:`ClientOSError`
+
+      * :exc:`ClientConnectorError`
+
+         * :exc:`ClientProxyConnectionError`
+
+      * :exc:`ServerConnectionError`
+
+         * :exc:`ServerDisconnectedError`
+         * :exc:`ServerTimeoutError`
+
+      * :exc:`ServerFingerprintMismatch`
+
+  * :exc:`ClientPayloadError`

@@ -126,6 +126,21 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns  :class:`str`, or ``None`` if no host name is found in the
       headers.
 
+   .. attribute:: remote
+
+      Originating IP address of a client initiated HTTP request.
+
+      The IP is resolved through the following headers, in this order:
+
+      - *Forwarded*
+      - *X-Forwarded-For*
+      - peer name of opened socket
+
+      Returns :class:`str`, or ``None`` if no remote IP information is
+      provided.
+
+      .. versionadded:: 2.3
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -144,7 +159,8 @@ and :ref:`aiohttp-web-signals` handlers.
    .. attribute:: raw_path
 
       The URL including raw *PATH INFO* without the host or scheme.
-      Warning, the path may be quoted and may contains non valid URL characters, e.g.
+      Warning, the path may be quoted and may contains non valid URL
+      characters, e.g.
       ``/my%2Fpath%7Cwith%21some%25strange%24characters``.
 
       For unquoted version please take a look on :attr:`path`.
@@ -192,6 +208,14 @@ and :ref:`aiohttp-web-signals` handlers.
          peername = request.transport.get_extra_info('peername')
          if peername is not None:
              host, port = peername
+
+   .. attribute:: loop
+
+      An event loop instance used by HTTP request handling.
+
+      Read-only :class:`asyncio.AbstractEventLoop` property.
+
+      .. versionadded:: 2.3
 
    .. attribute:: cookies
 
@@ -289,7 +313,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :param rel_url: url to use, :class:`str` or :class:`~yarl.URL`
 
-      :param headers: :class:`~multidict.CIMultidict` or compatible
+      :param headers: :class:`~multidict.CIMultiDict` or compatible
                       headers container.
 
       :return: a cloned :class:`Request` instance.
@@ -568,7 +592,7 @@ StreamResponse
 
    .. attribute:: headers
 
-      :class:`~aiohttp.CIMultiiDct` instance
+      :class:`~multidict.CIMultiDict` instance
       for *outgoing* *HTTP headers*.
 
    .. attribute:: cookies
@@ -819,7 +843,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, autoclose=True, \
+.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
+                             autoclose=True, \
                              autoping=True, heartbeat=None, protocols=())
 
    Class for handling server-side websockets, inherited from
@@ -833,8 +858,8 @@ WebSocketResponse
    .. versionadded:: 1.3.0
 
    To enable back-pressure from slow websocket clients treat methods
-   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as coroutines.
-   By default write buffer size is set to 64k.
+   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as
+   coroutines.  By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -849,12 +874,14 @@ WebSocketResponse
 
    .. versionadded:: 1.3.0
 
-   :param float heartbeat: Send `ping` message every `heartbeat` seconds
-                           and wait `pong` response, close connection if `pong` response
-                           is not received.
+   :param float heartbeat: Send `ping` message every `heartbeat`
+                           seconds and wait `pong` response, close
+                           connection if `pong` response is not
+                           received.
 
-   :param float receive_timeout: Timeout value for `receive` operations.
-                                 Default value is None (no timeout for receive operation)
+   :param float receive_timeout: Timeout value for `receive`
+                                 operations.  Default value is None
+                                 (no timeout for receive operation)
 
    .. versionadded:: 0.19
 
@@ -1156,23 +1183,36 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
-.. class:: Application(*, router=None, logger=<default>, \
-                       middlewares=(), debug=False, **kwargs)
+.. class:: Application(*, logger=<default>, router=None,middlewares=(), \
+                       handler_args=None, client_max_size=1024**2, \
+                       secure_proxy_ssl_header=None, loop=None, debug=...)
 
    The class inherits :class:`dict`.
-
-   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
-                  creates :class:`UrlDispatcher` by default if
-                  *router* is ``None``.
 
    :param logger: :class:`logging.Logger` instance for storing application logs.
 
                   By default the value is ``logging.getLogger("aiohttp.web")``
 
+   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
+                  creates :class:`UrlDispatcher` by default if
+                  *router* is ``None``.
+
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
-   :param debug: Switches debug mode.
+   :param handler_args: dict-like object that overrides keyword arguments of
+                        :meth:`Application.make_handler`
+
+   :param client_max_size: client's maximum size in a request. If a POST
+                           request exceeds this value, it raises an
+                           `HTTPRequestEntityTooLarge` exception.
+
+   :param tuple secure_proxy_ssl_header: Default: ``None``.
+
+      .. deprecated:: 2.1
+
+        See ``request.url.scheme`` for built-in resolution of the current
+        scheme using the standard and de-facto standard headers.
 
    :param loop: event loop
 
@@ -1180,6 +1220,8 @@ duplicated like one using :meth:`Application.copy`.
 
          The parameter is deprecated. Loop is get set during freeze
          stage.
+
+   :param debug: Switches debug mode.
 
    .. attribute:: router
 
@@ -1390,19 +1432,6 @@ A protocol factory compatible with
 
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
-
-   .. coroutinemethod:: Server.finish_connections(timeout)
-
-      .. deprecated:: 1.2
-
-         A deprecated alias for :meth:`shutdown`.
-
-   .. versionchanged:: 1.2
-
-      ``Server`` was called ``RequestHandlerFactory`` before ``aiohttp==1.2``.
-
-      The rename has no deprecation period but it's safe: no user
-      should instantiate the class by hands.
 
 
 Router
@@ -2210,17 +2239,18 @@ Normalize path middleware
       - Double slashes are replaced by one.
 
   The middleware returns as soon as it finds a path that resolves
-  correctly. The order if all enabled is 1) merge_slashes, 2) append_slash
-  and 3) both merge_slashes and append_slash. If the path resolves with
-  at least one of those conditions, it will redirect to the new path.
+  correctly. The order if all enabled is:
 
-  If *append_slash* is True append slash when needed. If a resource is
+    1. *merge_slashes*
+    2. *append_slash*
+    3. both *merge_slashes* and *append_slash*
+
+  If the path resolves with at least one of those conditions, it will
+  redirect to the new path.
+
+  If *append_slash* is ``True`` append slash when needed. If a resource is
   defined with trailing slash and the request comes without it, it will
   append it automatically.
 
-  If *merge_slashes* is True, merge multiple consecutive slashes in the
+  If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
   path into one.
-
-
-.. disqus::
-  :title: aiohttp server reference

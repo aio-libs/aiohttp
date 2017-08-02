@@ -54,22 +54,84 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-class _CoroGuard:
-    __slots__ = ('_coro', '_msg', '_awaited')
+if PY_35:
+    from collections.abc import Coroutine
+    base = Coroutine
+else:
+    base = object
+
+
+class _BaseCoroMixin(base):
+
+    __slots__ = ('_coro', 'send', 'throw', 'close')
+
+    def __init__(self, coro):
+        self._coro = coro
+        self.send = coro.send
+        self.throw = coro.throw
+        self.close = coro.close
+
+    @property
+    def gi_frame(self):
+        return self._coro.gi_frame
+
+    @property
+    def gi_running(self):
+        return self._coro.gi_running
+
+    @property
+    def gi_code(self):
+        return self._coro.gi_code
+
+    def __next__(self):
+        return self.send(None)
+
+    @asyncio.coroutine
+    def __iter__(self):
+        ret = yield from self._coro
+        return ret
+
+    if PY_35:
+        def __await__(self):
+            ret = yield from self._coro
+            return ret
+
+
+if not PY_35:
+    try:
+        from asyncio import coroutines
+        coroutines._COROUTINE_TYPES += (_BaseCoroMixin,)
+    except:  # pragma: no cover
+        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
+
+
+class _CoroGuard(_BaseCoroMixin):
+    """Only to be used with func:`deprecated_noop`.
+
+    Otherwise the stack information in the raised warning doesn't line up with
+    the user's code anymore.
+    """
+    __slots__ = ('_msg', '_awaited')
 
     def __init__(self, coro, msg):
-        self._coro = coro
+        super().__init__(coro)
         self._msg = msg
         self._awaited = False
 
+    @asyncio.coroutine
     def __iter__(self):
         self._awaited = True
-        return self._coro.__iter__()
+        return super().__iter__()
+
+    if PY_35:
+        def __await__(self):
+            self._awaited = True
+            return super().__await__()
 
     def __del__(self):
         self._coro = None
         if not self._awaited:
-            warnings.warn(self._msg, DeprecationWarning)
+            warnings.warn(self._msg, DeprecationWarning, stacklevel=2)
 
 
 coroutines = asyncio.coroutines
@@ -244,7 +306,7 @@ class AccessLogger:
         log = logging.getLogger("spam")
         log_format = "%a %{User-Agent}i"
         access_logger = AccessLogger(log, log_format)
-        access_logger.log(message, environ, response, transport, time)
+        access_logger.log(request, response, time)
 
     Format:
         %%  The percent sign
@@ -275,7 +337,6 @@ class AccessLogger:
         'D': 'request_time_micro',
         'i': 'request_header',
         'o': 'response_header',
-        'e': 'environ'
     }
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
@@ -346,76 +407,65 @@ class AccessLogger:
         return log_format, methods
 
     @staticmethod
-    def _format_e(key, args):
-        return (args[1] or {}).get(key, '-')
-
-    @staticmethod
-    def _format_i(key, args):
-        if not args[0]:
+    def _format_i(key, request, response, time):
+        if request is None:
             return '(no headers)'
 
         # suboptimal, make istr(key) once
-        return args[0].headers.get(key, '-')
+        return request.headers.get(key, '-')
 
     @staticmethod
-    def _format_o(key, args):
+    def _format_o(key, request, response, time):
         # suboptimal, make istr(key) once
-        return args[2].headers.get(key, '-')
+        return response.headers.get(key, '-')
 
     @staticmethod
-    def _format_a(args):
-        if args[3] is None:
+    def _format_a(request, response, time):
+        if request is None:
             return '-'
-        peername = args[3].get_extra_info('peername')
-        if isinstance(peername, (list, tuple)):
-            return peername[0]
-        else:
-            return peername
+        ip = request.remote
+        return ip if ip is not None else '-'
 
     @staticmethod
-    def _format_t(args):
+    def _format_t(request, response, time):
         return datetime.datetime.utcnow().strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
-    def _format_P(args):
+    def _format_P(request, response, time):
         return "<%s>" % os.getpid()
 
     @staticmethod
-    def _format_r(args):
-        msg = args[0]
-        if not msg:
+    def _format_r(request, response, time):
+        if request is None:
             return '-'
-        return '%s %s HTTP/%s.%s' % tuple((msg.method,
-                                           msg.path) + msg.version)
+        return '%s %s HTTP/%s.%s' % tuple((request.method,
+                                           request.path_qs) + request.version)
 
     @staticmethod
-    def _format_s(args):
-        return args[2].status
+    def _format_s(request, response, time):
+        return response.status
 
     @staticmethod
-    def _format_b(args):
-        return args[2].body_length
+    def _format_b(request, response, time):
+        return response.body_length
 
     @staticmethod
-    def _format_O(args):
-        return args[2].body_length
+    def _format_T(request, response, time):
+        return round(time)
 
     @staticmethod
-    def _format_T(args):
-        return round(args[4])
+    def _format_Tf(request, response, time):
+        return '%06f' % time
 
     @staticmethod
-    def _format_Tf(args):
-        return '%06f' % args[4]
+    def _format_D(request, response, time):
+        return round(time * 1000000)
 
-    @staticmethod
-    def _format_D(args):
-        return round(args[4] * 1000000)
+    def _format_line(self, request, response, time):
+        return ((key, method(request, response, time))
+                for key, method in self._methods)
 
-    def _format_line(self, args):
-        return ((key, method(args)) for key, method in self._methods)
-
-    def log(self, message, environ, response, transport, time):
+    def log(self, request, response, time):
         """Log access.
 
         :param message: Request object. May be None.
@@ -425,8 +475,7 @@ class AccessLogger:
         :param float time: Time taken to serve the request.
         """
         try:
-            fmt_info = self._format_line(
-                [message, environ, response, transport, time])
+            fmt_info = self._format_line(request, response, time)
 
             values = list()
             extra = dict()

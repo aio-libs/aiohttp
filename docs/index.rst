@@ -143,12 +143,18 @@ Dependencies
      $ pip install aiodns
 
 
-Discussion list
----------------
+Communication channels
+----------------------
 
 *aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
 
 Feel free to post your questions and ideas here.
+
+*gitter chat* https://gitter.im/aio-libs/Lobby
+
+We support `Stack Overflow
+<https://stackoverflow.com/questions/tagged/aiohttp>`_.
+Please add *aiohttp* tag to your question there.
 
 Contributing
 ------------
@@ -208,7 +214,7 @@ Contents
    testing
    deployment
    faq
-   third_party
+   external
    essays
    contributing
    changes
@@ -220,7 +226,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-.. disqus::
-  :title: aiohttp documentation
