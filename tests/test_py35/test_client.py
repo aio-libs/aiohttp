@@ -7,17 +7,30 @@ from aiohttp import web
 
 
 async def test_async_with_session(loop):
-    async with aiohttp.ClientSession(loop=loop) as session:
-        pass
+    with pytest.warns(None) as cm:
+        async with aiohttp.ClientSession(loop=loop) as session:
+            pass
+    assert len(cm.list) == 0
 
     assert session.closed
 
 
 async def test_session_close_awaitable(loop):
     session = aiohttp.ClientSession(loop=loop)
-    await session.close()
+    with pytest.warns(None) as cm:
+        await session.close()
+    assert len(cm.list) == 0
 
     assert session.closed
+
+
+def test_close_run_until_complete_not_deprecated(loop):
+    session = aiohttp.ClientSession(loop=loop)
+
+    with pytest.warns(None) as cm:
+        loop.run_until_complete(session.close())
+
+    assert len(cm.list) == 0
 
 
 async def test_close_resp_on_error_async_with_session(loop, test_server):

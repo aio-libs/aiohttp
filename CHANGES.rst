@@ -2,6 +2,12 @@
 Changes
 =======
 
+2.2.5 (2017-08-03)
+==================
+
+- Don't raise deprecation warning on
+  `loop.run_until_complete(client.close())` (#2065)
+
 2.2.4 (2017-08-02)
 ==================
 

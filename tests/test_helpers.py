@@ -32,6 +32,12 @@ def test_no_warn_on_await():
     assert not ctx.list
 
 
+def test_coro_guard_close():
+    guard = helpers.deprecated_noop('Text')
+    guard.close()
+    assert not guard.gi_running
+
+
 # ------------------- parse_mimetype ----------------------------------
 
 def test_parse_mimetype_1():
