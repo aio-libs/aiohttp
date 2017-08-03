@@ -199,8 +199,6 @@ WebRequest and WebResponse
 5. `WebSocketResponse.protocol` is renamed to `WebSocketResponse.ws_protocol`.
    `WebSocketResponse.protocol` is instance of `RequestHandler` class.
 
-5. `WebSocketResponse.protocol` is renamed to `WebSocketResponse.ws_protocol`.
-   `WebSocketResponse.protocol` is instance of `RequestHandler` class.
 
 
 RequestPayloadError
