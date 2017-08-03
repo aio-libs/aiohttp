@@ -387,6 +387,28 @@ def test_add_static_append_version(router):
     assert expect_url == url
 
 
+def test_add_static_append_version_set_from_constructor(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 append_version=True,
+                                 name='static')
+    url = resource.url(filename='/data.unknown_mime_type')
+    expect_url = '/st/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
+    assert expect_url == url
+
+
+def test_add_static_append_version_override_constructor(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 append_version=True,
+                                 name='static')
+    url = resource.url(filename='/data.unknown_mime_type',
+                       append_version=False)
+    expect_url = '/st/data.unknown_mime_type'
+    assert expect_url == url
+
+
 def test_add_static_append_version_non_exists_file(router):
     resource = router.add_static('/st',
                                  os.path.dirname(__file__),

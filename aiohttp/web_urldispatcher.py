@@ -427,9 +427,10 @@ class StaticResource(PrefixResource):
     VERSION_KEY = 'v'
 
     def __init__(self, prefix, directory, *, name=None,
-                 expect_handler=None, chunk_size=256*1024,
+                 expect_handler=None, chunk_size=256 * 1024,
                  response_factory=StreamResponse,
-                 show_index=False, follow_symlinks=False):
+                 show_index=False, follow_symlinks=False,
+                 append_version=False):
         super().__init__(prefix, name=name)
         try:
             directory = Path(directory)
@@ -446,6 +447,7 @@ class StaticResource(PrefixResource):
         self._chunk_size = chunk_size
         self._follow_symlinks = follow_symlinks
         self._expect_handler = expect_handler
+        self._append_version = append_version
 
         self._routes = {'GET': ResourceRoute('GET', self._handle, self,
                                              expect_handler=expect_handler),
@@ -453,15 +455,17 @@ class StaticResource(PrefixResource):
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
 
-    def url(self, *, filename, append_version=False, query=None):
+    def url(self, *, filename, append_version=None, query=None):
         # is there with_query need to be used?
         # with_query remove previous query options
         url = self.url_for(filename=filename, append_version=append_version)
         if query is not None:
-            return str(url.with_query(query))
+            return str(url.update_query(query))
         return str(url)
 
-    def url_for(self, *, filename, append_version=False):
+    def url_for(self, *, filename, append_version=None):
+        if append_version is None:
+            append_version = self._append_version
         if isinstance(filename, Path):
             filename = str(filename)
         while filename.startswith('/'):
@@ -476,24 +480,20 @@ class StaticResource(PrefixResource):
                 filepath = self._directory.joinpath(filename).resolve()
                 if not self._follow_symlinks:
                     filepath.relative_to(self._directory)
-            except (ValueError, FileNotFoundError) as error:
+            except FileNotFoundError:
                 # relatively safe
-                return url
-            except Exception as error:
-                # perm error or other kind!
-                # TODO log error here?
                 return url
             if filepath.is_file():
                 # TODO cache file content
                 # with file watcher for cache invalidation
                 with open(str(filepath), mode='rb') as f:
                     file_bytes = f.read()
-                h = self.get_file_hash(file_bytes)
+                h = self._get_file_hash(file_bytes)
                 url = url.with_query({self.VERSION_KEY: h})
                 return url
         return url
 
-    def get_file_hash(self, byte_array):
+    def _get_file_hash(self, byte_array):
         m = hashlib.sha256()  # todo sha256 can be configurable param
         m.update(byte_array)
         b64 = base64.urlsafe_b64encode(m.digest())
@@ -865,8 +865,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler)
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256*1024, response_factory=StreamResponse,
-                   show_index=False, follow_symlinks=False):
+                   chunk_size=256 * 1024, response_factory=StreamResponse,
+                   show_index=False, follow_symlinks=False,
+                   append_version=False):
         """Add static files view.
 
         prefix - url prefix
@@ -882,7 +883,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   chunk_size=chunk_size,
                                   response_factory=response_factory,
                                   show_index=show_index,
-                                  follow_symlinks=follow_symlinks)
+                                  follow_symlinks=follow_symlinks,
+                                  append_version=append_version)
         self.register_resource(resource)
         return resource
 
