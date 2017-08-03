@@ -63,13 +63,19 @@ else:
 
 class _BaseCoroMixin(base):
 
-    __slots__ = ('_coro', 'send', 'throw', 'close')
+    __slots__ = ('_coro')
 
     def __init__(self, coro):
         self._coro = coro
-        self.send = coro.send
-        self.throw = coro.throw
-        self.close = coro.close
+
+    def send(self, arg):
+        return self._coro.send(arg)
+
+    def throw(self, arg):
+        return self._coro.throw(arg)
+
+    def close(self):
+        return self._coro.close()
 
     @property
     def gi_frame(self):
@@ -112,6 +118,10 @@ class _CoroGuard(_BaseCoroMixin):
         super().__init__(coro)
         self._msg = msg
         self._awaited = False
+
+    def send(self, arg):
+        self._awaited = True
+        return self._coro.send(arg)
 
     @asyncio.coroutine
     def __iter__(self):
