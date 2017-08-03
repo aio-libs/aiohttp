@@ -42,7 +42,7 @@ organization https://github.com/aio-libs
 
 With this amount of api changes we had to make backward incompatible
 changes. Please check this migration document
-http://aiohttp.readthedocs.io/en/latest/migration.html
+https://aiohttp.readthedocs.io/en/latest/migration_to_2xx.html
 
 Please report problems or annoyance with with api to
 https://github.com/aio-libs/aiohttp
