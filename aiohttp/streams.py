@@ -40,6 +40,17 @@ if helpers.PY_35:
                 raise StopAsyncIteration  # NOQA
             return rv
 
+    class ChunkTupleAsyncStreamIterator(AsyncStreamIterator):
+        @asyncio.coroutine
+        def __anext__(self):
+            try:
+                rv = yield from self.read_func()
+            except EofStream:
+                raise StopAsyncIteration  # NOQA
+            if rv == (b'', False):
+                raise StopAsyncIteration  # NOQA
+            return rv
+
 
 class AsyncStreamReaderMixin:
 
@@ -67,12 +78,12 @@ class AsyncStreamReaderMixin:
 
         def iter_chunks(self):
             """Returns an asynchronous iterator that yields chunks of data
-            exactly as they are received by the server. If chunked transfer
-            encoding is used, yields the full HTTP chunks.
+            as they are received by the server. The yielded objects are tuples
+            of (bytes, bool) as returned by the StreamReader.readchunk method.
 
             Python-3.5 available for Python 3.5+ only
             """
-            return AsyncStreamIterator(self.readchunk)
+            return ChunkTupleAsyncStreamIterator(self.readchunk)
 
 
 class StreamReader(AsyncStreamReaderMixin):
@@ -336,6 +347,11 @@ class StreamReader(AsyncStreamReaderMixin):
 
     @asyncio.coroutine
     def readchunk(self):
+        """Returns a tuple of (data, end_of_http_chunk). When chunked transfer
+        encoding is used, end_of_http_chunk is a boolean indicating if the end
+        of the data corresponds to the end of a HTTP chunk , otherwise it is
+        always False.
+        """
         if self._exception is not None:
             raise self._exception
 
