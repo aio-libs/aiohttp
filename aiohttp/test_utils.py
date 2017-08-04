@@ -149,6 +149,7 @@ class TestServer(BaseTestServer):
 
     @asyncio.coroutine
     def _make_factory(self, **kwargs):
+        self.app._set_loop(self._loop)
         yield from self.app.startup()
         self.handler = self.app.make_handler(loop=self._loop, **kwargs)
         return self.handler
@@ -373,7 +374,7 @@ class AioHTTPTestCase(unittest.TestCase):
         Use .get_application() coroutine instead
 
         """
-        pass  # pragma: no cover
+        raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self):
         self.loop = setup_test_loop()
