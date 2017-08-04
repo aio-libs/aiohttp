@@ -320,7 +320,6 @@ viewed using the :meth:`UrlDispatcher.named_resources` method::
    :meth:`UrlDispatcher.resources` instead of
    :meth:`UrlDispatcher.named_routes` / :meth:`UrlDispatcher.routes`.
 
-
 Alternative ways for registering routes
 ---------------------------------------
 
@@ -382,6 +381,66 @@ equivalent, you could use what do you prefer or even mix them on your
 own.
 
 .. versionadded:: 2.3
+
+Web Handler Cancellation
+------------------------
+
+.. warning::
+
+   :term:`web-handler` execution could be cancelled on every ``await``
+   if client drops connection without reading entire response's BODY.
+
+   The behavior is very different from classic WSGI frameworks like
+   Flask and Django.
+
+Sometimes it is a desirable behavior: on processing ``GET`` request the
+code might fetch data from database or other web resource, the
+fetching is potentialy slow.
+
+Cancelling this fetch is very good: the peer dropped connection
+already, thre is no reason to waste time and resources (memory etc) by
+getting data from DB withot any chance to send it back to peer.
+
+But sometimes the cancellation is bad: on ``POST`` request very often
+is needed to save data to DB regardless to peer closing.
+
+Cancellation prevention could be implemented in several ways:
+* Applying :func:`asyncio.shield` to coroutine that saves data into DB.
+* Spawning a new task for DB saving
+* Using aiojobs_ or other
+  third party library.
+
+:func:`asyncio.shield` works pretty good. The only disanvantage is you
+need to split web handler into exactly two async functions: one
+for handler itself and other for protected code.
+
+For example the following snippet is not safe::
+
+   async def handler(request):
+       await asyncio.shield(write_to_redis(request))
+       await asyncio.shield(write_to_postgres(request))
+       return web.Response('OK')
+
+Cancellation might be occurred just aftr saving data in REDIS,
+``write_to_postgres`` will be not called.
+
+Spawning a new task is much worse: there is no place to ``await``
+spawned tasks::
+
+   async def handler(request):
+       request.loop.create_task(write_to_redis(request))
+       return web.Response('OK')
+
+In this case errors from ``write_to_redis`` are not awaited, it leads
+to many asyncio log messages XXX.
+
+Moreover on :ref:`aiohttp-web-graceful-shutdown` phase *aiohttp* don't
+wait for these tasks, you have a great chance to loose very important
+data.
+
+On other hand 
+
+.. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
 Custom Routing Criteria
 -----------------------
