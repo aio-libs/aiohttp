@@ -555,14 +555,17 @@ class TestStreamReader(unittest.TestCase):
             stream.feed_eof()
         self.loop.call_soon(cb)
 
-        data = self.loop.run_until_complete(stream.readchunk())
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'chunk1', data)
+        self.assertFalse(end_of_chunk)
 
-        data = self.loop.run_until_complete(stream.readchunk())
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'chunk2', data)
+        self.assertFalse(end_of_chunk)
 
-        data = self.loop.run_until_complete(stream.readchunk())
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'', data)
+        self.assertFalse(end_of_chunk)
 
     def test_readchunk_wait_eof(self):
         stream = self._make_one()
@@ -572,36 +575,45 @@ class TestStreamReader(unittest.TestCase):
             stream.feed_eof()
 
         asyncio.Task(cb(), loop=self.loop)
-        data = self.loop.run_until_complete(stream.readchunk())
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b"", data)
+        self.assertFalse(end_of_chunk)
         self.assertTrue(stream.is_eof())
 
     def test_begin_and_end_chunk_receiving(self):
         stream = self._make_one()
 
-        def cb():
-            stream.begin_chunk_receiving()
-            stream.feed_data(b'part1')
-            stream.feed_data(b'part2')
-            stream.end_chunk_receiving()
-            stream.begin_chunk_receiving()
-            stream.feed_data(b'part3')
-            stream.end_chunk_receiving()
-            stream.feed_eof()
-        self.loop.call_soon(cb)
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part1')
+        stream.feed_data(b'part2')
+        stream.end_http_chunk_receiving()
 
-        data = self.loop.run_until_complete(stream.readchunk())
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'part1part2', data)
+        self.assertTrue(end_of_chunk)
 
-        data = self.loop.run_until_complete(stream.readchunk())
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part3')
+
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'part3', data)
+        self.assertFalse(end_of_chunk)
 
-        data = self.loop.run_until_complete(stream.readchunk())
+        stream.end_http_chunk_receiving()
+
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
         self.assertEqual(b'', data)
+        self.assertTrue(end_of_chunk)
+
+        stream.feed_eof()
+
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'', data)
+        self.assertFalse(end_of_chunk)
 
     def test_end_chunk_receiving_without_begin(self):
         stream = self._make_one()
-        self.assertRaises(RuntimeError, stream.end_chunk_receiving)
+        self.assertRaises(RuntimeError, stream.end_http_chunk_receiving)
 
     def test___repr__(self):
         stream = self._make_one()
@@ -674,7 +686,7 @@ class TestEmptyStreamReader(unittest.TestCase):
         self.assertEqual(
             self.loop.run_until_complete(s.readany()), b'')
         self.assertEqual(
-            self.loop.run_until_complete(s.readchunk()), b'')
+            self.loop.run_until_complete(s.readchunk())[0], b'')
         self.assertRaises(
             asyncio.IncompleteReadError,
             self.loop.run_until_complete, s.readexactly(10))

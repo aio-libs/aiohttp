@@ -487,7 +487,8 @@ def test_http_request_chunked_payload(parser):
 
     parser.feed_data(b'4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n')
 
-    assert [b'data', b'line'] == list(payload._buffer)
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert [4, 8] == payload._http_chunk_splits
     assert payload.is_eof()
 
 
@@ -501,7 +502,8 @@ def test_http_request_chunked_payload_and_next_message(parser):
         b'POST /test2 HTTP/1.1\r\n'
         b'transfer-encoding: chunked\r\n\r\n')
 
-    assert [b'data', b'line'] == list(payload._buffer)
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert [4, 8] == payload._http_chunk_splits
     assert payload.is_eof()
 
     assert len(messages) == 1
@@ -525,11 +527,13 @@ def test_http_request_chunked_payload_chunks(parser):
     parser.feed_data(b'ne\r\n0\r\n')
     parser.feed_data(b'test: test\r\n')
 
-    assert [b'data', b'line'] == list(payload._buffer)
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert [4, 8] == payload._http_chunk_splits
     assert not payload.is_eof()
 
     parser.feed_data(b'\r\n')
-    assert [b'data', b'line'] == list(payload._buffer)
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert [4, 8] == payload._http_chunk_splits
     assert payload.is_eof()
 
 
@@ -541,7 +545,8 @@ def test_parse_chunked_payload_chunk_extension(parser):
     parser.feed_data(
         b'4;test\r\ndata\r\n4\r\nline\r\n0\r\ntest: test\r\n\r\n')
 
-    assert [b'data', b'line'] == list(payload._buffer)
+    assert b'dataline' == b''.join(d for d in payload._buffer)
+    assert [4, 8] == payload._http_chunk_splits
     assert payload.is_eof()
 
 

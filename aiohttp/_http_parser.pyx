@@ -211,10 +211,10 @@ cdef class HttpParser:
         self._payload = None
 
     cdef _on_chunk_header(self):
-        self._payload.begin_chunk_receiving()
+        self._payload.begin_http_chunk_receiving()
 
     cdef _on_chunk_complete(self):
-        self._payload.end_chunk_receiving()
+        self._payload.end_http_chunk_receiving()
 
     ### Public API ###
 
