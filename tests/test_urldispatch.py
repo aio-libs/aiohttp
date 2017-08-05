@@ -469,8 +469,9 @@ def test_add_static_append_version_not_follow_symlink(router, tmpdir):
     resource = router.add_static('/st', tmp_dir_path, follow_symlinks=False,
                                  append_version=True)
 
-    with pytest.raises(ValueError):
-        resource.url(filename='/append_version_symlink/data.unknown_mime_type')
+    filename = '/append_version_symlink/data.unknown_mime_type'
+    url = resource.url(filename=filename)
+    assert '/st/append_version_symlink/data.unknown_mime_type' == url
 
 
 def test_add_static_append_version_with_query(router):
@@ -483,6 +484,16 @@ def test_add_static_append_version_with_query(router):
     expect_url = '/st/data.unknown_mime_type?' \
                  'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D&key=val'
     assert expect_url == url
+
+
+def test_add_static_append_version_non_exists_file_with_query(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url(filename='/non_exists_file',
+                       append_version=True,
+                       query={'key': 'val'})
+    assert '/st/non_exists_file?key=val' == url
 
 
 def test_plain_not_match(router):

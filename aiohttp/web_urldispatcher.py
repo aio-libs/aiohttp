@@ -478,9 +478,10 @@ class StaticResource(PrefixResource):
                 filepath = self._directory.joinpath(filename).resolve()
                 if not self._follow_symlinks:
                     filepath.relative_to(self._directory)
-            except FileNotFoundError:
-                # relatively safe
-                return url
+            except (ValueError, FileNotFoundError):
+                # ValueError for case when path point to symlink
+                # with follow_symlinks is False
+                return url  # relatively safe
             if filepath.is_file():
                 # TODO cache file content
                 # with file watcher for cache invalidation
