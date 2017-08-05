@@ -1571,7 +1571,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
                           show_index=False, \
-                          follow_symlinks=False)
+                          follow_symlinks=False, \
+                          append_version=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1636,6 +1637,12 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param bool follow_symlinks: flag for allowing to follow symlinks from
                               a directory, by default it's not allowed and
                               HTTP/404 will be returned on access.
+
+      :param bool append_version: flag for adding file version (hash)
+                              to the url query string, this value will be used
+                              as default when you call to :meth:`StaticRoute.url`
+                              and :meth:`StaticRoute.url_for` methods.
+
 
       :returns: new :class:`StaticRoute` instance.
 

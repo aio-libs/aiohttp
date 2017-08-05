@@ -409,12 +409,80 @@ def test_add_static_append_version_override_constructor(router):
     assert expect_url == url
 
 
+def test_add_static_append_version_filename_without_slash(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url(filename='data.unknown_mime_type', append_version=True)
+    expect_url = '/st/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
+    assert expect_url == url
+
+
 def test_add_static_append_version_non_exists_file(router):
     resource = router.add_static('/st',
                                  os.path.dirname(__file__),
                                  name='static')
     url = resource.url(filename='/non_exists_file', append_version=True)
     assert '/st/non_exists_file' == url
+
+
+def test_add_static_append_version_non_exists_file_without_slash(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url(filename='non_exists_file', append_version=True)
+    assert '/st/non_exists_file' == url
+
+
+def test_add_static_append_version_follow_symlink(router, tmpdir):
+    """
+    Tests the access to a symlink, in static folder with apeend_version
+    """
+    tmp_dir_path = str(tmpdir)
+    symlink_path = os.path.join(tmp_dir_path, 'append_version_symlink')
+    symlink_target_path = os.path.dirname(__file__)
+    os.symlink(symlink_target_path, symlink_path, True)
+
+    # Register global static route:
+    resource = router.add_static('/st', tmp_dir_path, follow_symlinks=True,
+                                 append_version=True)
+
+    url = resource.url(
+        filename='/append_version_symlink/data.unknown_mime_type')
+
+    expect_url = '/st/append_version_symlink/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
+    assert expect_url == url
+
+
+def test_add_static_append_version_not_follow_symlink(router, tmpdir):
+    """
+    Tests the access to a symlink, in static folder with apeend_version
+    """
+    tmp_dir_path = str(tmpdir)
+    symlink_path = os.path.join(tmp_dir_path, 'append_version_symlink')
+    symlink_target_path = os.path.dirname(__file__)
+    os.symlink(symlink_target_path, symlink_path, True)
+
+    # Register global static route:
+    resource = router.add_static('/st', tmp_dir_path, follow_symlinks=False,
+                                 append_version=True)
+
+    with pytest.raises(ValueError):
+        resource.url(filename='/append_version_symlink/data.unknown_mime_type')
+
+
+def test_add_static_append_version_with_query(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url(filename='/data.unknown_mime_type',
+                       append_version=True,
+                       query={'key': 'val'})
+    expect_url = '/st/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D&key=val'
+    assert expect_url == url
 
 
 def test_plain_not_match(router):
