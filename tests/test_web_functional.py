@@ -694,7 +694,8 @@ def test_empty_content_for_query_without_body(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        assert not request.has_body
+        assert not request.body_exists
+        assert not request.can_read_body
         return web.Response()
 
     app = web.Application()
@@ -710,7 +711,8 @@ def test_empty_content_for_query_with_body(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        assert request.has_body
+        assert request.body_exists
+        assert request.can_read_body
         body = yield from request.read()
         return web.Response(body=body)
 

@@ -16,6 +16,7 @@ from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
+from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
 
@@ -457,8 +458,21 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def has_body(self):
-        """Return True if request has HTTP BODY, False otherwise."""
+        """Return True if request's HTTP BODY can be read, False otherwise."""
+        warnings.warn(
+            "Deprecated, use .can_read_body #2005",
+            DeprecationWarning, stacklevel=2)
         return not self._payload.at_eof()
+
+    @property
+    def can_read_body(self):
+        """Return True if request's HTTP BODY can be read, False otherwise."""
+        return not self._payload.at_eof()
+
+    @property
+    def body_exists(self):
+        """Return True if request has HTTP BODY, False otherwise."""
+        return type(self._payload) is not EmptyStreamReader
 
     @asyncio.coroutine
     def release(self):
