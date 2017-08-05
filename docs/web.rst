@@ -455,6 +455,17 @@ symlinks, parameter ``follow_symlinks`` should be set to ``True``::
 
    app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
 
+When you want to enable cache busting,
+parameter ``append_version`` can be set to ``True``
+
+Cache busting is the process of appending some form of file version hash
+to the filename of resources like JavaScript and CSS files.
+The performance advantage of doing this is that we can tell the browser
+to cache these files indefinitely without worrying about the client not getting
+the latest version when the file changes::
+
+   app.router.add_static('/prefix', path_to_static_folder, append_version=True)
+
 Template Rendering
 ------------------
 

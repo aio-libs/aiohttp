@@ -1580,7 +1580,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
                           show_index=False, \
-                          follow_symlinks=False)
+                          follow_symlinks=False, \
+                          append_version=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1645,6 +1646,12 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param bool follow_symlinks: flag for allowing to follow symlinks from
                               a directory, by default it's not allowed and
                               HTTP/404 will be returned on access.
+
+      :param bool append_version: flag for adding file version (hash)
+                              to the url query string, this value will be used
+                              as default when you call to :meth:`StaticRoute.url`
+                              and :meth:`StaticRoute.url_for` methods.
+
 
       :returns: new :class:`StaticRoute` instance.
 
@@ -1933,7 +1940,7 @@ Resource classes hierarchy::
    The class corresponds to resources for :ref:`static file serving
    <aiohttp-web-static-file-handling>`.
 
-   .. method:: url_for(filename)
+   .. method:: url_for(filename, append_version=None)
 
       Returns a :class:`~yarl.URL` for file path under resource prefix.
 
@@ -1943,6 +1950,14 @@ Resource classes hierarchy::
 
          E.g. an URL for ``'/prefix/dir/file.txt'`` should
          be generated as ``resource.url_for(filename='dir/file.txt')``
+
+      :param bool append_version: -- a flag for adding file version (hash) to the url query string for cache boosting
+
+         By default has value from an constructor (``False`` by default)
+         When set to ``True`` - ``v=FILE_HASH`` query string param will be added
+         When set to ``False`` has no impact
+
+         if file not found has no impact
 
       .. versionadded:: 1.1
 
