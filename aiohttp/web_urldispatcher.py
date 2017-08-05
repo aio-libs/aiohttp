@@ -456,8 +456,6 @@ class StaticResource(PrefixResource):
                                               expect_handler=expect_handler)}
 
     def url(self, *, filename, append_version=None, query=None):
-        # is there with_query need to be used?
-        # with_query remove previous query options
         url = self.url_for(filename=filename, append_version=append_version)
         if query is not None:
             return str(url.update_query(query))
