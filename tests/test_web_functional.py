@@ -696,6 +696,7 @@ def test_empty_content_for_query_without_body(loop, test_client):
     def handler(request):
         assert not request.body_exists
         assert not request.can_read_body
+        assert not request.has_body
         return web.Response()
 
     app = web.Application()
@@ -713,6 +714,7 @@ def test_empty_content_for_query_with_body(loop, test_client):
     def handler(request):
         assert request.body_exists
         assert request.can_read_body
+        assert request.has_body
         body = yield from request.read()
         return web.Response(body=body)
 
