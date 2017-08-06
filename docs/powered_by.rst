@@ -18,3 +18,4 @@ make a Pull Request!
 * `Morpheus messaging microservice <https://github.com/tutorcruncher/morpheus>`_
 * `Eyepea - Custom telephony solutions <http://www.eyepea.eu>`_
 * `ALLOcloud - Telephony in the cloud <https://www.allocloud.com>`_
+* `helpmanual - comprehensive help and man page database <https://helpmanual.io/>`_
