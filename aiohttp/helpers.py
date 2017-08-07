@@ -576,11 +576,11 @@ class TimeService:
     def __init__(self, loop, *, interval=1.0):
         self._loop = loop
         self._interval = interval
+
         self._time = time.time()
-        self._loop_time = loop.time()
-        self._count = 0
         self._strtime = None
-        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
+        self._loop_time = ceil(self._loop.time())
+        self._cb = self._loop.call_soon(self._on_cb)
 
     def close(self):
         if self._cb:
@@ -589,18 +589,12 @@ class TimeService:
         self._cb = None
         self._loop = None
 
-    def _on_cb(self, reset_count=10*60):
-        if self._count >= reset_count:
-            # reset timer every 10 minutes
-            self._count = 0
-            self._time = time.time()
-        else:
-            self._time += self._interval
-
+    def _on_cb(self):
+        self._time = time.time()
         self._strtime = None
-        self._loop_time = ceil(self._loop.time())
-        self._cb = self._loop.call_at(
-            self._loop_time + self._interval, self._on_cb)
+        _loop_time = self._loop.time()
+        self._loop_time = ceil(_loop_time)
+        self._cb = self._loop.call_at(_loop_time + self._interval, self._on_cb)
 
     def _format_date_time(self):
         # Weekday and month names for HTTP date/time formatting;

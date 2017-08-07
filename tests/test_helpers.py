@@ -411,15 +411,31 @@ class TestTimeService:
         # second call should use cached value
         assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
 
-    def test_recalc_time(self, time_service, mocker):
+    def test_recalc_time(self, time_service):
         time = time_service._loop.time()
         time_service._time = time
         time_service._strtime = 'asd'
-        time_service._count = 1000000
         time_service._on_cb()
         assert time_service._strtime is None
         assert time_service._time > time
-        assert time_service._count == 0
+        assert time_service._loop_time > time
+
+    def test_on_cb_calls_on_cb_with_proper_delay(self, time_service):
+        mock_loop = mock.Mock()
+        mock_loop.time.side_effect = [1.1, 2.1]
+        mock_loop.call_at = mock.Mock()
+        time_service._loop = mock_loop
+        time_service._time = 0.5
+        time_service._interval = 1.0
+
+        start_time = time_service._time
+        time_service._on_cb()
+        mock_loop.call_at.assert_called_with(1.1 + time_service._interval, time_service._on_cb)
+        assert time_service._loop_time == 2
+
+        time_service._on_cb()
+        mock_loop.call_at.assert_called_with(2.1 + time_service._interval, time_service._on_cb)
+        assert time_service._loop_time == 3
 
 
 # ----------------------------------- TimeoutHandle -------------------
