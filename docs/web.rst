@@ -438,7 +438,7 @@ Moreover on :ref:`aiohttp-web-graceful-shutdown` phase *aiohttp* don't
 wait for these tasks, you have a great chance to loose very important
 data.
 
-On other hand 
+On other hand aiojobs_ provides an API for 
 
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
