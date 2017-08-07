@@ -230,15 +230,33 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only property.
 
-   .. attribute:: has_body
+   .. attribute:: body_exists
 
       Return ``True`` if request has *HTTP BODY*, ``False`` otherwise.
 
       Read-only :class:`bool` property.
 
-      .. versionadded:: 0.16
+      .. versionadded:: 2.3
 
-   .. attribute:: content_type
+   .. attribute:: can_read_body
+
+      Return ``True`` if request's *HTTP BODY* can be read, ``False`` otherwise.
+
+      Read-only :class:`bool` property.
+
+      .. versionadded:: 2.3
+
+   .. attribute:: has_body
+
+      Return ``True`` if request's *HTTP BODY* can be read, ``False`` otherwise.
+
+      Read-only :class:`bool` property.
+
+      .. deprecated:: 2.3
+
+         Use :meth:`can_read_body` instead.
+
+ .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
 
