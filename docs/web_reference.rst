@@ -1317,6 +1317,14 @@ duplicated like one using :meth:`Application.copy`.
           async def on_cleanup(app):
               pass
 
+      .. versionchanged:: 2.3.0
+
+         The cleanup signal is sent even if an error occurs during the
+         processing of the startup signal. An error during startup will
+         probably leave your application partially initialized. If you are
+         using the :class:`Application` dictionary, you must check first that
+         the key exists before cleaning up anything.
+
       .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
 
    .. method:: make_handler(loop=None, **kwargs)
