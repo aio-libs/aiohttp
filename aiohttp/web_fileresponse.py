@@ -19,7 +19,7 @@ NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 class SendfilePayloadWriter(PayloadWriter):
 
     def __init__(self, *args, **kwargs):
-        self.__buffer = []
+        self._sendfile_buffer = []
         super().__init__(*args, **kwargs)
 
     def _write(self, chunk):
@@ -27,7 +27,7 @@ class SendfilePayloadWriter(PayloadWriter):
         # _buffer, and nothing is written to the transport directly by the
         # parent class
         self.output_size += len(chunk)
-        self.__buffer.append(chunk)
+        self._sendfile_buffer.append(chunk)
 
     def _sendfile_cb(self, fut, out_fd, in_fd,
                      offset, count, loop, registered):
@@ -62,8 +62,9 @@ class SendfilePayloadWriter(PayloadWriter):
         offset = fobj.tell()
 
         loop = self.loop
+        data = b''.join(self._sendfile_buffer)
         try:
-            await loop.sock_sendall(out_socket, b''.join(self._buffer))
+            await loop.sock_sendall(out_socket, data)
             fut = loop.create_future()
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
             await fut

@@ -148,8 +148,8 @@ class PayloadWriter(AbstractPayloadWriter):
         self._transport = transport
 
         if self._buffer is not None:
-            for b in self._buffer:
-                transport.write(b)
+            for chunk in self._buffer:
+                transport.write(chunk)
             self._buffer = None
 
         if self._drain_waiter is not None:
@@ -160,10 +160,9 @@ class PayloadWriter(AbstractPayloadWriter):
     async def get_transport(self):
         if self._transport is None:
             if self._drain_waiter is None:
-                self._drain_waiter = create_future(self.loop)
+                self._drain_waiter = self.loop.create_future()
             await self._drain_waiter
 
-        assert self._transport is not None
         return self._transport
 
     @property
@@ -195,7 +194,6 @@ class PayloadWriter(AbstractPayloadWriter):
 
         # see set_transport: exactly one of _buffer or _transport is None
         if self._transport is not None:
-            assert self._buffer is None
             self._transport.write(chunk)
         else:
             self._buffer.append(chunk)
@@ -272,7 +270,7 @@ class PayloadWriter(AbstractPayloadWriter):
         self._transport = None
         self._stream.release()
 
-    async def drain(self, last=False):
+    async def drain(self):
         if self._transport is not None:
             await self._stream.drain()
         else:
