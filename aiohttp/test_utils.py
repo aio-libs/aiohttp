@@ -557,16 +557,9 @@ def make_mocked_request(method, path, headers=None, *,
     if payload is sentinel:
         payload = mock.Mock()
 
-    time_service = mock.Mock()
-    time_service.time.return_value = 12345
-    time_service.strtime.return_value = "Tue, 15 Nov 1994 08:12:31 GMT"
-
     @contextmanager
     def timeout(*args, **kw):
         yield
-
-    time_service.timeout = mock.Mock()
-    time_service.timeout.side_effect = timeout
 
     req = Request(message, payload,
                   protocol, payload_writer, task, loop,

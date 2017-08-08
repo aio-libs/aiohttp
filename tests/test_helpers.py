@@ -375,14 +375,6 @@ def test_is_ip_address_invalid_type():
         helpers.is_ip_address(object())
 
 
-# ----------------------------------- TimeService ----------------------
-
-
-@pytest.fixture
-def time_service():
-    return helpers.TimeService()
-
-
 # ----------------------------------- TimeoutHandle -------------------
 
 def test_timeout_handle(loop):
