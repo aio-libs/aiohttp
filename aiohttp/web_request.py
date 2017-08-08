@@ -17,7 +17,7 @@ from yarl import URL
 from . import hdrs, multipart
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
 from .streams import EmptyStreamReader
-from .web_exceptions import HTTPRequestEntityTooLarge
+from .web_exceptions import HTTPNotAcceptable, HTTPRequestEntityTooLarge
 
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
@@ -510,8 +510,19 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loads=json.loads):
-        """Return BODY as JSON."""
+    def json(self, *, loads=json.loads, wrong_format=None, if_check=True):
+        """
+        Return BODY as JSON.
+        If the `Content-Type` is not `application/json`,
+        then the request is rejected.
+        You can also handle it manually by passing the
+        `wrong_format` parameter.
+        """
+        if if_check and self.content_type != 'application/json':
+            if wrong_format is None:
+                raise HTTPNotAcceptable()
+            elif callable(wrong_format):
+                yield from wrong_format()
         body = yield from self.text()
         return loads(body)
 

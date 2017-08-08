@@ -11,6 +11,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, multipart, web
+from aiohttp.web import HTTPNotAcceptable
 
 
 try:
@@ -1570,3 +1571,64 @@ def test_response_with_bodypart(loop, test_client):
         resp.headers['content-disposition'])
     assert disp == ('attachment',
                     {'name': 'file', 'filename': 'file', 'filename*': 'file'})
+
+
+@asyncio.coroutine
+def test_json_request(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        j = yield from request.json()
+        return web.json_response(j)
+
+    @asyncio.coroutine
+    def unsafe_handler(request):
+        j = yield from request.json(if_check=False)
+        return web.json_response(j)
+
+    @asyncio.coroutine
+    def customized_handler(request):
+        @asyncio.coroutine
+        def h():
+            raise HTTPNotAcceptable()
+
+        j = yield from request.json(wrong_format=h)
+        return web.json_response(j)
+
+    @asyncio.coroutine
+    def unsafe_customized_handler(request):
+        @asyncio.coroutine
+        def h():
+            return
+
+        j = yield from request.json(wrong_format=h)
+        return web.json_response(j)
+
+    app = web.Application(client_max_size=100)
+    app.router.add_post('/', handler)
+    app.router.add_post('/unsafe', unsafe_handler)
+    app.router.add_post('/customized', customized_handler)
+    app.router.add_post('/unsafe-customized', unsafe_customized_handler)
+    client = yield from test_client(app)
+
+    # wrong request
+    resp = yield from client.post('/', data='{"test": "test"}')
+    assert 406 == resp.status
+
+    resp = yield from client.post('/customized', data='{"test": "test"}')
+    assert 406 == resp.status
+
+    resp = yield from client.post('/unsafe', data='{"test": "test"}')
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert {'test': 'test'} == json
+
+    resp = yield from client.post('/', json={'test': 'test'})
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert {'test': 'test'} == json
+
+    resp = yield from client.post('/unsafe', data='{"test": "test"}')
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert {'test': 'test'} == json
