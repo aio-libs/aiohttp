@@ -376,7 +376,7 @@ class StreamResponse(HeadersMixin):
 
         headers.setdefault(CONTENT_TYPE, 'application/octet-stream')
         headers.setdefault(DATE,
-            time.strftime(hdrs.RFC822_FORMAT, time.gmtime()))
+                           time.strftime(hdrs.RFC822_FORMAT, time.gmtime()))
 
         headers.setdefault(SERVER, SERVER_SOFTWARE)
 

@@ -9,13 +9,11 @@ import functools
 import os
 import re
 import sys
-import time
 import warnings
 import weakref
 from collections import namedtuple
 from math import ceil
 from pathlib import Path
-from time import gmtime
 from urllib.parse import quote
 
 from async_timeout import timeout
