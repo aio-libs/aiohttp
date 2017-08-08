@@ -574,28 +574,15 @@ def is_ip_address(host):
 class TimeService:
 
     def __init__(self):
-        self._time = int(time.time())
-        self._strtime = self._format_date_time()
-
-    def _format_date_time(self):
-        # Weekday and month names for HTTP date/time formatting;
-        # always English!
-        # Tuples are contants stored in codeobject!
-        _weekdayname = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-        _monthname = (None,  # Dummy so we can use 1-based month numbers
-                      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
-        year, month, day, hh, mm, ss, wd, y, z = gmtime(self._time)
-        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
-            _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
-        )
+        self._time = None
+        self._strtime = None
 
     def strtime(self):
+        _rfc822_format = '%a, %d %b %Y %H:%M:%S GMT'
         _time = int(time.time())
         if _time != self._time:
             self._time = _time
-            self._strtime = self._format_date_time()
+            self._strtime = time.strftime(_rfc822_format, gmtime(self._time))
         return self._strtime
 
 

@@ -386,8 +386,8 @@ def time_service():
 class TestTimeService:
 
     def test_ctor(self, time_service):
-        assert time_service._time is not None
-        assert time_service._strtime is not None
+        assert time_service._time is None
+        assert time_service._strtime is None
 
     def test_strtime(self, time_service, mocker):
         mock_time = mocker.patch("time.time")
