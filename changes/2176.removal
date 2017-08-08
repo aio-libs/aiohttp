@@ -1,0 +1,2 @@
+Removed TimeService in favor of simple strftime call
+TimeService also had a bug where it lost about 0.5 seconds per second.

@@ -352,17 +352,26 @@ def test_json_custom_loader(loop, session):
 
 
 @asyncio.coroutine
-def test_json_no_content(loop, session):
+def test_json_invalid_content_type(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     response.headers = {
         'Content-Type': 'data/octet-stream'}
     response._content = b''
 
-    with pytest.raises(aiohttp.ClientResponseError) as info:
+    with pytest.raises(aiohttp.ContentTypeError) as info:
         yield from response.json()
 
     assert info.value.request_info == response.request_info
+
+
+@asyncio.coroutine
+def test_json_no_content(loop, session):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop, session)
+    response.headers = {
+        'Content-Type': 'data/octet-stream'}
+    response._content = b''
 
     res = yield from response.json(content_type=None)
     assert res is None

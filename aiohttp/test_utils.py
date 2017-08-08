@@ -5,6 +5,7 @@ import contextlib
 import functools
 import gc
 import socket
+import sys
 import unittest
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -20,7 +21,7 @@ from . import ClientSession, hdrs
 from .helpers import PY_35, noop, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Application, Request, Server, UrlMappingMatchInfo
+from .web import Request, Server, UrlMappingMatchInfo
 
 
 def run_briefly(loop):
@@ -186,23 +187,11 @@ class TestClient:
 
     """
 
-    def __init__(self, app_or_server, *, scheme=sentinel, host=sentinel,
-                 cookie_jar=None, server_kwargs=None, loop=None, **kwargs):
-        if isinstance(app_or_server, BaseTestServer):
-            if scheme is not sentinel or host is not sentinel:
-                raise ValueError("scheme and host are mutable exclusive "
-                                 "with TestServer parameter")
-            self._server = app_or_server
-        elif isinstance(app_or_server, Application):
-            scheme = "http" if scheme is sentinel else scheme
-            host = '127.0.0.1' if host is sentinel else host
-            server_kwargs = server_kwargs or {}
-            self._server = TestServer(
-                app_or_server,
-                scheme=scheme, host=host, **server_kwargs)
-        else:
-            raise TypeError("app_or_server should be either web.Application "
-                            "or TestServer instance")
+    def __init__(self, server, *, cookie_jar=None, loop=None, **kwargs):
+        if not isinstance(server, BaseTestServer):
+            raise TypeError("server must be web.Application TestServer "
+                            "instance, found type: %r" % type(server))
+        self._server = server
         self._loop = loop
         if cookie_jar is None:
             cookie_jar = aiohttp.CookieJar(unsafe=True, loop=loop)
@@ -331,7 +320,7 @@ class TestClient:
                 resp.close()
             for ws in self._websockets:
                 yield from ws.close()
-            self._session.close()
+            yield from self._session.close()
             yield from self._server.close()
             self._closed = True
 
@@ -385,24 +374,42 @@ class AioHTTPTestCase(unittest.TestCase):
         Use .get_application() coroutine instead
 
         """
-        pass  # pragma: no cover
+        raise RuntimeError("Did you forget to define get_application()?")
 
     def setUp(self):
         self.loop = setup_test_loop()
 
         self.app = self.loop.run_until_complete(self.get_application())
-        self.client = self.loop.run_until_complete(self._get_client(self.app))
+        self.server = self.loop.run_until_complete(self.get_server(self.app))
+        self.client = self.loop.run_until_complete(
+            self.get_client(self.server))
 
         self.loop.run_until_complete(self.client.start_server())
 
+        self.loop.run_until_complete(self.setUpAsync())
+
+    @asyncio.coroutine
+    def setUpAsync(self):
+        pass
+
     def tearDown(self):
+        self.loop.run_until_complete(self.tearDownAsync())
         self.loop.run_until_complete(self.client.close())
         teardown_test_loop(self.loop)
 
     @asyncio.coroutine
-    def _get_client(self, app):
+    def tearDownAsync(self):
+        pass
+
+    @asyncio.coroutine
+    def get_server(self, app):
+        """Return a TestServer instance."""
+        return TestServer(app, loop=self.loop)
+
+    @asyncio.coroutine
+    def get_client(self, server):
         """Return a TestClient instance."""
-        return TestClient(app, loop=self.loop)
+        return TestClient(server, loop=self.loop)
 
 
 def unittest_run_loop(func, *args, **kwargs):
@@ -441,6 +448,11 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     """
     loop = loop_factory()
     asyncio.set_event_loop(None)
+    if sys.platform != "win32":
+        policy = asyncio.get_event_loop_policy()
+        watcher = asyncio.SafeChildWatcher()
+        watcher.attach_loop(loop)
+        policy.set_child_watcher(watcher)
     return loop
 
 
@@ -491,7 +503,8 @@ def make_mocked_request(method, path, headers=None, *,
                         payload=sentinel,
                         sslcontext=None,
                         secure_proxy_ssl_header=None,
-                        client_max_size=1024**2):
+                        client_max_size=1024**2,
+                        loop=...):
     """Creates mocked web.Request testing purposes.
 
     Useful in unit tests, when spinning full web server is overkill or
@@ -500,8 +513,9 @@ def make_mocked_request(method, path, headers=None, *,
     """
 
     task = mock.Mock()
-    loop = mock.Mock()
-    loop.create_future.return_value = ()
+    if loop is ...:
+        loop = mock.Mock()
+        loop.create_future.return_value = ()
 
     if version < HttpVersion(1, 1):
         closing = True
@@ -555,7 +569,7 @@ def make_mocked_request(method, path, headers=None, *,
     time_service.timeout.side_effect = timeout
 
     req = Request(message, payload,
-                  protocol, payload_writer, time_service, task,
+                  protocol, payload_writer, task, loop,
                   secure_proxy_ssl_header=secure_proxy_ssl_header,
                   client_max_size=client_max_size)
 

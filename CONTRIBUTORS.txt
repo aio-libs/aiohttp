@@ -26,6 +26,7 @@ Amy Boyle
 Andrei Ursulenko
 Andrej Antonov
 Andrew Leech
+Andrew Lytvyn
 Andrew Svetlov
 Andrii Soldatenko
 Anton Kasyanov
@@ -44,6 +45,7 @@ Chris AtLee
 Chris Laws
 Chris Moore
 Christopher Schmitt
+Claudiu Popa
 Damien Nadé
 Daniel García
 Daniel Nelson
@@ -76,6 +78,8 @@ Gregory Haynes
 Günther Jena
 Hu Bo
 Hugo Herter
+Hynek Schlawack
+Igor Alexandrov
 Igor Davydenko
 Igor Pavlov
 Ingmar Steen
@@ -103,6 +107,7 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
+Loïc Lajeanne
 Louis-Philippe Huberdeau
 Lu Gong
 Lubomir Gelo
@@ -135,6 +140,7 @@ Paulus Schoutsen
 Pavel Kamaev
 Pawel Miech
 Philipp A.
+Pieter van Beek
 Rafael Viotti
 Raúl Cumplido
 Required Field
@@ -156,6 +162,7 @@ Stephen Granade
 Steven Seguin
 Sunghyun Hwang
 Sviatoslav Bulbakha
+Sviatoslav Sydorenko
 Taha Jahangir
 Taras Voinarovskyi
 Terence Honles
@@ -174,6 +181,7 @@ Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
+Vladyslav Bondar
 W. Trevor King
 Will McGugan
 Willem de Groot

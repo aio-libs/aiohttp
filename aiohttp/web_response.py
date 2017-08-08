@@ -5,6 +5,7 @@ import json
 import math
 import time
 import warnings
+import zlib
 from email.utils import parsedate
 
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -253,10 +254,10 @@ class StreamResponse(HeadersMixin):
             self.headers.pop(hdrs.LAST_MODIFIED, None)
         elif isinstance(value, (int, float)):
             self.headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value)))
+                hdrs.RFC822_FORMAT, time.gmtime(math.ceil(value)))
         elif isinstance(value, datetime.datetime):
             self.headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", value.utctimetuple())
+                hdrs.RFC822_FORMAT, value.utctimetuple())
         elif isinstance(value, str):
             self.headers[hdrs.LAST_MODIFIED] = value
 
@@ -299,7 +300,9 @@ class StreamResponse(HeadersMixin):
         if coding != ContentCoding.identity:
             self.headers[hdrs.CONTENT_ENCODING] = coding.value
             self._payload_writer.enable_compression(coding.value)
-            self._chunked = True
+            # Compressed payload may have different content length,
+            # remove the header
+            self._headers.popall(hdrs.CONTENT_LENGTH, None)
 
     def _start_compression(self, request):
         if self._compression_force:
@@ -362,14 +365,19 @@ class StreamResponse(HeadersMixin):
                 del headers[CONTENT_LENGTH]
         elif self._length_check:
             writer.length = self.content_length
-            if writer.length is None and version >= HttpVersion11:
-                writer.enable_chunking()
-                headers[TRANSFER_ENCODING] = 'chunked'
-                if CONTENT_LENGTH in headers:
-                    del headers[CONTENT_LENGTH]
+            if writer.length is None:
+                if version >= HttpVersion11:
+                    writer.enable_chunking()
+                    headers[TRANSFER_ENCODING] = 'chunked'
+                    if CONTENT_LENGTH in headers:
+                        del headers[CONTENT_LENGTH]
+                else:
+                    keep_alive = False
 
         headers.setdefault(CONTENT_TYPE, 'application/octet-stream')
-        headers.setdefault(DATE, request.time_service.strtime())
+        headers.setdefault(DATE,
+                           time.strftime(hdrs.RFC822_FORMAT, time.gmtime()))
+
         headers.setdefault(SERVER, SERVER_SOFTWARE)
 
         # connection header
@@ -489,6 +497,8 @@ class Response(StreamResponse):
         else:
             self.body = body
 
+        self._compressed_body = None
+
     @property
     def body(self):
         return self._body
@@ -513,12 +523,10 @@ class Response(StreamResponse):
 
             headers = self._headers
 
-            # enable chunked encoding if needed
+            # set content-length header if needed
             if not self._chunked and CONTENT_LENGTH not in headers:
                 size = body.size
-                if size is None:
-                    self._chunked = True
-                elif CONTENT_LENGTH not in headers:
+                if size is not None:
                     headers[CONTENT_LENGTH] = str(size)
 
             # set content-type
@@ -530,6 +538,8 @@ class Response(StreamResponse):
                 for (key, value) in body.headers.items():
                     if key not in headers:
                         headers[key] = value
+
+        self._compressed_body = None
 
     @property
     def text(self):
@@ -549,6 +559,7 @@ class Response(StreamResponse):
 
         self._body = text.encode(self.charset)
         self._body_payload = False
+        self._compressed_body = None
 
     @property
     def content_length(self):
@@ -558,7 +569,13 @@ class Response(StreamResponse):
         if hdrs.CONTENT_LENGTH in self.headers:
             return super().content_length
 
-        if self._body is not None:
+        if self._compressed_body is not None:
+            # Return length of the compressed body
+            return len(self._compressed_body)
+        elif self._body_payload:
+            # A payload without content length, or a compressed payload
+            return None
+        elif self._body is not None:
             return len(self._body)
         else:
             return 0
@@ -571,7 +588,10 @@ class Response(StreamResponse):
     def write_eof(self):
         if self._eof_sent:
             return
-        body = self._body
+        if self._compressed_body is not None:
+            body = self._compressed_body
+        else:
+            body = self._body
         if body is not None:
             if (self._req._method == hdrs.METH_HEAD or
                     self._status in [204, 304]):
@@ -586,12 +606,28 @@ class Response(StreamResponse):
 
     def _start(self, request):
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
-            if self._body is not None:
-                self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
-            else:
-                self._headers[hdrs.CONTENT_LENGTH] = '0'
+            if not self._body_payload:
+                if self._body is not None:
+                    self._headers[hdrs.CONTENT_LENGTH] = str(len(self._body))
+                else:
+                    self._headers[hdrs.CONTENT_LENGTH] = '0'
 
         return super()._start(request)
+
+    def _do_start_compression(self, coding):
+        if self._body_payload or self._chunked:
+            return super()._do_start_compression(coding)
+        if coding != ContentCoding.identity:
+            # Instead of using _payload_writer.enable_compression,
+            # compress the whole body
+            zlib_mode = (16 + zlib.MAX_WBITS
+                         if coding.value == 'gzip' else -zlib.MAX_WBITS)
+            compressobj = zlib.compressobj(wbits=zlib_mode)
+            self._compressed_body = compressobj.compress(self._body) +\
+                compressobj.flush()
+            self._headers[hdrs.CONTENT_ENCODING] = coding.value
+            self._headers[hdrs.CONTENT_LENGTH] = \
+                str(len(self._compressed_body))
 
 
 def json_response(data=sentinel, *, text=None, body=None, status=200,

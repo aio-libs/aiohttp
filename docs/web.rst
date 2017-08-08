@@ -151,17 +151,6 @@ family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
    Introduce resources.
 
 
-.. _aiohttp-web-custom-resource:
-
-Custom resource implementation
-------------------------------
-
-To register custom resource use :meth:`UrlDispatcher.register_resource`.
-Resource instance must implement `AbstractResource` interface.
-
-.. versionadded:: 1.2.1
-
-
 .. _aiohttp-web-variable-handler:
 
 Variable Resources
@@ -193,7 +182,7 @@ You can also specify a custom regex in the form ``{identifier:regex}``::
 .. note::
 
    Regex should match against *percent encoded* URL
-   (``request.rel_url_raw_path``). E.g. *space character* is encoded
+   (``request.raw_path``). E.g. *space character* is encoded
    as ``%20``.
 
    According to
@@ -331,6 +320,69 @@ viewed using the :meth:`UrlDispatcher.named_resources` method::
    :meth:`UrlDispatcher.resources` instead of
    :meth:`UrlDispatcher.named_routes` / :meth:`UrlDispatcher.routes`.
 
+
+Alternative ways for registering routes
+---------------------------------------
+
+Code examples shown above use *imperative* style for adding new
+routes: they call ``app.router.add_get(...)`` etc.
+
+There are two alternatives: route tables and route decorators.
+
+Route tables look like Django way::
+
+   async def handle_get(request):
+       ...
+
+
+   async def handle_post(request):
+       ...
+
+   app.router.add_routes([web.get('/get', handle_get),
+                          web.post('/post', handle_post),
+
+
+The snippet calls :meth:`~aiohttp.web.UrlDispather.add_routes` to
+register a list of *route definitions* (:class:`aiohttp.web.RouteDef`
+instances) created by :func:`aiohttp.web.get` or
+:func:`aiohttp.web.post` functions.
+
+.. seealso:: :ref:`aiohttp-web-route-def` reference.
+
+Route decorators are closer to Flask approach::
+
+   routes = web.RouteTableDef()
+
+   @routes.get('/get')
+   async def handle_get(request):
+       ...
+
+
+   @routes.post('/post')
+   async def handle_post(request):
+       ...
+
+   app.router.add_routes(routes)
+
+The example creates a :class:`aiohttp.web.RouteTableDef` container first.
+
+The container is a list-like object with additional decorators
+:meth:`aiohttp.web.RouteTableDef.get`,
+:meth:`aiohttp.web.RouteTableDef.post` etc. for registering new
+routes.
+
+After filling the container
+:meth:`~aiohttp.web.UrlDispather.add_routes` is used for adding
+registered *route definitions* into application's router.
+
+.. seealso:: :ref:`aiohttp-web-route-table-def` reference.
+
+All tree ways (imperative calls, route tables and decorators) are
+equivalent, you could use what do you prefer or even mix them on your
+own.
+
+.. versionadded:: 2.3
+
 Custom Routing Criteria
 -----------------------
 
@@ -402,6 +454,17 @@ client with ``HTTP/404 Not Found`` by default. To allow the server to follow
 symlinks, parameter ``follow_symlinks`` should be set to ``True``::
 
    app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
+
+When you want to enable cache busting,
+parameter ``append_version`` can be set to ``True``
+
+Cache busting is the process of appending some form of file version hash
+to the filename of resources like JavaScript and CSS files.
+The performance advantage of doing this is that we can tell the browser
+to cache these files indefinitely without worrying about the client not getting
+the latest version when the file changes::
+
+   app.router.add_static('/prefix', path_to_static_folder, append_version=True)
 
 Template Rendering
 ------------------
@@ -482,58 +545,6 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
     web.run_app(make_app())
 
-
-.. _aiohttp-web-expect-header:
-
-*Expect* Header
----------------
-
-:mod:`aiohttp.web` supports *Expect* header. By default it sends
-``HTTP/1.1 100 Continue`` line to client, or raises
-:exc:`HTTPExpectationFailed` if header value is not equal to
-"100-continue". It is possible to specify custom *Expect* header
-handler on per route basis. This handler gets called if *Expect*
-header exist in request after receiving all headers and before
-processing application's :ref:`aiohttp-web-middlewares` and
-route handler. Handler can return *None*, in that case the request
-processing continues as usual. If handler returns an instance of class
-:class:`StreamResponse`, *request handler* uses it as response. Also
-handler can raise a subclass of :exc:`HTTPException`. In this case all
-further processing will not happen and client will receive appropriate
-http response.
-
-.. note::
-    A server that does not understand or is unable to comply with any of the
-    expectation values in the Expect field of a request MUST respond with
-    appropriate error status. The server MUST respond with a 417
-    (Expectation Failed) status if any of the expectations cannot be met or,
-    if there are other problems with the request, some other 4xx status.
-
-    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
-
-If all checks pass, the custom handler *must* write a *HTTP/1.1 100 Continue*
-status code before returning.
-
-The following example shows how to setup a custom handler for the *Expect*
-header::
-
-   async def check_auth(request):
-       if request.version != aiohttp.HttpVersion11:
-           return
-
-       if request.headers.get('EXPECT') != '100-continue':
-           raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
-
-       if request.headers.get('AUTHORIZATION') is None:
-           raise HTTPForbidden()
-
-       request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
-
-   async def hello(request):
-       return web.Response(body=b"Hello, world")
-
-   app = web.Application()
-   app.router.add_get('/', hello, expect_handler=check_auth)
 
 .. _aiohttp-web-forms:
 
@@ -922,6 +933,43 @@ if user has no permissions to access the underlying resource.
 They may also render errors raised by the handler, perform some pre- or
 post-processing like handling *CORS* and so on.
 
+The following code demonstrates middlewares execution order::
+
+   from aiohttp import web
+   def test(request):
+       print('Handler function called')
+       return web.Response(text="Hello")
+
+   async def middleware1(app, handler):
+       async def middleware_handler(request):
+           print('Middleware 1 called')
+           response = await handler(request)
+           print('Middleware 1 finished')
+
+           return response
+       return middleware_handler
+
+   async def middleware2(app, handler):
+       async def middleware_handler(request):
+           print('Middleware 2 called')
+           response = await handler(request)
+           print('Middleware 2 finished')
+
+           return response
+       return middleware_handler
+
+
+   app = web.Application(middlewares=[middleware1, middleware2])
+   app.router.add_get('/', test)
+   web.run_app(app)
+
+Produced output::
+
+   Middleware 1 called
+   Middleware 2 called
+   Handler function called
+   Middleware 2 finished
+   Middleware 1 finished
 
 Example
 ^^^^^^^
@@ -980,6 +1028,8 @@ This can be accomplished by subscribing to the
 Signal handlers should not return a value but may modify incoming mutable
 parameters.
 
+Signal handlers will be run sequentially, in order they were added. If handler
+is asynchronous, it will be awaited before calling next one.
 
 .. warning::
 
@@ -1104,6 +1154,69 @@ handlers work in **CORK** mode.
 To manual mode switch :meth:`~StreamResponse.set_tcp_cork` and
 :meth:`~StreamResponse.set_tcp_nodelay` methods can be used.  It may
 be helpful for better streaming control for example.
+
+
+.. _aiohttp-web-expect-header:
+
+*Expect* Header
+---------------
+
+:mod:`aiohttp.web` supports *Expect* header. By default it sends
+``HTTP/1.1 100 Continue`` line to client, or raises
+:exc:`HTTPExpectationFailed` if header value is not equal to
+"100-continue". It is possible to specify custom *Expect* header
+handler on per route basis. This handler gets called if *Expect*
+header exist in request after receiving all headers and before
+processing application's :ref:`aiohttp-web-middlewares` and
+route handler. Handler can return *None*, in that case the request
+processing continues as usual. If handler returns an instance of class
+:class:`StreamResponse`, *request handler* uses it as response. Also
+handler can raise a subclass of :exc:`HTTPException`. In this case all
+further processing will not happen and client will receive appropriate
+http response.
+
+.. note::
+    A server that does not understand or is unable to comply with any of the
+    expectation values in the Expect field of a request MUST respond with
+    appropriate error status. The server MUST respond with a 417
+    (Expectation Failed) status if any of the expectations cannot be met or,
+    if there are other problems with the request, some other 4xx status.
+
+    http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.20
+
+If all checks pass, the custom handler *must* write a *HTTP/1.1 100 Continue*
+status code before returning.
+
+The following example shows how to setup a custom handler for the *Expect*
+header::
+
+   async def check_auth(request):
+       if request.version != aiohttp.HttpVersion11:
+           return
+
+       if request.headers.get('EXPECT') != '100-continue':
+           raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
+
+       if request.headers.get('AUTHORIZATION') is None:
+           raise HTTPForbidden()
+
+       request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+   async def hello(request):
+       return web.Response(body=b"Hello, world")
+
+   app = web.Application()
+   app.router.add_get('/', hello, expect_handler=check_auth)
+
+.. _aiohttp-web-custom-resource:
+
+Custom resource implementation
+------------------------------
+
+To register custom resource use :meth:`UrlDispatcher.register_resource`.
+Resource instance must implement `AbstractResource` interface.
+
+.. versionadded:: 1.2.1
 
 
 .. _aiohttp-web-graceful-shutdown:
@@ -1324,7 +1437,3 @@ Documentation and a complete tutorial of creating and running an app
 locally are available at aiohttp-devtools_.
 
 .. _aiohttp-devtools: https://github.com/aio-libs/aiohttp-devtools
-
-
-.. disqus::
-  :title: aiohttp server usage
