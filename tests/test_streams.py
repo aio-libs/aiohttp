@@ -21,8 +21,7 @@ class TestStreamReader(unittest.TestCase):
 
     def _make_one(self, *args, **kwargs):
         if 'timeout' in kwargs:
-            self.time_service = helpers.TimeService(self.loop, interval=0.01)
-            self.addCleanup(self.time_service.close)
+            self.time_service = helpers.TimeService()
             kwargs['timer'] = self.time_service.timeout(kwargs.pop('timeout'))
 
         return streams.StreamReader(loop=self.loop, *args, **kwargs)

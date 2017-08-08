@@ -573,28 +573,9 @@ def is_ip_address(host):
 
 class TimeService:
 
-    def __init__(self, loop, *, interval=1.0):
-        self._loop = loop
-        self._interval = interval
-
-        self._time = time.time()
-        self._strtime = None
-        self._loop_time = ceil(self._loop.time())
-        self._cb = self._loop.call_soon(self._on_cb)
-
-    def close(self):
-        if self._cb:
-            self._cb.cancel()
-
-        self._cb = None
-        self._loop = None
-
-    def _on_cb(self):
-        self._time = time.time()
-        self._strtime = None
-        _loop_time = self._loop.time()
-        self._loop_time = ceil(_loop_time)
-        self._cb = self._loop.call_at(_loop_time + self._interval, self._on_cb)
+    def __init__(self):
+        self._time = int(time.time())
+        self._strtime = self._format_date_time()
 
     def _format_date_time(self):
         # Weekday and month names for HTTP date/time formatting;
@@ -610,22 +591,12 @@ class TimeService:
             _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
         )
 
-    def time(self):
-        return self._time
-
     def strtime(self):
-        s = self._strtime
-        if s is None:
-            self._strtime = s = self._format_date_time()
+        _time = int(time.time())
+        if _time != self._time:
+            self._time = _time
+            self._strtime = self._format_date_time()
         return self._strtime
-
-    @property
-    def loop_time(self):
-        return self._loop_time
-
-    @property
-    def interval(self):
-        return self._interval
 
 
 def _weakref_handle(info):

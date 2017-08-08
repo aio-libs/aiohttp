@@ -368,9 +368,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         # all handlers in idle state
         if len(self._request_handlers) == len(self._waiters):
-            # time_service.loop_time is ceiled to 1.0, so we check 2 intervals
-            now = self._time_service.loop_time
-            if (now + self._time_service.interval * 2) > next:
+            if self._loop.time() > next:
                 self.force_close(send_last_heartbeat=True)
                 return
 
@@ -491,7 +489,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         if self._keepalive and not self._close:
                             # start keep-alive timer
                             if keepalive_timeout is not None:
-                                now = self._time_service.loop_time
+                                now = self._loop.time()
                                 self._keepalive_time = now
                                 if self._keepalive_handle is None:
                                     self._keepalive_handle = loop.call_at(

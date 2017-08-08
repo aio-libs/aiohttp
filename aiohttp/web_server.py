@@ -17,7 +17,7 @@ class Server:
         self._loop = loop
         self._connections = {}
         self._kwargs = kwargs
-        self.time_service = TimeService(self._loop)
+        self.time_service = TimeService()
         self.requests_count = 0
         self.request_handler = handler
         self.request_factory = request_factory or self._make_request
@@ -43,7 +43,6 @@ class Server:
         coros = [conn.shutdown(timeout) for conn in self._connections]
         yield from asyncio.gather(*coros, loop=self._loop)
         self._connections.clear()
-        self.time_service.close()
 
     def __call__(self):
         return RequestHandler(self, loop=self._loop, **self._kwargs)
