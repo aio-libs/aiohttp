@@ -1578,12 +1578,12 @@ def test_json_request(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        j = yield from request.json()
+        j = yield from request.json(allowed_types='application/json')
         return web.json_response(j)
 
     @asyncio.coroutine
     def unsafe_handler(request):
-        j = yield from request.json(if_check=False)
+        j = yield from request.json(allowed_types=None)
         return web.json_response(j)
 
     @asyncio.coroutine
@@ -1592,7 +1592,8 @@ def test_json_request(loop, test_client):
         def h():
             raise HTTPNotAcceptable()
 
-        j = yield from request.json(wrong_format=h)
+        allowed_types = ['application/json']
+        j = yield from request.json(allowed_types=allowed_types, err_handler=h)
         return web.json_response(j)
 
     @asyncio.coroutine
@@ -1601,7 +1602,8 @@ def test_json_request(loop, test_client):
         def h():
             return
 
-        j = yield from request.json(wrong_format=h)
+        allowed_types = 'application/json'
+        j = yield from request.json(allowed_types=allowed_types, err_handler=h)
         return web.json_response(j)
 
     app = web.Application(client_max_size=100)

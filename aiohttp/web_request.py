@@ -510,19 +510,26 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loads=json.loads, wrong_format=None, if_check=True):
-        """
-        Return BODY as JSON.
-        If the `Content-Type` is not `application/json`,
+    def json(self, *, loads=json.loads, allowed_types=None, err_handler=None):
+        """ Return BODY as JSON. If the `Content-Type` is not in allowed_types,
         then the request is rejected.
-        You can also handle it manually by passing the
-        `wrong_format` parameter.
+        You can also handle it manually by passing the `err_handler` parameter.
         """
-        if if_check and self.content_type != 'application/json':
-            if wrong_format is None:
+        wrong_format_flag = False
+        if isinstance(allowed_types, str):
+            wrong_format_flag = allowed_types != self.content_type
+        elif isinstance(allowed_types, list):
+            wrong_format_flag = self.content_type not in allowed_types
+        elif allowed_types is None:  # do not check the content_type
+            wrong_format_flag = False
+
+        # if fail to pass the check
+        if wrong_format_flag:
+            if err_handler is None:
                 raise HTTPNotAcceptable()
-            elif callable(wrong_format):
-                yield from wrong_format()
+            elif callable(err_handler):
+                yield from err_handler()
+
         body = yield from self.text()
         return loads(body)
 
