@@ -571,21 +571,6 @@ def is_ip_address(host):
                         .format(host, type(host)))
 
 
-class TimeService:
-
-    def __init__(self):
-        self._time = None
-        self._strtime = None
-
-    def strtime(self):
-        _rfc822_format = '%a, %d %b %Y %H:%M:%S GMT'
-        _time = int(time.time())
-        if _time != self._time:
-            self._time = _time
-            self._strtime = time.strftime(_rfc822_format, gmtime(self._time))
-        return self._strtime
-
-
 def _weakref_handle(info):
     ref, name = info
     ob = ref()

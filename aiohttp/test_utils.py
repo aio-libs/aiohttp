@@ -569,7 +569,7 @@ def make_mocked_request(method, path, headers=None, *,
     time_service.timeout.side_effect = timeout
 
     req = Request(message, payload,
-                  protocol, payload_writer, time_service, task, loop,
+                  protocol, payload_writer, task, loop,
                   secure_proxy_ssl_header=secure_proxy_ssl_header,
                   client_max_size=client_max_size)
 

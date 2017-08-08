@@ -254,10 +254,10 @@ class StreamResponse(HeadersMixin):
             self.headers.pop(hdrs.LAST_MODIFIED, None)
         elif isinstance(value, (int, float)):
             self.headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value)))
+                hdrs.RFC822_FORMAT, time.gmtime(math.ceil(value)))
         elif isinstance(value, datetime.datetime):
             self.headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", value.utctimetuple())
+                hdrs.RFC822_FORMAT, value.utctimetuple())
         elif isinstance(value, str):
             self.headers[hdrs.LAST_MODIFIED] = value
 
@@ -375,7 +375,9 @@ class StreamResponse(HeadersMixin):
                     keep_alive = False
 
         headers.setdefault(CONTENT_TYPE, 'application/octet-stream')
-        headers.setdefault(DATE, request.time_service.strtime())
+        headers.setdefault(DATE,
+            time.strftime(hdrs.RFC822_FORMAT, time.gmtime()))
+
         headers.setdefault(SERVER, SERVER_SOFTWARE)
 
         # connection header

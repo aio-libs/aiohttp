@@ -383,21 +383,6 @@ def time_service():
     return helpers.TimeService()
 
 
-class TestTimeService:
-
-    def test_ctor(self, time_service):
-        assert time_service._time is None
-        assert time_service._strtime is None
-
-    def test_strtime(self, time_service, mocker):
-        mock_time = mocker.patch("time.time")
-        mock_time.return_value = 1477797232
-        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
-        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
-        mock_time.return_value = 1477797233
-        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:53 GMT'
-
-
 # ----------------------------------- TimeoutHandle -------------------
 
 def test_timeout_handle(loop):

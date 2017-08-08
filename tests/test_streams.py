@@ -12,7 +12,6 @@ class TestStreamReader(unittest.TestCase):
     DATA = b'line1\nline2\nline3\n'
 
     def setUp(self):
-        self.time_service = None
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -20,10 +19,6 @@ class TestStreamReader(unittest.TestCase):
         self.loop.close()
 
     def _make_one(self, *args, **kwargs):
-        if 'timeout' in kwargs:
-            self.time_service = helpers.TimeService()
-            kwargs['timer'] = self.time_service.timeout(kwargs.pop('timeout'))
-
         return streams.StreamReader(loop=self.loop, *args, **kwargs)
 
     def test_create_waiter(self):
