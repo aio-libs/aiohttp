@@ -172,6 +172,7 @@ Thomas Grainger
 Tolga Tezel
 Vaibhav Sagar
 Vamsi Krishna Avula
+Vasiliy Faronov
 Vasyl Baran
 Vikas Kawadia
 Vitalik Verhovodov
