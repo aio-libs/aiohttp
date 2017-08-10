@@ -15,7 +15,8 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
+from .helpers import (HeadersMixin, SimpleCookie, parse_mimetype, reify,
+                      sentinel)
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPNotAcceptable, HTTPRequestEntityTooLarge
 
@@ -510,28 +511,42 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loads=json.loads, allowed_types=None, err_handler=None):
+    def json(self, *, loads=json.loads, allowed_types=None):
         """ Return BODY as JSON. If the `Content-Type` is not in allowed_types,
         then the request is rejected.
-        You can also handle it manually by passing the `err_handler` parameter.
         """
-        wrong_format_flag = False
-        if isinstance(allowed_types, str):
-            wrong_format_flag = allowed_types != self.content_type
-        elif isinstance(allowed_types, list):
-            wrong_format_flag = self.content_type not in allowed_types
-        elif allowed_types is None:  # do not check the content_type
-            wrong_format_flag = False
+        content_type = self.content_type
+        (mime_type, subtype, suffix, parameters) = parse_mimetype(content_type)
+        content_type = mime_type + '/' + subtype
+        if suffix != '':
+            content_type += '+' + suffix
 
-        # if fail to pass the check
-        if wrong_format_flag:
-            if err_handler is None:
+        charset = parameters.get('charset', None)
+
+        if isinstance(allowed_types, str):
+            if allowed_types == 'json':
+                if content_type != 'application/json':
+                    if not content_type.startswith('application') or \
+                       not content_type.endswith('+json'):
+                        raise HTTPNotAcceptable()
+            elif allowed_types != content_type:
                 raise HTTPNotAcceptable()
-            elif callable(err_handler):
-                yield from err_handler()
+        elif isinstance(allowed_types, set):
+            if content_type not in allowed_types:
+                raise HTTPNotAcceptable()
+        elif isinstance(allowed_types, tuple):
+            if content_type not in allowed_types:
+                raise HTTPNotAcceptable()
+        elif isinstance(allowed_types, list):
+            if content_type not in allowed_types:
+                raise HTTPNotAcceptable()
+        elif allowed_types is None:  # do not check the content_type
+            pass
+        else:  # for other type
+            raise TypeError("Unsupported type for allowed `Content-Type`")
 
         body = yield from self.text()
-        return loads(body)
+        return loads(body, encoding=charset)
 
     @asyncio.coroutine
     def multipart(self, *, reader=multipart.MultipartReader):

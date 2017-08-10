@@ -11,7 +11,6 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, multipart, web
-from aiohttp.web import HTTPNotAcceptable
 
 
 try:
@@ -1577,60 +1576,180 @@ def test_response_with_bodypart(loop, test_client):
 def test_json_request(loop, test_client):
 
     @asyncio.coroutine
-    def handler(request):
-        j = yield from request.json(allowed_types='application/json')
-        return web.json_response(j)
-
-    @asyncio.coroutine
     def unsafe_handler(request):
         j = yield from request.json(allowed_types=None)
         return web.json_response(j)
 
     @asyncio.coroutine
-    def customized_handler(request):
-        @asyncio.coroutine
-        def h():
-            raise HTTPNotAcceptable()
-
-        allowed_types = ['application/json']
-        j = yield from request.json(allowed_types=allowed_types, err_handler=h)
+    def json_handler(request):
+        j = yield from request.json(allowed_types='json')
         return web.json_response(j)
 
     @asyncio.coroutine
-    def unsafe_customized_handler(request):
-        @asyncio.coroutine
-        def h():
-            return
-
+    def str_handler(request):
         allowed_types = 'application/json'
-        j = yield from request.json(allowed_types=allowed_types, err_handler=h)
+        j = yield from request.json(allowed_types=allowed_types)
+        return web.json_response(j)
+
+    @asyncio.coroutine
+    def set_handler(request):
+        allowed_types = {'application/json', 'application/vnd.api+json'}
+        j = yield from request.json(allowed_types=allowed_types)
+        return web.json_response(j)
+
+    @asyncio.coroutine
+    def tuple_handler(request):
+        allowed_types = ('application/json', 'application/vnd.api+json')
+        j = yield from request.json(allowed_types=allowed_types)
+        return web.json_response(j)
+
+    @asyncio.coroutine
+    def list_handler(request):
+        allowed_types = ['application/json', 'application/vnd.api+json']
+        j = yield from request.json(allowed_types=allowed_types)
+        return web.json_response(j)
+
+    @asyncio.coroutine
+    def wrong_type_handler(request):
+        try:
+            j = yield from request.json(allowed_types=0)
+        except TypeError as te:
+            assert str(te) == "Unsupported type for allowed `Content-Type`"
+        else:
+            assert False
         return web.json_response(j)
 
     app = web.Application(client_max_size=100)
-    app.router.add_post('/', handler)
     app.router.add_post('/unsafe', unsafe_handler)
-    app.router.add_post('/customized', customized_handler)
-    app.router.add_post('/unsafe-customized', unsafe_customized_handler)
+    app.router.add_post('/json', json_handler)
+    app.router.add_post('/str', str_handler)
+    app.router.add_post('/set', set_handler)
+    app.router.add_post('/tuple', tuple_handler)
+    app.router.add_post('/list', list_handler)
+
     client = yield from test_client(app)
+    test_data = {"test": "test"}
+    json_str = '{"test": "test"}'
+    headers1 = {'Content-Type': 'application/json'}
+    headers2 = {'Content-Type': 'application/vnd.api+json; charset=utf-8'}
+    headers3 = {'Content-Type': 'application/something+json'}
 
-    # wrong request
-    resp = yield from client.post('/', data='{"test": "test"}')
+    resp = yield from client.post('/unsafe', data=json_str)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    #################################################################
+    u = '/json'
+    resp = yield from client.post(u, data=json_str)
     assert 406 == resp.status
 
-    resp = yield from client.post('/customized', data='{"test": "test"}')
+    resp = yield from client.post(u, json=test_data)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers1)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers2)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers3)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    #################################################################
+    u = '/str'
+    resp = yield from client.post(u, data=json_str)
     assert 406 == resp.status
 
-    resp = yield from client.post('/unsafe', data='{"test": "test"}')
+    resp = yield from client.post(u, json=test_data)
     assert 200 == resp.status
     json = yield from resp.json()
-    assert {'test': 'test'} == json
+    assert test_data == json
 
-    resp = yield from client.post('/', json={'test': 'test'})
+    resp = yield from client.post(u, data=json_str, headers=headers1)
     assert 200 == resp.status
     json = yield from resp.json()
-    assert {'test': 'test'} == json
+    assert test_data == json
 
-    resp = yield from client.post('/unsafe', data='{"test": "test"}')
+    resp = yield from client.post(u, data=json_str, headers=headers2)
+    assert 406 == resp.status
+
+    resp = yield from client.post(u, data=json_str, headers=headers3)
+    assert 406 == resp.status
+
+    #################################################################
+    u = '/set'
+    resp = yield from client.post(u, data=json_str)
+    assert 406 == resp.status
+
+    resp = yield from client.post(u, json=test_data)
     assert 200 == resp.status
     json = yield from resp.json()
-    assert {'test': 'test'} == json
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers1)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers2)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers3)
+    assert 406 == resp.status
+
+    #################################################################
+    u = '/tuple'
+    resp = yield from client.post(u, data=json_str)
+    assert 406 == resp.status
+
+    resp = yield from client.post(u, json=test_data)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers1)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers2)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers3)
+    assert 406 == resp.status
+
+    #################################################################
+    u = '/list'
+    resp = yield from client.post(u, data=json_str)
+    assert 406 == resp.status
+
+    resp = yield from client.post(u, json=test_data)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers1)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers2)
+    assert 200 == resp.status
+    json = yield from resp.json()
+    assert test_data == json
+
+    resp = yield from client.post(u, data=json_str, headers=headers3)
+    assert 406 == resp.status
