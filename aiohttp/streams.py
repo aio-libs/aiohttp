@@ -356,9 +356,9 @@ class StreamReader(AsyncStreamReaderMixin):
             raise self._exception
 
         if not self._buffer and not self._eof:
-            # end of http chunk without available data
-            if self._http_chunk_splits and \
-                    self._cursor == self._http_chunk_splits[0]:
+            if (self._http_chunk_splits and
+                    self._cursor == self._http_chunk_splits[0]):
+                # end of http chunk without available data
                 self._http_chunk_splits = self._http_chunk_splits[1:]
                 return (b"", True)
             yield from self._wait('readchunk')
