@@ -551,7 +551,6 @@ class HttpPayloadParser:
                     if required > chunk_len:
                         self._chunk_size = required - chunk_len
                         self.payload.feed_data(chunk, chunk_len)
-
                         return False, None
                     else:
                         self._chunk_size = 0
