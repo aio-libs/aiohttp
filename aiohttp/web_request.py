@@ -511,7 +511,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return bytes_body.decode(encoding)
 
     @asyncio.coroutine
-    def json(self, *, loads=json.loads, allowed_types=None):
+    def json(self, *, loads=json.loads, allowed_type=None):
         """ Return BODY as JSON. If the `Content-Type` is not in allowed_types,
         then the request is rejected.
         """
@@ -521,32 +521,16 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         if suffix != '':
             content_type += '+' + suffix
 
-        charset = parameters.get('charset', None)
-
-        if isinstance(allowed_types, str):
-            if allowed_types == 'json':
-                if content_type != 'application/json':
-                    if not content_type.startswith('application') or \
-                       not content_type.endswith('+json'):
-                        raise HTTPNotAcceptable()
-            elif allowed_types != content_type:
+        if isinstance(allowed_type, str):
+            if allowed_type != content_type:
                 raise HTTPNotAcceptable()
-        elif isinstance(allowed_types, set):
-            if content_type not in allowed_types:
-                raise HTTPNotAcceptable()
-        elif isinstance(allowed_types, tuple):
-            if content_type not in allowed_types:
-                raise HTTPNotAcceptable()
-        elif isinstance(allowed_types, list):
-            if content_type not in allowed_types:
-                raise HTTPNotAcceptable()
-        elif allowed_types is None:  # do not check the content_type
+        elif allowed_type is None:  # do not check the content_type
             pass
         else:  # for other type
             raise TypeError("Unsupported type for allowed `Content-Type`")
 
         body = yield from self.text()
-        return loads(body, encoding=charset)
+        return loads(body)
 
     @asyncio.coroutine
     def multipart(self, *, reader=multipart.MultipartReader):
