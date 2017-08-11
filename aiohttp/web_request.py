@@ -512,21 +512,23 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @asyncio.coroutine
     def json(self, *, loads=json.loads, allowed_type=None):
-        """ Return BODY as JSON. If the `Content-Type` is not in allowed_types,
-        then the request is rejected.
+        """ Return BODY as JSON. If the `Content-Type` does not equal
+        allowed_type, then the request is rejected.
         """
-        content_type = self.content_type
-        (mime_type, subtype, suffix, parameters) = parse_mimetype(content_type)
-        content_type = mime_type + '/' + subtype
-        if suffix != '':
-            content_type += '+' + suffix
 
-        if isinstance(allowed_type, str):
+        if allowed_type is None:  # do not check the content_type
+            pass
+        elif isinstance(allowed_type, str):
+            # parse the content_type
+            content_type = self.content_type
+            (mime_type, subtype, suffix, _) = parse_mimetype(content_type)
+            content_type = mime_type + '/' + subtype
+            if suffix != '':
+                content_type += '+' + suffix
+
             if allowed_type != content_type:
                 raise HTTPNotAcceptable()
-        elif allowed_type is None:  # do not check the content_type
-            pass
-        else:  # for other type
+        else:  # for other types
             raise TypeError("Unsupported type for allowed `Content-Type`")
 
         body = yield from self.text()
