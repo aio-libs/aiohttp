@@ -43,10 +43,7 @@ if helpers.PY_35:
     class ChunkTupleAsyncStreamIterator(AsyncStreamIterator):
         @asyncio.coroutine
         def __anext__(self):
-            try:
-                rv = yield from self.read_func()
-            except EofStream:
-                raise StopAsyncIteration  # NOQA
+            rv = yield from self.read_func()
             if rv == (b'', False):
                 raise StopAsyncIteration  # NOQA
             return rv
