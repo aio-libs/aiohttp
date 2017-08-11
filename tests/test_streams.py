@@ -615,6 +615,69 @@ class TestStreamReader(unittest.TestCase):
         stream = self._make_one()
         self.assertRaises(RuntimeError, stream.end_http_chunk_receiving)
 
+    def test_readchunk_with_unread(self):
+        """Test that stream.unread does not break controlled chunk receiving.
+        """
+        stream = self._make_one()
+
+        # Send 2 chunks
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part1')
+        stream.end_http_chunk_receiving()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part2')
+        stream.end_http_chunk_receiving()
+
+        # Read only one chunk
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+
+        # Try to unread a part of the first chunk
+        stream.unread_data(b'rt1')
+
+        # The end_of_chunk signal was already received for the first chunk,
+        # so we receive up to the second one
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'rt1part2', data)
+        self.assertTrue(end_of_chunk)
+
+        # Unread a part of the second chunk
+        stream.unread_data(b'rt2')
+
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'rt2', data)
+        # end_of_chunk was already received for this chunk
+        self.assertFalse(end_of_chunk)
+
+        stream.feed_eof()
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'', data)
+        self.assertFalse(end_of_chunk)
+
+    def test_readchunk_with_other_read_calls(self):
+        """Test that stream.readchunk works when other read calls are made on
+        the stream.
+        """
+        stream = self._make_one()
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part1')
+        stream.end_http_chunk_receiving()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part2')
+        stream.end_http_chunk_receiving()
+
+        data = self.loop.run_until_complete(stream.read(7))
+        self.assertEqual(b'part1pa', data)
+
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'rt2', data)
+        self.assertTrue(end_of_chunk)
+
+        stream.feed_eof()
+        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+        self.assertEqual(b'', data)
+        self.assertFalse(end_of_chunk)
+
     def test___repr__(self):
         stream = self._make_one()
         self.assertEqual("<StreamReader>", repr(stream))
