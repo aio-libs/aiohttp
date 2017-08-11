@@ -364,10 +364,10 @@ class StreamReader(AsyncStreamReaderMixin):
             # end of file
             return (b"", False)
         elif self._http_chunk_splits is not None:
-            if self._http_chunk_splits:
+            while self._http_chunk_splits:
                 pos = self._http_chunk_splits[0]
+                self._http_chunk_splits = self._http_chunk_splits[1:]
                 if pos > self._cursor:
-                    self._http_chunk_splits = self._http_chunk_splits[1:]
                     return (self._read_nowait(pos-self._cursor), True)
             return (self._read_nowait(-1), False)
         else:
