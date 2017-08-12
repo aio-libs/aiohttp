@@ -737,8 +737,6 @@ def test_heartbeat_no_pong(loop, test_client, ceil):
     @asyncio.coroutine
     def handler(request):
         nonlocal cancelled
-        request._time_service._interval = 0.1
-        request._time_service._on_cb()
 
         ws = web.WebSocketResponse(heartbeat=0.05)
         yield from ws.prepare(request)
