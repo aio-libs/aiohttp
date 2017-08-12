@@ -27,7 +27,7 @@ from .web_request import *  # noqa
 from .web_response import *  # noqa
 from .web_server import Server
 from .web_urldispatcher import *  # noqa
-from .web_urldispatcher import PrefixedSubAppResource
+from .web_urldispatcher import PrefixedSubAppResource, SubDomainResource
 from .web_ws import *  # noqa
 
 
@@ -190,6 +190,23 @@ class Application(MutableMapping):
             raise ValueError("Prefix cannot be empty")
 
         resource = PrefixedSubAppResource(prefix, subapp)
+        self.router.register_resource(resource)
+        self._reg_subapp_signals(subapp)
+        self._subapps.append(subapp)
+        if self._loop is not None:
+            subapp._set_loop(self._loop)
+        return resource
+
+    def add_subdomain(self, subdomain, subapp):
+        if self.frozen:
+            raise RuntimeError(
+                "Cannot add sub domain application to frozen application")
+        if subapp.frozen:
+            raise RuntimeError("Cannot add frozen application")
+        if subdomain == '':
+            raise ValueError("Subdomain cannot be empty")
+
+        resource = SubDomainResource(subdomain, subapp)
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
