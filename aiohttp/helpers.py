@@ -16,7 +16,6 @@ import weakref
 from collections import namedtuple
 from math import ceil
 from pathlib import Path
-from time import gmtime
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -610,67 +609,30 @@ def is_ip_address(host):
                         .format(host, type(host)))
 
 
-class TimeService:
+_cached_current_datetime = None
+_cached_formatted_datetime = None
 
-    def __init__(self, loop, *, interval=1.0):
-        self._loop = loop
-        self._interval = interval
-        self._time = time.time()
-        self._loop_time = loop.time()
-        self._count = 0
-        self._strtime = None
-        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
 
-    def close(self):
-        if self._cb:
-            self._cb.cancel()
+def rfc822_formatted_time():
+    global _cached_current_datetime
+    global _cached_formatted_datetime
 
-        self._cb = None
-        self._loop = None
-
-    def _on_cb(self, reset_count=10*60):
-        if self._count >= reset_count:
-            # reset timer every 10 minutes
-            self._count = 0
-            self._time = time.time()
-        else:
-            self._time += self._interval
-
-        self._strtime = None
-        self._loop_time = ceil(self._loop.time())
-        self._cb = self._loop.call_at(
-            self._loop_time + self._interval, self._on_cb)
-
-    def _format_date_time(self):
+    now = int(time.time())
+    if now != _cached_current_datetime:
         # Weekday and month names for HTTP date/time formatting;
         # always English!
-        # Tuples are contants stored in codeobject!
+        # Tuples are constants stored in codeobject!
         _weekdayname = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-        _monthname = (None,  # Dummy so we can use 1-based month numbers
+        _monthname = ("",  # Dummy so we can use 1-based month numbers
                       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-        year, month, day, hh, mm, ss, wd, y, z = gmtime(self._time)
-        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(now)
+        _cached_formatted_datetime = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
             _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
         )
-
-    def time(self):
-        return self._time
-
-    def strtime(self):
-        s = self._strtime
-        if s is None:
-            self._strtime = s = self._format_date_time()
-        return self._strtime
-
-    @property
-    def loop_time(self):
-        return self._loop_time
-
-    @property
-    def interval(self):
-        return self._interval
+        _cached_current_datetime = now
+    return _cached_formatted_datetime
 
 
 def _weakref_handle(info):

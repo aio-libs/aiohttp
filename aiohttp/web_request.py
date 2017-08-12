@@ -61,7 +61,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, writer, time_service, task,
+    def __init__(self, message, payload, protocol, writer, task,
                  loop,
                  *, client_max_size=1024**2,
                  state=None,
@@ -81,7 +81,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._post = None
         self._read_bytes = None
 
-        self._time_service = time_service
         self._state = state
         self._cache = {}
         self._task = task
@@ -134,7 +133,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._payload,
             self._protocol,
             self._writer,
-            self._time_service,
             self._task,
             self._loop,
             state=self._state.copy(),
@@ -401,11 +399,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def keep_alive(self):
         """Is keepalive enabled by client?"""
         return not self._message.should_close
-
-    @property
-    def time_service(self):
-        """Time service"""
-        return self._time_service
 
     @reify
     def cookies(self):
