@@ -1,6 +1,6 @@
 """HTTP related errors."""
 
-from asyncio import TimeoutError
+import asyncio
 
 
 __all__ = (
@@ -13,6 +13,8 @@ __all__ = (
     'ServerFingerprintMismatch',
 
     'ClientResponseError', 'ClientPayloadError',
+    'ContentTypeError',
+
     'ClientHttpProxyError', 'WSServerHandshakeError')
 
 
@@ -37,8 +39,8 @@ class ClientResponseError(ClientError):
         super().__init__("%s, message='%s'" % (code, message))
 
 
-class ClientPayloadError(ClientError):
-    """Response payload error."""
+class ContentTypeError(ClientResponseError):
+    """ContentType found is not valid."""
 
 
 class WSServerHandshakeError(ClientResponseError):
@@ -68,6 +70,25 @@ class ClientConnectorError(ClientOSError):
     Raised in :class:`aiohttp.connector.TCPConnector` if
         connection to proxy can not be established.
     """
+    def __init__(self, connection_key, os_error):
+        self._conn_key = connection_key
+        super().__init__(os_error.errno, os_error.strerror)
+
+    @property
+    def host(self):
+        return self._conn_key.host
+
+    @property
+    def port(self):
+        return self._conn_key.port
+
+    @property
+    def ssl(self):
+        return self._conn_key.ssl
+
+    def __str__(self):
+        return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} [{1}]'
+                .format(self._conn_key, self.strerror))
 
 
 class ClientProxyConnectionError(ClientConnectorError):
@@ -89,7 +110,7 @@ class ServerDisconnectedError(ServerConnectionError):
         self.message = message
 
 
-class ServerTimeoutError(ServerConnectionError, TimeoutError):
+class ServerTimeoutError(ServerConnectionError, asyncio.TimeoutError):
     """Server timeout error."""
 
 
@@ -106,3 +127,7 @@ class ServerFingerprintMismatch(ServerConnectionError):
         return '<{} expected={} got={} host={} port={}>'.format(
             self.__class__.__name__, self.expected, self.got,
             self.host, self.port)
+
+
+class ClientPayloadError(ClientError):
+    """Response payload error."""
