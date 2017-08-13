@@ -977,6 +977,32 @@ This can be accomplished by subscribing to the
     app.on_response_prepare.append(on_prepare)
 
 
+Additionally, the :attr:`~aiohttp.web.Application.on_startup` and
+:attr:`~aiohttp.web.Application.on_shutdown` signals can be subscribed to for
+application component setup and tear down accordingly.
+
+The following example will properly initialize and dispose an aiopg connection
+engine::
+
+    from aiopg.sa import create_engine
+
+    async def create_aiopg(app):
+        app['pg_engine'] = await create_engine(
+            user='postgre',
+            database='postgre',
+            host='localhost',
+            port=5432,
+            password=''
+        )
+
+    async def dispose_aiopg(app):
+        app['pg_engine'].close()
+        await app['pg_engine'].wait_closed()
+
+    app.on_startup.append(create_aiopg)
+    app.on_shutdown.append(dispose_aiopg)
+
+
 Signal handlers should not return a value but may modify incoming mutable
 parameters.
 
