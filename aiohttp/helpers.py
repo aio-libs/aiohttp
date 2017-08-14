@@ -588,8 +588,7 @@ class RFC822_Date:
             return cls._formatted_now
         else:
             timetuple = cls._timetuple(timestamp)
-            retval = cls._format(timetuple)
-            return retval
+            return cls._format(timetuple)
 
     @classmethod
     def _format(cls, timetuple):
