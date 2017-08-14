@@ -9,6 +9,7 @@ import functools
 import os
 import re
 import sys
+import time
 import warnings
 import weakref
 from collections import namedtuple
@@ -567,6 +568,54 @@ def is_ip_address(host):
     else:
         raise TypeError("{} [{}] is not a str or bytes"
                         .format(host, type(host)))
+
+
+class RFC822_Date:
+    _formatted_now = None
+    _time = None
+
+    @classmethod
+    def format(cls, timestamp=None):
+        """
+        if timestamp is none, assume "now", cache value for future use.
+        Invalidate cache at next second.
+        """
+        if timestamp is None:
+            timetuple = time.gmtime(ceil(time.time()))
+            if timetuple != cls._time:
+                cls._formatted_now = cls._format(timetuple)
+                cls._time = timetuple
+            return cls._formatted_now
+        else:
+            timetuple = cls._timetuple(timestamp)
+            retval = cls._format(timetuple)
+            return retval
+
+    @classmethod
+    def _format(cls, timetuple):
+        # Weekday and month names for HTTP date/time formatting;
+        # always English!
+        # Tuples are contants stored in codeobject!
+        _weekdayname = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+        _monthname = (None,  # Dummy so we can use 1-based month numbers
+                      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+        year, month, day, hh, mm, ss, wd, y, z = timetuple
+        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+            _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
+        )
+
+    @staticmethod
+    def _timetuple(timestamp):
+        if isinstance(timestamp, tuple):
+            return timestamp
+        elif isinstance(timestamp, (int, float)):
+            return time.gmtime(ceil(timestamp))
+        elif isinstance(timestamp, datetime.datetime):
+            return timestamp.utctimetuple()
+        else:
+            raise ValueError(timestamp)
 
 
 def _weakref_handle(info):
