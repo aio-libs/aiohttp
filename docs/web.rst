@@ -695,6 +695,10 @@ with the peer::
         print('websocket connection closed')
 
         return ws
+    
+The handler should be registered as HTTP GET processor::    
+    
+    app.router.add_get('/ws', websocket_handler)    
 
 .. _aiohttp-web-websocket-read-same-task:
 
