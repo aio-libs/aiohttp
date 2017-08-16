@@ -78,9 +78,9 @@ Reading Methods
 
    Read a chunk of data as it was received by the server.
 
-   Returns a tuple of (data, end_of_http_chunk).
+   Returns a tuple of (data, end_of_HTTP_chunk).
 
-   When chunked transfer encoding is used, end_of_http_chunk is a boolean
+   When chunked transfer encoding is used, end_of_HTTP_chunk is a boolean
    indicating if the end of the data corresponds to the end of a HTTP chunk,
    otherwise it is always False.
 
@@ -128,7 +128,7 @@ size limit and over any available data.
           print(data)
 
    If chunked transfer encoding is used, the original http chunks formatting
-   can be retreived by reading the second element of returned tuples::
+   can be retrieved by reading the second element of returned tuples::
 
       buffer = b""
 

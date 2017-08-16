@@ -994,7 +994,7 @@ Response object
 
       Payload stream, which contains response's BODY (:class:`StreamReader`).
       It supports various reading methods depending on the expected format.
-      When chunked transfer encoding is used by the server, allows retreiving
+      When chunked transfer encoding is used by the server, allows retrieving
       the actual http chunks.
 
       Reading from the stream may raise
