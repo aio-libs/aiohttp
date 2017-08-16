@@ -749,7 +749,7 @@ class TestEmptyStreamReader(unittest.TestCase):
         self.assertEqual(
             self.loop.run_until_complete(s.readany()), b'')
         self.assertEqual(
-            self.loop.run_until_complete(s.readchunk())[0], b'')
+            self.loop.run_until_complete(s.readchunk()), (b'', False))
         self.assertRaises(
             asyncio.IncompleteReadError,
             self.loop.run_until_complete, s.readexactly(10))
