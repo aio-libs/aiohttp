@@ -80,11 +80,11 @@ Reading Methods
 
    Returns a tuple of (data, end_of_HTTP_chunk).
 
-   When chunked transfer encoding is used, end_of_HTTP_chunk is a boolean
+   When chunked transfer encoding is used, end_of_HTTP_chunk is a :class:`bool`
    indicating if the end of the data corresponds to the end of a HTTP chunk,
-   otherwise it is always False.
+   otherwise it is always ``False``.
 
-   :return tuple[bytes, bool]: a chunk of data and a boolean that is True
+   :return tuple[bytes, bool]: a chunk of data and a :class:`bool` that is ``True``
                                when the end of the returned chunk corresponds
                                to the end of a HTTP chunk.
 
