@@ -85,7 +85,8 @@ Reading Methods
    otherwise it is always False.
 
    :return tuple[bytes, bool]: a chunk of data and a boolean that is True
-   when the end of the returned chunk corresponds to the end of a HTTP chunk.
+                               when the end of the returned chunk corresponds
+                               to the end of a HTTP chunk.
 
 
 Asynchronous Iteration Support
