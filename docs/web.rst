@@ -637,8 +637,8 @@ a container for the file as well as some of its metadata::
                                 {'CONTENT-DISPOSITION': mp3_file}))
 
 
-You might be noticed a big warning in example above. The general issue is that
-:meth:`Request.post` reads the whole payload in memory, resulting in possible
+You might have noticed a big warning in the example above. The general issue is
+that :meth:`Request.post` reads the whole payload in memory, resulting in possible
 :abbr:`OOM (Out Of Memory)` errors. To avoid this, for multipart uploads, you
 should use :meth:`Request.multipart` which returns a :ref:`multipart reader
 <aiohttp-multipart>`::
