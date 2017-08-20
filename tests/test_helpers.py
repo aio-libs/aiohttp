@@ -2,7 +2,9 @@ import asyncio
 import base64
 import datetime
 import gc
+import hashlib
 import sys
+import time
 import weakref
 from math import ceil, modf
 from pathlib import Path
@@ -14,7 +16,7 @@ import pytest
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
-from aiohttp import helpers, web
+from aiohttp import client_exceptions, helpers, web
 from aiohttp.helpers import (
     EMPTY_BODY_METHODS,
     is_expected_content_type,
@@ -1168,3 +1170,161 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
 
     assert should_remove_content_length("CONNECT", 300) is False
     assert must_be_empty_body("CONNECT", 300) is False
+
+
+# -------------------------------- DigestAuth --------------------------
+
+digest_username = "username"
+digest_password = "password"
+
+
+def make_digest_handler(algorithm="MD5", qop="auth", opaque=True):
+    async def handler(request):
+        realm = "test@example.com"
+        if "Authorization" in request.headers:
+            if algorithm == "invalid":
+                assert request.headers["Authorization"] == ""
+                return web.Response(status=401)
+
+            auth_data = helpers.parse_key_value_list(
+                request.headers["Authorization"].split(" ", 1)[1]
+            )
+
+            request_algorithm = auth_data.get("algorithm", "").upper()
+            if request_algorithm == "SHA":
+
+                def H(x):
+                    return hashlib.sha1(x.encode()).hexdigest()
+
+            else:
+
+                def H(x):
+                    return hashlib.md5(x.encode()).hexdigest()
+
+            A1 = ":".join([digest_username, realm, digest_password])
+            if request_algorithm == "MD5-SESS":
+                A1 = ":".join([H(A1), auth_data["nonce"], auth_data["cnonce"]])
+            A2 = ":".join([request.method, auth_data["uri"]])
+
+            secret = H(A1)
+            if not qop:
+                data = ":".join([auth_data["nonce"], H(A2)])
+            else:
+                data = ":".join(
+                    [
+                        auth_data["nonce"],
+                        auth_data["nc"],
+                        auth_data["cnonce"],
+                        auth_data["qop"],
+                        H(A2),
+                    ]
+                )
+
+            assert H(":".join([secret, data])) == auth_data["response"]
+
+            return web.Response()
+
+        response = web.Response(status=401)
+        data = "{}:{}".format(time.ctime().encode(), "secret")
+        nonce = hashlib.sha1(data.encode()).hexdigest()
+        pairs = ", ".join(['realm="%s"' % realm, 'nonce="%s"' % nonce])
+
+        if algorithm:
+            pairs += ", algorithm=%s" % algorithm
+        if qop:
+            pairs += ', qop="%s"' % qop
+        if opaque:
+            pairs += ', opaque="abcdef0123456789"'
+
+        response.headers["WWW-Authenticate"] = "Digest %s" % pairs
+        return response
+
+    return handler
+
+
+async def run_digest_auth_test(test_client, **kwargs):
+    app = web.Application()
+    app.router.add_route("GET", "/", make_digest_handler(**kwargs))
+    client = await test_client(app)
+
+    auth = helpers.DigestAuth(digest_username, digest_password, client)
+
+    resp = await auth.request("GET", "/?test=true")
+    assert 200 == resp.status
+
+
+async def test_digest_auth_MD5(loop, test_client):
+    await run_digest_auth_test(test_client)
+
+
+async def test_digest_auth_MD5_sess(loop, test_client):
+    await run_digest_auth_test(test_client, algorithm="MD5-SESS")
+
+
+async def test_digest_auth_sha(loop, test_client):
+    await run_digest_auth_test(test_client, algorithm="SHA")
+
+
+async def test_digest_auth_bad_algorithm(loop, test_client):
+    app = web.Application()
+    app.router.add_route("GET", "/", make_digest_handler(algorithm="invalid"))
+    client = await test_client(app)
+
+    auth = helpers.DigestAuth(digest_username, digest_password, client)
+
+    resp = await auth.request("GET", "/?test=true")
+    assert 401 == resp.status
+
+
+async def test_digest_auth_no_algorithm(loop, test_client):
+    await run_digest_auth_test(test_client, algorithm=None)
+
+
+async def test_digest_auth_no_opaque(loop, test_client):
+    await run_digest_auth_test(test_client, opaque=False)
+
+
+async def test_digest_auth_no_qop(loop, test_client):
+    await run_digest_auth_test(test_client, qop=None)
+
+
+async def test_digest_auth_qop_aut_int(loop, test_client):
+    app = web.Application()
+    app.router.add_route("GET", "/", make_digest_handler(qop="auth-int"))
+    client = await test_client(app)
+
+    auth = helpers.DigestAuth(digest_username, digest_password, client)
+
+    try:
+        await auth.request("GET", "/")
+    except client_exceptions.ClientError as e:
+        assert e.args[0] == "Unsupported qop value: auth-int"
+    else:
+        assert False
+
+
+async def test_digest_auth_previous(loop, test_client):
+    app = web.Application()
+    app.router.add_route("GET", "/", make_digest_handler())
+    client = await test_client(app)
+
+    # previous param comes from test_digest_auth_MD5.
+    auth = helpers.DigestAuth(
+        digest_username,
+        digest_password,
+        client,
+        {
+            "nonce_count": 1,
+            "last_nonce": "769ca61b934d2d9f5330f6208d4a14b2185a2c15",
+            "challenge": {
+                "qop": "auth",
+                "algorithm": "MD5",
+                "realm": "test@example.com",
+                "nonce": "769ca61b934d2d9f5330f6208d4a14b2185a2c15",
+                "opaque": "c3701d7ade598835ed0861fc179ee3ea",
+            },
+        },
+    )
+
+    resp = await auth.request("GET", "/")
+    assert 200 == resp.status

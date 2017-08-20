@@ -2011,6 +2011,117 @@ Utilities
       :return: encoded authentication data, :class:`str`.
 
 
+DigestAuth
+^^^^^^^^^^
+
+.. class:: DigestAuth(login, password', session)
+
+   HTTP digest authentication helper. Unlike :class:`DigestAuth`, this helper
+   CANNOT be passed to the *auth* parameter of a :meth:`ClientSession.request`.
+
+   :param str login: login
+   :param str password: password
+   :param `ClientSession` session: underlying session that will use digest auth
+   :param dict previous: dict containing previous auth data. ``None`` by
+                         default (optional).
+
+   .. comethod:: request(method, url, *, params=None, data=None, \
+                               json=None,\
+                               headers=None, cookies=None, auth=None, \
+                               allow_redirects=True, max_redirects=10, \
+                               encoding='utf-8', \
+                               version=HttpVersion(major=1, minor=1), \
+                               compress=None, chunked=None, expect100=False, \
+                               connector=None, loop=None,\
+                               read_until_eof=True)
+      :coroutine:
+
+      Perform an asynchronous HTTP request. Return a response object
+      (:class:`ClientResponse` or derived from).
+
+      :param str method: HTTP method
+
+      :param url: Requested URL, :class:`str` or :class:`~yarl.URL`
+
+      :param dict params: Parameters to be sent in the query
+                          string of the new request (optional)
+
+      :param dict|bytes|file data: Dictionary, bytes, or file-like object to
+                   send in the body of the request (optional)
+
+      :param json: Any json compatible python object (optional). *json* and *data*
+                   parameters could not be used at the same time.
+
+      :param dict headers: HTTP Headers to send with the request (optional)
+
+      :param dict cookies: Cookies to send with the request (optional)
+
+      :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                     Authorization (optional)
+
+      :param bool allow_redirects: If set to ``False``, do not follow redirects.
+                                   ``True`` by default (optional).
+
+      :param aiohttp.protocol.HttpVersion version: Request HTTP version (optional)
+
+      :param bool compress: Set to ``True`` if request has to be compressed
+                            with deflate encoding.
+                            ``False`` instructs aiohttp to not compress data.
+                            ``None`` by default (optional).
+
+      :param int chunked: Enables chunked transfer encoding.
+                          ``None`` by default (optional).
+
+      :param bool expect100: Expect 100-continue response from server.
+                             ``False`` by default (optional).
+
+      :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
+         instance to support connection pooling.
+
+      :param bool read_until_eof: Read response until EOF if response
+                                  does not have Content-Length header.
+                                  ``True`` by default (optional).
+
+      :param loop: :ref:`event loop<asyncio-event-loop>`
+                   used for processing HTTP requests.
+                   If param is ``None``, :func:`asyncio.get_event_loop`
+                   is used for getting default event loop.
+
+                   .. deprecated:: 2.0
+
+      :rtype: :class:`client response <ClientResponse>`
+
+   Usage::
+
+      import aiohttp
+      import asyncio
+
+      async def fetch(client):
+          auth = aiohttp.DigestAuth('usr', 'psswd', client)
+          resp = await auth.request('GET', 'http://httpbin.org/digest-auth/auth/usr/psswd/MD5/never')
+          assert resp.status == 200
+          # If you don't reuse the DigestAuth object you can store this data
+          # and pass it as the last argument the next time you instantiate a
+          # DigestAuth object. For example,
+          # aiohttp.DigestAuth('usr', 'psswd', client, previous). This will
+          # save a second request being launched to re-authenticate.
+          previous = {
+              'nonce_count': auth.nonce_count,
+              'last_nonce': auth.last_nonce,
+              'challenge': auth.challenge,
+          }
+
+          return await resp.text()
+
+      async def main():
+          async with aiohttp.ClientSession() as client:
+              text = await fetch(client)
+              print(text)
+
+      loop = asyncio.get_event_loop()
+      loop.run_until_complete(main())
+
+
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
