@@ -12,11 +12,12 @@ import sys
 import time
 import warnings
 import weakref
+import hashlib
 from collections import namedtuple
 from math import ceil
 from pathlib import Path
 from time import gmtime
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from async_timeout import timeout
 
@@ -214,6 +215,183 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         """Encode credentials."""
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
+
+
+def parse_pair(pair):
+    if '=' not in pair:
+        return pair, None
+
+    key, value = pair.split('=', 1)
+
+    # If it has a trailing comma, remove it.
+    if value[-1] == ',':
+        value = value[:-1]
+
+    # If it is quoted, then remove them.
+    if value[0] == value[-1] == '"':
+        value = value[1:-1]
+
+    return key, value
+
+
+def parse_key_value_list(header):
+    return {
+        key: value for key, value in
+        map(parse_pair, header.split(' '))
+    }
+
+
+class DigestAuth():
+    """HTTP digest authentication helper.
+    The work here is based off of https://github.com/requests/requests/blob/v2.18.4/requests/auth.py.
+
+    :param str username: Username or login
+    :param str password: Password
+    :param ClientSession session: Session to use digest auth
+    """
+
+    def __init__(self, username, password, session):
+        self.username = username
+        self.password = password
+        self.last_nonce = ''
+        self.nonce_count = 0
+        self.challenge = None
+        self.num_401 = 0
+        self.args = {}
+        self.session = session
+
+    @asyncio.coroutine
+    def request(self, method, url, *, headers=None, **kwargs):
+        if headers is None:
+            headers = {}
+
+        # Save the args so we can re-run the request
+        self.args = {
+            'method': method,
+            'url': url,
+            'headers': headers,
+            'kwargs': kwargs
+        }
+
+        if self.challenge:
+            headers[hdrs.AUTHORIZATION] = self.build_digest_header(
+                method.upper(), url
+            )
+
+        response = yield from self.session.request(
+            method, url, headers=headers, **kwargs
+        )
+
+        # If the response is not in the 400 range, do not try digest
+        # authentication.
+        if not 400 <= response.status < 500:
+            self.num_401 = 1
+            return response
+
+        return (yield from self.handle_401(response))
+
+    def build_digest_header(self, method, url):
+        """
+        :rtype: str
+        """
+
+        realm = self.challenge['realm']
+        nonce = self.challenge['nonce']
+        qop = self.challenge.get('qop')
+        algorithm = self.challenge.get('algorithm', 'MD5').upper()
+        opaque = self.challenge.get('opaque')
+
+        # lambdas assume digest modules are imported at the top level
+        if algorithm == 'MD5' or algorithm == 'MD5-SESS':
+            hash_fn = hashlib.md5
+        elif algorithm == 'SHA':
+            hash_fn = hashlib.sha1
+        else:
+            return ''
+
+        def hash_utf8(x):
+            if isinstance(x, str):
+                x = x.encode('utf-8')
+            return hash_fn(x).hexdigest()
+
+        KD = lambda s, d: hash_utf8('%s:%s' % (s, d))
+
+        parsed = urlparse(url)
+        #: path is request-uri defined in RFC 2616 which should not be empty
+        path = parsed.path or "/"
+        if parsed.query:
+            path += '?' + parsed.query
+
+        A1 = '%s:%s:%s' % (self.username, realm, self.password)
+        A2 = '%s:%s' % (method, path)
+
+        HA1 = hash_utf8(A1)
+        HA2 = hash_utf8(A2)
+
+        if nonce == self.last_nonce:
+            self.nonce_count += 1
+        else:
+            self.nonce_count = 1
+
+        self.last_nonce = nonce
+
+        ncvalue = '%08x' % self.nonce_count
+
+        k = str(self.nonce_count).encode('utf-8')
+        k += nonce.encode('utf-8')
+        k += time.ctime().encode('utf-8')
+        k += os.urandom(8)
+        cnonce = (hashlib.sha1(k).hexdigest()[:16])
+
+        if algorithm == 'MD5-SESS':
+            HA1 = hash_utf8('%s:%s:%s' % (HA1, nonce, cnonce))
+
+        if not qop:
+            respdig = KD(HA1, '%s:%s' % (nonce, HA2))
+        elif qop == 'auth' or 'auth' in qop.split(','):
+            noncebit = '%s:%s:%s:%s:%s' % (
+                nonce, ncvalue, cnonce, 'auth', HA2
+            )
+            respdig = KD(HA1, noncebit)
+        else:
+            return ''
+
+        base = 'username="%s", realm="%s", nonce="%s", uri="%s", ' \
+               'response="%s"' % (self.username, realm, nonce, path, respdig)
+        if opaque:
+            base += ', opaque="%s"' % opaque
+        if algorithm:
+            base += ', algorithm="%s"' % algorithm
+        if qop:
+            base += ', qop="auth", nc=%s, cnonce="%s"' % (ncvalue, cnonce)
+
+        return 'Digest %s' % base
+
+    @asyncio.coroutine
+    def handle_401(self, response):
+        """
+        Takes the given response and tries digest-auth, if needed.
+        :rtype: ClientResponse
+        """
+        auth_header = response.headers.get('www-authenticate', '')
+
+        if 'digest' in auth_header.lower() and self.num_401 < 2:
+
+            self.num_401 += 1
+            pattern = re.compile(r'digest ', flags=re.IGNORECASE)
+            self.challenge = parse_key_value_list(
+                pattern.sub('', auth_header, count=1)
+            )
+
+            return (yield from self.request(
+                self.args['method'],
+                self.args['url'],
+                headers=self.args['headers'],
+                **self.args['kwargs'],
+            ))
+
+        self.num_401 = 1
+        return response
 
 
 if PY_352:
