@@ -168,16 +168,15 @@ call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_use
 
     async def echo_handler(request):
 
-        ws = aiohttp.web.WebSocketResponse()
+        ws = web.WebSocketResponse()
         user_id = authenticate_user(request)
         await ws.prepare(request)
-
-        request.app['websockets'][user_id].append(ws)
+        request.app['websockets'][user_id][id(ws)] = ws
         try:
             async for msg in ws:
                 ws.send_str(msg.data)
         finally:
-            request.app['websockets'][user_id].remove(ws)
+            del request.app['websockets'][user_id][id(ws)]
 
         return ws
 
@@ -186,20 +185,21 @@ call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_use
 
         user_id = authenticate_user(request)
 
-        ws_closers = [ws.close() for ws in request.app['websockets'][user_id] if not ws.closed]
+        ws_closers = [ws.close() for ws in request.app['websockets'][user_id].values() if not ws.closed]
 
         # Watch out, this will keep us from returing the response until all are closed
-        ws_closers and await asyncio.wait(ws_closers)
+        ws_closers and await asyncio.gather(*ws_closers)
 
-        return aiohttp.web.Response(text='OK')
+        return web.Response(text='OK')
+
 
     def main():
         loop = asyncio.get_event_loop()
-        app = aiohttp.web.Application(loop=loop)
+        app = web.Application(loop=loop)
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['websockets'] = defaultdict(deque)
-        aiohttp.web.run_app(app, host='localhost', port=8080)
+        app['websockets'] = defaultdict(dict)
+        web.run_app(app, host='localhost', port=8080)
 
 
 How to make request from a specific IP address?
