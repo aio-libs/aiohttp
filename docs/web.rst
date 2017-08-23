@@ -634,14 +634,14 @@ a container for the file as well as some of its metadata::
 
         return web.Response(body=content,
                             headers=MultiDict(
-                                {'CONTENT-DISPOSITION': mp3_file})
+                                {'CONTENT-DISPOSITION': mp3_file}))
 
 
-You might be noticed a big warning in example above. The general issue is that
-:meth:`Request.post` reads whole payload in memory. That's may hurt with
-:abbr:`OOM (Out Of Memory)` error. To avoid this, for multipart uploads, you
-should use :meth:`Request.multipart` which returns :ref:`multipart reader
-<aiohttp-multipart>` back::
+You might have noticed a big warning in the example above. The general issue is
+that :meth:`Request.post` reads the whole payload in memory, resulting in possible
+:abbr:`OOM (Out Of Memory)` errors. To avoid this, for multipart uploads, you
+should use :meth:`Request.multipart` which returns a :ref:`multipart reader
+<aiohttp-multipart>`::
 
     async def store_mp3_handler(request):
 
