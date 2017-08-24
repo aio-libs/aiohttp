@@ -1243,8 +1243,7 @@ manually.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      :return: :class:`~aiohttp.WSMessage`, `tp` is a type from
-         :class:`~aiohttp.WSMsgType` enumeration.
+      :return: :class:`~aiohttp.WSMessage`
 
    .. coroutinemethod:: receive_str()
 
