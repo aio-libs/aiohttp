@@ -171,12 +171,12 @@ call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_use
         ws = web.WebSocketResponse()
         user_id = authenticate_user(request)
         await ws.prepare(request)
-        request.app['websockets'][user_id][id(ws)] = ws
+        request.app['websockets'][user_id].add(ws)
         try:
             async for msg in ws:
                 ws.send_str(msg.data)
         finally:
-            del request.app['websockets'][user_id][id(ws)]
+            request.app['websockets'][user_id].remove(ws)
 
         return ws
 
@@ -185,7 +185,7 @@ call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_use
 
         user_id = authenticate_user(request)
 
-        ws_closers = [ws.close() for ws in request.app['websockets'][user_id].values() if not ws.closed]
+        ws_closers = [ws.close() for ws in request.app['websockets'][user_id] if not ws.closed]
 
         # Watch out, this will keep us from returing the response until all are closed
         ws_closers and await asyncio.gather(*ws_closers)
@@ -198,7 +198,7 @@ call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_use
         app = web.Application(loop=loop)
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
-        app['websockets'] = defaultdict(dict)
+        app['websockets'] = defaultdict(set)
         web.run_app(app, host='localhost', port=8080)
 
 
