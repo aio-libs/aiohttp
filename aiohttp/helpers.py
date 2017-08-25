@@ -6,6 +6,7 @@ import binascii
 import cgi
 import datetime
 import functools
+import inspect
 import os
 import re
 import sys
@@ -821,3 +822,9 @@ class DummyCookieJar(AbstractCookieJar):
 
     def filter_cookies(self, request_url):
         return None
+
+
+def isasyncgenfunction(obj):
+    if hasattr(inspect, 'isasyncgenfunction'):
+        return inspect.isasyncgenfunction(obj)
+    return False
