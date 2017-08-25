@@ -364,7 +364,7 @@ How to manage ClientSession inside web server?
 of the server in order to benefit from connection pooling.
 
 Session saves cookies internally. If you don't need cookies processing
-use :class:`aiohttp.helpers.DummyCookieJar`. If you need separate cookies
+use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
 for different http calls but process them in logical chains use single
-:class:`aiohttp.connector.TCPConnector` with separate
-client session and `own_connector=False`.
+:class:`aiohttp.TCPConnector` with separate
+client session and ``own_connector=False``.
