@@ -355,3 +355,16 @@ time consuming operation is very tricky matter.
 If you need global compression -- write own custom middleware. Or
 enable compression in NGINX (you are deploying aiohttp behind reverse
 proxy, is not it).
+
+
+How to manage ClientSession inside web server?
+----------------------------------------------
+
+:class:`aiohttp.ClientSession` should be created once for the lifetime
+of the server in order to benefit from connection pooling.
+
+Session saves cookies internally. If you don't need cookies processing
+use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
+for different http calls but process them in logical chains use single
+:class:`aiohttp.TCPConnector` with separate
+client session and ``own_connector=False``.
