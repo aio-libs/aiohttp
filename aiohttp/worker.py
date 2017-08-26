@@ -48,7 +48,8 @@ class GunicornWebWorker(base.Worker):
         try:
             self.loop.run_until_complete(self._runner)
         finally:
-            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            if hasattr(self.loop, 'shutdown_asyncgens'):
+                self.loop.run_until_complete(self.loop.shutdown_asyncgens())
             self.loop.close()
 
         sys.exit(self.exit_code)
