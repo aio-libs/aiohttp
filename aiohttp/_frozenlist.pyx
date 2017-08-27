@@ -4,9 +4,11 @@ from collections.abc import MutableSequence
 cdef class FrozenList:
 
     cdef readonly bint frozen
+    cdef readonly bint _receivers 
     cdef list _items
 
     def __init__(self, items=None):
+        self._receivers = False
         self.frozen = False
         if items is not None:
             items = list(items)
@@ -17,6 +19,9 @@ cdef class FrozenList:
     cdef object _check_frozen(self):
         if self.frozen:
             raise RuntimeError("Cannot modify frozen list.")
+
+    cdef object _fast_len(self):
+        return len(self._items)
 
     def freeze(self):
         self.frozen = True
@@ -33,7 +38,7 @@ cdef class FrozenList:
         del self._items[index]
 
     def __len__(self):
-        return self._items.__len__()
+        return self._fast_len()
 
     def __iter__(self):
         return self._items.__iter__()
