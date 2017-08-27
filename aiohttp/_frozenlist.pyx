@@ -4,11 +4,9 @@ from collections.abc import MutableSequence
 cdef class FrozenList:
 
     cdef readonly bint frozen
-    cdef readonly bint _receivers 
     cdef list _items
 
     def __init__(self, items=None):
-        self._receivers = False
         self.frozen = False
         if items is not None:
             items = list(items)
