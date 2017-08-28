@@ -18,7 +18,7 @@ cdef class FrozenList:
         if self.frozen:
             raise RuntimeError("Cannot modify frozen list.")
 
-    cdef object _fast_len(self):
+    cdef inline object _fast_len(self):
         return len(self._items)
 
     def freeze(self):
