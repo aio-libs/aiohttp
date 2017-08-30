@@ -904,6 +904,11 @@ the **next** *middleware factory*. The last *middleware factory* always receives
 the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
 (by :meth:`UrlDispatcher.resolve`).
 
+.. note::
+
+   Both the outer *middleware_factory* coroutine and the inner
+   *middleware_handler* coroutine are called for every request handled.
+
 *Middleware factories* should return a new handler that has the same signature
 as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
 single :class:`Request` instance and return a :class:`Response`, or raise an
