@@ -2,7 +2,7 @@
 
 all: test
 
-.install-deps: requirements/dev.txt
+.install-deps: $(shell find requirements -type f)
 	@pip install -U -r requirements/dev.txt
 	@touch .install-deps
 
