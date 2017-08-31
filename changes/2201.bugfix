@@ -1,0 +1,1 @@
+Fixes uncaught TypeError in `helpers.guess_filename` if `name` is not a string

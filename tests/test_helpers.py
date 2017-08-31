@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import gc
 import sys
+import tempfile
 from unittest import mock
 
 import pytest
@@ -81,6 +82,13 @@ def test_parse_mimetype_8():
     assert (
         helpers.parse_mimetype('text/plain;base64') ==
         ('text', 'plain', '', {'base64': ''}))
+
+
+# ------------------- guess_filename ----------------------------------
+
+def test_guess_filename_with_tempfile():
+    with tempfile.TemporaryFile() as fp:
+        assert (helpers.guess_filename(fp, 'no-throw') is not None)
 
 
 def test_basic_auth1():
