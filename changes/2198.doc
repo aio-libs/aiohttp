@@ -1,0 +1,1 @@
+Document `encoded=True` for `yarl.URL`, it disables all yarl transformations.
