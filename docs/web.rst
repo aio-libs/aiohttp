@@ -634,14 +634,14 @@ a container for the file as well as some of its metadata::
 
         return web.Response(body=content,
                             headers=MultiDict(
-                                {'CONTENT-DISPOSITION': mp3_file})
+                                {'CONTENT-DISPOSITION': mp3_file}))
 
 
-You might be noticed a big warning in example above. The general issue is that
-:meth:`Request.post` reads whole payload in memory. That's may hurt with
-:abbr:`OOM (Out Of Memory)` error. To avoid this, for multipart uploads, you
-should use :meth:`Request.multipart` which returns :ref:`multipart reader
-<aiohttp-multipart>` back::
+You might have noticed a big warning in the example above. The general issue is
+that :meth:`Request.post` reads the whole payload in memory, resulting in possible
+:abbr:`OOM (Out Of Memory)` errors. To avoid this, for multipart uploads, you
+should use :meth:`Request.multipart` which returns a :ref:`multipart reader
+<aiohttp-multipart>`::
 
     async def store_mp3_handler(request):
 
@@ -919,6 +919,11 @@ the **next** *middleware factory*. The last *middleware factory* always receives
 the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
 (by :meth:`UrlDispatcher.resolve`).
 
+.. note::
+
+   Both the outer *middleware_factory* coroutine and the inner
+   *middleware_handler* coroutine are called for every request handled.
+
 *Middleware factories* should return a new handler that has the same signature
 as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
 single :class:`Request` instance and return a :class:`Response`, or raise an
@@ -1027,6 +1032,32 @@ This can be accomplished by subscribing to the
         response.headers['My-Header'] = 'value'
 
     app.on_response_prepare.append(on_prepare)
+
+
+Additionally, the :attr:`~aiohttp.web.Application.on_startup` and
+:attr:`~aiohttp.web.Application.on_cleanup` signals can be subscribed to for
+application component setup and tear down accordingly.
+
+The following example will properly initialize and dispose an aiopg connection
+engine::
+
+    from aiopg.sa import create_engine
+
+    async def create_aiopg(app):
+        app['pg_engine'] = await create_engine(
+            user='postgre',
+            database='postgre',
+            host='localhost',
+            port=5432,
+            password=''
+        )
+
+    async def dispose_aiopg(app):
+        app['pg_engine'].close()
+        await app['pg_engine'].wait_closed()
+
+    app.on_startup.append(create_aiopg)
+    app.on_cleanup.append(dispose_aiopg)
 
 
 Signal handlers should not return a value but may modify incoming mutable
