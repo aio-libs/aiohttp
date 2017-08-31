@@ -55,7 +55,7 @@
    IDNA
 
        An Internationalized Domain Name in Applications (IDNA) is an
-       standard for encoding Internet Domain Names that contain in
+       industry standard for encoding Internet Domain Names that contain in
        whole or in part, in a language-specific script or alphabet,
        such as Arabic, Chinese, Cyrillic, Tamil, Hebrew or the Latin
        alphabet-based characters with diacritics or ligatures, such as
