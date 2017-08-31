@@ -5,8 +5,12 @@ import os
 import re
 import signal
 import socket
-import ssl
 import sys
+
+try:
+    import ssl
+except ImportError:
+    ssl = None
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -202,6 +206,9 @@ class GunicornWebWorker(base.Worker):
 
         See ssl.SSLSocket.__init__ for more details.
         """
+        if ssl is None:
+            raise RuntimeError('SSL is not supported.')
+
         ctx = ssl.SSLContext(cfg.ssl_version)
         ctx.load_cert_chain(cfg.certfile, cfg.keyfile)
         ctx.verify_mode = cfg.cert_reqs

@@ -1,9 +1,14 @@
 import asyncio
 import functools
-import ssl
 import sys
 import traceback
 import warnings
+
+try:
+    import ssl
+except ImportError:
+    ssl = None
+    
 from collections import defaultdict, namedtuple
 from hashlib import md5, sha1, sha256
 from itertools import cycle, islice
@@ -626,6 +631,9 @@ class TCPConnector(BaseConnector):
 
         Lazy property, creates context on demand.
         """
+        if ssl is None:
+            raise RuntimeError('SSL is not supported.')
+
         if self._ssl_context is None:
             if not self._verify_ssl:
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
