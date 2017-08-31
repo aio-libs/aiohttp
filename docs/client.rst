@@ -117,7 +117,7 @@ is not encoded by library. Note that ``+`` is not encoded::
    ``URL('http://example.com/%D0%BF%D1%83%D1%82%D1%8C/0?a=1')``.
 
    Sometimes canonization is not desirable if server accepts exact
-   representation and doesn't requote URL itself.
+   representation and does not requote URL itself.
 
    To disable canonization use ``encoded=True`` parameter for URL construction::
 
