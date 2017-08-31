@@ -123,6 +123,8 @@ is not encoded by library. Note that ``+`` is not encoded::
 
       await session.get(URL('http://example.com/%30', encoded=True))
 
+.. warning::
+
    Passing *params* overrides ``encoded=True``, never use both options.
 
 Response Content
