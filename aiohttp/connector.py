@@ -3,6 +3,12 @@ import functools
 import sys
 import traceback
 import warnings
+
+try:
+    import ssl
+except ImportError:
+    ssl = None
+    
 from collections import defaultdict, namedtuple
 from hashlib import md5, sha1, sha256
 from itertools import cycle, islice
@@ -19,10 +25,6 @@ from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
-try:
-    import ssl
-except ImportError:
-    ssl = None
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
 
