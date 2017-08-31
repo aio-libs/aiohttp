@@ -5,13 +5,18 @@ import os
 import re
 import signal
 import socket
-import ssl
 import sys
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
 from .helpers import AccessLogger, create_future, ensure_future
+
+
+try:
+    import ssl
+except ImportError:  # pragma: no cover
+    ssl = None
 
 
 __all__ = ('GunicornWebWorker',
@@ -202,6 +207,9 @@ class GunicornWebWorker(base.Worker):
 
         See ssl.SSLSocket.__init__ for more details.
         """
+        if ssl is None:  # pragma: no cover
+            raise RuntimeError('SSL is not supported.')
+
         ctx = ssl.SSLContext(cfg.ssl_version)
         ctx.load_cert_chain(cfg.certfile, cfg.keyfile)
         ctx.verify_mode = cfg.cert_reqs
