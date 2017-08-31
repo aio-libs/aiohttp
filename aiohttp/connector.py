@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import ssl
 import sys
 import traceback
 import warnings
@@ -20,6 +19,10 @@ from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
+try:
+    import ssl
+except ImportError:
+    ssl = None
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
 
@@ -626,6 +629,9 @@ class TCPConnector(BaseConnector):
 
         Lazy property, creates context on demand.
         """
+        if ssl is None:
+            raise RuntimeError('SSL is not supported.')
+
         if self._ssl_context is None:
             if not self._verify_ssl:
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
