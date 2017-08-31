@@ -3,12 +3,6 @@ import functools
 import sys
 import traceback
 import warnings
-
-try:
-    import ssl
-except ImportError:
-    ssl = None
-    
 from collections import defaultdict, namedtuple
 from hashlib import md5, sha1, sha256
 from itertools import cycle, islice
@@ -24,6 +18,12 @@ from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
+
+
+try:
+    import ssl
+except ImportError:  # pragma: no cover
+    ssl = None
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
@@ -631,7 +631,7 @@ class TCPConnector(BaseConnector):
 
         Lazy property, creates context on demand.
         """
-        if ssl is None:
+        if ssl is None:  # pragma: no cover
             raise RuntimeError('SSL is not supported.')
 
         if self._ssl_context is None:
