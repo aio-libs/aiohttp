@@ -277,7 +277,7 @@ def parse_mimetype(mimetype):
 
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
-    if name and name[0] != '<' and name[-1] != '>':
+    if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
         return Path(name).name
     return default
 

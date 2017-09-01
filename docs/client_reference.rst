@@ -778,12 +778,11 @@ TCPConnector
       Custom resolvers allow to resolve hostnames differently than the
       way the host is configured.
 
-      .. versionadded:: 0.22
+      .. versionchanged:: 1.1
 
-      .. versionchanged:: 1.0
-
-         The resolver is ``aiohttp.AsyncResolver`` now if
-         :term:`aiodns` is installed.
+         The resolver is ``aiohttp.ThreadedResolver`` by default,
+         asynchronous version is not pretty robust but might fail in
+         very rare cases.
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
@@ -1246,8 +1245,7 @@ manually.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      :return: :class:`~aiohttp.WSMessage`, `tp` is a type from
-         :class:`~aiohttp.WSMsgType` enumeration.
+      :return: :class:`~aiohttp.WSMessage`
 
    .. coroutinemethod:: receive_str()
 
