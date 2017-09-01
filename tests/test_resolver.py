@@ -118,6 +118,27 @@ def test_async_resolver_query_negative_lookup(loop):
             yield from resolver.resolve('doesnotexist.bla')
 
 
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+@asyncio.coroutine
+def test_async_resolver_no_hosts_in_query(loop):
+    with patch('aiodns.DNSResolver') as mock:
+        del mock().gethostbyname
+        mock().query.return_value = fake_query_result([])
+        resolver = AsyncResolver(loop=loop)
+        with pytest.raises(OSError):
+            yield from resolver.resolve('doesnotexist.bla')
+
+
+@pytest.mark.skipif(not gethostbyname, reason="aiodns 1.1 required")
+@asyncio.coroutine
+def test_async_resolver_no_hosts_in_gethostbyname(loop):
+    with patch('aiodns.DNSResolver') as mock:
+        mock().gethostbyname.return_value = fake_result([])
+        resolver = AsyncResolver(loop=loop)
+        with pytest.raises(OSError):
+            yield from resolver.resolve('doesnotexist.bla')
+
+
 @asyncio.coroutine
 def test_threaded_resolver_positive_lookup():
     loop = Mock()

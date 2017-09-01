@@ -60,7 +60,7 @@ class AsyncResolver(AbstractResolver):
 
         if not hasattr(self._resolver, 'gethostbyname'):
             # aiodns 1.1 is not available, fallback to DNSResolver.query
-            self.resolve = self.resolve_with_query
+            self.resolve = self._resolve_with_query
 
     @asyncio.coroutine
     def resolve(self, host, port=0, family=socket.AF_INET):
@@ -83,7 +83,7 @@ class AsyncResolver(AbstractResolver):
         return hosts
 
     @asyncio.coroutine
-    def resolve_with_query(self, host, port=0, family=socket.AF_INET):
+    def _resolve_with_query(self, host, port=0, family=socket.AF_INET):
         if family == socket.AF_INET6:
             qtype = 'AAAA'
         else:
