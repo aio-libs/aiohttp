@@ -103,7 +103,7 @@ def test_async_resolver_negative_lookup(loop):
     with patch('aiodns.DNSResolver') as mock:
         mock().gethostbyname.side_effect = aiodns.error.DNSError()
         resolver = AsyncResolver(loop=loop)
-        with pytest.raises(aiodns.error.DNSError):
+        with pytest.raises(OSError):
             yield from resolver.resolve('doesnotexist.bla')
 
 
@@ -114,7 +114,7 @@ def test_async_resolver_query_negative_lookup(loop):
         del mock().gethostbyname
         mock().query.side_effect = aiodns.error.DNSError()
         resolver = AsyncResolver(loop=loop)
-        with pytest.raises(aiodns.error.DNSError):
+        with pytest.raises(OSError):
             yield from resolver.resolve('doesnotexist.bla')
 
 
