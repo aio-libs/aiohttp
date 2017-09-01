@@ -107,7 +107,7 @@ size limit and over any available data.
 .. comethod:: StreamReader.iter_chunks()
    :async-for:
 
-   Iterates over data chunks as received from the server:: 
+   Iterates over data chunks as received from the server::
 
       async for data in response.content.iter_chunks():
           print(data)
