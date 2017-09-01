@@ -71,16 +71,18 @@ class TestFlowControlStreamReader(unittest.TestCase):
     def test_readchunk(self):
         r = self._make_one()
         r.feed_data(b'data', 4)
-        res = self.loop.run_until_complete(r.readchunk())
+        res, end_of_http_chunk = self.loop.run_until_complete(r.readchunk())
         self.assertEqual(res, b'data')
+        self.assertFalse(end_of_http_chunk)
         self.assertFalse(r._protocol.resume_reading.called)
 
     def test_readchunk_resume_paused(self):
         r = self._make_one()
         r._protocol._reading_paused = True
         r.feed_data(b'data', 4)
-        res = self.loop.run_until_complete(r.readchunk())
+        res, end_of_http_chunk = self.loop.run_until_complete(r.readchunk())
         self.assertEqual(res, b'data')
+        self.assertFalse(end_of_http_chunk)
         self.assertTrue(r._protocol.resume_reading.called)
 
     def test_readexactly(self):

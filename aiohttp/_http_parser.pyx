@@ -117,6 +117,8 @@ cdef class HttpParser:
         self._csettings.on_body = cb_on_body
         self._csettings.on_message_begin = cb_on_message_begin
         self._csettings.on_message_complete = cb_on_message_complete
+        self._csettings.on_chunk_header = cb_on_chunk_header
+        self._csettings.on_chunk_complete = cb_on_chunk_complete
 
         self._last_error = None
 
@@ -208,6 +210,11 @@ cdef class HttpParser:
         self._payload.feed_eof()
         self._payload = None
 
+    cdef _on_chunk_header(self):
+        self._payload.begin_http_chunk_receiving()
+
+    cdef _on_chunk_complete(self):
+        self._payload.end_http_chunk_receiving()
 
     ### Public API ###
 
@@ -429,6 +436,28 @@ cdef int cb_on_message_complete(cparser.http_parser* parser) except -1:
     try:
         pyparser._started = False
         pyparser._on_message_complete()
+    except BaseException as exc:
+        pyparser._last_error = exc
+        return -1
+    else:
+        return 0
+
+
+cdef int cb_on_chunk_header(cparser.http_parser* parser) except -1:
+    cdef HttpParser pyparser = <HttpParser>parser.data
+    try:
+        pyparser._on_chunk_header()
+    except BaseException as exc:
+        pyparser._last_error = exc
+        return -1
+    else:
+        return 0
+
+
+cdef int cb_on_chunk_complete(cparser.http_parser* parser) except -1:
+    cdef HttpParser pyparser = <HttpParser>parser.data
+    try:
+        pyparser._on_chunk_complete()
     except BaseException as exc:
         pyparser._last_error = exc
         return -1

@@ -74,6 +74,21 @@ Reading Methods
    :return bytes: the given line
 
 
+.. comethod:: StreamReader.readchunk()
+
+   Read a chunk of data as it was received by the server.
+
+   Returns a tuple of (data, end_of_HTTP_chunk).
+
+   When chunked transfer encoding is used, end_of_HTTP_chunk is a :class:`bool`
+   indicating if the end of the data corresponds to the end of a HTTP chunk,
+   otherwise it is always ``False``.
+
+   :return tuple[bytes, bool]: a chunk of data and a :class:`bool` that is ``True``
+                               when the end of the returned chunk corresponds
+                               to the end of a HTTP chunk.
+
+
 Asynchronous Iteration Support
 ------------------------------
 
@@ -109,8 +124,19 @@ size limit and over any available data.
 
    Iterates over data chunks as received from the server::
 
-      async for data in response.content.iter_chunks():
+      async for data, _ in response.content.iter_chunks():
           print(data)
+
+   If chunked transfer encoding is used, the original http chunks formatting
+   can be retrieved by reading the second element of returned tuples::
+
+      buffer = b""
+
+      async for data, end_of_http_chunk in response.content.iter_chunks():
+          buffer += data
+          if end_of_http_chunk:
+              print(buffer)
+              buffer = b""
 
 
 Helpers

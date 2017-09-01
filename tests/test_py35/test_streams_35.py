@@ -81,3 +81,24 @@ async def test_stream_reader_iter(loop):
     async for raw in create_stream(loop):
         assert raw == next(it)
     pytest.raises(StopIteration, next, it)
+
+
+async def test_stream_reader_iter_chunks_no_chunked_encoding(loop):
+    it = iter([b'line1\nline2\nline3\n'])
+    async for data, end_of_chunk in create_stream(loop).iter_chunks():
+        assert (data, end_of_chunk) == (next(it), False)
+    pytest.raises(StopIteration, next, it)
+
+
+async def test_stream_reader_iter_chunks_chunked_encoding(loop):
+    stream = streams.StreamReader(loop=loop)
+    for line in DATA.splitlines(keepends=True):
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(line)
+        stream.end_http_chunk_receiving()
+    stream.feed_eof()
+
+    it = iter([b'line1\n', b'line2\n', b'line3\n'])
+    async for data, end_of_chunk in stream.iter_chunks():
+        assert (data, end_of_chunk) == (next(it), True)
+    pytest.raises(StopIteration, next, it)
