@@ -52,6 +52,18 @@
 
        http://gunicorn.org/
 
+   IDNA
+
+       An Internationalized Domain Name in Applications (IDNA) is an
+       industry standard for encoding Internet Domain Names that contain in
+       whole or in part, in a language-specific script or alphabet,
+       such as Arabic, Chinese, Cyrillic, Tamil, Hebrew or the Latin
+       alphabet-based characters with diacritics or ligatures, such as
+       French. These writing systems are encoded by computers in
+       multi-byte Unicode. Internationalized domain names are stored
+       in the Domain Name System as ASCII strings using Punycode
+       transcription.
+
    keep-alive
 
        A technique for communicating between HTTP client and server
@@ -67,6 +79,16 @@
       proxy server, and a generic TCP/UDP proxy server.
 
       https://nginx.org/en/
+
+   percent-encoding
+
+      A mechanism for encoding information in a Uniform Resource
+      Locator (URL) if URL parts don't fit in safe characters space.
+
+   requoting
+
+      Applying :term:`percent-encoding` to non-safe symbols and decode
+      percent encoded safe symbols back.
 
    resource
 

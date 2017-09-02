@@ -20,7 +20,7 @@ Servers<aiohttp-web-lowlevel>` (which have no applications, routers, signals
 and middlewares) and :class:`Request` has an *application* and *match
 info* attributes.
 
-A :class:`BaseRequest`/:class:`Request` are :obj:`dict`-like objects,
+A :class:`BaseRequest` / :class:`Request` are :obj:`dict` like objects,
 allowing them to be used for :ref:`sharing
 data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
 and :ref:`aiohttp-web-signals` handlers.
@@ -126,6 +126,21 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns  :class:`str`, or ``None`` if no host name is found in the
       headers.
 
+   .. attribute:: remote
+
+      Originating IP address of a client initiated HTTP request.
+
+      The IP is resolved through the following headers, in this order:
+
+      - *Forwarded*
+      - *X-Forwarded-For*
+      - peer name of opened socket
+
+      Returns :class:`str`, or ``None`` if no remote IP information is
+      provided.
+
+      .. versionadded:: 2.3
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -215,15 +230,33 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only property.
 
-   .. attribute:: has_body
+   .. attribute:: body_exists
 
       Return ``True`` if request has *HTTP BODY*, ``False`` otherwise.
 
       Read-only :class:`bool` property.
 
-      .. versionadded:: 0.16
+      .. versionadded:: 2.3
 
-   .. attribute:: content_type
+   .. attribute:: can_read_body
+
+      Return ``True`` if request's *HTTP BODY* can be read, ``False`` otherwise.
+
+      Read-only :class:`bool` property.
+
+      .. versionadded:: 2.3
+
+   .. attribute:: has_body
+
+      Return ``True`` if request's *HTTP BODY* can be read, ``False`` otherwise.
+
+      Read-only :class:`bool` property.
+
+      .. deprecated:: 2.3
+
+         Use :meth:`can_read_body` instead.
+
+ .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
 
@@ -1496,6 +1529,15 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :returns: new :class:`PlainRoute` or :class:`DynamicRoute` instance.
 
+   .. method:: add_routes(routes_table)
+
+      Register route definitions from *routes_table*.
+
+      The table is a :class:`list` of :class:`RouteDef` items or
+      :class:`RouteTableDef`.
+
+      .. versionadded:: 2.3
+
    .. method:: add_get(path, handler, *, name=None, allow_head=True, **kwargs)
 
       Shortcut for adding a GET handler. Calls the :meth:`add_route` with \
@@ -1556,7 +1598,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
                           show_index=False, \
-                          follow_symlinks=False)
+                          follow_symlinks=False, \
+                          append_version=False)
 
       Adds a router and a handler for returning static files.
 
@@ -1621,6 +1664,12 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param bool follow_symlinks: flag for allowing to follow symlinks from
                               a directory, by default it's not allowed and
                               HTTP/404 will be returned on access.
+
+      :param bool append_version: flag for adding file version (hash)
+                              to the url query string, this value will be used
+                              as default when you call to :meth:`StaticRoute.url`
+                              and :meth:`StaticRoute.url_for` methods.
+
 
       :returns: new :class:`StaticRoute` instance.
 
@@ -1909,7 +1958,7 @@ Resource classes hierarchy::
    The class corresponds to resources for :ref:`static file serving
    <aiohttp-web-static-file-handling>`.
 
-   .. method:: url_for(filename)
+   .. method:: url_for(filename, append_version=None)
 
       Returns a :class:`~yarl.URL` for file path under resource prefix.
 
@@ -1919,6 +1968,14 @@ Resource classes hierarchy::
 
          E.g. an URL for ``'/prefix/dir/file.txt'`` should
          be generated as ``resource.url_for(filename='dir/file.txt')``
+
+      :param bool append_version: -- a flag for adding file version (hash) to the url query string for cache boosting
+
+         By default has value from an constructor (``False`` by default)
+         When set to ``True`` - ``v=FILE_HASH`` query string param will be added
+         When set to ``False`` has no impact
+
+         if file not found has no impact
 
       .. versionadded:: 1.1
 
@@ -2004,6 +2061,186 @@ and *405 Method Not Allowed*.
       HTTP status reason
 
 
+.. _aiohttp-web-route-def:
+
+
+RouteDef
+^^^^^^^^
+
+Route definition, a description for not registered yet route.
+
+Could be used for filing route table by providing a list of route
+definitions (Django style).
+
+The definition is created by functions like :func:`get` or
+:func:`post`, list of definitions could be added to router by
+:meth:`UrlDispatcher.add_routes` call::
+
+   from aiohttp import web
+
+   async def handle_get(request):
+       ...
+
+
+   async def handle_post(request):
+       ...
+
+   app.router.add_routes([web.get('/get', handle_get),
+                          web.post('/post', handle_post),
+
+
+.. class:: RouteDef
+
+   A definition for not added yet route.
+
+   .. attribute:: method
+
+      HTTP method (``GET``, ``POST`` etc.)  (:class:`str`).
+
+   .. attribute:: path
+
+      Path to resource, e.g. ``/path/to``. Could contain ``{}``
+      brackets for :ref:`variable resources
+      <aiohttp-web-variable-handler>` (:class:`str`).
+
+   .. attribute:: handler
+
+      An async function to handle HTTP request.
+
+   .. attribute:: kwargs
+
+      A :class:`dict` of additional arguments.
+
+   .. versionadded:: 2.3
+
+
+.. function:: get(path, handler, *, name=None, allow_head=True, \
+              expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``GET`` requests. See
+   :meth:`UrlDispatcher.add_get` for information about parameters.
+
+   .. versionadded:: 2.3
+
+.. function:: post(path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``POST`` requests. See
+   :meth:`UrlDispatcher.add_post` for information about parameters.
+
+   .. versionadded:: 2.3
+
+.. function:: head(path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``HEAD`` requests. See
+   :meth:`UrlDispatcher.add_head` for information about parameters.
+
+   .. versionadded:: 2.3
+
+.. function:: put(path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``PUT`` requests. See
+   :meth:`UrlDispatcher.add_put` for information about parameters.
+
+   .. versionadded:: 2.3
+
+.. function:: patch(path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``PATCH`` requests. See
+   :meth:`UrlDispatcher.add_patch` for information about parameters.
+
+   .. versionadded:: 2.3
+
+.. function:: delete(path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``DELETE`` requests. See
+   :meth:`UrlDispatcher.add_delete` for information about parameters.
+
+   .. versionadded:: 2.3
+
+.. function:: route(method, path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``POST`` requests. See
+   :meth:`UrlDispatcher.add_route` for information about parameters.
+
+   .. versionadded:: 2.3
+
+.. _aiohttp-web-route-table-def:
+
+RouteTableDef
+^^^^^^^^^^^^^
+
+A routes table definition used for describing routes by decorators
+(Flask style)::
+
+   from aiohttp import web
+
+   routes = web.RouteTableDef()
+
+   @routes.get('/get')
+   async def handle_get(request):
+       ...
+
+
+   @routes.post('/post')
+   async def handle_post(request):
+       ...
+
+   app.router.add_routes(routes)
+
+.. class:: RouteTableDef()
+
+   A sequence of :class:`RouteDef` instances (implements
+   :class:`abc.collections.Sequence` protocol).
+
+   In addition to all standard :class:`list` methods the class
+   provides also methods like ``get()`` and ``post()`` for adding new
+   route definition.
+
+   .. decoratormethod:: get(path, *, allow_head=True, \
+                            name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``GET`` web-handler.
+
+      See :meth:`UrlDispatcher.add_get` for information about parameters.
+
+   .. decoratormethod:: post(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``POST`` web-handler.
+
+      See :meth:`UrlDispatcher.add_post` for information about parameters.
+
+   .. decoratormethod:: head(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``HEAD`` web-handler.
+
+      See :meth:`UrlDispatcher.add_head` for information about parameters.
+
+   .. decoratormethod:: put(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``PUT`` web-handler.
+
+      See :meth:`UrlDispatcher.add_put` for information about parameters.
+
+   .. decoratormethod:: patch(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``PATCH`` web-handler.
+
+      See :meth:`UrlDispatcher.add_patch` for information about parameters.
+
+   .. decoratormethod:: delete(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``DELETE`` web-handler.
+
+      See :meth:`UrlDispatcher.add_delete` for information about parameters.
+
+   .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering a web-handler
+      for arbitrary HTTP method.
+
+      See :meth:`UrlDispatcher.add_route` for information about parameters.
+
+   .. versionadded:: 2.3
 
 MatchInfo
 ^^^^^^^^^

@@ -2,15 +2,17 @@
 Changes
 =======
 
-..
-    You should *NOT* be adding new change log entries to this file, this
-    file is managed by towncrier. You *may* edit previous change logs to
-    fix problems like typo corrections or such.
-    To add a new change log entry, please see
-    https://pip.pypa.io/en/latest/development/#adding-a-news-entry
-    we named the news folder "changes".
+2.2.5 (2017-08-03)
+==================
 
-.. towncrier release notes start
+- Don't raise deprecation warning on
+  `loop.run_until_complete(client.close())` (#2065)
+
+2.2.4 (2017-08-02)
+==================
+
+- Fix issue with synchronous session closing when using ClientSession
+  as an asynchronous context manager.  (#2063)
 
 2.2.3 (2017-07-04)
 ==================

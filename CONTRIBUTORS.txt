@@ -63,6 +63,7 @@ Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
 Enrique Saez
+Eric Sheng
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
@@ -78,6 +79,7 @@ Günther Jena
 Hu Bo
 Hugo Herter
 Hynek Schlawack
+Igor Alexandrov
 Igor Davydenko
 Igor Pavlov
 Ingmar Steen
@@ -91,6 +93,7 @@ Jeroen van der Heijden
 Jesus Cea
 Jinkyu Yi
 Joel Watts
+Jon Nabozny
 Joongi Kim
 Josep Cugat
 Julia Tsemusheva
@@ -170,6 +173,7 @@ Thomas Grainger
 Tolga Tezel
 Vaibhav Sagar
 Vamsi Krishna Avula
+Vasiliy Faronov
 Vasyl Baran
 Vikas Kawadia
 Vitalik Verhovodov
@@ -185,6 +189,7 @@ Will McGugan
 Willem de Groot
 Wilson Ong
 Yannick Koechlin
+Yegor Roganov
 Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov

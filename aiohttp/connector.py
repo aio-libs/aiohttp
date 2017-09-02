@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import ssl
 import sys
 import traceback
 import warnings
@@ -17,7 +16,14 @@ from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
+from .locks import EventResultOrError
 from .resolver import DefaultResolver
+
+
+try:
+    import ssl
+except ImportError:  # pragma: no cover
+    ssl = None
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
@@ -597,9 +603,17 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._throttle_dns_events = {}
         self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
+
+    def close(self):
+        """Close all ongoing DNS calls."""
+        for ev in self._throttle_dns_events.values():
+            ev.cancel()
+
+        super().close()
 
     @property
     def verify_ssl(self):
@@ -617,6 +631,9 @@ class TCPConnector(BaseConnector):
 
         Lazy property, creates context on demand.
         """
+        if ssl is None:  # pragma: no cover
+            raise RuntimeError('SSL is not supported.')
+
         if self._ssl_context is None:
             if not self._verify_ssl:
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -660,20 +677,38 @@ class TCPConnector(BaseConnector):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
-        if self._use_dns_cache:
-            key = (host, port)
+        if not self._use_dns_cache:
+            return (yield from self._resolver.resolve(
+                host, port, family=self._family))
 
-            if key not in self._cached_hosts or\
-                    self._cached_hosts.expired(key):
-                addrs = yield from \
-                    self._resolver.resolve(host, port, family=self._family)
-                self._cached_hosts.add(key, addrs)
+        key = (host, port)
 
+        if (key in self._cached_hosts) and\
+                (not self._cached_hosts.expired(key)):
             return self._cached_hosts.next_addrs(key)
+
+        if key in self._throttle_dns_events:
+            yield from self._throttle_dns_events[key].wait()
         else:
-            res = yield from self._resolver.resolve(
-                host, port, family=self._family)
-            return res
+            self._throttle_dns_events[key] = \
+                EventResultOrError(self._loop)
+            try:
+                addrs = yield from \
+                    asyncio.shield(self._resolver.resolve(host,
+                                                          port,
+                                                          family=self._family),
+                                   loop=self._loop)
+                self._cached_hosts.add(key, addrs)
+                self._throttle_dns_events[key].set()
+            except Exception as e:
+                # any DNS exception, independently of the implementation
+                # is set for the waiters to raise the same exception.
+                self._throttle_dns_events[key].set(exc=e)
+                raise
+            finally:
+                self._throttle_dns_events.pop(key)
+
+        return self._cached_hosts.next_addrs(key)
 
     @asyncio.coroutine
     def _create_connection(self, req):

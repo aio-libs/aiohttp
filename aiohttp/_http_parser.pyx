@@ -57,7 +57,8 @@ cdef class HttpParser:
         object  _payload
         bint    _payload_error
         object  _payload_exception
-        object _last_error
+        object  _last_error
+        bint    _auto_decompress
 
         Py_buffer py_buf
 
@@ -80,7 +81,7 @@ cdef class HttpParser:
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
-                   response_with_body=True):
+                   response_with_body=True, auto_decompress=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -106,6 +107,7 @@ cdef class HttpParser:
         self._max_field_size = max_field_size
         self._response_with_body = response_with_body
         self._upgraded = False
+        self._auto_decompress = auto_decompress
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
@@ -115,6 +117,8 @@ cdef class HttpParser:
         self._csettings.on_body = cb_on_body
         self._csettings.on_message_begin = cb_on_message_begin
         self._csettings.on_message_complete = cb_on_message_complete
+        self._csettings.on_chunk_header = cb_on_chunk_header
+        self._csettings.on_chunk_complete = cb_on_chunk_complete
 
         self._last_error = None
 
@@ -194,7 +198,7 @@ cdef class HttpParser:
             payload = EMPTY_PAYLOAD
 
         self._payload = payload
-        if encoding is not None:
+        if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(payload, encoding)
 
         if not self._response_with_body:
@@ -206,6 +210,11 @@ cdef class HttpParser:
         self._payload.feed_eof()
         self._payload = None
 
+    cdef _on_chunk_header(self):
+        self._payload.begin_http_chunk_receiving()
+
+    cdef _on_chunk_complete(self):
+        self._payload.end_http_chunk_receiving()
 
     ### Public API ###
 
@@ -301,10 +310,11 @@ cdef class HttpResponseParserC(HttpParser):
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 response_with_body=True, read_until_eof=False):
+                 response_with_body=True, read_until_eof=False,
+                 auto_decompress=True):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
-                   payload_exception, response_with_body)
+                   payload_exception, response_with_body, auto_decompress)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
@@ -426,6 +436,28 @@ cdef int cb_on_message_complete(cparser.http_parser* parser) except -1:
     try:
         pyparser._started = False
         pyparser._on_message_complete()
+    except BaseException as exc:
+        pyparser._last_error = exc
+        return -1
+    else:
+        return 0
+
+
+cdef int cb_on_chunk_header(cparser.http_parser* parser) except -1:
+    cdef HttpParser pyparser = <HttpParser>parser.data
+    try:
+        pyparser._on_chunk_header()
+    except BaseException as exc:
+        pyparser._last_error = exc
+        return -1
+    else:
+        return 0
+
+
+cdef int cb_on_chunk_complete(cparser.http_parser* parser) except -1:
+    cdef HttpParser pyparser = <HttpParser>parser.data
+    try:
+        pyparser._on_chunk_complete()
     except BaseException as exc:
         pyparser._last_error = exc
         return -1

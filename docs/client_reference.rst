@@ -48,7 +48,8 @@ The client session supports the context manager protocol for self closing.
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
                          raise_for_status=False, \
-                         connector_owner=True)
+                         connector_owner=True, \
+                         auto_decompress=True)
 
    The class for creating client sessions and making requests.
 
@@ -137,6 +138,10 @@ The client session supports the context manager protocol for self closing.
       cookies etc.
 
       .. versionadded:: 2.1
+
+   :param bool auto_decompress: Automatically decompress response body
+
+      .. versionadded:: 2.3
 
    .. attribute:: closed
 
@@ -773,12 +778,11 @@ TCPConnector
       Custom resolvers allow to resolve hostnames differently than the
       way the host is configured.
 
-      .. versionadded:: 0.22
+      .. versionchanged:: 1.1
 
-      .. versionchanged:: 1.0
-
-         The resolver is ``aiohttp.AsyncResolver`` now if
-         :term:`aiodns` is installed.
+         The resolver is ``aiohttp.ThreadedResolver`` by default,
+         asynchronous version is not pretty robust but might fail in
+         very rare cases.
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
@@ -987,7 +991,10 @@ Response object
 
    .. attribute:: content
 
-      Payload stream, contains response's BODY (:class:`StreamReader`).
+      Payload stream, which contains response's BODY (:class:`StreamReader`).
+      It supports various reading methods depending on the expected format.
+      When chunked transfer encoding is used by the server, allows retrieving
+      the actual http chunks.
 
       Reading from the stream may raise
       :exc:`aiohttp.ClientPayloadError` if the response object is
@@ -1238,8 +1245,7 @@ manually.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      :return: :class:`~aiohttp.WSMessage`, `tp` is a type from
-         :class:`~aiohttp.WSMsgType` enumeration.
+      :return: :class:`~aiohttp.WSMessage`
 
    .. coroutinemethod:: receive_str()
 

@@ -349,10 +349,9 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             self.transport.close()
             self.transport = None
 
-    def log_access(self, message, environ, response, time):
-        if self.access_logger:
-            self.access_logger.log(message, environ, response,
-                                   self.transport, time)
+    def log_access(self, request, response, time):
+        if self.access_logger is not None:
+            self.access_logger.log(request, response, time)
 
     def log_debug(self, *args, **kw):
         if self.debug:
@@ -444,7 +443,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                 # log access
                 if self.access_log:
-                    self.log_access(message, None, resp, loop.time() - now)
+                    self.log_access(request, resp, loop.time() - now)
 
                 # check payload
                 if not payload.is_eof():
