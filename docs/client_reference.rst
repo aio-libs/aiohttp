@@ -1333,6 +1333,15 @@ BasicAuth
 
       :return:  decoded authentication data, :class:`BasicAuth`.
 
+   .. classmethod:: from_url(url)
+
+      Constructed credentials info from url's *user* and *password*
+      parts.
+
+      :return: credentials data, :class:`BasicAuth` or ``None`` is
+                credentials are not provided.
+
+      .. versionadded:: 2.3
 
    .. method:: encode()
 

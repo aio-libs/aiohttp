@@ -17,11 +17,14 @@ from math import ceil
 from pathlib import Path
 from time import gmtime
 from urllib.parse import quote
+from urllib.request import getproxies
 
 from async_timeout import timeout
+from yarl import URL
 
 from . import hdrs
 from .abc import AbstractCookieJar
+from .log import client_logger
 
 
 try:
@@ -40,6 +43,7 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
+           'proxy_from_env',
            'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
 
 
@@ -169,12 +173,7 @@ except ImportError:
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
-    """Http basic authentication helper.
-
-    :param str login: Login
-    :param str password: Password
-    :param str encoding: (optional) encoding ('latin1' by default)
-    """
+    """Http basic authentication helper."""
 
     def __new__(cls, login, password='', encoding='latin1'):
         if login is None:
@@ -191,8 +190,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
     @classmethod
     def decode(cls, auth_header, encoding='latin1'):
-        """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
-        header."""
+        """Create a BasicAuth object from an Authorization HTTP header."""
         split = auth_header.strip().split(' ')
         if len(split) == 2:
             if split[0].strip().lower() != 'basic':
@@ -210,10 +208,42 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
         return cls(username, password, encoding=encoding)
 
+    @classmethod
+    def from_url(cls, url, *, encoding='latin1'):
+        """Create BasicAuth from url."""
+        if not isinstance(url, URL):
+            raise TypeError("url should b e yarl.URL instance")
+        if url.user is None:
+            return None
+        return cls(url.user, url.password, encoding=encoding)
+
     def encode(self):
         """Encode credentials."""
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
+
+
+def _strip_auth_from_url(url):
+    auth = BasicAuth.from_url(url)
+    if auth is None:
+        return url, None
+    else:
+        return url.with_user(None).with_password(None), auth
+
+
+def proxy_from_env():
+    proxy_urls = {k: URL(v) for k, v in getproxies().items()
+                  if k in ('http', 'https')}
+    stripped = {k: _strip_auth_from_url(v) for k, v in proxy_urls.items()}
+    ret = {}
+    for proto, val in stripped.items():
+        proxy, auth = val
+        if proxy.scheme == 'https':
+            client_logger.warning(
+                "HTTPS proxy %s is not supported, ignoring", proxy)
+            continue
+        ret[proto] = {'proxy': proxy, 'proxy_auth': auth}
+    return ret
 
 
 if PY_352:

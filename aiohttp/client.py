@@ -9,8 +9,6 @@ import sys
 import traceback
 import warnings
 
-from urllib.request import getproxies
-
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
@@ -34,8 +32,7 @@ from .streams import FlowControlDataQueue
 __all__ = (client_exceptions.__all__ +  # noqa
            client_reqrep.__all__ +  # noqa
            connector_mod.__all__ +  # noqa
-           ('ClientSession', 'ClientWebSocketResponse', 'request',
-           'proxy_from_env'))
+           ('ClientSession', 'ClientWebSocketResponse', 'request'))
 
 
 # 5 Minute default read and connect timeout
@@ -731,15 +728,3 @@ def request(method, url, *,
                          proxy=proxy,
                          proxy_auth=proxy_auth,),
         session=session)
-
-
-def proxy_from_env():
-    if proxy_from_env and not proxy:
-        proxy_url = getproxies().get(self.original_url.scheme)
-        proxy = URL(proxy_url) if proxy_url else None
-    if proxy and not proxy.scheme == 'http':
-        raise ValueError("Only http proxies are supported")
-    if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
-        raise ValueError("proxy_auth must be None or BasicAuth() tuple")
-    proxy, proxy_auth = _parse(os.environ)
-    return {'proxy': proxy, 'proxy_auth': proxy_auth}

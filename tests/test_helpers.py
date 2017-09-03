@@ -141,6 +141,13 @@ def test_basic_auth_decode_bad_base64():
         helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
 
 
+def test_basic_auth_from_url():
+    url = URL('http://user:pass@example.com')
+    auth = helpers.BasicAuth.from_url(url)
+    assert auth.login == 'user'
+    assert auth.password == 'pass'
+
+
 # ------------- access logger -------------------------
 
 
