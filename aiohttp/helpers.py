@@ -228,7 +228,7 @@ def _strip_auth_from_url(url):
     if auth is None:
         return url, None
     else:
-        return url.with_user(None).with_password(None), auth
+        return url.with_user(None), auth
 
 
 def proxy_from_env():
