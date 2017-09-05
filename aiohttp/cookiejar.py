@@ -13,6 +13,9 @@ from .abc import AbstractCookieJar
 from .helpers import SimpleCookie, is_ip_address
 
 
+__all__ = ('CookieJar', 'DummyCookieJar')
+
+
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
@@ -304,3 +307,30 @@ class CookieJar(AbstractCookieJar):
         return datetime.datetime(year, month, day,
                                  hour, minute, second,
                                  tzinfo=datetime.timezone.utc)
+
+
+class DummyCookieJar(AbstractCookieJar):
+    """Implements a dummy cookie storage.
+
+    It can be used with the ClientSession when no cookie processing is needed.
+
+    """
+
+    def __init__(self, *, loop=None):
+        super().__init__(loop=loop)
+
+    def __iter__(self):
+        while False:
+            yield None
+
+    def __len__(self):
+        return 0
+
+    def clear(self):
+        pass
+
+    def update_cookies(self, cookies, response_url=None):
+        pass
+
+    def filter_cookies(self, request_url):
+        return None

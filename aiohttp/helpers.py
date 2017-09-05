@@ -21,7 +21,6 @@ from urllib.parse import quote
 from async_timeout import timeout
 
 from . import hdrs
-from .abc import AbstractCookieJar
 
 
 try:
@@ -40,7 +39,7 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
+           'Timeout', 'ensure_future', 'noop')
 
 
 sentinel = object()
@@ -794,30 +793,3 @@ class HeadersMixin:
             return None
         else:
             return int(l)
-
-
-class DummyCookieJar(AbstractCookieJar):
-    """Implements a dummy cookie storage.
-
-    It can be used with the ClientSession when no cookie processing is needed.
-
-    """
-
-    def __init__(self, *, loop=None):
-        super().__init__(loop=loop)
-
-    def __iter__(self):
-        while False:
-            yield None
-
-    def __len__(self):
-        return 0
-
-    def clear(self):
-        pass
-
-    def update_cookies(self, cookies, response_url=None):
-        pass
-
-    def filter_cookies(self, request_url):
-        return None

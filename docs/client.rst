@@ -440,8 +440,21 @@ cookies. It should be done by passing `unsafe=True` to
 :class:`aiohttp.CookieJar` constructor::
 
 
-    jar = aiohttp.CookieJar(unsafe=True)
-    session = aiohttp.ClientSession(cookie_jar=jar)
+   jar = aiohttp.CookieJar(unsafe=True)
+   session = aiohttp.ClientSession(cookie_jar=jar)
+
+
+.. _aiohttp-client-dummy-cookie-jar:
+
+Dummy Cookie Jar
+----------------
+
+Sometimes cookie processing is not desirable. For this purpose it's
+possible to pass :class:`aiohttp.DummyCookieJar` instance into client
+session::
+
+   jar = aiohttp.DummyCookieJar()
+   session = aiohttp.ClientSession(cookie_jar=jar)
 
 
 Connectors
