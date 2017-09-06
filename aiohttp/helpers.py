@@ -22,7 +22,6 @@ from urllib.parse import quote
 from async_timeout import timeout
 
 from . import hdrs
-from .abc import AbstractCookieJar
 
 
 try:
@@ -41,7 +40,7 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
+           'Timeout', 'ensure_future', 'noop')
 
 
 sentinel = object()
@@ -239,6 +238,12 @@ def current_task(loop=None):
     return task
 
 
+def isasyncgenfunction(obj):
+    if hasattr(inspect, 'isasyncgenfunction'):
+        return inspect.isasyncgenfunction(obj)
+    return False
+
+  
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
@@ -278,7 +283,7 @@ def parse_mimetype(mimetype):
 
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
-    if name and name[0] != '<' and name[-1] != '>':
+    if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
         return Path(name).name
     return default
 
@@ -795,36 +800,3 @@ class HeadersMixin:
             return None
         else:
             return int(l)
-
-
-class DummyCookieJar(AbstractCookieJar):
-    """Implements a dummy cookie storage.
-
-    It can be used with the ClientSession when no cookie processing is needed.
-
-    """
-
-    def __init__(self, *, loop=None):
-        super().__init__(loop=loop)
-
-    def __iter__(self):
-        while False:
-            yield None
-
-    def __len__(self):
-        return 0
-
-    def clear(self):
-        pass
-
-    def update_cookies(self, cookies, response_url=None):
-        pass
-
-    def filter_cookies(self, request_url):
-        return None
-
-
-def isasyncgenfunction(obj):
-    if hasattr(inspect, 'isasyncgenfunction'):
-        return inspect.isasyncgenfunction(obj)
-    return False

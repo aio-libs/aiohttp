@@ -2,10 +2,10 @@ import asyncio
 import datetime
 import gc
 import sys
+import tempfile
 from unittest import mock
 
 import pytest
-from yarl import URL
 
 from aiohttp import helpers
 
@@ -81,6 +81,13 @@ def test_parse_mimetype_8():
     assert (
         helpers.parse_mimetype('text/plain;base64') ==
         ('text', 'plain', '', {'base64': ''}))
+
+
+# ------------------- guess_filename ----------------------------------
+
+def test_guess_filename_with_tempfile():
+    with tempfile.TemporaryFile() as fp:
+        assert (helpers.guess_filename(fp, 'no-throw') is not None)
 
 
 def test_basic_auth1():
@@ -539,15 +546,3 @@ def test_set_content_disposition_bad_param():
     with pytest.raises(ValueError):
         helpers.content_disposition_header('inline',
                                            **{'foo\x00bar': 'baz'})
-
-
-def test_dummy_cookie_jar(loop):
-    cookie = helpers.SimpleCookie('foo=bar; Domain=example.com;')
-    dummy_jar = helpers.DummyCookieJar(loop=loop)
-    assert len(dummy_jar) == 0
-    dummy_jar.update_cookies(cookie)
-    assert len(dummy_jar) == 0
-    with pytest.raises(StopIteration):
-        next(iter(dummy_jar))
-    assert dummy_jar.filter_cookies(URL("http://example.com/")) is None
-    dummy_jar.clear()

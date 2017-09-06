@@ -106,6 +106,27 @@ is not encoded by library. Note that ``+`` is not encoded::
                            params='key=value+1') as r:
             assert str(r.url) == 'http://httpbin.org/get?key=value+1'
 
+.. note::
+
+   *aiohttp* internally performs URL canonization before sending request.
+
+   Canonization encodes *host* part by :term:`IDNA` codec and applies
+   :term:`requoting` to *path* and *query* parts.
+
+   For example ``URL('http://example.com/путь%30?a=%31')`` is converted to
+   ``URL('http://example.com/%D0%BF%D1%83%D1%82%D1%8C/0?a=1')``.
+
+   Sometimes canonization is not desirable if server accepts exact
+   representation and does not requote URL itself.
+
+   To disable canonization use ``encoded=True`` parameter for URL construction::
+
+      await session.get(URL('http://example.com/%30', encoded=True))
+
+.. warning::
+
+   Passing *params* overrides ``encoded=True``, never use both options.
+
 Response Content
 ----------------
 
@@ -419,8 +440,21 @@ cookies. It should be done by passing `unsafe=True` to
 :class:`aiohttp.CookieJar` constructor::
 
 
-    jar = aiohttp.CookieJar(unsafe=True)
-    session = aiohttp.ClientSession(cookie_jar=jar)
+   jar = aiohttp.CookieJar(unsafe=True)
+   session = aiohttp.ClientSession(cookie_jar=jar)
+
+
+.. _aiohttp-client-dummy-cookie-jar:
+
+Dummy Cookie Jar
+----------------
+
+Sometimes cookie processing is not desirable. For this purpose it's
+possible to pass :class:`aiohttp.DummyCookieJar` instance into client
+session::
+
+   jar = aiohttp.DummyCookieJar()
+   session = aiohttp.ClientSession(cookie_jar=jar)
 
 
 Connectors
