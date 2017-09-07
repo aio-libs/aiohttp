@@ -47,37 +47,31 @@ def normalize_path_middleware(
     """
 
     @asyncio.coroutine
-    def normalize_path_factory(app, handler):
+    def normalize_path_middleware(request, handler):
+        if isinstance(request.match_info.route, SystemRoute):
+            paths_to_check = []
+            if '?' in request.raw_path:
+                path, query = request.raw_path.split('?', 1)
+                if query:
+                    query = '?' + query
+            else:
+                query = ''
+                path = request.raw_path
 
-        @asyncio.coroutine
-        def middleware(request):
+            if merge_slashes:
+                paths_to_check.append(re.sub('//+', '/', path))
+            if append_slash and not request.path.endswith('/'):
+                paths_to_check.append(path + '/')
+            if merge_slashes and append_slash:
+                paths_to_check.append(
+                    re.sub('//+', '/', path + '/'))
 
-            if isinstance(request.match_info.route, SystemRoute):
-                paths_to_check = []
-                if '?' in request.raw_path:
-                    path, query = request.raw_path.split('?', 1)
-                    if query:
-                        query = '?' + query
-                else:
-                    query = ''
-                    path = request.raw_path
+            for path in paths_to_check:
+                resolves, request = yield from _check_request_resolves(
+                    request, path)
+                if resolves:
+                    return redirect_class(request.path + query)
 
-                if merge_slashes:
-                    paths_to_check.append(re.sub('//+', '/', path))
-                if append_slash and not request.path.endswith('/'):
-                    paths_to_check.append(path + '/')
-                if merge_slashes and append_slash:
-                    paths_to_check.append(
-                        re.sub('//+', '/', path + '/'))
+        return (yield from handler(request))
 
-                for path in paths_to_check:
-                    resolves, request = yield from _check_request_resolves(
-                        request, path)
-                    if resolves:
-                        return redirect_class(request.path + query)
-
-            return (yield from handler(request))
-
-        return middleware
-
-    return normalize_path_factory
+    return normalize_path_middleware

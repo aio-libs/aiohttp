@@ -7,25 +7,20 @@ from aiohttp import web
 
 @asyncio.coroutine
 def test_middleware_modifies_response(loop, test_client):
-
     @asyncio.coroutine
     def handler(request):
         return web.Response(body=b'OK')
 
     @asyncio.coroutine
-    def middleware_factory(app, handler):
-
-        @asyncio.coroutine
-        def middleware(request):
-            resp = yield from handler(request)
-            assert 200 == resp.status
-            resp.set_status(201)
-            resp.text = resp.text + '[MIDDLEWARE]'
-            return resp
-        return middleware
+    def middleware(request, handler):
+        resp = yield from handler(request)
+        assert 200 == resp.status
+        resp.set_status(201)
+        resp.text = resp.text + '[MIDDLEWARE]'
+        return resp
 
     app = web.Application()
-    app.middlewares.append(middleware_factory)
+    app.middlewares.append(middleware)
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.get('/')
@@ -36,25 +31,19 @@ def test_middleware_modifies_response(loop, test_client):
 
 @asyncio.coroutine
 def test_middleware_handles_exception(loop, test_client):
-
     @asyncio.coroutine
     def handler(request):
         raise RuntimeError('Error text')
 
     @asyncio.coroutine
-    def middleware_factory(app, handler):
-
-        @asyncio.coroutine
-        def middleware(request):
-            with pytest.raises(RuntimeError) as ctx:
-                yield from handler(request)
-            return web.Response(status=501,
-                                text=str(ctx.value) + '[MIDDLEWARE]')
-
-        return middleware
+    def middleware(request, handler):
+        with pytest.raises(RuntimeError) as ctx:
+            yield from handler(request)
+        return web.Response(status=501,
+                            text=str(ctx.value) + '[MIDDLEWARE]')
 
     app = web.Application()
-    app.middlewares.append(middleware_factory)
+    app.middlewares.append(middleware)
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.get('/')
@@ -65,27 +54,21 @@ def test_middleware_handles_exception(loop, test_client):
 
 @asyncio.coroutine
 def test_middleware_chain(loop, test_client):
-
     @asyncio.coroutine
     def handler(request):
         return web.Response(text='OK')
 
-    def make_factory(num):
-
+    def make_middleware(num):
         @asyncio.coroutine
-        def factory(app, handler):
-
-            def middleware(request):
-                resp = yield from handler(request)
-                resp.text = resp.text + '[{}]'.format(num)
-                return resp
-
-            return middleware
-        return factory
+        def middleware(request, handler):
+            resp = yield from handler(request)
+            resp.text = resp.text + '[{}]'.format(num)
+            return resp
+        return middleware
 
     app = web.Application()
-    app.middlewares.append(make_factory(1))
-    app.middlewares.append(make_factory(2))
+    app.middlewares.append(make_middleware(1))
+    app.middlewares.append(make_middleware(2))
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
     resp = yield from client.get('/')
@@ -217,3 +200,37 @@ class TestNormalizePathMiddleware:
         client = yield from cli(extra_middlewares)
         resp = yield from client.get(path)
         assert resp.status == status
+
+
+@asyncio.coroutine
+def test_old_style_middleware(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    @asyncio.coroutine
+    def middleware_factory(app, handler):
+
+        @asyncio.coroutine
+        def middleware(request):
+            resp = yield from handler(request)
+            assert 200 == resp.status
+            resp.set_status(201)
+            resp.text = resp.text + '[old style middleware]'
+            return resp
+        return middleware
+
+    with pytest.warns(DeprecationWarning) as warning_checker:
+        app = web.Application()
+        app.middlewares.append(middleware_factory)
+        app.router.add_route('GET', '/', handler)
+        client = yield from test_client(app)
+        resp = yield from client.get('/')
+        assert 201 == resp.status
+        txt = yield from resp.text()
+        assert 'OK[old style middleware]' == txt
+
+    assert len(warning_checker) == 1
+    warning = warning_checker.list[0]
+    assert 'old-style middleware deprecated' in str(warning.message)
+
