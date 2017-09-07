@@ -295,7 +295,7 @@ class Application(MutableMapping):
             # first argument is request or r and this is new-style middleware
             return True
         else:
-            warnings.warn('old-style middleware deprecated, see ???',
+            warnings.warn('old-style middleware deprecated, see #2252',
                           DeprecationWarning, stacklevel=2)
             return False
 
