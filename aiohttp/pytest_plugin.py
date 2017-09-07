@@ -30,7 +30,7 @@ def pytest_addoption(parser):
         '--fast', action='store_true', default=False,
         help='run tests faster by disabling extra checks')
     parser.addoption(
-        '--loop', action='append', default=[],
+        '--loop', action='append', default='pyloop',
         help='run tests with specific loop: pyloop, uvloop, tokio')
     parser.addoption(
         '--enable-loop-debug', action='store_true', default=False,
@@ -119,29 +119,20 @@ def pytest_configure(config):
     LOOP_FACTORIES.clear()
     LOOP_FACTORY_IDS.clear()
 
-    if loops:
-        for names in (name.split(',') for name in loops):
-            for name in names:
-                name = name.strip()
-                if name not in factories:
-                    raise ValueError(
-                        "Unknown loop '%s', available loops: %s" % (
-                            name, list(factories.keys())))
+    if loops == 'all':
+        loops = 'pyloop,uvloop?,tokio?'
 
+    for names in (name.split(',') for name in loops):
+        for name in names:
+            required = not name.endswith('?')
+            name = name.strip(' ?')
+            if name in factories:
                 LOOP_FACTORIES.append(factories[name])
                 LOOP_FACTORY_IDS.append(name)
-    else:
-        LOOP_FACTORIES.append(asyncio.new_event_loop)
-        LOOP_FACTORY_IDS.append('pyloop')
-
-        if uvloop is not None:  # pragma: no cover
-            LOOP_FACTORIES.append(uvloop.new_event_loop)
-            LOOP_FACTORY_IDS.append('uvloop')
-
-        if tokio is not None:
-            LOOP_FACTORIES.append(tokio.new_event_loop)
-            LOOP_FACTORY_IDS.append('tokio')
-
+            elif required:
+                raise ValueError(
+                    "Unknown loop '%s', available loops: %s" % (
+                        name, list(factories.keys())))
     asyncio.set_event_loop(None)
 
 
