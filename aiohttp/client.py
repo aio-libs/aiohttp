@@ -8,6 +8,7 @@ import os
 import sys
 import traceback
 import warnings
+from collections.abc import Mapping
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
@@ -23,8 +24,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
-                      deprecated_noop, sentinel)
+from .helpers import (PY_35, CeilTimeout, ProxyInfo, TimeoutHandle,
+                      _BaseCoroMixin, deprecated_noop, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
 
@@ -55,7 +56,7 @@ class ClientSession:
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
-                 auto_decompress=True):
+                 auto_decompress=True, proxies=None):
 
         implicit_loop = False
         if loop is None:
@@ -104,6 +105,15 @@ class ClientSession:
         self._conn_timeout = conn_timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
+        self._proxies = {}
+        if proxies is not None:
+            for scheme, info in proxies.items():
+                if isinstance(info, ProxyInfo):
+                    pass
+                elif isinstance(info, Mapping):
+                    assert info.keys() == {'proxy', 'proxy_auth'}
+                    info = ProxyInfo(**info)
+                self._proxies[scheme] = info
 
         # Convert to list of tuples
         if headers:
@@ -200,9 +210,6 @@ class ClientSession:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
 
-        if proxy is not None:
-            proxy = URL(proxy)
-
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
         tm = TimeoutHandle(
@@ -210,12 +217,20 @@ class ClientSession:
             timeout if timeout is not sentinel else self._read_timeout)
         handle = tm.start()
 
+        url = URL(url)
         timer = tm.timer()
         try:
             with timer:
                 while True:
-                    url = URL(url).with_fragment(None)
+                    url = url.with_fragment(None)
                     cookies = self._cookie_jar.filter_cookies(url)
+
+                    if proxy is not None:
+                        proxy = URL(proxy)
+                    elif self._proxies:
+                        proxy_info = self._proxies.get(url.scheme)
+                        if proxy_info is not None:
+                            proxy, proxy_auth = proxy_info
 
                     req = self._request_class(
                         method, url, params=params, headers=headers,

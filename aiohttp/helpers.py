@@ -42,7 +42,7 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'proxy_from_env',
+           'proxies_from_env',
            'Timeout', 'ensure_future', 'noop')
 
 
@@ -230,7 +230,10 @@ def _strip_auth_from_url(url):
         return url.with_user(None), auth
 
 
-def proxy_from_env():
+ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
+
+
+def proxies_from_env():
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
                   if k in ('http', 'https')}
     stripped = {k: _strip_auth_from_url(v) for k, v in proxy_urls.items()}
@@ -239,9 +242,9 @@ def proxy_from_env():
         proxy, auth = val
         if proxy.scheme == 'https':
             client_logger.warning(
-                "HTTPS proxy %s is not supported, ignoring", proxy)
+                "HTTPS proxies %s are not supported, ignoring", proxy)
             continue
-        ret[proto] = {'proxy': proxy, 'proxy_auth': auth}
+        ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
 
