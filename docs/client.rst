@@ -1,7 +1,7 @@
 .. _aiohttp-client:
 
-Client
-======
+Client Usage
+============
 
 .. module:: aiohttp
 
@@ -105,6 +105,27 @@ is not encoded by library. Note that ``+`` is not encoded::
     async with session.get('http://httpbin.org/get',
                            params='key=value+1') as r:
             assert str(r.url) == 'http://httpbin.org/get?key=value+1'
+
+.. note::
+
+   *aiohttp* internally performs URL canonization before sending request.
+
+   Canonization encodes *host* part by :term:`IDNA` codec and applies
+   :term:`requoting` to *path* and *query* parts.
+
+   For example ``URL('http://example.com/путь%30?a=%31')`` is converted to
+   ``URL('http://example.com/%D0%BF%D1%83%D1%82%D1%8C/0?a=1')``.
+
+   Sometimes canonization is not desirable if server accepts exact
+   representation and does not requote URL itself.
+
+   To disable canonization use ``encoded=True`` parameter for URL construction::
+
+      await session.get(URL('http://example.com/%30', encoded=True))
+
+.. warning::
+
+   Passing *params* overrides ``encoded=True``, never use both options.
 
 Response Content
 ----------------
@@ -419,8 +440,21 @@ cookies. It should be done by passing `unsafe=True` to
 :class:`aiohttp.CookieJar` constructor::
 
 
-    jar = aiohttp.CookieJar(unsafe=True)
-    session = aiohttp.ClientSession(cookie_jar=jar)
+   jar = aiohttp.CookieJar(unsafe=True)
+   session = aiohttp.ClientSession(cookie_jar=jar)
+
+
+.. _aiohttp-client-dummy-cookie-jar:
+
+Dummy Cookie Jar
+----------------
+
+Sometimes cookie processing is not desirable. For this purpose it's
+possible to pass :class:`aiohttp.DummyCookieJar` instance into client
+session::
+
+   jar = aiohttp.DummyCookieJar()
+   session = aiohttp.ClientSession(cookie_jar=jar)
 
 
 Connectors
@@ -604,7 +638,7 @@ Response Headers
 ----------------
 
 We can view the server's response :attr:`ClientResponse.headers` using
-a :class:`CIMultiDictProxy`::
+a :class:`~multidict.CIMultiDictProxy`::
 
     >>> resp.headers
     {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
@@ -730,7 +764,7 @@ reading procedures::
 
     import async_timeout
 
-    with async_timeout.timeout(0.001, loop=session.loop):
+    with async_timeout.timeout(0.001):
         async with session.get('https://github.com') as r:
             await r.text()
 
@@ -741,5 +775,33 @@ reading procedures::
    redirects, response parsing, consuming response, etc.
 
 
-.. disqus::
-  :title: aiohttp client usage
+Graceful Shutdown
+-----------------
+
+When ``ClientSession`` closes at the end of an ``async with`` block (or through a direct ``.close()`` call), the underlying connection remains open due to asyncio internal details. In practice, the underlying connection will close after a short while. However, if the event loop is stopped before the underlying connection is closed, an ``ResourceWarning: unclosed transport`` warning is emitted (when warnings are enabled).
+
+To avoid this situation, a small delay must be added before closing the event loop to allow any open underlying connections to close.
+
+For a ``ClientSession`` without SSL, a simple zero-sleep (``await asyncio.sleep(0)``) will suffice::
+
+    async def read_website():
+        async with aiohttp.ClientSession() as session:
+            async with session.get('http://example.org/') as response:
+                await response.read()
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(read_website())
+    # Zero-sleep to allow underlying connections to close
+    loop.run_until_complete(asyncio.sleep(0))
+    loop.close()
+
+For a ``ClientSession`` with SSL, the application must wait a short duration before closing::
+
+    ...
+    # Wait 250 ms for the underlying SSL connections to close
+    loop.run_until_complete(asyncio.sleep(0.250))
+    loop.close()
+    
+Note that the appropriate amount of time to wait will vary from application to application.
+
+All if this will eventually become obsolete when the asyncio internals are changed so that aiohttp itself can wait on the underlying connection to close. Please follow issue `#1925 <https://github.com/aio-libs/aiohttp/issues/1925>`_ for the progress on this.

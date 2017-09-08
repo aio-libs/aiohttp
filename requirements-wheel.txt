@@ -1,3 +1,0 @@
-cython==0.25.2
-pytest==3.1.2
-twine==1.9.1

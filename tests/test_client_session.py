@@ -64,8 +64,11 @@ def test_close_coro(create_session, loop):
 def test_close_deprecated(create_session):
     session = create_session()
 
-    with pytest.warns(DeprecationWarning):
+    with pytest.warns(DeprecationWarning) as ctx:
         session.close()
+
+    # Assert the warning points at us and not at _CoroGuard.
+    assert ctx.list[0].filename == __file__
 
 
 def test_init_headers_simple_dict(create_session):

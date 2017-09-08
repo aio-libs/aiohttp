@@ -5,7 +5,7 @@ import sys
 import pytest
 
 
-pytest_plugins = 'aiohttp.pytest_plugin'
+pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
 
 
 _LoggingWatcher = collections.namedtuple("_LoggingWatcher",

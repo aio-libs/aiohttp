@@ -243,6 +243,12 @@ functionality, the AioHTTPTestCase is provided::
 
        an aiohttp test client, :class:`TestClient` instance.
 
+    .. attribute:: server
+
+       an aiohttp test server, :class:`TestServer` instance.
+
+       .. versionadded:: 2.3.0
+
     .. attribute:: loop
 
        The event loop in which the application and server are running.
@@ -252,6 +258,24 @@ functionality, the AioHTTPTestCase is provided::
        The application returned by :meth:`get_app`
        (:class:`aiohttp.web.Application` instance).
 
+    .. comethod:: get_client()
+
+       This async method can be overridden to return the :class:`TestClient`
+       object used in the test.
+
+       :return: :class:`TestClient` instance.
+
+       .. versionadded:: 2.3.0
+
+    .. comethod:: get_server()
+
+       This async method can be overridden to return the :class:`TestServer`
+       object used in the test.
+
+       :return: :class:`TestServer` instance.
+
+       .. versionadded:: 2.3.0
+
     .. comethod:: get_application()
 
        This async method should be overridden
@@ -259,6 +283,20 @@ functionality, the AioHTTPTestCase is provided::
        object to test.
 
        :return: :class:`aiohttp.web.Application` instance.
+
+    .. comethod:: setUpAsync()
+
+       This async method do nothing by default and can be overridden to execute
+       asynchronous code during the ``setUp`` stage of the ``TestCase``.
+
+       .. versionadded:: 2.3.0
+
+    .. comethod:: tearDownAsync()
+
+       This async method do nothing by default and can be overridden to execute
+       asynchronous code during the ``tearDown`` stage of the ``TestCase``.
+
+       .. versionadded:: 2.3.0
 
     .. method:: setUp()
 
@@ -336,7 +374,8 @@ conditions that hard to reproduce on real server::
                                   transport=sentinel, \
                                   payload=sentinel, \
                                   sslcontext=None, \
-                                  secure_proxy_ssl_header=None)
+                                  secure_proxy_ssl_header=None,
+                                  loop=...)
 
    Creates mocked web.Request testing purposes.
 
@@ -378,6 +417,9 @@ conditions that hard to reproduce on real server::
    :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
        combination that signifies a request is secure.
    :type secure_proxy_ssl_header: tuple
+
+   :param loop: An event loop instance, mocked loop by default.
+   :type secure_proxy_ssl_header: :class:`asyncio.AbstractEventLoop`
 
    :return: :class:`aiohttp.web.Request` object.
 
@@ -767,7 +809,3 @@ Utilities
 
 .. _pytest: http://pytest.org/latest/
 .. _pytest-aiohttp: https://pypi.python.org/pypi/pytest-aiohttp
-
-
-.. disqus::
-  :title: aiohttp testing

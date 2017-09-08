@@ -278,6 +278,7 @@ class Application(MutableMapping):
                       _cls=web_request.Request):
         return _cls(
             message, payload, protocol, writer, protocol._time_service, task,
+            self._loop,
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
@@ -463,6 +464,8 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
     finally:
         loop.run_until_complete(app.cleanup())
     if not user_supplied_loop:
+        if hasattr(loop, 'shutdown_asyncgens'):
+            loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
 
 

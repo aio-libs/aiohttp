@@ -21,7 +21,6 @@ from urllib.parse import quote
 from async_timeout import timeout
 
 from . import hdrs
-from .abc import AbstractCookieJar
 
 
 try:
@@ -40,7 +39,7 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
+           'Timeout', 'ensure_future', 'noop')
 
 
 sentinel = object()
@@ -112,6 +111,11 @@ if not PY_35:
 
 
 class _CoroGuard(_BaseCoroMixin):
+    """Only to be used with func:`deprecated_noop`.
+
+    Otherwise the stack information in the raised warning doesn't line up with
+    the user's code anymore.
+    """
     __slots__ = ('_msg', '_awaited')
 
     def __init__(self, coro, msg):
@@ -136,7 +140,7 @@ class _CoroGuard(_BaseCoroMixin):
     def __del__(self):
         self._coro = None
         if not self._awaited:
-            warnings.warn(self._msg, DeprecationWarning)
+            warnings.warn(self._msg, DeprecationWarning, stacklevel=2)
 
 
 coroutines = asyncio.coroutines
@@ -272,7 +276,7 @@ def parse_mimetype(mimetype):
 
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
-    if name and name[0] != '<' and name[-1] != '>':
+    if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
         return Path(name).name
     return default
 
@@ -311,7 +315,7 @@ class AccessLogger:
         log = logging.getLogger("spam")
         log_format = "%a %{User-Agent}i"
         access_logger = AccessLogger(log, log_format)
-        access_logger.log(message, environ, response, transport, time)
+        access_logger.log(request, response, time)
 
     Format:
         %%  The percent sign
@@ -342,7 +346,6 @@ class AccessLogger:
         'D': 'request_time_micro',
         'i': 'request_header',
         'o': 'response_header',
-        'e': 'environ'
     }
 
     LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
@@ -413,76 +416,65 @@ class AccessLogger:
         return log_format, methods
 
     @staticmethod
-    def _format_e(key, args):
-        return (args[1] or {}).get(key, '-')
-
-    @staticmethod
-    def _format_i(key, args):
-        if not args[0]:
+    def _format_i(key, request, response, time):
+        if request is None:
             return '(no headers)'
 
         # suboptimal, make istr(key) once
-        return args[0].headers.get(key, '-')
+        return request.headers.get(key, '-')
 
     @staticmethod
-    def _format_o(key, args):
+    def _format_o(key, request, response, time):
         # suboptimal, make istr(key) once
-        return args[2].headers.get(key, '-')
+        return response.headers.get(key, '-')
 
     @staticmethod
-    def _format_a(args):
-        if args[3] is None:
+    def _format_a(request, response, time):
+        if request is None:
             return '-'
-        peername = args[3].get_extra_info('peername')
-        if isinstance(peername, (list, tuple)):
-            return peername[0]
-        else:
-            return peername
+        ip = request.remote
+        return ip if ip is not None else '-'
 
     @staticmethod
-    def _format_t(args):
+    def _format_t(request, response, time):
         return datetime.datetime.utcnow().strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
-    def _format_P(args):
+    def _format_P(request, response, time):
         return "<%s>" % os.getpid()
 
     @staticmethod
-    def _format_r(args):
-        msg = args[0]
-        if not msg:
+    def _format_r(request, response, time):
+        if request is None:
             return '-'
-        return '%s %s HTTP/%s.%s' % tuple((msg.method,
-                                           msg.path) + msg.version)
+        return '%s %s HTTP/%s.%s' % tuple((request.method,
+                                           request.path_qs) + request.version)
 
     @staticmethod
-    def _format_s(args):
-        return args[2].status
+    def _format_s(request, response, time):
+        return response.status
 
     @staticmethod
-    def _format_b(args):
-        return args[2].body_length
+    def _format_b(request, response, time):
+        return response.body_length
 
     @staticmethod
-    def _format_O(args):
-        return args[2].body_length
+    def _format_T(request, response, time):
+        return round(time)
 
     @staticmethod
-    def _format_T(args):
-        return round(args[4])
+    def _format_Tf(request, response, time):
+        return '%06f' % time
 
     @staticmethod
-    def _format_Tf(args):
-        return '%06f' % args[4]
+    def _format_D(request, response, time):
+        return round(time * 1000000)
 
-    @staticmethod
-    def _format_D(args):
-        return round(args[4] * 1000000)
+    def _format_line(self, request, response, time):
+        return ((key, method(request, response, time))
+                for key, method in self._methods)
 
-    def _format_line(self, args):
-        return ((key, method(args)) for key, method in self._methods)
-
-    def log(self, message, environ, response, transport, time):
+    def log(self, request, response, time):
         """Log access.
 
         :param message: Request object. May be None.
@@ -492,8 +484,7 @@ class AccessLogger:
         :param float time: Time taken to serve the request.
         """
         try:
-            fmt_info = self._format_line(
-                [message, environ, response, transport, time])
+            fmt_info = self._format_line(request, response, time)
 
             values = list()
             extra = dict()
@@ -802,30 +793,3 @@ class HeadersMixin:
             return None
         else:
             return int(l)
-
-
-class DummyCookieJar(AbstractCookieJar):
-    """Implements a dummy cookie storage.
-
-    It can be used with the ClientSession when no cookie processing is needed.
-
-    """
-
-    def __init__(self, *, loop=None):
-        super().__init__(loop=loop)
-
-    def __iter__(self):
-        while False:
-            yield None
-
-    def __len__(self):
-        return 0
-
-    def clear(self):
-        pass
-
-    def update_cookies(self, cookies, response_url=None):
-        pass
-
-    def filter_cookies(self, request_url):
-        return None

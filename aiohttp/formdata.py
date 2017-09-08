@@ -130,7 +130,7 @@ class FormData:
                 )
                 # FIXME cgi.FieldStorage doesn't likes body parts with
                 # Content-Length which were sent via chunked transfer encoding
-                part.headers.pop(hdrs.CONTENT_LENGTH, None)
+                part.headers.popall(hdrs.CONTENT_LENGTH, None)
 
             self._writer.append_payload(part)
 

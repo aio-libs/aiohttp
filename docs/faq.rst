@@ -162,50 +162,44 @@ For example we have an application with two endpoints:
    2. ``/logout_user`` that when invoked needs to close all open
       websockets for that user.
 
-Keep in mind that you can only ``.close()`` a websocket from inside
-the handler task, and since the handler task is busy reading from the
-websocket, it can't react to other events.
-
-One simple solution is keeping a shared registry of websocket handler
-tasks for a user in the :class:`aiohttp.web.Application` instance and
-``cancel()`` them in ``/logout_user`` handler::
+One simple solution is keeping a shared registry of websocket responses
+for a user in the :class:`aiohttp.web.Application` instance and
+call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_user`` handler::
 
     async def echo_handler(request):
 
         ws = web.WebSocketResponse()
         user_id = authenticate_user(request)
         await ws.prepare(request)
-        request.app['websockets'][user_id].add(asyncio.Task.current_task())
-
+        request.app['websockets'][user_id].add(ws)
         try:
             async for msg in ws:
-                # handle incoming messages
-                ...
-
-        except asyncio.CancelledError:
-            print('websocket cancelled')
+                ws.send_str(msg.data)
         finally:
-            request.app['websockets'][user_id].remove(asyncio.Task.current_task())
-        await ws.close()
+            request.app['websockets'][user_id].remove(ws)
+
         return ws
+
 
     async def logout_handler(request):
 
         user_id = authenticate_user(request)
 
-        for task in request.app['websockets'][user_id]:
-            task.cancel()
+        ws_closers = [ws.close() for ws in request.app['websockets'][user_id] if not ws.closed]
 
-        # return response
-        ...
+        # Watch out, this will keep us from returing the response until all are closed
+        ws_closers and await asyncio.gather(*ws_closers)
+
+        return web.Response(text='OK')
+
 
     def main():
         loop = asyncio.get_event_loop()
-        app = aiohttp.web.Application(loop=loop)
+        app = web.Application(loop=loop)
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
         app['websockets'] = defaultdict(set)
-        aiohttp.web.run_app(app, host='localhost', port=8080)
+        web.run_app(app, host='localhost', port=8080)
 
 
 How to make request from a specific IP address?
@@ -363,5 +357,14 @@ enable compression in NGINX (you are deploying aiohttp behind reverse
 proxy, is not it).
 
 
-.. disqus::
-  :title: aiohttp FAQ
+How to manage ClientSession inside web server?
+----------------------------------------------
+
+:class:`aiohttp.ClientSession` should be created once for the lifetime
+of the server in order to benefit from connection pooling.
+
+Session saves cookies internally. If you don't need cookies processing
+use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
+for different http calls but process them in logical chains use single
+:class:`aiohttp.TCPConnector` with separate
+client session and ``own_connector=False``.
