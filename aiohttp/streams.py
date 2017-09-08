@@ -213,6 +213,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._size += len(data)
         self._cursor -= len(data)
         self._buffer.appendleft(data)
+        self._eof_counter = 0
 
     def feed_data(self, data):
         assert not self._eof, 'feed_data after feed_eof'
