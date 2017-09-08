@@ -233,4 +233,3 @@ def test_old_style_middleware(loop, test_client):
     assert len(warning_checker) == 1
     warning = warning_checker.list[0]
     assert 'old-style middleware deprecated' in str(warning.message)
-
