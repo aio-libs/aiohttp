@@ -1,5 +1,6 @@
 import asyncio
 
+import async_timeout
 import pytest
 
 import aiohttp
@@ -511,7 +512,7 @@ def test_recv_timeout(loop, test_client):
     yield from resp.send_str('ask')
 
     with pytest.raises(asyncio.TimeoutError):
-        with aiohttp.Timeout(0.01, loop=app.loop):
+        with async_timeout.timeout(0.01, loop=app.loop):
             yield from resp.receive()
 
     yield from resp.close()

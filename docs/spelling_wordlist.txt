@@ -2,8 +2,8 @@ abc
 aiodns
 aioes
 aiohttp
-aiohttp’s
 aiohttpdemo
+aiohttp’s
 aiopg
 alives
 api
@@ -41,6 +41,7 @@ CIMultiDict
 ClientSession
 cls
 cmd
+codec
 Codings
 config
 Config
@@ -87,8 +88,8 @@ gethostbyname
 github
 google
 gunicorn
-gunicorn’s
 Gunicorn
+gunicorn’s
 gzipped
 hackish
 highlevel
@@ -122,6 +123,7 @@ kwarg
 latin
 linux
 localhost
+Locator
 login
 lookup
 lookups
@@ -137,6 +139,7 @@ misformed
 Mongo
 msg
 MsgType
+multi
 multidict
 multidicts
 multidict’s
@@ -175,6 +178,7 @@ programmatically
 proxied
 PRs
 pubsub
+Punycode
 py
 pyenv
 pyflakes
@@ -193,8 +197,6 @@ refactoring
 regex
 regexps
 regexs
-request’s
-Request’s
 reloader
 renderer
 renderers
@@ -202,7 +204,10 @@ repo
 repr
 repr’s
 RequestContextManager
+request’s
+Request’s
 requote
+requoting
 resolvers
 reusage
 Runit

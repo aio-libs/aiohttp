@@ -778,12 +778,11 @@ TCPConnector
       Custom resolvers allow to resolve hostnames differently than the
       way the host is configured.
 
-      .. versionadded:: 0.22
+      .. versionchanged:: 1.1
 
-      .. versionchanged:: 1.0
-
-         The resolver is ``aiohttp.AsyncResolver`` now if
-         :term:`aiodns` is installed.
+         The resolver is ``aiohttp.ThreadedResolver`` by default,
+         asynchronous version is not pretty robust but might fail in
+         very rare cases.
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
@@ -992,7 +991,10 @@ Response object
 
    .. attribute:: content
 
-      Payload stream, contains response's BODY (:class:`StreamReader`).
+      Payload stream, which contains response's BODY (:class:`StreamReader`).
+      It supports various reading methods depending on the expected format.
+      When chunked transfer encoding is used by the server, allows retrieving
+      the actual http chunks.
 
       Reading from the stream may raise
       :exc:`aiohttp.ClientPayloadError` if the response object is
@@ -1243,8 +1245,7 @@ manually.
 
       It process *ping-pong game* and performs *closing handshake* internally.
 
-      :return: :class:`~aiohttp.WSMessage`, `tp` is a type from
-         :class:`~aiohttp.WSMsgType` enumeration.
+      :return: :class:`~aiohttp.WSMessage`
 
    .. coroutinemethod:: receive_str()
 
@@ -1344,7 +1345,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(unsafe=False, loop=None)
+.. class:: CookieJar(*, unsafe=False, loop=None)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1414,6 +1415,19 @@ CookieJar
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
 
+
+
+.. class:: DummyCookieJar(*, loop=None)
+
+   Dummy cookie jar which does not store cookies but ignores them.
+
+   Could be useful e.g. for web crawlers to iterate over Internet
+   without blowing up with saved cookies information.
+
+   To install dummy cookie jar pass it into session instance::
+
+      jar = aiohttp.DummyCookieJar()
+      session = aiohttp.ClientSession(cookie_jar=DummyCookieJar())
 
 Client exceptions
 -----------------

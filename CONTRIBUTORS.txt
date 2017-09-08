@@ -93,6 +93,7 @@ Jeroen van der Heijden
 Jesus Cea
 Jinkyu Yi
 Joel Watts
+Jon Nabozny
 Joongi Kim
 Josep Cugat
 Julia Tsemusheva
@@ -172,6 +173,7 @@ Thomas Grainger
 Tolga Tezel
 Vaibhav Sagar
 Vamsi Krishna Avula
+Vasiliy Faronov
 Vasyl Baran
 Vikas Kawadia
 Vitalik Verhovodov
