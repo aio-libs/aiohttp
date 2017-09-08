@@ -514,6 +514,17 @@ symlinks, parameter ``follow_symlinks`` should be set to ``True``::
 
    app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
 
+When you want to enable cache busting,
+parameter ``append_version`` can be set to ``True``
+
+Cache busting is the process of appending some form of file version hash
+to the filename of resources like JavaScript and CSS files.
+The performance advantage of doing this is that we can tell the browser
+to cache these files indefinitely without worrying about the client not getting
+the latest version when the file changes::
+
+   app.router.add_static('/prefix', path_to_static_folder, append_version=True)
+
 Template Rendering
 ------------------
 
@@ -682,14 +693,14 @@ a container for the file as well as some of its metadata::
 
         return web.Response(body=content,
                             headers=MultiDict(
-                                {'CONTENT-DISPOSITION': mp3_file})
+                                {'CONTENT-DISPOSITION': mp3_file}))
 
 
-You might be noticed a big warning in example above. The general issue is that
-:meth:`Request.post` reads whole payload in memory. That's may hurt with
-:abbr:`OOM (Out Of Memory)` error. To avoid this, for multipart uploads, you
-should use :meth:`Request.multipart` which returns :ref:`multipart reader
-<aiohttp-multipart>` back::
+You might have noticed a big warning in the example above. The general issue is
+that :meth:`Request.post` reads the whole payload in memory, resulting in possible
+:abbr:`OOM (Out Of Memory)` errors. To avoid this, for multipart uploads, you
+should use :meth:`Request.multipart` which returns a :ref:`multipart reader
+<aiohttp-multipart>`::
 
     async def store_mp3_handler(request):
 
@@ -743,6 +754,10 @@ with the peer::
         print('websocket connection closed')
 
         return ws
+    
+The handler should be registered as HTTP GET processor::    
+    
+    app.router.add_get('/ws', websocket_handler)    
 
 .. _aiohttp-web-websocket-read-same-task:
 
@@ -963,6 +978,11 @@ the **next** *middleware factory*. The last *middleware factory* always receives
 the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
 (by :meth:`UrlDispatcher.resolve`).
 
+.. note::
+
+   Both the outer *middleware_factory* coroutine and the inner
+   *middleware_handler* coroutine are called for every request handled.
+
 *Middleware factories* should return a new handler that has the same signature
 as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
 single :class:`Request` instance and return a :class:`Response`, or raise an
@@ -981,6 +1001,43 @@ if user has no permissions to access the underlying resource.
 They may also render errors raised by the handler, perform some pre- or
 post-processing like handling *CORS* and so on.
 
+The following code demonstrates middlewares execution order::
+
+   from aiohttp import web
+   def test(request):
+       print('Handler function called')
+       return web.Response(text="Hello")
+
+   async def middleware1(app, handler):
+       async def middleware_handler(request):
+           print('Middleware 1 called')
+           response = await handler(request)
+           print('Middleware 1 finished')
+
+           return response
+       return middleware_handler
+
+   async def middleware2(app, handler):
+       async def middleware_handler(request):
+           print('Middleware 2 called')
+           response = await handler(request)
+           print('Middleware 2 finished')
+
+           return response
+       return middleware_handler
+
+
+   app = web.Application(middlewares=[middleware1, middleware2])
+   app.router.add_get('/', test)
+   web.run_app(app)
+
+Produced output::
+
+   Middleware 1 called
+   Middleware 2 called
+   Handler function called
+   Middleware 2 finished
+   Middleware 1 finished
 
 Example
 ^^^^^^^
@@ -1034,6 +1091,32 @@ This can be accomplished by subscribing to the
         response.headers['My-Header'] = 'value'
 
     app.on_response_prepare.append(on_prepare)
+
+
+Additionally, the :attr:`~aiohttp.web.Application.on_startup` and
+:attr:`~aiohttp.web.Application.on_cleanup` signals can be subscribed to for
+application component setup and tear down accordingly.
+
+The following example will properly initialize and dispose an aiopg connection
+engine::
+
+    from aiopg.sa import create_engine
+
+    async def create_aiopg(app):
+        app['pg_engine'] = await create_engine(
+            user='postgre',
+            database='postgre',
+            host='localhost',
+            port=5432,
+            password=''
+        )
+
+    async def dispose_aiopg(app):
+        app['pg_engine'].close()
+        await app['pg_engine'].wait_closed()
+
+    app.on_startup.append(create_aiopg)
+    app.on_cleanup.append(dispose_aiopg)
 
 
 Signal handlers should not return a value but may modify incoming mutable

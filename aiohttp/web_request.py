@@ -16,6 +16,7 @@ from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
+from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
 
@@ -27,7 +28,7 @@ FileField = collections.namedtuple(
 _TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
 
-_TOKEN = r'[{tchar}]*'.format(tchar=_TCHAR)
+_TOKEN = r'[{tchar}]+'.format(tchar=_TCHAR)
 
 _QDTEXT = r'[{}]'.format(
     r''.join(chr(c) for c in (0x09, 0x20, 0x21) + tuple(range(0x23, 0x7F))))
@@ -39,12 +40,8 @@ _QUOTED_PAIR = r'\\[\t !-~]'
 _QUOTED_STRING = r'"(?:{quoted_pair}|{qdtext})*"'.format(
     qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR)
 
-_FORWARDED_PARAMS = (
-    r'[bB][yY]|[fF][oO][rR]|[hH][oO][sS][tT]|[pP][rR][oO][tT][oO]')
-
 _FORWARDED_PAIR = (
-    r'^({forwarded_params})=({token}|{quoted_string})$'.format(
-        forwarded_params=_FORWARDED_PARAMS,
+    r'({token})=({token}|{quoted_string})'.format(
         token=_TOKEN,
         quoted_string=_QUOTED_STRING))
 
@@ -208,37 +205,45 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         Returns a tuple containing one or more immutable dicts
         """
-        def _parse_forwarded(forwarded_headers):
-            for field_value in forwarded_headers:
-                # by=...;for=..., For=..., BY=...
-                for forwarded_elm in field_value.split(','):
-                    # by=...;for=...
-                    fvparams = dict()
-                    forwarded_pairs = (
-                        _FORWARDED_PAIR_RE.findall(pair)
-                        for pair in forwarded_elm.strip().split(';'))
-                    for forwarded_pair in forwarded_pairs:
-                        # by=...
-                        if len(forwarded_pair) != 1:
-                            # non-compliant syntax
-                            break
-                        param, value = forwarded_pair[0]
-                        if param.lower() in fvparams:
-                            # duplicate param in field-value
-                            break
-                        if value and value[0] == '"':
-                            # quoted string: replace quotes and escape
-                            # sequences
-                            value = _QUOTED_PAIR_REPLACE_RE.sub(
-                                r'\1', value[1:-1])
-                        fvparams[param.lower()] = value
+        elems = []
+        for field_value in self._message.headers.getall(hdrs.FORWARDED, ()):
+            length = len(field_value)
+            pos = 0
+            need_separator = False
+            elem = {}
+            elems.append(types.MappingProxyType(elem))
+            while 0 <= pos < length:
+                match = _FORWARDED_PAIR_RE.match(field_value, pos)
+                if match is not None:           # got a valid forwarded-pair
+                    if need_separator:
+                        # bad syntax here, skip to next comma
+                        pos = field_value.find(',', pos)
                     else:
-                        yield types.MappingProxyType(fvparams)
-                        continue
-                    yield dict()
-
-        return tuple(
-            _parse_forwarded(self._message.headers.getall(hdrs.FORWARDED, ())))
+                        (name, value) = match.groups()
+                        if value[0] == '"':
+                            # quoted string: remove quotes and unescape
+                            value = _QUOTED_PAIR_REPLACE_RE.sub(r'\1',
+                                                                value[1:-1])
+                        elem[name.lower()] = value
+                        pos += len(match.group(0))
+                        need_separator = True
+                elif field_value[pos] == ',':      # next forwarded-element
+                    need_separator = False
+                    elem = {}
+                    elems.append(types.MappingProxyType(elem))
+                    pos += 1
+                elif field_value[pos] == ';':      # next forwarded-pair
+                    need_separator = False
+                    pos += 1
+                elif field_value[pos] in ' \t':
+                    # Allow whitespace even between forwarded-pairs, though
+                    # RFC 7239 doesn't. This simplifies code and is in line
+                    # with Postel's law.
+                    pos += 1
+                else:
+                    # bad syntax here, skip to next comma
+                    pos = field_value.find(',', pos)
+        return tuple(elems)
 
     @reify
     def _scheme(self):
@@ -457,8 +462,21 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def has_body(self):
-        """Return True if request has HTTP BODY, False otherwise."""
+        """Return True if request's HTTP BODY can be read, False otherwise."""
+        warnings.warn(
+            "Deprecated, use .can_read_body #2005",
+            DeprecationWarning, stacklevel=2)
         return not self._payload.at_eof()
+
+    @property
+    def can_read_body(self):
+        """Return True if request's HTTP BODY can be read, False otherwise."""
+        return not self._payload.at_eof()
+
+    @property
+    def body_exists(self):
+        """Return True if request has HTTP BODY, False otherwise."""
+        return type(self._payload) is not EmptyStreamReader
 
     @asyncio.coroutine
     def release(self):

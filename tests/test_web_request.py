@@ -290,6 +290,61 @@ def test_single_forwarded_header_quoted_escaped():
     assert req.forwarded[0]['proto'] == 'lala land~ 123!&'
 
 
+def test_single_forwarded_header_custom_param():
+    header = r'BY=identifier;PROTO=https;SOME="other, \"value\""'
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert len(req.forwarded) == 1
+    assert req.forwarded[0]['by'] == 'identifier'
+    assert req.forwarded[0]['proto'] == 'https'
+    assert req.forwarded[0]['some'] == 'other, "value"'
+
+
+def test_single_forwarded_header_empty_params():
+    # This is allowed by the grammar given in RFC 7239
+    header = ';For=identifier;;PROTO=https;;;'
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded[0]['for'] == 'identifier'
+    assert req.forwarded[0]['proto'] == 'https'
+
+
+def test_single_forwarded_header_bad_separator():
+    header = 'BY=identifier PROTO=https'
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert 'proto' not in req.forwarded[0]
+
+
+def test_single_forwarded_header_injection1():
+    # We might receive a header like this if we're sitting behind a reverse
+    # proxy that blindly appends a forwarded-element without checking
+    # the syntax of existing field-values. We should be able to recover
+    # the appended element anyway.
+    header = 'for=_injected;by=", for=_real'
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert len(req.forwarded) == 2
+    assert 'by' not in req.forwarded[0]
+    assert req.forwarded[1]['for'] == '_real'
+
+
+def test_single_forwarded_header_injection2():
+    header = 'very bad syntax, for=_real'
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert len(req.forwarded) == 2
+    assert 'for' not in req.forwarded[0]
+    assert req.forwarded[1]['for'] == '_real'
+
+
+def test_single_forwarded_header_long_quoted_string():
+    header = 'for="' + '\\\\' * 5000 + '"'
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded[0]['for'] == '\\' * 5000
+
+
 def test_multiple_forwarded_headers():
     headers = CIMultiDict()
     headers.add('Forwarded', 'By=identifier1;for=identifier2, BY=identifier3')
@@ -303,10 +358,37 @@ def test_multiple_forwarded_headers():
     assert req.forwarded[2]['for'] == 'identifier5'
 
 
+def test_multiple_forwarded_headers_bad_syntax():
+    headers = CIMultiDict()
+    headers.add('Forwarded', 'for=_1;by=_2')
+    headers.add('Forwarded', 'invalid value')
+    headers.add('Forwarded', '')
+    headers.add('Forwarded', 'for=_3;by=_4')
+    req = make_mocked_request('GET', '/', headers=headers)
+    assert len(req.forwarded) == 4
+    assert req.forwarded[0]['for'] == '_1'
+    assert 'for' not in req.forwarded[1]
+    assert 'for' not in req.forwarded[2]
+    assert req.forwarded[3]['by'] == '_4'
+
+
+def test_multiple_forwarded_headers_injection():
+    headers = CIMultiDict()
+    # This could be sent by an attacker, hoping to "shadow" the second header.
+    headers.add('Forwarded', 'for=_injected;by="')
+    # This is added by our trusted reverse proxy.
+    headers.add('Forwarded', 'for=_real;by=_actual_proxy')
+    req = make_mocked_request('GET', '/', headers=headers)
+    assert len(req.forwarded) == 2
+    assert 'by' not in req.forwarded[0]
+    assert req.forwarded[1]['for'] == '_real'
+    assert req.forwarded[1]['by'] == '_actual_proxy'
+
+
 def test_https_scheme_by_forwarded_header():
+    header = 'by=_1;for=_2;host=_3;proto=https'
     req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict(
-                                  {'Forwarded': 'by=;for=;host=;proto=https'}))
+                              headers=CIMultiDict({'Forwarded': header}))
     assert "https" == req.scheme
     assert req.secure is True
 
@@ -338,7 +420,7 @@ def test_https_scheme_by_x_forwarded_proto_header_no_tls():
 def test_host_by_forwarded_header():
     headers = CIMultiDict()
     headers.add('Forwarded', 'By=identifier1;for=identifier2, BY=identifier3')
-    headers.add('Forwarded', 'by=;for=;host=example.com')
+    headers.add('Forwarded', 'by=unknown;for=unknown;host=example.com')
     req = make_mocked_request('GET', '/', headers=headers)
     assert req.host == 'example.com'
 
