@@ -1,4 +1,5 @@
 import asyncio
+import os
 from functools import partial
 from unittest import mock
 
@@ -6,8 +7,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-import aiohttp.helpers
-import aiohttp.web
+from aiohttp import web
 
 
 @pytest.fixture
@@ -21,8 +21,10 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
         headers=None,
         body=None)
 
+    proxy_mock = mock.Mock()
+
     @asyncio.coroutine
-    def proxy_handler(request, proxy_mock):
+    def proxy_handler(request):
         proxy_mock.request = request
         proxy_mock.requests_list.append(request)
 
@@ -39,19 +41,18 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
 
         response['headers'] = headers
 
-        resp = aiohttp.web.Response(**response)
+        resp = web.Response(**response)
         yield from resp.prepare(request)
-        yield from resp.drain()
+        yield from resp.write_eof()
         return resp
 
     @asyncio.coroutine
     def proxy_server():
-        proxy_mock = mock.Mock()
         proxy_mock.request = None
+        proxy_mock.auth = None
         proxy_mock.requests_list = []
 
-        handler = partial(proxy_handler, proxy_mock=proxy_mock)
-        server = yield from raw_test_server(handler)
+        server = yield from raw_test_server(proxy_handler)
 
         proxy_mock.server = server
         proxy_mock.url = server.make_url('/')
@@ -147,7 +148,7 @@ def test_proxy_http_auth(proxy_test_server, get_request):
     assert 'Authorization' not in proxy.request.headers
     assert 'Proxy-Authorization' not in proxy.request.headers
 
-    auth = aiohttp.helpers.BasicAuth('user', 'pass')
+    auth = aiohttp.BasicAuth('user', 'pass')
     yield from get_request(url=url, auth=auth, proxy=proxy.url)
 
     assert 'Authorization' in proxy.request.headers
@@ -168,7 +169,7 @@ def test_proxy_http_auth(proxy_test_server, get_request):
 @asyncio.coroutine
 def test_proxy_http_auth_utf8(proxy_test_server, get_request):
     url = 'http://aiohttp.io/path'
-    auth = aiohttp.helpers.BasicAuth('юзер', 'пасс', 'utf-8')
+    auth = aiohttp.BasicAuth('юзер', 'пасс', 'utf-8')
     proxy = yield from proxy_test_server()
 
     yield from get_request(url=url, auth=auth, proxy=proxy.url)
@@ -367,7 +368,7 @@ def test_proxy_https_bad_response(proxy_test_server, get_request):
 @asyncio.coroutine
 def _test_proxy_https_auth(proxy_test_server, get_request):
     url = 'https://secure.aiohttp.io/path'
-    auth = aiohttp.helpers.BasicAuth('user', 'pass')
+    auth = aiohttp.BasicAuth('user', 'pass')
 
     proxy = yield from proxy_test_server()
     yield from get_request(url=url, proxy=proxy.url)
@@ -505,3 +506,20 @@ def _patch_ssl_transport(monkeypatch):
     monkeypatch.setattr(
         "asyncio.selector_events.BaseSelectorEventLoop._make_ssl_transport",
         _make_ssl_transport_dummy)
+
+
+@asyncio.coroutine
+def test_proxy_auth_in_url(proxy_test_server, get_request, mocker):
+    url = 'http://aiohttp.io/path'
+    proxy = yield from proxy_test_server()
+    mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url)})
+
+    import ipdb;ipdb.set_trace()
+
+    yield from get_request(url=url, **aiohttp.proxy_from_env())
+
+    assert len(proxy.requests_list) == 1
+    assert proxy.request.method == 'GET'
+    assert proxy.request.host == 'aiohttp.io'
+    assert proxy.request.path_qs == 'http://aiohttp.io/path?query=yes'
+    assert proxy.request.proxy == proxy.url

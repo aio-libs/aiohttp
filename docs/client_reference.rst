@@ -1354,7 +1354,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(unsafe=False, loop=None)
+.. class:: CookieJar(*, unsafe=False, loop=None)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1424,6 +1424,19 @@ CookieJar
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
 
+
+
+.. class:: DummyCookieJar(*, loop=None)
+
+   Dummy cookie jar which does not store cookies but ignores them.
+
+   Could be useful e.g. for web crawlers to iterate over Internet
+   without blowing up with saved cookies information.
+
+   To install dummy cookie jar pass it into session instance::
+
+      jar = aiohttp.DummyCookieJar()
+      session = aiohttp.ClientSession(cookie_jar=DummyCookieJar())
 
 Client exceptions
 -----------------
