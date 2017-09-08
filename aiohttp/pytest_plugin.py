@@ -31,7 +31,7 @@ def pytest_addoption(parser):
         help='run tests faster by disabling extra checks')
     parser.addoption(
         '--loop', action='store', default='pyloop',
-        help='run tests with specific loop: pyloop, uvloop, tokio')
+        help='run tests with specific loop: pyloop, uvloop, tokio or all')
     parser.addoption(
         '--enable-loop-debug', action='store_true', default=False,
         help='enable event loop debug mode')
