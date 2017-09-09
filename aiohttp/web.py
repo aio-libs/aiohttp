@@ -74,7 +74,6 @@ class Application(MutableMapping):
         self.logger = logger
 
         self._middlewares = FrozenList(middlewares)
-        self._new_style_middleware = None
         self._state = {}
         self._frozen = False
         self._subapps = []
@@ -149,8 +148,7 @@ class Application(MutableMapping):
             return
 
         self._frozen = True
-        self._middlewares = tuple(reversed(self._middlewares))
-        self._new_style_middleware = self._inspect_middleware()
+        self._middlewares = tuple(self._prepare_middleware())
         self._router.freeze()
         self._on_loop_available.freeze()
         self._on_pre_signal.freeze()
@@ -286,18 +284,19 @@ class Application(MutableMapping):
             secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
-    def _inspect_middleware(self):
-        if not self._middlewares:
-            return True
-        sig = inspect.signature(self._middlewares[0])
-        first_arg = list(sig.parameters.keys())[0]
-        if first_arg.startswith('r'):
-            # first argument is request or r and this is new-style middleware
-            return True
-        else:
-            warnings.warn('old-style middleware deprecated, see #2252',
-                          DeprecationWarning, stacklevel=2)
-            return False
+    def _prepare_middleware(self):
+        for m in reversed(self._middlewares):
+            sig = inspect.signature(m)
+            first_arg = list(sig.parameters.keys())[0]
+            if first_arg.startswith('r'):
+                # first argument is request or r and this is
+                # new-style middleware
+                yield m, True
+            else:
+                warnings.warn('old-style middleware "{}" deprecated, '
+                              'see #2252'.format(m.__name__),
+                              DeprecationWarning, stacklevel=2)
+                yield m, False
 
     @asyncio.coroutine
     def _handle(self, request):
@@ -318,12 +317,11 @@ class Application(MutableMapping):
         if resp is None:
             handler = match_info.handler
             for app in match_info.apps[::-1]:
-                if self._new_style_middleware:
-                    for m in app._middlewares:
+                for m, new_style in app._middlewares:
+                    if new_style:
                         handler = partial(m, handler=handler)
-                else:
-                    for factory in app._middlewares:
-                        handler = yield from factory(app, handler)
+                    else:
+                        handler = yield from m(app, handler)
 
             resp = yield from handler(request)
 

@@ -231,5 +231,57 @@ def test_old_style_middleware(loop, test_client):
         assert 'OK[old style middleware]' == txt
 
     assert len(warning_checker) == 1
-    warning = warning_checker.list[0]
-    assert 'old-style middleware deprecated' in str(warning.message)
+    msg = str(warning_checker.list[0].message)
+    assert 'old-style middleware "middleware_factory" deprecated' in msg
+
+
+@asyncio.coroutine
+def test_mixed_middleware(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    @asyncio.coroutine
+    def m_old1(app, handler):
+        @asyncio.coroutine
+        def middleware(request):
+            resp = yield from handler(request)
+            resp.text += '[old style 1]'
+            return resp
+        return middleware
+
+    @asyncio.coroutine
+    def m_new1(request, handler):
+        resp = yield from handler(request)
+        resp.text += '[new style 1]'
+        return resp
+
+    @asyncio.coroutine
+    def m_old2(app, handler):
+        @asyncio.coroutine
+        def middleware(request):
+            resp = yield from handler(request)
+            resp.text += '[old style 2]'
+            return resp
+        return middleware
+
+    @asyncio.coroutine
+    def m_new2(request, handler):
+        resp = yield from handler(request)
+        resp.text += '[new style 2]'
+        return resp
+
+    middlewares = m_old1, m_new1, m_old2, m_new2
+
+    with pytest.warns(DeprecationWarning) as w:
+        app = web.Application(middlewares=middlewares)
+        app.router.add_route('GET', '/', handler)
+        client = yield from test_client(app)
+        resp = yield from client.get('/')
+        assert 200 == resp.status
+        txt = yield from resp.text()
+        assert 'OK[new style 2][old style 2][new style 1][old style 1]' == txt
+
+    assert len(w) == 2
+    assert 'old-style middleware "m_old2" deprecated' in str(w.list[0].message)
+    assert 'old-style middleware "m_old1" deprecated' in str(w.list[1].message)
