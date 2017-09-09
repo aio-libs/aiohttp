@@ -1115,7 +1115,7 @@ Response object
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*. If data is not still available
-      a ``read`` call will be done, 
+      a ``read`` call will be done,
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
@@ -1481,11 +1481,20 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
 
-.. class:: ClientHttpProxyError
+.. class:: WSServerHandshakeError
 
-   Proxy response error.
+   Web socket server response error.
 
    Derived from :exc:`ClientResponseError`
+
+
+.. class:: ContentTypeError
+
+   Invalid content type.
+
+   Derived from :exc:`ClientResponseError`
+
+   .. versionadded:: 2.3
 
 Connection errors
 ^^^^^^^^^^^^^^^^^
@@ -1561,6 +1570,7 @@ Hierarchy of exceptions
 
   * :exc:`ClientResponseError`
 
+    * :exc:`ContentTypeError`
     * :exc:`WSServerHandshakeError`
     * :exc:`ClientHttpProxyError`
 
