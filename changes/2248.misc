@@ -1,0 +1,4 @@
+Test only python asyncio loop by default
+
+changed the default value for the pytest argument loop to `--loop pytest`
+then set aiohttp to use `--loop all`
