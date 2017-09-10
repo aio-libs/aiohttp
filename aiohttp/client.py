@@ -15,8 +15,8 @@ from yarl import URL
 from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
-                                WSServerHandshakeError)
+from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
+                                ServerTimeoutError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
@@ -201,7 +201,15 @@ class ClientSession:
                 skip_headers.add(istr(i))
 
         if proxy is not None:
-            proxy = URL(proxy)
+            try:
+                proxy = URL(proxy)
+            except ValueError:
+                raise InvalidURL(url)
+
+        try:
+            url = URL(url)
+        except ValueError:
+            raise InvalidURL(url)
 
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
@@ -214,7 +222,7 @@ class ClientSession:
         try:
             with timer:
                 while True:
-                    url = URL(url).with_fragment(None)
+                    url = url.with_fragment(None)
                     cookies = self._cookie_jar.filter_cookies(url)
 
                     req = self._request_class(
@@ -280,8 +288,12 @@ class ClientSession:
                             # see github.com/aio-libs/aiohttp/issues/2022
                             break
 
-                        r_url = URL(
-                            r_url, encoded=not self.requote_redirect_url)
+                        try:
+                            r_url = URL(
+                                r_url, encoded=not self.requote_redirect_url)
+
+                        except ValueError:
+                            raise InvalidURL(r_url)
 
                         scheme = r_url.scheme
                         if scheme not in ('http', 'https', ''):

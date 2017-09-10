@@ -285,13 +285,8 @@ def test_headers_default(make_request):
 
 
 def test_invalid_url(make_request):
-    with pytest.raises(ValueError):
+    with pytest.raises(aiohttp.InvalidURL):
         make_request('get', 'hiwpefhipowhefopw')
-
-
-def test_invalid_idna(make_request):
-    with pytest.raises(ValueError):
-        make_request('get', 'http://\u2061owhefopw.com')
 
 
 def test_no_path(make_request):

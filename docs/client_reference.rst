@@ -1452,6 +1452,29 @@ All exceptions are available as members of *aiohttp* module.
    Derived from :exc:`Exception`
 
 
+.. class:: ClientPayloadError
+
+   This exception can only be raised while reading the response
+   payload if one of these errors occurs:
+
+   1. invalid compression
+   2. malformed chunked encoding
+   3. not enough data that satisfy ``Content-Length`` HTTP header.
+
+   Derived from :exc:`ClientError`
+
+.. exception:: InvalidURL
+
+   URL used for fetching is malformed, e.g. it doesn't contains host
+   part.
+
+   Derived from :exc:`ClientError` and :exc:`ValueError`
+
+   .. attribute:: url
+
+      Invalid URL, :class:`yarl.URL` instance.
+
+
 Response errors
 ^^^^^^^^^^^^^^^
 
@@ -1552,17 +1575,6 @@ Connection errors
    Derived from :exc:`ServerConnectonError`
 
 
-.. class:: ClientPayloadError
-
-   This exception can only be raised while reading the response
-   payload if one of these errors occurs:
-
-   1. invalid compression
-   2. malformed chunked encoding
-   3. not enough data that satisfy ``Content-Length`` HTTP header.
-
-   Derived from :exc:`ClientError`
-
 Hierarchy of exceptions
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1590,3 +1602,5 @@ Hierarchy of exceptions
       * :exc:`ServerFingerprintMismatch`
 
   * :exc:`ClientPayloadError`
+
+  * :exc:`InvalidURL`
