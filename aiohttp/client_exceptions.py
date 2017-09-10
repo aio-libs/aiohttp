@@ -12,10 +12,10 @@ __all__ = (
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
     'ServerFingerprintMismatch',
 
-    'ClientResponseError', 'ClientPayloadError',
-    'ContentTypeError',
+    'ClientResponseError', 'ClientHttpProxyError',
+    'WSServerHandshakeError', 'ContentTypeError',
 
-    'ClientHttpProxyError', 'WSServerHandshakeError')
+    'ClientPayloadError')
 
 
 class ClientError(Exception):
