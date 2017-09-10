@@ -2219,8 +2219,8 @@ def test_raise_for_status(loop, test_client):
 
 
 @asyncio.coroutine
-def test_invalid_idna():
-    session = aiohttp.ClientSession()
+def test_invalid_idna(loop):
+    session = aiohttp.ClientSession(loop=loop)
     try:
         with pytest.raises(aiohttp.InvalidURL):
             yield from session.get('http://\u2061owhefopw.com')
