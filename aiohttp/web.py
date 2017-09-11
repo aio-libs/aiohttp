@@ -447,8 +447,9 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
                 pass
 
         try:
-            print("======== Running on {} ========\n"
-                  "(Press CTRL+C to quit)".format(', '.join(uris)))
+            if print:
+                print("======== Running on {} ========\n"
+                      "(Press CTRL+C to quit)".format(', '.join(uris)))
             loop.run_forever()
         except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
             pass
