@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 from unittest import mock
 
 import pytest
@@ -14,11 +15,20 @@ from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
                                 teardown_test_loop, unittest_run_loop)
 
 
-def _create_example_app():
+_hello_world_str = "Hello, world"
+_hello_world_bytes = _hello_world_str.encode('utf-8')
+_hello_world_gz = gzip.compress(_hello_world_bytes)
 
+
+def _create_example_app():
     @asyncio.coroutine
     def hello(request):
-        return web.Response(body=b"Hello, world")
+        return web.Response(body=_hello_world_bytes)
+
+    @asyncio.coroutine
+    def gzip_hello(request):
+        return web.Response(body=_hello_world_gz,
+                            headers={'Content-Encoding': 'gzip'})
 
     @asyncio.coroutine
     def websocket_handler(request):
@@ -36,12 +46,13 @@ def _create_example_app():
 
     @asyncio.coroutine
     def cookie_handler(request):
-        resp = web.Response(body=b"Hello, world")
+        resp = web.Response(body=_hello_world_bytes)
         resp.set_cookie('cookie', 'val')
         return resp
 
     app = web.Application()
     app.router.add_route('*', '/', hello)
+    app.router.add_route('*', '/gzip_hello', gzip_hello)
     app.router.add_route('*', '/websocket', websocket_handler)
     app.router.add_route('*', '/cookie', cookie_handler)
     return app
@@ -50,7 +61,7 @@ def _create_example_app():
 def test_full_server_scenario():
     with loop_context() as loop:
         app = _create_example_app()
-        with _TestClient(app, loop=loop) as client:
+        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
 
             @asyncio.coroutine
             def test_get_route():
@@ -58,7 +69,40 @@ def test_full_server_scenario():
                 resp = yield from client.request("GET", "/")
                 assert resp.status == 200
                 text = yield from resp.text()
-                assert "Hello, world" in text
+                assert _hello_world_str == text
+
+            loop.run_until_complete(test_get_route())
+
+
+def test_auto_gzip_decompress():
+    with loop_context() as loop:
+        app = _create_example_app()
+        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
+
+            @asyncio.coroutine
+            def test_get_route():
+                nonlocal client
+                resp = yield from client.request("GET", "/gzip_hello")
+                assert resp.status == 200
+                data = yield from resp.read()
+                assert data == _hello_world_bytes
+
+            loop.run_until_complete(test_get_route())
+
+
+def test_noauto_gzip_decompress():
+    with loop_context() as loop:
+        app = _create_example_app()
+        with _TestClient(_TestServer(app, loop=loop), loop=loop,
+                         auto_decompress=False) as client:
+
+            @asyncio.coroutine
+            def test_get_route():
+                nonlocal client
+                resp = yield from client.request("GET", "/gzip_hello")
+                assert resp.status == 200
+                data = yield from resp.read()
+                assert data == _hello_world_gz
 
             loop.run_until_complete(test_get_route())
 
@@ -66,14 +110,14 @@ def test_full_server_scenario():
 def test_server_with_create_test_teardown():
     with loop_context() as loop:
         app = _create_example_app()
-        with _TestClient(app, loop=loop) as client:
+        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
 
             @asyncio.coroutine
             def test_get_route():
                 resp = yield from client.request("GET", "/")
                 assert resp.status == 200
                 text = yield from resp.text()
-                assert "Hello, world" in text
+                assert _hello_world_str == text
 
             loop.run_until_complete(test_get_route())
 
@@ -85,7 +129,7 @@ def test_test_client_close_is_idempotent():
     """
     loop = setup_test_loop()
     app = _create_example_app()
-    client = _TestClient(app, loop=loop)
+    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
     loop.run_until_complete(client.close())
     loop.run_until_complete(client.close())
     teardown_test_loop(loop)
@@ -102,7 +146,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         request = yield from self.client.request("GET", "/")
         assert request.status == 200
         text = yield from request.text()
-        assert "Hello, world" in text
+        assert _hello_world_str == text
 
     def test_example(self):
         @asyncio.coroutine
@@ -110,7 +154,7 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
             resp = yield from self.client.request("GET", "/")
             assert resp.status == 200
             text = yield from resp.text()
-            assert "Hello, world" in text
+            assert _hello_world_str == text
 
         self.loop.run_until_complete(test_get_route())
 
@@ -129,7 +173,7 @@ def app():
 
 @pytest.yield_fixture
 def test_client(loop, app):
-    client = _TestClient(app, loop=loop)
+    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
     loop.run_until_complete(client.start_server())
     yield client
     loop.run_until_complete(client.close())
@@ -141,7 +185,7 @@ def test_get_route(loop, test_client):
         resp = yield from test_client.request("GET", "/")
         assert resp.status == 200
         text = yield from resp.text()
-        assert "Hello, world" in text
+        assert _hello_world_str == text
 
     loop.run_until_complete(test_get_route())
 
@@ -176,7 +220,7 @@ def test_test_client_methods(method, loop, test_client):
     resp = yield from getattr(test_client, method)("/")
     assert resp.status == 200
     text = yield from resp.text()
-    assert "Hello, world" in text
+    assert _hello_world_str == text
 
 
 @asyncio.coroutine
@@ -225,7 +269,8 @@ def test_make_mocked_request_transport():
 
 def test_test_client_props(loop):
     app = _create_example_app()
-    client = _TestClient(app, loop=loop, host='localhost')
+    client = _TestClient(_TestServer(app, host='localhost', loop=loop),
+                         loop=loop)
     assert client.host == 'localhost'
     assert client.port is None
     with client:
@@ -248,20 +293,6 @@ def test_test_server_context_manager(loop):
         loop.run_until_complete(go())
 
 
-def test_client_scheme_mutually_exclusive_with_server():
-    app = _create_example_app()
-    server = _TestServer(app)
-    with pytest.raises(ValueError):
-        _TestClient(server, scheme='http')
-
-
-def test_client_host_mutually_exclusive_with_server():
-    app = _create_example_app()
-    server = _TestServer(app)
-    with pytest.raises(ValueError):
-        _TestClient(server, host='127.0.0.1')
-
-
 def test_client_unsupported_arg():
     with pytest.raises(TypeError):
         _TestClient('string')
@@ -276,3 +307,17 @@ def test_server_make_url_yarl_compatibility(loop):
             make_url('http://foo.com')
         with pytest.raises(AssertionError):
             make_url(URL('http://foo.com'))
+
+
+def test_testcase_no_app(testdir, loop):
+    testdir.makepyfile(
+        """
+        from aiohttp.test_utils import AioHTTPTestCase
+
+
+        class InvalidTestCase(AioHTTPTestCase):
+            def test_noop(self):
+                pass
+        """)
+    result = testdir.runpytest()
+    result.stdout.fnmatch_lines(["*RuntimeError*"])

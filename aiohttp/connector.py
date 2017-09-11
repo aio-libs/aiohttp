@@ -1,10 +1,9 @@
 import asyncio
 import functools
-import ssl
 import sys
 import traceback
 import warnings
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from hashlib import md5, sha1, sha256
 from itertools import cycle, islice
 from time import monotonic
@@ -17,7 +16,14 @@ from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
+from .locks import EventResultOrError
 from .resolver import DefaultResolver
+
+
+try:
+    import ssl
+except ImportError:  # pragma: no cover
+    ssl = None
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
@@ -126,6 +132,9 @@ class _TransportPlaceholder:
 
     def close(self):
         pass
+
+
+ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
 class BaseConnector(object):
@@ -300,11 +309,11 @@ class BaseConnector(object):
             if self._loop.is_closed():
                 return noop()
 
-            # cacnel cleanup task
+            # cancel cleanup task
             if self._cleanup_handle:
                 self._cleanup_handle.cancel()
 
-            # cacnel cleanup close task
+            # cancel cleanup close task
             if self._cleanup_closed_handle:
                 self._cleanup_closed_handle.cancel()
 
@@ -338,7 +347,7 @@ class BaseConnector(object):
     @asyncio.coroutine
     def connect(self, req):
         """Get from pool or create new connection."""
-        key = (req.host, req.port, req.ssl)
+        key = ConnectionKey(req.host, req.port, req.ssl)
 
         if self._limit:
             # total calc available connections
@@ -377,10 +386,7 @@ class BaseConnector(object):
             try:
                 proto = yield from self._create_connection(req)
             except OSError as exc:
-                raise ClientConnectorError(
-                    exc.errno,
-                    'Cannot connect to host {0[0]}:{0[1]} ssl:{0[2]} [{1}]'
-                    .format(key, exc.strerror)) from exc
+                raise ClientConnectorError(key, exc) from exc
             finally:
                 self._acquired.remove(placeholder)
                 self._acquired_per_host[key].remove(placeholder)
@@ -597,9 +603,17 @@ class TCPConnector(BaseConnector):
 
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._throttle_dns_events = {}
         self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
+
+    def close(self):
+        """Close all ongoing DNS calls."""
+        for ev in self._throttle_dns_events.values():
+            ev.cancel()
+
+        super().close()
 
     @property
     def verify_ssl(self):
@@ -617,6 +631,9 @@ class TCPConnector(BaseConnector):
 
         Lazy property, creates context on demand.
         """
+        if ssl is None:  # pragma: no cover
+            raise RuntimeError('SSL is not supported.')
+
         if self._ssl_context is None:
             if not self._verify_ssl:
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -660,20 +677,38 @@ class TCPConnector(BaseConnector):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
-        if self._use_dns_cache:
-            key = (host, port)
+        if not self._use_dns_cache:
+            return (yield from self._resolver.resolve(
+                host, port, family=self._family))
 
-            if key not in self._cached_hosts or\
-                    self._cached_hosts.expired(key):
-                addrs = yield from \
-                    self._resolver.resolve(host, port, family=self._family)
-                self._cached_hosts.add(key, addrs)
+        key = (host, port)
 
+        if (key in self._cached_hosts) and\
+                (not self._cached_hosts.expired(key)):
             return self._cached_hosts.next_addrs(key)
+
+        if key in self._throttle_dns_events:
+            yield from self._throttle_dns_events[key].wait()
         else:
-            res = yield from self._resolver.resolve(
-                host, port, family=self._family)
-            return res
+            self._throttle_dns_events[key] = \
+                EventResultOrError(self._loop)
+            try:
+                addrs = yield from \
+                    asyncio.shield(self._resolver.resolve(host,
+                                                          port,
+                                                          family=self._family),
+                                   loop=self._loop)
+                self._cached_hosts.add(key, addrs)
+                self._throttle_dns_events[key].set()
+            except Exception as e:
+                # any DNS exception, independently of the implementation
+                # is set for the waiters to raise the same exception.
+                self._throttle_dns_events[key].set(exc=e)
+                raise
+            finally:
+                self._throttle_dns_events.pop(key)
+
+        return self._cached_hosts.next_addrs(key)
 
     @asyncio.coroutine
     def _create_connection(self, req):
@@ -731,10 +766,7 @@ class TCPConnector(BaseConnector):
             except OSError as e:
                 exc = e
         else:
-            raise ClientConnectorError(
-                exc.errno,
-                'Can not connect to %s:%s [%s]' %
-                (req.host, req.port, exc.strerror)) from exc
+            raise ClientConnectorError(req, exc) from exc
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):
@@ -748,11 +780,10 @@ class TCPConnector(BaseConnector):
             transport, proto = yield from self._create_direct_connection(
                 proxy_req)
         except OSError as exc:
-            raise ClientProxyConnectionError(*exc.args) from exc
+            raise ClientProxyConnectionError(proxy_req, exc) from exc
 
-        if hdrs.AUTHORIZATION in proxy_req.headers:
-            auth = proxy_req.headers[hdrs.AUTHORIZATION]
-            del proxy_req.headers[hdrs.AUTHORIZATION]
+        auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
+        if auth is not None:
             if not req.ssl:
                 req.headers[hdrs.PROXY_AUTHORIZATION] = auth
             else:

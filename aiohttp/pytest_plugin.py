@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import contextlib
 import tempfile
 import warnings
@@ -9,8 +10,8 @@ from py import path
 from aiohttp.web import Application
 
 from .test_utils import unused_port as _unused_port
-from .test_utils import (RawTestServer, TestClient, TestServer, loop_context,
-                         setup_test_loop, teardown_test_loop)
+from .test_utils import (BaseTestServer, RawTestServer, TestClient, TestServer,
+                         loop_context, setup_test_loop, teardown_test_loop)
 
 
 try:
@@ -29,8 +30,8 @@ def pytest_addoption(parser):
         '--fast', action='store_true', default=False,
         help='run tests faster by disabling extra checks')
     parser.addoption(
-        '--loop', action='append', default=[],
-        help='run tests with specific loop: pyloop, uvloop, tokio')
+        '--loop', action='store', default='pyloop',
+        help='run tests with specific loop: pyloop, uvloop, tokio or all')
     parser.addoption(
         '--enable-loop-debug', action='store_true', default=False,
         help='enable event loop debug mode')
@@ -118,29 +119,19 @@ def pytest_configure(config):
     LOOP_FACTORIES.clear()
     LOOP_FACTORY_IDS.clear()
 
-    if loops:
-        for names in (name.split(',') for name in loops):
-            for name in names:
-                name = name.strip()
-                if name not in factories:
-                    raise ValueError(
-                        "Unknown loop '%s', available loops: %s" % (
-                            name, list(factories.keys())))
+    if loops == 'all':
+        loops = 'pyloop,uvloop?,tokio?'
 
-                LOOP_FACTORIES.append(factories[name])
-                LOOP_FACTORY_IDS.append(name)
-    else:
-        LOOP_FACTORIES.append(asyncio.new_event_loop)
-        LOOP_FACTORY_IDS.append('pyloop')
-
-        if uvloop is not None:  # pragma: no cover
-            LOOP_FACTORIES.append(uvloop.new_event_loop)
-            LOOP_FACTORY_IDS.append('uvloop')
-
-        if tokio is not None:
-            LOOP_FACTORIES.append(tokio.new_event_loop)
-            LOOP_FACTORY_IDS.append('tokio')
-
+    for name in loops.split(','):
+        required = not name.endswith('?')
+        name = name.strip(' ?')
+        if name in factories:
+            LOOP_FACTORIES.append(factories[name])
+            LOOP_FACTORY_IDS.append(name)
+        elif required:
+            raise ValueError(
+                "Unknown loop '%s', available loops: %s" % (
+                    name, list(factories.keys())))
     asyncio.set_event_loop(None)
 
 
@@ -227,19 +218,23 @@ def test_client(loop):
     clients = []
 
     @asyncio.coroutine
-    def go(__param, *args, **kwargs):
+    def go(__param, *args, server_kwargs=None, **kwargs):
+
+        if isinstance(__param, collections.Callable) and \
+                not isinstance(__param, (Application, BaseTestServer)):
+            __param = __param(loop, *args, **kwargs)
+            kwargs = {}
+        else:
+            assert not args, "args should be empty"
+
         if isinstance(__param, Application):
-            assert not args, "args should be empty"
-            client = TestClient(__param, loop=loop, **kwargs)
-        elif isinstance(__param, TestServer):
-            assert not args, "args should be empty"
-            client = TestClient(__param, loop=loop, **kwargs)
-        elif isinstance(__param, RawTestServer):
-            assert not args, "args should be empty"
+            server_kwargs = server_kwargs or {}
+            server = TestServer(__param, loop=loop, **server_kwargs)
+            client = TestClient(server, loop=loop, **kwargs)
+        elif isinstance(__param, BaseTestServer):
             client = TestClient(__param, loop=loop, **kwargs)
         else:
-            __param = __param(loop, *args, **kwargs)
-            client = TestClient(__param, loop=loop)
+            raise ValueError("Unknown argument type: %r" % type(__param))
 
         yield from client.start_server()
         clients.append(client)
