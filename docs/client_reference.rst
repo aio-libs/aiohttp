@@ -1465,7 +1465,7 @@ All exceptions are available as members of *aiohttp* module.
 
 .. exception:: InvalidURL
 
-   URL used for fetching is malformed, e.g. it doesn't contains host
+   URL used for fetching is malformed, e.g. it does not contain host
    part.
 
    Derived from :exc:`ClientError` and :exc:`ValueError`
