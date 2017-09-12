@@ -218,7 +218,7 @@ def test_client(loop):
     clients = []
 
     @asyncio.coroutine
-    def go(__param, *args, server_kwargs={}, **kwargs):
+    def go(__param, *args, server_kwargs=None, **kwargs):
 
         if isinstance(__param, collections.Callable) and \
                 not isinstance(__param, (Application, BaseTestServer)):
@@ -228,6 +228,7 @@ def test_client(loop):
             assert not args, "args should be empty"
 
         if isinstance(__param, Application):
+            server_kwargs = server_kwargs or {}
             server = TestServer(__param, loop=loop, **server_kwargs)
             client = TestClient(server, loop=loop, **kwargs)
         elif isinstance(__param, BaseTestServer):
