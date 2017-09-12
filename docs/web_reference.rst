@@ -2400,7 +2400,8 @@ Utilities
                        ``None`` for HTTP connection.
 
    :param print: a callable compatible with :func:`print`. May be used
-                 to override STDOUT output or suppress it.
+                 to override STDOUT output or suppress it. Passing `None`
+                 disables output.
 
    :param int backlog: the number of unaccepted connections that the
                        system will allow before refusing new

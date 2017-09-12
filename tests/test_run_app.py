@@ -214,7 +214,7 @@ def test_run_app_mixed_bindings(mocker, run_app_kwargs, expected_server_calls,
     loop = mocker.MagicMock()
     mocker.patch('asyncio.gather')
 
-    web.run_app(app, loop=loop, print=lambda *args: None, **run_app_kwargs)
+    web.run_app(app, loop=loop, print=None, **run_app_kwargs)
 
     assert loop.create_unix_server.mock_calls == expected_unix_server_calls
     assert loop.create_server.mock_calls == expected_server_calls

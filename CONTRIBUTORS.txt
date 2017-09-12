@@ -29,6 +29,7 @@ Andrew Leech
 Andrew Lytvyn
 Andrew Svetlov
 Andrii Soldatenko
+Antoine Pietri
 Anton Kasyanov
 Arthur Darcet
 Ben Bader
