@@ -9,46 +9,6 @@ from aiohttp.resolver import DefaultResolver
 from aiohttp.test_utils import unused_port
 
 
-def http_method(method, path):
-    def wrapper(func):
-        func.__method__ = method
-        func.__path__ = path
-        return func
-    return wrapper
-
-
-def head(path):
-    return http_method('HEAD', path)
-
-
-def get(path):
-    return http_method('GET', path)
-
-
-def delete(path):
-    return http_method('DELETE', path)
-
-
-def options(path):
-    return http_method('OPTIONS', path)
-
-
-def patch(path):
-    return http_method('PATCH', path)
-
-
-def post(path):
-    return http_method('POST', path)
-
-
-def put(path):
-    return http_method('PUT', path)
-
-
-def trace(path):
-    return http_method('TRACE', path)
-
-
 class FakeResolver:
     _LOCAL_HOST = {0: '127.0.0.1',
                    socket.AF_INET: '127.0.0.1',
@@ -75,12 +35,9 @@ class FakeFacebook:
     def __init__(self, *, loop):
         self.loop = loop
         self.app = web.Application(loop=loop)
-        for name in dir(self.__class__):
-            func = getattr(self.__class__, name)
-            if hasattr(func, '__method__'):
-                self.app.router.add_route(func.__method__,
-                                          func.__path__,
-                                          getattr(self, name))
+        self.app.router.add_routes(
+            [web.get('/v2.7/me', self.on_me),
+             web.get('/v2.7/me/friends', self.on_my_friends)])
         self.handler = None
         self.server = None
         here = pathlib.Path(__file__)
@@ -104,14 +61,12 @@ class FakeFacebook:
         await self.handler.shutdown()
         await self.app.cleanup()
 
-    @get('/v2.7/me')
     async def on_me(self, request):
         return web.json_response({
             "name": "John Doe",
             "id": "12345678901234567"
         })
 
-    @get('/v2.7/me/friends')
     async def on_my_friends(self, request):
         return web.json_response({
             "data": [
