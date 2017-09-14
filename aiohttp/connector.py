@@ -17,6 +17,7 @@ from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
+from .log import client_logger
 from .resolver import DefaultResolver
 
 
@@ -590,10 +591,11 @@ class TCPConnector(BaseConnector):
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
             elif hashfunc is md5 or hashfunc is sha1:
-                warnings.simplefilter('always')
                 warnings.warn('md5 and sha1 are insecure and deprecated. '
                               'Use sha256.',
                               DeprecationWarning, stacklevel=2)
+                client_logger.warn('md5 and sha1 are insecure and deprecated. '
+                                   'Use sha256.')
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
