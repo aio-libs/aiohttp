@@ -188,7 +188,8 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
-                         timeout=5*60)
+                         timeout=5*60, verify_ssl=None, fingerprint=None,
+                         ssl_context=None)
       :async-with:
       :coroutine:
 
@@ -266,6 +267,29 @@ The client session supports the context manager protocol for self closing.
 
       :param int timeout: override the session's timeout
                           (``read_timeout``) for IO operations.
+
+      :param bool verify_ssl: Perform SSL certificate validation for
+         *HTTPS* requests (enabled by default). May be disabled to
+         skip validation for sites with invalid certificates.
+
+         .. versionadded:: 2.3
+
+      :param bytes fingerprint: Pass the SHA256 digest of the expected
+           certificate in DER format to verify that the certificate the
+           server presents matches. Useful for `certificate pinning
+           <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+
+           Note: use of MD5 or SHA1 digests is insecure and deprecated.
+
+           .. versionadded:: 2.3
+
+      :param ssl.SSLContext ssl_context: ssl context used for processing
+         *HTTPS* requests (optional).
+
+         *ssl_context* may be used for configuring certification
+         authority channel, supported SSL options etc.
+
+         .. versionadded:: 2.3
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
