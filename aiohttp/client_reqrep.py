@@ -15,7 +15,8 @@ from yarl import URL
 
 from . import hdrs, helpers, http, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
-                                ClientResponseError, ContentTypeError)
+                                ClientResponseError, ContentTypeError,
+                                InvalidURL)
 from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
@@ -143,8 +144,7 @@ class ClientRequest:
         """Update destination host, port and connection type (ssl)."""
         # get host/port
         if not url.host:
-            raise ValueError(
-                "Could not parse hostname from URL '{}'".format(url))
+            raise InvalidURL(url)
 
         # basic auth info
         username, password = url.user, url.password
