@@ -142,7 +142,11 @@ class InvalidURL(ClientError, ValueError):
     # Derive from ValueError for backward compatibility
 
     def __init__(self, url):
-        self.url = url
+        super().__init__(url)
+
+    @property
+    def url(self):
+        return self.args[0]
 
     def __repr__(self):
         return '<{} {}>'.format(self.__class__.__name__, self.url)
