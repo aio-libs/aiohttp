@@ -10,6 +10,8 @@ import sys
 from enum import IntEnum
 from struct import Struct
 
+import zlib
+
 from . import hdrs
 from .helpers import NO_EXTENSIONS, noop
 from .http_exceptions import HttpBadRequest, HttpProcessingError
@@ -146,6 +148,7 @@ else:
     except ImportError:  # pragma: no cover
         _websocket_mask = _websocket_mask_python
 
+_WS_DEFLATE_TRAILING = bytes([0x00, 0x00, 0xff, 0xff])
 
 class WSParserState(IntEnum):
     READ_HEADER = 1
@@ -173,6 +176,8 @@ class WebSocketReader:
         self._frame_mask = None
         self._payload_length = 0
         self._payload_length_flag = 0
+        self._compressed = None
+        self._decompressobj = None
 
     def feed_eof(self):
         self.queue.feed_eof()
@@ -189,7 +194,9 @@ class WebSocketReader:
             return True, b''
 
     def _feed_data(self, data):
-        for fin, opcode, payload in self.parse_frame(data):
+        for fin, opcode, payload, compressed in self.parse_frame(data):
+            if compressed and not self._decompressobj:
+                self._decompressobj = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
             if opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
@@ -234,7 +241,6 @@ class WebSocketReader:
                     # got partial frame payload
                     if opcode != WSMsgType.CONTINUATION:
                         self._opcode = opcode
-
                     self._partial.append(payload)
                 else:
                     # previous frame was non finished
@@ -250,7 +256,13 @@ class WebSocketReader:
                         opcode = self._opcode
                         self._opcode = None
 
-                    payload_merged = b''.join(self._partial) + payload
+                    self._partial.append(payload)
+
+                    payload_merged = b''.join(self._partial)
+
+                    if compressed:
+                        payload_merged = self._decompressobj.decompress(payload_merged + _WS_DEFLATE_TRAILING)
+
                     self._partial.clear()
 
                     if opcode == WSMsgType.TEXT:
@@ -300,7 +312,9 @@ class WebSocketReader:
                     #    1 bit, MUST be 0 unless negotiated otherwise
                     # frame-rsv3 = %x0 ;
                     #    1 bit, MUST be 0 unless negotiated otherwise
-                    if rsv1 or rsv2 or rsv3:
+                    #
+                    # Remove rsv1 from this test for deflate development
+                    if rsv2 or rsv3:
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
                             'Received frame with non-zero reserved bits')
@@ -320,6 +334,10 @@ class WebSocketReader:
                             WSCloseCode.PROTOCOL_ERROR,
                             'Control frame payload cannot be '
                             'larger than 125 bytes')
+
+                    # Set compress status if last package is FIN
+                    if self._frame_fin or rsv1:
+                        self._compressed = True if rsv1 else False
 
                     self._frame_fin = fin
                     self._frame_opcode = opcode
@@ -390,8 +408,11 @@ class WebSocketReader:
                     if self._has_mask:
                         _websocket_mask(self._frame_mask, payload)
 
-                    frames.append(
-                        (self._frame_fin, self._frame_opcode, payload))
+                    frames.append((
+                        self._frame_fin,
+                        self._frame_opcode,
+                        payload,
+                        self._compressed))
 
                     self._frame_payload = bytearray()
                     self._state = WSParserState.READ_HEADER
@@ -406,19 +427,33 @@ class WebSocketReader:
 class WebSocketWriter:
 
     def __init__(self, stream, *,
-                 use_mask=False, limit=DEFAULT_LIMIT, random=random.Random()):
+                 use_mask=False, limit=DEFAULT_LIMIT, random=random.Random(),
+                 compress=False):
         self.stream = stream
         self.writer = stream.transport
         self.use_mask = use_mask
         self.randrange = random.randrange
+        self.compress = compress
         self._closing = False
         self._limit = limit
         self._output_size = 0
+        self._compressobj = None
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
         if self._closing:
             ws_logger.warning('websocket connection is closing.')
+
+        rsv = 0
+        if self.compress and opcode < 8:
+            if not self._compressobj:
+                self._compressobj = zlib.compressobj(wbits=-self.compress)
+
+            message = self._compressobj.compress(message)
+            message = message + self._compressobj.flush(zlib.Z_FULL_FLUSH)
+            if message.endswith(_WS_DEFLATE_TRAILING):
+                message = message[:-4]
+            rsv = rsv | 0x40
 
         msg_length = len(message)
 
@@ -429,11 +464,11 @@ class WebSocketWriter:
             mask_bit = 0
 
         if msg_length < 126:
-            header = PACK_LEN1(0x80 | opcode, msg_length | mask_bit)
+            header = PACK_LEN1(0x80 | rsv | opcode, msg_length | mask_bit)
         elif msg_length < (1 << 16):
-            header = PACK_LEN2(0x80 | opcode, 126 | mask_bit, msg_length)
+            header = PACK_LEN2(0x80 | rsv | opcode, 126 | mask_bit, msg_length)
         else:
-            header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
+            header = PACK_LEN3(0x80 | rsv | opcode, 127 | mask_bit, msg_length)
         if use_mask:
             mask = self.randrange(0, 0xffffffff)
             mask = mask.to_bytes(4, 'big')
@@ -556,6 +591,25 @@ def do_handshake(method, headers, stream,
         (hdrs.SEC_WEBSOCKET_ACCEPT, base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
 
+    compress = 0
+
+    extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
+    if extensions:
+        extensions = [ [s.strip() for s in s1.split(';')]
+            for s1 in extensions.split(',')]
+
+        for ext in extensions:
+            if ext[0] == 'permessage-deflate':
+                compress = 15
+                for param in ext[1:]:
+                    if param.startswith('server_max_window_bits'):
+                        compress = int(param.split('=')[1])
+                        break
+                break
+
+        if compress:
+            response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS, 'permessage-deflate'))
+
     if protocol:
         response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))
 
@@ -563,5 +617,5 @@ def do_handshake(method, headers, stream,
     return (101,
             response_headers,
             None,
-            WebSocketWriter(stream, limit=write_buffer_size),
+            WebSocketWriter(stream, limit=write_buffer_size, compress=compress),
             protocol)
