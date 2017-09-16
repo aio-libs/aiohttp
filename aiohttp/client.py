@@ -349,7 +349,8 @@ class ClientSession:
                    origin=None,
                    headers=None,
                    proxy=None,
-                   proxy_auth=None):
+                   proxy_auth=None,
+                   compress=False):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -363,7 +364,8 @@ class ClientSession:
                              origin=origin,
                              headers=headers,
                              proxy=proxy,
-                             proxy_auth=proxy_auth))
+                             proxy_auth=proxy_auth,
+                             compress=compress))
 
     @asyncio.coroutine
     def _ws_connect(self, url, *,
@@ -377,7 +379,8 @@ class ClientSession:
                     origin=None,
                     headers=None,
                     proxy=None,
-                    proxy_auth=None):
+                    proxy_auth=None,
+                    compress=False):
 
         if headers is None:
             headers = CIMultiDict()
@@ -399,6 +402,8 @@ class ClientSession:
             headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = ','.join(protocols)
         if origin is not None:
             headers[hdrs.ORIGIN] = origin
+        if compress:
+            headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = 'permessage-deflate'
 
         # send request
         resp = yield from self.get(url, headers=headers,
@@ -457,12 +462,32 @@ class ClientSession:
                         protocol = proto
                         break
 
+            # websocket compress
+            compress_notakeover = False
+            if compress:
+                if hdrs.SEC_WEBSOCKET_EXTENSIONS not in resp.headers:
+                    compress = False
+                else:
+                    exts = resp.headers[
+                        hdrs.SEC_WEBSOCKET_EXTENSIONS].split(',')
+                    for ext in exts:
+                        params = [x.strip() for x in ext.split(';')]
+                        if params[0] == 'permessage-deflate':
+                            for param in params:
+                                if param == 'client_no_context_takeover':
+                                    compress_notakeover = True
+                                    break
+                            if compress_notakeover:
+                                break
+
             proto = resp.connection.protocol
             reader = FlowControlDataQueue(
                 proto, limit=2 ** 16, loop=self._loop)
             proto.set_parser(WebSocketReader(reader), reader)
             resp.connection.writer.set_tcp_nodelay(True)
-            writer = WebSocketWriter(resp.connection.writer, use_mask=True)
+            writer = WebSocketWriter(
+                resp.connection.writer, use_mask=True,
+                compress=compress, notakeover=compress_notakeover)
         except Exception:
             resp.close()
             raise

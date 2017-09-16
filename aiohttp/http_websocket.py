@@ -7,10 +7,9 @@ import hashlib
 import json
 import random
 import sys
+import zlib
 from enum import IntEnum
 from struct import Struct
-
-import zlib
 
 from . import hdrs
 from .helpers import NO_EXTENSIONS, noop
@@ -261,7 +260,8 @@ class WebSocketReader:
                     payload_merged = b''.join(self._partial)
 
                     if compressed:
-                        payload_merged = self._decompressobj.decompress(payload_merged + _WS_DEFLATE_TRAILING)
+                        payload_merged = self._decompressobj.decompress(
+                            payload_merged + _WS_DEFLATE_TRAILING)
 
                     self._partial.clear()
 
@@ -428,12 +428,13 @@ class WebSocketWriter:
 
     def __init__(self, stream, *,
                  use_mask=False, limit=DEFAULT_LIMIT, random=random.Random(),
-                 compress=False):
+                 compress=False, notakeover=False):
         self.stream = stream
         self.writer = stream.transport
         self.use_mask = use_mask
         self.randrange = random.randrange
         self.compress = compress
+        self.notakeover = notakeover
         self._closing = False
         self._limit = limit
         self._output_size = 0
@@ -445,8 +446,10 @@ class WebSocketWriter:
             ws_logger.warning('websocket connection is closing.')
 
         rsv = 0
-        if self.compress and opcode < 8:
-            if not self._compressobj:
+
+        # Only compress larger packets
+        if self.compress and opcode < 8 and len(message) > 124:
+            if not self._compressobj or self.notakeover:
                 self._compressobj = zlib.compressobj(wbits=-self.compress)
 
             message = self._compressobj.compress(message)
@@ -592,23 +595,32 @@ def do_handshake(method, headers, stream,
             hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
 
     compress = 0
+    compress_notakeover = False
 
     extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
     if extensions:
-        extensions = [ [s.strip() for s in s1.split(';')]
-            for s1 in extensions.split(',')]
+        extensions = [[s.strip() for s in s1.split(';')]
+                      for s1 in extensions.split(',')]
 
         for ext in extensions:
             if ext[0] == 'permessage-deflate':
+                enabledext = ['permessage-deflate']
                 compress = 15
                 for param in ext[1:]:
                     if param.startswith('server_max_window_bits'):
                         compress = int(param.split('=')[1])
-                        break
-                break
+                        enabledext.append((
+                            'server_max_window_bits=' + str(compress)))
+                    elif param == 'server_no_context_takeover':
+                        compress_notakeover = True
+                        enabledext.append(('server_no_context_takeover'))
+                    # Ignore Client Takeover
+                    # elif param == 'client_no_context_takeover':
+                    #     compress_notakeover |= WSCompressNoTakeover.NT_CLIENT
 
-        if compress:
-            response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS, 'permessage-deflate'))
+                response_headers.append((
+                    hdrs.SEC_WEBSOCKET_EXTENSIONS, '; '.join(enabledext)))
+                break
 
     if protocol:
         response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))
@@ -617,5 +629,7 @@ def do_handshake(method, headers, stream,
     return (101,
             response_headers,
             None,
-            WebSocketWriter(stream, limit=write_buffer_size, compress=compress),
+            WebSocketWriter(
+                stream, limit=write_buffer_size,
+                compress=compress, notakeover=compress_notakeover),
             protocol)
