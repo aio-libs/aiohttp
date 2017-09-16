@@ -809,9 +809,14 @@ class TCPConnector(BaseConnector):
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):
+        headers = {}
+        if req.proxy_headers is not None:
+            headers = req.proxy_headers
+        headers[hdrs.HOST] = req.headers[hdrs.HOST]
+
         proxy_req = ClientRequest(
             hdrs.METH_GET, req.proxy,
-            headers={hdrs.HOST: req.headers[hdrs.HOST]},
+            headers=headers,
             auth=req.proxy_auth,
             loop=self._loop,
             verify_ssl=req.verify_ssl,

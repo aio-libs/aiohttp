@@ -291,6 +291,11 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
+      :param dict proxy_headers: HTTP headers to send to the proxy if the
+         parameter proxy has been provided.
+
+         .. versionadded:: 2.3
+
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
 
