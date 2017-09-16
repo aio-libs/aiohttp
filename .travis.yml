@@ -34,7 +34,7 @@ _helpers:
   before_install: skip
   install: skip
   script: skip
-  after_success: skip
+  after_success: []
 - &_doc_base
   stage: doc
   <<: *_mainstream_python_base
