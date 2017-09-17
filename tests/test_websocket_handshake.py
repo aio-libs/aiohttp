@@ -204,7 +204,6 @@ def test_handshake_compress_client_notakeover(message, transport):
         'permessage-deflate'), hdrs
 
     assert writer.compress == 15
-    assert writer.notakeover is True
 
 
 def test_handshake_compress_level(message, transport):
