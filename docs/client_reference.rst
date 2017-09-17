@@ -1350,6 +1350,36 @@ RequestInfo
       HTTP headers for request, :class:`multidict.CIMultiDict` instance.
 
 
+Proxy Support
+^^^^^^^^^^^^^
+
+.. class:: ProxyInfo
+
+   A structure for storing information about HTTP proxy configuration.
+
+   .. attribute:: proxy
+
+      :class:`yarl.URL` to proxy.
+
+   .. attribute:: proxy_auth
+
+      :class:`aiohttp.BasicAuth` with proxy credentials or ``None`` if
+      no login/password are needed.
+
+   .. versionadded:: 2.3.0
+
+
+.. function:: proxies_from_env()
+
+   Extract proxy information from *environment variables*
+   (``HTTP_PROXY`` and ``HTTTPS_PROXY``, names are case insensitive).
+
+   Return a :class:`dict` for passing into
+   :class:`aiohttp.ClientSession` as *proxes* parameter.
+
+   .. versionadded:: 2.3.0
+
+
 BasicAuth
 ^^^^^^^^^
 
