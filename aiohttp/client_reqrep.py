@@ -2,9 +2,11 @@ import asyncio
 import collections
 import io
 import json
+import ssl
 import sys
 import traceback
 import warnings
+from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -12,7 +14,8 @@ from yarl import URL
 
 from . import hdrs, helpers, http, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
-                                ClientResponseError, ContentTypeError)
+                                ClientResponseError, ContentTypeError,
+                                InvalidURL)
 from .formdata import FormData
 from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
@@ -31,6 +34,16 @@ __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo')
 
 RequestInfo = collections.namedtuple(
     'RequestInfo', ('url', 'method', 'headers'))
+
+
+HASHFUNC_BY_DIGESTLEN = {
+    16: md5,
+    20: sha1,
+    32: sha256,
+}
+
+
+_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 
 
 class ClientRequest:
@@ -65,7 +78,14 @@ class ClientRequest:
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None,
-                 timer=None, session=None, auto_decompress=True):
+                 timer=None, session=None, auto_decompress=True,
+                 verify_ssl=None, fingerprint=None, ssl_context=None,
+                 proxy_headers=None):
+
+        if verify_ssl is False and ssl_context is not None:
+            raise ValueError(
+                "Either disable ssl certificate validation by "
+                "verify_ssl=False or specify ssl_context, not both.")
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -88,6 +108,8 @@ class ClientRequest:
         self.response_class = response_class or ClientResponse
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
+        self._verify_ssl = verify_ssl
+        self._ssl_context = ssl_context
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -99,7 +121,8 @@ class ClientRequest:
         self.update_cookies(cookies)
         self.update_content_encoding(data)
         self.update_auth(auth)
-        self.update_proxy(proxy, proxy_auth)
+        self.update_proxy(proxy, proxy_auth, proxy_headers)
+        self.update_fingerprint(fingerprint)
 
         self.update_body_from_data(data)
         self.update_transfer_encoding()
@@ -121,8 +144,7 @@ class ClientRequest:
         """Update destination host, port and connection type (ssl)."""
         # get host/port
         if not url.host:
-            raise ValueError(
-                "Could not parse hostname from URL '{}'".format(url))
+            raise InvalidURL(url)
 
         # basic auth info
         username, password = url.user, url.password
@@ -295,13 +317,44 @@ class ClientRequest:
         if expect:
             self._continue = helpers.create_future(self.loop)
 
-    def update_proxy(self, proxy, proxy_auth):
+    def update_proxy(self, proxy, proxy_auth, proxy_headers):
         if proxy and not proxy.scheme == 'http':
             raise ValueError("Only http proxies are supported")
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
         self.proxy = proxy
         self.proxy_auth = proxy_auth
+        self.proxy_headers = proxy_headers
+
+    def update_fingerprint(self, fingerprint):
+        if fingerprint:
+            digestlen = len(fingerprint)
+            hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
+            if not hashfunc:
+                raise ValueError('fingerprint has invalid length')
+            elif hashfunc is md5 or hashfunc is sha1:
+                warnings.warn('md5 and sha1 are insecure and deprecated. '
+                              'Use sha256.',
+                              DeprecationWarning, stacklevel=2)
+                client_logger.warn('md5 and sha1 are insecure and deprecated. '
+                                   'Use sha256.')
+            self._hashfunc = hashfunc
+        self._fingerprint = fingerprint
+
+    @property
+    def verify_ssl(self):
+        """Do check for ssl certifications?"""
+        return self._verify_ssl
+
+    @property
+    def fingerprint(self):
+        """Expected ssl certificate fingerprint."""
+        return self._fingerprint
+
+    @property
+    def ssl_context(self):
+        """SSLContext instance for https requests."""
+        return self._ssl_context
 
     def keep_alive(self):
         if self.version < HttpVersion10:

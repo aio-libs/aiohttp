@@ -29,6 +29,7 @@ Andrew Leech
 Andrew Lytvyn
 Andrew Svetlov
 Andrii Soldatenko
+Antoine Pietri
 Anton Kasyanov
 Arthur Darcet
 Ben Bader
@@ -47,6 +48,7 @@ Chris Moore
 Christopher Schmitt
 Claudiu Popa
 Damien Nadé
+Dan Xu
 Daniel García
 Daniel Nelson
 Danny Song

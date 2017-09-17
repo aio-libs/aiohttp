@@ -16,8 +16,8 @@ from yarl import URL
 from . import connector as connector_mod
 from . import client_exceptions, client_reqrep, hdrs, http, payload
 from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, ServerTimeoutError,
-                                WSServerHandshakeError)
+from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
+                                ServerTimeoutError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse
 from .client_ws import ClientWebSocketResponse
@@ -164,7 +164,11 @@ class ClientSession:
                  read_until_eof=True,
                  proxy=None,
                  proxy_auth=None,
-                 timeout=sentinel):
+                 timeout=sentinel,
+                 verify_ssl=None,
+                 fingerprint=None,
+                 ssl_context=None,
+                 proxy_headers=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -195,6 +199,8 @@ class ClientSession:
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
+        proxy_headers = self._prepare_headers(proxy_headers)
+
         if auth is None:
             auth = self._default_auth
         # It would be confusing if we support explicit Authorization header
@@ -209,6 +215,17 @@ class ClientSession:
         if skip_auto_headers is not None:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
+
+        if proxy is not None:
+            try:
+                proxy = URL(proxy)
+            except ValueError:
+                raise InvalidURL(url)
+
+        try:
+            url = URL(url)
+        except ValueError:
+            raise InvalidURL(url)
 
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
@@ -240,7 +257,9 @@ class ClientSession:
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
-                        session=self, auto_decompress=self._auto_decompress)
+                        session=self, auto_decompress=self._auto_decompress,
+                        verify_ssl=verify_ssl, fingerprint=fingerprint,
+                        ssl_context=ssl_context, proxy_headers=proxy_headers)
 
                     # connection timeout
                     try:
@@ -295,8 +314,12 @@ class ClientSession:
                             # see github.com/aio-libs/aiohttp/issues/2022
                             break
 
-                        r_url = URL(
-                            r_url, encoded=not self.requote_redirect_url)
+                        try:
+                            r_url = URL(
+                                r_url, encoded=not self.requote_redirect_url)
+
+                        except ValueError:
+                            raise InvalidURL(r_url)
 
                         scheme = r_url.scheme
                         if scheme not in ('http', 'https', ''):

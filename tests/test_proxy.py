@@ -1,5 +1,6 @@
 import asyncio
 import gc
+import hashlib
 import socket
 import unittest
 from unittest import mock
@@ -12,6 +13,17 @@ from aiohttp.test_utils import make_mocked_coro
 
 
 class TestProxy(unittest.TestCase):
+    fingerprint = hashlib.sha256(b"foo").digest()
+    response_mock_attrs = {
+        'status': 200,
+    }
+    mocked_response = mock.Mock(**response_mock_attrs)
+    clientrequest_mock_attrs = {
+        'return_value._hashfunc.return_value.digest.return_value': fingerprint,
+        'return_value.fingerprint': fingerprint,
+        'return_value.send.return_value.start':
+            make_mocked_coro(mocked_response),
+    }
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
@@ -37,7 +49,9 @@ class TestProxy(unittest.TestCase):
         connector = aiohttp.TCPConnector(loop=self.loop)
         connector._resolve_host = make_mocked_coro([mock.MagicMock()])
 
-        proto = mock.Mock()
+        proto = mock.Mock(**{
+            'transport.get_extra_info.return_value': False,
+        })
         self.loop.create_connection = make_mocked_coro(
             (proto.transport, proto))
         conn = self.loop.run_until_complete(connector.connect(req))
@@ -48,8 +62,131 @@ class TestProxy(unittest.TestCase):
         ClientRequestMock.assert_called_with(
             'GET', URL('http://proxy.example.com'),
             auth=None,
+            fingerprint=None,
             headers={'Host': 'www.python.org'},
+            loop=self.loop,
+            ssl_context=None,
+            verify_ssl=None)
+
+    @mock.patch('aiohttp.connector.ClientRequest')
+    def test_proxy_headers(self, ClientRequestMock):
+        req = ClientRequest(
+            'GET', URL('http://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            proxy_headers={'Foo': 'Bar'},
             loop=self.loop)
+        self.assertEqual(str(req.proxy), 'http://proxy.example.com')
+
+        # mock all the things!
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
+
+        proto = mock.Mock(**{
+            'transport.get_extra_info.return_value': False,
+        })
+        self.loop.create_connection = make_mocked_coro(
+            (proto.transport, proto))
+        conn = self.loop.run_until_complete(connector.connect(req))
+        self.assertEqual(req.url, URL('http://www.python.org'))
+        self.assertIs(conn._protocol, proto)
+        self.assertIs(conn.transport, proto.transport)
+
+        ClientRequestMock.assert_called_with(
+            'GET', URL('http://proxy.example.com'),
+            auth=None,
+            fingerprint=None,
+            headers={'Host': 'www.python.org', 'Foo': 'Bar'},
+            loop=self.loop,
+            ssl_context=None,
+            verify_ssl=None)
+
+    @mock.patch('aiohttp.connector.ClientRequest', **clientrequest_mock_attrs)
+    def test_connect_req_verify_ssl_true(self, ClientRequestMock):
+        req = ClientRequest(
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            loop=self.loop,
+            verify_ssl=True,
+        )
+
+        proto = mock.Mock()
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._create_proxy_connection = mock.MagicMock(
+            side_effect=connector._create_proxy_connection)
+        connector._create_direct_connection = mock.MagicMock(
+            side_effect=connector._create_direct_connection)
+        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
+
+        self.loop.create_connection = make_mocked_coro(
+            (proto.transport, proto))
+        self.loop.run_until_complete(connector.connect(req))
+
+        connector._create_proxy_connection.assert_called_with(req)
+        ((proxy_req,), _) = connector._create_direct_connection.call_args
+        proxy_req.send.assert_called_with(mock.ANY)
+
+    @mock.patch('aiohttp.connector.ClientRequest', **clientrequest_mock_attrs)
+    def test_connect_req_verify_ssl_false(self, ClientRequestMock):
+        req = ClientRequest(
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            loop=self.loop,
+            verify_ssl=False,
+        )
+
+        proto = mock.Mock()
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._create_proxy_connection = mock.MagicMock(
+            side_effect=connector._create_proxy_connection)
+        connector._create_direct_connection = mock.MagicMock(
+            side_effect=connector._create_direct_connection)
+        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
+
+        self.loop.create_connection = make_mocked_coro(
+            (proto.transport, proto))
+        self.loop.run_until_complete(connector.connect(req))
+
+        connector._create_proxy_connection.assert_called_with(req)
+        ((proxy_req,), _) = connector._create_direct_connection.call_args
+        proxy_req.send.assert_called_with(mock.ANY)
+
+    @mock.patch('aiohttp.connector.ClientRequest', **clientrequest_mock_attrs)
+    def test_connect_req_fingerprint_ssl_context(self, ClientRequestMock):
+        ssl_context = mock.Mock()
+        attrs = {
+            'return_value.ssl_context': ssl_context,
+        }
+        ClientRequestMock.configure_mock(**attrs)
+        req = ClientRequest(
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            loop=self.loop,
+            verify_ssl=True,
+            fingerprint=self.fingerprint,
+            ssl_context=ssl_context,
+        )
+
+        proto = mock.Mock()
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._create_proxy_connection = mock.MagicMock(
+            side_effect=connector._create_proxy_connection)
+        connector._create_direct_connection = mock.MagicMock(
+            side_effect=connector._create_direct_connection)
+        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
+
+        transport_attrs = {
+            'get_extra_info.return_value.getpeercert.return_value': b"foo"
+        }
+        transport = mock.Mock(**transport_attrs)
+        self.loop.create_connection = make_mocked_coro(
+            (transport, proto))
+        self.loop.run_until_complete(connector.connect(req))
+
+        connector._create_proxy_connection.assert_called_with(req)
+        ((proxy_req,), _) = connector._create_direct_connection.call_args
+        self.assertTrue(proxy_req.verify_ssl)
+        self.assertEqual(proxy_req.fingerprint, req.fingerprint)
+        self.assertIs(proxy_req.ssl_context, req.ssl_context)
 
     def test_proxy_auth(self):
         with self.assertRaises(ValueError) as ctx:
@@ -130,7 +267,8 @@ class TestProxy(unittest.TestCase):
         ClientRequestMock.assert_called_with(
             'GET', URL('http://proxy.example.com'),
             auth=aiohttp.helpers.BasicAuth('user', 'pass'),
-            loop=mock.ANY, headers=mock.ANY)
+            loop=mock.ANY, headers=mock.ANY, fingerprint=None,
+            ssl_context=None, verify_ssl=None)
         conn.close()
 
     def test_auth_utf8(self):
@@ -172,7 +310,8 @@ class TestProxy(unittest.TestCase):
 
         ClientRequestMock.assert_called_with(
             'GET', URL('http://user:pass@proxy.example.com'),
-            auth=None, loop=mock.ANY, headers=mock.ANY)
+            auth=None, loop=mock.ANY, headers=mock.ANY, fingerprint=None,
+            ssl_context=None, verify_ssl=None)
         conn.close()
 
     @mock.patch('aiohttp.connector.ClientRequest')

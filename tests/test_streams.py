@@ -181,6 +181,22 @@ class TestStreamReader(unittest.TestCase):
         self.loop.run_until_complete(stream.read())
         self.assertTrue(internal_logger.warning.called)
 
+    @mock.patch('aiohttp.streams.internal_logger')
+    def test_read_eof_unread_data_no_warning(self, internal_logger):
+        # Read bytes.
+        stream = self._make_one()
+        stream.feed_eof()
+
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        stream.unread_data(b'data')
+        self.loop.run_until_complete(stream.read())
+        self.loop.run_until_complete(stream.read())
+        self.assertFalse(internal_logger.warning.called)
+
     def test_read_until_eof(self):
         # Read all bytes until eof.
         stream = self._make_one()

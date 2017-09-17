@@ -12,10 +12,10 @@ __all__ = (
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
     'ServerFingerprintMismatch',
 
-    'ClientResponseError', 'ClientPayloadError',
-    'ContentTypeError',
+    'ClientResponseError', 'ClientHttpProxyError',
+    'WSServerHandshakeError', 'ContentTypeError',
 
-    'ClientHttpProxyError', 'WSServerHandshakeError')
+    'ClientPayloadError', 'InvalidURL')
 
 
 class ClientError(Exception):
@@ -131,3 +131,22 @@ class ServerFingerprintMismatch(ServerConnectionError):
 
 class ClientPayloadError(ClientError):
     """Response payload error."""
+
+
+class InvalidURL(ClientError, ValueError):
+    """Invalid URL.
+
+    URL used for fetching is malformed, e.g. it doesn't contains host
+    part."""
+
+    # Derive from ValueError for backward compatibility
+
+    def __init__(self, url):
+        super().__init__(url)
+
+    @property
+    def url(self):
+        return self.args[0]
+
+    def __repr__(self):
+        return '<{} {}>'.format(self.__class__.__name__, self.url)

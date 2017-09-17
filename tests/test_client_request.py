@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import asyncio
+import hashlib
 import io
 import os.path
 import urllib.parse
@@ -285,13 +286,8 @@ def test_headers_default(make_request):
 
 
 def test_invalid_url(make_request):
-    with pytest.raises(ValueError):
+    with pytest.raises(aiohttp.InvalidURL):
         make_request('get', 'hiwpefhipowhefopw')
-
-
-def test_invalid_idna(make_request):
-    with pytest.raises(ValueError):
-        make_request('get', 'http://\u2061owhefopw.com')
 
 
 def test_no_path(make_request):
@@ -1130,3 +1126,26 @@ def test_custom_req_rep(loop):
     resp.close()
     session.close()
     conn.close()
+
+
+def test_verify_ssl_false_with_ssl_context(loop):
+    with pytest.raises(ValueError):
+        ClientRequest('get', URL('http://python.org'), verify_ssl=False,
+                      ssl_context=mock.Mock(), loop=loop)
+
+
+def test_bad_fingerprint(loop):
+    with pytest.raises(ValueError):
+        ClientRequest('get', URL('http://python.org'),
+                      fingerprint=b'invalid', loop=loop)
+
+
+def test_insecure_fingerprint(loop):
+    with pytest.warns(DeprecationWarning):
+        ClientRequest('get', URL('http://python.org'),
+                      fingerprint=hashlib.md5(b"foo").digest(),
+                      loop=loop)
+    with pytest.warns(DeprecationWarning):
+        ClientRequest('get', URL('http://python.org'),
+                      fingerprint=hashlib.sha1(b"foo").digest(),
+                      loop=loop)
