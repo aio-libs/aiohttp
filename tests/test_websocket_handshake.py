@@ -26,7 +26,7 @@ def message():
         True, None, True, False, URL('/path'))
 
 
-def gen_ws_headers(protocols='', compress=0,
+def gen_ws_headers(protocols='', compress=0, extension_text='',
                    server_notakeover=False, client_notakeover=False):
     key = base64.b64encode(os.urandom(16)).decode()
     hdrs = [('Upgrade', 'websocket'),
@@ -43,6 +43,8 @@ def gen_ws_headers(protocols='', compress=0,
             params += '; server_no_context_takeover'
         if client_notakeover:
             params += '; client_no_context_takeover'
+        if extension_text:
+            params += '; ' + extension_text
         hdrs += [('Sec-Websocket-Extensions', params)]
     return hdrs, key
 
@@ -217,3 +219,21 @@ def test_handshake_compress_level(message, transport):
     assert 'Sec-Websocket-Extensions' in headers
     assert headers['Sec-Websocket-Extensions'] == (
         'permessage-deflate; ' + 'server_max_window_bits=9')
+
+
+def test_handshake_compress_level_error(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=6)
+
+    message.headers.extend(hdrs)
+
+    with pytest.raises(http_exceptions.HttpBadRequest):
+        do_handshake(message.method, message.headers, transport)
+
+
+def test_handshake_compress_bad_ext(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15, extension_text='bad')
+
+    message.headers.extend(hdrs)
+
+    with pytest.raises(http_exceptions.HttpBadRequest):
+        do_handshake(message.method, message.headers, transport)
