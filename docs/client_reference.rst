@@ -49,7 +49,7 @@ The client session supports the context manager protocol for self closing.
                          conn_timeout=None, \
                          raise_for_status=False, \
                          connector_owner=True, \
-                         auto_decompress=True)
+                         auto_decompress=True, proxies=None)
 
    The class for creating client sessions and making requests.
 
@@ -140,6 +140,19 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 2.1
 
    :param bool auto_decompress: Automatically decompress response body
+
+      .. versionadded:: 2.3
+
+   :param dict proxies: A proxies dictionary or ``None`` if no proxies
+      are provided.
+
+      The dictionary is a *protocol* -> *proxy_info* mapping where
+      *protocol* is ``'http'`` or ``'https'``, *proxy_info* is
+      :class:`aiohttp.ProxyInfo` strucutre.
+
+      The main intended usage is configuring proxies by *environment
+      variables*: `client =
+      aiohttp.ClientSession(proxies=aiohttp.proxies_from_env())`.
 
       .. versionadded:: 2.3
 
