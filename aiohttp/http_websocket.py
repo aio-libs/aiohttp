@@ -447,8 +447,10 @@ class WebSocketWriter:
 
         rsv = 0
 
-        # Only compress larger packets
-        if self.compress and opcode < 8 and len(message) > 124:
+        # Only compress larger packets (disabled)
+        # Does small packet needs to be compressed?
+        # if self.compress and opcode < 8 and len(message) > 124:
+        if self.compress and opcode < 8:
             if not self._compressobj or self.notakeover:
                 self._compressobj = zlib.compressobj(wbits=-self.compress)
 
