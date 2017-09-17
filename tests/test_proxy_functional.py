@@ -558,7 +558,7 @@ def xtest_proxy_from_env_https(proxy_test_server, get_request, mocker):
 
 @asyncio.coroutine
 def xtest_proxy_from_env_https_with_auth(proxy_test_server,
-                                        get_request, mocker):
+                                         get_request, mocker):
     url = 'https://aiohttp.io/path'
     proxy = yield from proxy_test_server()
     auth = aiohttp.BasicAuth('user', 'pass')

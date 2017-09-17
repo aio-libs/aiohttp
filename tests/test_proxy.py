@@ -1,10 +1,8 @@
 import asyncio
 import gc
-import os
 import socket
 import unittest
 from unittest import mock
-from urllib.request import getproxies
 
 from yarl import URL
 
