@@ -7,6 +7,7 @@ import warnings
 import pytest
 from py import path
 
+from aiohttp.helpers import isasyncgenfunction
 from aiohttp.web import Application
 
 from .test_utils import unused_port as _unused_port
@@ -35,6 +36,62 @@ def pytest_addoption(parser):
     parser.addoption(
         '--enable-loop-debug', action='store_true', default=False,
         help='enable event loop debug mode')
+
+
+def pytest_fixture_setup(fixturedef, request):
+    """
+    Allow fixtures to be coroutines. Run coroutine fixtures in an event loop.
+    """
+    func = fixturedef.func
+
+    if isasyncgenfunction(func):
+        # async generator fixture
+        is_async_gen = True
+    elif asyncio.iscoroutinefunction(func):
+        # regular async fixture
+        is_async_gen = False
+    else:
+        # not an async fixture, nothing to do
+        return
+
+    strip_request = False
+    if 'request' not in fixturedef.argnames:
+        fixturedef.argnames += ('request',)
+        strip_request = True
+
+    def wrapper(*args, **kwargs):
+        request = kwargs['request']
+        if strip_request:
+            del kwargs['request']
+
+        # if neither the fixture nor the test use the 'loop' fixture,
+        # 'getfixturevalue' will fail because the test is not parameterized
+        # (this can be removed someday if 'loop' is no longer parameterized)
+        if 'loop' not in request.fixturenames:
+            raise Exception(
+                "Asynchronous fixtures must depend on the 'loop' fixture or "
+                "be used in tests depending from it."
+            )
+
+        _loop = request.getfixturevalue('loop')
+
+        if is_async_gen:
+            # for async generators, we need to advance the generator once,
+            # then advance it again in a finalizer
+            gen = func(*args, **kwargs)
+
+            def finalizer():
+                try:
+                    return _loop.run_until_complete(gen.__anext__())
+                except StopAsyncIteration:  # NOQA
+                    pass
+
+            request.addfinalizer(finalizer)
+            return _loop.run_until_complete(gen.__anext__())
+        else:
+            return _loop.run_until_complete(func(*args, **kwargs))
+
+    fixturedef.func = wrapper
 
 
 @pytest.fixture
