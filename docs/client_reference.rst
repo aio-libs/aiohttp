@@ -188,7 +188,8 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
-                         timeout=5*60)
+                         timeout=5*60, verify_ssl=None, fingerprint=None,
+                         ssl_context=None)
       :async-with:
       :coroutine:
 
@@ -266,6 +267,34 @@ The client session supports the context manager protocol for self closing.
 
       :param int timeout: override the session's timeout
                           (``read_timeout``) for IO operations.
+
+      :param bool verify_ssl: Perform SSL certificate validation for
+         *HTTPS* requests (enabled by default). May be disabled to
+         skip validation for sites with invalid certificates.
+
+         .. versionadded:: 2.3
+
+      :param bytes fingerprint: Pass the SHA256 digest of the expected
+           certificate in DER format to verify that the certificate the
+           server presents matches. Useful for `certificate pinning
+           <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+
+           Note: use of MD5 or SHA1 digests is insecure and deprecated.
+
+           .. versionadded:: 2.3
+
+      :param ssl.SSLContext ssl_context: ssl context used for processing
+         *HTTPS* requests (optional).
+
+         *ssl_context* may be used for configuring certification
+         authority channel, supported SSL options etc.
+
+         .. versionadded:: 2.3
+
+      :param dict proxy_headers: HTTP headers to send to the proxy if the
+         parameter proxy has been provided.
+
+         .. versionadded:: 2.3
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
@@ -1115,7 +1144,7 @@ Response object
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*. If data is not still available
-      a ``read`` call will be done, 
+      a ``read`` call will be done,
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
@@ -1452,6 +1481,29 @@ All exceptions are available as members of *aiohttp* module.
    Derived from :exc:`Exception`
 
 
+.. class:: ClientPayloadError
+
+   This exception can only be raised while reading the response
+   payload if one of these errors occurs:
+
+   1. invalid compression
+   2. malformed chunked encoding
+   3. not enough data that satisfy ``Content-Length`` HTTP header.
+
+   Derived from :exc:`ClientError`
+
+.. exception:: InvalidURL
+
+   URL used for fetching is malformed, e.g. it does not contain host
+   part.
+
+   Derived from :exc:`ClientError` and :exc:`ValueError`
+
+   .. attribute:: url
+
+      Invalid URL, :class:`yarl.URL` instance.
+
+
 Response errors
 ^^^^^^^^^^^^^^^
 
@@ -1481,11 +1533,20 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
 
-.. class:: ClientHttpProxyError
+.. class:: WSServerHandshakeError
 
-   Proxy response error.
+   Web socket server response error.
 
    Derived from :exc:`ClientResponseError`
+
+
+.. class:: ContentTypeError
+
+   Invalid content type.
+
+   Derived from :exc:`ClientResponseError`
+
+   .. versionadded:: 2.3
 
 Connection errors
 ^^^^^^^^^^^^^^^^^
@@ -1543,17 +1604,6 @@ Connection errors
    Derived from :exc:`ServerConnectonError`
 
 
-.. class:: ClientPayloadError
-
-   This exception can only be raised while reading the response
-   payload if one of these errors occurs:
-
-   1. invalid compression
-   2. malformed chunked encoding
-   3. not enough data that satisfy ``Content-Length`` HTTP header.
-
-   Derived from :exc:`ClientError`
-
 Hierarchy of exceptions
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1561,6 +1611,7 @@ Hierarchy of exceptions
 
   * :exc:`ClientResponseError`
 
+    * :exc:`ContentTypeError`
     * :exc:`WSServerHandshakeError`
     * :exc:`ClientHttpProxyError`
 
@@ -1580,3 +1631,5 @@ Hierarchy of exceptions
       * :exc:`ServerFingerprintMismatch`
 
   * :exc:`ClientPayloadError`
+
+  * :exc:`InvalidURL`
