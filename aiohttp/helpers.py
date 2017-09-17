@@ -6,6 +6,7 @@ import binascii
 import cgi
 import datetime
 import functools
+import inspect
 import os
 import re
 import sys
@@ -235,6 +236,12 @@ def current_task(loop=None):
             task = loop.current_task()
 
     return task
+
+
+def isasyncgenfunction(obj):
+    if hasattr(inspect, 'isasyncgenfunction'):
+        return inspect.isasyncgenfunction(obj)
+    return False
 
 
 def parse_mimetype(mimetype):
