@@ -337,8 +337,14 @@ class WebSocketReader:
                             'larger than 125 bytes')
 
                     # Set compress status if last package is FIN
-                    if self._frame_fin or rsv1:
+                    # OR set compress status if this is first fragment
+                    # Raise error if not first fragment with rsv1 = 0x1
+                    if self._frame_fin or self._compressed is None:
                         self._compressed = True if rsv1 else False
+                    elif rsv1:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            'Received frame with non-zero reserved bits')
 
                     self._frame_fin = fin
                     self._frame_opcode = opcode

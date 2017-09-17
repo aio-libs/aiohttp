@@ -403,3 +403,32 @@ def test_msgtype_aliases():
     assert aiohttp.WSMsgType.CLOSE == aiohttp.WSMsgType.close
     assert aiohttp.WSMsgType.CLOSED == aiohttp.WSMsgType.closed
     assert aiohttp.WSMsgType.ERROR == aiohttp.WSMsgType.error
+
+
+def test_parse_compress_frame_single(parser):
+    parser.parse_frame(struct.pack('!BB', 0b11000001, 0b00000001))
+    res = parser.parse_frame(b'1')
+    fin, opcode, payload, compress = res[0]
+
+    assert (1, 1, b'1', True) == (fin, opcode, payload, not not compress)
+
+
+
+def test_parse_compress_frame_multi(parser):
+    parser.parse_frame(struct.pack('!BB', 0b01000001, 126))
+    parser.parse_frame(struct.pack('!H', 4))
+    res = parser.parse_frame(b'1234')
+    fin, opcode, payload, compress = res[0]
+    assert (0, 1, b'1234', True) == (fin, opcode, payload, not not compress)
+
+    parser.parse_frame(struct.pack('!BB', 0b10000001, 126))
+    parser.parse_frame(struct.pack('!H', 4))
+    res = parser.parse_frame(b'1234')
+    fin, opcode, payload, compress = res[0]
+    assert (1, 1, b'1234', True) == (fin, opcode, payload, not not compress)
+
+    parser.parse_frame(struct.pack('!BB', 0b10000001, 126))
+    parser.parse_frame(struct.pack('!H', 4))
+    res = parser.parse_frame(b'1234')
+    fin, opcode, payload, compress = res[0]
+    assert (1, 1, b'1234', False) == (fin, opcode, payload, not not compress)
