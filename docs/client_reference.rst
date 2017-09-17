@@ -148,7 +148,7 @@ The client session supports the context manager protocol for self closing.
 
       The dictionary is a *protocol* -> *proxy_info* mapping where
       *protocol* is ``'http'`` or ``'https'``, *proxy_info* is
-      :class:`aiohttp.ProxyInfo` strucutre.
+      :class:`aiohttp.ProxyInfo` structure.
 
       The main intended usage is configuring proxies by *environment
       variables*: `client =
