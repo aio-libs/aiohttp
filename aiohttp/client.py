@@ -26,9 +26,9 @@ from .cookiejar import CookieJar
 from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
                       deprecated_noop, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
+from .http_websocket import extensions_gen as ws_ext_gen
+from .http_websocket import extensions_parse as ws_ext_parse
 from .streams import FlowControlDataQueue
-from .http_websocket import (extensions_parse as ws_ext_parse,
-                             extensions_gen as ws_ext_gen)
 
 
 __all__ = (client_exceptions.__all__ +  # noqa
