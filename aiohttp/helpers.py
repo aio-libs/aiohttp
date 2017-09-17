@@ -243,7 +243,7 @@ def isasyncgenfunction(obj):
         return inspect.isasyncgenfunction(obj)
     return False
 
-  
+
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
