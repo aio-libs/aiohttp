@@ -152,35 +152,37 @@ _WS_DEFLATE_TRAILING = bytes([0x00, 0x00, 0xff, 0xff])
 
 def extensions_parse(extstr):
     if not extstr:
-        return 0, False
+        return 0, False, False
 
-    extensions = [[s.strip() for s in s1.split(';')]
-                  for s1 in extstr.split(',')]
+    extensions = [s.strip() for s in extstr.split(',')]
     compress = 0
-    compress_notakeover = False
+    server_notakeover = False
+    client_notakeover = False
     for ext in extensions:
-        if ext[0] == 'permessage-deflate':
+        if ext.startswith('permessage-deflate'):
             compress = 15
-            for param in ext[1:]:
+            for param in [s.strip() for s in ext.split(';')][1:]:
                 if param.startswith('server_max_window_bits'):
                     compress = int(param.split('=')[1])
                 elif param == 'server_no_context_takeover':
-                    compress_notakeover = True
-                # Ignore Client Takeover
-                elif param not in ('client_no_context_takeover',
-                                   'client_max_window_bits'):
-                    return -1, False
-            if compress > 15:
-                raise HttpBadRequest(
-                    message='Handshake error: PMCE window > 15') from None
+                    server_notakeover = True
+                elif param == 'client_no_context_takeover':
+                    client_notakeover = True
+                # Ignore Client window bits
+                elif param != 'client_max_window_bits':
+                    return -1, False, False
+            # compress wbit 8 does not support in zlib
+            if compress > 15 or compress < 9:
+                return -2, False, False
             break
 
-    return compress, compress_notakeover
+    return compress, server_notakeover, client_notakeover
 
 
 def extensions_gen(compress=0, server_notakeover=False,
                    client_notakeover=False):
-    if compress < 8 or compress > 15:
+    # compress wbit 8 does not support in zlib
+    if compress < 9 or compress > 15:
         return False
     enabledext = 'permessage-deflate'
     if compress < 15:
@@ -648,18 +650,15 @@ def do_handshake(method, headers, stream,
         (hdrs.SEC_WEBSOCKET_ACCEPT, base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
 
-    compress = 0
-    compress_notakeover = False
-
     extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
-    compress, compress_notakeover = extensions_parse(extensions)
+    compress, compress_notakeover, _ = extensions_parse(extensions)
     if compress:
-        if compress < 0:
+        if compress == -1:
             raise HttpBadRequest(
                 message='Handshake error: PMCE bad extensions') from None
-        if compress > 15:
+        if compress == -2:
             raise HttpBadRequest(
-                message='Handshake error: PMCE window > 15') from None
+                message='Handshake error: PMCE window not in range') from None
 
         enabledext = extensions_gen(compress=compress,
                                     server_notakeover=compress_notakeover)

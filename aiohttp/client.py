@@ -413,6 +413,8 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             if extstr:
                 headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
+            else:
+                raise ValueError('Compress level must between 8 and 15')
 
         # send request
         resp = yield from self.get(url, headers=headers,
@@ -474,19 +476,19 @@ class ClientSession:
             # websocket compress
             notakeover = False
             if compress:
-                compress, notakeover = ws_ext_parse(
+                compress, _, notakeover = ws_ext_parse(
                     resp.headers[hdrs.SEC_WEBSOCKET_EXTENSIONS]
                 )
                 if compress == 0:
                     pass
-                elif compress < 0:
+                elif compress == -1:
                     raise WSServerHandshakeError(
                         resp.request_info,
                         resp.history,
                         message='Invalid deflate extension',
                         code=resp.status,
                         headers=resp.headers)
-                elif compress < 8 or compress > 15:
+                elif compress == -2:
                     raise WSServerHandshakeError(
                         resp.request_info,
                         resp.history,

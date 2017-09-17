@@ -431,3 +431,14 @@ def test_parse_compress_frame_multi(parser):
     res = parser.parse_frame(b'1234')
     fin, opcode, payload, compress = res[0]
     assert (1, 1, b'1234', False) == (fin, opcode, payload, not not compress)
+
+
+def test_parse_compress_error_frame(parser):
+    parser.parse_frame(struct.pack('!BB', 0b01000001, 0b00000001))
+    parser.parse_frame(b'1')
+
+    with pytest.raises(WebSocketError) as ctx:
+        parser.parse_frame(struct.pack('!BB', 0b11000001, 0b00000001))
+        parser.parse_frame(b'1')
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
