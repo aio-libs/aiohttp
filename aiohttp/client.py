@@ -27,6 +27,8 @@ from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
                       deprecated_noop, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .streams import FlowControlDataQueue
+from .http_websocket import (extensions_parse as ws_ext_parse,
+                             extensions_gen as ws_ext_gen)
 
 
 __all__ = (client_exceptions.__all__ +  # noqa
@@ -380,7 +382,7 @@ class ClientSession:
                     headers=None,
                     proxy=None,
                     proxy_auth=None,
-                    compress=False):
+                    compress=0):
 
         if headers is None:
             headers = CIMultiDict()
@@ -403,7 +405,11 @@ class ClientSession:
         if origin is not None:
             headers[hdrs.ORIGIN] = origin
         if compress:
-            headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = 'permessage-deflate'
+            if compress is True:
+                compress = 15
+            extstr = ws_ext_gen(compress=compress)
+            if extstr:
+                headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
         # send request
         resp = yield from self.get(url, headers=headers,
@@ -463,22 +469,27 @@ class ClientSession:
                         break
 
             # websocket compress
-            compress_notakeover = False
+            notakeover = False
             if compress:
-                if hdrs.SEC_WEBSOCKET_EXTENSIONS not in resp.headers:
-                    compress = False
-                else:
-                    exts = resp.headers[
-                        hdrs.SEC_WEBSOCKET_EXTENSIONS].split(',')
-                    for ext in exts:
-                        params = [x.strip() for x in ext.split(';')]
-                        if params[0] == 'permessage-deflate':
-                            for param in params:
-                                if param == 'client_no_context_takeover':
-                                    compress_notakeover = True
-                                    break
-                            if compress_notakeover:
-                                break
+                compress, notakeover = ws_ext_parse(
+                    resp.headers[hdrs.SEC_WEBSOCKET_EXTENSIONS]
+                )
+                if compress == 0:
+                    pass
+                elif compress < 0:
+                    raise WSServerHandshakeError(
+                        resp.request_info,
+                        resp.history,
+                        message='Invalid deflate extension',
+                        code=resp.status,
+                        headers=resp.headers)
+                elif compress < 8 or compress > 15:
+                    raise WSServerHandshakeError(
+                        resp.request_info,
+                        resp.history,
+                        message='Invalid window size',
+                        code=resp.status,
+                        headers=resp.headers)
 
             proto = resp.connection.protocol
             reader = FlowControlDataQueue(
@@ -487,7 +498,7 @@ class ClientSession:
             resp.connection.writer.set_tcp_nodelay(True)
             writer = WebSocketWriter(
                 resp.connection.writer, use_mask=True,
-                compress=compress, notakeover=compress_notakeover)
+                compress=compress, notakeover=notakeover)
         except Exception:
             resp.close()
             raise
@@ -501,7 +512,9 @@ class ClientSession:
                                            autoping,
                                            self._loop,
                                            receive_timeout=receive_timeout,
-                                           heartbeat=heartbeat)
+                                           heartbeat=heartbeat,
+                                           compress=compress,
+                                           compress_notakeover=notakeover)
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict

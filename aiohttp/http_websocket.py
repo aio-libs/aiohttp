@@ -150,6 +150,48 @@ else:
 _WS_DEFLATE_TRAILING = bytes([0x00, 0x00, 0xff, 0xff])
 
 
+def extensions_parse(extstr):
+    if not extstr:
+        return 0, False
+
+    extensions = [[s.strip() for s in s1.split(';')]
+                  for s1 in extstr.split(',')]
+    compress = 0
+    compress_notakeover = False
+    for ext in extensions:
+        if ext[0] == 'permessage-deflate':
+            compress = 15
+            for param in ext[1:]:
+                if param.startswith('server_max_window_bits'):
+                    compress = int(param.split('=')[1])
+                elif param == 'server_no_context_takeover':
+                    compress_notakeover = True
+                # Ignore Client Takeover
+                elif param not in ('client_no_context_takeover',
+                                   'client_max_window_bits'):
+                    return -1, False
+            if compress > 15:
+                raise HttpBadRequest(
+                    message='Handshake error: PMCE window > 15') from None
+            break
+
+    return compress, compress_notakeover
+
+
+def extensions_gen(compress=0, server_notakeover=False,
+                   client_notakeover=False):
+    if compress < 8 or compress > 15:
+        return False
+    enabledext = 'permessage-deflate'
+    if compress < 15:
+        enabledext += '; server_max_window_bits=' + str(compress)
+    if server_notakeover:
+        enabledext += '; server_no_context_takeover'
+    if client_notakeover:
+        enabledext += '; client_no_context_takeover'
+    return enabledext
+
+
 class WSParserState(IntEnum):
     READ_HEADER = 1
     READ_PAYLOAD_LENGTH = 2
@@ -260,6 +302,8 @@ class WebSocketReader:
 
                     payload_merged = b''.join(self._partial)
 
+                    # Decompress process must to be done after all packets
+                    # received.
                     if compressed:
                         payload_merged = self._decompressobj.decompress(
                             payload_merged + _WS_DEFLATE_TRAILING)
@@ -435,7 +479,7 @@ class WebSocketWriter:
 
     def __init__(self, stream, *,
                  use_mask=False, limit=DEFAULT_LIMIT, random=random.Random(),
-                 compress=False, notakeover=False):
+                 compress=0, notakeover=False):
         self.stream = stream
         self.writer = stream.transport
         self.use_mask = use_mask
@@ -458,11 +502,12 @@ class WebSocketWriter:
         # Does small packet needs to be compressed?
         # if self.compress and opcode < 8 and len(message) > 124:
         if self.compress and opcode < 8:
-            if not self._compressobj or self.notakeover:
+            if not self._compressobj:
                 self._compressobj = zlib.compressobj(wbits=-self.compress)
 
             message = self._compressobj.compress(message)
-            message = message + self._compressobj.flush(zlib.Z_FULL_FLUSH)
+            message = message + self._compressobj.flush(
+                zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH)
             if message.endswith(_WS_DEFLATE_TRAILING):
                 message = message[:-4]
             rsv = rsv | 0x40
@@ -607,29 +652,18 @@ def do_handshake(method, headers, stream,
     compress_notakeover = False
 
     extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
-    if extensions:
-        extensions = [[s.strip() for s in s1.split(';')]
-                      for s1 in extensions.split(',')]
+    compress, compress_notakeover = extensions_parse(extensions)
+    if compress:
+        if compress < 0:
+            raise HttpBadRequest(
+                message='Handshake error: PMCE bad extensions') from None
+        if compress > 15:
+            raise HttpBadRequest(
+                message='Handshake error: PMCE window > 15') from None
 
-        for ext in extensions:
-            if ext[0] == 'permessage-deflate':
-                enabledext = ['permessage-deflate']
-                compress = 15
-                for param in ext[1:]:
-                    if param.startswith('server_max_window_bits'):
-                        compress = int(param.split('=')[1])
-                        enabledext.append((
-                            'server_max_window_bits=' + str(compress)))
-                    elif param == 'server_no_context_takeover':
-                        compress_notakeover = True
-                        enabledext.append(('server_no_context_takeover'))
-                    # Ignore Client Takeover
-                    # elif param == 'client_no_context_takeover':
-                    #     compress_notakeover |= WSCompressNoTakeover.NT_CLIENT
-
-                response_headers.append((
-                    hdrs.SEC_WEBSOCKET_EXTENSIONS, '; '.join(enabledext)))
-                break
+        enabledext = extensions_gen(compress=compress,
+                                    server_notakeover=compress_notakeover)
+        response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS, enabledext))
 
     if protocol:
         response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))

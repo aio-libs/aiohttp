@@ -26,7 +26,7 @@ def message():
         True, None, True, False, URL('/path'))
 
 
-def gen_ws_headers(protocols=''):
+def gen_ws_headers(protocols='', compress=0, compress_notakeover=False):
     key = base64.b64encode(os.urandom(16)).decode()
     hdrs = [('Upgrade', 'websocket'),
             ('Connection', 'upgrade'),
@@ -34,6 +34,13 @@ def gen_ws_headers(protocols=''):
             ('Sec-Websocket-Key', key)]
     if protocols:
         hdrs += [('Sec-Websocket-Protocol', protocols)]
+    if compress:
+        params = 'permessage-deflate'
+        if compress < 15:
+            params += '; server_max_window_bits=' + str(compress)
+        if compress_notakeover:
+            params += '; server_no_context_takeover'
+        hdrs += [('Sec-Websocket-Extensions', params)]
     return hdrs, key
 
 
@@ -149,3 +156,33 @@ def test_handshake_protocol_unsupported(log, message, transport):
         assert protocol is None
     assert (ctx.records[-1].msg ==
             'Client protocols %r don’t overlap server-known ones %r')
+
+
+def test_handshake_compress(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15)
+
+    message.headers.extend(hdrs)
+    status, headers, parser, writer, protocol = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
+
+    assert writer.compress == 15
+
+
+def test_handshake_compress_notakeover(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15, compress_notakeover=True)
+
+    message.headers.extend(hdrs)
+    status, headers, parser, writer, protocol = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == (
+        'permessage-deflate; server_no_context_takeover')
+
+    assert writer.compress == 15
+    assert writer.notakeover is True

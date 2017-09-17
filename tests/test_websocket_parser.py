@@ -413,7 +413,6 @@ def test_parse_compress_frame_single(parser):
     assert (1, 1, b'1', True) == (fin, opcode, payload, not not compress)
 
 
-
 def test_parse_compress_frame_multi(parser):
     parser.parse_frame(struct.pack('!BB', 0b01000001, 126))
     parser.parse_frame(struct.pack('!H', 4))
