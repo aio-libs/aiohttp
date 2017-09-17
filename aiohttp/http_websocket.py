@@ -149,6 +149,7 @@ else:
 
 _WS_DEFLATE_TRAILING = bytes([0x00, 0x00, 0xff, 0xff])
 
+
 class WSParserState(IntEnum):
     READ_HEADER = 1
     READ_PAYLOAD_LENGTH = 2
