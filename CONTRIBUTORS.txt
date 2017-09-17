@@ -48,6 +48,7 @@ Chris Moore
 Christopher Schmitt
 Claudiu Popa
 Damien Nadé
+Dan Xu
 Daniel García
 Daniel Nelson
 Danny Song
@@ -190,6 +191,7 @@ Will McGugan
 Willem de Groot
 Wilson Ong
 Yannick Koechlin
+Yannick Péroux
 Yegor Roganov
 Young-Ho Cha
 Yuriy Shatrov
