@@ -14,7 +14,7 @@ multidict==3.2.0
 async-timeout==1.4.0
 pytest==3.2.2
 pytest-cov==2.5.1
-pytest-mock==1.6.2
+pytest-mock==1.6.3
 gunicorn==19.7.1
 twine==1.9.1
 yarl==0.12.0
