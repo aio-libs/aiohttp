@@ -603,6 +603,28 @@ def test_ws_connect_deflate_client_wbits(loop, ws_key, key_data):
 
 
 @asyncio.coroutine
+def test_ws_connect_deflate_client_wbits_bad(loop, ws_key, key_data):
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: hdrs.WEBSOCKET,
+        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        hdrs.SEC_WEBSOCKET_EXTENSIONS: 'permessage-deflate; '
+                                       'client_max_window_bits=6',
+    }
+    with mock.patch('aiohttp.client.os') as m_os:
+        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = helpers.create_future(loop)
+            m_req.return_value.set_result(resp)
+
+            with pytest.raises(client.WSServerHandshakeError):
+                yield from aiohttp.ClientSession(loop=loop).ws_connect(
+                    'http://test.org', compress=15)
+
+
+@asyncio.coroutine
 def test_ws_connect_deflate_server_ext_bad(loop, ws_key, key_data):
     resp = mock.Mock()
     resp.status = 101
