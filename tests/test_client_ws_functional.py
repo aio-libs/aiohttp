@@ -647,7 +647,7 @@ def test_send_recv_compress(loop, test_client):
 
 
 @asyncio.coroutine
-def test_send_recv_compress_level(loop, test_client):
+def test_send_recv_compress_wbits(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
@@ -665,7 +665,9 @@ def test_send_recv_compress_level(loop, test_client):
     resp = yield from client.ws_connect('/', compress=9)
     yield from resp.send_str('ask')
 
-    assert resp.compress == 9
+    # Client indicates supports wbits 15
+    # Server supports wbit 15 for decode
+    assert resp.compress == 15
 
     data = yield from resp.receive_str()
     assert data == 'ask/answer'
@@ -675,7 +677,7 @@ def test_send_recv_compress_level(loop, test_client):
 
 
 @asyncio.coroutine
-def test_send_recv_compress_error(loop, test_client):
+def test_send_recv_compress_wbit_error(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):

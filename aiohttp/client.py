@@ -26,8 +26,7 @@ from .cookiejar import CookieJar
 from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
                       deprecated_noop, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
-from .http_websocket import extensions_gen as ws_ext_gen
-from .http_websocket import extensions_parse as ws_ext_parse
+from .http_websocket import ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 
 
@@ -355,7 +354,7 @@ class ClientSession:
                    headers=None,
                    proxy=None,
                    proxy_auth=None,
-                   compress=False):
+                   compress=15):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -385,7 +384,7 @@ class ClientSession:
                     headers=None,
                     proxy=None,
                     proxy_auth=None,
-                    compress=0):
+                    compress=15):
 
         if headers is None:
             headers = CIMultiDict()
@@ -411,10 +410,7 @@ class ClientSession:
             if compress is True:
                 compress = 15
             extstr = ws_ext_gen(compress=compress)
-            if extstr:
-                headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
-            else:
-                raise ValueError('Compress level must between 8 and 15')
+            headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
         # send request
         resp = yield from self.get(url, headers=headers,
@@ -476,25 +472,29 @@ class ClientSession:
             # websocket compress
             notakeover = False
             if compress:
-                compress, _, notakeover = ws_ext_parse(
-                    resp.headers[hdrs.SEC_WEBSOCKET_EXTENSIONS]
-                )
-                if compress == 0:
-                    pass
-                elif compress == -1:
-                    raise WSServerHandshakeError(
-                        resp.request_info,
-                        resp.history,
-                        message='Invalid deflate extension',
-                        code=resp.status,
-                        headers=resp.headers)
-                elif compress == -2:
-                    raise WSServerHandshakeError(
-                        resp.request_info,
-                        resp.history,
-                        message='Invalid window size',
-                        code=resp.status,
-                        headers=resp.headers)
+                if hdrs.SEC_WEBSOCKET_EXTENSIONS in resp.headers:
+                    compress, notakeover = ws_ext_parse(
+                        resp.headers[hdrs.SEC_WEBSOCKET_EXTENSIONS]
+                    )
+                    if compress == 0:
+                        pass
+                    elif compress == -1:
+                        raise WSServerHandshakeError(
+                            resp.request_info,
+                            resp.history,
+                            message='Invalid deflate extension',
+                            code=resp.status,
+                            headers=resp.headers)
+                    elif compress == -2:
+                        raise WSServerHandshakeError(
+                            resp.request_info,
+                            resp.history,
+                            message='Invalid window size',
+                            code=resp.status,
+                            headers=resp.headers)
+                else:
+                    compress = 0
+                    notakeover = False
 
             proto = resp.connection.protocol
             reader = FlowControlDataQueue(
@@ -519,7 +519,7 @@ class ClientSession:
                                            receive_timeout=receive_timeout,
                                            heartbeat=heartbeat,
                                            compress=compress,
-                                           compress_notakeover=notakeover)
+                                           client_notakeover=notakeover)
 
     def _prepare_headers(self, headers):
         """ Add default headers and transform it to CIMultiDict

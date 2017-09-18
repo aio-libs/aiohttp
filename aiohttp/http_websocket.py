@@ -6,6 +6,7 @@ import collections
 import hashlib
 import json
 import random
+import re
 import sys
 import zlib
 from enum import IntEnum
@@ -150,41 +151,74 @@ else:
 _WS_DEFLATE_TRAILING = bytes([0x00, 0x00, 0xff, 0xff])
 
 
-def extensions_parse(extstr):
+_WS_EXT_RE = re.compile(r'^(?:;\s*(?:'
+                        r'(server_no_context_takeover)|'
+                        r'(client_no_context_takeover)|'
+                        r'(server_max_window_bits(?:=(\d+))?)|'
+                        r'(client_max_window_bits(?:=(\d+))?)))*$')
+
+_WS_EXT_RE_SPLIT = re.compile(r'permessage-deflate([^,]+)?')
+
+
+def ws_ext_parse(extstr, isserver=False):
     if not extstr:
-        return 0, False, False
+        return 0, False
 
-    extensions = [s.strip() for s in extstr.split(',')]
     compress = 0
-    server_notakeover = False
-    client_notakeover = False
-    for ext in extensions:
-        if ext.startswith('permessage-deflate'):
+    notakeover = False
+    for ext in _WS_EXT_RE_SPLIT.finditer(extstr):
+        defext = ext.group(1)
+        # Return compress = 15 when get `permessage-deflate`
+        if not defext:
             compress = 15
-            for param in [s.strip() for s in ext.split(';')][1:]:
-                if param.startswith('server_max_window_bits'):
-                    compress = int(param.split('=')[1])
-                elif param == 'server_no_context_takeover':
-                    server_notakeover = True
-                elif param == 'client_no_context_takeover':
-                    client_notakeover = True
-                # Ignore Client window bits
-                elif param != 'client_max_window_bits':
-                    return -1, False, False
-            # compress wbit 8 does not support in zlib
-            if compress > 15 or compress < 9:
-                return -2, False, False
             break
+        match = _WS_EXT_RE.match(defext)
+        if match:
+            compress = 15
+            if isserver:
+                if match.group(4):
+                    compress = int(match.group(4))
+                    # Group3 must match if group4 matches
+                    # Compress wbit 8 does not support in zlib
+                    # If compress level not support,
+                    # CONTINUE to next extension
+                    if compress > 15 or compress < 9:
+                        compress = 0
+                        continue
+                if match.group(1):
+                    notakeover = True
+                # Ignore regex group 5 & 6 for client_max_window_bits
+                break
+            else:
+                if match.group(6):
+                    compress = int(match.group(6))
+                    # Group5 must match if group6 matches
+                    # Compress wbit 8 does not support in zlib
+                    # If compress level not support,
+                    # FAIL the parse progress
+                    if compress > 15 or compress < 9:
+                        compress = -1
+                        break
+                if match.group(2):
+                    notakeover = True
+                # Ignore regex group 5 & 6 for client_max_window_bits
+                break
 
-    return compress, server_notakeover, client_notakeover
+    return compress, notakeover
 
 
-def extensions_gen(compress=0, server_notakeover=False,
-                   client_notakeover=False):
+def ws_ext_gen(compress=0, isserver=False,
+               server_notakeover=False, client_notakeover=False):
     # compress wbit 8 does not support in zlib
     if compress < 9 or compress > 15:
-        return False
-    enabledext = 'permessage-deflate'
+        raise ValueError('Compress wbits must between 9 and 15, '
+                         'zlib does not support wbits=8')
+    enabledext = None
+    if isserver:
+        enabledext = 'permessage-deflate'
+    else:
+        enabledext = 'permessage-deflate; client_max_window_bits'
+
     if compress < 15:
         enabledext += '; server_max_window_bits=' + str(compress)
     if server_notakeover:
@@ -651,7 +685,7 @@ def do_handshake(method, headers, stream,
             hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
 
     extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
-    compress, compress_notakeover, _ = extensions_parse(extensions)
+    compress, compress_notakeover = ws_ext_parse(extensions, isserver=True)
     if compress:
         if compress == -1:
             raise HttpBadRequest(
@@ -660,8 +694,8 @@ def do_handshake(method, headers, stream,
             raise HttpBadRequest(
                 message='Handshake error: PMCE window not in range') from None
 
-        enabledext = extensions_gen(compress=compress,
-                                    server_notakeover=compress_notakeover)
+        enabledext = ws_ext_gen(compress=compress, isserver=True,
+                                server_notakeover=compress_notakeover)
         response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS, enabledext))
 
     if protocol:

@@ -208,7 +208,7 @@ def test_handshake_compress_client_notakeover(message, transport):
     assert writer.compress == 15
 
 
-def test_handshake_compress_level(message, transport):
+def test_handshake_compress_wbits(message, transport):
     hdrs, sec_key = gen_ws_headers(compress=9)
 
     message.headers.extend(hdrs)
@@ -218,16 +218,20 @@ def test_handshake_compress_level(message, transport):
     headers = dict(headers)
     assert 'Sec-Websocket-Extensions' in headers
     assert headers['Sec-Websocket-Extensions'] == (
-        'permessage-deflate; ' + 'server_max_window_bits=9')
+        'permessage-deflate; server_max_window_bits=9')
+    assert writer.compress == 9
 
 
-def test_handshake_compress_level_error(message, transport):
+def test_handshake_compress_wbits_error(message, transport):
     hdrs, sec_key = gen_ws_headers(compress=6)
 
     message.headers.extend(hdrs)
 
-    with pytest.raises(http_exceptions.HttpBadRequest):
-        do_handshake(message.method, message.headers, transport)
+    status, headers, parser, writer, protocol = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' not in headers
 
 
 def test_handshake_compress_bad_ext(message, transport):
@@ -235,5 +239,36 @@ def test_handshake_compress_bad_ext(message, transport):
 
     message.headers.extend(hdrs)
 
-    with pytest.raises(http_exceptions.HttpBadRequest):
-        do_handshake(message.method, message.headers, transport)
+    status, headers, parser, writer, protocol = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' not in headers
+
+
+def test_handshake_compress_multi_ext_bad(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15,
+                                   extension_text='bad, permessage-deflate')
+
+    message.headers.extend(hdrs)
+
+    status, headers, parser, writer, protocol = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
+
+
+def test_handshake_compress_multi_ext_wbits(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=6,
+                                   extension_text=', permessage-deflate')
+
+    message.headers.extend(hdrs)
+
+    status, headers, parser, writer, protocol = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
