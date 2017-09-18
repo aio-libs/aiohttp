@@ -203,6 +203,10 @@ def ws_ext_parse(extstr, isserver=False):
                     notakeover = True
                 # Ignore regex group 5 & 6 for client_max_window_bits
                 break
+        # Return Fail if client side and not match
+        elif not isserver:
+            compress = -2
+            break
 
     return compress, notakeover
 
@@ -685,15 +689,10 @@ def do_handshake(method, headers, stream,
             hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
 
     extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
+    # Server side always get return with no exception.
+    # If something happened, just drop compress extension
     compress, compress_notakeover = ws_ext_parse(extensions, isserver=True)
     if compress:
-        if compress == -1:
-            raise HttpBadRequest(
-                message='Handshake error: PMCE bad extensions') from None
-        if compress == -2:
-            raise HttpBadRequest(
-                message='Handshake error: PMCE window not in range') from None
-
         enabledext = ws_ext_gen(compress=compress, isserver=True,
                                 server_notakeover=compress_notakeover)
         response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS, enabledext))

@@ -482,14 +482,14 @@ class ClientSession:
                         raise WSServerHandshakeError(
                             resp.request_info,
                             resp.history,
-                            message='Invalid deflate extension',
+                            message='Invalid window size',
                             code=resp.status,
                             headers=resp.headers)
                     elif compress == -2:
                         raise WSServerHandshakeError(
                             resp.request_info,
                             resp.history,
-                            message='Invalid window size',
+                            message='Invalid deflate extension',
                             code=resp.status,
                             headers=resp.headers)
                 else:
