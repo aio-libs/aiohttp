@@ -211,7 +211,7 @@ def ws_ext_parse(extstr, isserver=False):
     return compress, notakeover
 
 
-def ws_ext_gen(compress=0, isserver=False,
+def ws_ext_gen(compress=15, isserver=False,
                server_notakeover=False, client_notakeover=False):
     # compress wbit 8 does not support in zlib
     if compress < 9 or compress > 15:
@@ -241,7 +241,7 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
 
-    def __init__(self, queue):
+    def __init__(self, queue, compress=True):
         self.queue = queue
 
         self._exc = None
@@ -260,6 +260,7 @@ class WebSocketReader:
         self._payload_length_flag = 0
         self._compressed = None
         self._decompressobj = None
+        self._compress = compress
 
     def feed_eof(self):
         self.queue.feed_eof()
@@ -399,7 +400,7 @@ class WebSocketReader:
                     #    1 bit, MUST be 0 unless negotiated otherwise
                     #
                     # Remove rsv1 from this test for deflate development
-                    if rsv2 or rsv3:
+                    if rsv2 or rsv3 or (rsv1 and not self._compress):
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
                             'Received frame with non-zero reserved bits')
@@ -620,8 +621,8 @@ class WebSocketWriter:
             self._closing = True
 
 
-def do_handshake(method, headers, stream,
-                 protocols=(), write_buffer_size=DEFAULT_LIMIT):
+def do_handshake(method, headers, stream, protocols=(),
+                 write_buffer_size=DEFAULT_LIMIT, compress=True):
     """Prepare WebSocket handshake.
 
     It return HTTP response code, response headers, websocket parser,
@@ -632,6 +633,8 @@ def do_handshake(method, headers, stream,
     which the server also knows.
 
     `write_buffer_size` max size of write buffer before `drain()` get called.
+
+    `compress` enable or disable server side deflate extension support.
     """
     # WebSocket accepts only GET
     if method.upper() != hdrs.METH_GET:
@@ -688,14 +691,17 @@ def do_handshake(method, headers, stream,
         (hdrs.SEC_WEBSOCKET_ACCEPT, base64.b64encode(
             hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
 
-    extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
-    # Server side always get return with no exception.
-    # If something happened, just drop compress extension
-    compress, compress_notakeover = ws_ext_parse(extensions, isserver=True)
+    notakeover = False
     if compress:
-        enabledext = ws_ext_gen(compress=compress, isserver=True,
-                                server_notakeover=compress_notakeover)
-        response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS, enabledext))
+        extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
+        # Server side always get return with no exception.
+        # If something happened, just drop compress extension
+        compress, notakeover = ws_ext_parse(extensions, isserver=True)
+        if compress:
+            enabledext = ws_ext_gen(compress=compress, isserver=True,
+                                    server_notakeover=notakeover)
+            response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS,
+                                     enabledext))
 
     if protocol:
         response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))
@@ -706,5 +712,6 @@ def do_handshake(method, headers, stream,
             None,
             WebSocketWriter(
                 stream, limit=write_buffer_size,
-                compress=compress, notakeover=compress_notakeover),
-            protocol)
+                compress=compress, notakeover=notakeover),
+            protocol,
+            compress)
