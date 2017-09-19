@@ -1,11 +1,13 @@
 import asyncio
 import datetime
 import gc
+import os
 import sys
 import tempfile
 from unittest import mock
 
 import pytest
+from yarl import URL
 
 from aiohttp import helpers
 
@@ -90,6 +92,8 @@ def test_guess_filename_with_tempfile():
         assert (helpers.guess_filename(fp, 'no-throw') is not None)
 
 
+# ------------------- BasicAuth -----------------------------------
+
 def test_basic_auth1():
     # missing password here
     with pytest.raises(ValueError):
@@ -138,6 +142,18 @@ def test_basic_auth_decode_not_basic():
 def test_basic_auth_decode_bad_base64():
     with pytest.raises(ValueError):
         helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
+
+
+def test_basic_auth_from_url():
+    url = URL('http://user:pass@example.com')
+    auth = helpers.BasicAuth.from_url(url)
+    assert auth.login == 'user'
+    assert auth.password == 'pass'
+
+
+def test_basic_auth_from_not_url():
+    with pytest.raises(TypeError):
+        helpers.BasicAuth.from_url('http://user:pass@example.com')
 
 
 # ------------- access logger -------------------------
@@ -546,3 +562,44 @@ def test_set_content_disposition_bad_param():
     with pytest.raises(ValueError):
         helpers.content_disposition_header('inline',
                                            **{'foo\x00bar': 'baz'})
+
+
+# --------------------- proxies_from_env ------------------------------
+
+def test_proxies_from_env_http(mocker):
+    url = URL('http://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'http_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'http'}
+    assert ret['http'].proxy == url
+    assert ret['http'].proxy_auth is None
+
+
+def test_proxies_from_env_http_proxy_for_https_proto(mocker):
+    url = URL('http://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'https'}
+    assert ret['https'].proxy == url
+    assert ret['https'].proxy_auth is None
+
+
+def test_proxies_from_env_https_proxy_skipped(mocker):
+    url = URL('https://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
+    log = mocker.patch('aiohttp.log.client_logger.warning')
+    assert helpers.proxies_from_env() == {}
+    log.assert_called_with('HTTPS proxies %s are not supported, ignoring',
+                           URL('https://aiohttp.io/path'))
+
+
+def test_proxies_from_env_http_with_auth(mocker):
+    url = URL('http://user:pass@aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'http_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'http'}
+    assert ret['http'].proxy == url.with_user(None)
+    proxy_auth = ret['http'].proxy_auth
+    assert proxy_auth.login == 'user'
+    assert proxy_auth.password == 'pass'
+    assert proxy_auth.encoding == 'latin1'
