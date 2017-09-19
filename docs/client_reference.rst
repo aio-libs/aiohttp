@@ -49,7 +49,7 @@ The client session supports the context manager protocol for self closing.
                          conn_timeout=None, \
                          raise_for_status=False, \
                          connector_owner=True, \
-                         auto_decompress=True)
+                         auto_decompress=True, proxies=None)
 
    The class for creating client sessions and making requests.
 
@@ -140,6 +140,19 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 2.1
 
    :param bool auto_decompress: Automatically decompress response body
+
+      .. versionadded:: 2.3
+
+   :param dict proxies: A proxies dictionary or ``None`` if no proxies
+      are provided.
+
+      The dictionary is a *protocol* -> *proxy_info* mapping where
+      *protocol* is ``'http'`` or ``'https'``, *proxy_info* is
+      :class:`aiohttp.ProxyInfo` structure.
+
+      The main intended usage is configuring proxies by *environment
+      variables*: `client =
+      aiohttp.ClientSession(proxies=aiohttp.proxies_from_env())`.
 
       .. versionadded:: 2.3
 
@@ -1337,6 +1350,36 @@ RequestInfo
       HTTP headers for request, :class:`multidict.CIMultiDict` instance.
 
 
+Proxy Support
+^^^^^^^^^^^^^
+
+.. class:: ProxyInfo
+
+   A structure for storing information about HTTP proxy configuration.
+
+   .. attribute:: proxy
+
+      :class:`yarl.URL` to proxy.
+
+   .. attribute:: proxy_auth
+
+      :class:`aiohttp.BasicAuth` with proxy credentials or ``None`` if
+      no login/password are needed.
+
+   .. versionadded:: 2.3.0
+
+
+.. function:: proxies_from_env()
+
+   Extract proxy information from *environment variables*
+   (``HTTP_PROXY`` and ``HTTTPS_PROXY``, names are case insensitive).
+
+   Return a :class:`dict` for passing into
+   :class:`aiohttp.ClientSession` as *proxes* parameter.
+
+   .. versionadded:: 2.3.0
+
+
 BasicAuth
 ^^^^^^^^^
 
@@ -1362,6 +1405,15 @@ BasicAuth
 
       :return:  decoded authentication data, :class:`BasicAuth`.
 
+   .. classmethod:: from_url(url)
+
+      Constructed credentials info from url's *user* and *password*
+      parts.
+
+      :return: credentials data, :class:`BasicAuth` or ``None`` is
+                credentials are not provided.
+
+      .. versionadded:: 2.3
 
    .. method:: encode()
 
