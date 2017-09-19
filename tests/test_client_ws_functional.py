@@ -634,7 +634,7 @@ def test_send_recv_compress(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = yield from test_client(app)
-    resp = yield from client.ws_connect('/', compress=True)
+    resp = yield from client.ws_connect('/', compress=15)
     yield from resp.send_str('ask')
 
     assert resp.compress == 15

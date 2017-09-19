@@ -407,8 +407,6 @@ class ClientSession:
         if origin is not None:
             headers[hdrs.ORIGIN] = origin
         if compress:
-            if compress is True:
-                compress = 15
             extstr = ws_ext_gen(compress=compress)
             headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
