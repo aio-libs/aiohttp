@@ -141,6 +141,27 @@ def test_headers_multi_feed(parser):
     assert not msg.upgrade
 
 
+def test_headers_split_field(parser):
+    text1 = b'GET /test HTTP/1.1\r\n'
+    text2 = b't'
+    text3 = b'es'
+    text4 = b't: value\r\n\r\n'
+
+    messages, upgrade, tail = parser.feed_data(text1)
+    messages, upgrade, tail = parser.feed_data(text2)
+    messages, upgrade, tail = parser.feed_data(text3)
+    assert len(messages) == 0
+    messages, upgrade, tail = parser.feed_data(text4)
+    assert len(messages) == 1
+
+    msg = messages[0][0]
+    assert list(msg.headers.items()) == [('test', 'value')]
+    assert msg.raw_headers == ((b'test', b'value'),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+
+
 def test_parse_headers_multi(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'Set-Cookie: c1=cookie1\r\n'

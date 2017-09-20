@@ -137,9 +137,16 @@ cdef class HttpParser:
             self._raw_headers.append((raw_name, raw_value))
 
     cdef _on_header_field(self, str field, bytes raw_field):
-        self._process_header()
-        self._header_name = field
-        self._raw_header_name = raw_field
+        if self._header_value is not None:
+            self._process_header()
+            self._header_value = None
+
+        if self._header_name is None:
+            self._header_name = field
+            self._raw_header_name = raw_field
+        else:
+            self._header_name += field
+            self._raw_header_name += raw_field
 
     cdef _on_header_value(self, str val, bytes raw_val):
         if self._header_value is None:
