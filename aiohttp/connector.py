@@ -10,7 +10,8 @@ from time import monotonic
 from types import MappingProxyType
 
 from . import hdrs, helpers
-from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
+from .client_exceptions import (ClientConnectionError, ClientConnectorError,
+                                ClientHttpProxyError,
                                 ClientProxyConnectionError,
                                 ServerFingerprintMismatch)
 from .client_proto import ResponseHandler
@@ -386,11 +387,15 @@ class BaseConnector(object):
             self._acquired_per_host[key].add(placeholder)
             try:
                 proto = yield from self._create_connection(req)
+                if self._closed:
+                    proto.close()
+                    raise ClientConnectionError("Connector is closed.")
             except OSError as exc:
                 raise ClientConnectorError(key, exc) from exc
             finally:
-                self._acquired.remove(placeholder)
-                self._acquired_per_host[key].remove(placeholder)
+                if not self._closed:
+                    self._acquired.remove(placeholder)
+                    self._acquired_per_host[key].remove(placeholder)
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)

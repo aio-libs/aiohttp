@@ -588,6 +588,29 @@ def test_connect_connection_error(loop):
     assert ctx.value.ssl == req.ssl
 
 
+@asyncio.coroutine
+def test_close_during_connect(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    fut = helpers.create_future(loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._create_connection = mock.Mock()
+    conn._create_connection.return_value = fut
+
+    task = helpers.ensure_future(conn.connect(req), loop=loop)
+    yield from asyncio.sleep(0, loop=loop)
+    conn.close()
+
+    fut.set_result(proto)
+    with pytest.raises(aiohttp.ClientConnectionError):
+        yield from task
+
+    assert proto.close.called
+
+
 def test_ctor_cleanup():
     loop = mock.Mock()
     loop.time.return_value = 1.5
