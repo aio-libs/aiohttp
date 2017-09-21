@@ -108,6 +108,13 @@ class WebSocketError(Exception):
         super().__init__(message)
 
 
+class WSHandshakeError(Exception):
+    """WebSocket protocol handshake error."""
+
+    def __init__(self, message):
+        super().__init__(message)
+
+
 native_byteorder = sys.byteorder
 
 
@@ -176,6 +183,8 @@ def ws_ext_parse(extstr, isserver=False):
         if match:
             compress = 15
             if isserver:
+                # Server never fail to detect compress handshake.
+                # Server does not need to send max wbit to client
                 if match.group(4):
                     compress = int(match.group(4))
                     # Group3 must match if group4 matches
@@ -197,39 +206,37 @@ def ws_ext_parse(extstr, isserver=False):
                     # If compress level not support,
                     # FAIL the parse progress
                     if compress > 15 or compress < 9:
-                        compress = -1
-                        break
+                        raise WSHandshakeError('Invalid window size')
                 if match.group(2):
                     notakeover = True
                 # Ignore regex group 5 & 6 for client_max_window_bits
                 break
         # Return Fail if client side and not match
         elif not isserver:
-            compress = -2
-            break
+            raise WSHandshakeError('Extension for deflate not supported' +
+                                   ext.group(1))
 
     return compress, notakeover
 
 
 def ws_ext_gen(compress=15, isserver=False,
-               server_notakeover=False, client_notakeover=False):
+               server_notakeover=False):
+    # client_notakeover=False not used for server
     # compress wbit 8 does not support in zlib
     if compress < 9 or compress > 15:
         raise ValueError('Compress wbits must between 9 and 15, '
                          'zlib does not support wbits=8')
-    enabledext = None
-    if isserver:
-        enabledext = 'permessage-deflate'
-    else:
-        enabledext = 'permessage-deflate; client_max_window_bits'
+    enabledext = ['permessage-deflate']
+    if not isserver:
+        enabledext.append('client_max_window_bits')
 
     if compress < 15:
-        enabledext += '; server_max_window_bits=' + str(compress)
+        enabledext.append('server_max_window_bits=' + str(compress))
     if server_notakeover:
-        enabledext += '; server_no_context_takeover'
-    if client_notakeover:
-        enabledext += '; client_no_context_takeover'
-    return enabledext
+        enabledext.append('server_no_context_takeover')
+    # if client_notakeover:
+    #     enabledext.append('client_no_context_takeover')
+    return '; '.join(enabledext)
 
 
 class WSParserState(IntEnum):

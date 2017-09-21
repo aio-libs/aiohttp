@@ -27,7 +27,7 @@ from .cookiejar import CookieJar
 from .helpers import (PY_35, CeilTimeout, ProxyInfo, TimeoutHandle,
                       _BaseCoroMixin, deprecated_noop, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
-from .http_websocket import ws_ext_gen, ws_ext_parse
+from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 
 
@@ -489,23 +489,17 @@ class ClientSession:
             notakeover = False
             if compress:
                 if hdrs.SEC_WEBSOCKET_EXTENSIONS in resp.headers:
-                    compress, notakeover = ws_ext_parse(
-                        resp.headers[hdrs.SEC_WEBSOCKET_EXTENSIONS]
-                    )
-                    if compress == 0:
-                        pass
-                    elif compress == -1:
+                    try:
+                        compress, notakeover = ws_ext_parse(
+                            resp.headers[hdrs.SEC_WEBSOCKET_EXTENSIONS]
+                        )
+                        if compress == 0:
+                            pass
+                    except WSHandshakeError as exc:
                         raise WSServerHandshakeError(
                             resp.request_info,
                             resp.history,
-                            message='Invalid window size',
-                            code=resp.status,
-                            headers=resp.headers)
-                    elif compress == -2:
-                        raise WSServerHandshakeError(
-                            resp.request_info,
-                            resp.history,
-                            message='Invalid deflate extension',
+                            message=exc.args[0],
                             code=resp.status,
                             headers=resp.headers)
                 else:
