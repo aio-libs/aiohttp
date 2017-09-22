@@ -50,8 +50,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
-    :param time_service: Low resolution time service
-
     :param keepalive_timeout: number of seconds before closing
                               keep-alive connection
     :type keepalive_timeout: int or None
@@ -107,7 +105,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._loop = loop if loop is not None else asyncio.get_event_loop()
 
         self._manager = manager
-        self._time_service = manager.time_service
         self._request_handler = manager.request_handler
         self._request_factory = manager.request_factory
 
@@ -162,10 +159,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         return "<{} {}:{} {}>".format(
             self.__class__.__name__, meth, path,
             'connected' if self.transport is not None else 'disconnected')
-
-    @property
-    def time_service(self):
-        return self._time_service
 
     @property
     def keepalive_timeout(self):
@@ -368,9 +361,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         # all handlers in idle state
         if len(self._request_handlers) == len(self._waiters):
-            # time_service.loop_time is ceiled to 1.0, so we check 2 intervals
-            now = self._time_service.loop_time
-            if (now + self._time_service.interval * 2) > next:
+            if self._loop.time() > next:
                 self.force_close(send_last_heartbeat=True)
                 return
 
@@ -491,7 +482,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         if self._keepalive and not self._close:
                             # start keep-alive timer
                             if keepalive_timeout is not None:
-                                now = self._time_service.loop_time
+                                now = self._loop.time()
                                 self._keepalive_time = now
                                 if self._keepalive_handle is None:
                                     self._keepalive_handle = loop.call_at(
@@ -554,7 +545,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def handle_parse_error(self, writer, status, exc=None, message=None):
         request = BaseRequest(
             ERROR, EMPTY_PAYLOAD,
-            self, writer, self._time_service, None, self._loop)
+            self, writer, None, self._loop)
 
         resp = self.handle_error(request, status, exc, message)
         yield from resp.prepare(request)

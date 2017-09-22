@@ -2,8 +2,6 @@ import asyncio
 import datetime
 import enum
 import json
-import math
-import time
 import warnings
 import zlib
 from email.utils import parsedate
@@ -11,7 +9,7 @@ from email.utils import parsedate
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
-from .helpers import HeadersMixin, SimpleCookie, sentinel
+from .helpers import HeadersMixin, RFC822_Date, SimpleCookie, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
 
@@ -252,12 +250,8 @@ class StreamResponse(HeadersMixin):
     def last_modified(self, value):
         if value is None:
             self.headers.pop(hdrs.LAST_MODIFIED, None)
-        elif isinstance(value, (int, float)):
-            self.headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value)))
-        elif isinstance(value, datetime.datetime):
-            self.headers[hdrs.LAST_MODIFIED] = time.strftime(
-                "%a, %d %b %Y %H:%M:%S GMT", value.utctimetuple())
+        elif isinstance(value, (int, float, datetime.datetime)):
+            self.headers[hdrs.LAST_MODIFIED] = RFC822_Date.format(value)
         elif isinstance(value, str):
             self.headers[hdrs.LAST_MODIFIED] = value
 
@@ -375,7 +369,8 @@ class StreamResponse(HeadersMixin):
                     keep_alive = False
 
         headers.setdefault(CONTENT_TYPE, 'application/octet-stream')
-        headers.setdefault(DATE, request.time_service.strtime())
+        headers.setdefault(DATE, RFC822_Date.format())
+
         headers.setdefault(SERVER, SERVER_SOFTWARE)
 
         # connection header

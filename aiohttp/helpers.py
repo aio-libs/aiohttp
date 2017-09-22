@@ -16,7 +16,6 @@ import weakref
 from collections import namedtuple
 from math import ceil
 from pathlib import Path
-from time import gmtime
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -610,38 +609,28 @@ def is_ip_address(host):
                         .format(host, type(host)))
 
 
-class TimeService:
+class RFC822_Date:
+    _formatted_now = None
+    _time = None
 
-    def __init__(self, loop, *, interval=1.0):
-        self._loop = loop
-        self._interval = interval
-        self._time = time.time()
-        self._loop_time = loop.time()
-        self._count = 0
-        self._strtime = None
-        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
-
-    def close(self):
-        if self._cb:
-            self._cb.cancel()
-
-        self._cb = None
-        self._loop = None
-
-    def _on_cb(self, reset_count=10*60):
-        if self._count >= reset_count:
-            # reset timer every 10 minutes
-            self._count = 0
-            self._time = time.time()
+    @classmethod
+    def format(cls, timestamp=None):
+        """
+        if timestamp is none, assume "now", cache value for future use.
+        Invalidate cache at next second.
+        """
+        if timestamp is None:
+            timetuple = time.gmtime(ceil(time.time()))
+            if timetuple != cls._time:
+                cls._formatted_now = cls._format(timetuple)
+                cls._time = timetuple
+            return cls._formatted_now
         else:
-            self._time += self._interval
+            timetuple = cls._timetuple(timestamp)
+            return cls._format(timetuple)
 
-        self._strtime = None
-        self._loop_time = ceil(self._loop.time())
-        self._cb = self._loop.call_at(
-            self._loop_time + self._interval, self._on_cb)
-
-    def _format_date_time(self):
+    @classmethod
+    def _format(cls, timetuple):
         # Weekday and month names for HTTP date/time formatting;
         # always English!
         # Tuples are contants stored in codeobject!
@@ -650,27 +639,21 @@ class TimeService:
                       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-        year, month, day, hh, mm, ss, wd, y, z = gmtime(self._time)
+        year, month, day, hh, mm, ss, wd, y, z = timetuple
         return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
             _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
         )
 
-    def time(self):
-        return self._time
-
-    def strtime(self):
-        s = self._strtime
-        if s is None:
-            self._strtime = s = self._format_date_time()
-        return self._strtime
-
-    @property
-    def loop_time(self):
-        return self._loop_time
-
-    @property
-    def interval(self):
-        return self._interval
+    @staticmethod
+    def _timetuple(timestamp):
+        if isinstance(timestamp, tuple):
+            return timestamp
+        elif isinstance(timestamp, (int, float)):
+            return time.gmtime(ceil(timestamp))
+        elif isinstance(timestamp, datetime.datetime):
+            return timestamp.utctimetuple()
+        else:
+            raise ValueError(timestamp)
 
 
 def _weakref_handle(info):

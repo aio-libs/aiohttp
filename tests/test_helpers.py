@@ -398,53 +398,6 @@ def test_is_ip_address_invalid_type():
         helpers.is_ip_address(object())
 
 
-# ----------------------------------- TimeService ----------------------
-
-
-@pytest.fixture
-def time_service(loop):
-    return helpers.TimeService(loop, interval=0.1)
-
-
-class TestTimeService:
-
-    def test_ctor(self, time_service):
-        assert time_service._cb is not None
-        assert time_service._time is not None
-        assert time_service._strtime is None
-
-    def test_stop(self, time_service):
-        time_service.close()
-        assert time_service._cb is None
-        assert time_service._loop is None
-
-    def test_double_stopping(self, time_service):
-        time_service.close()
-        time_service.close()
-        assert time_service._cb is None
-        assert time_service._loop is None
-
-    def test_time(self, time_service):
-        t = time_service._time
-        assert t == time_service.time()
-
-    def test_strtime(self, time_service):
-        time_service._time = 1477797232
-        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
-        # second call should use cached value
-        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
-
-    def test_recalc_time(self, time_service, mocker):
-        time = time_service._loop.time()
-        time_service._time = time
-        time_service._strtime = 'asd'
-        time_service._count = 1000000
-        time_service._on_cb()
-        assert time_service._strtime is None
-        assert time_service._time > time
-        assert time_service._count == 0
-
-
 # ----------------------------------- TimeoutHandle -------------------
 
 def test_timeout_handle(loop):
