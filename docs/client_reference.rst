@@ -524,7 +524,9 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
-      :param bool compress: Enable Per-Message Compress Extension support
+      :param int compress: Enable Per-Message Compress Extension support.
+                           0 for disable, 9 to 15 for window bit support.
+                           Default value is 15.
 
       .. versionadded:: 0.16
 

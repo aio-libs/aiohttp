@@ -111,8 +111,7 @@ class WebSocketError(Exception):
 class WSHandshakeError(Exception):
     """WebSocket protocol handshake error."""
 
-    def __init__(self, message):
-        super().__init__(message)
+    pass
 
 
 native_byteorder = sys.byteorder

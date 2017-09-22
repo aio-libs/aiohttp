@@ -488,13 +488,10 @@ class ClientSession:
             # websocket compress
             notakeover = False
             if compress:
-                if hdrs.SEC_WEBSOCKET_EXTENSIONS in resp.headers:
+                compress_hdrs = resp.headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
+                if compress_hdrs:
                     try:
-                        compress, notakeover = ws_ext_parse(
-                            resp.headers[hdrs.SEC_WEBSOCKET_EXTENSIONS]
-                        )
-                        if compress == 0:
-                            pass
+                        compress, notakeover = ws_ext_parse(compress_hdrs)
                     except WSHandshakeError as exc:
                         raise WSServerHandshakeError(
                             resp.request_info,
