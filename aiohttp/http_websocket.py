@@ -111,8 +111,6 @@ class WebSocketError(Exception):
 class WSHandshakeError(Exception):
     """WebSocket protocol handshake error."""
 
-    pass
-
 
 native_byteorder = sys.byteorder
 
