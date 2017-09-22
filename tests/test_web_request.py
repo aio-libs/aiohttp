@@ -217,13 +217,14 @@ def test___repr___non_ascii_path():
 
 
 def test_http_scheme():
-    req = make_mocked_request('GET', '/')
+    req = make_mocked_request('GET', '/', headers={'Host': 'example.com'})
     assert "http" == req.scheme
     assert req.secure is False
 
 
 def test_https_scheme_by_ssl_transport():
-    req = make_mocked_request('GET', '/', sslcontext=True)
+    req = make_mocked_request('GET', '/', headers={'Host': 'example.com'},
+                              sslcontext=True)
     assert "https" == req.scheme
     assert req.secure is True
 
@@ -231,7 +232,8 @@ def test_https_scheme_by_ssl_transport():
 def test_https_scheme_by_secure_proxy_ssl_header():
     req = make_mocked_request('GET', '/',
                               secure_proxy_ssl_header=('X-HEADER', '1'),
-                              headers=CIMultiDict({'X-HEADER': '1'}))
+                              headers={'X-HEADER': '1',
+                                       'Host': 'example.com'})
     assert "https" == req.scheme
     assert req.secure is True
 
@@ -239,7 +241,8 @@ def test_https_scheme_by_secure_proxy_ssl_header():
 def test_https_scheme_by_secure_proxy_ssl_header_false_test():
     req = make_mocked_request('GET', '/',
                               secure_proxy_ssl_header=('X-HEADER', '1'),
-                              headers=CIMultiDict({'X-HEADER': '0'}))
+                              headers={'X-HEADER': '0',
+                                       'Host': 'example.com'})
     assert "http" == req.scheme
     assert req.secure is False
 
@@ -396,23 +399,24 @@ def test_https_scheme_by_forwarded_header():
 def test_https_scheme_by_malformed_forwarded_header():
     req = make_mocked_request('GET', '/',
                               headers=CIMultiDict({'Forwarded':
-                                                   'malformed value'}))
+                                                   'malformed value',
+                                                   'Host': 'xample.com'}))
     assert "http" == req.scheme
     assert req.secure is False
 
 
 def test_https_scheme_by_x_forwarded_proto_header():
     req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict({'X-Forwarded-Proto':
-                                                   'https'}))
+                              headers={'X-Forwarded-Proto': 'https',
+                                       'Host': 'example.com'})
     assert "https" == req.scheme
     assert req.secure is True
 
 
 def test_https_scheme_by_x_forwarded_proto_header_no_tls():
     req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict({'X-Forwarded-Proto':
-                                                   'http'}))
+                              headers={'X-Forwarded-Proto': 'http',
+                                       'Host': 'example.com'})
     assert "http" == req.scheme
     assert req.secure is False
 
