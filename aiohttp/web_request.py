@@ -170,14 +170,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ########
 
     @property
-    def scheme(self):
-        """A string representing the scheme of the request.
-
-        'http' or 'https'.
-        """
-        return self.url.scheme
-
-    @property
     def secure(self):
         """A bool indicating if the request is handled with SSL or
         'secure_proxy_ssl_header' is matching
@@ -246,7 +238,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return tuple(elems)
 
     @reify
-    def _scheme(self):
+    def scheme(self):
+        """A string representing the scheme of the request.
+
+        'http' or 'https'.
+        """
         proto = None
         if self._transport.get_extra_info('sslcontext'):
             proto = 'https'
@@ -327,9 +323,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def url(self):
-        return URL('{}://{}{}'.format(self._scheme,
-                                      self.host,
-                                      str(self._rel_url)))
+        url = URL.build(scheme=self.scheme, host=self.host)
+        return url.join(self._rel_url)
 
     @property
     def path(self):
