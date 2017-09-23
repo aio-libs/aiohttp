@@ -171,7 +171,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """A bool indicating if the request is handled with SSL
 
         """
-        return self.url.scheme == 'https'
+        return self.scheme == 'https'
 
     @reify
     def forwarded(self):
