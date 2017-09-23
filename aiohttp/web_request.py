@@ -62,7 +62,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     def __init__(self, message, payload, protocol, writer, time_service, task,
                  loop,
-                 *, secure_proxy_ssl_header=None, client_max_size=1024**2):
+                 *, secure_proxy_ssl_header=None, client_max_size=1024**2,
+                 state=None):
+        if state is None:
+            state = {}
         self._message = message
         self._protocol = protocol
         self._transport = protocol.transport
@@ -78,7 +81,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._time_service = time_service
-        self._state = {}
+        self._state = state
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
@@ -120,7 +123,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._time_service,
             self._task,
             self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
+            state=self._state.copy())
 
     @property
     def task(self):
