@@ -61,8 +61,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, message, payload, protocol, writer, time_service, task,
-                 loop,
-                 *, secure_proxy_ssl_header=None, client_max_size=1024**2):
+                 loop, *, client_max_size=1024**2):
         self._message = message
         self._protocol = protocol
         self._transport = protocol.transport
@@ -76,7 +75,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._post = None
         self._read_bytes = None
 
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._time_service = time_service
         self._state = {}
         self._cache = {}
@@ -119,8 +117,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._writer,
             self._time_service,
             self._task,
-            self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+            self._loop)
 
     @property
     def task(self):
@@ -171,8 +168,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def secure(self):
-        """A bool indicating if the request is handled with SSL or
-        'secure_proxy_ssl_header' is matching
+        """A bool indicating if the request is handled with SSL
 
         """
         return self.url.scheme == 'https'
@@ -246,10 +242,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         proto = None
         if self._transport.get_extra_info('sslcontext'):
             proto = 'https'
-        elif self._secure_proxy_ssl_header is not None:
-            header, value = self._secure_proxy_ssl_header
-            if self.headers.get(header) == value:
-                proto = 'https'
         else:
             proto = next(
                 (f['proto'] for f in self.forwarded if 'proto' in f), None

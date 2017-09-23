@@ -203,27 +203,6 @@ def test_app_freeze():
     assert len(subapp.freeze.call_args_list) == 1
 
 
-def test_secure_proxy_ssl_header_default():
-    app = web.Application()
-    assert app._secure_proxy_ssl_header is None
-
-
-def test_secure_proxy_ssl_header_non_default(loop):
-    app = web.Application()
-    hdr = ('X-Forwarded-Proto', 'https')
-    app.make_handler(secure_proxy_ssl_header=hdr, loop=loop)
-    assert app._secure_proxy_ssl_header is hdr
-
-
-def test_secure_proxy_ssl_header_init(loop):
-    hdr = ('X-Forwarded-Proto', 'https')
-    with pytest.warns(DeprecationWarning):
-        app = web.Application(secure_proxy_ssl_header=hdr)
-    assert app._secure_proxy_ssl_header is hdr
-    app.make_handler(loop=loop)
-    assert app._secure_proxy_ssl_header is hdr
-
-
 def test_equality():
     app1 = web.Application()
     app2 = web.Application()

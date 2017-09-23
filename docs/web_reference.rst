@@ -66,10 +66,10 @@ and :ref:`aiohttp-web-signals` handlers.
 
       A string representing the scheme of the request.
 
-      The scheme is ``'https'`` if transport for request handling is *SSL*, if
-      ``secure_proxy_ssl_header`` is matching (deprecated), if the ``proto``
-      portion of a ``Forward`` header is present and contains ``https``, or if
-      an ``X-Forwarded-Proto`` header is present and contains ``https``.
+      The scheme is ``'https'`` if transport for request handling is
+      *SSL*, if the ``proto`` portion of a ``Forward`` header is
+      present and contains ``https``, or if an ``X-Forwarded-Proto``
+      header is present and contains ``https``.
 
       ``'http'`` otherwise.
 
@@ -1203,7 +1203,7 @@ duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, logger=<default>, router=None,middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       secure_proxy_ssl_header=None, loop=None, debug=...)
+                       loop=None, debug=...)
 
    The class inherits :class:`dict`.
 
@@ -1224,13 +1224,6 @@ duplicated like one using :meth:`Application.copy`.
    :param client_max_size: client's maximum size in a request. If a POST
                            request exceeds this value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
-
-   :param tuple secure_proxy_ssl_header: Default: ``None``.
-
-      .. deprecated:: 2.1
-
-        See ``request.url.scheme`` for built-in resolution of the current
-        scheme using the standard and de-facto standard headers.
 
    :param loop: event loop
 
@@ -1330,13 +1323,6 @@ duplicated like one using :meth:`Application.copy`.
                  used for getting default event loop.
 
        .. deprecated:: 2.0
-
-    :param tuple secure_proxy_ssl_header: Default: ``None``.
-
-      .. deprecated:: 2.1
-
-        See ``request.url.scheme`` for built-in resolution of the current
-        scheme using the standard and de-facto standard headers.
 
     :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
     :param int keepalive_timeout: Number of seconds before closing Keep-Alive

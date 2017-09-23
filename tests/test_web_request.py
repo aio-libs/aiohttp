@@ -229,24 +229,6 @@ def test_https_scheme_by_ssl_transport():
     assert req.secure is True
 
 
-def test_https_scheme_by_secure_proxy_ssl_header():
-    req = make_mocked_request('GET', '/',
-                              secure_proxy_ssl_header=('X-HEADER', '1'),
-                              headers={'X-HEADER': '1',
-                                       'Host': 'example.com'})
-    assert "https" == req.scheme
-    assert req.secure is True
-
-
-def test_https_scheme_by_secure_proxy_ssl_header_false_test():
-    req = make_mocked_request('GET', '/',
-                              secure_proxy_ssl_header=('X-HEADER', '1'),
-                              headers={'X-HEADER': '0',
-                                       'Host': 'example.com'})
-    assert "http" == req.scheme
-    assert req.secure is False
-
-
 def test_single_forwarded_header():
     header = 'by=identifier;for=identifier;host=identifier;proto=identifier'
     req = make_mocked_request('GET', '/',
