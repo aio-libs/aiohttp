@@ -61,7 +61,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
     def __init__(self, message, payload, protocol, writer, time_service, task,
-                 loop, *, client_max_size=1024**2):
+                 loop,
+                 *, client_max_size=1024**2,
+                 state=None):
+        if state is None:
+            state = {}
         self._message = message
         self._protocol = protocol
         self._transport = protocol.transport
@@ -76,7 +80,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._read_bytes = None
 
         self._time_service = time_service
-        self._state = {}
+        self._state = state
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
@@ -117,7 +121,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._writer,
             self._time_service,
             self._task,
-            self._loop)
+            self._loop,
+            state=self._state.copy())
 
     @property
     def task(self):

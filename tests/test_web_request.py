@@ -602,3 +602,12 @@ def test_remote_peername_forwarded_overrides_x_forwarded():
         headers={'Forwarded': 'for=11.11.11.11, for=12.12.12.12',
                  'X-Forwarded-For': '13.13.13.13'})
     assert req.remote == '11.11.11.11'
+
+
+def test_save_state_on_clone():
+    req = make_mocked_request('GET', '/')
+    req['key'] = 'val'
+    req2 = req.clone()
+    req2['key'] = 'val2'
+    assert req['key'] == 'val'
+    assert req2['key'] == 'val2'
