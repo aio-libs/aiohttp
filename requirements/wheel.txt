@@ -1,3 +1,3 @@
-cython==0.26.1
+cython==0.27
 pytest==3.2.2
 twine==1.9.1
