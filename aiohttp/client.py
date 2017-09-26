@@ -372,7 +372,7 @@ class ClientSession:
                    headers=None,
                    proxy=None,
                    proxy_auth=None,
-                   compress=15):
+                   compress=0):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -402,7 +402,7 @@ class ClientSession:
                     headers=None,
                     proxy=None,
                     proxy_auth=None,
-                    compress=15):
+                    compress=0):
 
         if headers is None:
             headers = CIMultiDict()
