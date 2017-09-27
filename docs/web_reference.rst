@@ -862,8 +862,8 @@ WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
-                             autoclose=True, \
-                             autoping=True, heartbeat=None, protocols=())
+                             autoclose=True, autoping=True, heartbeat=None, \
+                             protocols=(), compress=True)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -900,6 +900,9 @@ WebSocketResponse
    :param float receive_timeout: Timeout value for `receive`
                                  operations.  Default value is None
                                  (no timeout for receive operation)
+
+   :param float compress: Enable per-message deflate extension support.
+                          False for disabled, default value is True.
 
    .. versionadded:: 0.19
 

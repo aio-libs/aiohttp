@@ -616,3 +616,81 @@ def test_heartbeat_no_pong(loop, test_client, ceil):
     yield from resp.receive()
 
     assert ping_received
+
+
+@asyncio.coroutine
+def test_send_recv_compress(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_str()
+        yield from ws.send_str(msg+'/answer')
+        yield from ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', compress=15)
+    yield from resp.send_str('ask')
+
+    assert resp.compress == 15
+
+    data = yield from resp.receive_str()
+    assert data == 'ask/answer'
+
+    yield from resp.close()
+    assert resp.get_extra_info('socket') is None
+
+
+@asyncio.coroutine
+def test_send_recv_compress_wbits(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_str()
+        yield from ws.send_str(msg+'/answer')
+        yield from ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+    resp = yield from client.ws_connect('/', compress=9)
+    yield from resp.send_str('ask')
+
+    # Client indicates supports wbits 15
+    # Server supports wbit 15 for decode
+    assert resp.compress == 15
+
+    data = yield from resp.receive_str()
+    assert data == 'ask/answer'
+
+    yield from resp.close()
+    assert resp.get_extra_info('socket') is None
+
+
+@asyncio.coroutine
+def test_send_recv_compress_wbit_error(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        yield from ws.prepare(request)
+
+        msg = yield from ws.receive_bytes()
+        yield from ws.send_bytes(msg+b'/answer')
+        yield from ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+    with pytest.raises(ValueError):
+        yield from client.ws_connect('/', compress=1)

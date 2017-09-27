@@ -32,7 +32,7 @@ class WebSocketResponse(StreamResponse):
     def __init__(self, *,
                  timeout=10.0, receive_timeout=None,
                  autoclose=True, autoping=True, heartbeat=None,
-                 protocols=()):
+                 protocols=(), compress=True):
         super().__init__(status=101)
         self._protocols = protocols
         self._ws_protocol = None
@@ -54,6 +54,7 @@ class WebSocketResponse(StreamResponse):
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat/2.0
         self._pong_response_cb = None
+        self._compress = compress
 
     def _cancel_heartbeat(self):
         if self._pong_response_cb is not None:
@@ -103,9 +104,9 @@ class WebSocketResponse(StreamResponse):
         self._loop = request.loop
 
         try:
-            status, headers, _, writer, protocol = do_handshake(
+            status, headers, _, writer, protocol, compress = do_handshake(
                 request.method, request.headers, request._protocol.writer,
-                self._protocols)
+                self._protocols, compress=self._compress)
         except HttpProcessingError as err:
             if err.code == 405:
                 raise HTTPMethodNotAllowed(
@@ -122,6 +123,7 @@ class WebSocketResponse(StreamResponse):
         for k, v in headers:
             self.headers[k] = v
         self.force_close()
+        self._compress = compress
         return protocol, writer
 
     def _post_start(self, request, protocol, writer):
@@ -129,13 +131,14 @@ class WebSocketResponse(StreamResponse):
         self._writer = writer
         self._reader = FlowControlDataQueue(
             request._protocol, limit=2 ** 16, loop=self._loop)
-        request.protocol.set_parser(WebSocketReader(self._reader))
+        request.protocol.set_parser(WebSocketReader(
+            self._reader, compress=self._compress))
 
     def can_prepare(self, request):
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
-            _, _, _, _, protocol = do_handshake(
+            _, _, _, _, protocol, _ = do_handshake(
                 request.method, request.headers, request._protocol.writer,
                 self._protocols)
         except HttpProcessingError:
@@ -154,6 +157,10 @@ class WebSocketResponse(StreamResponse):
     @property
     def ws_protocol(self):
         return self._ws_protocol
+
+    @property
+    def compress(self):
+        return self._compress
 
     def exception(self):
         return self._exception

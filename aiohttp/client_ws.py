@@ -13,7 +13,8 @@ class ClientWebSocketResponse:
 
     def __init__(self, reader, writer, protocol,
                  response, timeout, autoclose, autoping, loop, *,
-                 receive_timeout=None, heartbeat=None):
+                 receive_timeout=None, heartbeat=None,
+                 compress=0, client_notakeover=False):
         self._response = response
         self._conn = response.connection
 
@@ -35,6 +36,8 @@ class ClientWebSocketResponse:
         self._loop = loop
         self._waiting = None
         self._exception = None
+        self._compress = compress
+        self._client_notakeover = client_notakeover
 
         self._reset_heartbeat()
 
@@ -81,6 +84,14 @@ class ClientWebSocketResponse:
     @property
     def protocol(self):
         return self._protocol
+
+    @property
+    def compress(self):
+        return self._compress
+
+    @property
+    def client_notakeover(self):
+        return self._client_notakeover
 
     def get_extra_info(self, name, default=None):
         """extra info from connection transport"""

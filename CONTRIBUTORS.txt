@@ -35,6 +35,7 @@ Arthur Darcet
 Ben Bader
 Benedikt Reinartz
 Boris Feld
+Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller

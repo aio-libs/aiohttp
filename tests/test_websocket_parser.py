@@ -73,41 +73,41 @@ def parser(out):
 def test_parse_frame(parser):
     parser.parse_frame(struct.pack('!BB', 0b00000001, 0b00000001))
     res = parser.parse_frame(b'1')
-    fin, opcode, payload = res[0]
+    fin, opcode, payload, compress = res[0]
 
-    assert (0, 1, b'1') == (fin, opcode, payload)
+    assert (0, 1, b'1', False) == (fin, opcode, payload, not not compress)
 
 
 def test_parse_frame_length0(parser):
-    fin, opcode, payload = parser.parse_frame(
+    fin, opcode, payload, compress = parser.parse_frame(
         struct.pack('!BB', 0b00000001, 0b00000000))[0]
 
-    assert (0, 1, b'') == (fin, opcode, payload)
+    assert (0, 1, b'', False) == (fin, opcode, payload, not not compress)
 
 
 def test_parse_frame_length2(parser):
     parser.parse_frame(struct.pack('!BB', 0b00000001, 126))
     parser.parse_frame(struct.pack('!H', 4))
     res = parser.parse_frame(b'1234')
-    fin, opcode, payload = res[0]
+    fin, opcode, payload, compress = res[0]
 
-    assert (0, 1, b'1234') == (fin, opcode, payload)
+    assert (0, 1, b'1234', False) == (fin, opcode, payload, not not compress)
 
 
 def test_parse_frame_length4(parser):
     parser.parse_frame(struct.pack('!BB', 0b00000001, 127))
     parser.parse_frame(struct.pack('!Q', 4))
-    fin, opcode, payload = parser.parse_frame(b'1234')[0]
+    fin, opcode, payload, compress = parser.parse_frame(b'1234')[0]
 
-    assert (0, 1, b'1234') == (fin, opcode, payload)
+    assert (0, 1, b'1234', False) == (fin, opcode, payload, not not compress)
 
 
 def test_parse_frame_mask(parser):
     parser.parse_frame(struct.pack('!BB', 0b00000001, 0b10000001))
     parser.parse_frame(b'0001')
-    fin, opcode, payload = parser.parse_frame(b'1')[0]
+    fin, opcode, payload, compress = parser.parse_frame(b'1')[0]
 
-    assert (0, 1, b'\x01') == (fin, opcode, payload)
+    assert (0, 1, b'\x01', False) == (fin, opcode, payload, not not compress)
 
 
 def test_parse_frame_header_reversed_bits(out, parser):
@@ -136,7 +136,7 @@ def test_parse_frame_header_payload_size(out, parser):
 
 def test_ping_frame(out, parser):
     parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.PING, b'data')]
+    parser.parse_frame.return_value = [(1, WSMsgType.PING, b'data', False)]
 
     parser.feed_data(b'')
     res = out._buffer[0]
@@ -145,7 +145,7 @@ def test_ping_frame(out, parser):
 
 def test_pong_frame(out, parser):
     parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.PONG, b'data')]
+    parser.parse_frame.return_value = [(1, WSMsgType.PONG, b'data', False)]
 
     parser.feed_data(b'')
     res = out._buffer[0]
@@ -154,7 +154,7 @@ def test_pong_frame(out, parser):
 
 def test_close_frame(out, parser):
     parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'')]
+    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'', False)]
 
     parser.feed_data(b'')
     res = out._buffer[0]
@@ -163,7 +163,7 @@ def test_close_frame(out, parser):
 
 def test_close_frame_info(out, parser):
     parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'0112345')]
+    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'0112345', False)]
 
     parser.feed_data(b'')
     res = out._buffer[0]
@@ -172,7 +172,7 @@ def test_close_frame_info(out, parser):
 
 def test_close_frame_invalid(out, parser):
     parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'1')]
+    parser.parse_frame.return_value = [(1, WSMsgType.CLOSE, b'1', False)]
     parser.feed_data(b'')
 
     assert isinstance(out.exception(), WebSocketError)
@@ -200,7 +200,7 @@ def test_close_frame_unicode_err(parser):
 
 def test_unknown_frame(out, parser):
     parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.CONTINUATION, b'')]
+    parser.parse_frame.return_value = [(1, WSMsgType.CONTINUATION, b'', False)]
 
     with pytest.raises(WebSocketError):
         parser.feed_data(b'')
@@ -225,7 +225,7 @@ def test_simple_text_unicode_err(parser):
 
 def test_simple_binary(out, parser):
     parser.parse_frame = mock.Mock()
-    parser.parse_frame.return_value = [(1, WSMsgType.BINARY, b'binary')]
+    parser.parse_frame.return_value = [(1, WSMsgType.BINARY, b'binary', False)]
 
     parser.feed_data(b'')
     res = out._buffer[0]
@@ -255,9 +255,9 @@ def test_continuation(out, parser):
 def test_continuation_with_ping(out, parser):
     parser.parse_frame = mock.Mock()
     parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
-        (0, WSMsgType.PING, b''),
-        (1, WSMsgType.CONTINUATION, b'line2'),
+        (0, WSMsgType.TEXT, b'line1', False),
+        (0, WSMsgType.PING, b'', False),
+        (1, WSMsgType.CONTINUATION, b'line2', False),
     ]
 
     data1 = build_frame(b'line1', WSMsgType.TEXT, is_fin=False)
@@ -278,8 +278,8 @@ def test_continuation_with_ping(out, parser):
 def test_continuation_err(out, parser):
     parser.parse_frame = mock.Mock()
     parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
-        (1, WSMsgType.TEXT, b'line2')]
+        (0, WSMsgType.TEXT, b'line1', False),
+        (1, WSMsgType.TEXT, b'line2', False)]
 
     with pytest.raises(WebSocketError):
         parser._feed_data(b'')
@@ -288,10 +288,10 @@ def test_continuation_err(out, parser):
 def test_continuation_with_close(out, parser):
     parser.parse_frame = mock.Mock()
     parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
+        (0, WSMsgType.TEXT, b'line1', False),
         (0, WSMsgType.CLOSE,
-         build_close_frame(1002, b'test', noheader=True)),
-        (1, WSMsgType.CONTINUATION, b'line2'),
+         build_close_frame(1002, b'test', noheader=True), False),
+        (1, WSMsgType.CONTINUATION, b'line2', False),
     ]
 
     parser.feed_data(b'')
@@ -304,10 +304,10 @@ def test_continuation_with_close(out, parser):
 def test_continuation_with_close_unicode_err(out, parser):
     parser.parse_frame = mock.Mock()
     parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
+        (0, WSMsgType.TEXT, b'line1', False),
         (0, WSMsgType.CLOSE,
-         build_close_frame(1000, b'\xf4\x90\x80\x80', noheader=True)),
-        (1, WSMsgType.CONTINUATION, b'line2')]
+         build_close_frame(1000, b'\xf4\x90\x80\x80', noheader=True), False),
+        (1, WSMsgType.CONTINUATION, b'line2', False)]
 
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(b'')
@@ -318,10 +318,10 @@ def test_continuation_with_close_unicode_err(out, parser):
 def test_continuation_with_close_bad_code(out, parser):
     parser.parse_frame = mock.Mock()
     parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
+        (0, WSMsgType.TEXT, b'line1', False),
         (0, WSMsgType.CLOSE,
-         build_close_frame(1, b'test', noheader=True)),
-        (1, WSMsgType.CONTINUATION, b'line2')]
+         build_close_frame(1, b'test', noheader=True), False),
+        (1, WSMsgType.CONTINUATION, b'line2', False)]
 
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(b'')
@@ -332,9 +332,9 @@ def test_continuation_with_close_bad_code(out, parser):
 def test_continuation_with_close_bad_payload(out, parser):
     parser.parse_frame = mock.Mock()
     parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
-        (0, WSMsgType.CLOSE, b'1'),
-        (1, WSMsgType.CONTINUATION, b'line2')]
+        (0, WSMsgType.TEXT, b'line1', False),
+        (0, WSMsgType.CLOSE, b'1', False),
+        (1, WSMsgType.CONTINUATION, b'line2', False)]
 
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(b'')
@@ -345,9 +345,9 @@ def test_continuation_with_close_bad_payload(out, parser):
 def test_continuation_with_close_empty(out, parser):
     parser.parse_frame = mock.Mock()
     parser.parse_frame.return_value = [
-        (0, WSMsgType.TEXT, b'line1'),
-        (0, WSMsgType.CLOSE, b''),
-        (1, WSMsgType.CONTINUATION, b'line2'),
+        (0, WSMsgType.TEXT, b'line1', False),
+        (0, WSMsgType.CLOSE, b'', False),
+        (1, WSMsgType.CONTINUATION, b'line2', False),
     ]
 
     parser.feed_data(b'')
@@ -403,3 +403,57 @@ def test_msgtype_aliases():
     assert aiohttp.WSMsgType.CLOSE == aiohttp.WSMsgType.close
     assert aiohttp.WSMsgType.CLOSED == aiohttp.WSMsgType.closed
     assert aiohttp.WSMsgType.ERROR == aiohttp.WSMsgType.error
+
+
+def test_parse_compress_frame_single(parser):
+    parser.parse_frame(struct.pack('!BB', 0b11000001, 0b00000001))
+    res = parser.parse_frame(b'1')
+    fin, opcode, payload, compress = res[0]
+
+    assert (1, 1, b'1', True) == (fin, opcode, payload, not not compress)
+
+
+def test_parse_compress_frame_multi(parser):
+    parser.parse_frame(struct.pack('!BB', 0b01000001, 126))
+    parser.parse_frame(struct.pack('!H', 4))
+    res = parser.parse_frame(b'1234')
+    fin, opcode, payload, compress = res[0]
+    assert (0, 1, b'1234', True) == (fin, opcode, payload, not not compress)
+
+    parser.parse_frame(struct.pack('!BB', 0b10000001, 126))
+    parser.parse_frame(struct.pack('!H', 4))
+    res = parser.parse_frame(b'1234')
+    fin, opcode, payload, compress = res[0]
+    assert (1, 1, b'1234', True) == (fin, opcode, payload, not not compress)
+
+    parser.parse_frame(struct.pack('!BB', 0b10000001, 126))
+    parser.parse_frame(struct.pack('!H', 4))
+    res = parser.parse_frame(b'1234')
+    fin, opcode, payload, compress = res[0]
+    assert (1, 1, b'1234', False) == (fin, opcode, payload, not not compress)
+
+
+def test_parse_compress_error_frame(parser):
+    parser.parse_frame(struct.pack('!BB', 0b01000001, 0b00000001))
+    parser.parse_frame(b'1')
+
+    with pytest.raises(WebSocketError) as ctx:
+        parser.parse_frame(struct.pack('!BB', 0b11000001, 0b00000001))
+        parser.parse_frame(b'1')
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
+@pytest.fixture()
+def parser_no_compress(out):
+    return WebSocketReader(out, compress=False)
+
+
+def test_parse_no_compress_frame_single(parser_no_compress):
+
+    with pytest.raises(WebSocketError) as ctx:
+        parser_no_compress.parse_frame(struct.pack(
+            '!BB', 0b11000001, 0b00000001))
+        parser_no_compress.parse_frame(b'1')
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
