@@ -26,7 +26,8 @@ def message():
         True, None, True, False, URL('/path'))
 
 
-def gen_ws_headers(protocols=''):
+def gen_ws_headers(protocols='', compress=0, extension_text='',
+                   server_notakeover=False, client_notakeover=False):
     key = base64.b64encode(os.urandom(16)).decode()
     hdrs = [('Upgrade', 'websocket'),
             ('Connection', 'upgrade'),
@@ -34,6 +35,17 @@ def gen_ws_headers(protocols=''):
             ('Sec-Websocket-Key', key)]
     if protocols:
         hdrs += [('Sec-Websocket-Protocol', protocols)]
+    if compress:
+        params = 'permessage-deflate'
+        if compress < 15:
+            params += '; server_max_window_bits=' + str(compress)
+        if server_notakeover:
+            params += '; server_no_context_takeover'
+        if client_notakeover:
+            params += '; client_no_context_takeover'
+        if extension_text:
+            params += '; ' + extension_text
+        hdrs += [('Sec-Websocket-Extensions', params)]
     return hdrs, key
 
 
@@ -95,7 +107,7 @@ def test_handshake(message, transport):
     hdrs, sec_key = gen_ws_headers()
 
     message.headers.extend(hdrs)
-    status, headers, parser, writer, protocol = do_handshake(
+    status, headers, parser, writer, protocol, _ = do_handshake(
         message.method, message.headers, transport)
     assert status == 101
     assert protocol is None
@@ -111,7 +123,7 @@ def test_handshake_protocol(message, transport):
     proto = 'chat'
 
     message.headers.extend(gen_ws_headers(proto)[0])
-    _, resp_headers, _, _, protocol = do_handshake(
+    _, resp_headers, _, _, protocol, _ = do_handshake(
         message.method, message.headers, transport,
         protocols=[proto])
 
@@ -129,7 +141,7 @@ def test_handshake_protocol_agreement(message, transport):
     server_protos = 'worse_proto,chat'
 
     message.headers.extend(gen_ws_headers(server_protos)[0])
-    _, resp_headers, _, _, protocol = do_handshake(
+    _, resp_headers, _, _, protocol, _ = do_handshake(
         message.method, message.headers, transport,
         protocols=wanted_protos)
 
@@ -142,10 +154,124 @@ def test_handshake_protocol_unsupported(log, message, transport):
     message.headers.extend(gen_ws_headers('test')[0])
 
     with log('aiohttp.websocket') as ctx:
-        _, _, _, _, protocol = do_handshake(
+        _, _, _, _, protocol, _ = do_handshake(
             message.method, message.headers, transport,
             protocols=[proto])
 
         assert protocol is None
     assert (ctx.records[-1].msg ==
             'Client protocols %r don’t overlap server-known ones %r')
+
+
+def test_handshake_compress(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15)
+
+    message.headers.extend(hdrs)
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
+
+    assert compress == 15
+
+
+def test_handshake_compress_server_notakeover(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15, server_notakeover=True)
+
+    message.headers.extend(hdrs)
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == (
+        'permessage-deflate; server_no_context_takeover')
+
+    assert compress == 15
+    assert writer.notakeover is True
+
+
+def test_handshake_compress_client_notakeover(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15, client_notakeover=True)
+
+    message.headers.extend(hdrs)
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == (
+        'permessage-deflate'), hdrs
+
+    assert compress == 15
+
+
+def test_handshake_compress_wbits(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=9)
+
+    message.headers.extend(hdrs)
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == (
+        'permessage-deflate; server_max_window_bits=9')
+    assert compress == 9
+
+
+def test_handshake_compress_wbits_error(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=6)
+
+    message.headers.extend(hdrs)
+
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' not in headers
+    assert compress == 0
+
+
+def test_handshake_compress_bad_ext(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15, extension_text='bad')
+
+    message.headers.extend(hdrs)
+
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' not in headers
+    assert compress == 0
+
+
+def test_handshake_compress_multi_ext_bad(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=15,
+                                   extension_text='bad, permessage-deflate')
+
+    message.headers.extend(hdrs)
+
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
+
+
+def test_handshake_compress_multi_ext_wbits(message, transport):
+    hdrs, sec_key = gen_ws_headers(compress=6,
+                                   extension_text=', permessage-deflate')
+
+    message.headers.extend(hdrs)
+
+    status, headers, parser, writer, protocol, compress = do_handshake(
+        message.method, message.headers, transport)
+
+    headers = dict(headers)
+    assert 'Sec-Websocket-Extensions' in headers
+    assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
+    assert compress == 15
