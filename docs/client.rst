@@ -579,7 +579,7 @@ DER with e.g::
 
    *verify_ssl* and *ssl_context* params are *mutually exclusive*.
 
-   *MD5* and *SHA1* fingerpints are deprecated but still supported -- they
+   *MD5* and *SHA1* fingerprints are deprecated but still supported -- they
    are famous as very insecure hash functions.
 
 
