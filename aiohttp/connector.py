@@ -11,7 +11,7 @@ from types import MappingProxyType
 
 from . import hdrs, helpers
 from .client_exceptions import (ClientConnectionError, ClientConnectorError,
-                                ClientHttpProxyError,
+                                ClientConnectorSSLError, ClientHttpProxyError,
                                 ClientProxyConnectionError,
                                 ServerFingerprintMismatch)
 from .client_proto import ResponseHandler
@@ -24,8 +24,12 @@ from .resolver import DefaultResolver
 
 try:
     import ssl
+
+    ssl_error = ssl.SSLError
 except ImportError:  # pragma: no cover
     ssl = None
+
+    ssl_error = tuple()
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
@@ -390,6 +394,10 @@ class BaseConnector(object):
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
+            except ClientConnectorSSLError as exc:
+                raise ClientConnectorSSLError(key, exc.os_error)
+            except ClientConnectorError as exc:
+                raise ClientConnectorError(key, exc.os_error)
             except OSError as exc:
                 raise ClientConnectorError(key, exc) from exc
             finally:
@@ -810,6 +818,10 @@ class TCPConnector(BaseConnector):
             except OSError as e:
                 exc = e
         else:
+            # ssl.SSLError has OSError as __bases__
+            if isinstance(exc, ssl_error):
+                raise ClientConnectorSSLError(req, exc) from exc
+
             raise ClientConnectorError(req, exc) from exc
 
     @asyncio.coroutine

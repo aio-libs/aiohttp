@@ -3,6 +3,12 @@
 import asyncio
 
 
+try:
+    import ssl
+except ImportError:  # pragma: no cover
+    ssl = None
+
+
 __all__ = (
     'ClientError',
 
@@ -72,7 +78,12 @@ class ClientConnectorError(ClientOSError):
     """
     def __init__(self, connection_key, os_error):
         self._conn_key = connection_key
+        self._os_error = os_error
         super().__init__(os_error.errno, os_error.strerror)
+
+    @property
+    def os_error(self):
+        return self._os_error
 
     @property
     def host(self):
@@ -150,3 +161,12 @@ class InvalidURL(ClientError, ValueError):
 
     def __repr__(self):
         return '<{} {}>'.format(self.__class__.__name__, self.url)
+
+
+if ssl is not None:
+    class ClientConnectorSSLError(ClientConnectorError, ssl.SSLError):
+        """Response ssl error."""
+else:
+    class ClientConnectorSSLError(ClientConnectorError):
+        """Dummy wrapper for ClientConnectorSSLError
+        when ssl module is not available."""
