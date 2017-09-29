@@ -395,9 +395,10 @@ class BaseConnector(object):
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
             except ClientConnectorSSLError as exc:
-                raise ClientConnectorSSLError(key, exc.os_error)
+                raise ClientConnectorSSLError(
+                    key, exc.os_error) from exc.os_error
             except ClientConnectorError as exc:
-                raise ClientConnectorError(key, exc.os_error)
+                raise ClientConnectorError(key, exc.os_error) from exc.os_error
             except OSError as exc:
                 raise ClientConnectorError(key, exc) from exc
             finally:
