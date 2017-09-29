@@ -529,3 +529,21 @@ def test_save_state_on_clone():
     req2['key'] = 'val2'
     assert req['key'] == 'val'
     assert req2['key'] == 'val2'
+
+
+def test_clone_scheme():
+    req = make_mocked_request('GET', '/')
+    req2 = req.clone(scheme='https')
+    assert req2.scheme == 'https'
+
+
+def test_clone_host():
+    req = make_mocked_request('GET', '/')
+    req2 = req.clone(host='example.com')
+    assert req2.host == 'example.com'
+
+
+def test_clone_remote():
+    req = make_mocked_request('GET', '/')
+    req2 = req.clone(remote='11.11.11.11')
+    assert req2.remote == '11.11.11.11'
