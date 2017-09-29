@@ -372,6 +372,10 @@ class ClientSession:
                    headers=None,
                    proxy=None,
                    proxy_auth=None,
+                   verify_ssl=None,
+                   fingerprint=None,
+                   ssl_context=None,
+                   proxy_headers=None,
                    compress=0):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
@@ -387,6 +391,10 @@ class ClientSession:
                              headers=headers,
                              proxy=proxy,
                              proxy_auth=proxy_auth,
+                             verify_ssl=verify_ssl,
+                             fingerprint=fingerprint,
+                             ssl_context=ssl_context,
+                             proxy_headers=proxy_headers,
                              compress=compress))
 
     @asyncio.coroutine
@@ -402,6 +410,10 @@ class ClientSession:
                     headers=None,
                     proxy=None,
                     proxy_auth=None,
+                    verify_ssl=None,
+                    fingerprint=None,
+                    ssl_context=None,
+                    proxy_headers=None,
                     compress=0):
 
         if headers is None:
@@ -433,7 +445,11 @@ class ClientSession:
                                    read_until_eof=False,
                                    auth=auth,
                                    proxy=proxy,
-                                   proxy_auth=proxy_auth)
+                                   proxy_auth=proxy_auth,
+                                   verify_ssl=verify_ssl,
+                                   fingerprint=fingerprint,
+                                   ssl_context=ssl_context,
+                                   proxy_headers=proxy_headers)
 
         try:
             # check handshake

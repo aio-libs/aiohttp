@@ -201,8 +201,8 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
-                         timeout=5*60, verify_ssl=None, fingerprint=None,
-                         ssl_context=None)
+                         timeout=5*60, verify_ssl=None, fingerprint=None, \
+                         ssl_context=None, proxy_headers=None)
       :async-with:
       :coroutine:
 
@@ -484,7 +484,10 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
-                            proxy=None, proxy_auth=None)
+                            proxy=None, proxy_auth=None, \
+                            verify_ssl=None, fingerprint=None, \
+                            ssl_context=None, proxy_headers=None, \
+                            compress=0)
       :async-with:
       :coroutine:
 
@@ -524,29 +527,41 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
+      :param bool verify_ssl: Perform SSL certificate validation for
+         *HTTPS* requests (enabled by default). May be disabled to
+         skip validation for sites with invalid certificates.
+
+         .. versionadded:: 2.3
+
+      :param bytes fingerprint: Pass the SHA256 digest of the expected
+           certificate in DER format to verify that the certificate the
+           server presents matches. Useful for `certificate pinning
+           <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+
+           Note: use of MD5 or SHA1 digests is insecure and deprecated.
+
+           .. versionadded:: 2.3
+
+      :param ssl.SSLContext ssl_context: ssl context used for processing
+         *HTTPS* requests (optional).
+
+         *ssl_context* may be used for configuring certification
+         authority channel, supported SSL options etc.
+
+         .. versionadded:: 2.3
+
+      :param dict proxy_headers: HTTP headers to send to the proxy if the
+         parameter proxy has been provided.
+
+         .. versionadded:: 2.3
+
+
       :param int compress: Enable Per-Message Compress Extension support.
                            0 for disable, 9 to 15 for window bit support.
                            Default value is 0.
 
-      .. versionadded:: 0.16
+         .. versionadded:: 2.3
 
-         Add :meth:`ws_connect`.
-
-      .. versionadded:: 0.18
-
-         Add *auth* parameter.
-
-      .. versionadded:: 0.19
-
-         Add *origin* parameter.
-
-      .. versionadded:: 1.0
-
-         Added ``proxy`` and ``proxy_auth`` parameters.
-
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: close()
 
