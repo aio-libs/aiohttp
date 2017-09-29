@@ -14,6 +14,7 @@ __all__ = (
 
     'ClientConnectionError',
     'ClientOSError', 'ClientConnectorError', 'ClientProxyConnectionError',
+    'ClientConnectorSSLError',
 
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
     'ServerFingerprintMismatch',
