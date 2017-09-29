@@ -3,7 +3,7 @@ import functools
 import sys
 import traceback
 import warnings
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from itertools import cycle, islice
 from time import monotonic
@@ -138,9 +138,6 @@ class _TransportPlaceholder:
 
     def close(self):
         pass
-
-
-ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
 class BaseConnector(object):
@@ -353,7 +350,7 @@ class BaseConnector(object):
     @asyncio.coroutine
     def connect(self, req):
         """Get from pool or create new connection."""
-        key = ConnectionKey(req.host, req.port, req.ssl)
+        key = req.connection_key
 
         if self._limit:
             # total calc available connections
@@ -394,13 +391,6 @@ class BaseConnector(object):
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-            except ClientConnectorSSLError as exc:
-                raise ClientConnectorSSLError(
-                    key, exc.os_error) from exc.os_error
-            except ClientConnectorError as exc:
-                raise ClientConnectorError(key, exc.os_error) from exc.os_error
-            except OSError as exc:
-                raise ClientConnectorError(key, exc) from exc
             finally:
                 if not self._closed:
                     self._acquired.remove(placeholder)
@@ -821,9 +811,9 @@ class TCPConnector(BaseConnector):
         else:
             # ssl.SSLError has OSError as __bases__
             if isinstance(exc, ssl_error):
-                raise ClientConnectorSSLError(req, exc) from exc
+                raise ClientConnectorSSLError(req.connection_key, exc) from exc
 
-            raise ClientConnectorError(req, exc) from exc
+            raise ClientConnectorError(req.connection_key, exc) from exc
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):

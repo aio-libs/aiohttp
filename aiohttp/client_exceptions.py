@@ -100,7 +100,7 @@ class ClientConnectorError(ClientOSError):
 
     def __str__(self):
         return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} [{1}]'
-                .format(self._conn_key, self.strerror))
+                .format(self, self.strerror))
 
 
 class ClientProxyConnectionError(ClientConnectorError):
@@ -164,10 +164,10 @@ class InvalidURL(ClientError, ValueError):
         return '<{} {}>'.format(self.__class__.__name__, self.url)
 
 
+ssl_error_bases = [ClientConnectorError]
 if ssl is not None:
-    class ClientConnectorSSLError(ClientConnectorError, ssl.SSLError):
-        """Response ssl error."""
-else:
-    class ClientConnectorSSLError(ClientConnectorError):
-        """Dummy wrapper for ClientConnectorSSLError
-        when ssl module is not available."""
+    ssl_error_bases.append(ssl.SSLError)
+
+
+class ClientConnectorSSLError(*ssl_error_bases):
+    """Response ssl error."""

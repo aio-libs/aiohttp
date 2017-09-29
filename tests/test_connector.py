@@ -570,50 +570,6 @@ def test_connect(loop):
 
 
 @asyncio.coroutine
-def test_connect_connection_error(loop):
-    conn = aiohttp.BaseConnector(loop=loop)
-    conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
-    os_error = OSError(1, 'permission error')
-    conn._create_connection.return_value.set_exception(os_error)
-
-    with pytest.raises(aiohttp.ClientConnectorError) as ctx:
-        req = mock.Mock()
-        yield from conn.connect(req)
-    assert 1 == ctx.value.errno
-    assert str(ctx.value).startswith('Cannot connect to')
-    assert str(ctx.value).endswith('[permission error]')
-    assert ctx.value.host == req.host
-    assert ctx.value.port == req.port
-    assert ctx.value.ssl == req.ssl
-    assert ctx.value.os_error is os_error
-
-
-@asyncio.coroutine
-def test_connect_connection_error_re_raise(loop):
-    conn = aiohttp.BaseConnector(loop=loop)
-    conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
-    os_error = OSError(1, 'permission error')
-
-    with pytest.raises(aiohttp.ClientConnectorError) as ctx:
-        raise aiohttp.ClientConnectorError(conn, os_error) from os_error
-
-    conn._create_connection.return_value.set_exception(ctx.value)
-
-    with pytest.raises(aiohttp.ClientConnectorError) as ctx:
-        req = mock.Mock()
-        yield from conn.connect(req)
-    assert 1 == ctx.value.errno
-    assert str(ctx.value).startswith('Cannot connect to')
-    assert str(ctx.value).endswith('[permission error]')
-    assert ctx.value.host == req.host
-    assert ctx.value.port == req.port
-    assert ctx.value.ssl == req.ssl
-    assert ctx.value.os_error is os_error
-
-
-@asyncio.coroutine
 def test_close_during_connect(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
