@@ -182,7 +182,7 @@ The client session supports the context manager protocol for self closing.
    .. attribute:: requote_redirect_url
 
       aiohttp re quote's redirect urls by default, but some servers
-      require exact url from location header. to disable *re-quote* system
+      require exact url from location header. To disable *re-quote* system
       set :attr:`requote_redirect_url` attribute to ``False``.
 
       .. versionadded:: 2.1
@@ -292,7 +292,7 @@ The client session supports the context manager protocol for self closing.
            server presents matches. Useful for `certificate pinning
            <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
 
-           Note: use of MD5 or SHA1 digests is insecure and deprecated.
+           Warning: use of MD5 or SHA1 digests is insecure and deprecated.
 
            .. versionadded:: 2.3
 
@@ -304,7 +304,7 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
-      :param dict proxy_headers: HTTP headers to send to the proxy if the
+      :param abc.Mapping proxy_headers: HTTP headers to send to the proxy if the
          parameter proxy has been provided.
 
          .. versionadded:: 2.3
