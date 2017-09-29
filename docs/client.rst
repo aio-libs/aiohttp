@@ -542,7 +542,7 @@ same thing as the previous example, but add another call to
                              '/path/to/client/private/device.jey')
   r = await session.get('https://example.com', ssl_context=sslcontext)
 
-There is explicit error when ssl verification fails
+There is explicit errors when ssl verification fails
 
 :class:`aiohttp.ClientConnectorSSLError`::
 
@@ -556,6 +556,20 @@ There is explicit error when ssl verification fails
   try:
       await session.get('https://wrong.host.badssl.com/')
   except aiohttp.ClientConnectorCertificateError as e:
+      assert isinstance(e, ssl.CertificateError)
+
+If you need to skip both ssl related errors
+
+:class:`aiohttp.ClientSSLError`::
+
+  try:
+      await session.get('https://expired.badssl.com/')
+  except aiohttp.ClientSSLError as e:
+      assert isinstance(e, ssl.SSLError)
+
+  try:
+      await session.get('https://wrong.host.badssl.com/')
+  except aiohttp.ClientSSLError as e:
       assert isinstance(e, ssl.CertificateError)
 
 You may also verify certificates via *SHA256* fingerprint::

@@ -357,6 +357,7 @@ def test_tcp_connector_certificate_error(loop):
 
     assert isinstance(ctx.value, ssl.CertificateError)
     assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
+    assert isinstance(ctx.value, aiohttp.ClientSSLError)
     assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
                               '[CertificateError: ()]')
 
@@ -1261,6 +1262,7 @@ class TestHttpClientConnector(unittest.TestCase):
             self.loop.run_until_complete(session.request('get', url))
 
         self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
+        self.assertTrue(ctx.value, aiohttp.ClientSSLError)
 
         session.close()
         conn.close()

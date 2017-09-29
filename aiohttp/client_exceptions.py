@@ -14,6 +14,8 @@ __all__ = (
 
     'ClientConnectionError',
     'ClientOSError', 'ClientConnectorError', 'ClientProxyConnectionError',
+
+    'ClientSSLError',
     'ClientConnectorSSLError', 'ClientConnectorCertificateError',
 
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
@@ -164,15 +166,19 @@ class InvalidURL(ClientError, ValueError):
         return '<{} {}>'.format(self.__class__.__name__, self.url)
 
 
+class ClientSSLError(ClientConnectorError):
+    """Base error for ssl.*Errors."""
+
+
 if ssl is not None:
     certificate_errors = (ssl.CertificateError,)
-    certificate_errors_bases = (ClientConnectorError, ssl.CertificateError,)
+    certificate_errors_bases = (ClientSSLError, ssl.CertificateError,)
 
     ssl_errors = (ssl.SSLError,)
     ssl_error_bases = (ClientConnectorError, ssl.SSLError)
-else:
+else:  # pragma: no cover
     certificate_errors = tuple()
-    certificate_errors_bases = (ClientConnectorError, ValueError,)
+    certificate_errors_bases = (ClientSSLError, ValueError,)
 
     ssl_errors = tuple()
     ssl_error_bases = (ClientConnectorError,)
