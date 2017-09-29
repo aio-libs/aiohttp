@@ -1239,7 +1239,7 @@ class TestHttpClientConnector(unittest.TestCase):
         self.handler = app.make_handler(loop=self.loop, tcp_keepalive=False)
         srv = yield from self.loop.create_server(
             self.handler, '127.0.0.1', port, ssl=ssl_context)
-        scheme = 's' if ssl is not None else ''
+        scheme = 's' if ssl_context is not None else ''
         url = "http{}://127.0.0.1:{}".format(scheme, port) + path
         self.addCleanup(srv.close)
         return app, srv, url
@@ -1332,7 +1332,8 @@ class TestHttpClientConnector(unittest.TestCase):
         )
 
         port = unused_port()
-        conn = aiohttp.TCPConnector(loop=self.loop)
+        conn = aiohttp.TCPConnector(loop=self.loop,
+                                    local_addr=('127.0.0.1', port))
 
         session = aiohttp.ClientSession(connector=conn)
 
