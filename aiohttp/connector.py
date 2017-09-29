@@ -10,9 +10,10 @@ from time import monotonic
 from types import MappingProxyType
 
 from . import hdrs, helpers
-from .client_exceptions import (ClientConnectorCertificateError,
-                                ClientConnectionError, ClientConnectorError,
-                                ClientConnectorSSLError, ClientHttpProxyError,
+from .client_exceptions import (ClientConnectionError,
+                                ClientConnectorCertificateError,
+                                ClientConnectorError, ClientConnectorSSLError,
+                                ClientHttpProxyError,
                                 ClientProxyConnectionError,
                                 ServerFingerprintMismatch, certificate_errors,
                                 ssl_errors)
