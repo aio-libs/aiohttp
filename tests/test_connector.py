@@ -1342,7 +1342,7 @@ class TestHttpClientConnector(unittest.TestCase):
 
         r.release()
         first_conn = next(iter(conn._conns.values()))[0][0]
-        self.assertIs(
+        self.assertEqual(
             first_conn.transport._sock.getsockname(), ('127.0.0.1', port))
         r.close()
         session.close()
