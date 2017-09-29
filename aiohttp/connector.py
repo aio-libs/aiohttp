@@ -10,10 +10,12 @@ from time import monotonic
 from types import MappingProxyType
 
 from . import hdrs, helpers
-from .client_exceptions import (ClientConnectionError, ClientConnectorError,
+from .client_exceptions import (ClientConnectorCertificateError,
+                                ClientConnectionError, ClientConnectorError,
                                 ClientConnectorSSLError, ClientHttpProxyError,
                                 ClientProxyConnectionError,
-                                ServerFingerprintMismatch)
+                                ServerFingerprintMismatch, certificate_errors,
+                                ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
@@ -24,12 +26,8 @@ from .resolver import DefaultResolver
 
 try:
     import ssl
-
-    ssl_error = ssl.SSLError
 except ImportError:  # pragma: no cover
     ssl = None
-
-    ssl_error = tuple()
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
@@ -774,7 +772,6 @@ class TCPConnector(BaseConnector):
         fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
         hosts = yield from self._resolve_host(req.url.raw_host, req.port)
-        exc = None
 
         for hinfo in hosts:
             try:
@@ -806,14 +803,13 @@ class TCPConnector(BaseConnector):
                         raise ServerFingerprintMismatch(
                             expected, got, host, port)
                 return transp, proto
-            except OSError as e:
-                exc = e
-        else:
-            # ssl.SSLError has OSError as __bases__
-            if isinstance(exc, ssl_error):
+            except certificate_errors as exc:
+                raise ClientConnectorCertificateError(
+                    req.connection_key, exc) from exc
+            except ssl_errors as exc:
                 raise ClientConnectorSSLError(req.connection_key, exc) from exc
-
-            raise ClientConnectorError(req.connection_key, exc) from exc
+            except OSError as exc:
+                raise ClientConnectorError(req.connection_key, exc) from exc
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):

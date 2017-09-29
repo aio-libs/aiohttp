@@ -14,7 +14,7 @@ __all__ = (
 
     'ClientConnectionError',
     'ClientOSError', 'ClientConnectorError', 'ClientProxyConnectionError',
-    'ClientConnectorSSLError',
+    'ClientConnectorSSLError', 'ClientConnectorCertificateError',
 
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
     'ServerFingerprintMismatch',
@@ -164,10 +164,48 @@ class InvalidURL(ClientError, ValueError):
         return '<{} {}>'.format(self.__class__.__name__, self.url)
 
 
-ssl_error_bases = [ClientConnectorError]
 if ssl is not None:
-    ssl_error_bases.append(ssl.SSLError)
+    certificate_errors = (ssl.CertificateError,)
+    certificate_errors_bases = (ClientConnectorError, ssl.CertificateError,)
+
+    ssl_errors = (ssl.SSLError,)
+    ssl_error_bases = (ClientConnectorError, ssl.SSLError)
+else:
+    certificate_errors = tuple()
+    certificate_errors_bases = (ClientConnectorError, ValueError,)
+
+    ssl_errors = tuple()
+    ssl_error_bases = (ClientConnectorError,)
 
 
 class ClientConnectorSSLError(*ssl_error_bases):
     """Response ssl error."""
+
+
+class ClientConnectorCertificateError(*certificate_errors_bases):
+    """Response certificate error."""
+
+    def __init__(self, connection_key, certificate_error):
+        self._conn_key = connection_key
+        self._certificate_error = certificate_error
+
+    @property
+    def certificate_error(self):
+        return self._certificate_error
+
+    @property
+    def host(self):
+        return self._conn_key.host
+
+    @property
+    def port(self):
+        return self._conn_key.port
+
+    @property
+    def ssl(self):
+        return self._conn_key.ssl
+
+    def __str__(self):
+        return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} '
+                '[{0.certificate_error.__class__.__name__}: '
+                '{0.certificate_error.args}]'.format(self))

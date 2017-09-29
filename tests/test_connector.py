@@ -342,6 +342,26 @@ def test_release_close(loop):
 
 
 @asyncio.coroutine
+def test_tcp_connector_certificate_error(loop):
+    req = ClientRequest('GET', URL('https://127.0.0.1:443'), loop=loop)
+
+    @asyncio.coroutine
+    def certificate_error(*args, **kwargs):
+        raise ssl.CertificateError
+
+    conn = aiohttp.TCPConnector(loop=loop)
+    conn._loop.create_connection = certificate_error
+
+    with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
+        yield from conn.connect(req)
+
+    assert isinstance(ctx.value, ssl.CertificateError)
+    assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
+    assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
+                              '[CertificateError: ()]')
+
+
+@asyncio.coroutine
 def test_tcp_connector_resolve_host(loop):
     conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
 

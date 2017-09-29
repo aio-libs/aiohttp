@@ -1642,12 +1642,6 @@ Connection errors
 
    Derived from :exc:`ClientOSError`
 
-.. class:: ClientConnectorSSLError
-
-   Response ssl error.
-
-   Derived from :exc:`ClientConnectorError` and :exc:`ssl.SSLError`
-
 .. class:: ClientProxyConnectionError
 
    Derived from :exc:`ClientConnectonError`
@@ -1656,6 +1650,17 @@ Connection errors
 
    Derived from :exc:`ClientConnectonError`
 
+.. class:: ClientConnectorSSLError
+
+   Response ssl error.
+
+   Derived from :exc:`ClientConnectorError` and :exc:`ssl.SSLError`
+
+.. class:: ClientConnectorCertificateError
+
+   Response certificate error.
+
+   Derived from :exc:`ClientConnectorError` and :exc:`ssl.CertificateError`
 
 .. class:: ServerDisconnectedError
 

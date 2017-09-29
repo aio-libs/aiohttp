@@ -543,12 +543,20 @@ same thing as the previous example, but add another call to
   r = await session.get('https://example.com', ssl_context=sslcontext)
 
 There is explicit error when ssl verification fails
+
 :class:`aiohttp.ClientConnectorSSLError`::
 
   try:
       await session.get('https://expired.badssl.com/')
   except aiohttp.ClientConnectorSSLError as e:
       assert isinstance(e, ssl.SSLError)
+
+:class:`aiohttp.ClientConnectorCertificateError`::
+
+  try:
+      await session.get('https://wrong.host.badssl.com/')
+  except aiohttp.ClientConnectorCertificateError as e:
+      assert isinstance(e, ssl.CertificateError)
 
 You may also verify certificates via *SHA256* fingerprint::
 
