@@ -542,6 +542,13 @@ same thing as the previous example, but add another call to
                              '/path/to/client/private/device.jey')
   r = await session.get('https://example.com', ssl_context=sslcontext)
 
+There is explicit error when ssl verification fails
+:class:`aiohttp.ClientConnectorSSLError`::
+
+  try:
+      await session.get('https://expired.badssl.com/')
+  except aiohttp.ClientConnectorSSLError as e:
+      assert isinstance(e, ssl.SSLError)
 
 You may also verify certificates via *SHA256* fingerprint::
 
@@ -808,7 +815,7 @@ For a ``ClientSession`` with SSL, the application must wait a short duration bef
     # Wait 250 ms for the underlying SSL connections to close
     loop.run_until_complete(asyncio.sleep(0.250))
     loop.close()
-    
+
 Note that the appropriate amount of time to wait will vary from application to application.
 
 All if this will eventually become obsolete when the asyncio internals are changed so that aiohttp itself can wait on the underlying connection to close. Please follow issue `#1925 <https://github.com/aio-libs/aiohttp/issues/1925>`_ for the progress on this.

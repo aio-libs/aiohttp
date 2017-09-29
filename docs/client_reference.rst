@@ -1642,6 +1642,12 @@ Connection errors
 
    Derived from :exc:`ClientOSError`
 
+.. class:: ClientConnectorSSLError
+
+   Response ssl error.
+
+   Derived from :exc:`ClientConnectorError` and :exc:`ssl.SSLError`
+
 .. class:: ClientProxyConnectionError
 
    Derived from :exc:`ClientConnectonError`
@@ -1691,6 +1697,8 @@ Hierarchy of exceptions
     * :exc:`ClientOSError`
 
       * :exc:`ClientConnectorError`
+
+         * :exc:`ClientConnectorSSLError`
 
          * :exc:`ClientProxyConnectionError`
 
