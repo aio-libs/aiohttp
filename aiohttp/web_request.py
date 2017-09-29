@@ -63,7 +63,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def __init__(self, message, payload, protocol, writer, time_service, task,
                  loop,
                  *, client_max_size=1024**2,
-                 state=None):
+                 state=None,
+                 scheme=None, host=None, remote=None):
         if state is None:
             state = {}
         self._message = message
@@ -86,8 +87,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._client_max_size = client_max_size
         self._loop = loop
 
+        self._scheme = scheme
+        self._host = host
+        self._remote = remote
+
     def clone(self, *, method=sentinel, rel_url=sentinel,
-              headers=sentinel):
+              headers=sentinel, scheme=sentinel, host=sentinel,
+              remote=sentinel):
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
