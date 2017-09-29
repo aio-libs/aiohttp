@@ -518,66 +518,71 @@ In order to specify the nameservers to when resolving the hostnames,
 SSL control for TCP sockets
 ---------------------------
 
-:class:`~aiohttp.TCPConnector` constructor accepts mutually
-exclusive *verify_ssl* and *ssl_context* params.
+By default *aiohttp* uses strict checks for HTTPS protocol. Certification
+checks can be relaxed by setting *verify_ssl* to ``False``::
 
-By default it uses strict checks for HTTPS protocol. Certification
-checks can be relaxed by passing ``verify_ssl=False``::
-
-  conn = aiohttp.TCPConnector(verify_ssl=False)
-  session = aiohttp.ClientSession(connector=conn)
-  r = await session.get('https://example.com')
+  r = await session.get('https://example.com', verify_ssl=False)
 
 
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
-pass it into the connector::
+pass it into the proper :class:`ClientSession` method::
 
   sslcontext = ssl.create_default_context(
      cafile='/path/to/ca-bundle.crt')
-  conn = aiohttp.TCPConnector(ssl_context=sslcontext)
-  session = aiohttp.ClientSession(connector=conn)
-  r = await session.get('https://example.com')
+  r = await session.get('https://example.com', ssl_context=sslcontext)
 
-If you need to verify **client-side** certificates, you can do the same thing as the previous example,
-but add another call to ``load_cret_chain`` with the key pair::
+If you need to verify *self-signed* certificates, you can do the
+same thing as the previous example, but add another call to
+:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
 
   sslcontext = ssl.create_default_context(
-     cafile='/path/to/client-side-ca-bundle.crt')
-  sslcontext.load_cert_chain('/path/to/client/public/key.pem', '/path/to/client/private/key.pem')
-  conn = aiohttp.TCPConnector(ssl_context=sslcontext)
-  session = aiohttp.ClientSession(connector=conn)
-  r = await session.get('https://server-with-client-side-certificates-validaction.com')
+     cafile='/path/to/ca-bundle.crt')
+  sslcontext.load_cert_chain('/path/to/client/public/device.pem',
+                             '/path/to/client/private/device.jey')
+  r = await session.get('https://example.com', ssl_context=sslcontext)
 
 
-You may also verify certificates via MD5, SHA1, or SHA256 fingerprint::
+You may also verify certificates via *SHA256* fingerprint::
 
   # Attempt to connect to https://www.python.org
   # with a pin to a bogus certificate:
-  bad_md5 = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
-  conn = aiohttp.TCPConnector(fingerprint=bad_md5)
-  session = aiohttp.ClientSession(connector=conn)
+  bad_fingerprint = b'0'*64
   exc = None
   try:
-      r = yield from session.get('https://www.python.org')
-  except FingerprintMismatch as e:
+      r = await session.get('https://www.python.org',
+                            fingerprint=bad_fingerprint)
+  except aiohttp.FingerprintMismatch as e:
       exc = e
   assert exc is not None
-  assert exc.expected == bad_md5
+  assert exc.expected == bad_fingerprint
 
-  # www.python.org cert's actual md5
-  assert exc.got == b'\xca;I\x9cuv\x8es\x138N$?\x15\xca\xcb'
+  # www.python.org cert's actual fingerprint
+  assert exc.got == b'...'
 
 Note that this is the fingerprint of the DER-encoded certificate.
 If you have the certificate in PEM format, you can convert it to
-DER with e.g. ``openssl x509 -in crt.pem -inform PEM -outform DER > crt.der``.
+DER with e.g::
 
-Tip: to convert from a hexadecimal digest to a binary byte-string, you can use
-:attr:`binascii.unhexlify`::
+   openssl x509 -in crt.pem -inform PEM -outform DER > crt.der
 
-  md5_hex = 'ca3b499c75768e7313384e243f15cacb'
-  from binascii import unhexlify
-  assert unhexlify(md5_hex) == b'\xca;I\x9cuv\x8es\x138N$?\x15\xca\xcb'
+.. note::
+
+   Tip: to convert from a hexadecimal digest to a binary byte-string,
+   you can use :func:`binascii.unhexlify`.
+
+   All *verify_ssl*, *fingerprint* and *ssl_context* could be passed
+   to :class:`TCPConnector` as defaults, params from
+   :meth:`ClientSession.get` and others override these defaults.
+
+.. warning::
+
+   *verify_ssl* and *ssl_context* params are *mutually exclusive*.
+
+   *MD5* and *SHA1* fingerprints are deprecated but still supported -- they
+   are famous as very insecure hash functions.
+
+
 
 Unix domain sockets
 -------------------
