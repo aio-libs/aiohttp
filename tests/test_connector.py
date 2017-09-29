@@ -1315,8 +1315,13 @@ class TestHttpClientConnector(unittest.TestCase):
 
         r.release()
         first_conn = next(iter(conn._conns.values()))[0][0]
-        self.assertIs(
-            first_conn.transport._sslcontext, sslcontext)
+
+        try:
+            _sslcontext = first_conn.transport._ssl_protocol._sslcontext
+        except AttributeError:
+            _sslcontext = first_conn.transport._sslcontext
+
+        self.assertIs(_sslcontext, sslcontext)
         r.close()
 
         session.close()
