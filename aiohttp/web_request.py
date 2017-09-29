@@ -3,6 +3,7 @@ import collections
 import datetime
 import json
 import re
+import socket
 import string
 import tempfile
 import types
@@ -120,6 +121,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         message = self._message._replace(**dct)
 
+        kwargs = {}
+        if scheme is not sentinel:
+            kwargs['scheme'] = scheme
+        if host is not sentinel:
+            kwargs['host'] = host
+        if remote is not sentinel:
+            kwargs['remote'] = remote
+
         return self.__class__(
             message,
             self._payload,
@@ -128,7 +137,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._time_service,
             self._task,
             self._loop,
-            state=self._state.copy())
+            state=self._state.copy(),
+            **kwargs)
 
     @property
     def task(self):
@@ -179,14 +189,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def secure(self):
-        """A bool indicating if the request is handled with SSL
-
-        """
+        """A bool indicating if the request is handled with SSL."""
         return self.scheme == 'https'
 
     @reify
     def forwarded(self):
-        """ A tuple containing all parsed Forwarded header(s).
+        """A tuple containing all parsed Forwarded header(s).
 
         Makes an effort to parse Forwarded headers as specified by RFC 7239:
 
@@ -250,16 +258,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         'http' or 'https'.
         """
-        proto = None
+        scheme = self._scheme
+        if scheme is not None:
+            return scheme
         if self._transport.get_extra_info('sslcontext'):
-            proto = 'https'
+            return 'https'
         else:
-            proto = next(
-                (f['proto'] for f in self.forwarded if 'proto' in f), None
-            )
-            if not proto and hdrs.X_FORWARDED_PROTO in self._message.headers:
-                proto = self._message.headers[hdrs.X_FORWARDED_PROTO]
-        return proto or 'http'
+            return 'http'
 
     @property
     def method(self):
@@ -289,14 +294,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         Returns str, or None if no hostname is found in the headers.
         """
-        host = next(
-            (f['host'] for f in self.forwarded if 'host' in f), None
-        )
-        if host is None:
-            host = self._message.headers.get(hdrs.X_FORWARDED_HOST)
-        if host is None:
-            host = self._message.headers.get(hdrs.HOST)
-        return host
+        host = self._host
+        if host is not None:
+            return host
+        host = self._message.headers.get(hdrs.HOST)
+        if host is not None:
+            return host
+        else:
+            return socket.getfqdn()
 
     @reify
     def remote(self):
@@ -308,21 +313,15 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - X-Forwarded-For
         - peername of opened socket
         """
-        ip = next(
-            (f['for'] for f in self.forwarded if 'for' in f), None
-        )
-        if ip is None:
-            ips = self._message.headers.get(hdrs.X_FORWARDED_FOR)
-            if ips is not None:
-                ip = ips.split(',')[0].strip()
-        if ip is None:
-            transport = self._transport
-            peername = transport.get_extra_info('peername')
-            if isinstance(peername, (list, tuple)):
-                ip = peername[0]
-            else:
-                ip = peername
-        return ip
+        remote = self._remote
+        if remote is not None:
+            return remote
+        transport = self._transport
+        peername = transport.get_extra_info('peername')
+        if isinstance(peername, (list, tuple)):
+            return peername[0]
+        else:
+            return peername
 
     @reify
     def url(self):
