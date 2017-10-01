@@ -82,7 +82,7 @@ and :ref:`aiohttp-web-signals` handlers.
          Call ``.clone(scheme=new_scheme)`` for setting up the value
          explicitly.
 
-      .. seealso:: :meth:`Application.make_handler`
+      .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
    .. attribute:: secure
 
@@ -133,7 +133,7 @@ and :ref:`aiohttp-web-signals` handlers.
          Call ``.clone(host=new_host)`` for setting up the value
          explicitly.
 
-      .. seealso:: :meth:`Application.make_handler`
+      .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
    .. attribute:: remote
 
@@ -150,6 +150,8 @@ and :ref:`aiohttp-web-signals` handlers.
       explicitly.
 
       .. versionadded:: 2.3
+
+      .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
    .. attribute:: path_qs
 
