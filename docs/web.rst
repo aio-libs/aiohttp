@@ -1500,6 +1500,37 @@ Pages like *404 Not Found* and *500 Internal Error* could be handled
 by custom middleware, see :ref:`aiohttp-tutorial-middlewares` for
 details.
 
+.. _aiohttp-web-forwarded-support:
+
+Deploying behind a Proxy
+------------------------
+
+As discussed in :ref:`aiohttp-deployment` the preferable way is
+deploying *aiohttp* web server behind a *Reverse Proxy Server* like
+:term:`nginx` for production usage.
+
+In this way properties like :attr:`~BaseRequest.scheme`
+:attr:`~BaseRequest.host` and :attr:`~BaseRequest.remote` are
+incorrect.
+
+Real values should be given from proxy server, usually either
+``Forwarded`` or old-fashion ``X-Forwarded-For``,
+``X-Forwarded-Host``, ``X-Forwarded-Proto`` HTTP headers are used.
+
+*aiohttp* does not take *forwarded* headers into account by default
+because it produces *security issue*: HTTP client might add these
+headers too, pushing non-trusted data values.
+
+That's why *aiohttp server* should setup *forwarded* headers in custom
+middleware in tight conjunction with *reverse proxy configuration*.
+
+For changing :attr:`~BaseRequest.scheme` :attr:`~BaseRequest.host` and
+:attr:`~BaseRequest.remote` the middleware might use
+:meth:`~BaseRequest.clone`.
+
+TBD: add a link to third-party project with proper middleware
+implementation.
+
 Swagger support
 ---------------
 

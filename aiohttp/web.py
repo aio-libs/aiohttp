@@ -50,7 +50,6 @@ class Application(MutableMapping):
                  middlewares=(),
                  handler_args=None,
                  client_max_size=1024**2,
-                 secure_proxy_ssl_header=None,
                  loop=None,
                  debug=...):
         if router is None:
@@ -60,13 +59,8 @@ class Application(MutableMapping):
         if loop is not None:
             warnings.warn("loop argument is deprecated", ResourceWarning)
 
-        if secure_proxy_ssl_header is not None:
-            warnings.warn(
-                "secure_proxy_ssl_header is deprecated", DeprecationWarning)
-
         self._debug = debug
         self._router = router
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
@@ -235,8 +229,7 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, *, loop=None,
-                     secure_proxy_ssl_header=None, **kwargs):
+    def make_handler(self, *, loop=None, **kwargs):
         self._set_loop(loop)
         self.freeze()
 
@@ -245,8 +238,6 @@ class Application(MutableMapping):
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
-        if secure_proxy_ssl_header:
-            self._secure_proxy_ssl_header = secure_proxy_ssl_header
         return Server(self._handle, request_factory=self._make_request,
                       loop=self.loop, **kwargs)
 
@@ -279,7 +270,6 @@ class Application(MutableMapping):
         return _cls(
             message, payload, protocol, writer, protocol._time_service, task,
             self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
     @asyncio.coroutine
