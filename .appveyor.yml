@@ -1,5 +1,3 @@
-version: {build}
-
 environment:
   PYPI_PASSWD:
     secure: syNUF3e8AEPY327rWBkKag==
