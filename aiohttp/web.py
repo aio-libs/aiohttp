@@ -324,7 +324,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
                           host, port, path, sock, backlog):
 
     scheme = 'https' if ssl_context else 'http'
-    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+    base_url = URL.build(scheme=scheme, host='localhost', port=port)
 
     if path is None:
         paths = ()
@@ -356,7 +356,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
         port = 8443 if ssl_context else 8080
 
     server_creations = []
-    uris = [str(base_url.with_host(host)) for host in hosts]
+    uris = [str(base_url.with_host(host).with_port(port)) for host in hosts]
     if hosts:
         # Multiple hosts bound to same server is available in most loop
         # implementations, but only send multiple if we have multiple.
