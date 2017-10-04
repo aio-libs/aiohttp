@@ -1626,7 +1626,6 @@ Connection errors
 
    These exceptions related to low-level connection problems.
 
-
    Derived from :exc:`ClientError`
 
 .. class:: ClientOSError
@@ -1650,6 +1649,21 @@ Connection errors
 
    Derived from :exc:`ClientConnectonError`
 
+.. class:: ClientSSLError
+
+   Derived from :exc:`ClientConnectonError`
+
+.. class:: ClientConnectorSSLError
+
+   Response ssl error.
+
+   Derived from :exc:`ClientSSLError` and :exc:`ssl.SSLError`
+
+.. class:: ClientConnectorCertificateError
+
+   Response certificate error.
+
+   Derived from :exc:`ClientSSLError` and :exc:`ssl.CertificateError`
 
 .. class:: ServerDisconnectedError
 
@@ -1691,6 +1705,12 @@ Hierarchy of exceptions
     * :exc:`ClientOSError`
 
       * :exc:`ClientConnectorError`
+
+         * :exc:`ClientSSLError`
+
+           * :exc:`ClientConnectorCertificateError`
+
+           * :exc:`ClientConnectorSSLError`
 
          * :exc:`ClientProxyConnectionError`
 

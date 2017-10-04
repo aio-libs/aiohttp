@@ -342,6 +342,27 @@ def test_release_close(loop):
 
 
 @asyncio.coroutine
+def test_tcp_connector_certificate_error(loop):
+    req = ClientRequest('GET', URL('https://127.0.0.1:443'), loop=loop)
+
+    @asyncio.coroutine
+    def certificate_error(*args, **kwargs):
+        raise ssl.CertificateError
+
+    conn = aiohttp.TCPConnector(loop=loop)
+    conn._loop.create_connection = certificate_error
+
+    with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
+        yield from conn.connect(req)
+
+    assert isinstance(ctx.value, ssl.CertificateError)
+    assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
+    assert isinstance(ctx.value, aiohttp.ClientSSLError)
+    assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
+                              '[CertificateError: ()]')
+
+
+@asyncio.coroutine
 def test_tcp_connector_resolve_host(loop):
     conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
 
@@ -567,25 +588,6 @@ def test_connect(loop):
     assert connection.transport is proto.transport
     assert isinstance(connection, Connection)
     connection.close()
-
-
-@asyncio.coroutine
-def test_connect_connection_error(loop):
-    conn = aiohttp.BaseConnector(loop=loop)
-    conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
-    err = OSError(1, 'permission error')
-    conn._create_connection.return_value.set_exception(err)
-
-    with pytest.raises(aiohttp.ClientConnectorError) as ctx:
-        req = mock.Mock()
-        yield from conn.connect(req)
-    assert 1 == ctx.value.errno
-    assert str(ctx.value).startswith('Cannot connect to')
-    assert str(ctx.value).endswith('[permission error]')
-    assert ctx.value.host == req.host
-    assert ctx.value.port == req.port
-    assert ctx.value.ssl == req.ssl
 
 
 @asyncio.coroutine
@@ -1206,15 +1208,16 @@ class TestHttpClientConnector(unittest.TestCase):
         gc.collect()
 
     @asyncio.coroutine
-    def create_server(self, method, path, handler):
+    def create_server(self, method, path, handler, ssl_context=None):
         app = web.Application()
         app.router.add_route(method, path, handler)
 
         port = unused_port()
         self.handler = app.make_handler(loop=self.loop, tcp_keepalive=False)
         srv = yield from self.loop.create_server(
-            self.handler, '127.0.0.1', port)
-        url = "http://127.0.0.1:{}".format(port) + path
+            self.handler, '127.0.0.1', port, ssl=ssl_context)
+        scheme = 's' if ssl_context is not None else ''
+        url = "http{}://127.0.0.1:{}".format(scheme, port) + path
         self.addCleanup(srv.close)
         return app, srv, url
 
@@ -1233,6 +1236,74 @@ class TestHttpClientConnector(unittest.TestCase):
         url = "http://127.0.0.1" + path
         self.addCleanup(srv.close)
         return app, srv, url, sock_path
+
+    def test_tcp_connector_raise_connector_ssl_error(self):
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
+
+        here = os.path.join(os.path.dirname(__file__), '..', 'tests')
+        keyfile = os.path.join(here, 'sample.key')
+        certfile = os.path.join(here, 'sample.crt')
+        sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        sslcontext.load_cert_chain(certfile, keyfile)
+
+        app, srv, url = self.loop.run_until_complete(
+            self.create_server('get', '/', handler, ssl_context=sslcontext)
+        )
+
+        port = unused_port()
+        conn = aiohttp.TCPConnector(loop=self.loop,
+                                    local_addr=('127.0.0.1', port))
+
+        session = aiohttp.ClientSession(connector=conn)
+
+        with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
+            self.loop.run_until_complete(session.request('get', url))
+
+        self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
+        self.assertTrue(ctx.value, aiohttp.ClientSSLError)
+
+        session.close()
+        conn.close()
+
+    def test_tcp_connector_do_not_raise_connector_ssl_error(self):
+        @asyncio.coroutine
+        def handler(request):
+            return web.HTTPOk()
+
+        here = os.path.join(os.path.dirname(__file__), '..', 'tests')
+        keyfile = os.path.join(here, 'sample.key')
+        certfile = os.path.join(here, 'sample.crt')
+        sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        sslcontext.load_cert_chain(certfile, keyfile)
+
+        app, srv, url = self.loop.run_until_complete(
+            self.create_server('get', '/', handler, ssl_context=sslcontext)
+        )
+
+        port = unused_port()
+        conn = aiohttp.TCPConnector(loop=self.loop,
+                                    local_addr=('127.0.0.1', port))
+
+        session = aiohttp.ClientSession(connector=conn)
+
+        r = self.loop.run_until_complete(
+            session.request('get', url, ssl_context=sslcontext))
+
+        r.release()
+        first_conn = next(iter(conn._conns.values()))[0][0]
+
+        try:
+            _sslcontext = first_conn.transport._ssl_protocol._sslcontext
+        except AttributeError:
+            _sslcontext = first_conn.transport._sslcontext
+
+        self.assertIs(_sslcontext, sslcontext)
+        r.close()
+
+        session.close()
+        conn.close()
 
     def test_tcp_connector_uses_provided_local_addr(self):
         @asyncio.coroutine
