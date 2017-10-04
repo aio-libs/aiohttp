@@ -9,6 +9,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from aiohttp import abc, web
+from aiohttp.web_fileresponse import FileResponse
+from aiohttp.web_response import Response
 from aiohttp.web_urldispatcher import SystemRoute
 
 
@@ -76,6 +78,73 @@ def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
 
     if data:
         assert r.headers['Content-Type'] == "text/html; charset=utf-8"
+        read_ = (yield from r.read())
+        assert read_ == data
+
+
+@pytest.mark.parametrize("show_index,status,prefix,data",
+                         [(False, 403, '/', None),
+                          (True, 200, '/',
+                           b'<html>\n<head>\n<title>Index of /.</title>\n'
+                           b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
+                           b'<li><a href="/my_dir">my_dir/</a></li>\n'
+                           b'<li><a href="/my_file">my_file</a></li>\n'
+                           b'</ul>\n</body>\n</html>'),
+                          (True, 200, '/static',
+                           b'<html>\n<head>\n<title>Index of /.</title>\n'
+                           b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
+                           b'<li><a href="/static/my_dir">my_dir/</a></li>\n'
+                           b'<li><a href="/static/my_file">my_file</a></li>\n'
+                           b'</ul>\n</body>\n</html>')])
+@asyncio.coroutine
+def test_access_root_of_static_handler_with_custom_factory(
+        tmp_dir_path, loop, test_client,
+        show_index, status, prefix, data):
+    """
+    Tests the operation of static file server.
+    Try to access the root of static file server, and make
+    sure that correct HTTP statuses are returned depending if we directory
+    index should be shown or not.
+    """
+    # Put a file inside tmp_dir_path:
+    my_file_path = os.path.join(tmp_dir_path, 'my_file')
+    with open(my_file_path, 'w') as fw:
+        fw.write('hello')
+
+    my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
+    os.mkdir(my_dir_path)
+
+    my_file_path = os.path.join(my_dir_path, 'my_file_in_dir')
+    with open(my_file_path, 'w') as fw:
+        fw.write('world')
+
+    app = web.Application()
+
+    class CORSFileResponse(FileResponse):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            if 'Access-Control-Allow-Origin' not in self.headers:
+                self.headers['Access-Control-Allow-Origin'] = '*'
+
+    class CORSDirResponse(Response):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            if 'Access-Control-Allow-Origin' not in self.headers:
+                self.headers['Access-Control-Allow-Origin'] = '*'
+
+    # Register global static route:
+    app.router.add_static(prefix, tmp_dir_path, show_index=show_index,
+                          file_response_factory=CORSFileResponse,
+                          response_factory=CORSDirResponse)
+    client = yield from test_client(app)
+
+    # Request the root of the static directory.
+    r = yield from client.get(prefix)
+    assert r.status == status
+
+    if data:
+        assert r.headers['Content-Type'] == "text/html; charset=utf-8"
+        assert r.headers['Access-Control-Allow-Origin'] == '*'
         read_ = (yield from r.read())
         assert read_ == data
 
