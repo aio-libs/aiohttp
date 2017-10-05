@@ -1026,7 +1026,7 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. coroutinemethod:: send_json(data, *, dumps=json.loads)
+   .. coroutinemethod:: send_json(data, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
