@@ -1264,7 +1264,7 @@ manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. comethod:: send_json(data, *, dumps=json.loads)
+   .. comethod:: send_json(data, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
