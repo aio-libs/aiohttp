@@ -25,7 +25,7 @@ from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
 from .web_fileresponse import FileResponse
-from .web_response import Response, StreamResponse
+from .web_response import Response
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -448,7 +448,8 @@ class StaticResource(PrefixResource):
 
     def __init__(self, prefix, directory, *, name=None,
                  expect_handler=None, chunk_size=256 * 1024,
-                 response_factory=StreamResponse,
+                 response_factory=Response,
+                 file_response_factory=FileResponse,
                  show_index=False, follow_symlinks=False,
                  append_version=False):
         super().__init__(prefix, name=name)
@@ -468,6 +469,18 @@ class StaticResource(PrefixResource):
         self._follow_symlinks = follow_symlinks
         self._expect_handler = expect_handler
         self._append_version = append_version
+        if issubclass(response_factory, Response):
+            self._response_factory = response_factory
+        else:
+            raise RuntimeError(
+                'response_factory {} should be subclass'
+                'from Response'.format(response_factory))
+        if issubclass(file_response_factory, FileResponse):
+            self._file_response_factory = file_response_factory
+        else:
+            raise RuntimeError(
+                'file_response_factory {} should be subclass'
+                'from FileResponse'.format(file_response_factory))
 
         self._routes = {'GET': ResourceRoute('GET', self._handle, self,
                                              expect_handler=expect_handler),
@@ -570,14 +583,16 @@ class StaticResource(PrefixResource):
         if filepath.is_dir():
             if self._show_index:
                 try:
-                    ret = Response(text=self._directory_as_html(filepath),
-                                   content_type="text/html")
+                    ret = self._response_factory(
+                        text=self._directory_as_html(filepath),
+                        content_type="text/html")
                 except PermissionError:
                     raise HTTPForbidden()
             else:
                 raise HTTPForbidden()
         elif filepath.is_file():
-            ret = FileResponse(filepath, chunk_size=self._chunk_size)
+            ret = self._file_response_factory(filepath,
+                                              chunk_size=self._chunk_size)
         else:
             raise HTTPNotFound
 
@@ -884,7 +899,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler)
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256 * 1024, response_factory=StreamResponse,
+                   chunk_size=256 * 1024, response_factory=Response,
+                   file_response_factory=FileResponse,
                    show_index=False, follow_symlinks=False,
                    append_version=False):
         """Add static files view.
@@ -901,6 +917,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler,
                                   chunk_size=chunk_size,
                                   response_factory=response_factory,
+                                  file_response_factory=file_response_factory,
                                   show_index=show_index,
                                   follow_symlinks=follow_symlinks,
                                   append_version=append_version)
