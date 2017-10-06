@@ -1,6 +1,5 @@
 import asyncio
 import collections
-import traceback
 
 from . import helpers
 from .log import internal_logger
@@ -307,10 +306,9 @@ class StreamReader(AsyncStreamReaderMixin):
             if self._eof and not self._buffer:
                 self._eof_counter = getattr(self, '_eof_counter', 0) + 1
                 if self._eof_counter > 5:
-                    stack = traceback.format_stack()
                     internal_logger.warning(
                         'Multiple access to StreamReader in eof state, '
-                        'might be infinite loop: \n%s', stack)
+                        'might be infinite loop.', stack_info=True)
 
         if not n:
             return b''
