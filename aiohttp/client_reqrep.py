@@ -6,6 +6,7 @@ import ssl
 import sys
 import traceback
 import warnings
+from collections import namedtuple
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel
 
@@ -44,6 +45,9 @@ HASHFUNC_BY_DIGESTLEN = {
 
 
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
+
+
+ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
 class ClientRequest:
@@ -127,6 +131,10 @@ class ClientRequest:
         self.update_body_from_data(data)
         self.update_transfer_encoding()
         self.update_expect_continue(expect100)
+
+    @property
+    def connection_key(self):
+        return ConnectionKey(self.host, self.port, self.ssl)
 
     @property
     def host(self):

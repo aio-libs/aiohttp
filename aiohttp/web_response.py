@@ -11,7 +11,8 @@ from email.utils import parsedate
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
-from .helpers import HeadersMixin, SimpleCookie, sentinel
+from .helpers import (HeadersMixin, SimpleCookie, rfc822_formatted_time,
+                      sentinel)
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
 
@@ -375,7 +376,7 @@ class StreamResponse(HeadersMixin):
                     keep_alive = False
 
         headers.setdefault(CONTENT_TYPE, 'application/octet-stream')
-        headers.setdefault(DATE, request.time_service.strtime())
+        headers.setdefault(DATE, rfc822_formatted_time())
         headers.setdefault(SERVER, SERVER_SOFTWARE)
 
         # connection header
