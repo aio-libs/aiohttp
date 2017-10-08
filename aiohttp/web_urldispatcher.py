@@ -25,7 +25,7 @@ from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
 from .web_fileresponse import FileResponse
-from .web_response import Response, StreamResponse
+from .web_response import Response
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -448,7 +448,6 @@ class StaticResource(PrefixResource):
 
     def __init__(self, prefix, directory, *, name=None,
                  expect_handler=None, chunk_size=256 * 1024,
-                 response_factory=StreamResponse,
                  show_index=False, follow_symlinks=False,
                  append_version=False):
         super().__init__(prefix, name=name)
@@ -884,7 +883,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler)
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256 * 1024, response_factory=StreamResponse,
+                   chunk_size=256 * 1024,
                    show_index=False, follow_symlinks=False,
                    append_version=False):
         """Add static files view.
@@ -900,7 +899,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   name=name,
                                   expect_handler=expect_handler,
                                   chunk_size=chunk_size,
-                                  response_factory=response_factory,
                                   show_index=show_index,
                                   follow_symlinks=follow_symlinks,
                                   append_version=append_version)
