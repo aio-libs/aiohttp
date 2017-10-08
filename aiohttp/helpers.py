@@ -42,7 +42,6 @@ else:
 
 
 __all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'proxies_from_env', 'ProxyInfo',
            'Timeout', 'ensure_future', 'noop')
 
 
