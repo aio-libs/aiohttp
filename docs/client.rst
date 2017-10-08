@@ -626,24 +626,12 @@ If your HTTP server uses UNIX domain sockets you can use
 Proxy support
 -------------
 
-aiohttp supports proxy. You have to use
-:attr:`proxy`::
+aiohttp supports HTTP/HTTPS proxies. You have to use
+*proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
                               proxy="http://some.proxy.com") as resp:
-           print(resp.status)
-
-Contrary to the ``requests`` library, it won't read environment
-variables by default. But you can do so by passing
-:func:`proxies_from_env` result into :class:`aiohttp.ClientSession`
-constructor.  The function extracts proxy configuration from
-``HTTP_PROXY`` or ``HTTPS_PROXY`` *environment variables* (both are case
-insensitive)::
-
-   async with aiohttp.ClientSession() as session:
-       async with session.get("http://python.org",
-                              proxies=aiohttp.proxies_from_env()) as resp:
            print(resp.status)
 
 It also supports proxy authorization::
@@ -660,6 +648,16 @@ Authentication credentials can be passed in proxy URL::
    session.get("http://python.org",
                proxy="http://user:pass@some.proxy.com")
 
+Contrary to the ``requests`` library, it won't read environment
+variables by default. But you can do so by passing
+``trust_env=True`` into :class:`aiohttp.ClientSession`
+constructor for extracting proxy configuration from
+*HTTP_PROXY* or *HTTPS_PROXY* *environment variables* (both are case
+insensitive)::
+
+   async with aiohttp.ClientSession() as session:
+       async with session.get("http://python.org", trust_env=True) as resp:
+           print(resp.status)
 
 Response Status Codes
 ---------------------
