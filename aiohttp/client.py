@@ -8,7 +8,6 @@ import os
 import sys
 import traceback
 import warnings
-from collections.abc import Mapping
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
@@ -24,8 +23,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_35, CeilTimeout, ProxyInfo, TimeoutHandle,
-                      _BaseCoroMixin, deprecated_noop, sentinel)
+from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
+                      deprecated_noop, proxies_from_env, sentinel)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -57,7 +56,7 @@ class ClientSession:
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
-                 auto_decompress=True, proxies=None):
+                 auto_decompress=True, trust_env=False):
 
         implicit_loop = False
         if loop is None:
@@ -106,15 +105,7 @@ class ClientSession:
         self._conn_timeout = conn_timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
-        self._proxies = {}
-        if proxies is not None:
-            for scheme, info in proxies.items():
-                if isinstance(info, ProxyInfo):
-                    pass
-                elif isinstance(info, Mapping):
-                    assert info.keys() == {'proxy', 'proxy_auth'}
-                    info = ProxyInfo(**info)
-                self._proxies[scheme] = info
+        self._trust_env = trust_env
 
         # Convert to list of tuples
         if headers:
@@ -245,10 +236,11 @@ class ClientSession:
 
                     if proxy is not None:
                         proxy = URL(proxy)
-                    elif self._proxies:
-                        proxy_info = self._proxies.get(url.scheme)
-                        if proxy_info is not None:
-                            proxy, proxy_auth = proxy_info
+                    elif self._trust_env:
+                        for scheme, proxy_info in proxies_from_env().items():
+                            if scheme == url.scheme:
+                                proxy, proxy_auth = proxy_info
+                                break
 
                     req = self._request_class(
                         method, url, params=params, headers=headers,

@@ -64,10 +64,10 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
 @pytest.fixture()
 def get_request(loop):
     @asyncio.coroutine
-    def _request(method='GET', *, url, proxies=None, **kwargs):
+    def _request(method='GET', *, url, trust_env=False, **kwargs):
         connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
         client = aiohttp.ClientSession(connector=connector,
-                                       proxies=proxies)
+                                       trust_env=trust_env)
         try:
             resp = yield from client.request(method, url, **kwargs)
             yield from resp.release()
@@ -513,7 +513,7 @@ def test_proxy_from_env_http(proxy_test_server, get_request, mocker):
     proxy = yield from proxy_test_server()
     mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url)})
 
-    yield from get_request(url=url, proxies=aiohttp.proxies_from_env())
+    yield from get_request(url=url, trust_env=True)
 
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == 'GET'
@@ -532,7 +532,7 @@ def test_proxy_from_env_http_with_auth(proxy_test_server, get_request, mocker):
                                        .with_user(auth.login)
                                        .with_password(auth.password))})
 
-    yield from get_request(url=url, proxies=aiohttp.proxies_from_env())
+    yield from get_request(url=url, trust_env=True)
 
     assert len(proxy.requests_list) == 1
     assert proxy.request.method == 'GET'
@@ -547,7 +547,7 @@ def xtest_proxy_from_env_https(proxy_test_server, get_request, mocker):
     proxy = yield from proxy_test_server()
     mocker.patch.dict(os.environ, {'https_proxy': str(proxy.url)})
 
-    yield from get_request(url=url, proxies=aiohttp.proxies_from_env())
+    yield from get_request(url=url, trust_env=True)
 
     assert len(proxy.requests_list) == 2
     assert proxy.request.method == 'GET'
@@ -567,7 +567,7 @@ def xtest_proxy_from_env_https_with_auth(proxy_test_server,
                                        .with_user(auth.login)
                                        .with_password(auth.password))})
 
-    yield from get_request(url=url, proxies=aiohttp.proxies_from_env())
+    yield from get_request(url=url, trust_env=True)
 
     assert len(proxy.requests_list) == 2
 
