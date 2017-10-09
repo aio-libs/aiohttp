@@ -3,6 +3,8 @@ import sys
 
 import pytest
 
+from aiohttp.pytest_plugin import LOOP_FACTORIES
+
 
 pytest_plugins = 'pytester'
 
@@ -180,3 +182,116 @@ async def test_bad():
     stdout, _ = capsys.readouterr()
     assert ("test_warning_checks.py:__LINE__:coroutine 'foobar' was "
             "never awaited" in re.sub('\d{2,}', '__LINE__', stdout))
+
+
+def test_aiohttp_plugin_async_fixture(testdir, capsys):
+    testdir.makepyfile("""\
+import asyncio
+import pytest
+
+from aiohttp import web
+
+
+pytest_plugins = 'aiohttp.pytest_plugin'
+
+
+@asyncio.coroutine
+def hello(request):
+    return web.Response(body=b'Hello, world')
+
+
+def create_app(loop):
+    app = web.Application()
+    app.router.add_route('GET', '/', hello)
+    return app
+
+
+@pytest.fixture
+@asyncio.coroutine
+def cli(test_client):
+    client = yield from test_client(create_app)
+    return client
+
+
+@pytest.fixture
+@asyncio.coroutine
+def foo():
+    return 42
+
+
+@pytest.fixture
+@asyncio.coroutine
+def bar(request):
+    # request should be accessible in async fixtures if needed
+    return request.function
+
+
+@asyncio.coroutine
+def test_hello(cli):
+    resp = yield from cli.get('/')
+    assert resp.status == 200
+
+
+def test_foo(loop, foo):
+    assert foo == 42
+
+
+def test_foo_without_loop(foo):
+    # will raise an error because there is no loop
+    pass
+
+
+def test_bar(loop, bar):
+    assert bar is test_bar
+""")
+    nb_loops = len(LOOP_FACTORIES)
+    result = testdir.runpytest('-p', 'no:sugar')
+    result.assert_outcomes(passed=3 * nb_loops, error=1)
+    result.stdout.fnmatch_lines(
+        "*Asynchronous fixtures must depend on the 'loop' fixture "
+        "or be used in tests depending from it."
+    )
+
+
+@pytest.mark.skipif(sys.version_info < (3, 6), reason='old python')
+def test_aiohttp_plugin_async_gen_fixture(testdir):
+    testdir.makepyfile("""\
+import asyncio
+import pytest
+from unittest import mock
+
+from aiohttp import web
+
+
+pytest_plugins = 'aiohttp.pytest_plugin'
+
+canary = mock.Mock()
+
+
+async def hello(request):
+    return web.Response(body=b'Hello, world')
+
+
+def create_app(loop):
+    app = web.Application()
+    app.router.add_route('GET', '/', hello)
+    return app
+
+
+@pytest.fixture
+async def cli(test_client):
+    yield await test_client(create_app)
+    canary()
+
+
+async def test_hello(cli):
+    resp = await cli.get('/')
+    assert resp.status == 200
+
+
+def test_finalized():
+    assert canary.called is True
+""")
+    nb_loops = len(LOOP_FACTORIES)
+    result = testdir.runpytest('-p', 'no:sugar')
+    result.assert_outcomes(passed=1 * nb_loops + 1)

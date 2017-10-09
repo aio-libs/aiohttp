@@ -3,6 +3,7 @@ import collections
 import datetime
 import json
 import re
+import socket
 import string
 import tempfile
 import types
@@ -60,9 +61,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, writer, time_service, task,
+    def __init__(self, message, payload, protocol, writer, task,
                  loop,
-                 *, secure_proxy_ssl_header=None, client_max_size=1024**2):
+                 *, client_max_size=1024**2,
+                 state=None,
+                 scheme=None, host=None, remote=None):
+        if state is None:
+            state = {}
         self._message = message
         self._protocol = protocol
         self._transport = protocol.transport
@@ -76,16 +81,19 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._post = None
         self._read_bytes = None
 
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        self._time_service = time_service
-        self._state = {}
+        self._state = state
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
 
+        self._scheme = scheme
+        self._host = host
+        self._remote = remote
+
     def clone(self, *, method=sentinel, rel_url=sentinel,
-              headers=sentinel):
+              headers=sentinel, scheme=sentinel, host=sentinel,
+              remote=sentinel):
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
@@ -112,15 +120,23 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         message = self._message._replace(**dct)
 
+        kwargs = {}
+        if scheme is not sentinel:
+            kwargs['scheme'] = scheme
+        if host is not sentinel:
+            kwargs['host'] = host
+        if remote is not sentinel:
+            kwargs['remote'] = remote
+
         return self.__class__(
             message,
             self._payload,
             self._protocol,
             self._writer,
-            self._time_service,
             self._task,
             self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+            state=self._state.copy(),
+            **kwargs)
 
     @property
     def task(self):
@@ -170,24 +186,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ########
 
     @property
-    def scheme(self):
-        """A string representing the scheme of the request.
-
-        'http' or 'https'.
-        """
-        return self.url.scheme
-
-    @property
     def secure(self):
-        """A bool indicating if the request is handled with SSL or
-        'secure_proxy_ssl_header' is matching
-
-        """
-        return self.url.scheme == 'https'
+        """A bool indicating if the request is handled with SSL."""
+        return self.scheme == 'https'
 
     @reify
     def forwarded(self):
-        """ A tuple containing all parsed Forwarded header(s).
+        """A tuple containing all parsed Forwarded header(s).
 
         Makes an effort to parse Forwarded headers as specified by RFC 7239:
 
@@ -246,21 +251,18 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return tuple(elems)
 
     @reify
-    def _scheme(self):
-        proto = None
+    def scheme(self):
+        """A string representing the scheme of the request.
+
+        'http' or 'https'.
+        """
+        scheme = self._scheme
+        if scheme is not None:
+            return scheme
         if self._transport.get_extra_info('sslcontext'):
-            proto = 'https'
-        elif self._secure_proxy_ssl_header is not None:
-            header, value = self._secure_proxy_ssl_header
-            if self.headers.get(header) == value:
-                proto = 'https'
+            return 'https'
         else:
-            proto = next(
-                (f['proto'] for f in self.forwarded if 'proto' in f), None
-            )
-            if not proto and hdrs.X_FORWARDED_PROTO in self._message.headers:
-                proto = self._message.headers[hdrs.X_FORWARDED_PROTO]
-        return proto or 'http'
+            return 'http'
 
     @property
     def method(self):
@@ -290,14 +292,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         Returns str, or None if no hostname is found in the headers.
         """
-        host = next(
-            (f['host'] for f in self.forwarded if 'host' in f), None
-        )
-        if host is None:
-            host = self._message.headers.get(hdrs.X_FORWARDED_HOST)
-        if host is None:
-            host = self._message.headers.get(hdrs.HOST)
-        return host
+        host = self._host
+        if host is not None:
+            return host
+        host = self._message.headers.get(hdrs.HOST)
+        if host is not None:
+            return host
+        else:
+            return socket.getfqdn()
 
     @reify
     def remote(self):
@@ -309,27 +311,20 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - X-Forwarded-For
         - peername of opened socket
         """
-        ip = next(
-            (f['for'] for f in self.forwarded if 'for' in f), None
-        )
-        if ip is None:
-            ips = self._message.headers.get(hdrs.X_FORWARDED_FOR)
-            if ips is not None:
-                ip = ips.split(',')[0].strip()
-        if ip is None:
-            transport = self._transport
-            peername = transport.get_extra_info('peername')
-            if isinstance(peername, (list, tuple)):
-                ip = peername[0]
-            else:
-                ip = peername
-        return ip
+        remote = self._remote
+        if remote is not None:
+            return remote
+        transport = self._transport
+        peername = transport.get_extra_info('peername')
+        if isinstance(peername, (list, tuple)):
+            return peername[0]
+        else:
+            return peername
 
     @reify
     def url(self):
-        return URL('{}://{}{}'.format(self._scheme,
-                                      self.host,
-                                      str(self._rel_url)))
+        url = URL.build(scheme=self.scheme, host=self.host)
+        return url.join(self._rel_url)
 
     @property
     def path(self):
@@ -404,11 +399,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def keep_alive(self):
         """Is keepalive enabled by client?"""
         return not self._message.should_close
-
-    @property
-    def time_service(self):
-        """Time service"""
-        return self._time_service
 
     @reify
     def cookies(self):

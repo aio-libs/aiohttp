@@ -3,20 +3,25 @@ import functools
 import sys
 import traceback
 import warnings
-from collections import defaultdict, namedtuple
+from collections import defaultdict
 from hashlib import md5, sha1, sha256
 from itertools import cycle, islice
 from time import monotonic
 from types import MappingProxyType
 
 from . import hdrs, helpers
-from .client_exceptions import (ClientConnectorError, ClientHttpProxyError,
+from .client_exceptions import (ClientConnectionError,
+                                ClientConnectorCertificateError,
+                                ClientConnectorError, ClientConnectorSSLError,
+                                ClientHttpProxyError,
                                 ClientProxyConnectionError,
-                                ServerFingerprintMismatch)
+                                ServerFingerprintMismatch, certificate_errors,
+                                ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import SimpleCookie, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
+from .log import client_logger
 from .resolver import DefaultResolver
 
 
@@ -132,9 +137,6 @@ class _TransportPlaceholder:
 
     def close(self):
         pass
-
-
-ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
 class BaseConnector(object):
@@ -347,7 +349,7 @@ class BaseConnector(object):
     @asyncio.coroutine
     def connect(self, req):
         """Get from pool or create new connection."""
-        key = ConnectionKey(req.host, req.port, req.ssl)
+        key = req.connection_key
 
         if self._limit:
             # total calc available connections
@@ -385,11 +387,13 @@ class BaseConnector(object):
             self._acquired_per_host[key].add(placeholder)
             try:
                 proto = yield from self._create_connection(req)
-            except OSError as exc:
-                raise ClientConnectorError(key, exc) from exc
+                if self._closed:
+                    proto.close()
+                    raise ClientConnectionError("Connector is closed.")
             finally:
-                self._acquired.remove(placeholder)
-                self._acquired_per_host[key].remove(placeholder)
+                if not self._closed:
+                    self._acquired.remove(placeholder)
+                    self._acquired_per_host[key].remove(placeholder)
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
@@ -590,10 +594,11 @@ class TCPConnector(BaseConnector):
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
             elif hashfunc is md5 or hashfunc is sha1:
-                warnings.simplefilter('always')
                 warnings.warn('md5 and sha1 are insecure and deprecated. '
                               'Use sha256.',
                               DeprecationWarning, stacklevel=2)
+                client_logger.warn('md5 and sha1 are insecure and deprecated. '
+                                   'Use sha256.')
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -723,15 +728,51 @@ class TCPConnector(BaseConnector):
 
         return proto
 
-    @asyncio.coroutine
-    def _create_direct_connection(self, req):
+    def _get_ssl_context(self, req):
+        """Logic to get the correct SSL context
+
+        0. if req.ssl is false, return None
+
+        1. if ssl_context is specified in req, use it
+        2. if _ssl_context is specified in self, use it
+        3. otherwise:
+            1. if verify_ssl is not specified in req, use self.ssl_context
+               (will generate a default context according to self.verify_ssl)
+            2. if verify_ssl is True in req, generate a default SSL context
+            3. if verify_ssl is False in req, generate a SSL context that
+               won't verify
+        """
         if req.ssl:
-            sslcontext = self.ssl_context
+            sslcontext = req.ssl_context or self._ssl_context
+            if not sslcontext:
+                if req.verify_ssl is None:
+                    sslcontext = self.ssl_context
+                elif req.verify_ssl:
+                    sslcontext = ssl.create_default_context()
+                else:
+                    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                    sslcontext.options |= ssl.OP_NO_SSLv2
+                    sslcontext.options |= ssl.OP_NO_SSLv3
+                    sslcontext.options |= _SSL_OP_NO_COMPRESSION
+                    sslcontext.set_default_verify_paths()
         else:
             sslcontext = None
+        return sslcontext
+
+    def _get_fingerprint_and_hashfunc(self, req):
+        if req.fingerprint:
+            return (req.fingerprint, req._hashfunc)
+        elif self.fingerprint:
+            return (self.fingerprint, self._hashfunc)
+        else:
+            return (None, None)
+
+    @asyncio.coroutine
+    def _create_direct_connection(self, req):
+        sslcontext = self._get_ssl_context(req)
+        fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
         hosts = yield from self._resolve_host(req.url.raw_host, req.port)
-        exc = None
 
         for hinfo in hosts:
             try:
@@ -744,7 +785,7 @@ class TCPConnector(BaseConnector):
                     server_hostname=hinfo['hostname'] if sslcontext else None,
                     local_addr=self._local_addr)
                 has_cert = transp.get_extra_info('sslcontext')
-                if has_cert and self._fingerprint:
+                if has_cert and fingerprint:
                     sock = transp.get_extra_info('socket')
                     if not hasattr(sock, 'getpeercert'):
                         # Workaround for asyncio 3.5.0
@@ -754,8 +795,8 @@ class TCPConnector(BaseConnector):
                     # gives DER-encoded cert as a sequence of bytes (or None)
                     cert = sock.getpeercert(binary_form=True)
                     assert cert
-                    got = self._hashfunc(cert).digest()
-                    expected = self._fingerprint
+                    got = hashfunc(cert).digest()
+                    expected = fingerprint
                     if got != expected:
                         transp.close()
                         if not self._cleanup_closed_disabled:
@@ -763,18 +804,29 @@ class TCPConnector(BaseConnector):
                         raise ServerFingerprintMismatch(
                             expected, got, host, port)
                 return transp, proto
-            except OSError as e:
-                exc = e
-        else:
-            raise ClientConnectorError(req, exc) from exc
+            except certificate_errors as exc:
+                raise ClientConnectorCertificateError(
+                    req.connection_key, exc) from exc
+            except ssl_errors as exc:
+                raise ClientConnectorSSLError(req.connection_key, exc) from exc
+            except OSError as exc:
+                raise ClientConnectorError(req.connection_key, exc) from exc
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):
+        headers = {}
+        if req.proxy_headers is not None:
+            headers = req.proxy_headers
+        headers[hdrs.HOST] = req.headers[hdrs.HOST]
+
         proxy_req = ClientRequest(
             hdrs.METH_GET, req.proxy,
-            headers={hdrs.HOST: req.headers[hdrs.HOST]},
+            headers=headers,
             auth=req.proxy_auth,
-            loop=self._loop)
+            loop=self._loop,
+            verify_ssl=req.verify_ssl,
+            fingerprint=req.fingerprint,
+            ssl_context=req.ssl_context)
         try:
             # create connection to proxy server
             transport, proto = yield from self._create_direct_connection(
@@ -790,6 +842,7 @@ class TCPConnector(BaseConnector):
                 proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
         if req.ssl:
+            sslcontext = self._get_ssl_context(req)
             # For HTTPS requests over HTTP proxy
             # we must notify proxy to tunnel connection
             # so we send CONNECT command:
@@ -831,7 +884,7 @@ class TCPConnector(BaseConnector):
                     transport.close()
 
                 transport, proto = yield from self._loop.create_connection(
-                    self._factory, ssl=self.ssl_context, sock=rawsock,
+                    self._factory, ssl=sslcontext, sock=rawsock,
                     server_hostname=req.host)
             finally:
                 proxy_resp.close()

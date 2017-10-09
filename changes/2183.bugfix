@@ -1,0 +1,1 @@
+Fix header name parsing, if name is split into multiple lines

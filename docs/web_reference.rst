@@ -16,9 +16,9 @@ Request and Base Request
 The Request object contains all the information about an incoming HTTP request.
 
 :class:`BaseRequest` is used for :ref:`Low-Level
-Servers<aiohttp-web-lowlevel>` (which have no applications, routers, signals
-and middlewares) and :class:`Request` has an *application* and *match
-info* attributes.
+Servers<aiohttp-web-lowlevel>` (which have no applications, routers,
+signals and middlewares). :class:`Request` has an :attr:`Request.app`
+and :attr:`Request.match_info` attributes.
 
 A :class:`BaseRequest` / :class:`Request` are :obj:`dict` like objects,
 allowing them to be used for :ref:`sharing
@@ -66,20 +66,23 @@ and :ref:`aiohttp-web-signals` handlers.
 
       A string representing the scheme of the request.
 
-      The scheme is ``'https'`` if transport for request handling is *SSL*, if
-      ``secure_proxy_ssl_header`` is matching (deprecated), if the ``proto``
-      portion of a ``Forward`` header is present and contains ``https``, or if
-      an ``X-Forwarded-Proto`` header is present and contains ``https``.
+      The scheme is ``'https'`` if transport for request handling is
+      *SSL*, ``'http'`` otherwise.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
 
       ``'http'`` otherwise.
 
       Read-only :class:`str` property.
 
-      .. seealso:: :meth:`Application.make_handler`
+      .. versionchanged:: 2.3
 
-      .. deprecated:: 1.1
+         *Forwarded* and *X-Forwarded-Proto* are not used anymore.
 
-         Use :attr:`url` (``request.url.scheme``) instead.
+         Call ``.clone(scheme=new_scheme)`` for setting up the value
+         explicitly.
+
+      .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
    .. attribute:: secure
 
@@ -115,16 +118,22 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: host
 
-      Host name of the request.
+      Host name of the request, resolved in this order:
 
-      Host name is resolved through the following headers, in this order:
+      - Overridden value by :meth:`~BaseRequest.clone` call.
+      - *Host* HTTP header
+      - :func:`socket.gtfqdn`
 
-      - *Forwarded*
-      - *X-Forwarded-Host*
-      - *Host*
+      Read-only :class:`str` property.
 
-      Returns  :class:`str`, or ``None`` if no host name is found in the
-      headers.
+      .. versionchanged:: 2.3
+
+         *Forwarded* and *X-Forwarded-Host* are not used anymore.
+
+         Call ``.clone(host=new_host)`` for setting up the value
+         explicitly.
+
+      .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
    .. attribute:: remote
 
@@ -132,14 +141,17 @@ and :ref:`aiohttp-web-signals` handlers.
 
       The IP is resolved through the following headers, in this order:
 
-      - *Forwarded*
-      - *X-Forwarded-For*
-      - peer name of opened socket
+      - Overridden value by :meth:`~BaseRequest.clone` call.
+      - Peer name of opened socket.
 
-      Returns :class:`str`, or ``None`` if no remote IP information is
-      provided.
+      Read-only :class:`str` property.
+
+      Call ``.clone(remote=new_remote)`` for setting up the value
+      explicitly.
 
       .. versionadded:: 2.3
+
+      .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
    .. attribute:: path_qs
 
@@ -862,8 +874,8 @@ WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
-                             autoclose=True, \
-                             autoping=True, heartbeat=None, protocols=())
+                             autoclose=True, autoping=True, heartbeat=None, \
+                             protocols=(), compress=True)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -900,6 +912,9 @@ WebSocketResponse
    :param float receive_timeout: Timeout value for `receive`
                                  operations.  Default value is None
                                  (no timeout for receive operation)
+
+   :param float compress: Enable per-message deflate extension support.
+                          False for disabled, default value is True.
 
    .. versionadded:: 0.19
 
@@ -1011,7 +1026,7 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. coroutinemethod:: send_json(data, *, dumps=json.loads)
+   .. coroutinemethod:: send_json(data, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
@@ -1203,7 +1218,7 @@ duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, logger=<default>, router=None,middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       secure_proxy_ssl_header=None, loop=None, debug=...)
+                       loop=None, debug=...)
 
    The class inherits :class:`dict`.
 
@@ -1224,13 +1239,6 @@ duplicated like one using :meth:`Application.copy`.
    :param client_max_size: client's maximum size in a request. If a POST
                            request exceeds this value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
-
-   :param tuple secure_proxy_ssl_header: Default: ``None``.
-
-      .. deprecated:: 2.1
-
-        See ``request.url.scheme`` for built-in resolution of the current
-        scheme using the standard and de-facto standard headers.
 
    :param loop: event loop
 
@@ -1330,13 +1338,6 @@ duplicated like one using :meth:`Application.copy`.
                  used for getting default event loop.
 
        .. deprecated:: 2.0
-
-    :param tuple secure_proxy_ssl_header: Default: ``None``.
-
-      .. deprecated:: 2.1
-
-        See ``request.url.scheme`` for built-in resolution of the current
-        scheme using the standard and de-facto standard headers.
 
     :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
     :param int keepalive_timeout: Number of seconds before closing Keep-Alive
@@ -2400,7 +2401,8 @@ Utilities
                        ``None`` for HTTP connection.
 
    :param print: a callable compatible with :func:`print`. May be used
-                 to override STDOUT output or suppress it.
+                 to override STDOUT output or suppress it. Passing `None`
+                 disables output.
 
    :param int backlog: the number of unaccepted connections that the
                        system will allow before refusing new

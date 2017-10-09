@@ -52,7 +52,6 @@ class Application(MutableMapping):
                  middlewares=(),
                  handler_args=None,
                  client_max_size=1024**2,
-                 secure_proxy_ssl_header=None,
                  loop=None,
                  debug=...):
         if router is None:
@@ -62,13 +61,8 @@ class Application(MutableMapping):
         if loop is not None:
             warnings.warn("loop argument is deprecated", ResourceWarning)
 
-        if secure_proxy_ssl_header is not None:
-            warnings.warn(
-                "secure_proxy_ssl_header is deprecated", DeprecationWarning)
-
         self._debug = debug
         self._router = router
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
@@ -237,8 +231,7 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, *, loop=None,
-                     secure_proxy_ssl_header=None, **kwargs):
+    def make_handler(self, *, loop=None, **kwargs):
         self._set_loop(loop)
         self.freeze()
 
@@ -247,8 +240,6 @@ class Application(MutableMapping):
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
-        if secure_proxy_ssl_header:
-            self._secure_proxy_ssl_header = secure_proxy_ssl_header
         return Server(self._handle, request_factory=self._make_request,
                       loop=self.loop, **kwargs)
 
@@ -279,9 +270,8 @@ class Application(MutableMapping):
     def _make_request(self, message, payload, protocol, writer, task,
                       _cls=web_request.Request):
         return _cls(
-            message, payload, protocol, writer, protocol._time_service, task,
+            message, payload, protocol, writer, task,
             self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
     def _prepare_middleware(self):
@@ -353,7 +343,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
                           host, port, path, sock, backlog):
 
     scheme = 'https' if ssl_context else 'http'
-    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+    base_url = URL.build(scheme=scheme, host='localhost', port=port)
 
     if path is None:
         paths = ()
@@ -385,7 +375,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
         port = 8443 if ssl_context else 8080
 
     server_creations = []
-    uris = [str(base_url.with_host(host)) for host in hosts]
+    uris = [str(base_url.with_host(host).with_port(port)) for host in hosts]
     if hosts:
         # Multiple hosts bound to same server is available in most loop
         # implementations, but only send multiple if we have multiple.
@@ -466,8 +456,9 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
                 pass
 
         try:
-            print("======== Running on {} ========\n"
-                  "(Press CTRL+C to quit)".format(', '.join(uris)))
+            if print:
+                print("======== Running on {} ========\n"
+                      "(Press CTRL+C to quit)".format(', '.join(uris)))
             loop.run_forever()
         except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
             pass

@@ -49,7 +49,7 @@ The client session supports the context manager protocol for self closing.
                          conn_timeout=None, \
                          raise_for_status=False, \
                          connector_owner=True, \
-                         auto_decompress=True)
+                         auto_decompress=True, proxies=None)
 
    The class for creating client sessions and making requests.
 
@@ -143,6 +143,12 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 2.3
 
+   :param bool from_env: Get proxies information from *HTTP_PROXY* /
+                         *HTTPS_PROXY* environment variables if the
+                         parameter is ``True`` (``False`` by default).
+
+      .. versionadded:: 2.3
+
    .. attribute:: closed
 
       ``True`` if the session has been closed, ``False`` otherwise.
@@ -169,7 +175,7 @@ The client session supports the context manager protocol for self closing.
    .. attribute:: requote_redirect_url
 
       aiohttp re quote's redirect urls by default, but some servers
-      require exact url from location header. to disable *re-quote* system
+      require exact url from location header. To disable *re-quote* system
       set :attr:`requote_redirect_url` attribute to ``False``.
 
       .. versionadded:: 2.1
@@ -188,7 +194,8 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
-                         timeout=5*60)
+                         timeout=5*60, verify_ssl=None, fingerprint=None, \
+                         ssl_context=None, proxy_headers=None)
       :async-with:
       :coroutine:
 
@@ -266,6 +273,34 @@ The client session supports the context manager protocol for self closing.
 
       :param int timeout: override the session's timeout
                           (``read_timeout``) for IO operations.
+
+      :param bool verify_ssl: Perform SSL certificate validation for
+         *HTTPS* requests (enabled by default). May be disabled to
+         skip validation for sites with invalid certificates.
+
+         .. versionadded:: 2.3
+
+      :param bytes fingerprint: Pass the SHA256 digest of the expected
+           certificate in DER format to verify that the certificate the
+           server presents matches. Useful for `certificate pinning
+           <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+
+           Warning: use of MD5 or SHA1 digests is insecure and deprecated.
+
+           .. versionadded:: 2.3
+
+      :param ssl.SSLContext ssl_context: ssl context used for processing
+         *HTTPS* requests (optional).
+
+         *ssl_context* may be used for configuring certification
+         authority channel, supported SSL options etc.
+
+         .. versionadded:: 2.3
+
+      :param abc.Mapping proxy_headers: HTTP headers to send to the proxy if the
+         parameter proxy has been provided.
+
+         .. versionadded:: 2.3
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
@@ -442,7 +477,10 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
-                            proxy=None, proxy_auth=None)
+                            proxy=None, proxy_auth=None, \
+                            verify_ssl=None, fingerprint=None, \
+                            ssl_context=None, proxy_headers=None, \
+                            compress=0)
       :async-with:
       :coroutine:
 
@@ -482,25 +520,41 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
-      .. versionadded:: 0.16
+      :param bool verify_ssl: Perform SSL certificate validation for
+         *HTTPS* requests (enabled by default). May be disabled to
+         skip validation for sites with invalid certificates.
 
-         Add :meth:`ws_connect`.
+         .. versionadded:: 2.3
 
-      .. versionadded:: 0.18
+      :param bytes fingerprint: Pass the SHA256 digest of the expected
+           certificate in DER format to verify that the certificate the
+           server presents matches. Useful for `certificate pinning
+           <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
 
-         Add *auth* parameter.
+           Note: use of MD5 or SHA1 digests is insecure and deprecated.
 
-      .. versionadded:: 0.19
+           .. versionadded:: 2.3
 
-         Add *origin* parameter.
+      :param ssl.SSLContext ssl_context: ssl context used for processing
+         *HTTPS* requests (optional).
 
-      .. versionadded:: 1.0
+         *ssl_context* may be used for configuring certification
+         authority channel, supported SSL options etc.
 
-         Added ``proxy`` and ``proxy_auth`` parameters.
+         .. versionadded:: 2.3
 
-      .. versionchanged:: 1.1
+      :param dict proxy_headers: HTTP headers to send to the proxy if the
+         parameter proxy has been provided.
 
-         URLs may be either :class:`str` or :class:`~yarl.URL`
+         .. versionadded:: 2.3
+
+
+      :param int compress: Enable Per-Message Compress Extension support.
+                           0 for disable, 9 to 15 for window bit support.
+                           Default value is 0.
+
+         .. versionadded:: 2.3
+
 
    .. comethod:: close()
 
@@ -1115,7 +1169,7 @@ Response object
 
       Read response's body as *JSON*, return :class:`dict` using
       specified *encoding* and *loader*. If data is not still available
-      a ``read`` call will be done, 
+      a ``read`` call will be done,
 
       If *encoding* is ``None`` content encoding is autocalculated
       using :term:`cchardet` or :term:`chardet` as fallback if
@@ -1203,7 +1257,7 @@ manually.
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. comethod:: send_json(data, *, dumps=json.loads)
+   .. comethod:: send_json(data, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
@@ -1333,6 +1387,15 @@ BasicAuth
 
       :return:  decoded authentication data, :class:`BasicAuth`.
 
+   .. classmethod:: from_url(url)
+
+      Constructed credentials info from url's *user* and *password*
+      parts.
+
+      :return: credentials data, :class:`BasicAuth` or ``None`` is
+                credentials are not provided.
+
+      .. versionadded:: 2.3
 
    .. method:: encode()
 
@@ -1452,6 +1515,29 @@ All exceptions are available as members of *aiohttp* module.
    Derived from :exc:`Exception`
 
 
+.. class:: ClientPayloadError
+
+   This exception can only be raised while reading the response
+   payload if one of these errors occurs:
+
+   1. invalid compression
+   2. malformed chunked encoding
+   3. not enough data that satisfy ``Content-Length`` HTTP header.
+
+   Derived from :exc:`ClientError`
+
+.. exception:: InvalidURL
+
+   URL used for fetching is malformed, e.g. it does not contain host
+   part.
+
+   Derived from :exc:`ClientError` and :exc:`ValueError`
+
+   .. attribute:: url
+
+      Invalid URL, :class:`yarl.URL` instance.
+
+
 Response errors
 ^^^^^^^^^^^^^^^
 
@@ -1481,11 +1567,20 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
 
-.. class:: ClientHttpProxyError
+.. class:: WSServerHandshakeError
 
-   Proxy response error.
+   Web socket server response error.
 
    Derived from :exc:`ClientResponseError`
+
+
+.. class:: ContentTypeError
+
+   Invalid content type.
+
+   Derived from :exc:`ClientResponseError`
+
+   .. versionadded:: 2.3
 
 Connection errors
 ^^^^^^^^^^^^^^^^^
@@ -1493,7 +1588,6 @@ Connection errors
 .. class:: ClientConnectionError
 
    These exceptions related to low-level connection problems.
-
 
    Derived from :exc:`ClientError`
 
@@ -1518,6 +1612,21 @@ Connection errors
 
    Derived from :exc:`ClientConnectonError`
 
+.. class:: ClientSSLError
+
+   Derived from :exc:`ClientConnectonError`
+
+.. class:: ClientConnectorSSLError
+
+   Response ssl error.
+
+   Derived from :exc:`ClientSSLError` and :exc:`ssl.SSLError`
+
+.. class:: ClientConnectorCertificateError
+
+   Response certificate error.
+
+   Derived from :exc:`ClientSSLError` and :exc:`ssl.CertificateError`
 
 .. class:: ServerDisconnectedError
 
@@ -1543,17 +1652,6 @@ Connection errors
    Derived from :exc:`ServerConnectonError`
 
 
-.. class:: ClientPayloadError
-
-   This exception can only be raised while reading the response
-   payload if one of these errors occurs:
-
-   1. invalid compression
-   2. malformed chunked encoding
-   3. not enough data that satisfy ``Content-Length`` HTTP header.
-
-   Derived from :exc:`ClientError`
-
 Hierarchy of exceptions
 ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1561,6 +1659,7 @@ Hierarchy of exceptions
 
   * :exc:`ClientResponseError`
 
+    * :exc:`ContentTypeError`
     * :exc:`WSServerHandshakeError`
     * :exc:`ClientHttpProxyError`
 
@@ -1569,6 +1668,12 @@ Hierarchy of exceptions
     * :exc:`ClientOSError`
 
       * :exc:`ClientConnectorError`
+
+         * :exc:`ClientSSLError`
+
+           * :exc:`ClientConnectorCertificateError`
+
+           * :exc:`ClientConnectorSSLError`
 
          * :exc:`ClientProxyConnectionError`
 
@@ -1580,3 +1685,5 @@ Hierarchy of exceptions
       * :exc:`ServerFingerprintMismatch`
 
   * :exc:`ClientPayloadError`
+
+  * :exc:`InvalidURL`

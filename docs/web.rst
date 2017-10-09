@@ -320,7 +320,6 @@ viewed using the :meth:`UrlDispatcher.named_resources` method::
    :meth:`UrlDispatcher.resources` instead of
    :meth:`UrlDispatcher.named_routes` / :meth:`UrlDispatcher.routes`.
 
-
 Alternative ways for registering routes
 ---------------------------------------
 
@@ -382,6 +381,101 @@ equivalent, you could use what do you prefer or even mix them on your
 own.
 
 .. versionadded:: 2.3
+
+Web Handler Cancellation
+------------------------
+
+.. warning::
+
+   :term:`web-handler` execution could be canceled on every ``await``
+   if client drops connection without reading entire response's BODY.
+
+   The behavior is very different from classic WSGI frameworks like
+   Flask and Django.
+
+Sometimes it is a desirable behavior: on processing ``GET`` request the
+code might fetch data from database or other web resource, the
+fetching is potentially slow.
+
+Canceling this fetch is very good: the peer dropped connection
+already, there is no reason to waste time and resources (memory etc) by
+getting data from DB without any chance to send it back to peer.
+
+But sometimes the cancellation is bad: on ``POST`` request very often
+is needed to save data to DB regardless to peer closing.
+
+Cancellation prevention could be implemented in several ways:
+* Applying :func:`asyncio.shield` to coroutine that saves data into DB.
+* Spawning a new task for DB saving
+* Using aiojobs_ or other third party library.
+
+:func:`asyncio.shield` works pretty good. The only disadvantage is you
+need to split web handler into exactly two async functions: one
+for handler itself and other for protected code.
+
+For example the following snippet is not safe::
+
+   async def handler(request):
+       await asyncio.shield(write_to_redis(request))
+       await asyncio.shield(write_to_postgres(request))
+       return web.Response('OK')
+
+Cancellation might be occurred just after saving data in REDIS,
+``write_to_postgres`` will be not called.
+
+Spawning a new task is much worse: there is no place to ``await``
+spawned tasks::
+
+   async def handler(request):
+       request.loop.create_task(write_to_redis(request))
+       return web.Response('OK')
+
+In this case errors from ``write_to_redis`` are not awaited, it leads
+to many asyncio log messages *Future exception was never retrieved*
+and *Task was destroyed but it is pending!*.
+
+Moreover on :ref:`aiohttp-web-graceful-shutdown` phase *aiohttp* don't
+wait for these tasks, you have a great chance to loose very important
+data.
+
+On other hand aiojobs_ provides an API for spawning new jobs and
+awaiting their results etc. It stores all scheduled activity in
+internal data structures and could terminate them gracefully::
+
+   from aiojobs.aiohttp import setup, spawn
+
+   async def coro(timeout):
+       await asyncio.sleep(timeout)  # do something in background
+
+   async def handler(request):
+       await spawn(request, coro())
+       return web.Response()
+
+   app = web.Application()
+   setup(app)
+   app.router.add_get('/', handler)
+
+All not finished jobs will be terminated on
+:attr:`aiohttp.web.Application.on_cleanup` signal.
+
+To prevent cancellation of the whole :term:`web-handler` use
+``@atomic`` decorator::
+
+   from aiojobs.aiohttp import atomic
+
+   @atomic
+   async def handler(request):
+       await write_to_db()
+       return web.Response()
+
+   app = web.Application()
+   setup(app)
+   app.router.add_post('/', handler)
+
+It prevents all ``handler`` async function from cancellation,
+``write_to_db`` will be never interrupted.
+
+.. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
 Custom Routing Criteria
 -----------------------
@@ -1405,6 +1499,37 @@ Handling error pages
 Pages like *404 Not Found* and *500 Internal Error* could be handled
 by custom middleware, see :ref:`aiohttp-tutorial-middlewares` for
 details.
+
+.. _aiohttp-web-forwarded-support:
+
+Deploying behind a Proxy
+------------------------
+
+As discussed in :ref:`aiohttp-deployment` the preferable way is
+deploying *aiohttp* web server behind a *Reverse Proxy Server* like
+:term:`nginx` for production usage.
+
+In this way properties like :attr:`~BaseRequest.scheme`
+:attr:`~BaseRequest.host` and :attr:`~BaseRequest.remote` are
+incorrect.
+
+Real values should be given from proxy server, usually either
+``Forwarded`` or old-fashion ``X-Forwarded-For``,
+``X-Forwarded-Host``, ``X-Forwarded-Proto`` HTTP headers are used.
+
+*aiohttp* does not take *forwarded* headers into account by default
+because it produces *security issue*: HTTP client might add these
+headers too, pushing non-trusted data values.
+
+That's why *aiohttp server* should setup *forwarded* headers in custom
+middleware in tight conjunction with *reverse proxy configuration*.
+
+For changing :attr:`~BaseRequest.scheme` :attr:`~BaseRequest.host` and
+:attr:`~BaseRequest.remote` the middleware might use
+:meth:`~BaseRequest.clone`.
+
+TBD: add a link to third-party project with proper middleware
+implementation.
 
 Swagger support
 ---------------

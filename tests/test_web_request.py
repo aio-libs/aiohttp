@@ -1,4 +1,5 @@
 import asyncio
+import socket
 from collections import MutableMapping
 from unittest import mock
 
@@ -17,7 +18,7 @@ def test_ctor():
 
     assert 'GET' == req.method
     assert HttpVersion(1, 1) == req.version
-    assert req.host is None
+    assert req.host == socket.getfqdn()
     assert '/path/to?a=1&b=2' == req.path_qs
     assert '/path/to' == req.path
     assert 'a=1&b=2' == req.query_string
@@ -217,31 +218,16 @@ def test___repr___non_ascii_path():
 
 
 def test_http_scheme():
-    req = make_mocked_request('GET', '/')
+    req = make_mocked_request('GET', '/', headers={'Host': 'example.com'})
     assert "http" == req.scheme
     assert req.secure is False
 
 
 def test_https_scheme_by_ssl_transport():
-    req = make_mocked_request('GET', '/', sslcontext=True)
+    req = make_mocked_request('GET', '/', headers={'Host': 'example.com'},
+                              sslcontext=True)
     assert "https" == req.scheme
     assert req.secure is True
-
-
-def test_https_scheme_by_secure_proxy_ssl_header():
-    req = make_mocked_request('GET', '/',
-                              secure_proxy_ssl_header=('X-HEADER', '1'),
-                              headers=CIMultiDict({'X-HEADER': '1'}))
-    assert "https" == req.scheme
-    assert req.secure is True
-
-
-def test_https_scheme_by_secure_proxy_ssl_header_false_test():
-    req = make_mocked_request('GET', '/',
-                              secure_proxy_ssl_header=('X-HEADER', '1'),
-                              headers=CIMultiDict({'X-HEADER': '0'}))
-    assert "http" == req.scheme
-    assert req.secure is False
 
 
 def test_single_forwarded_header():
@@ -383,60 +369,6 @@ def test_multiple_forwarded_headers_injection():
     assert 'by' not in req.forwarded[0]
     assert req.forwarded[1]['for'] == '_real'
     assert req.forwarded[1]['by'] == '_actual_proxy'
-
-
-def test_https_scheme_by_forwarded_header():
-    header = 'by=_1;for=_2;host=_3;proto=https'
-    req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict({'Forwarded': header}))
-    assert "https" == req.scheme
-    assert req.secure is True
-
-
-def test_https_scheme_by_malformed_forwarded_header():
-    req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict({'Forwarded':
-                                                   'malformed value'}))
-    assert "http" == req.scheme
-    assert req.secure is False
-
-
-def test_https_scheme_by_x_forwarded_proto_header():
-    req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict({'X-Forwarded-Proto':
-                                                   'https'}))
-    assert "https" == req.scheme
-    assert req.secure is True
-
-
-def test_https_scheme_by_x_forwarded_proto_header_no_tls():
-    req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict({'X-Forwarded-Proto':
-                                                   'http'}))
-    assert "http" == req.scheme
-    assert req.secure is False
-
-
-def test_host_by_forwarded_header():
-    headers = CIMultiDict()
-    headers.add('Forwarded', 'By=identifier1;for=identifier2, BY=identifier3')
-    headers.add('Forwarded', 'by=unknown;for=unknown;host=example.com')
-    req = make_mocked_request('GET', '/', headers=headers)
-    assert req.host == 'example.com'
-
-
-def test_host_by_forwarded_header_malformed():
-    req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict({'Forwarded':
-                                                   'malformed value'}))
-    assert req.host is None
-
-
-def test_host_by_x_forwarded_host_header():
-    req = make_mocked_request('GET', '/',
-                              headers=CIMultiDict(
-                                  {'X-Forwarded-Host': 'example.com'}))
-    assert req.host == 'example.com'
 
 
 def test_host_by_host_header():
@@ -590,29 +522,28 @@ def test_remote_peername_unix():
     assert req.remote == '/path/to/sock'
 
 
-def test_remote_peername_x_forwarded():
-    transp = mock.Mock()
-    transp.get_extra_info.return_value = ('10.10.10.10', 1234)
-    req = make_mocked_request(
-        'GET', '/', transport=transp,
-        headers={'X-Forwarded-For': '11.11.11.11, 12.12.12.12'})
-    assert req.remote == '11.11.11.11'
+def test_save_state_on_clone():
+    req = make_mocked_request('GET', '/')
+    req['key'] = 'val'
+    req2 = req.clone()
+    req2['key'] = 'val2'
+    assert req['key'] == 'val'
+    assert req2['key'] == 'val2'
 
 
-def test_remote_peername_forwarded():
-    transp = mock.Mock()
-    transp.get_extra_info.return_value = ('10.10.10.10', 1234)
-    req = make_mocked_request(
-        'GET', '/', transport=transp,
-        headers={'Forwarded': 'for=11.11.11.11, for=12.12.12.12'})
-    assert req.remote == '11.11.11.11'
+def test_clone_scheme():
+    req = make_mocked_request('GET', '/')
+    req2 = req.clone(scheme='https')
+    assert req2.scheme == 'https'
 
 
-def test_remote_peername_forwarded_overrides_x_forwarded():
-    transp = mock.Mock()
-    transp.get_extra_info.return_value = ('10.10.10.10', 1234)
-    req = make_mocked_request(
-        'GET', '/', transport=transp,
-        headers={'Forwarded': 'for=11.11.11.11, for=12.12.12.12',
-                 'X-Forwarded-For': '13.13.13.13'})
-    assert req.remote == '11.11.11.11'
+def test_clone_host():
+    req = make_mocked_request('GET', '/')
+    req2 = req.clone(host='example.com')
+    assert req2.host == 'example.com'
+
+
+def test_clone_remote():
+    req = make_mocked_request('GET', '/')
+    req2 = req.clone(remote='11.11.11.11')
+    assert req2.remote == '11.11.11.11'

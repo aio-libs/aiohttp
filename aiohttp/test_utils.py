@@ -502,7 +502,6 @@ def make_mocked_request(method, path, headers=None, *,
                         transport=sentinel,
                         payload=sentinel,
                         sslcontext=None,
-                        secure_proxy_ssl_header=None,
                         client_max_size=1024**2,
                         loop=...):
     """Creates mocked web.Request testing purposes.
@@ -557,20 +556,12 @@ def make_mocked_request(method, path, headers=None, *,
     if payload is sentinel:
         payload = mock.Mock()
 
-    time_service = mock.Mock()
-    time_service.time.return_value = 12345
-    time_service.strtime.return_value = "Tue, 15 Nov 1994 08:12:31 GMT"
-
     @contextmanager
     def timeout(*args, **kw):
         yield
 
-    time_service.timeout = mock.Mock()
-    time_service.timeout.side_effect = timeout
-
     req = Request(message, payload,
-                  protocol, payload_writer, time_service, task, loop,
-                  secure_proxy_ssl_header=secure_proxy_ssl_header,
+                  protocol, payload_writer, task, loop,
                   client_max_size=client_max_size)
 
     match_info = UrlMappingMatchInfo({}, mock.Mock())

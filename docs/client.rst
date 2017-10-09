@@ -518,66 +518,100 @@ In order to specify the nameservers to when resolving the hostnames,
 SSL control for TCP sockets
 ---------------------------
 
-:class:`~aiohttp.TCPConnector` constructor accepts mutually
-exclusive *verify_ssl* and *ssl_context* params.
+By default *aiohttp* uses strict checks for HTTPS protocol. Certification
+checks can be relaxed by setting *verify_ssl* to ``False``::
 
-By default it uses strict checks for HTTPS protocol. Certification
-checks can be relaxed by passing ``verify_ssl=False``::
-
-  conn = aiohttp.TCPConnector(verify_ssl=False)
-  session = aiohttp.ClientSession(connector=conn)
-  r = await session.get('https://example.com')
+  r = await session.get('https://example.com', verify_ssl=False)
 
 
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
-pass it into the connector::
+pass it into the proper :class:`ClientSession` method::
 
   sslcontext = ssl.create_default_context(
      cafile='/path/to/ca-bundle.crt')
-  conn = aiohttp.TCPConnector(ssl_context=sslcontext)
-  session = aiohttp.ClientSession(connector=conn)
-  r = await session.get('https://example.com')
+  r = await session.get('https://example.com', ssl_context=sslcontext)
 
-If you need to verify **client-side** certificates, you can do the same thing as the previous example,
-but add another call to ``load_cret_chain`` with the key pair::
+If you need to verify *self-signed* certificates, you can do the
+same thing as the previous example, but add another call to
+:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
 
   sslcontext = ssl.create_default_context(
-     cafile='/path/to/client-side-ca-bundle.crt')
-  sslcontext.load_cert_chain('/path/to/client/public/key.pem', '/path/to/client/private/key.pem')
-  conn = aiohttp.TCPConnector(ssl_context=sslcontext)
-  session = aiohttp.ClientSession(connector=conn)
-  r = await session.get('https://server-with-client-side-certificates-validaction.com')
+     cafile='/path/to/ca-bundle.crt')
+  sslcontext.load_cert_chain('/path/to/client/public/device.pem',
+                             '/path/to/client/private/device.jey')
+  r = await session.get('https://example.com', ssl_context=sslcontext)
 
+There is explicit errors when ssl verification fails
 
-You may also verify certificates via MD5, SHA1, or SHA256 fingerprint::
+:class:`aiohttp.ClientConnectorSSLError`::
+
+  try:
+      await session.get('https://expired.badssl.com/')
+  except aiohttp.ClientConnectorSSLError as e:
+      assert isinstance(e, ssl.SSLError)
+
+:class:`aiohttp.ClientConnectorCertificateError`::
+
+  try:
+      await session.get('https://wrong.host.badssl.com/')
+  except aiohttp.ClientConnectorCertificateError as e:
+      assert isinstance(e, ssl.CertificateError)
+
+If you need to skip both ssl related errors
+
+:class:`aiohttp.ClientSSLError`::
+
+  try:
+      await session.get('https://expired.badssl.com/')
+  except aiohttp.ClientSSLError as e:
+      assert isinstance(e, ssl.SSLError)
+
+  try:
+      await session.get('https://wrong.host.badssl.com/')
+  except aiohttp.ClientSSLError as e:
+      assert isinstance(e, ssl.CertificateError)
+
+You may also verify certificates via *SHA256* fingerprint::
 
   # Attempt to connect to https://www.python.org
   # with a pin to a bogus certificate:
-  bad_md5 = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
-  conn = aiohttp.TCPConnector(fingerprint=bad_md5)
-  session = aiohttp.ClientSession(connector=conn)
+  bad_fingerprint = b'0'*64
   exc = None
   try:
-      r = yield from session.get('https://www.python.org')
-  except FingerprintMismatch as e:
+      r = await session.get('https://www.python.org',
+                            fingerprint=bad_fingerprint)
+  except aiohttp.FingerprintMismatch as e:
       exc = e
   assert exc is not None
-  assert exc.expected == bad_md5
+  assert exc.expected == bad_fingerprint
 
-  # www.python.org cert's actual md5
-  assert exc.got == b'\xca;I\x9cuv\x8es\x138N$?\x15\xca\xcb'
+  # www.python.org cert's actual fingerprint
+  assert exc.got == b'...'
 
 Note that this is the fingerprint of the DER-encoded certificate.
 If you have the certificate in PEM format, you can convert it to
-DER with e.g. ``openssl x509 -in crt.pem -inform PEM -outform DER > crt.der``.
+DER with e.g::
 
-Tip: to convert from a hexadecimal digest to a binary byte-string, you can use
-:attr:`binascii.unhexlify`::
+   openssl x509 -in crt.pem -inform PEM -outform DER > crt.der
 
-  md5_hex = 'ca3b499c75768e7313384e243f15cacb'
-  from binascii import unhexlify
-  assert unhexlify(md5_hex) == b'\xca;I\x9cuv\x8es\x138N$?\x15\xca\xcb'
+.. note::
+
+   Tip: to convert from a hexadecimal digest to a binary byte-string,
+   you can use :func:`binascii.unhexlify`.
+
+   All *verify_ssl*, *fingerprint* and *ssl_context* could be passed
+   to :class:`TCPConnector` as defaults, params from
+   :meth:`ClientSession.get` and others override these defaults.
+
+.. warning::
+
+   *verify_ssl* and *ssl_context* params are *mutually exclusive*.
+
+   *MD5* and *SHA1* fingerprints are deprecated but still supported -- they
+   are famous as very insecure hash functions.
+
+
 
 Unix domain sockets
 -------------------
@@ -592,22 +626,12 @@ If your HTTP server uses UNIX domain sockets you can use
 Proxy support
 -------------
 
-aiohttp supports proxy. You have to use
-:attr:`proxy`::
+aiohttp supports HTTP/HTTPS proxies. You have to use
+*proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
                               proxy="http://some.proxy.com") as resp:
-           print(resp.status)
-
-Contrary to the ``requests`` library, it won't read environment variables by
-default. But you can do so by setting :attr:`proxy_from_env` to True.
-It will use the ``getproxies()`` method from ``urllib`` and thus read the
-value of the ``$url-scheme_proxy`` variable::
-
-   async with aiohttp.ClientSession() as session:
-       async with session.get("http://python.org",
-                              proxy_from_env=True) as resp:
            print(resp.status)
 
 It also supports proxy authorization::
@@ -624,6 +648,16 @@ Authentication credentials can be passed in proxy URL::
    session.get("http://python.org",
                proxy="http://user:pass@some.proxy.com")
 
+Contrary to the ``requests`` library, it won't read environment
+variables by default. But you can do so by passing
+``trust_env=True`` into :class:`aiohttp.ClientSession`
+constructor for extracting proxy configuration from
+*HTTP_PROXY* or *HTTPS_PROXY* *environment variables* (both are case
+insensitive)::
+
+   async with aiohttp.ClientSession() as session:
+       async with session.get("http://python.org", trust_env=True) as resp:
+           print(resp.status)
 
 Response Status Codes
 ---------------------
@@ -801,7 +835,7 @@ For a ``ClientSession`` with SSL, the application must wait a short duration bef
     # Wait 250 ms for the underlying SSL connections to close
     loop.run_until_complete(asyncio.sleep(0.250))
     loop.close()
-    
+
 Note that the appropriate amount of time to wait will vary from application to application.
 
 All if this will eventually become obsolete when the asyncio internals are changed so that aiohttp itself can wait on the underlying connection to close. Please follow issue `#1925 <https://github.com/aio-libs/aiohttp/issues/1925>`_ for the progress on this.
