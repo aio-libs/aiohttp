@@ -9,7 +9,7 @@ cchardet==2.1.1
 cython==0.27.1
 chardet==3.0.4
 isort==4.2.15
-tox==2.8.2
+tox==2.9.1
 multidict==3.2.0
 async-timeout==1.4.0
 pytest==3.2.2
