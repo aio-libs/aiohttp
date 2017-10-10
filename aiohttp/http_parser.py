@@ -16,6 +16,12 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
+try:
+    import brotli
+    HAS_BROTLI = True
+except ImportError:
+    HAS_BROTLI = False
+
 
 __all__ = (
     'HttpParser', 'HttpRequestParser', 'HttpResponseParser',
@@ -324,7 +330,7 @@ class HttpParser:
         enc = headers.get(hdrs.CONTENT_ENCODING)
         if enc:
             enc = enc.lower()
-            if enc in ('gzip', 'deflate'):
+            if enc in ('gzip', 'deflate', 'br'):
                 encoding = enc
 
         # chunking
@@ -605,10 +611,16 @@ class DeflateBuffer:
         self.encoding = encoding
         self._started_decoding = False
 
-        zlib_mode = (16 + zlib.MAX_WBITS
-                     if encoding == 'gzip' else -zlib.MAX_WBITS)
-
-        self.zlib = zlib.decompressobj(wbits=zlib_mode)
+        if encoding == 'br':
+            if not HAS_BROTLI:
+                raise ContentEncodingError(
+                    'Can not decode content-encoding: brotli (br). '
+                    'Please install `brotlipy`')
+            self.decompressor = brotli.Decompressor()
+        else:
+            zlib_mode = (16 + zlib.MAX_WBITS
+                        if encoding == 'gzip' else -zlib.MAX_WBITS)
+            self.decompressor = zlib.decompressobj(wbits=zlib_mode)
 
     def set_exception(self, exc):
         self.out.set_exception(exc)
@@ -616,12 +628,12 @@ class DeflateBuffer:
     def feed_data(self, chunk, size):
         self.size += size
         try:
-            chunk = self.zlib.decompress(chunk)
+            chunk = self.decompressor.decompress(chunk)
         except Exception:
             if not self._started_decoding and self.encoding == 'deflate':
-                self.zlib = zlib.decompressobj()
+                self.decompressor = zlib.decompressobj()
                 try:
-                    chunk = self.zlib.decompress(chunk)
+                    chunk = self.decompressor.decompress(chunk)
                 except Exception:
                     raise ContentEncodingError(
                         'Can not decode content-encoding: %s' % self.encoding)
@@ -634,11 +646,11 @@ class DeflateBuffer:
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self):
-        chunk = self.zlib.flush()
+        chunk = self.decompressor.flush()
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if not self.zlib.eof:
+            if self.encoding != 'br' and not self.decompressor.eof:
                 raise ContentEncodingError('deflate')
 
         self.out.feed_eof()
