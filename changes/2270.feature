@@ -1,1 +1,1 @@
-Support brotli encoding (generic-purpose lossless compression algorithm)    
+Support brotli encoding (generic-purpose lossless compression algorithm)

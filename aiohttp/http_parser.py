@@ -16,6 +16,7 @@ from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
+
 try:
     import brotli
     HAS_BROTLI = True
@@ -619,7 +620,7 @@ class DeflateBuffer:
             self.decompressor = brotli.Decompressor()
         else:
             zlib_mode = (16 + zlib.MAX_WBITS
-                        if encoding == 'gzip' else -zlib.MAX_WBITS)
+                         if encoding == 'gzip' else -zlib.MAX_WBITS)
             self.decompressor = zlib.decompressobj(wbits=zlib_mode)
 
     def set_exception(self, exc):
