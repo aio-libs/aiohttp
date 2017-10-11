@@ -5,6 +5,7 @@ import unittest
 import zlib
 from unittest import mock
 
+import brotli
 import pytest
 from multidict import CIMultiDict
 from yarl import URL
@@ -284,6 +285,14 @@ def test_compression_gzip(parser):
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.compression == 'gzip'
+
+
+def test_compression_brotli(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-encoding: br\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == 'br'
 
 
 def test_compression_unknown(parser):
@@ -684,6 +693,15 @@ class TestParsePayload(unittest.TestCase):
         out = aiohttp.FlowControlDataQueue(self.stream)
         p = HttpPayloadParser(out, length=0)
         self.assertTrue(p.done)
+        self.assertTrue(out.is_eof())
+
+    def test_http_payload_brotli(self):
+        compressed = brotli.compress(b'brotli data')
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        p = HttpPayloadParser(
+            out, length=len(compressed), compression='br')
+        p.feed_data(compressed)
+        self.assertEqual(b'brotli data', b''.join(d for d, _ in out._buffer))
         self.assertTrue(out.is_eof())
 
 

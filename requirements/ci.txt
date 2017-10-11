@@ -18,6 +18,7 @@ pytest-mock==1.6.3
 gunicorn==19.7.1
 twine==1.9.1
 yarl==0.12.0
+brotlipy==0.7.0
 -e .
 
 # Using PEP 508 env markers to control dependency on runtimes:
