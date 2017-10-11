@@ -476,7 +476,7 @@ def test_ceil_call_later_no_timeout():
 
 @asyncio.coroutine
 def test_ceil_timeout(loop):
-    with helpers.CeilTimeout(0, loop=loop) as timeout:
+    with helpers.CeilTimeout(None, loop=loop) as timeout:
         assert timeout._timeout is None
         assert timeout._cancel_handler is None
 
