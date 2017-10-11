@@ -6,18 +6,18 @@ flake8==3.4.1
 pyflakes==1.6.0
 coverage==4.4.1
 cchardet==2.1.1
-cython==0.27
+cython==0.27.1
 chardet==3.0.4
 isort==4.2.15
-tox==2.8.2
+tox==2.9.1
 multidict==3.2.0
-async-timeout==1.4.0
-pytest==3.2.2
+async-timeout==2.0.0
+pytest==3.2.3
 pytest-cov==2.5.1
 pytest-mock==1.6.3
 gunicorn==19.7.1
 twine==1.9.1
-yarl==0.12.0
+yarl==0.13.0
 -e .
 
 # Using PEP 508 env markers to control dependency on runtimes:
