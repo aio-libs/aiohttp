@@ -20,7 +20,7 @@ from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 try:
     import brotli
     HAS_BROTLI = True
-except ImportError:
+except ImportError:  # pragma: no cover
     HAS_BROTLI = False
 
 
@@ -613,7 +613,7 @@ class DeflateBuffer:
         self._started_decoding = False
 
         if encoding == 'br':
-            if not HAS_BROTLI:
+            if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
                     'Can not decode content-encoding: brotli (br). '
                     'Please install `brotlipy`')
