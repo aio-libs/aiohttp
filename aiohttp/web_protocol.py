@@ -83,6 +83,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                  tcp_keepalive=True,
                  slow_request_timeout=None,
                  logger=server_logger,
+                 access_log_factory=helpers.AccessLogger,
                  access_log=access_logger,
                  access_log_format=helpers.AccessLogger.LOG_FORMAT,
                  debug=False,
@@ -138,7 +139,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self.debug = debug
         self.access_log = access_log
         if access_log:
-            self.access_logger = helpers.AccessLogger(
+            self.access_logger = access_log_factory(
                 access_log, access_log_format)
         else:
             self.access_logger = None
