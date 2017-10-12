@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import helpers, log, web
-from aiohttp.abc import AbstractRouter
+from aiohttp.abc import AbstractAccessLogger, AbstractRouter
 
 
 def test_app_ctor(loop):
@@ -77,6 +77,29 @@ def test_app_make_handler_args(loop, mocker):
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
                            loop=loop, debug=mock.ANY, test=True)
+
+
+def test_app_make_handler_access_log_class(loop, mocker):
+    class Logger:
+        pass
+
+    app = web.Application()
+
+    with pytest.raises(AssertionError):
+        app.make_handler(access_log_class=Logger, loop=loop)
+
+    class Logger(AbstractAccessLogger):
+
+        def _log(self, request, response, time):
+            self.logger.info('msg')
+
+    srv = mocker.patch('aiohttp.web.Server')
+
+    app.make_handler(access_log_class=Logger, loop=loop)
+    srv.assert_called_with(app._handle,
+                           access_log_class=Logger,
+                           request_factory=app._make_request,
+                           loop=loop, debug=mock.ANY)
 
 
 @asyncio.coroutine
