@@ -6,7 +6,7 @@ from aiohttp.web_urldispatcher import SystemRoute
 
 
 __all__ = (
-    'new_middleware',
+    'middleware',
     'normalize_path_middleware',
 )
 
@@ -24,7 +24,7 @@ def _check_request_resolves(request, path):
     return False, request
 
 
-def new_middleware(f):
+def middleware(f):
     f.__middleware_version__ = 1
     return f
 
@@ -53,7 +53,7 @@ def normalize_path_middleware(
     """
 
     @asyncio.coroutine
-    @new_middleware
+    @middleware
     def normalize_path_middleware(request, handler):
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []

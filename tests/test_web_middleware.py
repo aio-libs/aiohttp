@@ -12,7 +12,7 @@ def test_middleware_modifies_response(loop, test_client):
         return web.Response(body=b'OK')
 
     @asyncio.coroutine
-    @web.new_middleware
+    @web.middleware
     def middleware(request, handler):
         resp = yield from handler(request)
         assert 200 == resp.status
@@ -37,7 +37,7 @@ def test_middleware_handles_exception(loop, test_client):
         raise RuntimeError('Error text')
 
     @asyncio.coroutine
-    @web.new_middleware
+    @web.middleware
     def middleware(request, handler):
         with pytest.raises(RuntimeError) as ctx:
             yield from handler(request)
@@ -62,7 +62,7 @@ def test_middleware_chain(loop, test_client):
 
     def make_middleware(num):
         @asyncio.coroutine
-        @web.new_middleware
+        @web.middleware
         def middleware(request, handler):
             resp = yield from handler(request)
             resp.text = resp.text + '[{}]'.format(num)
@@ -254,7 +254,7 @@ def test_mixed_middleware(loop, test_client):
         return middleware
 
     @asyncio.coroutine
-    @web.new_middleware
+    @web.middleware
     def m_new1(request, handler):
         resp = yield from handler(request)
         resp.text += '[new style 1]'
@@ -270,7 +270,7 @@ def test_mixed_middleware(loop, test_client):
         return middleware
 
     @asyncio.coroutine
-    @web.new_middleware
+    @web.middleware
     def m_new2(request, handler):
         resp = yield from handler(request)
         resp.text += '[new style 2]'
