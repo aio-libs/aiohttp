@@ -1009,6 +1009,8 @@ response. For example, here's a simple *middleware* which appends
         resp.text = resp.text + ' wink'
         return resp
 
+(Note: this example won't work with steamed responses or websockets)
+
 Every *middleware* should accept two parameters, a
 :class:`request <Request>` instance and a *handler*, and return the response.
 
@@ -1090,7 +1092,7 @@ a JSON REST service::
 
 
 Old Style Middleware
-....................
+^^^^^^^^^^^^^^^^^^^^
 
 .. deprecated:: 2.3
 
@@ -1099,7 +1101,7 @@ Old Style Middleware
    required; instead the ``@middleware`` decorator should
    be used.
 
-However, old style middleware (with an outer factory and no ``@middleware``
+Old style middleware (with an outer factory and no ``@middleware``
 decorator) is still supported. Furthermore, old and new style middleware
 can be mixed.
 
@@ -1113,13 +1115,8 @@ A *middleware factory* is simply a coroutine that implements the logic of a
             return resp
         return middleware_handler
 
-Every *middleware factory* should accept two parameters, an
+A *middleware factory* should accept two parameters, an
 :class:`app <Application>` instance and a *handler*, and return a new handler.
-
-The *handler* passed in to a *middleware factory* is the handler returned by
-the **next** *middleware factory*. The last *middleware factory* always receives
-the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
-(by :meth:`UrlDispatcher.resolve`).
 
 .. note::
 
