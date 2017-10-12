@@ -5,6 +5,7 @@ import unittest
 import zlib
 from unittest import mock
 
+import brotli
 import pytest
 from multidict import CIMultiDict
 from yarl import URL
@@ -284,6 +285,14 @@ def test_compression_gzip(parser):
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.compression == 'gzip'
+
+
+def test_compression_brotli(parser):
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'content-encoding: br\r\n\r\n')
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == 'br'
 
 
 def test_compression_unknown(parser):
@@ -686,6 +695,15 @@ class TestParsePayload(unittest.TestCase):
         self.assertTrue(p.done)
         self.assertTrue(out.is_eof())
 
+    def test_http_payload_brotli(self):
+        compressed = brotli.compress(b'brotli data')
+        out = aiohttp.FlowControlDataQueue(self.stream)
+        p = HttpPayloadParser(
+            out, length=len(compressed), compression='br')
+        p.feed_data(compressed)
+        self.assertEqual(b'brotli data', b''.join(d for d, _ in out._buffer))
+        self.assertTrue(out.is_eof())
+
 
 class TestDeflateBuffer(unittest.TestCase):
 
@@ -697,8 +715,8 @@ class TestDeflateBuffer(unittest.TestCase):
         buf = aiohttp.FlowControlDataQueue(self.stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.decompress.return_value = b'line'
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.decompress.return_value = b'line'
 
         dbuf.feed_data(b'data', 4)
         self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
@@ -708,8 +726,8 @@ class TestDeflateBuffer(unittest.TestCase):
         dbuf = DeflateBuffer(buf, 'deflate')
 
         exc = ValueError()
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.decompress.side_effect = exc
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.decompress.side_effect = exc
 
         self.assertRaises(
             http_exceptions.ContentEncodingError, dbuf.feed_data, b'data', 4)
@@ -718,8 +736,8 @@ class TestDeflateBuffer(unittest.TestCase):
         buf = aiohttp.FlowControlDataQueue(self.stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.flush.return_value = b'line'
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
 
         dbuf.feed_eof()
         self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
@@ -729,9 +747,9 @@ class TestDeflateBuffer(unittest.TestCase):
         buf = aiohttp.FlowControlDataQueue(self.stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
-        dbuf.zlib = mock.Mock()
-        dbuf.zlib.flush.return_value = b'line'
-        dbuf.zlib.eof = False
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
+        dbuf.decompressor.eof = False
 
         self.assertRaises(http_exceptions.ContentEncodingError, dbuf.feed_eof)
 
