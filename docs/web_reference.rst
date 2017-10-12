@@ -1347,6 +1347,9 @@ duplicated like one using :meth:`Application.copy`.
       :data:`aiohttp.log.server_logger`.
     :param access_log: Custom logging object. Default:
       :data:`aiohttp.log.access_logger`.
+    :param access_log_class: class for `access_logger`. Default:
+      :data:`aiohttp.helpers.AccessLogger`.
+      Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
     :param str access_log_format: Access log format string. Default:
       :attr:`helpers.AccessLogger.LOG_FORMAT`.
     :param bool debug: Switches debug mode. Default: ``False``.
