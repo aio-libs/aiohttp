@@ -182,9 +182,13 @@ class FileResponse(StreamResponse):
             self._length_check = False
             return (yield from super().prepare(request))
 
-        ct, encoding = mimetypes.guess_type(str(filepath))
-        if not ct:
-            ct = 'application/octet-stream'
+        if hdrs.CONTENT_TYPE not in self.headers:
+            ct, encoding = mimetypes.guess_type(str(filepath))
+            if not ct:
+                ct = 'application/octet-stream'
+        else:
+            ct = self.headers[hdrs.CONTENT_TYPE]
+            encoding = 'gzip' if gzip else None
 
         status = HTTPOk.status_code
         file_size = st.st_size
