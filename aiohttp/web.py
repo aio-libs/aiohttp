@@ -14,7 +14,7 @@ from yarl import URL
 from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
                web_protocol, web_request, web_response, web_server,
                web_urldispatcher, web_ws)
-from .abc import AbstractMatchInfo, AbstractRouter
+from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
@@ -230,6 +230,14 @@ class Application(MutableMapping):
         return self._middlewares
 
     def make_handler(self, *, loop=None, **kwargs):
+        if 'access_log_class' in kwargs:
+            access_log_class = kwargs['access_log_class']
+
+            assert issubclass(access_log_class, AbstractAccessLogger), (
+                '{} must be subclass of '
+                'aiohttp.abc.AbstractAccessLogger'.format(access_log_class)
+            )
+
         self._set_loop(loop)
         self.freeze()
 
