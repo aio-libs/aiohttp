@@ -7,6 +7,7 @@ import sys
 import warnings
 from argparse import ArgumentParser
 from collections import Iterable, MutableMapping
+from functools import partial
 from importlib import import_module
 
 from yarl import URL
@@ -140,7 +141,7 @@ class Application(MutableMapping):
             return
 
         self._frozen = True
-        self._middlewares = tuple(reversed(self._middlewares))
+        self._middlewares = tuple(self._prepare_middleware())
         self._router.freeze()
         self._on_loop_available.freeze()
         self._on_pre_signal.freeze()
@@ -272,6 +273,18 @@ class Application(MutableMapping):
             self._loop,
             client_max_size=self._client_max_size)
 
+    def _prepare_middleware(self):
+        for m in reversed(self._middlewares):
+            if getattr(m, '__middleware_version__', None) == 1:
+                # first argument is request or r and this is
+                # new-style middleware
+                yield m, True
+            else:
+                warnings.warn('old-style middleware "{}" deprecated, '
+                              'see #2252'.format(m.__name__),
+                              DeprecationWarning, stacklevel=2)
+                yield m, False
+
     @asyncio.coroutine
     def _handle(self, request):
         match_info = yield from self._router.resolve(request)
@@ -291,8 +304,11 @@ class Application(MutableMapping):
         if resp is None:
             handler = match_info.handler
             for app in match_info.apps[::-1]:
-                for factory in app._middlewares:
-                    handler = yield from factory(app, handler)
+                for m, new_style in app._middlewares:
+                    if new_style:
+                        handler = partial(m, handler=handler)
+                    else:
+                        handler = yield from m(app, handler)
 
             resp = yield from handler(request)
 

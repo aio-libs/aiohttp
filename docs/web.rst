@@ -997,69 +997,57 @@ the keyword-only ``middlewares`` parameter when creating an
    app = web.Application(middlewares=[middleware_factory_1,
                                       middleware_factory_2])
 
-A *middleware factory* is simply a coroutine that implements the logic of a
-*middleware*. For example, here's a trivial *middleware factory*::
+A *middleware* is just a coroutine that can modify either the request or
+response. For example, here's a simple *middleware* which appends
+``' wink'`` to the response::
 
-    async def middleware_factory(app, handler):
-        async def middleware_handler(request):
-            return await handler(request)
-        return middleware_handler
+    from aiohttp.web import middleware
 
-Every *middleware factory* should accept two parameters, an
-:class:`app <Application>` instance and a *handler*, and return a new handler.
+    @middleware
+    async def middleware(request, handler):
+        resp = await handler(request)
+        resp.text = resp.text + ' wink'
+        return resp
 
-The *handler* passed in to a *middleware factory* is the handler returned by
-the **next** *middleware factory*. The last *middleware factory* always receives
-the :ref:`request handler <aiohttp-web-handler>` selected by the router itself
-(by :meth:`UrlDispatcher.resolve`).
+(Note: this example won't work with streamed responses or websockets)
 
-.. note::
-
-   Both the outer *middleware_factory* coroutine and the inner
-   *middleware_handler* coroutine are called for every request handled.
-
-*Middleware factories* should return a new handler that has the same signature
-as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
-single :class:`Request` instance and return a :class:`Response`, or raise an
-exception.
+Every *middleware* should accept two parameters, a
+:class:`request <Request>` instance and a *handler*, and return the response.
 
 Internally, a single :ref:`request handler <aiohttp-web-handler>` is constructed
 by applying the middleware chain to the original handler in reverse order,
 and is called by the :class:`RequestHandler` as a regular *handler*.
 
-Since *middleware factories* are themselves coroutines, they may perform extra
+Since *middlewares* are themselves coroutines, they may perform extra
 ``await`` calls when creating a new handler, e.g. call database etc.
 
-*Middlewares* usually call the inner handler, but they may choose to ignore it,
+*Middlewares* usually call the handler, but they may choose to ignore it,
 e.g. displaying *403 Forbidden page* or raising :exc:`HTTPForbidden` exception
-if user has no permissions to access the underlying resource.
+if the user does not have permissions to access the underlying resource.
 They may also render errors raised by the handler, perform some pre- or
 post-processing like handling *CORS* and so on.
 
 The following code demonstrates middlewares execution order::
 
    from aiohttp import web
+
    def test(request):
        print('Handler function called')
        return web.Response(text="Hello")
 
-   async def middleware1(app, handler):
-       async def middleware_handler(request):
-           print('Middleware 1 called')
-           response = await handler(request)
-           print('Middleware 1 finished')
+   @web.middleware
+   async def middleware1(request, handler):
+       print('Middleware 1 called')
+       response = await handler(request)
+       print('Middleware 1 finished')
+       return response
 
-           return response
-       return middleware_handler
-
+   @web.middleware
    async def middleware2(app, handler):
-       async def middleware_handler(request):
-           print('Middleware 2 called')
-           response = await handler(request)
-           print('Middleware 2 finished')
-
-           return response
-       return middleware_handler
+       print('Middleware 2 called')
+       response = await handler(request)
+       print('Middleware 2 finished')
+       return response
 
 
    app = web.Application(middlewares=[middleware1, middleware2])
@@ -1089,20 +1077,57 @@ a JSON REST service::
             body=json.dumps({'error': message}).encode('utf-8'),
             content_type='application/json')
 
+    @web.middleware
     async def error_middleware(app, handler):
-        async def middleware_handler(request):
-            try:
-                response = await handler(request)
-                if response.status == 404:
-                    return json_error(response.message)
-                return response
-            except web.HTTPException as ex:
-                if ex.status == 404:
-                    return json_error(ex.reason)
-                raise
-        return middleware_handler
+        try:
+            response = await handler(request)
+            if response.status == 404:
+                return json_error(response.message)
+            return response
+        except web.HTTPException as ex:
+            if ex.status == 404:
+                return json_error(ex.reason)
+            raise
 
     app = web.Application(middlewares=[error_middleware])
+
+
+Old Style Middleware
+^^^^^^^^^^^^^^^^^^^^
+
+.. deprecated:: 2.3
+
+   Prior to *v2.3* middleware required an outer *middleware factory*
+   which returned the middleware coroutine. Since *v2.3* this is not
+   required; instead the ``@middleware`` decorator should
+   be used.
+
+Old style middleware (with an outer factory and no ``@middleware``
+decorator) is still supported. Furthermore, old and new style middleware
+can be mixed.
+
+A *middleware factory* is simply a coroutine that implements the logic of a
+*middleware*. For example, here's a trivial *middleware factory*::
+
+    async def middleware_factory(app, handler):
+        async def middleware_handler(request):
+            resp = await handler(request)
+            resp.text = resp.text + ' wink'
+            return resp
+        return middleware_handler
+
+A *middleware factory* should accept two parameters, an
+:class:`app <Application>` instance and a *handler*, and return a new handler.
+
+.. note::
+
+   Both the outer *middleware_factory* coroutine and the inner
+   *middleware_handler* coroutine are called for every request handled.
+
+*Middleware factories* should return a new handler that has the same signature
+as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
+single :class:`Request` instance and return a :class:`Response`, or raise an
+exception.
 
 .. _aiohttp-web-signals:
 
