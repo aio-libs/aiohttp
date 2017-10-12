@@ -1023,7 +1023,7 @@ Since *middlewares* are themselves coroutines, they may perform extra
 
 *Middlewares* usually call the handler, but they may choose to ignore it,
 e.g. displaying *403 Forbidden page* or raising :exc:`HTTPForbidden` exception
-if the user doesn't have permissions to access the underlying resource.
+if the user does not have permissions to access the underlying resource.
 They may also render errors raised by the handler, perform some pre- or
 post-processing like handling *CORS* and so on.
 
