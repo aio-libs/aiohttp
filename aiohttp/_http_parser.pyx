@@ -161,7 +161,7 @@ cdef class HttpParser:
                               ENCODING_ERR='surrogateescape',
                               CONTENT_ENCODING=hdrs.CONTENT_ENCODING,
                               SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1,
-                              SUPPORTED=('gzip', 'deflate')):
+                              SUPPORTED=('gzip', 'deflate', 'br')):
         self._process_header()
 
         method = cparser.http_method_str(<cparser.http_method> self._cparser.method)
