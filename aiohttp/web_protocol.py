@@ -61,6 +61,9 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     :param logger: custom logger object
     :type logger: aiohttp.log.server_logger
 
+    :param access_log_class: custom class for access_logger
+    :type access_log_class: aiohttp.abc.AbstractAccessLogger
+
     :param access_log: custom logging object
     :type access_log: aiohttp.log.server_logger
 
