@@ -1009,7 +1009,7 @@ response. For example, here's a simple *middleware* which appends
         resp.text = resp.text + ' wink'
         return resp
 
-(Note: this example won't work with steamed responses or websockets)
+(Note: this example won't work with streamed responses or websockets)
 
 Every *middleware* should accept two parameters, a
 :class:`request <Request>` instance and a *handler*, and return the response.
@@ -1030,6 +1030,7 @@ post-processing like handling *CORS* and so on.
 The following code demonstrates middlewares execution order::
 
    from aiohttp import web
+
    def test(request):
        print('Handler function called')
        return web.Response(text="Hello")
