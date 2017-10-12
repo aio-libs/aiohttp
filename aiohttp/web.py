@@ -1,5 +1,4 @@
 import asyncio
-import inspect
 import os
 import signal
 import socket
@@ -276,9 +275,7 @@ class Application(MutableMapping):
 
     def _prepare_middleware(self):
         for m in reversed(self._middlewares):
-            sig = inspect.signature(m)
-            first_arg = list(sig.parameters.keys())[0]
-            if first_arg.startswith('r'):
+            if getattr(m, '__middleware_version__', None) == 1:
                 # first argument is request or r and this is
                 # new-style middleware
                 yield m, True
