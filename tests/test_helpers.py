@@ -10,6 +10,7 @@ import pytest
 from yarl import URL
 
 from aiohttp import helpers
+from aiohttp.abc import AbstractAccessLogger
 
 
 # -------------------- coro guard --------------------------------
@@ -254,6 +255,31 @@ def test_logger_no_transport():
     access_logger = helpers.AccessLogger(mock_logger, "%a")
     access_logger.log(None, None, 0)
     mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
+
+
+def test_logger_abc():
+    class Logger(AbstractAccessLogger):
+        def log(self, request, response, time):
+            1 / 0
+
+    mock_logger = mock.Mock()
+    access_logger = Logger(mock_logger, None)
+
+    with pytest.raises(ZeroDivisionError):
+        access_logger.log(None, None, None)
+
+    class Logger(AbstractAccessLogger):
+        def log(self, request, response, time):
+            self.logger.info(self.log_format.format(
+                request=request,
+                response=response,
+                time=time
+            ))
+
+    mock_logger = mock.Mock()
+    access_logger = Logger(mock_logger, '{request} {response} {time}')
+    access_logger.log('request', 'response', 1)
+    mock_logger.info.assert_called_with('request response 1')
 
 
 class TestReify:
