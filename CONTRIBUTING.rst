@@ -118,6 +118,14 @@ line of the output:
 Please go to the link and make sure that your code change is covered.
 
 
+The project uses *codecov.io* for storing coverage results. Visit
+https://codecov.io/gh/aio-libs/aiohttp for looking on coverage of
+master branch, history, pull requests etc.
+
+The browser extension https://docs.codecov.io/docs/browser-extension
+is highly recommended for analyzing the coverage just in *Files
+Changed* tab on *GitHub Pull Request* review page.
+
 Documentation
 -------------
 
