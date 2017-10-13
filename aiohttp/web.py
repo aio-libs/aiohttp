@@ -237,8 +237,10 @@ class Application(MutableMapping):
                      **kwargs):
 
         if not issubclass(access_log_class, AbstractAccessLogger):
-            raise TypeError('access_log_class must be subclass of '
-                            'aiohttp.abc.AbstractAccessLogger')
+            raise TypeError(
+                'access_log_class must be subclass of '
+                'aiohttp.abc.AbstractAccessLogger, got {}'.format(
+                    access_log_class))
 
         self._set_loop(loop)
         self.freeze()
