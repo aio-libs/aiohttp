@@ -146,3 +146,14 @@ class AbstractPayloadWriter(ABC):
     @abstractmethod
     def drain(self):
         """Flush the write buffer."""
+
+
+class AbstractAccessLogger(ABC):
+
+    def __init__(self, logger, log_format):
+        self.logger = logger
+        self.log_format = log_format
+
+    @abstractmethod
+    def log(self, request, response, time):
+        """Emit log to logger"""

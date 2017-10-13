@@ -61,6 +61,9 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     :param logger: custom logger object
     :type logger: aiohttp.log.server_logger
 
+    :param access_log_class: custom class for access_logger
+    :type access_log_class: aiohttp.abc.AbstractAccessLogger
+
     :param access_log: custom logging object
     :type access_log: aiohttp.log.server_logger
 
@@ -83,6 +86,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                  tcp_keepalive=True,
                  slow_request_timeout=None,
                  logger=server_logger,
+                 access_log_class=helpers.AccessLogger,
                  access_log=access_logger,
                  access_log_format=helpers.AccessLogger.LOG_FORMAT,
                  debug=False,
@@ -138,7 +142,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self.debug = debug
         self.access_log = access_log
         if access_log:
-            self.access_logger = helpers.AccessLogger(
+            self.access_logger = access_log_class(
                 access_log, access_log_format)
         else:
             self.access_logger = None

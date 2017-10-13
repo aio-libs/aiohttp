@@ -23,6 +23,7 @@ from async_timeout import timeout
 from yarl import URL
 
 from . import hdrs
+from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
@@ -346,7 +347,7 @@ def content_disposition_header(disptype, quote_fields=True, **params):
     return value
 
 
-class AccessLogger:
+class AccessLogger(AbstractAccessLogger):
     """Helper object to log access.
 
     Usage:
@@ -400,7 +401,7 @@ class AccessLogger:
         :param log_format: apache compatible log format
 
         """
-        self.logger = logger
+        super().__init__(logger, log_format=log_format)
 
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
@@ -513,14 +514,6 @@ class AccessLogger:
                 for key, method in self._methods)
 
     def log(self, request, response, time):
-        """Log access.
-
-        :param message: Request object. May be None.
-        :param environ: Environment dict. May be None.
-        :param response: Response object.
-        :param transport: Tansport object. May be None
-        :param float time: Time taken to serve the request.
-        """
         try:
             fmt_info = self._format_line(request, response, time)
 

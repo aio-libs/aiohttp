@@ -35,7 +35,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
 :attr:`~AbstractMatchInfo.http_exception` on call.
 
 
-.. class:: AbstractRouter
+.. class:: aiohttp.abc.AbstractRouter
 
    Abstract router, :class:`aiohttp.web.Application` accepts it as
    *router* parameter and returns as
@@ -54,7 +54,7 @@ Not Allowed*. :meth:`AbstractMatchInfo.handler` raises
       :return: :class:`AbstractMatchInfo` instance.
 
 
-.. class:: AbstractMatchInfo
+.. class:: aiohttp.abc.AbstractMatchInfo
 
    Abstract *match info*, returned by :meth:`AbstractRouter.resolve` call.
 
@@ -102,7 +102,7 @@ attribute.
 Abstract Cookie Jar
 -------------------
 
-.. class:: AbstractCookieJar
+.. class:: aiohttp.abc.AbstractCookieJar
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -146,3 +146,21 @@ Abstract Cookie Jar
 
       :return: :class:`http.cookies.SimpleCookie` with filtered
          cookies for given URL.
+
+Abstract Abstract Access Logger
+-------------------------------
+
+.. class:: aiohttp.abc.AbstractAccessLogger
+
+   An abstract class, base for all :class:`RequestHandler`
+   ``access_logger`` implementations
+
+   Method ``log`` should be overridden.
+
+   .. method:: log(request, response, time)
+
+      :param request: :class:`aiohttp.web.Request` object.
+
+      :param response: :class:`aiohttp.web.Response` object.
+
+      :param float time: Time taken to serve the request.
