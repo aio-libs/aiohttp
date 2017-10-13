@@ -155,18 +155,5 @@ class AbstractAccessLogger(ABC):
         self.log_format = log_format
 
     @abstractmethod
-    def _log(self, request, response, time):
-        """
-
-        :param request: Request object.
-        :param response: Response object.
-        :param float time: Time taken to serve the request.
-        """
-
     def log(self, request, response, time):
         """Emit log to logger"""
-
-        try:
-            self._log(request, response, time)
-        except Exception:
-            self.logger.exception("Error in logging")

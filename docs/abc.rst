@@ -155,9 +155,9 @@ Abstract Abstract Access Logger
    An abstract class, base for all :class:`RequestHandler`
    ``access_logger`` implementations
 
-   Method ``_log`` should be overridden.
+   Method ``log`` should be overridden.
 
-   .. method:: _log(request, response, time)
+   .. method:: log(request, response, time)
 
       :param request: :class:`aiohttp.web.Request` object.
 

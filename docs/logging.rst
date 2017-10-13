@@ -97,7 +97,7 @@ Example of drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
 
   class AccessLogger(AbstractAccessLogger):
 
-      def _log(self, request, response, time):
+      def log(self, request, response, time):
           self.logger.info(f'{request.remote} '
                            f'"{request.method} {request.path} '
                            f'done in {time}s: {response.status}')

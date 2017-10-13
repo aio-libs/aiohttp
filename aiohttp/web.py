@@ -17,6 +17,7 @@ from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
                web_urldispatcher, web_ws)
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
+from .helpers import AccessLogger
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
 from .signals import FuncSignal, PostSignal, PreSignal, Signal
@@ -230,14 +231,14 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, *, loop=None, **kwargs):
-        if 'access_log_class' in kwargs:
-            access_log_class = kwargs['access_log_class']
+    def make_handler(self, *,
+                     loop=None,
+                     access_log_class=AccessLogger,
+                     **kwargs):
 
-            assert issubclass(access_log_class, AbstractAccessLogger), (
-                '{} must be subclass of '
-                'aiohttp.abc.AbstractAccessLogger'.format(access_log_class)
-            )
+        if not issubclass(access_log_class, AbstractAccessLogger):
+            raise TypeError('access_log_class must be subclass of '
+                            'aiohttp.abc.AbstractAccessLogger')
 
         self._set_loop(loop)
         self.freeze()
@@ -248,6 +249,7 @@ class Application(MutableMapping):
                 kwargs[k] = v
 
         return Server(self._handle, request_factory=self._make_request,
+                      access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
 
     @asyncio.coroutine

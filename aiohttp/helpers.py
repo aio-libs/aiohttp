@@ -513,20 +513,23 @@ class AccessLogger(AbstractAccessLogger):
         return ((key, method(request, response, time))
                 for key, method in self._methods)
 
-    def _log(self, request, response, time):
-        fmt_info = self._format_line(request, response, time)
+    def log(self, request, response, time):
+        try:
+            fmt_info = self._format_line(request, response, time)
 
-        values = list()
-        extra = dict()
-        for key, value in fmt_info:
-            values.append(value)
+            values = list()
+            extra = dict()
+            for key, value in fmt_info:
+                values.append(value)
 
-            if key.__class__ is str:
-                extra[key] = value
-            else:
-                extra[key[0]] = {key[1]: value}
+                if key.__class__ is str:
+                    extra[key] = value
+                else:
+                    extra[key[0]] = {key[1]: value}
 
-        self.logger.info(self._log_format % tuple(values), extra=extra)
+            self.logger.info(self._log_format % tuple(values), extra=extra)
+        except Exception:
+            self.logger.exception("Error in logging")
 
 
 class reify:

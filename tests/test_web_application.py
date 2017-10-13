@@ -65,6 +65,7 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
+                           access_log_class=mock.ANY,
                            loop=loop,
                            debug=debug)
 
@@ -76,6 +77,7 @@ def test_app_make_handler_args(loop, mocker):
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
+                           access_log_class=mock.ANY,
                            loop=loop, debug=mock.ANY, test=True)
 
 
@@ -85,12 +87,12 @@ def test_app_make_handler_access_log_class(loop, mocker):
 
     app = web.Application()
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         app.make_handler(access_log_class=Logger, loop=loop)
 
     class Logger(AbstractAccessLogger):
 
-        def _log(self, request, response, time):
+        def log(self, request, response, time):
             self.logger.info('msg')
 
     srv = mocker.patch('aiohttp.web.Server')

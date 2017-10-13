@@ -259,16 +259,17 @@ def test_logger_no_transport():
 
 def test_logger_abc():
     class Logger(AbstractAccessLogger):
-        def _log(self, request, response, time):
+        def log(self, request, response, time):
             1 / 0
 
     mock_logger = mock.Mock()
     access_logger = Logger(mock_logger, None)
-    access_logger.log(None, None, None)
-    mock_logger.exception.assert_called_with("Error in logging")
+
+    with pytest.raises(ZeroDivisionError):
+        access_logger.log(None, None, None)
 
     class Logger(AbstractAccessLogger):
-        def _log(self, request, response, time):
+        def log(self, request, response, time):
             self.logger.info(self.log_format.format(
                 request=request,
                 response=response,
