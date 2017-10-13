@@ -123,6 +123,54 @@ def test_static_file_with_content_type(loop, test_client, sender):
 
 
 @asyncio.coroutine
+def test_static_file_custom_content_type(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent / 'hello.txt.gz')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = sender(filepath, chunk_size=16)
+        resp.content_type = 'application/pdf'
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    body = yield from resp.read()
+    with filepath.open('rb') as f:
+        content = f.read()
+        assert content == body
+    assert resp.headers['Content-Type'] == 'application/pdf'
+    assert resp.headers.get('Content-Encoding') is None
+    resp.close()
+
+
+@asyncio.coroutine
+def test_static_file_custom_content_type_compress(loop, test_client, sender):
+    filepath = (pathlib.Path(__file__).parent / 'hello.txt')
+
+    @asyncio.coroutine
+    def handler(request):
+        resp = sender(filepath, chunk_size=16)
+        resp.content_type = 'application/pdf'
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(lambda loop: app)
+
+    resp = yield from client.get('/')
+    assert resp.status == 200
+    body = yield from resp.read()
+    assert b'hello aiohttp\n' == body
+    assert resp.headers['Content-Type'] == 'application/pdf'
+    assert resp.headers.get('Content-Encoding') == 'gzip'
+    resp.close()
+
+
+@asyncio.coroutine
 def test_static_file_with_content_encoding(loop, test_client, sender):
     filepath = pathlib.Path(__file__).parent / 'hello.txt.gz'
 
