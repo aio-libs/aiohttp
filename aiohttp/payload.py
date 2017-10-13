@@ -119,12 +119,7 @@ class Payload(ABC):
             return Payload._content_type
 
     def set_content_disposition(self, disptype, quote_fields=True, **params):
-        """Sets ``Content-Disposition`` header.
-
-        :param str disptype: Disposition type: inline, attachment, form-data.
-                            Should be valid extension token (see RFC 2183)
-        :param dict params: Disposition params
-        """
+        """Sets ``Content-Disposition`` header."""
         if self._headers is None:
             self._headers = CIMultiDict()
 
@@ -134,9 +129,9 @@ class Payload(ABC):
     @asyncio.coroutine  # pragma: no branch
     @abstractmethod
     def write(self, writer):
-        """Write payload
+        """Write payload.
 
-        :param AbstractPayloadWriter writer:
+        writer is an AbstractPayloadWriter instance:
         """
 
 
