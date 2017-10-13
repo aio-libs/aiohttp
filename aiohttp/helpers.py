@@ -41,8 +41,7 @@ else:
     from .backport_cookies import SimpleCookie  # noqa
 
 
-__all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop')
+__all__ = ('BasicAuth', 'Timeout')
 
 
 sentinel = object()
