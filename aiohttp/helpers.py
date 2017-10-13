@@ -277,10 +277,9 @@ def isasyncgenfunction(obj):
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
-    :param str mimetype: MIME type
+    mimetype is a MIME type string.
 
-    :returns: 4 element tuple for MIME type, subtype, suffix and parameters
-    :rtype: tuple
+    Returns a 4 element tuple for MIME type, subtype, suffix and parameters.
 
     Example:
 
@@ -321,9 +320,10 @@ def guess_filename(obj, default=None):
 def content_disposition_header(disptype, quote_fields=True, **params):
     """Sets ``Content-Disposition`` header.
 
-    :param str disptype: Disposition type: inline, attachment, form-data.
-                         Should be valid extension token (see RFC 2183)
-    :param dict params: Disposition params
+    disptype is a disposition type: inline, attachment, form-data.
+    Should be valid extension token (see RFC 2183)
+
+    params is a dict with disposition params.
     """
     if not disptype or not (TOKEN > set(disptype)):
         raise ValueError('bad content disposition type {!r}'
@@ -395,8 +395,8 @@ class AccessLogger:
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
 
-        :param logger: logger object to be used for logging
-        :param log_format: apache compatible log format
+        logger is a logger object to be used for logging.
+        log_format is an string with apache compatible log format description.
 
         """
         self.logger = logger
@@ -514,11 +514,11 @@ class AccessLogger:
     def log(self, request, response, time):
         """Log access.
 
-        :param message: Request object. May be None.
-        :param environ: Environment dict. May be None.
-        :param response: Response object.
-        :param transport: Tansport object. May be None
-        :param float time: Time taken to serve the request.
+        message: Request object. May be None.
+        environ: Environment dict. May be None.
+        response: Response object.
+        transport: Tansport object. May be None
+        time: Time taken to serve the request.
         """
         try:
             fmt_info = self._format_line(request, response, time)
