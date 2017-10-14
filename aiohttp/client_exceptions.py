@@ -34,7 +34,7 @@ class ClientError(Exception):
 class ClientResponseError(ClientError):
     """Connection error during reading response.
 
-    :param request_info: instance of RequestInfo
+    request_info: instance of RequestInfo
     """
 
     def __init__(self, request_info, history, *,
