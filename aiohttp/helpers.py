@@ -42,8 +42,7 @@ else:
     from .backport_cookies import SimpleCookie  # noqa
 
 
-__all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop')
+__all__ = ('BasicAuth', 'Timeout')
 
 
 sentinel = object()
@@ -279,10 +278,9 @@ def isasyncgenfunction(obj):
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
-    :param str mimetype: MIME type
+    mimetype is a MIME type string.
 
-    :returns: 4 element tuple for MIME type, subtype, suffix and parameters
-    :rtype: tuple
+    Returns a 4 element tuple for MIME type, subtype, suffix and parameters.
 
     Example:
 
@@ -323,9 +321,10 @@ def guess_filename(obj, default=None):
 def content_disposition_header(disptype, quote_fields=True, **params):
     """Sets ``Content-Disposition`` header.
 
-    :param str disptype: Disposition type: inline, attachment, form-data.
-                         Should be valid extension token (see RFC 2183)
-    :param dict params: Disposition params
+    disptype is a disposition type: inline, attachment, form-data.
+    Should be valid extension token (see RFC 2183)
+
+    params is a dict with disposition params.
     """
     if not disptype or not (TOKEN > set(disptype)):
         raise ValueError('bad content disposition type {!r}'
@@ -397,8 +396,8 @@ class AccessLogger(AbstractAccessLogger):
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
 
-        :param logger: logger object to be used for logging
-        :param log_format: apache compatible log format
+        logger is a logger object to be used for logging.
+        log_format is an string with apache compatible log format description.
 
         """
         super().__init__(logger, log_format=log_format)

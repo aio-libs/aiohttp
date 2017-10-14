@@ -8,9 +8,9 @@ class HttpProcessingError(Exception):
 
     Shortcut for raising HTTP errors with custom code, message and headers.
 
-    :param int code: HTTP Error code.
-    :param str message: (optional) Error message.
-    :param list of [tuple] headers: (optional) Headers to be sent in response.
+    code: HTTP Error code.
+    message: (optional) Error message.
+    headers: (optional) Headers to be sent in response, a list of pairs
     """
 
     code = 0
