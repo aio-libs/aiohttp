@@ -617,6 +617,20 @@ def test_parse_no_length_payload(parser):
     assert payload.is_eof()
 
 
+def test_partial_url(parser):
+    messages, upgrade, tail = parser.feed_data(b'GET /te')
+    assert len(messages) == 0
+    messages, upgrade, tail = parser.feed_data(b'st HTTP/1.1\r\n\r\n')
+    assert len(messages) == 1
+
+    msg, payload = messages[0]
+
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert payload.is_eof()
+
+
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):
