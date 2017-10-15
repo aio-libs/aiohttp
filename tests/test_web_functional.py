@@ -1570,3 +1570,21 @@ def test_response_with_bodypart(loop, test_client):
         resp.headers['content-disposition'])
     assert disp == ('attachment',
                     {'name': 'file', 'filename': 'file', 'filename*': 'file'})
+
+
+@asyncio.coroutine
+def test_request_clone(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        r2 = request.clone(method='POST')
+        assert r2.method == 'POST'
+        assert r2.match_info is request.match_info
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    assert 200 == resp.status
