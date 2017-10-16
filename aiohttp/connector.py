@@ -390,6 +390,13 @@ class BaseConnector(object):
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
+            except:
+                # signal to waiter
+                waiters = self._waiters[key]
+                if waiters:
+                    waiter = waiters.pop(0)
+                    waiter.set_result(None)
+                    raise
             finally:
                 if not self._closed:
                     self._acquired.remove(placeholder)
