@@ -5,6 +5,7 @@ import http.cookies
 import io
 import json
 import pathlib
+import socket
 import ssl
 from unittest import mock
 
@@ -13,6 +14,7 @@ from multidict import MultiDict
 
 import aiohttp
 from aiohttp import ServerFingerprintMismatch, hdrs, web
+from aiohttp.abc import AbstractResolver
 from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
@@ -2226,3 +2228,63 @@ def test_invalid_idna(loop):
             yield from session.get('http://\u2061owhefopw.com')
     finally:
         yield from session.close()
+
+
+@asyncio.coroutine
+def test_creds_in_auth_and_url(loop):
+    session = aiohttp.ClientSession(loop=loop)
+    try:
+        with pytest.raises(ValueError):
+            yield from session.get('http://user:pass@example.com',
+                                   auth=aiohttp.BasicAuth('user2', 'pass2'))
+    finally:
+        yield from session.close()
+
+
+@asyncio.coroutine
+def test_drop_auth_on_redirect_to_other_host(test_server, loop):
+    @asyncio.coroutine
+    def srv1(request):
+        assert request.host == 'host1.com'
+        assert request.headers['Authorization'] == 'Basic dXNlcjpwYXNz'
+        raise web.HTTPFound('http://host2.com/path2')
+
+    @asyncio.coroutine
+    def srv2(request):
+        assert request.host == 'host2.com'
+        assert 'Authorization' not in request.headers
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/path1', srv1)
+    app.router.add_route('GET', '/path2', srv2)
+
+    server = yield from test_server(app)
+
+    class FakeResolver(AbstractResolver):
+
+        @asyncio.coroutine
+        def resolve(self, host, port=0, family=socket.AF_INET):
+            return [{'hostname': host,
+                     'host': server.host,
+                     'port': server.port,
+                     'family': socket.AF_INET,
+                     'proto': 0,
+                     'flags': socket.AI_NUMERICHOST}]
+
+        @asyncio.coroutine
+        def close(self):
+            pass
+
+    connector = aiohttp.TCPConnector(loop=loop, resolver=FakeResolver())
+    client = aiohttp.ClientSession(connector=connector)
+    try:
+        resp = yield from client.get('http://host1.com/path1',
+                                     auth=aiohttp.BasicAuth('user', 'pass'))
+        assert resp.status == 200
+        resp = yield from client.get('http://host1.com/path1',
+                                     headers={'Authorization':
+                                              'Basic dXNlcjpwYXNz'})
+        assert resp.status == 200
+    finally:
+        yield from client.close()
