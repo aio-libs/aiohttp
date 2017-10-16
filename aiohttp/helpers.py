@@ -221,7 +221,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
-def _strip_auth_from_url(url):
+def strip_auth_from_url(url):
     auth = BasicAuth.from_url(url)
     if auth is None:
         return url, None
@@ -235,7 +235,7 @@ ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
 def proxies_from_env():
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
                   if k in ('http', 'https')}
-    stripped = {k: _strip_auth_from_url(v) for k, v in proxy_urls.items()}
+    stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
         proxy, auth = val

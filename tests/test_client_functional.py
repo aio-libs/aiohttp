@@ -2226,3 +2226,14 @@ def test_invalid_idna(loop):
             yield from session.get('http://\u2061owhefopw.com')
     finally:
         yield from session.close()
+
+
+@asyncio.coroutine
+def test_creds_in_auth_and_url(loop):
+    session = aiohttp.ClientSession(loop=loop)
+    try:
+        with pytest.raises(ValueError):
+            yield from session.get('http://user:pass@example.com',
+                                   auth=aiohttp.BasicAuth('user2', 'pass2'))
+    finally:
+        yield from session.close()

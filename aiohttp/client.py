@@ -24,7 +24,8 @@ from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
-                      deprecated_noop, proxies_from_env, sentinel)
+                      deprecated_noop, proxies_from_env, sentinel,
+                      strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -193,15 +194,10 @@ class ClientSession:
         headers = self._prepare_headers(headers)
         proxy_headers = self._prepare_headers(proxy_headers)
 
-        if auth is None:
-            auth = self._default_auth
-        # It would be confusing if we support explicit Authorization header
-        # with `auth` argument
-        if (headers is not None and
-                auth is not None and
-                hdrs.AUTHORIZATION in headers):
-            raise ValueError("Can't combine `Authorization` header with "
-                             "`auth` argument")
+        try:
+            url = URL(url)
+        except ValueError:
+            raise InvalidURL(url)
 
         skip_headers = set(self._skip_auto_headers)
         if skip_auto_headers is not None:
@@ -213,11 +209,6 @@ class ClientSession:
                 proxy = URL(proxy)
             except ValueError:
                 raise InvalidURL(url)
-
-        try:
-            url = URL(url)
-        except ValueError:
-            raise InvalidURL(url)
 
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
@@ -231,6 +222,24 @@ class ClientSession:
         try:
             with timer:
                 while True:
+                    url, auth_from_url = strip_auth_from_url(url)
+                    if auth and auth_from_url:
+                        raise ValueError("Cannot combine AUTH argument with "
+                                         "credentials encoded in URL")
+
+                    if auth is None:
+                        auth = auth_from_url
+                    if auth is None:
+                        auth = self._default_auth
+                    # It would be confusing if we support explicit
+                    # Authorization header with auth argument
+                    if (headers is not None and
+                            auth is not None and
+                            hdrs.AUTHORIZATION in headers):
+                        raise ValueError("Cannot combine AUTHORIZATION header "
+                                         "with AUTH argument or credentials "
+                                         "encoded in URL")
+
                     url = url.with_fragment(None)
                     cookies = self._cookie_jar.filter_cookies(url)
 
