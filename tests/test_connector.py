@@ -1174,6 +1174,49 @@ def test_force_close_and_explicit_keep_alive(loop):
 
 
 @asyncio.coroutine
+def test_error_on_connection(loop):
+    conn = aiohttp.BaseConnector(limit=1, loop=loop)
+
+    req = mock.Mock()
+    req.connection_key = 'key'
+    proto = mock.Mock()
+    i = 0
+
+    fut = helpers.create_future(loop=loop)
+    exc = OSError()
+
+    @asyncio.coroutine
+    def create_connection(req):
+        nonlocal i
+        i += 1
+        if i == 1:
+            yield from fut
+            raise exc
+        elif i == 2:
+            return proto
+
+    conn._create_connection = create_connection
+
+    t1 = asyncio.ensure_future(conn.connect(req))
+    t2 = asyncio.ensure_future(conn.connect(req))
+    yield from asyncio.sleep(0, loop=loop)
+    assert not t1.done()
+    assert not t2.done()
+    assert len(conn._acquired_per_host['key']) == 1
+
+    fut.set_result(None)
+    with pytest.raises(OSError):
+        yield from t1
+
+    ret = yield from t2
+    assert len(conn._acquired_per_host['key']) == 1
+
+    assert ret._key == 'key'
+    assert ret.protocol == proto
+    assert proto in conn._acquired
+
+
+@asyncio.coroutine
 def test_tcp_connector(test_client, loop):
     @asyncio.coroutine
     def handler(request):
