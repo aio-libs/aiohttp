@@ -51,11 +51,14 @@ ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
 class ClientRequest:
-
-    GET_METHODS = {hdrs.METH_GET, hdrs.METH_HEAD, hdrs.METH_OPTIONS}
+    GET_METHODS = {
+        hdrs.METH_GET,
+        hdrs.METH_HEAD,
+        hdrs.METH_OPTIONS,
+        hdrs.METH_TRACE,
+    }
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
-    ALL_METHODS = GET_METHODS.union(POST_METHODS).union(
-        {hdrs.METH_DELETE, hdrs.METH_TRACE})
+    ALL_METHODS = GET_METHODS.union(POST_METHODS).union({hdrs.METH_DELETE})
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: '*/*',
@@ -129,7 +132,8 @@ class ClientRequest:
         self.update_fingerprint(fingerprint)
 
         self.update_body_from_data(data)
-        self.update_transfer_encoding()
+        if data or self.method not in self.GET_METHODS:
+            self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
     @property

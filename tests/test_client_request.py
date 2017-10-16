@@ -264,7 +264,7 @@ def test_skip_default_useragent_header(make_request):
 
 
 def test_headers(make_request):
-    req = make_request('get', 'http://python.org/',
+    req = make_request('post', 'http://python.org/',
                        headers={'Content-Type': 'text/plain'})
 
     assert 'CONTENT-TYPE' in req.headers
@@ -273,7 +273,7 @@ def test_headers(make_request):
 
 
 def test_headers_list(make_request):
-    req = make_request('get', 'http://python.org/',
+    req = make_request('post', 'http://python.org/',
                        headers=[('Content-Type', 'text/plain')])
     assert 'CONTENT-TYPE' in req.headers
     assert req.headers['CONTENT-TYPE'] == 'text/plain'
@@ -529,16 +529,16 @@ def test_connection_header(loop, conn):
 def test_no_content_length(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
     resp = req.send(conn)
-    assert '0' == req.headers.get('CONTENT-LENGTH')
+    assert req.headers.get('CONTENT-LENGTH') is None
     yield from req.close()
     resp.close()
 
 
 @asyncio.coroutine
-def test_no_content_length2(loop, conn):
+def test_no_content_length_head(loop, conn):
     req = ClientRequest('head', URL('http://python.org'), loop=loop)
     resp = req.send(conn)
-    assert '0' == req.headers.get('CONTENT-LENGTH')
+    assert req.headers.get('CONTENT-LENGTH') is None
     yield from req.close()
     resp.close()
 
@@ -586,7 +586,7 @@ def test_content_type_skip_auto_header_form(loop, conn):
 
 
 def test_content_type_auto_header_content_length_no_skip(loop, conn):
-    req = ClientRequest('get', URL('http://python.org'),
+    req = ClientRequest('post', URL('http://python.org'),
                         data=io.BytesIO(b'hey'),
                         skip_auto_headers={'Content-Length'},
                         loop=loop)
@@ -645,6 +645,7 @@ def test_pass_falsy_data_file(loop, tmpdir):
     yield from req.close()
 
 
+# Elasticsearch API requires to send request body with GET-requests
 @asyncio.coroutine
 def test_get_with_data(loop):
     for meth in ClientRequest.GET_METHODS:
@@ -673,7 +674,7 @@ def test_bytes_data(loop, conn):
 
 @asyncio.coroutine
 def test_content_encoding(loop, conn):
-    req = ClientRequest('get', URL('http://python.org/'), data='foo',
+    req = ClientRequest('post', URL('http://python.org/'), data='foo',
                         compress='deflate', loop=loop)
     with mock.patch('aiohttp.client_reqrep.PayloadWriter') as m_writer:
         resp = req.send(conn)
@@ -687,7 +688,7 @@ def test_content_encoding(loop, conn):
 
 @asyncio.coroutine
 def test_content_encoding_dont_set_headers_if_no_body(loop, conn):
-    req = ClientRequest('get', URL('http://python.org/'),
+    req = ClientRequest('post', URL('http://python.org/'),
                         compress='deflate', loop=loop)
     with mock.patch('aiohttp.client_reqrep.http'):
         resp = req.send(conn)
@@ -700,7 +701,7 @@ def test_content_encoding_dont_set_headers_if_no_body(loop, conn):
 @asyncio.coroutine
 def test_content_encoding_header(loop, conn):
     req = ClientRequest(
-        'get', URL('http://python.org/'), data='foo',
+        'post', URL('http://python.org/'), data='foo',
         headers={'Content-Encoding': 'deflate'}, loop=loop)
     with mock.patch('aiohttp.client_reqrep.PayloadWriter') as m_writer:
         resp = req.send(conn)
@@ -714,7 +715,7 @@ def test_content_encoding_header(loop, conn):
 @asyncio.coroutine
 def test_compress_and_content_encoding(loop, conn):
     with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org/'), data='foo',
+        ClientRequest('post', URL('http://python.org/'), data='foo',
                       headers={'content-encoding': 'deflate'},
                       compress='deflate', loop=loop)
 
@@ -722,7 +723,7 @@ def test_compress_and_content_encoding(loop, conn):
 @asyncio.coroutine
 def test_chunked(loop, conn):
     req = ClientRequest(
-        'get', URL('http://python.org/'),
+        'post', URL('http://python.org/'),
         headers={'TRANSFER-ENCODING': 'gzip'}, loop=loop)
     resp = req.send(conn)
     assert 'gzip' == req.headers['TRANSFER-ENCODING']
@@ -733,7 +734,7 @@ def test_chunked(loop, conn):
 @asyncio.coroutine
 def test_chunked2(loop, conn):
     req = ClientRequest(
-        'get', URL('http://python.org/'),
+        'post', URL('http://python.org/'),
         headers={'Transfer-encoding': 'chunked'}, loop=loop)
     resp = req.send(conn)
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
@@ -744,7 +745,7 @@ def test_chunked2(loop, conn):
 @asyncio.coroutine
 def test_chunked_explicit(loop, conn):
     req = ClientRequest(
-        'get', URL('http://python.org/'), chunked=True, loop=loop)
+        'post', URL('http://python.org/'), chunked=True, loop=loop)
     with mock.patch('aiohttp.client_reqrep.PayloadWriter') as m_writer:
         resp = req.send(conn)
 
@@ -758,7 +759,7 @@ def test_chunked_explicit(loop, conn):
 def test_chunked_length(loop, conn):
     with pytest.raises(ValueError):
         ClientRequest(
-            'get', URL('http://python.org/'),
+            'post', URL('http://python.org/'),
             headers={'CONTENT-LENGTH': '1000'}, chunked=True, loop=loop)
 
 
@@ -766,7 +767,7 @@ def test_chunked_length(loop, conn):
 def test_chunked_transfer_encoding(loop, conn):
     with pytest.raises(ValueError):
         ClientRequest(
-            'get', URL('http://python.org/'),
+            'post', URL('http://python.org/'),
             headers={'TRANSFER-ENCODING': 'chunked'}, chunked=True, loop=loop)
 
 
