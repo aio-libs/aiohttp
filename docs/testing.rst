@@ -391,6 +391,9 @@ conditions that hard to reproduce on real server::
        by the multidict.CIMultiDict constructor.
    :type headers: dict, multidict.CIMultiDict, list of pairs
 
+   :param match_info: mapping containing the info to match with url parameters.
+   :type match_info: dict
+
    :param version: namedtuple with encoded HTTP version
    :type version: aiohttp.protocol.HttpVersion
 
