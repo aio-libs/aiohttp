@@ -565,7 +565,8 @@ def make_mocked_request(method, path, headers=None, *,
                   protocol, payload_writer, task, loop,
                   client_max_size=client_max_size)
 
-    match_info = UrlMappingMatchInfo({} if match_info is sentinel else match_info, mock.Mock())
+    match_info = UrlMappingMatchInfo(
+        {} if match_info is sentinel else match_info, mock.Mock())
     match_info.add_app(app)
     req._match_info = match_info
 
