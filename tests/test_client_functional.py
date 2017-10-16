@@ -2203,7 +2203,7 @@ def test_chunked_deprecated(loop, test_client):
     client = yield from test_client(app)
 
     with pytest.warns(DeprecationWarning):
-        yield from client.get('/', chunked=1024)
+        yield from client.post('/', chunked=1024)
 
 
 @asyncio.coroutine

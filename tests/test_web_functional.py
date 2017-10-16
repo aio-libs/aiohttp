@@ -700,10 +700,10 @@ def test_empty_content_for_query_without_body(loop, test_client):
         return web.Response()
 
     app = web.Application()
-    app.router.add_get('/', handler)
+    app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get('/')
+    resp = yield from client.post('/')
     assert 200 == resp.status
 
 
@@ -767,12 +767,12 @@ def test_large_header_allowed(loop, test_client, test_server):
         return web.Response()
 
     app = web.Application()
-    app.router.add_get('/', handler)
+    app.router.add_post('/', handler)
     server = yield from test_server(app, max_field_size=81920)
     client = yield from test_client(server)
 
     headers = {'Long-Header': 'ab' * 8129}
-    resp = yield from client.get('/', headers=headers)
+    resp = yield from client.post('/', headers=headers)
     assert 200 == resp.status
 
 
@@ -997,7 +997,7 @@ def test_bad_request_payload(loop, test_client):
 
     @asyncio.coroutine
     def handler(request):
-        assert request.method == 'GET'
+        assert request.method == 'POST'
 
         with pytest.raises(aiohttp.web.RequestPayloadError):
             yield from request.content.read()
@@ -1005,10 +1005,10 @@ def test_bad_request_payload(loop, test_client):
         return web.Response()
 
     app = web.Application()
-    app.router.add_get('/', handler)
+    app.router.add_post('/', handler)
     client = yield from test_client(app)
 
-    resp = yield from client.get(
+    resp = yield from client.post(
         '/', data=b'test', headers={'content-encoding': 'gzip'})
     assert 200 == resp.status
 
