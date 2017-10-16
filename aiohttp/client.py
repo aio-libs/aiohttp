@@ -331,6 +331,10 @@ class ClientSession:
                         elif not scheme:
                             r_url = url.join(r_url)
 
+                        if url.origin() != r_url.origin():
+                            auth = None
+                            headers.pop(hdrs.AUTHORIZATION)
+
                         url = r_url
                         params = None
                         resp.release()
