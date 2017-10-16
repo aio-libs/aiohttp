@@ -333,7 +333,7 @@ class ClientSession:
 
                         if url.origin() != r_url.origin():
                             auth = None
-                            headers.pop(hdrs.AUTHORIZATION)
+                            headers.pop(hdrs.AUTHORIZATION, None)
 
                         url = r_url
                         params = None
