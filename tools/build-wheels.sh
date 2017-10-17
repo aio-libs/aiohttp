@@ -26,13 +26,20 @@ done
 echo
 echo
 echo "Bundle external shared libraries into the wheels"
-for whl in /io/dist/${package_name}*${arch}.whl; do
+for whl in /io/dist/${package_name}-*-linux_${arch}.whl; do
     echo "Repairing $whl..."
     auditwheel repair "$whl" -w /io/dist/
 done
 
+echo
+echo
 echo "Cleanup OS specific wheels"
 rm -fv /io/dist/*-linux_*.whl
+
+echo
+echo
+echo "Cleanup non-$package_name wheels"
+find /io/dist -maxdepth 1 -type f ! -path '/io/dist/'"$package_name"'-*-manylinux1_${arch}.whl' -exec rm -fv {} \;
 
 echo
 echo
@@ -43,7 +50,7 @@ ls /io/dist
 for PYTHON in ${PYTHON_VERSIONS}; do
     echo
     echo -n "Test $PYTHON: "
-    /opt/python/${PYTHON}/bin/python -c "import platform;print(platform.platform())"
+    /opt/python/${PYTHON}/bin/python -c "import platform; print('Building wheel for {platform} platform.'.format(platform=platform.platform()))"
     /opt/python/${PYTHON}/bin/pip install -r /io/requirements/ci-wheel.txt
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f file:///io/dist
     /opt/python/${PYTHON}/bin/py.test /io/tests
