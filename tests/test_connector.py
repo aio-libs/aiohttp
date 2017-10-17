@@ -1217,6 +1217,57 @@ def test_error_on_connection(loop):
 
 
 @asyncio.coroutine
+def test_error_on_connection_with_cancelled_waiter(loop):
+    conn = aiohttp.BaseConnector(limit=1, loop=loop)
+
+    req = mock.Mock()
+    req.connection_key = 'key'
+    proto = mock.Mock()
+    i = 0
+
+    fut1 = helpers.create_future(loop=loop)
+    fut2 = helpers.create_future(loop=loop)
+    exc = OSError()
+
+    @asyncio.coroutine
+    def create_connection(req):
+        nonlocal i
+        i += 1
+        if i == 1:
+            yield from fut1
+            raise exc
+        if i == 2:
+            yield from fut2
+        elif i == 3:
+            return proto
+
+    conn._create_connection = create_connection
+
+    t1 = helpers.ensure_future(conn.connect(req), loop=loop)
+    t2 = helpers.ensure_future(conn.connect(req), loop=loop)
+    t3 = helpers.ensure_future(conn.connect(req), loop=loop)
+    yield from asyncio.sleep(0, loop=loop)
+    assert not t1.done()
+    assert not t2.done()
+    assert len(conn._acquired_per_host['key']) == 1
+
+    fut1.set_result(None)
+    fut2.cancel()
+    with pytest.raises(OSError):
+        yield from t1
+
+    with pytest.raises(asyncio.CancelledError):
+        yield from t2
+
+    ret = yield from t3
+    assert len(conn._acquired_per_host['key']) == 1
+
+    assert ret._key == 'key'
+    assert ret.protocol == proto
+    assert proto in conn._acquired
+
+
+@asyncio.coroutine
 def test_tcp_connector(test_client, loop):
     @asyncio.coroutine
     def handler(request):

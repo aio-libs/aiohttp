@@ -375,10 +375,13 @@ class BaseConnector(object):
             # This connection will now count towards the limit.
             waiters = self._waiters[key]
             waiters.append(fut)
-            yield from fut
-            waiters.remove(fut)
-            if not waiters:
-                del self._waiters[key]
+            try:
+                yield from fut
+            finally:
+                # remove a waiter even if it was cancelled
+                waiters.remove(fut)
+                if not waiters:
+                    del self._waiters[key]
 
         proto = self._get(key)
         if proto is None:
