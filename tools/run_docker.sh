@@ -35,5 +35,3 @@ do
 
     dock_ext_args=""  # Reset docker args, just in case
 done
-
-find dist -type f -not -name "*aiohttp*" | xargs rm -f
