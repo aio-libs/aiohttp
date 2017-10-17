@@ -26,7 +26,7 @@ do
     echo
     echo
     arch_pull_pid=${docker_pull_pids[$arch]}
-    echo waiting for docker pull pid $arch_pull_pid to complete downloading container for $arch arch...
+    echo Waiting for docker pull PID $arch_pull_pid to complete downloading container for $arch arch...
     wait $arch_pull_pid  # await for docker image for current arch to be pulled from hub
     [ $arch == "i686" ] && dock_ext_args="linux32"
 
