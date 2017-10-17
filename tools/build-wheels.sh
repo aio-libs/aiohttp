@@ -1,5 +1,10 @@
 #!/bin/bash
-set -e
+if [ -n "$DEBUG" ]
+then
+  set -x
+fi
+set -euo pipefail
+# ref: https://coderwall.com/p/fkfaqq/safer-bash-scripts-with-set-euxo-pipefail
 
 PYTHON_VERSIONS="cp34-cp34m cp35-cp35m cp36-cp36m"
 
