@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 package_name="$1"
 if [ -z "$package_name" ]
 then
@@ -33,3 +35,5 @@ do
 
     dock_ext_args=""  # Reset docker args, just in case
 done
+
+find dist -not -name "*aiohttp*" -delete
