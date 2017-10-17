@@ -22,7 +22,11 @@ cimport cython
 from . cimport _cparser as cparser
 
 
-__all__ = ('HttpRequestParserC', 'HttpResponseMessageC', 'parse_url')
+__all__ = ('HttpRequestParserC', 'HttpResponseMessageC', 'parse_url',
+           'HTTP_PARSER_STRICT')
+
+
+HTTP_PARSER_STRICT = cparser.HTTP_PARSER_STRICT
 
 
 @cython.internal

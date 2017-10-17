@@ -2,6 +2,8 @@ from libc.stdint cimport uint16_t, uint32_t, uint64_t
 
 
 cdef extern from "../vendor/http-parser/http_parser.h":
+    const int HTTP_PARSER_STRICT = HTTP_PARSER_STRICT
+
     ctypedef int (*http_data_cb) (http_parser*,
                                   const char *at,
                                   size_t length) except -1
