@@ -375,10 +375,13 @@ class BaseConnector(object):
             # This connection will now count towards the limit.
             waiters = self._waiters[key]
             waiters.append(fut)
-            yield from fut
-            waiters.remove(fut)
-            if not waiters:
-                del self._waiters[key]
+            try:
+                yield from fut
+            finally:
+                # remove a waiter even if it was cancelled
+                waiters.remove(fut)
+                if not waiters:
+                    del self._waiters[key]
 
         proto = self._get(key)
         if proto is None:
@@ -390,6 +393,13 @@ class BaseConnector(object):
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
+            except:
+                # signal to waiter
+                for waiter in self._waiters[key]:
+                    if not waiter.done():
+                        waiter.set_result(None)
+                        break
+                raise
             finally:
                 if not self._closed:
                     self._acquired.remove(placeholder)
