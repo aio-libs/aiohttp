@@ -494,6 +494,7 @@ def _create_transport(sslcontext=None):
 
 
 def make_mocked_request(method, path, headers=None, *,
+                        match_info=sentinel,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
                         writer=sentinel,
@@ -564,7 +565,8 @@ def make_mocked_request(method, path, headers=None, *,
                   protocol, payload_writer, task, loop,
                   client_max_size=client_max_size)
 
-    match_info = UrlMappingMatchInfo({}, mock.Mock())
+    match_info = UrlMappingMatchInfo(
+        {} if match_info is sentinel else match_info, mock.Mock())
     match_info.add_app(app)
     req._match_info = match_info
 

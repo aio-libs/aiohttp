@@ -255,6 +255,11 @@ def test_make_mocked_request_app():
     assert req.app is app
 
 
+def test_make_mocked_request_match_info():
+    req = make_mocked_request('GET', '/', match_info={'a': '1', 'b': '2'})
+    assert req.match_info == {'a': '1', 'b': '2'}
+
+
 def test_make_mocked_request_content():
     payload = mock.Mock()
     req = make_mocked_request('GET', '/', payload=payload)
