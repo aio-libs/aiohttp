@@ -141,6 +141,7 @@ jobs:
   allow_failures:
   - python: nightly
 
+  include:
   - <<: *_doc_base
     env:
     - docs
