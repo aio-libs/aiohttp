@@ -369,6 +369,7 @@ conditions that hard to reproduce on real server::
                                   version=HttpVersion(1, 1), \
                                   closing=False, \
                                   app=None, \
+                                  match_info=sentinel, \
                                   reader=sentinel, \
                                   writer=sentinel, \
                                   transport=sentinel, \
@@ -390,6 +391,9 @@ conditions that hard to reproduce on real server::
    :param headers: mapping containing the headers. Can be anything accepted
        by the multidict.CIMultiDict constructor.
    :type headers: dict, multidict.CIMultiDict, list of pairs
+
+   :param match_info: mapping containing the info to match with url parameters.
+   :type match_info: dict
 
    :param version: namedtuple with encoded HTTP version
    :type version: aiohttp.protocol.HttpVersion
@@ -418,6 +422,8 @@ conditions that hard to reproduce on real server::
 
    :return: :class:`aiohttp.web.Request` object.
 
+   .. versionadded:: 2.3
+      *match_info* parameter.
 
 .. _aiohttp-testing-writing-testable-services:
 
