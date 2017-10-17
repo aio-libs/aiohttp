@@ -23,8 +23,11 @@ try:
     from aiohttp import _http_parser
     REQUEST_PARSERS.append(_http_parser.HttpRequestParserC)
     RESPONSE_PARSERS.append(_http_parser.HttpResponseParserC)
+    HAS_C_PARSER = True
+    HTTP_PARSER_STRICT = _http_parser.HTTP_PARSER_STRICT == 1
 except ImportError:  # pragma: no cover
-    pass
+    HAS_C_PARSER = False
+    HTTP_PARSER_STRICT = None
 
 
 @pytest.fixture
@@ -627,6 +630,29 @@ def test_partial_url(parser):
 
     assert msg.method == 'GET'
     assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert payload.is_eof()
+
+
+@pytest.mark.skipif("not HAS_C_PARSER or not HTTP_PARSER_STRICT")
+def test_url_parse_in_strict_mode(loop, protocol):
+    parser = _http_parser.HttpRequestParserC(protocol, loop, 8190, 32768, 8190)
+    payload = 'GET /test/тест HTTP/1.1\r\n\r\n'.encode('utf-8')
+    with pytest.raises(http_exceptions.InvalidURLError):
+        assert parser.feed_data(payload) is None
+
+
+@pytest.mark.skipif("HTTP_PARSER_STRICT")
+def test_url_parse_non_strict_mode(loop, protocol):
+    parser = _http_parser.HttpRequestParserC(protocol, loop, 8190, 32768, 8190)
+    payload = 'GET /test/тест HTTP/1.1\r\n\r\n'.encode('utf-8')
+    messages, upgrade, tail = parser.feed_data(payload)
+    assert len(messages) == 1
+
+    msg, payload = messages[0]
+
+    assert msg.method == 'GET'
+    assert msg.path == '/test/тест'
     assert msg.version == (1, 1)
     assert payload.is_eof()
 
