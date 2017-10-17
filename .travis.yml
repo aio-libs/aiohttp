@@ -68,6 +68,12 @@ jobs:
 
   - <<: *_lint_base
     env:
+    - flake8
+    script:
+    - flake8 aiohttp --exclude=aiohttp/backport_cookies.py examples tests demos
+
+  - <<: *_lint_base
+    env:
     - dist setup check
     install:
     - *upgrade_python_toolset
