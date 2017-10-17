@@ -51,6 +51,29 @@ _helpers:
     apt:
       packages:
       - libenchant-dev
+- &generic_deploy_base
+  stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
+  <<: *_mainstream_python_base
+  deploy: &deploy_step
+    provider: pypi
+    # `skip_cleanup: true` is required to preserve binary wheels, built
+    # inside of manylinux1 docker container during `script` step above.
+    skip_cleanup: true
+    user: andrew.svetlov
+    password:
+      secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
+    # Although Travis CI instructs `setup.py` to build source distribution,
+    # which is default value for distribution option (`distribution: sdist`),
+    # it will also upload all wheels we've previously built in manylinux1
+    # docker container using `twine upload -r pypi dist/*` command.
+    # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
+    # it is default that Travis PYPI provider has `skip_upload_docs: true`
+    # set by default.
+    # Besides above, we don't do cleanup of `dist/*`, because it's being done
+    # by Travis CI PYPI deployment provider after upload, unconditionally.
+    on:
+      tags: true
+      all_branches: true
 
 # doesn't work on MacOSX out of the box -- the system has no Python installed
 # there's a workaround to use `language: generic` and install it, but it's slow
@@ -82,11 +105,10 @@ jobs:
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
-  - stage: deploy to PyPI
-    <<: *_mainstream_python_base
+  # Build and deploy manylinux1 binary wheels and source distribution
+  - <<: *generic_deploy_base
     <<: *_reset_steps
-    # This prevents job from appearing in test plan unless commit is tagged:
-    if: tag IS present
+    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
     dist: trusty
     group: edge
     services:
@@ -122,6 +144,7 @@ stages:
 - name: *deploy_stage_name
   # This will prevent deploy unless it's a tagged commit:
   if: tag IS present
+
 
 cache: pip
 
