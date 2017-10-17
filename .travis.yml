@@ -13,8 +13,8 @@ python:
 - nightly
 
 install:
-- &upgrade_python_toolset pip install --upgrade pip setuptools wheel
-- pip install -U -r requirements/ci.txt
+- &upgrade_python_toolset pip install --upgrade pip wheel setuptools
+- pip install -r requirements/ci.txt
 
 script:
 - make cov-ci-no-ext
