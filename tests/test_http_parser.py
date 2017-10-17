@@ -637,6 +637,19 @@ def test_partial_url(parser):
     assert payload.is_eof()
 
 
+def test_url_parse_non_strict_mode(parser):
+    payload = 'GET /test/тест HTTP/1.1\r\n\r\n'.encode('utf-8')
+    messages, upgrade, tail = parser.feed_data(payload)
+    assert len(messages) == 1
+
+    msg, payload = messages[0]
+
+    assert msg.method == 'GET'
+    assert msg.path == '/test/тест'
+    assert msg.version == (1, 1)
+    assert payload.is_eof()
+
+
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):

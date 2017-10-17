@@ -17,10 +17,13 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
+
 extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
               Extension('aiohttp._http_parser',
                         ['aiohttp/_http_parser' + ext,
-                         'vendor/http-parser/http_parser.c'],),
+                         'vendor/http-parser/http_parser.c'],
+                        define_macros=[('HTTP_PARSER_STRICT', 0)],
+                        ),
               Extension('aiohttp._frozenlist',
                         ['aiohttp/_frozenlist' + ext])]
 

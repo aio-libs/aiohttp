@@ -50,7 +50,7 @@ cov-dev: .develop
 	@echo "Run without extensions"
 	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
 	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
-        @echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/coverage/index.html"
 
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
