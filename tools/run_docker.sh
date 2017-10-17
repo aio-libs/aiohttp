@@ -19,7 +19,7 @@ do
 done
 
 echo Creating dist folder with privileges of host-machine user
-mkdir dist  # This is required to be created with host-machine user privileges
+mkdir -p dist  # This is required to be created with host-machine user privileges
 
 for arch in x86_64 i686
 do
@@ -36,4 +36,4 @@ do
     dock_ext_args=""  # Reset docker args, just in case
 done
 
-find dist -not -name "*aiohttp*" -delete
+find dist -type f -not -name "*aiohttp*" | xargs rm -f

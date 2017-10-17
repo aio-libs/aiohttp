@@ -47,4 +47,7 @@ for PYTHON in ${PYTHON_VERSIONS}; do
     /opt/python/${PYTHON}/bin/pip install -r /io/requirements/ci-wheel.txt
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f file:///io/dist
     /opt/python/${PYTHON}/bin/py.test /io/tests
+
+    # clear python cache
+    find /io -name __pycache__ | xargs rm -rf
 done
