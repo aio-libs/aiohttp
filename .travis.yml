@@ -20,10 +20,6 @@ script:
 - make cov-ci-no-ext
 - make cov-ci-aio-debug
 - make cov-ci-run
-- python setup.py check -rm
-- if python -c "import sys; sys.exit(sys.version_info < (3,6))"; then
-      python setup.py check -s;
-  fi
 
 after_success:
 - codecov
@@ -37,6 +33,13 @@ _helpers:
   install: skip
   script: skip
   after_success: []
+- &_lint_base
+  stage: &doc_stage_name docs, linting and pre-test checks
+  <<: *_mainstream_python_base
+  <<: *_reset_steps
+  install:
+  - *upgrade_python_toolset
+  - pip install -U -r requirements/dev.txt
 - &_doc_base
   stage: doc
   <<: *_mainstream_python_base
@@ -62,6 +65,15 @@ jobs:
   - <<: *_doc_base
     script:
     - make doc-spelling
+
+  - <<: *_lint_base
+    env:
+    - dist setup check
+    install:
+    - *upgrade_python_toolset
+    - pip install docutils
+    script:
+    - python setup.py check --metadata --restructuredtext --strict --verbose
 
   - stage: deploy to PyPI
     <<: *_mainstream_python_base
@@ -94,6 +106,15 @@ jobs:
       on:
         tags: true
         all_branches: true
+
+stages:
+- *doc_stage_name
+- test
+- name: *stage_test_osx_name
+  if: type IN (api, cron) OR tag IS present
+- name: *deploy_stage_name
+  # This will prevent deploy unless it's a tagged commit:
+  if: tag IS present
 
 cache: pip
 
