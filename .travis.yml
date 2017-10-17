@@ -51,6 +51,32 @@ _helpers:
     apt:
       packages:
       - libenchant-dev
+- &osx_python_base
+  stage: &stage_test_osx_name test under OS X (last chance to fail before deploy available)
+  os: osx
+  language: generic
+  python: *pypy3
+  env:
+  - &env_pypy3 PYTHON_VERSION=pypy3.5-5.8.0
+  - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
+  - &env_path PATH="$PYENV_ROOT/bin:$PATH"
+  before_install:
+  - brew update
+  - brew install readline xz
+  - &ensure_pyenv_installed |
+    if [ ! -f "$PYENV_ROOT/bin/pyenv" ]
+    then
+      rm -rf "$PYENV_ROOT"
+      curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash
+    fi
+    pyenv update
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
+  - &install_python pyenv install --skip-existing --keep --verbose "$PYTHON_VERSION"
+  - &switch_python pyenv shell "$PYTHON_VERSION"
+  - &python_version python --version
+  before_cache:
+  - brew --cache
 - &generic_deploy_base
   stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
   <<: *_mainstream_python_base
@@ -104,6 +130,44 @@ jobs:
     - pip install docutils
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
+
+  - <<: *osx_python_base
+    python: 3.4.2
+    env:
+    - &env_py34 PYTHON_VERSION=3.4.2
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_python_base
+    python: 3.4.3
+    env:
+    - &env_py34 PYTHON_VERSION=3.4.3
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_python_base
+    python: 3.5.3
+    env:
+    - &env_py35 PYTHON_VERSION=3.5.3
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_python_base
+    python: *mainstream_python
+    env:
+    - &env_py36 PYTHON_VERSION=3.6.3
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_python_base
+    python: *mainstream_python
+    env:
+    - PYTHON_VERSION=3.6-dev
+    - *env_pyenv
+    - *env_path
+  - <<: *osx_python_base
+    python: nightly
+    env:
+    - PYTHON_VERSION=3.7-dev
+    - *env_pyenv
+    - *env_path
+  # pypy3.5-5.8.0 fails under OS X because it's unsupported
 
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
