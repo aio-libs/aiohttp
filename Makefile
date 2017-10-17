@@ -34,9 +34,6 @@ check_changes:
 	@./tools/check_changes.py
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes
-	# rebuild http-parser extention depending on environ flags
-	@HTTP_PARSER_STRICT=$(HTTP_PARSER_STRICT) python setup.py build_ext \
-		--inplace --force
 	@pip install -e .
 	@touch .develop
 
@@ -58,10 +55,6 @@ cov-dev: .develop
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
 	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
-cov-ci-http-parser-strict: HTTP_PARSER_STRICT = 1
-cov-ci-http-parser-strict: .develop
-	@echo "Run with http-parser built with strict mode"
-	@py.test --cov=aiohttp --cov-append tests
 cov-ci-aio-debug: .develop
 	@echo "Run in debug mode"
 	@PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests

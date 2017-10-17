@@ -16,7 +16,6 @@ install:
 
 script:
 - make cov-ci-no-ext
-- make cov-ci-http-parser-strict
 - make cov-ci-aio-debug
 - make cov-ci-run
 - python setup.py check -rm
