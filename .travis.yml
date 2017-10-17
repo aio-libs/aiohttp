@@ -41,9 +41,7 @@ _helpers:
   - *upgrade_python_toolset
   - pip install -U -r requirements/dev.txt
 - &_doc_base
-  stage: doc
-  <<: *_mainstream_python_base
-  <<: *_reset_steps
+  <<: *_lint_base
   install:
   - *upgrade_python_toolset
   - pip install -U -r requirements/dev.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
@@ -63,6 +61,8 @@ jobs:
   - python: nightly
 
   - <<: *_doc_base
+    env:
+    - docs
     script:
     - make doc-spelling
 
