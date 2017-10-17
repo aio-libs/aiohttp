@@ -1197,8 +1197,8 @@ def test_error_on_connection(loop):
 
     conn._create_connection = create_connection
 
-    t1 = asyncio.ensure_future(conn.connect(req))
-    t2 = asyncio.ensure_future(conn.connect(req))
+    t1 = helpers.ensure_future(conn.connect(req), loop=loop)
+    t2 = helpers.ensure_future(conn.connect(req), loop=loop)
     yield from asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()
