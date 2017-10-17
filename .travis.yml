@@ -140,6 +140,7 @@ jobs:
   fast_finish: true
   allow_failures:
   - python: nightly
+  - python: *pypy3
 
   include:
   - <<: *_doc_base
