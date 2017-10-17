@@ -1,27 +1,5 @@
 setuptools-git==1.2
 
 -r doc.txt
-pip==9.0.1
-flake8==3.4.1
-pyflakes==1.6.0
-coverage==4.4.1
-cchardet==2.1.1
-cython==0.27.1
-chardet==3.0.4
-isort==4.2.15
-tox==2.9.1
-multidict==3.3.0
-async-timeout==2.0.0
-pytest==3.2.3
-pytest-cov==2.5.1
-pytest-mock==1.6.3
-gunicorn==19.7.1
-twine==1.9.1
-yarl==0.13.0
-brotlipy==0.7.0
+-r ci-wheel.txt
 -e .
-
-# Using PEP 508 env markers to control dependency on runtimes:
-aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
-codecov==2.0.9; platform_system!="Windows"  # We only use it in Travis CI
-uvloop==0.8.1; python_version>="3.5" and platform_system!="Windows"  # MagicStack/uvloop#14

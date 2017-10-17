@@ -1,5 +1,6 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
+import os
 import pathlib
 import socket
 import ssl
@@ -217,8 +218,9 @@ def test__run_ok(worker, loop):
             yield from worker._run()
 
     worker.notify.assert_called_with()
-    worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                       worker)
+    if os.getppid() != 1:  # not Docker
+        worker.log.info.assert_called_with("Parent changed, shutting down: %s",
+                                           worker)
 
     args, kwargs = loop.create_server.call_args
     assert 'ssl' in kwargs
@@ -257,8 +259,9 @@ def test__run_ok_unix_socket(worker, loop):
             yield from worker._run()
 
     worker.notify.assert_called_with()
-    worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                       worker)
+    if os.getppid() != 1:  # not Docker
+        worker.log.info.assert_called_with("Parent changed, shutting down: %s",
+                                           worker)
 
     args, kwargs = loop.create_unix_server.call_args
     assert 'ssl' in kwargs
@@ -374,8 +377,9 @@ def test__run_ok_no_max_requests(worker, loop):
             yield from worker._run()
 
     worker.notify.assert_called_with()
-    worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                       worker)
+    if os.getppid() != 1:  # not Docker
+        worker.log.info.assert_called_with("Parent changed, shutting down: %s",
+                                           worker)
 
     args, kwargs = loop.create_server.call_args
     assert 'ssl' in kwargs

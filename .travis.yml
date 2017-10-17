@@ -77,7 +77,6 @@ jobs:
     - docker
     script:
     - ./tools/run_docker.sh "aiohttp"
-    - find dist -not -name "*aiohttp*" -delete
     deploy:
       provider: pypi
       # `skip_cleanup: true` is required to preserve binary wheels, built
