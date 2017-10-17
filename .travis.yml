@@ -160,7 +160,7 @@ jobs:
     - dist setup check
     install:
     - *upgrade_python_toolset
-    - pip install docutils
+    - pip install -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
