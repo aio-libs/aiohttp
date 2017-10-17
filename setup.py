@@ -17,10 +17,21 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
+if os.environ.get('HTTP_PARSER_STRICT') == '1':
+    HTTP_PARSER_STRICT = '1'
+elif os.environ.get('HTTP_PARSER_STRICT') == '0':
+    HTTP_PARSER_STRICT = '0'
+else:   # ignore invalid value, and use default -- non-strict mode.
+    HTTP_PARSER_STRICT = '0'
+
+
 extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
               Extension('aiohttp._http_parser',
                         ['aiohttp/_http_parser' + ext,
-                         'vendor/http-parser/http_parser.c'],),
+                         'vendor/http-parser/http_parser.c'],
+                        define_macros=[(
+                            'HTTP_PARSER_STRICT', HTTP_PARSER_STRICT)],
+                        ),
               Extension('aiohttp._frozenlist',
                         ['aiohttp/_frozenlist' + ext])]
 
