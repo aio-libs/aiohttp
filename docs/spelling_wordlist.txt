@@ -128,7 +128,7 @@ Locator
 login
 lookup
 lookups
-loseless
+lossless
 Mako
 manylinux
 metadata
