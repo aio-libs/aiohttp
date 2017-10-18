@@ -1,1 +1,0 @@
-Add example usage of on_startup and on_shutdown signals by creating and disposing an aiopg connection engine.

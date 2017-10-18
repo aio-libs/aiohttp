@@ -1,1 +1,0 @@
-Fix parsing the Forwarded header according to RFC 7239.

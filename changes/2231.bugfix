@@ -1,2 +1,0 @@
-Raise OSError on async DNS lookup if resolved domain is an alias for
-another one, which does not have an A or CNAME record.

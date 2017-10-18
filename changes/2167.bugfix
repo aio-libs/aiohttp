@@ -1,1 +1,0 @@
-Do not add `Content-Length: 0` to GET/HEAD/TRACE/OPTIONS requests by default.
