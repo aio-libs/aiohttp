@@ -12,8 +12,8 @@ HTTP client/server for :term:`asyncio` (:pep:`3156`).
 .. _Freenode: http://freenode.net
 
 
-Features
---------
+Key Features
+------------
 
 - Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
 - Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and

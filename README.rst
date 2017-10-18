@@ -21,8 +21,8 @@ Async http client/server framework
     :target: https://gitter.im/aio-libs/Lobby
     :alt: Chat on Gitter
 
-Features
-========
+Key Features
+============
 
 - Supports both client and server side of HTTP protocol.
 - Supports both client and server Web-Sockets out-of-the-box.
