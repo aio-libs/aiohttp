@@ -21,7 +21,7 @@ Changes
 Features
 --------
 
-- Add SSL related params to ClientSession.request (#1128)
+- Add SSL related params to `ClientSession.request` (#1128)
 - Make enable_compression work on HTTP/1.0 (#1828)
 - Deprecate registering synchronous web handlers (#1993)
 - Switch to `multidict 3.0`. All HTTP headers preserve casing now but compared
@@ -29,14 +29,14 @@ Features
 - Improvement for `normalize_path_middleware`. Added possibility to handle URLs
   with query string. (#1995)
 - Use towncrier for CHANGES.txt build (#1997)
-- Implement `trust_env=True` param in ClientSession. (#1998)
+- Implement `trust_env=True` param in `ClientSession`. (#1998)
 - Added variable to customize proxy headers (#2001)
 - Implement `router.add_routes` and router decorators. (#2004)
-- Deprecated BaseRequest.has_body in favour of BaseRequest.can_read_body
-  Added BaseRequest.body_exists attribute that stays static for the lifetime of
-  the request (#2005)
+- Deprecated `BaseRequest.has_body` in favor of
+  `BaseRequest.can_read_body` Added `BaseRequest.body_exists`
+  attribute that stays static for the lifetime of the request (#2005)
 - Provide `BaseRequest.loop` attribute (#2024)
-- Make _CoroGuard awaitable and fix `ClientSession.close` warning message
+- Make `_CoroGuard` awaitable and fix `ClientSession.close` warning message
   (#2026)
 - Responses to redirects without Location header are returned instead of
   raising a RuntimeError (#2030)
@@ -62,17 +62,17 @@ Features
   non-standard parameters are allowed (although this alone could be easily done
   in the previous parser). (#2173)
 - Don't require ssl module to run. aiohttp does not require SSL to function.
-  The codepaths involved with SSL will only be hit upon SSL usage. Raise
-  `RuntimeError` if https protocol is required but ssl module is not present.
+  The code paths involved with SSL will only be hit upon SSL usage. Raise
+  `RuntimeError` if HTTPS protocol is required but ssl module is not present.
   (#2221)
 - Accept coroutine fixtures in pytest plugin (#2223)
 - Call `shutdown_asyncgens` before event loop closing on Python 3.6. (#2227)
 - Speed up Signals when there are no receivers (#2229)
 - Raise `InvalidURL` instead of `ValueError` on fetches with invalid URL.
   (#2241)
-- Move DummyCookieJar into cookiejar.py (#2242)
-- run_app: Make print=None disable printing (#2260)
-- Support brotli encoding (generic-purpose lossless compression algorithm)
+- Move `DummyCookieJar` into `cookiejar.py` (#2242)
+- `run_app`: Make `print=None` disable printing (#2260)
+- Support `brotli` encoding (generic-purpose lossless compression algorithm)
   (#2270)
 - Add server support for WebSockets Per-Message Deflate. Add client option to
   add deflate compress header in WebSockets request header. If calling
@@ -82,8 +82,8 @@ Features
   `client.ws_connect`. (#2292)
 - Added `aiohttp.ClientConnectorSSLError` when connection fails due
   `ssl.SSLError` (#2294)
-- aiohttp.wep.Application.make_handler support access_log_class (#2315)
-- Build http-parser extension in non-strict mode by default. (#2332)
+- `aiohttp.web.Application.make_handler` support `access_log_class` (#2315)
+- Build HTTP parser extension in non-strict mode by default. (#2332)
 
 
 Bugfixes
@@ -91,34 +91,34 @@ Bugfixes
 
 - Clear auth information on redirecting to other domain (#1699)
 - Fix missing app.loop on startup hooks during tests (#2060)
-- Fix issue with synchronous session closing when using ClientSession as an
+- Fix issue with synchronous session closing when using `ClientSession` as an
   asynchronous context manager. (#2063)
-- Fix issue with CookieJar incorrectly expiring cookies in some edge cases.
+- Fix issue with `CookieJar` incorrectly expiring cookies in some edge cases.
   (#2084)
 - Force use of IPv4 during test, this will make tests run in a Docker container
   (#2104)
 - Warnings about unawaited coroutines now correctly point to the user's code.
   (#2106)
-- Fix issue with IndexError being raised by the StreamReader.iter_chunks()
+- Fix issue with `IndexError` being raised by the `StreamReader.iter_chunks()`
   generator. (#2112)
 - Support HTTP 308 Permanent redirect in client class. (#2114)
-- Fix FileResponse sending empty chunked body on 304. (#2143)
+- Fix `FileResponse` sending empty chunked body on 304. (#2143)
 - Do not add `Content-Length: 0` to GET/HEAD/TRACE/OPTIONS requests by default.
   (#2167)
 - Fix parsing the Forwarded header according to RFC 7239. (#2170)
 - Securely determining remote/scheme/host #2171 (#2171)
 - Fix header name parsing, if name is split into multiple lines (#2183)
-- Handle session close during connection, KeyError:
-  <aiohttp.connector._TransportPlaceholder> (#2193)
-- Fixes uncaught TypeError in `helpers.guess_filename` if `name` is not a
+- Handle session close during connection, `KeyError:
+  <aiohttp.connector._TransportPlaceholder>` (#2193)
+- Fixes uncaught `TypeError` in `helpers.guess_filename` if `name` is not a
   string (#2201)
 - Raise OSError on async DNS lookup if resolved domain is an alias for another
   one, which does not have an A or CNAME record. (#2231)
-- Fix incorrect warning in StreamReader. (#2251)
+- Fix incorrect warning in `StreamReader`. (#2251)
 - Properly clone state of web request (#2284)
 - Fix C HTTP parser for cases when status line is split into different TCP
   packets. (#2311)
-- Fix web.FileResponse overriding user supplied Content-Type (#2317)
+- Fix `web.FileResponse` overriding user supplied Content-Type (#2317)
 
 
 Improved Documentation
@@ -127,7 +127,7 @@ Improved Documentation
 - Add a note about possible performance degradation in `await resp.text()` if
   charset was not provided by `Content-Type` HTTP header. Pass explicit
   encoding to solve it. (#1811)
-- Drop disqus widget from documentation pages. (#2018)
+- Drop `disqus` widget from documentation pages. (#2018)
 - Add a graceful shutdown section to the client usage documentation. (#2039)
 - Document `connector_owner` parameter. (#2072)
 - Update the doc of web.Application (#2081)

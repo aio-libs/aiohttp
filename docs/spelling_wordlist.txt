@@ -28,6 +28,7 @@ basename
 BasicAuth
 BodyPartReader
 botocore
+Bugfixes
 builtin
 BytesIO
 cchardet
@@ -250,6 +251,7 @@ tp
 tuples
 UI
 un
+unawaited
 unicode
 unittest
 Unittest
