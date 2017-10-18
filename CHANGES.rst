@@ -17,9 +17,6 @@ Changes
 2.3.1 (2017-10-18)
 ==================
 
-Bugfixes
---------
-
 - Relax attribute lookup in warning about old-styled middleware (#2340)
 
 
