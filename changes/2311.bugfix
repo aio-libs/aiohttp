@@ -1,2 +1,0 @@
-Fix C HTTP parser for cases when status line is split into different
-TCP packets.

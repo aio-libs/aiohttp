@@ -1,4 +1,0 @@
-Drop %O format from logging, use %b instead.
-
-Drop %e format from logging, environment variables are not supported anymore.
-
