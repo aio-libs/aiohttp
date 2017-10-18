@@ -28,6 +28,7 @@ basename
 BasicAuth
 BodyPartReader
 botocore
+Bugfixes
 builtin
 BytesIO
 cchardet
@@ -127,6 +128,7 @@ Locator
 login
 lookup
 lookups
+lossless
 Mako
 manylinux
 metadata
@@ -250,6 +252,7 @@ tp
 tuples
 UI
 un
+unawaited
 unicode
 unittest
 Unittest
