@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 import pytest
 
@@ -235,7 +236,11 @@ def test_old_style_middleware(loop, test_client):
 
     assert len(warning_checker) == 1
     msg = str(warning_checker.list[0].message)
-    assert 'old-style middleware "middleware_factory" deprecated' in msg
+    assert re.match('^old-style middleware '
+                    '"<function test_old_style_middleware.<locals>.'
+                    'middleware_factory at 0x[0-9a-f]+>" '
+                    'deprecated, see #2252$',
+                    msg)
 
 
 @asyncio.coroutine
@@ -288,5 +293,106 @@ def test_mixed_middleware(loop, test_client):
         assert 'OK[new style 2][old style 2][new style 1][old style 1]' == txt
 
     assert len(w) == 2
-    assert 'old-style middleware "m_old2" deprecated' in str(w.list[0].message)
-    assert 'old-style middleware "m_old1" deprecated' in str(w.list[1].message)
+    tmpl = ('^old-style middleware '
+            '"<function test_mixed_middleware.<locals>.'
+            '{} at 0x[0-9a-f]+>" '
+            'deprecated, see #2252$')
+    p1 = tmpl.format('m_old1')
+    p2 = tmpl.format('m_old2')
+
+    assert re.match(p2, str(w.list[0].message))
+    assert re.match(p1, str(w.list[1].message))
+
+
+@asyncio.coroutine
+def test_old_style_middleware_class(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    class Middleware:
+        @asyncio.coroutine
+        def __call__(self, app, handler):
+            @asyncio.coroutine
+            def middleware(request):
+                resp = yield from handler(request)
+                assert 200 == resp.status
+                resp.set_status(201)
+                resp.text = resp.text + '[old style middleware]'
+                return resp
+            return middleware
+
+    with pytest.warns(DeprecationWarning) as warning_checker:
+        app = web.Application()
+        app.middlewares.append(Middleware())
+        app.router.add_route('GET', '/', handler)
+        client = yield from test_client(app)
+        resp = yield from client.get('/')
+        assert 201 == resp.status
+        txt = yield from resp.text()
+        assert 'OK[old style middleware]' == txt
+
+    assert len(warning_checker) == 1
+    msg = str(warning_checker.list[0].message)
+    assert re.match('^old-style middleware '
+                    '"<test_web_middleware.test_old_style_middleware_class.'
+                    '<locals>.Middleware object '
+                    'at 0x[0-9a-f]+>" deprecated, see #2252$', msg)
+
+
+@asyncio.coroutine
+def test_new_style_middleware_class(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    @web.middleware
+    class Middleware:
+        @asyncio.coroutine
+        def __call__(self, request, handler):
+            resp = yield from handler(request)
+            assert 200 == resp.status
+            resp.set_status(201)
+            resp.text = resp.text + '[new style middleware]'
+            return resp
+
+    with pytest.warns(None) as warning_checker:
+        app = web.Application()
+        app.middlewares.append(Middleware())
+        app.router.add_route('GET', '/', handler)
+        client = yield from test_client(app)
+        resp = yield from client.get('/')
+        assert 201 == resp.status
+        txt = yield from resp.text()
+        assert 'OK[new style middleware]' == txt
+
+    assert len(warning_checker) == 0
+
+
+@asyncio.coroutine
+def test_new_style_middleware_method(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    class Middleware:
+        @web.middleware
+        @asyncio.coroutine
+        def call(self, request, handler):
+            resp = yield from handler(request)
+            assert 200 == resp.status
+            resp.set_status(201)
+            resp.text = resp.text + '[new style middleware]'
+            return resp
+
+    with pytest.warns(None) as warning_checker:
+        app = web.Application()
+        app.middlewares.append(Middleware().call)
+        app.router.add_route('GET', '/', handler)
+        client = yield from test_client(app)
+        resp = yield from client.get('/')
+        assert 201 == resp.status
+        txt = yield from resp.text()
+        assert 'OK[new style middleware]' == txt
+
+    assert len(warning_checker) == 0
