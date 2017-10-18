@@ -1,5 +1,5 @@
 [tool.towncrier]
 package = "aiohttp"
 filename = "CHANGES.rst"
-directory = "changes/"
+directory = "CHANGES/"
 title_format = "{version} ({project_date})"
