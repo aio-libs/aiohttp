@@ -238,7 +238,7 @@ def test_old_style_middleware(loop, test_client):
     msg = str(warning_checker.list[0].message)
     assert re.match('^old-style middleware '
                     '"<function test_old_style_middleware.<locals>.'
-                    'middleware_factory at 0x[0-9a-f]+>" '
+                    'middleware_factory at 0x[0-9a-fA-F]+>" '
                     'deprecated, see #2252$',
                     msg)
 
@@ -295,7 +295,7 @@ def test_mixed_middleware(loop, test_client):
     assert len(w) == 2
     tmpl = ('^old-style middleware '
             '"<function test_mixed_middleware.<locals>.'
-            '{} at 0x[0-9a-f]+>" '
+            '{} at 0x[0-9a-fA-F]+>" '
             'deprecated, see #2252$')
     p1 = tmpl.format('m_old1')
     p2 = tmpl.format('m_old2')
@@ -337,7 +337,7 @@ def test_old_style_middleware_class(loop, test_client):
     assert re.match('^old-style middleware '
                     '"<test_web_middleware.test_old_style_middleware_class.'
                     '<locals>.Middleware object '
-                    'at 0x[0-9a-f]+>" deprecated, see #2252$', msg)
+                    'at 0x[0-9a-fA-F]+>" deprecated, see #2252$', msg)
 
 
 @asyncio.coroutine
