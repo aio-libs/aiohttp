@@ -1,1 +1,0 @@
-add more details to ``ClientConnectorError`` exceptions about the original error.

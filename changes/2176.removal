@@ -1,2 +1,0 @@
-Removed TimeService in favor of simple caching.
-TimeService also had a bug where it lost about 0.5 seconds per second.

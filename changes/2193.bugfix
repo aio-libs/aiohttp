@@ -1,1 +1,0 @@
-Handle session close during connection, KeyError: <aiohttp.connector._TransportPlaceholder>

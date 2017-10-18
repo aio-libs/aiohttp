@@ -1,3 +1,0 @@
-Add a note about possible performance degradation in `await
-resp.text()` if charset was not provided by `Content-Type` HTTP
-header. Pass explicit encoding to solve it.

@@ -1,4 +1,0 @@
-Simplify middleware
-
-So they are simple coroutines rather than coroutine factories
-returning coroutines.
