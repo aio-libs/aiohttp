@@ -1,3 +1,20 @@
+=======
+Changes
+=======
+
+..
+    You should *NOT* be adding new change log entries to this file, this
+    file is managed by towncrier. You *may* edit previous change logs to
+    fix problems like typo corrections or such.
+    To add a new change log entry, please see
+    https://pip.pypa.io/en/latest/development/#adding-a-news-entry
+    we named the news folder "changes".
+
+    WARNING: Don't drop the next directive!
+
+.. towncrier release notes start
+
+
 2.3.0 (2017-10-18)
 ==================
 
@@ -15,7 +32,7 @@ Features
 - Implement `trust_env=True` param in ClientSession. (#1998)
 - Added variable to customize proxy headers (#2001)
 - Implement `router.add_routes` and router decorators. (#2004)
-- - Deprecated BaseRequest.has_body in favour of BaseRequest.can_read_body -
+- Deprecated BaseRequest.has_body in favour of BaseRequest.can_read_body
   Added BaseRequest.body_exists attribute that stays static for the lifetime of
   the request (#2005)
 - Provide `BaseRequest.loop` attribute (#2024)
@@ -142,10 +159,6 @@ Misc
 
 - #2013, #2014, #2048, #2094, #2149, #2187, #2214, #2225, #2243, #2248
 
-
-=======
-Changes
-=======
 
 2.2.5 (2017-08-03)
 ==================
