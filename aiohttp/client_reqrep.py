@@ -8,7 +8,7 @@ import traceback
 import warnings
 from collections import namedtuple
 from hashlib import md5, sha1, sha256
-from http.cookies import CookieError, Morsel
+from http.cookies import CookieError, Morsel, SimpleCookie
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -18,7 +18,7 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL)
 from .formdata import FormData
-from .helpers import PY_35, HeadersMixin, SimpleCookie, TimerNoop, noop
+from .helpers import PY_35, HeadersMixin, TimerNoop, noop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import FlowControlStreamReader
@@ -462,7 +462,7 @@ class ClientRequest:
             self.method, path, self.version)
         writer.write_headers(status_line, self.headers)
 
-        self._writer = helpers.ensure_future(
+        self._writer = asyncio.ensure_future(
             self.write_bytes(writer, conn), loop=self.loop)
 
         self.response = self.response_class(

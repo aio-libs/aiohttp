@@ -3,6 +3,7 @@ import contextlib
 import gc
 import re
 import types
+from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
@@ -13,7 +14,6 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client import ClientSession
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import SimpleCookie
 
 
 @pytest.fixture
