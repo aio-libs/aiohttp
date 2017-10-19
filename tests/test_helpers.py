@@ -43,47 +43,30 @@ def test_coro_guard_close():
 
 # ------------------- parse_mimetype ----------------------------------
 
-def test_parse_mimetype_1():
-    assert helpers.parse_mimetype('') == ('', '', '', {})
+@pytest.mark.parametrize('mimetype, expected', [
+    ('', ('', '', '', {})),
+    ('*', ('*', '*', '', {})),
+    ('application/json', ('application', 'json', '', {})),
+    (
+        'application/json;  charset=utf-8',
+        ('application', 'json', '', {'charset': 'utf-8'})
+    ),
+    (
+        '''application/json; charset=utf-8;''',
+        ('application', 'json', '', {'charset': 'utf-8'})
+    ),
+    (
+        'ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
+        ('application', 'json', '', {'charset': 'UTF-8'})
+    ),
+    ('application/rss+xml', ('application', 'rss', 'xml', {})),
+    ('text/plain;base64', ('text', 'plain', '', {'base64': ''}))
+])
+def test_parse_mimetype(mimetype, expected):
+    result = helpers.parse_mimetype(mimetype)
 
-
-def test_parse_mimetype_2():
-    assert helpers.parse_mimetype('*') == ('*', '*', '', {})
-
-
-def test_parse_mimetype_3():
-    assert (helpers.parse_mimetype('application/json') ==
-            ('application', 'json', '', {}))
-
-
-def test_parse_mimetype_4():
-    assert (
-        helpers.parse_mimetype('application/json;  charset=utf-8') ==
-        ('application', 'json', '', {'charset': 'utf-8'}))
-
-
-def test_parse_mimetype_5():
-    assert (
-        helpers.parse_mimetype('''application/json; charset=utf-8;''') ==
-        ('application', 'json', '', {'charset': 'utf-8'}))
-
-
-def test_parse_mimetype_6():
-    assert(
-        helpers.parse_mimetype('ApPlIcAtIoN/JSON;ChaRseT="UTF-8"') ==
-        ('application', 'json', '', {'charset': 'UTF-8'}))
-
-
-def test_parse_mimetype_7():
-    assert (
-        helpers.parse_mimetype('application/rss+xml') ==
-        ('application', 'rss', 'xml', {}))
-
-
-def test_parse_mimetype_8():
-    assert (
-        helpers.parse_mimetype('text/plain;base64') ==
-        ('text', 'plain', '', {'base64': ''}))
+    assert isinstance(result, helpers.MimeType)
+    assert helpers.parse_mimetype(mimetype) == expected
 
 
 # ------------------- guess_filename ----------------------------------

@@ -168,8 +168,8 @@ class StringPayload(BytesPayload):
                 encoding = 'utf-8'
                 content_type = 'text/plain; charset=utf-8'
             else:
-                *_, params = parse_mimetype(content_type)
-                encoding = params.get('charset', 'utf-8')
+                mimetype = parse_mimetype(content_type)
+                encoding = mimetype.parameters.get('charset', 'utf-8')
         else:
             if content_type is None:
                 content_type = 'text/plain; charset=%s' % encoding
@@ -217,8 +217,8 @@ class TextIOPayload(IOBasePayload):
                 encoding = 'utf-8'
                 content_type = 'text/plain; charset=utf-8'
             else:
-                *_, params = parse_mimetype(content_type)
-                encoding = params.get('charset', 'utf-8')
+                mimetype = parse_mimetype(content_type)
+                encoding = mimetype.parameters.get('charset', 'utf-8')
         else:
             if content_type is None:
                 content_type = 'text/plain; charset=%s' % encoding
