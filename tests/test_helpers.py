@@ -63,6 +63,9 @@ def test_coro_guard_close():
     ('text/plain;base64', ('text', 'plain', '', {'base64': ''}))
 ])
 def test_parse_mimetype(mimetype, expected):
+    result = helpers.parse_mimetype(mimetype)
+
+    assert isinstance(result, helpers.MimeType)
     assert helpers.parse_mimetype(mimetype) == expected
 
 
