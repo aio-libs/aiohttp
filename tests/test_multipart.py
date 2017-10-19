@@ -947,10 +947,10 @@ class MultipartWriterTestCase(unittest.TestCase):
         self.writer = aiohttp.multipart.MultipartWriter(boundary=':')
 
     def test_default_subtype(self):
-        mtype, stype, *_ = parse_mimetype(
-            self.writer.headers.get(CONTENT_TYPE))
-        self.assertEqual('multipart', mtype)
-        self.assertEqual('mixed', stype)
+        mimetype = parse_mimetype(self.writer.headers.get(CONTENT_TYPE))
+
+        self.assertEqual('multipart', mimetype.type)
+        self.assertEqual('mixed', mimetype.subtype)
 
     def test_bad_boundary(self):
         with self.assertRaises(ValueError):

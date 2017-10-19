@@ -275,21 +275,25 @@ def isasyncgenfunction(obj):
     return False
 
 
+MimeType = namedtuple('MimeType', 'type subtype suffix parameters')
+
+
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
     mimetype is a MIME type string.
 
-    Returns a 4 element tuple for MIME type, subtype, suffix and parameters.
+    Returns a MimeType object.
 
     Example:
 
     >>> parse_mimetype('text/html; charset=utf-8')
-    ('text', 'html', '', {'charset': 'utf-8'})
+    MimeType(type='text', subtype='html', suffix='',
+             parameters={'charset': 'utf-8'})
 
     """
     if not mimetype:
-        return '', '', '', {}
+        return MimeType(type='', subtype='', suffix='', parameters={})
 
     parts = mimetype.split(';')
     params = []
@@ -308,7 +312,8 @@ def parse_mimetype(mimetype):
         if '/' in fulltype else (fulltype, '')
     stype, suffix = stype.split('+', 1) if '+' in stype else (stype, '')
 
-    return mtype, stype, suffix, params
+    return MimeType(type=mtype, subtype=stype, suffix=suffix,
+                    parameters=params)
 
 
 def guess_filename(obj, default=None):
