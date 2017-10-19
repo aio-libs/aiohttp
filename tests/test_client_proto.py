@@ -1,4 +1,3 @@
-import asyncio
 from unittest import mock
 
 from yarl import URL

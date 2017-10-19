@@ -14,8 +14,8 @@ from multidict import MultiDict
 
 import aiohttp
 from aiohttp import ServerFingerprintMismatch, hdrs, web
-from aiohttp.abc import AbstractResolver
 from aiohttp.helpers import create_future
+from aiohttp.abc import AbstractResolver
 from aiohttp.multipart import MultipartWriter
 
 
@@ -104,7 +104,6 @@ async def test_keepalive_server_force_close_connection(loop, test_client):
     assert 0 == len(client._session.connector._conns)
 
 
-
 async def test_release_early(loop, test_client):
     async def handler(request):
         await request.read()
@@ -173,8 +172,7 @@ async def test_skip_auto_headers_user_agent(loop, test_client):
     app.router.add_route('GET', '/', handler)
     client = await test_client(app)
 
-    resp = await client.get('/',
-                                 skip_auto_headers=['user-agent'])
+    resp = await client.get('/', skip_auto_headers=['user-agent'])
     assert 200 == resp.status
 
 
@@ -200,8 +198,7 @@ async def test_skip_auto_headers_content_type(loop, test_client):
     app.router.add_route('GET', '/', handler)
     client = await test_client(app)
 
-    resp = await client.get('/',
-                                 skip_auto_headers=['content-type'])
+    resp = await client.get('/', skip_auto_headers=['content-type'])
     assert 200 == resp.status
 
 
@@ -222,11 +219,9 @@ async def test_post_data_bytesio(loop, test_client):
     assert 200 == resp.status
 
 
-
 async def test_post_data_with_bytesio_file(loop, test_client):
     data = b'some buffer'
 
-    
     async def handler(request):
         post_data = await request.post()
         assert ['file'] == list(post_data.keys())
@@ -241,11 +236,9 @@ async def test_post_data_with_bytesio_file(loop, test_client):
     assert 200 == resp.status
 
 
-
 async def test_post_data_stringio(loop, test_client):
     data = 'some buffer'
 
-    
     async def handler(request):
         assert len(data) == request.content_length
         assert request.headers['CONTENT-TYPE'] == 'text/plain; charset=utf-8'
@@ -261,11 +254,9 @@ async def test_post_data_stringio(loop, test_client):
     assert 200 == resp.status
 
 
-
 async def test_post_data_textio_encoding(loop, test_client):
     data = 'текст'
 
-    
     async def handler(request):
         assert request.headers['CONTENT-TYPE'] == 'text/plain; charset=koi8-r'
         val = await request.text()
@@ -281,11 +272,9 @@ async def test_post_data_textio_encoding(loop, test_client):
     assert 200 == resp.status
 
 
-
 async def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
 
-    
     async def handler(request):
         return web.HTTPOk(text='Test message')
 
@@ -306,9 +295,8 @@ async def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
-
 async def test_tcp_connector_fingerprint_ok(test_server, test_client,
-                                      loop, ssl_ctx, fingerprint):
+                                            loop, ssl_ctx, fingerprint):
     
     async def handler(request):
         return web.HTTPOk(text='Test message')
@@ -338,9 +326,8 @@ async def test_tcp_connector_fingerprint_ok(test_server, test_client,
     b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
     b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
     ids=['md5', 'sha1', 'sha256'])
-
 async def test_tcp_connector_fingerprint_fail(test_server, test_client,
-                                        loop, ssl_ctx, fingerprint):
+                                              loop, ssl_ctx, fingerprint):
     
     async def handler(request):
         return web.HTTPOk(text='Test message')
@@ -362,9 +349,7 @@ async def test_tcp_connector_fingerprint_fail(test_server, test_client,
     assert exc.got == fingerprint
 
 
-
 async def test_format_task_get(test_server, loop):
-
     
     async def handler(request):
         return web.Response(body=b'OK')
@@ -378,7 +363,6 @@ async def test_format_task_get(test_server, loop):
     resp = await task
     resp.close()
     client.close()
-
 
 
 async def test_str_params(loop, test_client):
@@ -395,13 +379,11 @@ async def test_str_params(loop, test_client):
     assert 200 == resp.status
 
 
-
 async def test_drop_params_on_redirect(loop, test_client):
     
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok?a=redirect'})
 
-    
     async def handler_ok(request):
         assert request.rel_url.query_string == 'a=redirect'
         return web.Response(status=200)
@@ -415,12 +397,10 @@ async def test_drop_params_on_redirect(loop, test_client):
     assert resp.status == 200
 
 
-
 async def test_drop_fragment_on_redirect(loop, test_client):
     
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok#fragment'})
-
     
     async def handler_ok(request):
         return web.Response(status=200)
@@ -433,7 +413,6 @@ async def test_drop_fragment_on_redirect(loop, test_client):
     resp = await client.get('/redirect')
     assert resp.status == 200
     assert resp.url.path == '/ok'
-
 
 
 async def test_drop_fragment(loop, test_client):
@@ -450,13 +429,10 @@ async def test_drop_fragment(loop, test_client):
     assert resp.url.path == '/ok'
 
 
-
 async def test_history(loop, test_client):
-    
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok'})
 
-    
     async def handler_ok(request):
         return web.Response(status=200)
 
@@ -475,9 +451,7 @@ async def test_history(loop, test_client):
     assert resp_redirect.status == 200
 
 
-
 async def test_keepalive_closed_by_server(loop, test_client):
-    
     async def handler(request):
         body = await request.read()
         assert b'' == body
@@ -501,9 +475,7 @@ async def test_keepalive_closed_by_server(loop, test_client):
     assert 0 == len(client._session.connector._conns)
 
 
-
 async def test_wait_for(loop, test_client):
-    
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -517,9 +489,7 @@ async def test_wait_for(loop, test_client):
     assert txt == 'OK'
 
 
-
 async def test_raw_headers(loop, test_client):
-    
     async def handler(request):
         return web.Response()
 
@@ -538,7 +508,6 @@ async def test_raw_headers(loop, test_client):
 
 
 async def test_204_with_gzipped_content_encoding(loop, test_client):
-    
     async def handler(request):
         resp = web.StreamResponse(status=204)
         resp.content_length = 0
@@ -556,102 +525,101 @@ async def test_204_with_gzipped_content_encoding(loop, test_client):
     assert resp.status == 204
     assert resp.closed
 
-#
-# async def test_timeout_on_reading_headers(loop, test_client, mocker):
-#     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-#
-#     async def handler(request):
-#         resp = web.StreamResponse()
-#         await asyncio.sleep(0.1, loop=loop)
-#         await resp.prepare(request)
-#         return resp
-#
-#     app = web.Application()
-#     app.router.add_route('GET', '/', handler)
-#     client = await test_client(app)
-#
-#     with pytest.raises(asyncio.TimeoutError):
-#         await client.get('/', timeout=0.01)
-#
-#
-# async def test_timeout_on_conn_reading_headers(loop, test_client, mocker):
-#     # tests case where user did not set a connection timeout
-#
-#     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-#
-#
-#     async def handler(request):
-#         resp = web.StreamResponse()
-#         await asyncio.sleep(0.1, loop=loop)
-#         await resp.prepare(request)
-#         return resp
-#
-#     app = web.Application()
-#     app.router.add_route('GET', '/', handler)
-#
-#     conn = aiohttp.TCPConnector(loop=loop)
-#     client = await test_client(app, connector=conn)
-#
-#     with pytest.raises(asyncio.TimeoutError):
-#         await client.get('/', timeout=0.01)
-#
-#
-# async def test_timeout_on_session_read_timeout(loop, test_client, mocker):
-#     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-#
-#     async def handler(request):
-#         resp = web.StreamResponse()
-#         await asyncio.sleep(0.1, loop=loop)
-#         await resp.prepare(request)
-#         return resp
-#
-#     app = web.Application()
-#     app.router.add_route('GET', '/', handler)
-#
-#     conn = aiohttp.TCPConnector(loop=loop)
-#     client = await test_client(app, connector=conn, read_timeout=0.01)
-#
-#     with pytest.raises(asyncio.TimeoutError):
-#         await client.get('/')
-#
-#
-# async def test_timeout_on_reading_data(loop, test_client, mocker):
-#     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-#     fut = create_future(loop=loop)
-#
-#     async def handler(request):
-#         resp = web.StreamResponse(headers={'content-length': '100'})
-#         await resp.prepare(request)
-#         await resp.drain()
-#         fut.set_result(None)
-#         await asyncio.sleep(0.2, loop=loop)
-#         return resp
-#
-#     app = web.Application()
-#     app.router.add_route('GET', '/', handler)
-#     client = await test_client(app)
-#
-#     resp = await client.get('/', timeout=1)
-#     await fut
-#
-#     with pytest.raises(asyncio.TimeoutError):
-#         await resp.read()
-#
-#
-# async def test_timeout_none(loop, test_client, mocker):
-#     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-#
-#     async def handler(request):
-#         resp = web.StreamResponse()
-#         await resp.prepare(request)
-#         return resp
-#
-#     app = web.Application()
-#     app.router.add_route('GET', '/', handler)
-#     client = await test_client(app)
-#
-#     resp = await client.get('/', timeout=None)
-#     assert resp.status == 200
+
+async def test_timeout_on_reading_headers(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        await asyncio.sleep(0.1, loop=loop)
+        await resp.prepare(request)
+        return resp
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await test_client(app)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await client.get('/', timeout=0.01)
+
+
+async def test_timeout_on_conn_reading_headers(loop, test_client, mocker):
+    # tests case where user did not set a connection timeout
+
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        await asyncio.sleep(0.1, loop=loop)
+        await resp.prepare(request)
+        return resp
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    conn = aiohttp.TCPConnector(loop=loop)
+    client = await test_client(app, connector=conn)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await client.get('/', timeout=0.01)
+
+
+async def test_timeout_on_session_read_timeout(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        await asyncio.sleep(0.1, loop=loop)
+        await resp.prepare(request)
+        return resp
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    conn = aiohttp.TCPConnector(loop=loop)
+    client = await test_client(app, connector=conn, read_timeout=0.01)
+
+    with pytest.raises(asyncio.TimeoutError):
+        await client.get('/')
+
+
+async def test_timeout_on_reading_data(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+    fut = create_future(loop=loop)
+
+    async def handler(request):
+        resp = web.StreamResponse(headers={'content-length': '100'})
+        await resp.prepare(request)
+        await resp.drain()
+        fut.set_result(None)
+        await asyncio.sleep(0.2, loop=loop)
+        return resp
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/', timeout=1)
+    await fut
+
+    with pytest.raises(asyncio.TimeoutError):
+        await resp.read()
+
+
+async def test_timeout_none(loop, test_client, mocker):
+    mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        return resp
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/', timeout=None)
+    assert resp.status == 200
 
 
 async def test_readline_error_on_conn_close(loop, test_client):
@@ -693,10 +661,8 @@ async def test_readline_error_on_conn_close(loop, test_client):
         await session.close()
 
 
-
 async def test_no_error_on_conn_close_if_eof(loop, test_client):
 
-    
     async def handler(request):
         resp_ = web.StreamResponse()
         await resp_.prepare(request)
@@ -725,10 +691,8 @@ async def test_no_error_on_conn_close_if_eof(loop, test_client):
         await session.close()
 
 
-
 async def test_error_not_overwrote_on_conn_close(loop, test_client):
 
-    
     async def handler(request):
         resp_ = web.StreamResponse()
         await resp_.prepare(request)
@@ -747,7 +711,6 @@ async def test_error_not_overwrote_on_conn_close(loop, test_client):
         await session.close()
 
     assert isinstance(resp.content.exception(), ValueError)
-
 
 
 async def test_HTTP_200_OK_METHOD(loop, test_client):
@@ -804,14 +767,12 @@ async def test_HTTP_200_OK_METHOD_connector(loop, test_client):
             assert meth.upper() == content
 
 
-
 async def test_HTTP_302_REDIRECT_GET(loop, test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
 
-    
-    def redirect(request):
+    async def redirect(request):
         return web.HTTPFound(location='/')
 
     app = web.Application()
@@ -825,14 +786,12 @@ async def test_HTTP_302_REDIRECT_GET(loop, test_client):
     resp.close()
 
 
-
 async def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
-
     
-    def redirect(request):
+    async def redirect(request):
         return web.HTTPFound(location='/')
 
     app = web.Application()
@@ -849,11 +808,9 @@ async def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     resp.close()
 
 
-
 async def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
 
-    
-    def redirect(request):
+    async def redirect(request):
         return web.HTTPFound(location='ftp://127.0.0.1/test/')
 
     app = web.Application()
@@ -864,14 +821,12 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
         await client.get('/redirect')
 
 
-
 async def test_HTTP_302_REDIRECT_POST(loop, test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
 
-    
-    def redirect(request):
+    async def redirect(request):
         return web.HTTPFound(location='/')
 
     app = web.Application()
@@ -887,14 +842,12 @@ async def test_HTTP_302_REDIRECT_POST(loop, test_client):
     resp.close()
 
 
-
 async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
-                                                           test_client):
+                                                                 test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
 
-    
     async def redirect(request):
         await request.read()
         return web.HTTPFound(location='/')
@@ -905,8 +858,11 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
     app.router.add_post('/redirect', redirect)
     client = await test_client(app)
 
-    resp = await client.post('/redirect', data=data,
-                                  headers={'Content-Length': str(len(data))})
+    resp = await client.post(
+        '/redirect',
+        data=data,
+        headers={'Content-Length': str(len(data))}
+    )
     assert 200 == resp.status
     assert 1 == len(resp.history)
     txt = await resp.text()
@@ -914,13 +870,11 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
     resp.close()
 
 
-
 async def test_HTTP_307_REDIRECT_POST(loop, test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
 
-    
     async def redirect(request):
         await request.read()
         return web.HTTPTemporaryRedirect(location='/')
@@ -938,13 +892,11 @@ async def test_HTTP_307_REDIRECT_POST(loop, test_client):
     resp.close()
 
 
-
 async def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
 
-    
     async def redirect(request):
         await request.read()
         return web.HTTPPermanentRedirect(location='/')
@@ -962,14 +914,12 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
     resp.close()
 
 
-
 async def test_HTTP_302_max_redirects(loop, test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
 
-    
-    def redirect(request):
+    async def redirect(request):
         count = int(request.match_info['count'])
         if count:
             return web.HTTPFound(location='/redirect/{}'.format(count-1))
@@ -985,7 +935,6 @@ async def test_HTTP_302_max_redirects(loop, test_client):
     assert 302 == resp.status
     assert 2 == len(resp.history)
     resp.close()
-
 
 
 async def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
@@ -1005,7 +954,6 @@ async def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
     resp.close()
 
 
-
 async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
     
     async def handler(request):
@@ -1017,12 +965,11 @@ async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
     client = await test_client(app)
 
     resp = await client.get('/', params=MultiDict([('q', 'test'),
-                                                        ('q', 'test2')]))
+                                                   ('q', 'test2')]))
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == 'q=test&q=test2'
     resp.close()
-
 
 
 async def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
@@ -1042,7 +989,6 @@ async def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
     resp.close()
 
 
-
 async def test_POST_DATA(loop, test_client):
     
     async def handler(request):
@@ -1058,7 +1004,6 @@ async def test_POST_DATA(loop, test_client):
     content = await resp.json()
     assert content == {'some': 'data'}
     resp.close()
-
 
 
 async def test_POST_DATA_with_explicit_formdata(loop, test_client):
@@ -1079,7 +1024,6 @@ async def test_POST_DATA_with_explicit_formdata(loop, test_client):
     content = await resp.json()
     assert content == {'name': 'text'}
     resp.close()
-
 
 
 async def test_POST_DATA_with_charset(loop, test_client):
@@ -1104,7 +1048,6 @@ async def test_POST_DATA_with_charset(loop, test_client):
     resp.close()
 
 
-
 async def test_POST_DATA_formdats_with_charset(loop, test_client):
     
     async def handler(request):
@@ -1124,7 +1067,6 @@ async def test_POST_DATA_formdats_with_charset(loop, test_client):
     content = await resp.text()
     assert content == 'текст'
     resp.close()
-
 
 
 async def test_POST_DATA_with_charset_post(loop, test_client):
@@ -1147,7 +1089,6 @@ async def test_POST_DATA_with_charset_post(loop, test_client):
     resp.close()
 
 
-
 async def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     
     async def handler(request):
@@ -1167,7 +1108,6 @@ async def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
     content = await resp.text()
     assert content == 'text'
     resp.close()
-
 
 
 async def test_POST_DATA_with_content_type_context_transfer_encoding(
@@ -1194,7 +1134,6 @@ async def test_POST_DATA_with_content_type_context_transfer_encoding(
     resp.close()
 
 
-
 async def test_POST_MultiDict(loop, test_client):
     
     async def handler(request):
@@ -1212,7 +1151,6 @@ async def test_POST_MultiDict(loop, test_client):
     resp.close()
 
 
-
 async def test_POST_DATA_DEFLATE(loop, test_client):
     
     async def handler(request):
@@ -1228,7 +1166,6 @@ async def test_POST_DATA_DEFLATE(loop, test_client):
     content = await resp.json()
     assert content == {'some': 'data'}
     resp.close()
-
 
 
 async def test_POST_FILES(loop, test_client, fname):
@@ -1254,7 +1191,6 @@ async def test_POST_FILES(loop, test_client, fname):
         resp.close()
 
 
-
 async def test_POST_FILES_DEFLATE(loop, test_client, fname):
     
     async def handler(request):
@@ -1271,18 +1207,19 @@ async def test_POST_FILES_DEFLATE(loop, test_client, fname):
     client = await test_client(app)
 
     with fname.open() as f:
-        resp = await client.post('/', data={'some': f},
-                                      chunked=True,
-                                      compress='deflate')
+        resp = await client.post(
+            '/',
+            data={'some': f},
+            chunked=True,
+            compress='deflate'
+        )
         assert 200 == resp.status
         resp.close()
-
 
 
 async def test_POST_bytes(loop, test_client):
     body = b'0' * 12345
 
-    
     async def handler(request):
         data = await request.read()
         assert body == data
@@ -1297,10 +1234,8 @@ async def test_POST_bytes(loop, test_client):
     resp.close()
 
 
-
 async def test_POST_bytes_too_large(loop, test_client):
     body = b'0' * (2 ** 20 + 1)
-
     
     async def handler(request):
         data = await request.content.read()
@@ -1316,7 +1251,6 @@ async def test_POST_bytes_too_large(loop, test_client):
 
     assert 200 == resp.status
     resp.close()
-
 
 
 async def test_POST_FILES_STR(loop, test_client, fname):
@@ -1339,7 +1273,6 @@ async def test_POST_FILES_STR(loop, test_client, fname):
         resp.close()
 
 
-
 async def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
     
     async def handler(request):
@@ -1357,7 +1290,6 @@ async def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
         resp = await client.post('/', data=f.read())
         assert 200 == resp.status
         resp.close()
-
 
 
 async def test_POST_FILES_LIST(loop, test_client, fname):
@@ -1378,7 +1310,6 @@ async def test_POST_FILES_LIST(loop, test_client, fname):
         resp = await client.post('/', data=[('some', f)])
         assert 200 == resp.status
         resp.close()
-
 
 
 async def test_POST_FILES_CT(loop, test_client, fname):
@@ -1404,10 +1335,8 @@ async def test_POST_FILES_CT(loop, test_client, fname):
         resp.close()
 
 
-
 async def test_POST_FILES_SINGLE(loop, test_client, fname):
 
-    
     async def handler(request):
         data = await request.text()
         with fname.open('r') as f:
@@ -1432,10 +1361,8 @@ async def test_POST_FILES_SINGLE(loop, test_client, fname):
         resp.close()
 
 
-
 async def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
 
-    
     async def handler(request):
         data = await request.text()
         with fname.open('r') as f:
@@ -1462,7 +1389,6 @@ async def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
         resp.close()
 
 
-
 async def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
     
     async def handler(request):
@@ -1485,7 +1411,6 @@ async def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
         resp = await client.post('/', data=f)
         assert 200 == resp.status
         resp.close()
-
 
 
 async def test_POST_FILES_IO(loop, test_client):
@@ -1552,10 +1477,11 @@ async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
     client = await test_client(app)
 
     data = io.BytesIO(b'data')
-    resp = await client.post('/', data=(('test', 'true'),
-                                             MultiDict(
-                                                 [('q', 't1'), ('q', 't2')]),
-                                             data))
+    resp = await client.post(
+        '/',
+        data=(('test', 'true'),
+              MultiDict([('q', 't1'), ('q', 't2')]), data)
+    )
     assert 200 == resp.status
     resp.close()
 
@@ -1582,7 +1508,6 @@ async def test_POST_FILES_WITH_DATA(loop, test_client, fname):
         resp = await client.post('/', data={'test': 'true', 'some': f})
         assert 200 == resp.status
         resp.close()
-
 
 
 async def test_POST_STREAM_DATA(loop, test_client, fname):
@@ -2084,9 +2009,8 @@ async def test_redirect_to_absolute_url(loop, test_client):
     
     async def handler(request):
         return web.Response(text=request.method)
-
     
-    def redirect(request):
+    async def redirect(request):
         return web.HTTPFound(location=client.make_url('/'))
 
     app = web.Application()
@@ -2102,7 +2026,6 @@ async def test_redirect_to_absolute_url(loop, test_client):
 async def test_redirect_without_location_header(loop, test_client):
     body = b'redirect'
 
-    
     async def handler_redirect(request):
         return web.Response(status=301, body=body)
 
@@ -2168,7 +2091,7 @@ async def test_creds_in_auth_and_url(loop):
     try:
         with pytest.raises(ValueError):
             await session.get('http://user:pass@example.com',
-                                   auth=aiohttp.BasicAuth('user2', 'pass2'))
+                              auth=aiohttp.BasicAuth('user2', 'pass2'))
     finally:
         await session.close()
 
