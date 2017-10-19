@@ -50,7 +50,7 @@ cov-dev: .develop
 	@echo "Run without extensions"
 	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
 	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
@@ -63,7 +63,7 @@ cov-ci-run: .develop
 	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 
 cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
 	@rm -rf `find . -name __pycache__`
@@ -75,7 +75,7 @@ clean:
 	@rm -f `find . -type f -name '*.orig' `
 	@rm -f `find . -type f -name '*.rej' `
 	@rm -f .coverage
-	@rm -rf coverage
+	@rm -rf htmlcov
 	@rm -rf build
 	@rm -rf cover
 	@make -C docs clean
