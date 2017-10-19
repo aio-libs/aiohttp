@@ -3,7 +3,6 @@ import asyncio
 
 import pytest
 
-from aiohttp import helpers
 from aiohttp.locks import EventResultOrError
 
 
@@ -21,7 +20,7 @@ class TestEventResultOrError:
                 return e
             return 1
 
-        t = helpers.ensure_future(c(), loop=loop)
+        t = asyncio.ensure_future(c(), loop=loop)
         yield from asyncio.sleep(0, loop=loop)
         e = Exception()
         ev.set(exc=e)
@@ -36,7 +35,7 @@ class TestEventResultOrError:
             yield from ev.wait()
             return 1
 
-        t = helpers.ensure_future(c(), loop=loop)
+        t = asyncio.ensure_future(c(), loop=loop)
         yield from asyncio.sleep(0, loop=loop)
         ev.set()
         assert (yield from t) == 1
@@ -49,8 +48,8 @@ class TestEventResultOrError:
         def c():
             yield from ev.wait()
 
-        t1 = helpers.ensure_future(c(), loop=loop)
-        t2 = helpers.ensure_future(c(), loop=loop)
+        t1 = asyncio.ensure_future(c(), loop=loop)
+        t2 = asyncio.ensure_future(c(), loop=loop)
         yield from asyncio.sleep(0, loop=loop)
         ev.cancel()
         ev.set()

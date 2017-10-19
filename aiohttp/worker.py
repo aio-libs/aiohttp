@@ -10,7 +10,7 @@ import sys
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
-from .helpers import AccessLogger, create_future, ensure_future
+from .helpers import AccessLogger, create_future
 
 
 try:
@@ -48,7 +48,7 @@ class GunicornWebWorker(base.Worker):
     def run(self):
         if hasattr(self.wsgi, 'startup'):
             self.loop.run_until_complete(self.wsgi.startup())
-        self._runner = ensure_future(self._run(), loop=self.loop)
+        self._runner = asyncio.ensure_future(self._run(), loop=self.loop)
 
         try:
             self.loop.run_until_complete(self._runner)
@@ -190,7 +190,7 @@ class GunicornWebWorker(base.Worker):
         self.cfg.worker_int(self)
 
         # init closing process
-        self._closing = ensure_future(self.close(), loop=self.loop)
+        self._closing = asyncio.ensure_future(self.close(), loop=self.loop)
 
         # close loop
         self.loop.call_later(0.1, self._notify_waiter_done)
