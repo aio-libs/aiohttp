@@ -1,8 +1,6 @@
 import asyncio
 import collections
 
-from .helpers import ensure_future
-
 
 class EventResultOrError:
     """
@@ -23,7 +21,7 @@ class EventResultOrError:
 
     @asyncio.coroutine
     def wait(self):
-        fut = ensure_future(self._event.wait(), loop=self._loop)
+        fut = asyncio.ensure_future(self._event.wait(), loop=self._loop)
         self._waiters.append(fut)
         try:
             val = yield from fut

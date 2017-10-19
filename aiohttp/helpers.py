@@ -27,19 +27,8 @@ from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
-try:
-    from asyncio import ensure_future
-except ImportError:
-    ensure_future = asyncio.async
-
-PY_34 = sys.version_info < (3, 5)
-PY_35 = sys.version_info >= (3, 5)
+PY_35 = True
 PY_352 = sys.version_info >= (3, 5, 2)
-
-if sys.version_info >= (3, 4, 3):
-    from http.cookies import SimpleCookie  # noqa
-else:
-    from .backport_cookies import SimpleCookie  # noqa
 
 
 __all__ = ('BasicAuth', 'Timeout')

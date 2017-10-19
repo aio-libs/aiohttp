@@ -6,6 +6,7 @@ import io
 import os.path
 import urllib.parse
 import zlib
+from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
@@ -15,7 +16,6 @@ from yarl import URL
 import aiohttp
 from aiohttp import BaseConnector, hdrs, helpers, payload
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
-from aiohttp.helpers import SimpleCookie
 
 
 @pytest.yield_fixture
@@ -325,15 +325,14 @@ def test_ipv6_nondefault_https_port(make_request):
 
 def test_basic_auth(make_request):
     req = make_request('get', 'http://python.org',
-                       auth=aiohttp.helpers.BasicAuth('nkim', '1234'))
+                       auth=aiohttp.BasicAuth('nkim', '1234'))
     assert 'AUTHORIZATION' in req.headers
     assert 'Basic bmtpbToxMjM0' == req.headers['AUTHORIZATION']
 
 
 def test_basic_auth_utf8(make_request):
     req = make_request('get', 'http://python.org',
-                       auth=aiohttp.helpers.BasicAuth('nkim', 'секрет',
-                                                      'utf-8'))
+                       auth=aiohttp.BasicAuth('nkim', 'секрет', 'utf-8'))
     assert 'AUTHORIZATION' in req.headers
     assert 'Basic bmtpbTrRgdC10LrRgNC10YI=' == req.headers['AUTHORIZATION']
 
@@ -910,7 +909,7 @@ def test_data_stream_exc(loop, conn):
         yield from asyncio.sleep(0.01, loop=loop)
         fut.set_exception(ValueError)
 
-    helpers.ensure_future(exc(), loop=loop)
+    asyncio.ensure_future(exc(), loop=loop)
 
     req.send(conn)
     yield from req._writer
@@ -937,7 +936,7 @@ def test_data_stream_exc_chain(loop, conn):
         yield from asyncio.sleep(0.01, loop=loop)
         fut.set_exception(inner_exc)
 
-    helpers.ensure_future(exc(), loop=loop)
+    asyncio.ensure_future(exc(), loop=loop)
 
     req.send(conn)
     yield from req._writer
@@ -967,7 +966,7 @@ def test_data_stream_continue(loop, buf, conn):
         yield from asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
-    helpers.ensure_future(coro(), loop=loop)
+    asyncio.ensure_future(coro(), loop=loop)
 
     resp = req.send(conn)
     yield from req._writer
@@ -987,7 +986,7 @@ def test_data_continue(loop, buf, conn):
         yield from asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
-    helpers.ensure_future(coro(), loop=loop)
+    asyncio.ensure_future(coro(), loop=loop)
 
     resp = req.send(conn)
 

@@ -103,7 +103,7 @@ def test_run_wsgi(worker, loop):
 
 
 def test_handle_quit(worker):
-    with mock.patch('aiohttp.worker.ensure_future') as m_ensure_future:
+    with mock.patch('asyncio.ensure_future') as m_ensure_future:
         worker.loop = mock.Mock()
         worker.handle_quit(object(), object())
         assert not worker.alive

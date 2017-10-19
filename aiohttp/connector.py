@@ -5,6 +5,7 @@ import traceback
 import warnings
 from collections import defaultdict
 from hashlib import md5, sha1, sha256
+from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import MappingProxyType
@@ -19,7 +20,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
-from .helpers import SimpleCookie, is_ip_address, noop, sentinel
+from .helpers import is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .log import client_logger
 from .resolver import DefaultResolver

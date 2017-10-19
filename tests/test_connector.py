@@ -450,8 +450,8 @@ def test_tcp_connector_dns_throttle_requests(loop, dns_response):
             ttl_dns_cache=10
         )
         m_resolver().resolve.return_value = dns_response()
-        helpers.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
-        helpers.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
         yield from asyncio.sleep(0, loop=loop)
         m_resolver().resolve.assert_called_once_with(
             'localhost',
@@ -470,11 +470,11 @@ def test_tcp_connector_dns_throttle_requests_exception_spread(loop):
         )
         e = Exception()
         m_resolver().resolve.side_effect = e
-        r1 = helpers.ensure_future(
+        r1 = asyncio.ensure_future(
             conn._resolve_host('localhost', 8080),
             loop=loop
         )
-        r2 = helpers.ensure_future(
+        r2 = asyncio.ensure_future(
             conn._resolve_host('localhost', 8080),
             loop=loop
         )
@@ -495,9 +495,9 @@ def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
             ttl_dns_cache=10
         )
         m_resolver().resolve.return_value = dns_response()
-        helpers.ensure_future(
+        asyncio.ensure_future(
             conn._resolve_host('localhost', 8080), loop=loop)
-        f = helpers.ensure_future(
+        f = asyncio.ensure_future(
             conn._resolve_host('localhost', 8080), loop=loop)
 
         yield from asyncio.sleep(0, loop=loop)
@@ -602,7 +602,7 @@ def test_close_during_connect(loop):
     conn._create_connection = mock.Mock()
     conn._create_connection.return_value = fut
 
-    task = helpers.ensure_future(conn.connect(req), loop=loop)
+    task = asyncio.ensure_future(conn.connect(req), loop=loop)
     yield from asyncio.sleep(0, loop=loop)
     conn.close()
 
@@ -873,7 +873,7 @@ def test_connect_with_limit(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = helpers.ensure_future(f(), loop=loop)
+    task = asyncio.ensure_future(f(), loop=loop)
 
     yield from asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -909,7 +909,7 @@ def test_connect_with_limit_and_limit_per_host(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = helpers.ensure_future(f(), loop=loop)
+    task = asyncio.ensure_future(f(), loop=loop)
 
     yield from asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -943,7 +943,7 @@ def test_connect_with_no_limit_and_limit_per_host(loop, key):
         acquired = True
         connection2.release()
 
-    task = helpers.ensure_future(f(), loop=loop)
+    task = asyncio.ensure_future(f(), loop=loop)
 
     yield from asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -979,7 +979,7 @@ def test_connect_with_no_limits(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = helpers.ensure_future(f(), loop=loop)
+    task = asyncio.ensure_future(f(), loop=loop)
 
     yield from asyncio.sleep(0.01, loop=loop)
     assert acquired
@@ -1090,7 +1090,7 @@ def test_connect_with_limit_concurrent(loop):
             yield from asyncio.sleep(0, loop=loop)
             connection.release()
         tasks = [
-            helpers.ensure_future(f(start=False), loop=loop)
+            asyncio.ensure_future(f(start=False), loop=loop)
             for i in range(start_requests)
         ]
         yield from asyncio.wait(tasks, loop=loop)
@@ -1197,8 +1197,8 @@ def test_error_on_connection(loop):
 
     conn._create_connection = create_connection
 
-    t1 = helpers.ensure_future(conn.connect(req), loop=loop)
-    t2 = helpers.ensure_future(conn.connect(req), loop=loop)
+    t1 = asyncio.ensure_future(conn.connect(req), loop=loop)
+    t2 = asyncio.ensure_future(conn.connect(req), loop=loop)
     yield from asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()
@@ -1243,9 +1243,9 @@ def test_error_on_connection_with_cancelled_waiter(loop):
 
     conn._create_connection = create_connection
 
-    t1 = helpers.ensure_future(conn.connect(req), loop=loop)
-    t2 = helpers.ensure_future(conn.connect(req), loop=loop)
-    t3 = helpers.ensure_future(conn.connect(req), loop=loop)
+    t1 = asyncio.ensure_future(conn.connect(req), loop=loop)
+    t2 = asyncio.ensure_future(conn.connect(req), loop=loop)
+    t3 = asyncio.ensure_future(conn.connect(req), loop=loop)
     yield from asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()

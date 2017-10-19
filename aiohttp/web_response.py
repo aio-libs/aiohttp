@@ -7,12 +7,12 @@ import time
 import warnings
 import zlib
 from email.utils import parsedate
+from http.cookies import SimpleCookie
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
-from .helpers import (HeadersMixin, SimpleCookie, rfc822_formatted_time,
-                      sentinel)
+from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
 
