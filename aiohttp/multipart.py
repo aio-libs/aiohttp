@@ -485,8 +485,8 @@ class BodyPartReader(object):
         """Returns charset parameter from ``Content-Type`` header or default.
         """
         ctype = self.headers.get(CONTENT_TYPE, '')
-        *_, params = parse_mimetype(ctype)
-        return params.get('charset', default)
+        mimetype = parse_mimetype(ctype)
+        return mimetype.parameters.get('charset', default)
 
     @reify
     def name(self):
@@ -620,8 +620,9 @@ class MultipartReader(object):
         :param dict headers: Response headers
         """
         ctype = headers.get(CONTENT_TYPE, '')
-        mtype, *_ = parse_mimetype(ctype)
-        if mtype == 'multipart':
+        mimetype = parse_mimetype(ctype)
+
+        if mimetype.type == 'multipart':
             if self.multipart_reader_cls is None:
                 return type(self)(headers, self._content)
             return self.multipart_reader_cls(headers, self._content)
@@ -629,15 +630,17 @@ class MultipartReader(object):
             return self.part_reader_cls(self._boundary, headers, self._content)
 
     def _get_boundary(self):
-        mtype, *_, params = parse_mimetype(self.headers[CONTENT_TYPE])
+        mimetype = parse_mimetype(self.headers[CONTENT_TYPE])
 
-        assert mtype == 'multipart', 'multipart/* content type expected'
+        assert mimetype.type == 'multipart', (
+            'multipart/* content type expected'
+        )
 
-        if 'boundary' not in params:
+        if 'boundary' not in mimetype.parameters:
             raise ValueError('boundary missed for Content-Type: %s'
                              % self.headers[CONTENT_TYPE])
 
-        boundary = params['boundary']
+        boundary = mimetype.parameters['boundary']
         if len(boundary) > 70:
             raise ValueError('boundary %r is too long (70 chars max)'
                              % boundary)

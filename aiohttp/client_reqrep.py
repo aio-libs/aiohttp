@@ -752,11 +752,11 @@ class ClientResponse(HeadersMixin):
 
     def _get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-        mtype, stype, _, params = helpers.parse_mimetype(ctype)
+        mimetype = helpers.parse_mimetype(ctype)
 
-        encoding = params.get('charset')
+        encoding = mimetype.parameters.get('charset')
         if not encoding:
-            if mtype == 'application' and stype == 'json':
+            if mimetype.type == 'application' and mimetype.subtype == 'json':
                 # RFC 7159 states that the default encoding is UTF-8.
                 encoding = 'utf-8'
             else:
