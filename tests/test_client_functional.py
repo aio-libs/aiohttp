@@ -297,7 +297,7 @@ async def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     ids=['md5', 'sha1', 'sha256'])
 async def test_tcp_connector_fingerprint_ok(test_server, test_client,
                                             loop, ssl_ctx, fingerprint):
-    
+
     async def handler(request):
         return web.HTTPOk(text='Test message')
 
@@ -328,7 +328,7 @@ async def test_tcp_connector_fingerprint_ok(test_server, test_client,
     ids=['md5', 'sha1', 'sha256'])
 async def test_tcp_connector_fingerprint_fail(test_server, test_client,
                                               loop, ssl_ctx, fingerprint):
-    
+
     async def handler(request):
         return web.HTTPOk(text='Test message')
 
@@ -350,7 +350,7 @@ async def test_tcp_connector_fingerprint_fail(test_server, test_client,
 
 
 async def test_format_task_get(test_server, loop):
-    
+
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -366,7 +366,7 @@ async def test_format_task_get(test_server, loop):
 
 
 async def test_str_params(loop, test_client):
-    
+
     async def handler(request):
         assert 'q=t est' in request.rel_url.query_string
         return web.Response()
@@ -380,7 +380,7 @@ async def test_str_params(loop, test_client):
 
 
 async def test_drop_params_on_redirect(loop, test_client):
-    
+
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok?a=redirect'})
 
@@ -398,10 +398,10 @@ async def test_drop_params_on_redirect(loop, test_client):
 
 
 async def test_drop_fragment_on_redirect(loop, test_client):
-    
+
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok#fragment'})
-    
+
     async def handler_ok(request):
         return web.Response(status=200)
 
@@ -416,7 +416,7 @@ async def test_drop_fragment_on_redirect(loop, test_client):
 
 
 async def test_drop_fragment(loop, test_client):
-    
+
     async def handler_ok(request):
         return web.Response(status=200)
 
@@ -714,7 +714,7 @@ async def test_error_not_overwrote_on_conn_close(loop, test_client):
 
 
 async def test_HTTP_200_OK_METHOD(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -740,7 +740,7 @@ async def test_HTTP_200_OK_METHOD(loop, test_client):
 
 
 async def test_HTTP_200_OK_METHOD_connector(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -768,7 +768,7 @@ async def test_HTTP_200_OK_METHOD_connector(loop, test_client):
 
 
 async def test_HTTP_302_REDIRECT_GET(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -787,10 +787,10 @@ async def test_HTTP_302_REDIRECT_GET(loop, test_client):
 
 
 async def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
-    
+
     async def redirect(request):
         return web.HTTPFound(location='/')
 
@@ -822,7 +822,7 @@ async def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
 
 
 async def test_HTTP_302_REDIRECT_POST(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -844,7 +844,7 @@ async def test_HTTP_302_REDIRECT_POST(loop, test_client):
 
 async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
                                                                  test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -871,7 +871,7 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
 
 
 async def test_HTTP_307_REDIRECT_POST(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -893,7 +893,7 @@ async def test_HTTP_307_REDIRECT_POST(loop, test_client):
 
 
 async def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -915,7 +915,7 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
 
 
 async def test_HTTP_302_max_redirects(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -938,7 +938,7 @@ async def test_HTTP_302_max_redirects(loop, test_client):
 
 
 async def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text='&'.join(
             k+'='+v for k, v in request.query.items()))
@@ -955,7 +955,7 @@ async def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
 
 
 async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text='&'.join(
             k+'='+v for k, v in request.query.items()))
@@ -973,7 +973,7 @@ async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
 
 
 async def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text='&'.join(
             k+'='+v for k, v in request.query.items()))
@@ -990,7 +990,7 @@ async def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
 
 
 async def test_POST_DATA(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         return web.json_response(dict(data))
@@ -1007,7 +1007,7 @@ async def test_POST_DATA(loop, test_client):
 
 
 async def test_POST_DATA_with_explicit_formdata(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         return web.json_response(dict(data))
@@ -1027,7 +1027,7 @@ async def test_POST_DATA_with_explicit_formdata(loop, test_client):
 
 
 async def test_POST_DATA_with_charset(loop, test_client):
-    
+
     async def handler(request):
         mp = await request.multipart()
         part = await mp.next()
@@ -1049,7 +1049,7 @@ async def test_POST_DATA_with_charset(loop, test_client):
 
 
 async def test_POST_DATA_formdats_with_charset(loop, test_client):
-    
+
     async def handler(request):
         mp = await request.post()
         assert 'name' in mp
@@ -1070,7 +1070,7 @@ async def test_POST_DATA_formdats_with_charset(loop, test_client):
 
 
 async def test_POST_DATA_with_charset_post(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         return web.Response(text=data['name'])
@@ -1090,7 +1090,7 @@ async def test_POST_DATA_with_charset_post(loop, test_client):
 
 
 async def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         assert data['name'] == 'text'
@@ -1112,7 +1112,7 @@ async def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
 
 async def test_POST_DATA_with_content_type_context_transfer_encoding(
         loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         assert data['name'] == 'text'
@@ -1135,7 +1135,7 @@ async def test_POST_DATA_with_content_type_context_transfer_encoding(
 
 
 async def test_POST_MultiDict(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         assert data == MultiDict([('q', 'test1'), ('q', 'test2')])
@@ -1152,7 +1152,7 @@ async def test_POST_MultiDict(loop, test_client):
 
 
 async def test_POST_DATA_DEFLATE(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         return web.json_response(dict(data))
@@ -1169,7 +1169,7 @@ async def test_POST_DATA_DEFLATE(loop, test_client):
 
 
 async def test_POST_FILES(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.post()
         assert data['some'].filename == fname.name
@@ -1192,7 +1192,7 @@ async def test_POST_FILES(loop, test_client, fname):
 
 
 async def test_POST_FILES_DEFLATE(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.post()
         assert data['some'].filename == fname.name
@@ -1236,7 +1236,7 @@ async def test_POST_bytes(loop, test_client):
 
 async def test_POST_bytes_too_large(loop, test_client):
     body = b'0' * (2 ** 20 + 1)
-    
+
     async def handler(request):
         data = await request.content.read()
         assert body == data
@@ -1254,7 +1254,7 @@ async def test_POST_bytes_too_large(loop, test_client):
 
 
 async def test_POST_FILES_STR(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.post()
         with fname.open() as f:
@@ -1274,7 +1274,7 @@ async def test_POST_FILES_STR(loop, test_client, fname):
 
 
 async def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.read()
         with fname.open('rb') as f:
@@ -1293,7 +1293,7 @@ async def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
 
 
 async def test_POST_FILES_LIST(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.post()
         assert fname.name == data['some'].filename
@@ -1313,7 +1313,7 @@ async def test_POST_FILES_LIST(loop, test_client, fname):
 
 
 async def test_POST_FILES_CT(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.post()
         assert fname.name == data['some'].filename
@@ -1390,7 +1390,7 @@ async def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
 
 
 async def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.read()
         with fname.open('rb') as f:
@@ -1414,7 +1414,7 @@ async def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
 
 
 async def test_POST_FILES_IO(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         assert b'data' == data['unknown'].file.read()
@@ -1434,7 +1434,7 @@ async def test_POST_FILES_IO(loop, test_client):
 
 @pytest.mark.xfail
 async def test_POST_MULTIPART(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         lst = list(data.values())
@@ -1461,7 +1461,7 @@ async def test_POST_MULTIPART(loop, test_client):
 
 
 async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
-    
+
     async def handler(request):
         data = await request.post()
         assert data['test'] == 'true'
@@ -1487,7 +1487,7 @@ async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
 
 
 async def test_POST_FILES_WITH_DATA(loop, test_client, fname):
-    
+
     async def handler(request):
         data = await request.post()
         assert data['test'] == 'true'
@@ -1511,7 +1511,7 @@ async def test_POST_FILES_WITH_DATA(loop, test_client, fname):
 
 
 async def test_POST_STREAM_DATA(loop, test_client, fname):
-    
+
     async def handler(request):
         assert request.content_type == 'application/octet-stream'
         content = await request.read()
@@ -1544,7 +1544,7 @@ async def test_POST_STREAM_DATA(loop, test_client, fname):
 
 
 async def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
-    
+
     async def handler(request):
         assert request.content_type == 'application/octet-stream'
         content = await request.read()
@@ -1577,7 +1577,7 @@ async def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
 
 
 async def test_POST_StreamReader(fname, loop, test_client):
-    
+
     async def handler(request):
         assert request.content_type == 'application/octet-stream'
         content = await request.read()
@@ -1607,7 +1607,7 @@ async def test_POST_StreamReader(fname, loop, test_client):
 
 
 async def test_json(loop, test_client):
-    
+
     async def handler(request):
         assert request.content_type == 'application/json'
         data = await request.json()
@@ -1628,7 +1628,7 @@ async def test_json(loop, test_client):
 
 
 async def test_json_custom(loop, test_client):
-    
+
     async def handler(request):
         assert request.content_type == 'application/json'
         data = await request.json()
@@ -1682,7 +1682,7 @@ async def test_expect_continue(loop, test_client):
 
 
 async def test_encoding_deflate(loop, test_client):
-    
+
     async def handler(request):
         resp = web.Response(text='text')
         resp.enable_chunked_encoding()
@@ -1701,7 +1701,7 @@ async def test_encoding_deflate(loop, test_client):
 
 
 async def test_encoding_deflate_nochunk(loop, test_client):
-    
+
     async def handler(request):
         resp = web.Response(text='text')
         resp.enable_compression(web.ContentCoding.deflate)
@@ -1719,7 +1719,7 @@ async def test_encoding_deflate_nochunk(loop, test_client):
 
 
 async def test_encoding_gzip(loop, test_client):
-    
+
     async def handler(request):
         resp = web.Response(text='text')
         resp.enable_chunked_encoding()
@@ -1738,7 +1738,7 @@ async def test_encoding_gzip(loop, test_client):
 
 
 async def test_encoding_gzip_nochunk(loop, test_client):
-    
+
     async def handler(request):
         resp = web.Response(text='text')
         resp.enable_compression(web.ContentCoding.gzip)
@@ -1756,7 +1756,7 @@ async def test_encoding_gzip_nochunk(loop, test_client):
 
 
 async def test_bad_payload_compression(loop, test_client):
-    
+
     async def handler(request):
         resp = web.Response(text='text')
         resp.headers['Content-Encoding'] = 'gzip'
@@ -1776,7 +1776,7 @@ async def test_bad_payload_compression(loop, test_client):
 
 
 async def test_bad_payload_chunked_encoding(loop, test_client):
-    
+
     async def handler(request):
         resp = web.StreamResponse()
         resp.force_close()
@@ -1801,7 +1801,7 @@ async def test_bad_payload_chunked_encoding(loop, test_client):
 
 
 async def test_bad_payload_content_length(loop, test_client):
-    
+
     async def handler(request):
         resp = web.Response(text='text')
         resp.headers['Content-Length'] = '10000'
@@ -1822,7 +1822,7 @@ async def test_bad_payload_content_length(loop, test_client):
 
 
 async def test_chunked(loop, test_client):
-    
+
     async def handler(request):
         resp = web.Response(text='text')
         resp.enable_chunked_encoding()
@@ -1841,7 +1841,7 @@ async def test_chunked(loop, test_client):
 
 
 async def test_shortcuts(test_client, loop):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
 
@@ -1869,7 +1869,7 @@ async def test_shortcuts(test_client, loop):
 
 
 async def test_cookies(test_client, loop):
-    
+
     async def handler(request):
         assert request.cookies.keys() == {'test1', 'test3'}
         assert request.cookies['test1'] == '123'
@@ -1920,7 +1920,7 @@ async def test_morsel_with_attributes(test_client, loop):
 
 
 async def test_set_cookies(test_client, loop):
-    
+
     async def handler(request):
         ret = web.Response()
         ret.set_cookie('c1', 'cookie1')
@@ -1955,7 +1955,7 @@ async def test_request_conn_error(loop):
 
 @pytest.mark.xfail
 async def test_broken_connection(loop, test_client):
-    
+
     async def handler(request):
         request.transport.close()
         return web.Response(text='answer'*1000)
@@ -1969,7 +1969,7 @@ async def test_broken_connection(loop, test_client):
 
 
 async def test_broken_connection_2(loop, test_client):
-    
+
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '1000'})
         await resp.prepare(request)
@@ -1990,7 +1990,7 @@ async def test_broken_connection_2(loop, test_client):
 
 
 async def test_custom_headers(loop, test_client):
-    
+
     async def handler(request):
         assert request.headers["x-api-key"] == "foo"
         return web.Response()
@@ -2006,10 +2006,10 @@ async def test_custom_headers(loop, test_client):
 
 
 async def test_redirect_to_absolute_url(loop, test_client):
-    
+
     async def handler(request):
         return web.Response(text=request.method)
-    
+
     async def redirect(request):
         return web.HTTPFound(location=client.make_url('/'))
 
@@ -2039,7 +2039,7 @@ async def test_redirect_without_location_header(loop, test_client):
 
 
 async def test_encoding_deprecated(loop, test_client):
-    
+
     async def handler_redirect(request):
         return web.Response(status=301)
 
@@ -2052,7 +2052,7 @@ async def test_encoding_deprecated(loop, test_client):
 
 
 async def test_chunked_deprecated(loop, test_client):
-    
+
     async def handler_redirect(request):
         return web.Response(status=301)
 
@@ -2065,7 +2065,7 @@ async def test_chunked_deprecated(loop, test_client):
 
 
 async def test_raise_for_status(loop, test_client):
-    
+
     async def handler_redirect(request):
         return web.HTTPBadRequest()
 
@@ -2097,12 +2097,12 @@ async def test_creds_in_auth_and_url(loop):
 
 
 async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
-    
+
     async def srv1(request):
         assert request.host == 'host1.com'
         assert request.headers['Authorization'] == 'Basic dXNlcjpwYXNz'
         raise web.HTTPFound('http://host2.com/path2')
-    
+
     async def srv2(request):
         assert request.host == 'host2.com'
         assert 'Authorization' not in request.headers
@@ -2123,7 +2123,7 @@ async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
                      'family': socket.AF_INET,
                      'proto': 0,
                      'flags': socket.AI_NUMERICHOST}]
-        
+
         async def close(self):
             pass
 
