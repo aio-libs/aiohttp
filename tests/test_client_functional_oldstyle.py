@@ -19,6 +19,7 @@ import threading
 import traceback
 import unittest
 import urllib.parse
+from http.cookies import SimpleCookie
 from unittest import mock
 
 from multidict import MultiDict
@@ -302,7 +303,7 @@ class Functional(Router):
 
     @Router.define('/cookies$')
     def cookies(self, match):
-        cookies = helpers.SimpleCookie()
+        cookies = SimpleCookie()
         cookies['c1'] = 'cookie1'
         cookies['c2'] = 'cookie2'
 
@@ -319,7 +320,7 @@ class Functional(Router):
 
     @Router.define('/cookies_partial$')
     def cookies_partial(self, match):
-        cookies = helpers.SimpleCookie()
+        cookies = SimpleCookie()
         cookies['c1'] = 'other_cookie1'
 
         resp = self._start_response(200)

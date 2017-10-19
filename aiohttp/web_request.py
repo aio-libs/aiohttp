@@ -9,6 +9,7 @@ import tempfile
 import types
 import warnings
 from email.utils import parsedate
+from http.cookies import SimpleCookie
 from types import MappingProxyType
 from urllib.parse import parse_qsl
 
@@ -16,7 +17,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
+from .helpers import HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
