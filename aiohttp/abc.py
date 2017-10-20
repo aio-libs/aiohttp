@@ -4,9 +4,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sized
 
 
-PY_35 = sys.version_info >= (3, 5)
-
-
 class AbstractRouter(ABC):
 
     def __init__(self):
@@ -94,10 +91,9 @@ class AbstractView(ABC):
         while False:  # pragma: no cover
             yield None
 
-    if PY_35:  # pragma: no branch
-        @abstractmethod
-        def __await__(self):
-            return  # pragma: no cover
+    @abstractmethod
+    def __await__(self):
+        return  # pragma: no cover
 
 
 class AbstractResolver(ABC):

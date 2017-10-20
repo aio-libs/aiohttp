@@ -17,69 +17,68 @@ class EofStream(Exception):
     """eof stream indication."""
 
 
-if helpers.PY_35:
-    class AsyncStreamIterator:
+class AsyncStreamIterator:
 
-        def __init__(self, read_func):
-            self.read_func = read_func
+    def __init__(self, read_func):
+        self.read_func = read_func
 
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not helpers.PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not helpers.PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
-        @asyncio.coroutine
-        def __anext__(self):
-            try:
-                rv = yield from self.read_func()
-            except EofStream:
-                raise StopAsyncIteration  # NOQA
-            if rv == b'':
-                raise StopAsyncIteration  # NOQA
-            return rv
-
-    class ChunkTupleAsyncStreamIterator(AsyncStreamIterator):
-        @asyncio.coroutine
-        def __anext__(self):
+    @asyncio.coroutine
+    def __anext__(self):
+        try:
             rv = yield from self.read_func()
-            if rv == (b'', False):
-                raise StopAsyncIteration  # NOQA
-            return rv
+        except EofStream:
+            raise StopAsyncIteration  # NOQA
+        if rv == b'':
+            raise StopAsyncIteration  # NOQA
+        return rv
+
+
+class ChunkTupleAsyncStreamIterator(AsyncStreamIterator):
+    @asyncio.coroutine
+    def __anext__(self):
+        rv = yield from self.read_func()
+        if rv == (b'', False):
+            raise StopAsyncIteration  # NOQA
+        return rv
 
 
 class AsyncStreamReaderMixin:
 
-    if helpers.PY_35:
-        def __aiter__(self):
-            return AsyncStreamIterator(self.readline)
+    def __aiter__(self):
+        return AsyncStreamIterator(self.readline)
 
-        if not helpers.PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not helpers.PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
-        def iter_chunked(self, n):
-            """Returns an asynchronous iterator that yields chunks of size n.
+    def iter_chunked(self, n):
+        """Returns an asynchronous iterator that yields chunks of size n.
 
-            Python-3.5 available for Python 3.5+ only
-            """
-            return AsyncStreamIterator(lambda: self.read(n))
+        Python-3.5 available for Python 3.5+ only
+        """
+        return AsyncStreamIterator(lambda: self.read(n))
 
-        def iter_any(self):
-            """Returns an asynchronous iterator that yields all the available
-            data as soon as it is received
+    def iter_any(self):
+        """Returns an asynchronous iterator that yields all the available
+        data as soon as it is received
 
-            Python-3.5 available for Python 3.5+ only
-            """
-            return AsyncStreamIterator(self.readany)
+        Python-3.5 available for Python 3.5+ only
+        """
+        return AsyncStreamIterator(self.readany)
 
-        def iter_chunks(self):
-            """Returns an asynchronous iterator that yields chunks of data
-            as they are received by the server. The yielded objects are tuples
-            of (bytes, bool) as returned by the StreamReader.readchunk method.
+    def iter_chunks(self):
+        """Returns an asynchronous iterator that yields chunks of data
+        as they are received by the server. The yielded objects are tuples
+        of (bytes, bool) as returned by the StreamReader.readchunk method.
 
-            Python-3.5 available for Python 3.5+ only
-            """
-            return ChunkTupleAsyncStreamIterator(self.readchunk)
+        Python-3.5 available for Python 3.5+ only
+        """
+        return ChunkTupleAsyncStreamIterator(self.readchunk)
 
 
 class StreamReader(AsyncStreamReaderMixin):
@@ -566,12 +565,11 @@ class DataQueue:
             else:
                 raise EofStream
 
-    if helpers.PY_35:
-        def __aiter__(self):
-            return AsyncStreamIterator(self.read)
+    def __aiter__(self):
+        return AsyncStreamIterator(self.read)
 
-        if not helpers.PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not helpers.PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
 
 class ChunksQueue(DataQueue):

@@ -28,7 +28,6 @@ from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
-PY_35 = True
 PY_352 = sys.version_info >= (3, 5, 2)
 
 
@@ -109,10 +108,9 @@ class _CoroGuard(_BaseCoroMixin):
         self._awaited = True
         return super().__iter__()
 
-    if PY_35:
-        def __await__(self):
-            self._awaited = True
-            return super().__await__()
+    def __await__(self):
+        self._awaited = True
+        return super().__await__()
 
     def __del__(self):
         self._coro = None
