@@ -60,8 +60,7 @@ def test_close_coro(create_session, loop):
     loop.run_until_complete(session.close())
 
 
-@asyncio.coroutine
-def test_close_deprecated(create_session):
+async def test_close_deprecated(create_session):
     session = create_session()
 
     with pytest.warns(DeprecationWarning) as ctx:
@@ -318,11 +317,10 @@ def test_detach(session):
         conn.close()
 
 
-@asyncio.coroutine
-def test_request_closed_session(session):
+async def test_request_closed_session(session):
     session.close()
     with pytest.raises(RuntimeError):
-        yield from session.request('get', '/')
+        await session.request('get', '/')
 
 
 def test_close_flag_for_closed_connector(session):
@@ -368,30 +366,27 @@ def test_borrow_connector_loop(connector, create_session, loop):
         session.close()
 
 
-@asyncio.coroutine
-def test_reraise_os_error(create_session):
+async def test_reraise_os_error(create_session):
     err = OSError(1, "permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
     req.send = mock.Mock(side_effect=err)
     session = create_session(request_class=req_factory)
 
-    @asyncio.coroutine
-    def create_connection(req):
+    async def create_connection(req):
         # return self.transport, self.protocol
         return mock.Mock()
     session._connector._create_connection = create_connection
 
     with pytest.raises(aiohttp.ClientOSError) as ctx:
-        yield from session.request('get', 'http://example.com')
+        await session.request('get', 'http://example.com')
     e = ctx.value
     assert e.errno == err.errno
     assert e.strerror == err.strerror
 
 
-@asyncio.coroutine
-def test_request_ctx_manager_props(loop):
-    yield from asyncio.sleep(0, loop=loop)  # to make it a task
+async def test_request_ctx_manager_props(loop):
+    await asyncio.sleep(0, loop=loop)  # to make it a task
     with pytest.warns(DeprecationWarning):
         with aiohttp.ClientSession(loop=loop) as client:
             ctx_mgr = client.get('http://example.com')
@@ -400,18 +395,16 @@ def test_request_ctx_manager_props(loop):
             assert isinstance(ctx_mgr.gi_frame, types.FrameType)
             assert not ctx_mgr.gi_running
             assert isinstance(ctx_mgr.gi_code, types.CodeType)
-            yield from asyncio.sleep(0.1, loop=loop)
+            await asyncio.sleep(0.1, loop=loop)
 
 
-@asyncio.coroutine
-def test_cookie_jar_usage(loop, test_client):
+async def test_cookie_jar_usage(loop, test_client):
     req_url = None
 
     jar = mock.Mock()
     jar.filter_cookies.return_value = None
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         nonlocal req_url
         req_url = "http://%s/" % request.host
 
@@ -421,16 +414,18 @@ def test_cookie_jar_usage(loop, test_client):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    session = yield from test_client(app,
-                                     cookies={"request": "req_value"},
-                                     cookie_jar=jar)
+    session = await test_client(
+        app,
+        cookies={"request": "req_value"},
+        cookie_jar=jar
+    )
 
     # Updating the cookie jar with initial user defined cookies
     jar.update_cookies.assert_called_with({"request": "req_value"})
 
     jar.update_cookies.reset_mock()
-    resp = yield from session.get("/")
-    yield from resp.release()
+    resp = await session.get("/")
+    await resp.release()
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter
