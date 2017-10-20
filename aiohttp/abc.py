@@ -1,10 +1,6 @@
 import asyncio
-import sys
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Sized
-
-
-PY_35 = sys.version_info >= (3, 5)
 
 
 class AbstractRouter(ABC):
@@ -28,22 +24,19 @@ class AbstractRouter(ABC):
         """Freeze router."""
         self._frozen = True
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def resolve(self, request):
+    async def resolve(self, request):
         """Return MATCH_INFO for given request"""
 
 
 class AbstractMatchInfo(ABC):
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def handler(self, request):
+    async def handler(self, request):
         """Execute matched request handler"""
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def expect_handler(self, request):
+    async def expect_handler(self, request):
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
@@ -80,40 +73,35 @@ class AbstractMatchInfo(ABC):
 
 
 class AbstractView(ABC):
+    """Abstract class based view."""
 
     def __init__(self, request):
         self._request = request
 
     @property
     def request(self):
+        """Request instance."""
         return self._request
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def __iter__(self):
-        while False:  # pragma: no cover
-            yield None
-
-    if PY_35:  # pragma: no branch
-        @abstractmethod
-        def __await__(self):
-            return  # pragma: no cover
+    async def __await__(self):
+        """Execute the view handler."""
 
 
 class AbstractResolver(ABC):
+    """Abstract DNS resolver."""
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def resolve(self, hostname):
+    async def resolve(self, hostname):
         """Return IP address for given hostname"""
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def close(self):
+    async def close(self):
         """Release resolver"""
 
 
 class AbstractCookieJar(Sized, Iterable):
+    """Abstract Cookie Jar."""
 
     def __init__(self, *, loop=None):
         self._loop = loop or asyncio.get_event_loop()
@@ -132,23 +120,23 @@ class AbstractCookieJar(Sized, Iterable):
 
 
 class AbstractPayloadWriter(ABC):
+    """Abstract payload writer."""
 
     @abstractmethod
     def write(self, chunk):
-        """Write chunk into stream"""
+        """Write chunk into stream."""
 
-    @asyncio.coroutine
     @abstractmethod
-    def write_eof(self, chunk=b''):
-        """Write last chunk"""
+    async def write_eof(self, chunk=b''):
+        """Write last chunk."""
 
-    @asyncio.coroutine
     @abstractmethod
-    def drain(self):
+    async def drain(self):
         """Flush the write buffer."""
 
 
 class AbstractAccessLogger(ABC):
+    """Abstract writer to access log."""
 
     def __init__(self, logger, log_format):
         self.logger = logger
@@ -156,4 +144,4 @@ class AbstractAccessLogger(ABC):
 
     @abstractmethod
     def log(self, request, response, time):
-        """Emit log to logger"""
+        """Emit log to logger."""
