@@ -14,6 +14,7 @@ import time
 import warnings
 import weakref
 from collections import namedtuple
+from collections.abc import Coroutine
 from math import ceil
 from pathlib import Path
 from urllib.parse import quote
@@ -45,14 +46,7 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-if PY_35:
-    from collections.abc import Coroutine
-    base = Coroutine
-else:
-    base = object
-
-
-class _BaseCoroMixin(base):
+class _BaseCoroMixin(Coroutine):
 
     __slots__ = ('_coro')
 
@@ -88,18 +82,9 @@ class _BaseCoroMixin(base):
         ret = yield from self._coro
         return ret
 
-    if PY_35:
-        def __await__(self):
-            ret = yield from self._coro
-            return ret
-
-
-if not PY_35:
-    try:
-        from asyncio import coroutines
-        coroutines._COROUTINE_TYPES += (_BaseCoroMixin,)
-    except:  # pragma: no cover
-        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
+    def __await__(self):
+        ret = yield from self._coro
+        return ret
 
 
 class _CoroGuard(_BaseCoroMixin):
