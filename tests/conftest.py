@@ -1,6 +1,5 @@
 import collections
 import logging
-import sys
 
 import pytest
 
