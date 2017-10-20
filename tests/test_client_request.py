@@ -933,8 +933,8 @@ async def test_data_stream_continue(loop, buf, conn):
         expect100=True, loop=loop)
     assert req.chunked
 
-    def coro():
-        yield from asyncio.sleep(0.0001, loop=loop)
+    async def coro():
+        await asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
     asyncio.ensure_future(coro(), loop=loop)
@@ -952,8 +952,8 @@ async def test_data_continue(loop, buf, conn):
         'POST', URL('http://python.org/'), data=b'data',
         expect100=True, loop=loop)
 
-    def coro():
-        yield from asyncio.sleep(0.0001, loop=loop)
+    async def coro():
+        await asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
     asyncio.ensure_future(coro(), loop=loop)
