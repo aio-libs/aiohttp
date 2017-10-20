@@ -58,6 +58,26 @@ def _create_example_app():
     return app
 
 
+# these exist to test the pytest scenario
+@pytest.yield_fixture
+def loop():
+    with loop_context() as loop:
+        yield loop
+
+
+@pytest.fixture
+def app():
+    return _create_example_app()
+
+
+@pytest.yield_fixture
+def test_client(loop, app):
+    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
+    loop.run_until_complete(client.start_server())
+    yield client
+    loop.run_until_complete(client.close())
+
+
 def test_full_server_scenario():
     with loop_context() as loop:
         app = _create_example_app()
@@ -157,26 +177,6 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
             assert _hello_world_str == text
 
         self.loop.run_until_complete(test_get_route())
-
-
-# these exist to test the pytest scenario
-@pytest.yield_fixture
-def loop():
-    with loop_context() as loop:
-        yield loop
-
-
-@pytest.fixture
-def app():
-    return _create_example_app()
-
-
-@pytest.yield_fixture
-def test_client(loop, app):
-    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
-    loop.run_until_complete(client.start_server())
-    yield client
-    loop.run_until_complete(client.close())
 
 
 def test_get_route(loop, test_client):
@@ -326,3 +326,22 @@ def test_testcase_no_app(testdir, loop):
         """)
     result = testdir.runpytest()
     result.stdout.fnmatch_lines(["*RuntimeError*"])
+
+
+async def test_server_context_manager(app, loop):
+    async with _TestServer(app, loop=loop) as server:
+        async with aiohttp.ClientSession(loop=loop) as client:
+            async with client.head(server.make_url('/')) as resp:
+                assert resp.status == 200
+
+
+@pytest.mark.parametrize("method", [
+    "head", "get", "post", "options", "post", "put", "patch", "delete"
+])
+async def test_client_context_manager_response(method, app, loop):
+    async with _TestClient(_TestServer(app), loop=loop) as client:
+        async with getattr(client, method)('/') as resp:
+            assert resp.status == 200
+            if method != 'head':
+                text = await resp.text()
+                assert "Hello, world" in text
