@@ -15,9 +15,7 @@ from aiohttp.abc import AbstractAccessLogger
 
 # -------------------- coro guard --------------------------------
 
-
-@asyncio.coroutine
-def test_warn():
+async def test_warn():
     with pytest.warns(DeprecationWarning) as ctx:
         helpers.deprecated_noop('Text')
 
@@ -28,10 +26,9 @@ def test_warn():
     assert w.filename == __file__
 
 
-@asyncio.coroutine
-def test_no_warn_on_await():
+async def test_no_warn_on_await():
     with pytest.warns(None) as ctx:
-        yield from helpers.deprecated_noop('Text')
+        await helpers.deprecated_noop('Text')
     assert not ctx.list
 
 
@@ -66,7 +63,7 @@ def test_parse_mimetype(mimetype, expected):
     result = helpers.parse_mimetype(mimetype)
 
     assert isinstance(result, helpers.MimeType)
-    assert helpers.parse_mimetype(mimetype) == expected
+    assert result == expected
 
 
 # ------------------- guess_filename ----------------------------------
@@ -451,21 +448,19 @@ def test_timer_context_no_task(loop):
 # -------------------------------- CeilTimeout --------------------------
 
 
-@asyncio.coroutine
-def test_weakref_handle(loop):
+async def test_weakref_handle(loop):
     cb = mock.Mock()
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
-    yield from asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1, loop=loop)
     assert cb.test.called
 
 
-@asyncio.coroutine
-def test_weakref_handle_weak(loop):
+async def test_weakref_handle_weak(loop):
     cb = mock.Mock()
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
     del cb
     gc.collect()
-    yield from asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1, loop=loop)
 
 
 def test_ceil_call_later():
@@ -483,8 +478,7 @@ def test_ceil_call_later_no_timeout():
     assert not loop.call_at.called
 
 
-@asyncio.coroutine
-def test_ceil_timeout(loop):
+async def test_ceil_timeout(loop):
     with helpers.CeilTimeout(None, loop=loop) as timeout:
         assert timeout._timeout is None
         assert timeout._cancel_handler is None
