@@ -4,7 +4,7 @@ import asyncio
 import json
 
 from .client_exceptions import ClientError
-from .helpers import PY_35, PY_352, Timeout, call_later, create_future
+from .helpers import PY_352, Timeout, call_later, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
 
@@ -253,18 +253,17 @@ class ClientWebSocketResponse:
         data = yield from self.receive_str(timeout=timeout)
         return loads(data)
 
-    if PY_35:
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
-        @asyncio.coroutine
-        def __anext__(self):
-            msg = yield from self.receive()
-            if msg.type in (WSMsgType.CLOSE,
-                            WSMsgType.CLOSING,
-                            WSMsgType.CLOSED):
-                raise StopAsyncIteration  # NOQA
-            return msg
+    @asyncio.coroutine
+    def __anext__(self):
+        msg = yield from self.receive()
+        if msg.type in (WSMsgType.CLOSE,
+                        WSMsgType.CLOSING,
+                        WSMsgType.CLOSED):
+            raise StopAsyncIteration  # NOQA
+        return msg

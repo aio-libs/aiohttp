@@ -18,7 +18,7 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL)
 from .formdata import FormData
-from .helpers import PY_35, HeadersMixin, TimerNoop, noop
+from .helpers import HeadersMixin, TimerNoop, noop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import FlowControlStreamReader
@@ -803,14 +803,13 @@ class ClientResponse(HeadersMixin):
 
         return loads(stripped.decode(encoding))
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            return self
+    @asyncio.coroutine
+    def __aenter__(self):
+        return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_val, exc_tb):
-            # similar to _RequestContextManager, we do not need to check
-            # for exceptions, response object can closes connection
-            # is state is broken
-            self.release()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        # similar to _RequestContextManager, we do not need to check
+        # for exceptions, response object can closes connection
+        # is state is broken
+        self.release()

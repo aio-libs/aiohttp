@@ -19,7 +19,7 @@ from types import MappingProxyType
 # Escaping of the URLs need to be consitent with the escaping done by yarl
 from yarl import URL, unquote
 
-from . import hdrs, helpers
+from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
@@ -748,9 +748,8 @@ class View(AbstractView):
         resp = yield from method()
         return resp
 
-    if helpers.PY_35:
-        def __await__(self):
-            return (yield from self.__iter__())
+    def __await__(self):
+        return (yield from self.__iter__())
 
     def _raise_allowed_methods(self):
         allowed_methods = {

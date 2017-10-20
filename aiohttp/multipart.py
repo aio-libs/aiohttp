@@ -13,7 +13,7 @@ from multidict import CIMultiDict
 
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
-from .helpers import CHAR, PY_35, PY_352, TOKEN, parse_mimetype, reify
+from .helpers import CHAR, PY_352, TOKEN, parse_mimetype, reify
 from .http import HttpParser
 from .payload import (BytesPayload, LookupError, Payload, StringPayload,
                       get_payload, payload_type)
@@ -169,19 +169,18 @@ class MultipartResponseWrapper(object):
         self.resp = resp
         self.stream = stream
 
-    if PY_35:
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
-        @asyncio.coroutine
-        def __anext__(self):
-            part = yield from self.next()
-            if part is None:
-                raise StopAsyncIteration  # NOQA
-            return part
+    @asyncio.coroutine
+    def __anext__(self):
+        part = yield from self.next()
+        if part is None:
+            raise StopAsyncIteration  # NOQA
+        return part
 
     def at_eof(self):
         """Returns ``True`` when all response data had been read.
@@ -223,19 +222,18 @@ class BodyPartReader(object):
         self._content_eof = 0
         self._cache = {}
 
-    if PY_35:
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
-        @asyncio.coroutine
-        def __anext__(self):
-            part = yield from self.next()
-            if part is None:
-                raise StopAsyncIteration  # NOQA
-            return part
+    @asyncio.coroutine
+    def __anext__(self):
+        part = yield from self.next()
+        if part is None:
+            raise StopAsyncIteration  # NOQA
+        return part
 
     @asyncio.coroutine
     def next(self):
@@ -549,19 +547,18 @@ class MultipartReader(object):
         self._at_bof = True
         self._unread = []
 
-    if PY_35:
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
-        @asyncio.coroutine
-        def __anext__(self):
-            part = yield from self.next()
-            if part is None:
-                raise StopAsyncIteration  # NOQA
-            return part
+    @asyncio.coroutine
+    def __anext__(self):
+        part = yield from self.next()
+        if part is None:
+            raise StopAsyncIteration  # NOQA
+        return part
 
     @classmethod
     def from_response(cls, response):
