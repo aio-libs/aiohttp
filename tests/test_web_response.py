@@ -7,7 +7,8 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
+from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, \
+    signals, http_writer
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -28,6 +29,28 @@ def make_request(method, path, headers=CIMultiDict(),
 def buf():
     return bytearray()
 
+
+@pytest.fixture
+def transport(buf):
+    transport = mock.Mock()
+
+    def write(chunk):
+        buf.extend(chunk)
+
+    transport.write.side_effect = write
+    return transport
+
+
+@pytest.fixture
+def stream(transport):
+    stream = mock.Mock(transport=transport)
+
+    def acquire(writer):
+        writer.set_transport(transport)
+
+    stream.acquire = acquire
+    stream.drain.return_value = ()
+    return stream
 
 @pytest.yield_fixture
 def writer(buf):
@@ -605,6 +628,31 @@ def test_cannot_write_eof_twice():
     resp_impl.write.reset_mock()
     yield from resp.write_eof()
     assert not writer.write.called
+
+
+@asyncio.coroutine
+def test_write_coro(loop, stream):
+    writer = http_writer.PayloadWriter(stream, loop)
+    request = make_request('GET', '/', payload_writer=writer)
+
+    response = StreamResponse()
+    yield from response.prepare(request)
+    yield from response.write(b'data')
+
+
+@asyncio.coroutine
+def test_write_deprecated(loop, stream):
+    writer = http_writer.PayloadWriter(stream, loop)
+    request = make_request('GET', '/', payload_writer=writer)
+
+    response = StreamResponse()
+    yield from response.prepare(request)
+
+    with pytest.warns(DeprecationWarning) as ctx:
+        response.write(b'data')
+
+    # Assert the warning points at us and not at _CoroGuard.
+    assert ctx.list[0].filename == __file__
 
 
 @asyncio.coroutine
