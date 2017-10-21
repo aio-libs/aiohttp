@@ -1,4 +1,3 @@
-import asyncio
 from unittest import mock
 
 import pytest
@@ -74,19 +73,17 @@ def test_invalid_formdata_content_transfer_encoding():
                            content_transfer_encoding=invalid_val)
 
 
-@asyncio.coroutine
-def test_formdata_field_name_is_quoted(buf, writer):
+async def test_formdata_field_name_is_quoted(buf, writer):
     form = FormData(charset="ascii")
     form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
-    yield from payload.write(writer)
+    await payload.write(writer)
     assert b'name="emails%5B%5D"' in buf
 
 
-@asyncio.coroutine
-def test_formdata_field_name_is_not_quoted(buf, writer):
+async def test_formdata_field_name_is_not_quoted(buf, writer):
     form = FormData(quote_fields=False, charset="ascii")
     form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
-    yield from payload.write(writer)
+    await payload.write(writer)
     assert b'name="emails[]"' in buf
