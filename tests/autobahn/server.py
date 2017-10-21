@@ -30,7 +30,7 @@ async def wshandler(request):
     return ws
 
 
-await def main(loop):
+async def main(loop):
     app = web.Application()
     app.router.add_route('GET', '/', wshandler)
 
@@ -40,8 +40,7 @@ await def main(loop):
     return app, srv, handler
 
 
-@asyncio.coroutine
-def finish(app, srv, handler):
+async def finish(app, srv, handler):
     srv.close()
     await handler.shutdown()
     await srv.wait_closed()
