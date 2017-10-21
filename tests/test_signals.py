@@ -23,16 +23,14 @@ def make_request(app, method, path, headers=CIMultiDict()):
     return make_mocked_request(method, path, headers, app=app)
 
 
-@asyncio.coroutine
-def test_add_signal_handler_not_a_callable(app):
+async def test_add_signal_handler_not_a_callable(app):
     callback = True
     app.on_response_prepare.append(callback)
     with pytest.raises(TypeError):
-        yield from app.on_response_prepare(None, None)
+        await app.on_response_prepare(None, None)
 
 
-@asyncio.coroutine
-def test_function_signal_dispatch(app):
+async def test_function_signal_dispatch(app):
     signal = Signal(app)
     kwargs = {'foo': 1, 'bar': 2}
 
@@ -44,12 +42,11 @@ def test_function_signal_dispatch(app):
 
     signal.append(callback)
 
-    yield from signal.send(**kwargs)
+    await signal.send(**kwargs)
     callback_mock.assert_called_once_with(**kwargs)
 
 
-@asyncio.coroutine
-def test_function_signal_dispatch2(app):
+async def test_function_signal_dispatch2(app):
     signal = Signal(app)
     args = {'a', 'b'}
     kwargs = {'foo': 1, 'bar': 2}
@@ -62,12 +59,11 @@ def test_function_signal_dispatch2(app):
 
     signal.append(callback)
 
-    yield from signal.send(*args, **kwargs)
+    await signal.send(*args, **kwargs)
     callback_mock.assert_called_once_with(*args, **kwargs)
 
 
-@asyncio.coroutine
-def test_response_prepare(app):
+async def test_response_prepare(app):
     callback = mock.Mock()
 
     @asyncio.coroutine
@@ -78,13 +74,12 @@ def test_response_prepare(app):
 
     request = make_request(app, 'GET', '/')
     response = Response(body=b'')
-    yield from response.prepare(request)
+    await response.prepare(request)
 
     callback.assert_called_once_with(request, response)
 
 
-@asyncio.coroutine
-def test_non_coroutine(app):
+async def test_non_coroutine(app):
     signal = Signal(app)
     kwargs = {'foo': 1, 'bar': 2}
 
@@ -92,12 +87,11 @@ def test_non_coroutine(app):
 
     signal.append(callback)
 
-    yield from signal.send(**kwargs)
+    await signal.send(**kwargs)
     callback.assert_called_once_with(**kwargs)
 
 
-@asyncio.coroutine
-def test_debug_signal(debug_app):
+async def test_debug_signal(debug_app):
     assert debug_app.debug, "Should be True"
     signal = Signal(debug_app)
 
@@ -109,7 +103,7 @@ def test_debug_signal(debug_app):
     debug_app.on_pre_signal.append(pre)
     debug_app.on_post_signal.append(post)
 
-    yield from signal.send(1, a=2)
+    await signal.send(1, a=2)
     callback.assert_called_once_with(1, a=2)
     pre.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
     post.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
