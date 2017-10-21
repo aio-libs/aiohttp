@@ -1530,11 +1530,11 @@ async def test_POST_STREAM_DATA(loop, test_client, fname):
         data_size = len(f.read())
 
     @aiohttp.streamer
-    def stream(writer, fname):
+    async def stream(writer, fname):
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                yield from writer.write(data)
+                await writer.write(data)
                 data = f.read(100)
 
     resp = await client.post(
@@ -1563,11 +1563,11 @@ async def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
         data_size = len(f.read())
 
     @aiohttp.streamer
-    def stream(writer):
+    async def stream(writer):
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                yield from writer.write(data)
+                await writer.write(data)
                 data = f.read(100)
 
     resp = await client.post(

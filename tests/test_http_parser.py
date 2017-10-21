@@ -93,23 +93,21 @@ def test_parse(parser):
     assert msg.version == (1, 1)
 
 
-@asyncio.coroutine
-def test_parse_body(parser):
+async def test_parse_body(parser):
     text = b'GET /test HTTP/1.1\r\nContent-Length: 4\r\n\r\nbody'
     messages, upgrade, tail = parser.feed_data(text)
     assert len(messages) == 1
     _, payload = messages[0]
-    body = yield from payload.read(4)
+    body = await payload.read(4)
     assert body == b'body'
 
 
-@asyncio.coroutine
-def test_parse_body_with_CRLF(parser):
+async def test_parse_body_with_CRLF(parser):
     text = b'\r\nGET /test HTTP/1.1\r\nContent-Length: 4\r\n\r\nbody'
     messages, upgrade, tail = parser.feed_data(text)
     assert len(messages) == 1
     _, payload = messages[0]
-    body = yield from payload.read(4)
+    body = await payload.read(4)
     assert body == b'body'
 
 
