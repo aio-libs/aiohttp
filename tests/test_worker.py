@@ -190,8 +190,7 @@ def test__get_valid_log_format_exc(worker):
     assert '%(name)s' in str(exc)
 
 
-@asyncio.coroutine
-def test__run_ok(worker, loop):
+async def test__run_ok(worker, loop):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
@@ -215,7 +214,7 @@ def test__run_ok(worker, loop):
         with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
             m_asyncio.sleep = mock.Mock(
                 wraps=asyncio.coroutine(lambda *a, **kw: None))
-            yield from worker._run()
+            await worker._run()
 
     worker.notify.assert_called_with()
     if os.getppid() != 1:  # not Docker
@@ -230,8 +229,7 @@ def test__run_ok(worker, loop):
 
 @pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
                     reason="UNIX sockets are not supported")
-@asyncio.coroutine
-def test__run_ok_unix_socket(worker, loop):
+async def test__run_ok_unix_socket(worker, loop):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
@@ -256,7 +254,7 @@ def test__run_ok_unix_socket(worker, loop):
         with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
             m_asyncio.sleep = mock.Mock(
                 wraps=asyncio.coroutine(lambda *a, **kw: None))
-            yield from worker._run()
+            await worker._run()
 
     worker.notify.assert_called_with()
     if os.getppid() != 1:  # not Docker
@@ -269,8 +267,7 @@ def test__run_ok_unix_socket(worker, loop):
     assert ctx is ssl_context
 
 
-@asyncio.coroutine
-def test__run_exc(worker, loop):
+async def test__run_exc(worker, loop):
     with mock.patch('aiohttp.worker.os') as m_os:
         m_os.getpid.return_value = 1
         m_os.getppid.return_value = 1
@@ -295,14 +292,13 @@ def test__run_exc(worker, loop):
 
             worker.close = make_mocked_coro(None)
 
-            yield from worker._run()
+            await worker._run()
 
         assert worker._wait_next_notify.called
         worker.close.assert_called_with()
 
 
-@asyncio.coroutine
-def test_close(worker, loop):
+async def test_close(worker, loop):
     srv = mock.Mock()
     srv.wait_closed = make_mocked_coro(None)
     handler = mock.Mock()
@@ -318,18 +314,17 @@ def test_close(worker, loop):
     app.shutdown.return_value = helpers.create_future(loop)
     app.shutdown.return_value.set_result(None)
 
-    yield from worker.close()
+    await worker.close()
     app.shutdown.assert_called_with()
     app.cleanup.assert_called_with()
     handler.shutdown.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()
     assert worker.servers is None
 
-    yield from worker.close()
+    await worker.close()
 
 
-@asyncio.coroutine
-def test_close_wsgi(worker, loop):
+async def test_close_wsgi(worker, loop):
     srv = mock.Mock()
     srv.wait_closed = make_mocked_coro(None)
     handler = mock.Mock()
@@ -341,16 +336,15 @@ def test_close_wsgi(worker, loop):
     handler.shutdown.return_value = helpers.create_future(loop)
     handler.shutdown.return_value.set_result(1)
 
-    yield from worker.close()
+    await worker.close()
     handler.shutdown.assert_called_with(timeout=95.0)
     srv.close.assert_called_with()
     assert worker.servers is None
 
-    yield from worker.close()
+    await worker.close()
 
 
-@asyncio.coroutine
-def test__run_ok_no_max_requests(worker, loop):
+async def test__run_ok_no_max_requests(worker, loop):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
@@ -374,7 +368,7 @@ def test__run_ok_no_max_requests(worker, loop):
         with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
             m_asyncio.sleep = mock.Mock(
                 wraps=asyncio.coroutine(lambda *a, **kw: None))
-            yield from worker._run()
+            await worker._run()
 
     worker.notify.assert_called_with()
     if os.getppid() != 1:  # not Docker
@@ -387,8 +381,7 @@ def test__run_ok_no_max_requests(worker, loop):
     assert ctx is ssl_context
 
 
-@asyncio.coroutine
-def test__run_ok_max_requests_exceeded(worker, loop):
+async def test__run_ok_max_requests_exceeded(worker, loop):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
@@ -412,7 +405,7 @@ def test__run_ok_max_requests_exceeded(worker, loop):
         with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
             m_asyncio.sleep = mock.Mock(
                 wraps=asyncio.coroutine(lambda *a, **kw: None))
-            yield from worker._run()
+            await worker._run()
 
     worker.notify.assert_called_with()
     worker.log.info.assert_called_with("Max requests, shutting down: %s",
