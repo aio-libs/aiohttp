@@ -91,10 +91,6 @@ class WSMessage(_WSMessageBase):
         """
         return loads(self.data)
 
-    @property
-    def tp(self):
-        return self.type
-
 
 WS_CLOSED_MESSAGE = WSMessage(WSMsgType.CLOSED, None, None)
 WS_CLOSING_MESSAGE = WSMessage(WSMsgType.CLOSING, None, None)
