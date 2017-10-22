@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import functools
 import io
 import json
@@ -912,6 +913,58 @@ def test_writer_with_content_transfer_encoding_base64(buf, stream, writer):
             headers)
 
     assert b'VGltZSB0byBSZWxheCE=' == message.split(b'\r\n')[0]
+
+
+@asyncio.coroutine
+def test_writer_with_content_te_base64_no_long_lines(buf, stream, writer):
+    writer.append('Time to write long lines!' * 10,
+                  {CONTENT_TRANSFER_ENCODING: 'base64'})
+    yield from writer.write(stream)
+    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
+
+    line0 = message.split(b'\r\n')
+    assert len(line0) < 80
+
+
+class MockedIO(io.IOBase):
+    """A mock tht simulate a reader that provides chunks of data (once per read).
+
+        contents is a list of each chunk to provide on read call
+    """
+    def __init__(self, contents):
+        self.idx = 0
+        self.contents = contents
+
+    def read(self, *args):
+        if self.idx >= len(self.contents):
+            return b""
+        v = self.contents[self.idx]
+        self.idx += 1
+        return v
+
+
+@asyncio.coroutine
+def test_writer_multiple_write_base64_output(buf, stream, writer):
+    # we expect a complete buffer with each completly filled
+    # independently of the write sequence.
+    expected = base64.encodebytes((
+        'Time to write long lines!' * 10 +
+        'More big content' * 10
+    ).replace("\n", "\r\n").encode("ascii"))
+
+    mock_reader = MockedIO([
+        b'Time to write long lines!' * 10,
+        b'More big content' * 10
+    ])
+
+    writer.append(mock_reader,
+                  {CONTENT_TRANSFER_ENCODING: 'base64'})
+
+    yield from writer.write(stream)
+
+    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
+
+    assert message == expected
 
 
 @asyncio.coroutine

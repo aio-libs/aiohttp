@@ -876,7 +876,6 @@ class MultipartPayloadWriter:
     def enable_encoding(self, encoding):
         if encoding == 'base64':
             self._encoding = encoding
-            self._encoding_buffer = bytearray()
         elif encoding == 'quoted-printable':
             self._encoding = 'quoted-printable'
 
@@ -893,11 +892,6 @@ class MultipartPayloadWriter:
                 self._compress = None
                 yield from self.write(chunk)
 
-        if self._encoding == 'base64':
-            if self._encoding_buffer:
-                yield from self._writer.write(base64.b64encode(
-                    self._encoding_buffer))
-
     @asyncio.coroutine
     def write(self, chunk):
         if self._compress is not None:
@@ -907,16 +901,14 @@ class MultipartPayloadWriter:
                     return
 
         if self._encoding == 'base64':
-            self._encoding_buffer.extend(chunk)
+            if chunk:
+                enc_chunk = base64.encodebytes(chunk)
+                # eol convertion needed because python API returns simple \n
+                # and RFC 2045 needs \r\n. It's safe because base64 doesn't
+                # produce \n inside a payload
+                enc_chunk = enc_chunk.replace(b"\n", b"\r\n")
+                yield from self._writer.write(enc_chunk)
 
-            if self._encoding_buffer:
-                buffer = self._encoding_buffer
-                div, mod = divmod(len(buffer), 3)
-                enc_chunk, self._encoding_buffer = (
-                    buffer[:div * 3], buffer[div * 3:])
-                if enc_chunk:
-                    enc_chunk = base64.b64encode(enc_chunk)
-                    yield from self._writer.write(enc_chunk)
         elif self._encoding == 'quoted-printable':
             yield from self._writer.write(binascii.b2a_qp(chunk))
         else:
