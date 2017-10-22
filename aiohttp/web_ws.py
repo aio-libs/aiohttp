@@ -2,8 +2,10 @@ import asyncio
 import json
 from collections import namedtuple
 
+import async_timeout
+
 from . import hdrs
-from .helpers import PY_352, Timeout, call_later, create_future
+from .helpers import PY_352, call_later, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
                    WebSocketError, WebSocketReader, WSMessage, WSMsgType,
                    do_handshake)
@@ -234,7 +236,7 @@ class WebSocketResponse(StreamResponse):
                 return True
 
             try:
-                with Timeout(self._timeout, loop=self._loop):
+                with async_timeout.timeout(self._timeout, loop=self._loop):
                     msg = yield from self._reader.read()
             except asyncio.CancelledError:
                 self._close_code = 1006
@@ -275,7 +277,7 @@ class WebSocketResponse(StreamResponse):
             try:
                 self._waiting = create_future(self._loop)
                 try:
-                    with Timeout(
+                    with async_timeout.timeout(
                             timeout or self._receive_timeout, loop=self._loop):
                         msg = yield from self._reader.read()
                     self._reset_heartbeat()
