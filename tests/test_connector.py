@@ -379,10 +379,9 @@ async def test_tcp_connector_resolve_host(loop):
 
 @pytest.fixture
 def dns_response(loop):
-    @asyncio.coroutine
-    def coro():
+    async def coro():
         # simulates a network operation
-        yield from asyncio.sleep(0, loop=loop)
+        await asyncio.sleep(0, loop=loop)
         return ["127.0.0.1"]
     return coro
 
@@ -424,7 +423,7 @@ async def test_tcp_connector_dns_cache_forever(loop, dns_response):
 async def test_tcp_connector_use_dns_cache_disabled(loop, dns_response):
     with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
         conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=False)
-        m_resolver().resolve.return_value = dns_response()
+        m_resolver().resolve.side_effect = [dns_response(), dns_response()]
         await conn._resolve_host('localhost', 8080)
         await conn._resolve_host('localhost', 8080)
         m_resolver().resolve.assert_has_calls([
