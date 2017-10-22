@@ -3,7 +3,7 @@ import json
 from collections import namedtuple
 
 from . import hdrs
-from .helpers import PY_35, PY_352, Timeout, call_later, create_future
+from .helpers import PY_352, Timeout, call_later, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
                    WebSocketError, WebSocketReader, WSMessage, WSMsgType,
                    do_handshake)
@@ -338,18 +338,17 @@ class WebSocketResponse(StreamResponse):
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
 
-    if PY_35:
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
+    if not PY_352:  # pragma: no cover
+        __aiter__ = asyncio.coroutine(__aiter__)
 
-        @asyncio.coroutine
-        def __anext__(self):
-            msg = yield from self.receive()
-            if msg.type in (WSMsgType.CLOSE,
-                            WSMsgType.CLOSING,
-                            WSMsgType.CLOSED):
-                raise StopAsyncIteration  # NOQA
-            return msg
+    @asyncio.coroutine
+    def __anext__(self):
+        msg = yield from self.receive()
+        if msg.type in (WSMsgType.CLOSE,
+                        WSMsgType.CLOSING,
+                        WSMsgType.CLOSED):
+            raise StopAsyncIteration  # NOQA
+        return msg

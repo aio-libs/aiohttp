@@ -6,24 +6,23 @@ import logging
 from aiohttp import web
 
 
-@asyncio.coroutine
-def wshandler(request):
+async def wshandler(request):
     ws = web.WebSocketResponse(autoclose=False)
     ok, protocol = ws.can_start(request)
     if not ok:
         return web.HTTPBadRequest()
 
-    yield from ws.prepare(request)
+    await ws.prepare(request)
 
     while True:
-        msg = yield from ws.receive()
+        msg = await ws.receive()
 
         if msg.type == web.WSMsgType.text:
-            ws.send_str(msg.data)
+            await ws.send_str(msg.data)
         elif msg.type == web.WSMsgType.binary:
-            ws.send_bytes(msg.data)
+            await ws.send_bytes(msg.data)
         elif msg.type == web.WSMsgType.close:
-            yield from ws.close()
+            await ws.close()
             break
         else:
             break
@@ -31,22 +30,20 @@ def wshandler(request):
     return ws
 
 
-@asyncio.coroutine
-def main(loop):
+async def main(loop):
     app = web.Application()
     app.router.add_route('GET', '/', wshandler)
 
     handler = app.make_handler()
-    srv = yield from loop.create_server(handler, '127.0.0.1', 9001)
+    srv = await loop.create_server(handler, '127.0.0.1', 9001)
     print("Server started at http://127.0.0.1:9001")
     return app, srv, handler
 
 
-@asyncio.coroutine
-def finish(app, srv, handler):
+async def finish(app, srv, handler):
     srv.close()
-    yield from handler.shutdown()
-    yield from srv.wait_closed()
+    await handler.shutdown()
+    await srv.wait_closed()
 
 
 if __name__ == '__main__':

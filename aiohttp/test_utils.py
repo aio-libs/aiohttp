@@ -18,7 +18,7 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import PY_35, noop, sentinel
+from .helpers import noop, sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Request, Server, UrlMappingMatchInfo
@@ -129,15 +129,14 @@ class BaseTestServer(ABC):
     def __exit__(self, exc_type, exc_value, traceback):
         self._loop.run_until_complete(self.close())
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            yield from self.start_server(loop=self._loop)
-            return self
+    @asyncio.coroutine
+    def __aenter__(self):
+        yield from self.start_server(loop=self._loop)
+        return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_value, traceback):
-            yield from self.close()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_value, traceback):
+        yield from self.close()
 
 
 class TestServer(BaseTestServer):
@@ -331,15 +330,14 @@ class TestClient:
     def __exit__(self, exc_type, exc_value, traceback):
         self._loop.run_until_complete(self.close())
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            yield from self.start_server()
-            return self
+    @asyncio.coroutine
+    def __aenter__(self):
+        yield from self.start_server()
+        return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_value, traceback):
-            yield from self.close()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_value, traceback):
+        yield from self.close()
 
 
 class AioHTTPTestCase(unittest.TestCase):
