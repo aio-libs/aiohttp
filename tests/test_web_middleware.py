@@ -1,9 +1,11 @@
 import asyncio
 import re
+from unittest import mock
 
 import pytest
 
 from aiohttp import web
+from aiohttp.helpers import noop
 
 
 @asyncio.coroutine
@@ -224,7 +226,10 @@ def test_old_style_middleware(loop, test_client):
             return resp
         return middleware
 
-    with pytest.warns(DeprecationWarning) as warning_checker:
+    with pytest.warns(DeprecationWarning) as warning_checker, \
+            mock.patch("aiohttp.http_writer.PayloadWriter.write") as patched:
+        patched.return_value = noop()
+
         app = web.Application()
         app.middlewares.append(middleware_factory)
         app.router.add_route('GET', '/', handler)
@@ -283,7 +288,10 @@ def test_mixed_middleware(loop, test_client):
 
     middlewares = m_old1, m_new1, m_old2, m_new2
 
-    with pytest.warns(DeprecationWarning) as w:
+    with pytest.warns(DeprecationWarning) as w, \
+        mock.patch("aiohttp.http_writer.PayloadWriter.write") as patched:
+        patched.return_value = noop()
+
         app = web.Application(middlewares=middlewares)
         app.router.add_route('GET', '/', handler)
         client = yield from test_client(app)
@@ -322,7 +330,10 @@ def test_old_style_middleware_class(loop, test_client):
                 return resp
             return middleware
 
-    with pytest.warns(DeprecationWarning) as warning_checker:
+    with pytest.warns(DeprecationWarning) as warning_checker, \
+            mock.patch("aiohttp.http_writer.PayloadWriter.write") as patched:
+        patched.return_value = noop()
+
         app = web.Application()
         app.middlewares.append(Middleware())
         app.router.add_route('GET', '/', handler)
@@ -356,7 +367,10 @@ def test_new_style_middleware_class(loop, test_client):
             resp.text = resp.text + '[new style middleware]'
             return resp
 
-    with pytest.warns(None) as warning_checker:
+    with pytest.warns(None) as warning_checker, \
+            mock.patch("aiohttp.http_writer.PayloadWriter.write") as patched:
+        patched.return_value = noop()
+
         app = web.Application()
         app.middlewares.append(Middleware())
         app.router.add_route('GET', '/', handler)
@@ -385,7 +399,10 @@ def test_new_style_middleware_method(loop, test_client):
             resp.text = resp.text + '[new style middleware]'
             return resp
 
-    with pytest.warns(None) as warning_checker:
+    with pytest.warns(None) as warning_checker, \
+            mock.patch("aiohttp.http_writer.PayloadWriter.write") as patched:
+        patched.return_value = noop()
+
         app = web.Application()
         app.middlewares.append(Middleware().call)
         app.router.add_route('GET', '/', handler)
