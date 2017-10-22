@@ -6,7 +6,7 @@
 {% if questions %}
     <ul>
     {% for question in questions %}
-    <li><a href="{{ url('poll', parts={'question_id': question.id}) }}">{{ question.question_text }}</a></li>
+    <li><a href="{{ url('poll', question_id=question.id) }}">{{ question.question_text }}</a></li>
     {% endfor %}
     </ul>
 {% else %}

@@ -5,7 +5,7 @@
 {% block content %}
 {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
 
-<form action="{{ url('vote', parts={'question_id': question.id}) }}" method="post">
+<form action="{{ url('vote', question_id=question.id) }}" method="post">
 {% for choice in choices %}
     <input type="radio" name="choice" id="choice{{ loop.index }}" value="{{ choice.id }}" />
     <label for="choice{{ loop.index }}">{{ choice.choice_text }}</label><br />
