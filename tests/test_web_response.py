@@ -7,8 +7,8 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, \
-    signals, http_writer
+from aiohttp import (HttpVersion, HttpVersion10, HttpVersion11, hdrs,
+                     http_writer, signals)
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
@@ -51,6 +51,7 @@ def stream(transport):
     stream.acquire = acquire
     stream.drain.return_value = ()
     return stream
+
 
 @pytest.yield_fixture
 def writer(buf):

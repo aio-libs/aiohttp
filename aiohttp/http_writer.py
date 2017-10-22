@@ -6,7 +6,7 @@ import socket
 import zlib
 
 from .abc import AbstractPayloadWriter
-from .helpers import create_future, noop, deprecated_noop
+from .helpers import create_future, deprecated_noop, noop
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',

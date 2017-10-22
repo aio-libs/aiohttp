@@ -289,7 +289,7 @@ def test_mixed_middleware(loop, test_client):
     middlewares = m_old1, m_new1, m_old2, m_new2
 
     with pytest.warns(DeprecationWarning) as w, \
-        mock.patch("aiohttp.http_writer.PayloadWriter.write") as patched:
+            mock.patch("aiohttp.http_writer.PayloadWriter.write") as patched:
         patched.return_value = noop()
 
         app = web.Application(middlewares=middlewares)
