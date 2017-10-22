@@ -406,7 +406,6 @@ async def test_reader_read_exception(ws_key, key_data, loop):
 
                 msg = await resp.receive()
                 assert msg.type == aiohttp.WSMsgType.ERROR
-                assert msg.type is msg.tp
                 assert resp.exception() is exc
 
                 session.close()

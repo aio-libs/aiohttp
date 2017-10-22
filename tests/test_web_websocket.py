@@ -387,7 +387,6 @@ def test_receive_exc_in_reader(make_request, loop):
 
     msg = yield from ws.receive()
     assert msg.type == WSMsgType.ERROR
-    assert msg.type is msg.tp
     assert msg.data is exc
     assert ws.exception() is exc
 
