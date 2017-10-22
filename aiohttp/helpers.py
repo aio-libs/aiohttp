@@ -20,7 +20,7 @@ from pathlib import Path
 from urllib.parse import quote
 from urllib.request import getproxies
 
-from async_timeout import timeout
+import async_timeout
 from yarl import URL
 
 from . import hdrs
@@ -31,11 +31,10 @@ from .log import client_logger
 PY_352 = sys.version_info >= (3, 5, 2)
 
 
-__all__ = ('BasicAuth', 'Timeout')
+__all__ = ('BasicAuth',)
 
 
 sentinel = object()
-Timeout = timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
 
 CHAR = set(chr(i) for i in range(0, 128))
@@ -711,7 +710,7 @@ class TimerContext:
             self._cancelled = True
 
 
-class CeilTimeout(Timeout):
+class CeilTimeout(async_timeout.timeout):
 
     def __enter__(self):
         if self._timeout is not None:
