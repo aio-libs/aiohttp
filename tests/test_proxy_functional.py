@@ -150,7 +150,7 @@ async def test_proxy_http_auth(proxy_test_server, get_request):
     assert 'Proxy-Authorization' in proxy.request.headers
 
     await get_request(url=url, auth=auth,
-                           proxy_auth=auth, proxy=proxy.url)
+                      proxy_auth=auth, proxy=proxy.url)
 
     assert 'Authorization' in proxy.request.headers
     assert 'Proxy-Authorization' in proxy.request.headers
@@ -375,7 +375,7 @@ async def xtest_proxy_https_auth(proxy_test_server, get_request):
 
     proxy = await proxy_test_server()
     await get_request(url=url, auth=auth,
-                           proxy_auth=auth, proxy=proxy.url)
+                      proxy_auth=auth, proxy=proxy.url)
 
     connect = proxy.requests_list[0]
     assert 'Authorization' not in connect.headers
@@ -528,7 +528,7 @@ async def xtest_proxy_from_env_https(proxy_test_server, get_request, mocker):
 
 @pytest.mark.xfail
 async def xtest_proxy_from_env_https_with_auth(proxy_test_server,
-                                              get_request, mocker):
+                                               get_request, mocker):
     url = 'https://aiohttp.io/path'
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth('user', 'pass')
