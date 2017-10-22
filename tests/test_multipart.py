@@ -86,15 +86,13 @@ class Stream(object):
     def __init__(self, content):
         self.content = io.BytesIO(content)
 
-    @asyncio.coroutine
-    def read(self, size=None):
+    async def read(self, size=None):
         return self.content.read(size)
 
     def at_eof(self):
         return self.content.tell() == len(self.content.getbuffer())
 
-    @asyncio.coroutine
-    def readline(self):
+    async def readline(self):
         return self.content.readline()
 
     def unread_data(self, data):
@@ -107,12 +105,11 @@ class StreamWithShortenRead(Stream):
         self._first = True
         super().__init__(content)
 
-    @asyncio.coroutine
-    def read(self, size=None):
+    async def read(self, size=None):
         if size is not None and self._first:
             self._first = False
             size = size // 2
-        return (yield from super().read(size))
+        return await super().read(size)
 
 
 class MultipartResponseWrapperTestCase(TestCase):
@@ -763,49 +760,43 @@ class MultipartReaderTestCase(TestCase):
         self.assertFalse(second.at_eof())
 
 
-@asyncio.coroutine
-def test_writer(writer):
+async def test_writer(writer):
     assert writer.size == 0
     assert writer.boundary == b':'
 
 
-@asyncio.coroutine
-def test_writer_serialize_io_chunk(buf, stream, writer):
+async def test_writer_serialize_io_chunk(buf, stream, writer):
     flo = io.BytesIO(b'foobarbaz')
     writer.append(flo)
-    yield from writer.write(stream)
+    await writer.write(stream)
     assert (buf == b'--:\r\nContent-Type: application/octet-stream'
             b'\r\nContent-Length: 9\r\n\r\nfoobarbaz\r\n--:--\r\n')
 
 
-@asyncio.coroutine
-def test_writer_serialize_json(buf, stream, writer):
+async def test_writer_serialize_json(buf, stream, writer):
     writer.append_json({'привет': 'мир'})
-    yield from writer.write(stream)
+    await writer.write(stream)
     assert (b'{"\\u043f\\u0440\\u0438\\u0432\\u0435\\u0442":'
             b' "\\u043c\\u0438\\u0440"}' in buf)
 
 
-@asyncio.coroutine
-def test_writer_serialize_form(buf, stream, writer):
+async def test_writer_serialize_form(buf, stream, writer):
     data = [('foo', 'bar'), ('foo', 'baz'), ('boo', 'zoo')]
     writer.append_form(data)
-    yield from writer.write(stream)
+    await writer.write(stream)
 
     assert (b'foo=bar&foo=baz&boo=zoo' in buf)
 
 
-@asyncio.coroutine
-def test_writer_serialize_form_dict(buf, stream, writer):
+async def test_writer_serialize_form_dict(buf, stream, writer):
     data = {'hello': 'мир'}
     writer.append_form(data)
-    yield from writer.write(stream)
+    await writer.write(stream)
 
     assert (b'hello=%D0%BC%D0%B8%D1%80' in buf)
 
 
-@asyncio.coroutine
-def test_writer_write(buf, stream, writer):
+async def test_writer_write(buf, stream, writer):
     writer.append('foo-bar-baz')
     writer.append_json({'test': 'passed'})
     writer.append_form({'test': 'passed'})
@@ -815,7 +806,7 @@ def test_writer_write(buf, stream, writer):
     sub_multipart.append('nested content')
     sub_multipart.headers['X-CUSTOM'] = 'test'
     writer.append(sub_multipart)
-    yield from writer.write(stream)
+    await writer.write(stream)
 
     assert (
         (b'--:\r\n'
@@ -854,10 +845,10 @@ def test_writer_write(buf, stream, writer):
          b'--:--\r\n') == bytes(buf))
 
 
-@asyncio.coroutine
-def test_writer_serialize_with_content_encoding_gzip(buf, stream, writer):
+async def test_writer_serialize_with_content_encoding_gzip(buf, stream,
+                                                           writer):
     writer.append('Time to Relax!', {CONTENT_ENCODING: 'gzip'})
-    yield from writer.write(stream)
+    await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
     assert (b'--:\r\nContent-Encoding: gzip\r\n'
@@ -869,10 +860,10 @@ def test_writer_serialize_with_content_encoding_gzip(buf, stream, writer):
     assert b'Time to Relax!' == data
 
 
-@asyncio.coroutine
-def test_writer_serialize_with_content_encoding_deflate(buf, stream, writer):
+async def test_writer_serialize_with_content_encoding_deflate(buf, stream,
+                                                              writer):
     writer.append('Time to Relax!', {CONTENT_ENCODING: 'deflate'})
-    yield from writer.write(stream)
+    await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
     assert (b'--:\r\nContent-Encoding: deflate\r\n'
@@ -882,11 +873,11 @@ def test_writer_serialize_with_content_encoding_deflate(buf, stream, writer):
     assert thing == message
 
 
-@asyncio.coroutine
-def test_writer_serialize_with_content_encoding_identity(buf, stream, writer):
+async def test_writer_serialize_with_content_encoding_identity(buf, stream,
+                                                               writer):
     thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00'
     writer.append(thing, {CONTENT_ENCODING: 'identity'})
-    yield from writer.write(stream)
+    await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
     assert (b'--:\r\nContent-Encoding: identity\r\n'
@@ -896,15 +887,16 @@ def test_writer_serialize_with_content_encoding_identity(buf, stream, writer):
     assert thing == message.split(b'\r\n')[0]
 
 
-def test_writer_serialize_with_content_encoding_unknown(buf, stream, writer):
+def test_writer_serialize_with_content_encoding_unknown(buf, stream,
+                                                        writer):
     with pytest.raises(RuntimeError):
         writer.append('Time to Relax!', {CONTENT_ENCODING: 'snappy'})
 
 
-@asyncio.coroutine
-def test_writer_with_content_transfer_encoding_base64(buf, stream, writer):
+async def test_writer_with_content_transfer_encoding_base64(buf, stream,
+                                                            writer):
     writer.append('Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'base64'})
-    yield from writer.write(stream)
+    await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
     assert (b'--:\r\nContent-Transfer-Encoding: base64\r\n'
@@ -914,11 +906,11 @@ def test_writer_with_content_transfer_encoding_base64(buf, stream, writer):
     assert b'VGltZSB0byBSZWxheCE=' == message.split(b'\r\n')[0]
 
 
-@asyncio.coroutine
-def test_writer_content_transfer_encoding_quote_printable(buf, stream, writer):
+async def test_writer_content_transfer_encoding_quote_printable(buf, stream,
+                                                                writer):
     writer.append('Привет, мир!',
                   {CONTENT_TRANSFER_ENCODING: 'quoted-printable'})
-    yield from writer.write(stream)
+    await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
     assert (b'--:\r\nContent-Transfer-Encoding: quoted-printable\r\n'
