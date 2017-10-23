@@ -706,7 +706,7 @@ BaseConnector
                             connection releasing (optional).
 
    :param bool enable_cleanup_closed: some SSL servers do not properly complete
-      ssl shutdown process, in that case asyncio leaks ssl connections.
+      SSL shutdown process, in that case asyncio leaks ssl connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
 
@@ -885,7 +885,7 @@ TCPConnector
                             connection releasing (optional).
 
    :param tuple enable_cleanup_closed: Some ssl servers do not properly complete
-      ssl shutdown process, in that case asyncio leaks ssl connections.
+      SSL shutdown process, in that case asyncio leaks ssl connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
 
