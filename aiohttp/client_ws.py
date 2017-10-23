@@ -3,8 +3,10 @@
 import asyncio
 import json
 
+import async_timeout
+
 from .client_exceptions import ClientError
-from .helpers import PY_352, Timeout, call_later, create_future
+from .helpers import PY_352, call_later, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
 
@@ -153,7 +155,7 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    with Timeout(self._timeout, loop=self._loop):
+                    with async_timeout.timeout(self._timeout, loop=self._loop):
                         msg = yield from self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
@@ -188,7 +190,7 @@ class ClientWebSocketResponse:
             try:
                 self._waiting = create_future(self._loop)
                 try:
-                    with Timeout(
+                    with async_timeout.timeout(
                             timeout or self._receive_timeout,
                             loop=self._loop):
                         msg = yield from self._reader.read()

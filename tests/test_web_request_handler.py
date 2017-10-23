@@ -1,4 +1,3 @@
-import asyncio
 from unittest import mock
 
 from aiohttp import web
@@ -33,8 +32,7 @@ def test_connections(loop):
     assert manager.connections == []
 
 
-@asyncio.coroutine
-def test_shutdown_no_timeout(loop):
+async def test_shutdown_no_timeout(loop):
     app = web.Application()
     manager = app.make_handler(loop=loop)
 
@@ -43,15 +41,14 @@ def test_shutdown_no_timeout(loop):
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
-    yield from manager.shutdown()
+    await manager.shutdown()
 
     manager.connection_lost(handler, None)
     assert manager.connections == []
     handler.shutdown.assert_called_with(None)
 
 
-@asyncio.coroutine
-def test_shutdown_timeout(loop):
+async def test_shutdown_timeout(loop):
     app = web.Application()
     manager = app.make_handler(loop=loop)
 
@@ -60,7 +57,7 @@ def test_shutdown_timeout(loop):
     transport = mock.Mock()
     manager.connection_made(handler, transport)
 
-    yield from manager.shutdown(timeout=0.1)
+    await manager.shutdown(timeout=0.1)
 
     manager.connection_lost(handler, None)
     assert manager.connections == []
