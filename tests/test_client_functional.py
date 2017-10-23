@@ -744,7 +744,7 @@ async def test_HTTP_200_OK_METHOD_connector(loop, test_client):
     async def handler(request):
         return web.Response(text=request.method)
 
-    conn = aiohttp.TCPConnector(resolve=True, loop=loop)
+    conn = aiohttp.TCPConnector(loop=loop)
     conn.clear_dns_cache()
 
     app = web.Application()
