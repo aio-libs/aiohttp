@@ -702,7 +702,7 @@ BaseConnector
       have equal ``(host, port, is_ssl)`` triple.
       If *limit* is ``0`` the connector has no limit (default: 0).
 
-   :param bool force_close: dclose underlying sockets after
+   :param bool force_close: close underlying sockets after
                             connection releasing (optional).
 
    :param bool enable_cleanup_closed: some SSL servers do not properly complete
