@@ -15,7 +15,7 @@ from aiohttp import FormData, HttpVersion10, HttpVersion11, multipart, web
 
 try:
     import ssl
-except:
+except ImportError:
     ssl = False
 
 

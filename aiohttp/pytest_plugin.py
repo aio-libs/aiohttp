@@ -17,12 +17,12 @@ from .test_utils import (BaseTestServer, RawTestServer, TestClient, TestServer,
 
 try:
     import uvloop
-except:  # pragma: no cover
+except ImportError:  # pragma: no cover
     uvloop = None
 
 try:
     import tokio
-except:  # pragma: no cover
+except ImportError:  # pragma: no cover
     tokio = None
 
 
