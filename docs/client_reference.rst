@@ -694,18 +694,18 @@ BaseConnector
                                    feature use ``force_close=True``
                                    flag.
 
-   :param int limit: Total number simultaneous connections. If *limit* is
+   :param int limit: total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
 
-   :param int limit_per_host: limit for simultaneous connections to the same
+   :param int limit_per_host: limit simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
       have equal ``(host, port, is_ssl)`` triple.
       If *limit* is ``0`` the connector has no limit (default: 0).
 
-   :param bool force_close: do close underlying sockets after
+   :param bool force_close: dclose underlying sockets after
                             connection releasing (optional).
 
-   :param bool enable_cleanup_closed: Some ssl servers do not properly complete
+   :param bool enable_cleanup_closed: some SSL servers do not properly complete
       ssl shutdown process, in that case asyncio leaks ssl connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
@@ -794,7 +794,7 @@ TCPConnector
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-   :param bool verify_ssl: Perform SSL certificate validation for
+   :param bool verify_ssl: perform SSL certificate validation for
       *HTTPS* requests (enabled by default). May be disabled to
       skip validation for sites with invalid certificates.
 
@@ -802,7 +802,7 @@ TCPConnector
 
          Pass *verify_ssl* to ``ClientSession.get()`` etc.
 
-   :param bytes fingerprint: Pass the SHA256 digest of the expected
+   :param bytes fingerprint: pass the SHA256 digest of the expected
       certificate in DER format to verify that the certificate the
       server presents matches. Useful for `certificate pinning
       <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
@@ -838,15 +838,15 @@ TCPConnector
 
       .. versionadded:: 2.0.8
 
-   :param int limit: Total number simultaneous connections. If *limit* is
+   :param int limit: total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
 
-   :param int limit_per_host: limit for simultaneous connections to the same
+   :param int limit_per_host: limit simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
       have equal ``(host, port, is_ssl)`` triple.
       If *limit* is ``0`` the connector has no limit (default: 0).
 
-   :param aiohttp.abc.AbstractResolver resolver: Custom resolver
+   :param aiohttp.abc.AbstractResolver resolver: custom resolver
       instance to use.  ``aiohttp.DefaultResolver`` by
       default (asynchronous if ``aiodns>=1.1`` is installed).
 
@@ -870,7 +870,7 @@ TCPConnector
          :const:`socket.AF_INET` or :const:`socket.AF_INET6`
          explicitly.
 
-   :param ssl.SSLContext ssl_context: ssl context used for processing
+   :param ssl.SSLContext ssl_context: SSL context used for processing
       *HTTPS* requests (optional).
 
       *ssl_context* may be used for configuring certification
@@ -881,7 +881,7 @@ TCPConnector
 
       .. versionadded:: 0.21
 
-   :param bool force_close: do close underlying sockets after
+   :param bool force_close: close underlying sockets after
                             connection releasing (optional).
 
    :param tuple enable_cleanup_closed: Some ssl servers do not properly complete
