@@ -425,12 +425,12 @@ def _make_server_creators(handler, *, loop, ssl_context,
             uris.append(str(base_url.with_host(host).with_port(port)))
     return server_creations, uris
 
-@asyncio.coroutine
-def run_async_app(app, *, host=None, port=None, path=None, sock=None,
-            shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128, access_log_format=None,
-access_log=access_logger, handle_signals=True, loop=None):
-    yield from app.startup()
+
+async def run_async_app(app, *, host=None, port=None, path=None, sock=None,
+                  shutdown_timeout=60.0, ssl_context=None,
+                  print=print, backlog=128, access_log_format=None,
+                  access_log=access_logger, handle_signals=True, loop=None):
+    await app.startup()
     try:
         make_handler_kwargs = dict()
         # if access_log_format is not None:
@@ -443,7 +443,7 @@ access_log=access_logger, handle_signals=True, loop=None):
             loop=loop, ssl_context=ssl_context,
             host=host, port=port, path=path, sock=sock,
             backlog=backlog)
-        servers = yield from asyncio.gather(*server_creations, loop=loop)
+        servers = await asyncio.gather(*server_creations, loop=loop)
 
         if handle_signals:
             try:
@@ -456,7 +456,7 @@ access_log=access_logger, handle_signals=True, loop=None):
             print("======== Running on {} ========\n"
                       "(Press CTRL+C to quit)".format(', '.join(uris)))
             while True:
-                yield from asyncio.sleep(1)
+                await asyncio.sleep(1)
         except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
             pass
         finally:
@@ -464,11 +464,12 @@ access_log=access_logger, handle_signals=True, loop=None):
             for srv in servers:
                 srv.close()
                 server_closures.append(srv.wait_closed())
-            yield from asyncio.gather(*server_closures, loop=loop)
-            yield from app.shutdown()
-            yield from handler.shutdown(shutdown_timeout)
+            await asyncio.gather(*server_closures, loop=loop)
+            await app.shutdown()
+            await handler.shutdown(shutdown_timeout)
     finally:
-        yield from app.cleanup()
+        await app.cleanup()
+
 
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
