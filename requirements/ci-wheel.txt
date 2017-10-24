@@ -1,5 +1,5 @@
 pip==9.0.1
-flake8==3.4.1
+flake8==3.5.0
 pyflakes==1.6.0
 coverage==4.4.1
 cchardet==2.1.1

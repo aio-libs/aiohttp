@@ -36,7 +36,7 @@ async def client(loop, url, name):
 async def run(loop, url, name):
     try:
         await client(loop, url, name)
-    except:
+    except Exception:
         import traceback
         traceback.print_exc()
 

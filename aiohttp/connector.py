@@ -4,6 +4,7 @@ import sys
 import traceback
 import warnings
 from collections import defaultdict
+from contextlib import suppress
 from hashlib import md5, sha1, sha256
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
@@ -99,10 +100,8 @@ class Connection:
         callbacks, self._callbacks = self._callbacks[:], []
 
         for cb in callbacks:
-            try:
+            with suppress(Exception):
                 cb()
-            except:
-                pass
 
     def close(self):
         self._notify_release()
@@ -394,7 +393,7 @@ class BaseConnector(object):
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-            except:
+            except Exception:
                 # signal to waiter
                 for waiter in self._waiters[key]:
                     if not waiter.done():
@@ -868,7 +867,7 @@ class TCPConnector(BaseConnector):
             proxy_resp = proxy_req.send(conn)
             try:
                 resp = yield from proxy_resp.start(conn, True)
-            except:
+            except Exception:
                 proxy_resp.close()
                 conn.close()
                 raise

@@ -15,6 +15,7 @@ import warnings
 import weakref
 from collections import namedtuple
 from collections.abc import Coroutine
+from contextlib import suppress
 from math import ceil
 from pathlib import Path
 from urllib.parse import quote
@@ -520,7 +521,7 @@ class reify:
         self.wrapped = wrapped
         try:
             self.__doc__ = wrapped.__doc__
-        except:  # pragma: no cover
+        except Exception:  # pragma: no cover
             self.__doc__ = ""
         self.name = wrapped.__name__
 
@@ -606,10 +607,8 @@ def _weakref_handle(info):
     ref, name = info
     ob = ref()
     if ob is not None:
-        try:
+        with suppress(Exception):
             getattr(ob, name)()
-        except:
-            pass
 
 
 def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):
@@ -656,10 +655,8 @@ class TimeoutHandle:
 
     def __call__(self):
         for cb, args, kwargs in self._callbacks:
-            try:
+            with suppress(Exception):
                 cb(*args, **kwargs)
-            except:
-                pass
 
         self._callbacks.clear()
 
@@ -757,8 +754,7 @@ class HeadersMixin:
     @property
     def content_length(self, *, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
         """The value of Content-Length HTTP header."""
-        l = self._headers.get(_CONTENT_LENGTH)
-        if l is None:
-            return None
-        else:
-            return int(l)
+        content_length = self._headers.get(_CONTENT_LENGTH)
+
+        if content_length:
+            return int(content_length)
