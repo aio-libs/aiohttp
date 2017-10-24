@@ -18,3 +18,9 @@ Multipart reference
    .. comethod:: next()
 
       Emits next multipart reader object.
+
+   .. comethod:: release()
+
+      Releases the connection gracefully, reading all the content
+      to the void.
+
