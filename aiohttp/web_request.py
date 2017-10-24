@@ -135,6 +135,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._writer,
             self._task,
             self._loop,
+            client_max_size=self._client_max_size,
             state=self._state.copy(),
             **kwargs)
 
