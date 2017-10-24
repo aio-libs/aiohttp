@@ -57,6 +57,9 @@ aiohttp extensions
 - `aiohttp-jinja2 <https://github.com/aio-libs/aiohttp-jinja2>`_ Jinja2
   template renderer for aiohttp.web.
 
+- `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
+  GraphQL and GraphIQL interface for aiohttp.
+
 Database drivers
 ^^^^^^^^^^^^^^^^
 
