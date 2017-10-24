@@ -337,7 +337,7 @@ Let's add more useful views::
 
    @aiohttp_jinja2.template('detail.html')
    async def poll(request):
-       async with request['db'].acquire() as conn:
+       async with request.app['db'].acquire() as conn:
            question_id = request.match_info['question_id']
            try:
                question, choices = await db.get_question(conn,
