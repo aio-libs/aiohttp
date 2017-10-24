@@ -90,7 +90,7 @@ class StreamResponse(HeadersMixin):
         if reason is None:
             try:
                 reason = _RESPONSES[self._status][0]
-            except:
+            except Exception:
                 reason = ''
         self._reason = reason
 
