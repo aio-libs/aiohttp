@@ -6,7 +6,7 @@ import socket
 import zlib
 
 from .abc import AbstractPayloadWriter
-from .helpers import create_future, noop
+from .helpers import create_future, deprecated_noop, noop
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -238,7 +238,7 @@ class PayloadWriter(AbstractPayloadWriter):
                 self.buffer_size = 0
                 return self.drain()
 
-        return noop()
+        return deprecated_noop('PayloadWriter.write is coroutine')
 
     def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
         """Write request/response status and headers."""
