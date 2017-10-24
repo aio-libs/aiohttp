@@ -49,6 +49,32 @@ def test_simple_get(loop, test_client):
 
 
 @asyncio.coroutine
+def test_subdomain_simple(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response(body=b'OK')
+
+    #  setup subdomain app
+    subdomain = web.Application()
+    subdomain.router.add_get('/to', handler)
+
+    # setup root app
+    app = web.Application()
+    app.add_subdomain('example.aiohttp.test', subdomain)
+
+    # run
+    client = yield from test_client(app)
+    headers = dict(Host='example.aiohttp.test')
+    resp = yield from client.get('/to', headers=headers)
+
+    # check
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert 'OK' == txt
+
+
+@asyncio.coroutine
 def test_simple_get_with_text(loop, test_client):
 
     @asyncio.coroutine

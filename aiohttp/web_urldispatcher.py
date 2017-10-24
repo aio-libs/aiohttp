@@ -671,6 +671,54 @@ class PrefixedSubAppResource(PrefixResource):
             prefix=self._prefix, app=self._app)
 
 
+class SubDomainResource(AbstractResource):
+
+    def __init__(self, subdomain, app):
+        super().__init__()
+        self._subdomain = subdomain
+        self._app = app
+
+    def add_prefix(self, prefix):
+        super().add_prefix(prefix)
+        for resource in self._app.router.resources():
+            resource.add_prefix(prefix)
+
+    def url_for(self, *args, **kwargs):
+        raise RuntimeError(".url_for() is not supported "
+                           "by subdomain sub-application root")
+
+    def url(self, **kwargs):
+        """Construct url for route with additional params."""
+        raise RuntimeError(".url() is not supported "
+                           "by subdomain sub-application root")
+
+    def get_info(self):
+        return {'app': self._app,
+                'subdomain': self._subdomain}
+
+    @asyncio.coroutine
+    def resolve(self, request):
+        if not request.headers['Host'] == self._subdomain:
+            return None, set()
+        match_info = yield from self._app.router.resolve(request)
+        match_info.add_app(self._app)
+        if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
+            methods = match_info.http_exception.allowed_methods
+        else:
+            methods = set()
+        return (match_info, methods)
+
+    def __len__(self):
+        return len(self._app.router.routes())
+
+    def __iter__(self):
+        return iter(self._app.router.routes())
+
+    def __repr__(self):
+        return "<SubDomainResource {subdomain} -> {app!r}>".format(
+            subdomain=self._subdomain, app=self._app)
+
+
 class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
