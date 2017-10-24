@@ -35,10 +35,9 @@ class Server:
         return BaseRequest(
             message, payload, protocol, writer, task, self._loop)
 
-    @asyncio.coroutine
-    def shutdown(self, timeout=None):
+    async def shutdown(self, timeout=None):
         coros = [conn.shutdown(timeout) for conn in self._connections]
-        yield from asyncio.gather(*coros, loop=self._loop)
+        await asyncio.gather(*coros, loop=self._loop)
         self._connections.clear()
 
     def __call__(self):
