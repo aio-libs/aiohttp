@@ -744,7 +744,7 @@ class ClientResponse(HeadersMixin):
         if self._content is None:
             try:
                 self._content = yield from self.content.read()
-            except:
+            except Exception:
                 self.close()
                 raise
 

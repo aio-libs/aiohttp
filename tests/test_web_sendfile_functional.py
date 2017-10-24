@@ -10,7 +10,7 @@ from aiohttp import web
 
 try:
     import ssl
-except:
+except ImportError:
     ssl = False
 
 

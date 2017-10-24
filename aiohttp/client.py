@@ -277,7 +277,7 @@ class ClientSession:
                         resp = req.send(conn)
                         try:
                             yield from resp.start(conn, read_until_eof)
-                        except:
+                        except Exception:
                             resp.close()
                             conn.close()
                             raise
@@ -356,7 +356,7 @@ class ClientSession:
             resp._history = tuple(history)
             return resp
 
-        except:
+        except Exception:
             # cleanup timer
             tm.close()
             if handle:
@@ -720,14 +720,14 @@ class _SessionRequestContextManager(_RequestContextManager):
     def __iter__(self):
         try:
             return (yield from self._coro)
-        except:
+        except Exception:
             self._session.close()
             raise
 
     def __await__(self):
         try:
             return (yield from self._coro)
-        except:
+        except Exception:
             self._session.close()
             raise
 

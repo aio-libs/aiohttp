@@ -75,7 +75,7 @@ class SendfilePayloadWriter(PayloadWriter):
             fut = create_future(loop)
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
             yield from fut
-        except:
+        except Exception:
             server_logger.debug('Socket error')
             self._transport.close()
         finally:

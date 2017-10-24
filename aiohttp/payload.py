@@ -249,10 +249,10 @@ class BytesIOPayload(IOBasePayload):
 
     @property
     def size(self):
-        p = self._value.tell()
-        l = self._value.seek(0, os.SEEK_END)
-        self._value.seek(p)
-        return l - p
+        position = self._value.tell()
+        end = self._value.seek(0, os.SEEK_END)
+        self._value.seek(position)
+        return end - position
 
 
 class BufferedReaderPayload(IOBasePayload):

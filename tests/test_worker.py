@@ -38,11 +38,7 @@ class BaseTestWorker:
         self.exit_code = 0
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
-
-        try:
-            self.pid = 'pid'
-        except:
-            pass
+        self.pid = 'pid'
 
 
 class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):

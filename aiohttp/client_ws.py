@@ -100,7 +100,7 @@ class ClientWebSocketResponse:
         try:
             return self._response.connection.transport.get_extra_info(
                 name, default)
-        except:
+        except Exception:
             return default
 
     def exception(self):

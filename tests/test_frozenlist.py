@@ -20,204 +20,204 @@ class FrozenListMixin:
             assert hasattr(self.FrozenList, name)
 
     def test_ctor_default(self):
-        l = self.FrozenList([])
-        assert not l.frozen
+        _list = self.FrozenList([])
+        assert not _list.frozen
 
     def test_ctor(self):
-        l = self.FrozenList([1])
-        assert not l.frozen
+        _list = self.FrozenList([1])
+        assert not _list.frozen
 
     def test_ctor_copy_list(self):
         orig = [1]
-        l = self.FrozenList(orig)
-        del l[0]
-        assert l != orig
+        _list = self.FrozenList(orig)
+        del _list[0]
+        assert _list != orig
 
     def test_freeze(self):
-        l = self.FrozenList()
-        l.freeze()
-        assert l.frozen
+        _list = self.FrozenList()
+        _list.freeze()
+        assert _list.frozen
 
     def test_repr(self):
-        l = self.FrozenList([1])
-        assert repr(l) == '<FrozenList(frozen=False, [1])>'
-        l.freeze()
-        assert repr(l) == '<FrozenList(frozen=True, [1])>'
+        _list = self.FrozenList([1])
+        assert repr(_list) == '<FrozenList(frozen=False, [1])>'
+        _list.freeze()
+        assert repr(_list) == '<FrozenList(frozen=True, [1])>'
 
     def test_getitem(self):
-        l = self.FrozenList([1, 2])
-        assert l[1] == 2
+        _list = self.FrozenList([1, 2])
+        assert _list[1] == 2
 
     def test_setitem(self):
-        l = self.FrozenList([1, 2])
-        l[1] = 3
-        assert l[1] == 3
+        _list = self.FrozenList([1, 2])
+        _list[1] = 3
+        assert _list[1] == 3
 
     def test_delitem(self):
-        l = self.FrozenList([1, 2])
-        del l[0]
-        assert len(l) == 1
-        assert l[0] == 2
+        _list = self.FrozenList([1, 2])
+        del _list[0]
+        assert len(_list) == 1
+        assert _list[0] == 2
 
     def test_len(self):
-        l = self.FrozenList([1])
-        assert len(l) == 1
+        _list = self.FrozenList([1])
+        assert len(_list) == 1
 
     def test_iter(self):
-        l = self.FrozenList([1, 2])
-        assert list(iter(l)) == [1, 2]
+        _list = self.FrozenList([1, 2])
+        assert list(iter(_list)) == [1, 2]
 
     def test_reversed(self):
-        l = self.FrozenList([1, 2])
-        assert list(reversed(l)) == [2, 1]
+        _list = self.FrozenList([1, 2])
+        assert list(reversed(_list)) == [2, 1]
 
     def test_eq(self):
-        l = self.FrozenList([1])
-        assert l == [1]
+        _list = self.FrozenList([1])
+        assert _list == [1]
 
     def test_ne(self):
-        l = self.FrozenList([1])
-        assert l != [2]
+        _list = self.FrozenList([1])
+        assert _list != [2]
 
     def test_le(self):
-        l = self.FrozenList([1])
-        assert l <= [1]
+        _list = self.FrozenList([1])
+        assert _list <= [1]
 
     def test_lt(self):
-        l = self.FrozenList([1])
-        assert l <= [3]
+        _list = self.FrozenList([1])
+        assert _list <= [3]
 
     def test_ge(self):
-        l = self.FrozenList([1])
-        assert l >= [1]
+        _list = self.FrozenList([1])
+        assert _list >= [1]
 
     def test_gt(self):
-        l = self.FrozenList([2])
-        assert l > [1]
+        _list = self.FrozenList([2])
+        assert _list > [1]
 
     def test_insert(self):
-        l = self.FrozenList([2])
-        l.insert(0, 1)
-        assert l == [1, 2]
+        _list = self.FrozenList([2])
+        _list.insert(0, 1)
+        assert _list == [1, 2]
 
     def test_frozen_setitem(self):
-        l = self.FrozenList([1])
-        l.freeze()
+        _list = self.FrozenList([1])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l[0] = 2
+            _list[0] = 2
 
     def test_frozen_delitem(self):
-        l = self.FrozenList([1])
-        l.freeze()
+        _list = self.FrozenList([1])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            del l[0]
+            del _list[0]
 
     def test_frozen_insert(self):
-        l = self.FrozenList([1])
-        l.freeze()
+        _list = self.FrozenList([1])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l.insert(0, 2)
+            _list.insert(0, 2)
 
     def test_contains(self):
-        l = self.FrozenList([2])
-        assert 2 in l
+        _list = self.FrozenList([2])
+        assert 2 in _list
 
     def test_iadd(self):
-        l = self.FrozenList([1])
-        l += [2]
-        assert l == [1, 2]
+        _list = self.FrozenList([1])
+        _list += [2]
+        assert _list == [1, 2]
 
     def test_iadd_frozen(self):
-        l = self.FrozenList([1])
-        l.freeze()
+        _list = self.FrozenList([1])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l += [2]
-        assert l == [1]
+            _list += [2]
+        assert _list == [1]
 
     def test_index(self):
-        l = self.FrozenList([1])
-        assert l.index(1) == 0
+        _list = self.FrozenList([1])
+        assert _list.index(1) == 0
 
     def test_remove(self):
-        l = self.FrozenList([1])
-        l.remove(1)
-        assert len(l) == 0
+        _list = self.FrozenList([1])
+        _list.remove(1)
+        assert len(_list) == 0
 
     def test_remove_frozen(self):
-        l = self.FrozenList([1])
-        l.freeze()
+        _list = self.FrozenList([1])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l.remove(1)
-        assert l == [1]
+            _list.remove(1)
+        assert _list == [1]
 
     def test_clear(self):
-        l = self.FrozenList([1])
-        l.clear()
-        assert len(l) == 0
+        _list = self.FrozenList([1])
+        _list.clear()
+        assert len(_list) == 0
 
     def test_clear_frozen(self):
-        l = self.FrozenList([1])
-        l.freeze()
+        _list = self.FrozenList([1])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l.clear()
-        assert l == [1]
+            _list.clear()
+        assert _list == [1]
 
     def test_extend(self):
-        l = self.FrozenList([1])
-        l.extend([2])
-        assert l == [1, 2]
+        _list = self.FrozenList([1])
+        _list.extend([2])
+        assert _list == [1, 2]
 
     def test_extend_frozen(self):
-        l = self.FrozenList([1])
-        l.freeze()
+        _list = self.FrozenList([1])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l.extend([2])
-        assert l == [1]
+            _list.extend([2])
+        assert _list == [1]
 
     def test_reverse(self):
-        l = self.FrozenList([1, 2])
-        l.reverse()
-        assert l == [2, 1]
+        _list = self.FrozenList([1, 2])
+        _list.reverse()
+        assert _list == [2, 1]
 
     def test_reverse_frozen(self):
-        l = self.FrozenList([1, 2])
-        l.freeze()
+        _list = self.FrozenList([1, 2])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l.reverse()
-        assert l == [1, 2]
+            _list.reverse()
+        assert _list == [1, 2]
 
     def test_pop(self):
-        l = self.FrozenList([1, 2])
-        assert l.pop(0) == 1
-        assert l == [2]
+        _list = self.FrozenList([1, 2])
+        assert _list.pop(0) == 1
+        assert _list == [2]
 
     def test_pop_default(self):
-        l = self.FrozenList([1, 2])
-        assert l.pop() == 2
-        assert l == [1]
+        _list = self.FrozenList([1, 2])
+        assert _list.pop() == 2
+        assert _list == [1]
 
     def test_pop_frozen(self):
-        l = self.FrozenList([1, 2])
-        l.freeze()
+        _list = self.FrozenList([1, 2])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l.pop()
-        assert l == [1, 2]
+            _list.pop()
+        assert _list == [1, 2]
 
     def test_append(self):
-        l = self.FrozenList([1, 2])
-        l.append(3)
-        assert l == [1, 2, 3]
+        _list = self.FrozenList([1, 2])
+        _list.append(3)
+        assert _list == [1, 2, 3]
 
     def test_append_frozen(self):
-        l = self.FrozenList([1, 2])
-        l.freeze()
+        _list = self.FrozenList([1, 2])
+        _list.freeze()
         with pytest.raises(RuntimeError):
-            l.append(3)
-        assert l == [1, 2]
+            _list.append(3)
+        assert _list == [1, 2]
 
     def test_count(self):
-        l = self.FrozenList([1, 2])
-        assert l.count(1) == 1
+        _list = self.FrozenList([1, 2])
+        assert _list.count(1) == 1
 
 
 class TestFrozenList(FrozenListMixin):
