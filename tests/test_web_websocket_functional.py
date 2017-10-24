@@ -353,7 +353,7 @@ async def test_concurrent_close(loop, test_client):
     client = await test_client(app)
 
     ws = await client.ws_connect('/', autoclose=False,
-                                      protocols=('eggs', 'bar'))
+                                 protocols=('eggs', 'bar'))
 
     await srv_ws.close(code=1007)
 
