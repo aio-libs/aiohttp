@@ -682,9 +682,9 @@ is controlled by *force_close* constructor's parameter).
 BaseConnector
 ^^^^^^^^^^^^^
 
-.. class:: BaseConnector(*, keepalive_timeout=30, \
-                         limit=100, limit_per_host=None, \
-                         force_close=False, loop=None)
+.. class:: BaseConnector(*, keepalive_timeout=15, \
+                         force_close=False, limit=100, limit_per_host=0, \
+                         enable_cleanup_closed=False, loop=None)
 
    Base class for all connectors.
 
@@ -694,16 +694,22 @@ BaseConnector
                                    feature use ``force_close=True``
                                    flag.
 
-   :param int limit: Total number simultaneous connections. If *limit* is
+   :param int limit: total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
 
-   :param int limit_per_host: limit for simultaneous connections to the same
+   :param int limit_per_host: limit simultaneous connections to the same
       endpoint.  Endpoints are the same if they are
       have equal ``(host, port, is_ssl)`` triple.
-      If *limit* is ``None`` the connector has no limit (default: None).
+      If *limit* is ``0`` the connector has no limit (default: 0).
 
-   :param bool force_close: do close underlying sockets after
+   :param bool force_close: close underlying sockets after
                             connection releasing (optional).
+
+   :param bool enable_cleanup_closed: some SSL servers do not properly complete
+      SSL shutdown process, in that case asyncio leaks ssl connections.
+      If this parameter is set to True, aiohttp additionally aborts underlining
+      transport after 2 seconds. It is off by default.
+
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
       used for handling connections.
@@ -771,13 +777,12 @@ BaseConnector
 TCPConnector
 ^^^^^^^^^^^^
 
-.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None,\
-                        use_dns_cache=True, \
-                        ttl_dns_cache=10, \
-                        family=0, ssl_context=None, conn_timeout=None, \
-                        keepalive_timeout=30, limit=None, \
-                        force_close=False, loop=None, local_addr=None, \
-                        disable_cleanup_closed=True)
+.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, \
+                 use_dns_cache=True, ttl_dns_cache=10, \
+                 family=0, ssl_context=None, local_addr=None, \
+                 resolver=None, keepalive_timeout=sentinel, \
+                 force_close=False, limit=100, limit_per_host=0, \
+                 enable_cleanup_closed=False, loop=None)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -789,18 +794,26 @@ TCPConnector
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-   :param bool verify_ssl: Perform SSL certificate validation for
+   :param bool verify_ssl: perform SSL certificate validation for
       *HTTPS* requests (enabled by default). May be disabled to
       skip validation for sites with invalid certificates.
 
-   :param bytes fingerprint: Pass the SHA256 digest of the expected
-        certificate in DER format to verify that the certificate the
-        server presents matches. Useful for `certificate pinning
-        <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+      .. deprecated:: 2.3
 
-        Note: use of MD5 or SHA1 digests is insecure and deprecated.
+         Pass *verify_ssl* to ``ClientSession.get()`` etc.
 
-        .. versionadded:: 0.16
+   :param bytes fingerprint: pass the SHA256 digest of the expected
+      certificate in DER format to verify that the certificate the
+      server presents matches. Useful for `certificate pinning
+      <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+
+      Note: use of MD5 or SHA1 digests is insecure and deprecated.
+
+      .. versionadded:: 0.16
+
+      .. deprecated:: 2.3
+
+         Pass *verify_ssl* to ``ClientSession.get()`` etc.
 
    :param bool use_dns_cache: use internal cache for DNS lookups, ``True``
       by default.
@@ -825,7 +838,15 @@ TCPConnector
 
       .. versionadded:: 2.0.8
 
-   :param aiohttp.abc.AbstractResolver resolver: Custom resolver
+   :param int limit: total number simultaneous connections. If *limit* is
+                     ``None`` the connector has no limit (default: 100).
+
+   :param int limit_per_host: limit simultaneous connections to the same
+      endpoint.  Endpoints are the same if they are
+      have equal ``(host, port, is_ssl)`` triple.
+      If *limit* is ``0`` the connector has no limit (default: 0).
+
+   :param aiohttp.abc.AbstractResolver resolver: custom resolver
       instance to use.  ``aiohttp.DefaultResolver`` by
       default (asynchronous if ``aiodns>=1.1`` is installed).
 
@@ -849,7 +870,7 @@ TCPConnector
          :const:`socket.AF_INET` or :const:`socket.AF_INET6`
          explicitly.
 
-   :param ssl.SSLContext ssl_context: ssl context used for processing
+   :param ssl.SSLContext ssl_context: SSL context used for processing
       *HTTPS* requests (optional).
 
       *ssl_context* may be used for configuring certification
@@ -860,8 +881,11 @@ TCPConnector
 
       .. versionadded:: 0.21
 
+   :param bool force_close: close underlying sockets after
+                            connection releasing (optional).
+
    :param tuple enable_cleanup_closed: Some ssl servers do not properly complete
-      ssl shutdown process, in that case asyncio leaks ssl connections.
+      SSL shutdown process, in that case asyncio leaks SSL connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
 
@@ -922,7 +946,7 @@ UnixConnector
 ^^^^^^^^^^^^^
 
 .. class:: UnixConnector(path, *, conn_timeout=None, \
-                         keepalive_timeout=30, limit=None, \
+                         keepalive_timeout=30, limit=100, \
                          force_close=False, loop=None)
 
    Unix socket connector.
