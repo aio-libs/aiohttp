@@ -14,8 +14,6 @@
 .cache
 .coverage
 .coverage.*
-.htmlcov
-.htmlcov.*
 .idea
 .installed.cfg
 .noseids
@@ -28,8 +26,7 @@ aiohttp/_websocket.html
 aiohttp/_http_parser.c
 bin
 build
-cover
-coverage
+htmlcov
 develop-eggs
 dist
 docs/_build/
