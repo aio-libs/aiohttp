@@ -1,4 +1,3 @@
-import asyncio
 from unittest import mock
 
 import pytest
@@ -36,8 +35,7 @@ async def test_function_signal_dispatch(app):
 
     callback_mock = mock.Mock()
 
-    @asyncio.coroutine
-    def callback(**kwargs):
+    async def callback(**kwargs):
         callback_mock(**kwargs)
 
     signal.append(callback)
@@ -53,8 +51,7 @@ async def test_function_signal_dispatch2(app):
 
     callback_mock = mock.Mock()
 
-    @asyncio.coroutine
-    def callback(*args, **kwargs):
+    async def callback(*args, **kwargs):
         callback_mock(*args, **kwargs)
 
     signal.append(callback)
@@ -66,8 +63,7 @@ async def test_function_signal_dispatch2(app):
 async def test_response_prepare(app):
     callback = mock.Mock()
 
-    @asyncio.coroutine
-    def cb(*args, **kwargs):
+    async def cb(*args, **kwargs):
         callback(*args, **kwargs)
 
     app.on_response_prepare.append(cb)
