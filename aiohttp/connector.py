@@ -147,7 +147,8 @@ class BaseConnector(object):
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
-    disable_cleanup_closed - Disable clean-up closed ssl transports.
+    enable_cleanup_closed - Enables clean-up closed ssl transports.
+                            Disabled by default.
     loop - Optional event loop.
     """
 
@@ -576,6 +577,8 @@ class TCPConnector(BaseConnector):
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
+    enable_cleanup_closed - Enables clean-up closed ssl transports.
+                            Disabled by default.
     loop - Optional event loop.
     """
 
