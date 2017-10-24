@@ -8,6 +8,7 @@ import os
 import sys
 import traceback
 import warnings
+from types import SimpleNamespace
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
@@ -28,6 +29,7 @@ from .helpers import (CeilTimeout, TimeoutHandle, _BaseCoroMixin,
                       strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
+from .signals import FuncSignal, Signal
 from .streams import FlowControlDataQueue
 
 
@@ -96,6 +98,7 @@ class ClientSession:
 
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
+
         self._connector = connector
         self._connector_owner = connector_owner
         self._default_auth = auth
@@ -107,6 +110,15 @@ class ClientSession:
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
+
+        self._on_request_start = Signal()
+        self._on_request_end = Signal()
+        self._on_request_exception = Signal()
+        self._on_request_redirect = FuncSignal()
+        self._on_request_headers_sent = FuncSignal()
+        self._on_request_content_sent = FuncSignal()
+        self._on_request_headers_received = FuncSignal()
+        self._on_request_content_received = FuncSignal()
 
         # Convert to list of tuples
         if headers:
@@ -161,7 +173,8 @@ class ClientSession:
                  verify_ssl=None,
                  fingerprint=None,
                  ssl_context=None,
-                 proxy_headers=None):
+                 proxy_headers=None,
+                 trace_context=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -218,6 +231,18 @@ class ClientSession:
         handle = tm.start()
 
         url = URL(url)
+
+        if trace_context is None:
+            trace_context = SimpleNamespace()
+
+        yield from self.on_request_start.send(
+            trace_context,
+            method,
+            url.host,
+            url.port,
+            headers
+        )
+
         timer = tm.timer()
         try:
             with timer:
@@ -261,12 +286,20 @@ class ClientSession:
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
                         verify_ssl=verify_ssl, fingerprint=fingerprint,
-                        ssl_context=ssl_context, proxy_headers=proxy_headers)
+                        ssl_context=ssl_context, proxy_headers=proxy_headers,
+                        on_headers_sent=self.on_request_headers_sent,
+                        on_content_sent=self.on_request_content_sent,
+                        on_headers_received=self.on_request_headers_received,
+                        on_content_received=self.on_request_content_received,
+                        trace_context=trace_context)
 
                     # connection timeout
                     try:
                         with CeilTimeout(self._conn_timeout, loop=self._loop):
-                            conn = yield from self._connector.connect(req)
+                            conn = yield from self._connector.connect(
+                                req,
+                                trace_context=trace_context
+                            )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(
                             'Connection timeout '
@@ -291,6 +324,9 @@ class ClientSession:
                     # redirects
                     if resp.status in (
                             301, 302, 303, 307, 308) and allow_redirects:
+
+                        self.on_request_redirect.send(trace_context, resp)
+
                         redirects += 1
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
@@ -354,15 +390,17 @@ class ClientSession:
                     handle.cancel()
 
             resp._history = tuple(history)
+            yield from self.on_request_end.send(trace_context, resp)
             return resp
 
-        except Exception:
+        except Exception as e:
             # cleanup timer
             tm.close()
             if handle:
                 handle.cancel()
                 handle = None
 
+            yield from self.on_request_exception.send(trace_context, e)
             raise
 
     def ws_connect(self, url, *,
@@ -653,6 +691,82 @@ class ClientSession:
     def loop(self):
         """Session's loop."""
         return self._loop
+
+    @property
+    def on_request_start(self):
+        return self._on_request_start
+
+    @property
+    def on_request_redirect(self):
+        return self._on_request_redirect
+
+    @property
+    def on_request_end(self):
+        return self._on_request_end
+
+    @property
+    def on_request_exception(self):
+        return self._on_request_exception
+
+    # connector signals
+
+    @property
+    def on_request_queued_start(self):
+        return self._connector.on_queued_start
+
+    @property
+    def on_request_queued_end(self):
+        return self._connector.on_queued_end
+
+    @property
+    def on_request_createconn_start(self):
+        return self._connector.on_createconn_start
+
+    @property
+    def on_request_createconn_end(self):
+        return self._connector.on_createconn_end
+
+    @property
+    def on_request_reuseconn(self):
+        return self._connector.on_reuseconn
+
+    @property
+    def on_request_resolvehost_start(self):
+        return self._connector.on_resolvehost_start
+
+    @property
+    def on_request_resolvehost_end(self):
+        return self._connector.on_resolvehost_end
+
+    @property
+    def on_request_dnscache_hit(self):
+        return self._connector.on_dnscache_hit
+
+    @property
+    def on_request_dnscache_miss(self):
+        return self._connector.on_dnscache_miss
+
+    # req resp signals
+
+    @property
+    def on_request_headers_sent(self):
+        return self._on_request_headers_sent
+
+    @property
+    def on_request_content_sent(self):
+        return self._on_request_content_sent
+
+    @property
+    def on_request_headers_received(self):
+        return self._on_request_headers_received
+
+    @property
+    def on_request_content_chunk_received(self):
+        return self._on_request_content_chunk_received
+
+    @property
+    def on_request_content_received(self):
+        return self._on_request_content_received
 
     def detach(self):
         """Detach connector from session without closing the former.

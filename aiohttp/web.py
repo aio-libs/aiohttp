@@ -20,7 +20,7 @@ from .frozenlist import FrozenList
 from .helpers import AccessLogger
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
-from .signals import FuncSignal, PostSignal, PreSignal, Signal
+from .signals import AppSignal, FuncSignal, PostSignal, PreSignal
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
@@ -75,10 +75,10 @@ class Application(MutableMapping):
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
         self._on_loop_available = FuncSignal(self)
-        self._on_response_prepare = Signal(self)
-        self._on_startup = Signal(self)
-        self._on_shutdown = Signal(self)
-        self._on_cleanup = Signal(self)
+        self._on_response_prepare = AppSignal(self)
+        self._on_startup = AppSignal(self)
+        self._on_shutdown = AppSignal(self)
+        self._on_cleanup = AppSignal(self)
         self._client_max_size = client_max_size
 
     # MutableMapping API

@@ -495,6 +495,45 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
             await f
 
 
+@asyncio.coroutine
+def test_tcp_connector_dns_tracing(loop, dns_response):
+    trace_context = mock.Mock()
+    on_resolvehost_start = mock.Mock()
+    on_resolvehost_end = mock.Mock()
+    on_dnscache_hit = mock.Mock()
+    on_dnscache_miss = mock.Mock()
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10
+        )
+        conn.on_resolvehost_start.append(on_resolvehost_start)
+        conn.on_resolvehost_end.append(on_resolvehost_end)
+        conn.on_dnscache_hit.append(on_dnscache_hit)
+        conn.on_dnscache_miss.append(on_dnscache_miss)
+
+        m_resolver().resolve.return_value = dns_response()
+
+        yield from conn._resolve_host(
+            'localhost',
+            8080,
+            trace_context=trace_context
+        )
+        on_resolvehost_start.assert_called_once_with(trace_context)
+        on_resolvehost_end.assert_called_once_with(trace_context)
+        on_dnscache_miss.assert_called_once_with(trace_context)
+        assert not on_dnscache_hit.called
+
+        yield from conn._resolve_host(
+            'localhost',
+            8080,
+            trace_context=trace_context
+        )
+        on_dnscache_hit.assert_called_once_with(trace_context)
+
+
 def test_get_pop_empty_conns(loop):
     # see issue #473
     conn = aiohttp.BaseConnector(loop=loop)
@@ -575,6 +614,27 @@ async def test_connect(loop):
     assert connection.transport is proto.transport
     assert isinstance(connection, Connection)
     connection.close()
+
+
+async def test_connect_tracing(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+    trace_context = mock.Mock()
+    on_createconn_start = mock.Mock()
+    on_createconn_end = mock.Mock()
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn.on_createconn_start.append(on_createconn_start)
+    conn.on_createconn_end.append(on_createconn_end)
+    conn._create_connection = mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_result(proto)
+
+    await conn.connect(req, trace_context=trace_context)
+    on_createconn_start.assert_called_with(trace_context)
+    on_createconn_end.assert_called_with(trace_context)
 
 
 async def test_close_during_connect(loop):
@@ -868,6 +928,63 @@ async def test_connect_with_limit(loop, key):
     conn.close()
 
 
+async def test_connect_queued_operation_tracing(loop, key):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+    trace_context = mock.Mock()
+    on_queued_start = mock.Mock()
+    on_queued_end = mock.Mock()
+
+    req = ClientRequest('GET', URL('http://localhost1:80'),
+                        loop=loop,
+                        response_class=mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn.on_queued_start.append(on_queued_start)
+    conn.on_queued_end.append(on_queued_end)
+    conn._conns[key] = [(proto, loop.time())]
+    conn._create_connection = mock.Mock()
+    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value.set_result(proto)
+
+    connection1 = await conn.connect(req, trace_context=trace_context)
+
+    async def f():
+        trace_context = mock.Mock()
+        connection2 = await conn.connect(
+            req,
+            trace_context=trace_context
+        )
+        on_queued_start.assert_called_with(trace_context)
+        on_queued_end.assert_called_with(trace_context)
+        connection2.release()
+
+    task = asyncio.ensure_future(f(), loop=loop)
+    await asyncio.sleep(0.01, loop=loop)
+    connection1.release()
+    await task
+    conn.close()
+
+
+async def test_connect_reuseconn_tracing(loop, key):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+    trace_context = mock.Mock()
+    on_reuseconn = mock.Mock()
+
+    req = ClientRequest('GET', URL('http://localhost1:80'),
+                        loop=loop,
+                        response_class=mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn.on_reuseconn.append(on_reuseconn)
+    conn._conns[key] = [(proto, loop.time())]
+    await conn.connect(req, trace_context=trace_context)
+
+    on_reuseconn.assert_called_with(trace_context)
+    conn.close()
+
+
 async def test_connect_with_limit_and_limit_per_host(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
@@ -1027,7 +1144,7 @@ async def test_connect_with_limit_concurrent(loop):
     # Use a real coroutine for _create_connection; a mock would mask
     # problems that only happen when the method yields.
 
-    async def create_connection(req):
+    async def create_connection(req, trace_context=None):
         nonlocal num_connections
         num_connections += 1
         await asyncio.sleep(0, loop=loop)
@@ -1152,10 +1269,10 @@ async def test_error_on_connection(loop):
     proto = mock.Mock()
     i = 0
 
-    fut = helpers.create_future(loop=loop)
+    fut = loop.create_future()
     exc = OSError()
 
-    async def create_connection(req):
+    async def create_connection(req, trace_context=None):
         nonlocal i
         i += 1
         if i == 1:
@@ -1197,7 +1314,7 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
     fut2 = helpers.create_future(loop=loop)
     exc = OSError()
 
-    async def create_connection(req):
+    async def create_connection(req, trace_context=None):
         nonlocal i
         i += 1
         if i == 1:

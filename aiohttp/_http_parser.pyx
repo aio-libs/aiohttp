@@ -61,6 +61,10 @@ cdef class HttpParser:
         object  _last_error
         bint    _auto_decompress
 
+        object _on_headers_received
+        object _on_content_received
+        object _trace_context
+
         Py_buffer py_buf
 
     def __cinit__(self):
@@ -82,7 +86,9 @@ cdef class HttpParser:
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
-                   response_with_body=True, auto_decompress=True):
+                   response_with_body=True, auto_decompress=True,
+                   on_headers_received=None, on_content_received=None,
+                   trace_context=None):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -121,6 +127,10 @@ cdef class HttpParser:
         self._csettings.on_message_complete = cb_on_message_complete
         self._csettings.on_chunk_header = cb_on_chunk_header
         self._csettings.on_chunk_complete = cb_on_chunk_complete
+
+        self._on_headers_received = on_headers_received
+        self._on_content_received = on_content_received
+        self._trace_context = trace_context
 
         self._last_error = None
 
@@ -215,9 +225,15 @@ cdef class HttpParser:
 
         self._messages.append((msg, payload))
 
+        if self._on_headers_received is not None:
+            self._on_headers_received.send(self._trace_context)
+
     cdef _on_message_complete(self):
         self._payload.feed_eof()
         self._payload = None
+
+        if self._on_content_received is not None:
+            self._on_content_received.send(self._trace_context)
 
     cdef _on_chunk_header(self):
         self._payload.begin_http_chunk_receiving()
@@ -339,10 +355,14 @@ cdef class HttpResponseParserC(HttpParser):
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
                  response_with_body=True, read_until_eof=False,
-                 auto_decompress=True):
+                 auto_decompress=True, on_headers_received=None, 
+                 on_content_received=None, trace_context=None):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
-                   payload_exception, response_with_body, auto_decompress)
+                   payload_exception, response_with_body, auto_decompress,
+                   on_headers_received=on_headers_received,
+                   on_content_received=on_content_received,
+                   trace_context=trace_context)
 
     cdef object _on_status_complete(self):
         if self._buf:

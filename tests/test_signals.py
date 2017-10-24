@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp.signals import Signal
+from aiohttp.signals import AppSignal
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import Application, Response
 
@@ -30,7 +30,7 @@ async def test_add_signal_handler_not_a_callable(app):
 
 
 async def test_function_signal_dispatch(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     kwargs = {'foo': 1, 'bar': 2}
 
     callback_mock = mock.Mock()
@@ -45,7 +45,7 @@ async def test_function_signal_dispatch(app):
 
 
 async def test_function_signal_dispatch2(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     args = {'a', 'b'}
     kwargs = {'foo': 1, 'bar': 2}
 
@@ -76,7 +76,7 @@ async def test_response_prepare(app):
 
 
 async def test_non_coroutine(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     kwargs = {'foo': 1, 'bar': 2}
 
     callback = mock.Mock()
@@ -89,7 +89,7 @@ async def test_non_coroutine(app):
 
 async def test_debug_signal(debug_app):
     assert debug_app.debug, "Should be True"
-    signal = Signal(debug_app)
+    signal = AppSignal(debug_app)
 
     callback = mock.Mock()
     pre = mock.Mock()
@@ -101,12 +101,12 @@ async def test_debug_signal(debug_app):
 
     await signal.send(1, a=2)
     callback.assert_called_once_with(1, a=2)
-    pre.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
-    post.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
+    pre.assert_called_once_with(1, 'aiohttp.signals:AppSignal', 1, a=2)
+    post.assert_called_once_with(1, 'aiohttp.signals:AppSignal', 1, a=2)
 
 
 def test_setitem(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     m1 = mock.Mock()
     signal.append(m1)
     assert signal[0] is m1
@@ -116,7 +116,7 @@ def test_setitem(app):
 
 
 def test_delitem(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     m1 = mock.Mock()
     signal.append(m1)
     assert len(signal) == 1
@@ -125,7 +125,7 @@ def test_delitem(app):
 
 
 def test_cannot_append_to_frozen_signal(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     m1 = mock.Mock()
     m2 = mock.Mock()
     signal.append(m1)
@@ -137,7 +137,7 @@ def test_cannot_append_to_frozen_signal(app):
 
 
 def test_cannot_setitem_in_frozen_signal(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     m1 = mock.Mock()
     m2 = mock.Mock()
     signal.append(m1)
@@ -149,7 +149,7 @@ def test_cannot_setitem_in_frozen_signal(app):
 
 
 def test_cannot_delitem_in_frozen_signal(app):
-    signal = Signal(app)
+    signal = AppSignal(app)
     m1 = mock.Mock()
     signal.append(m1)
     signal.freeze()

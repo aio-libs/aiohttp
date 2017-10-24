@@ -747,6 +747,36 @@ If no redirects occurred or ``allow_redirects`` is set to ``False``,
 history will be an empty sequence.
 
 
+Client signals
+---------------
+
+The execution flow of a specific request can be followed attaching listeners functions
+to the signals provided by the :class:`ClientSession` instance, for example the following
+snippet shows how the start and the end of the request flow can be followed::
+
+    async def on_request_start(trace_context, method, host, port, headers):
+        print("Starting request")
+
+    async def on_request_end(trace_context, resp):
+        print("Ending request")
+
+    session = aiohttp.ClientSession()
+    session.on_request_start.append(on_request_start)
+    session.on_request_end.append(on_request_end)
+    session.get('http://example.com/some/redirect/')
+
+By default all signals related to the same request take as a param
+a :class:`SimpleNamespace` instance. This can be used to share the state
+through to the different signals. However, the ``trace_context`` param can
+be overwritten at the beginning of the request execution, giving an alternative
+object as the following snippet shows::
+
+    session.get('http://example.com/some/redirect/', trace_context={'foo': 'bar'})
+
+.. seealso:: :ref:`aiohttp-client-reference` section for
+             more information about the different signals supported.
+
+
 .. _aiohttp-client-websockets:
 
 

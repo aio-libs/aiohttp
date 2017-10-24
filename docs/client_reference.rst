@@ -195,7 +195,8 @@ The client session supports the context manager protocol for self closing.
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
                          timeout=5*60, verify_ssl=None, fingerprint=None, \
-                         ssl_context=None, proxy_headers=None)
+                         ssl_context=None, proxy_headers=None,\
+                         trace_context=None)
       :async-with:
       :coroutine:
 
@@ -301,6 +302,11 @@ The client session supports the context manager protocol for self closing.
          parameter proxy has been provided.
 
          .. versionadded:: 2.3
+
+      :param trace_context: Object used to give as a param for the all signals
+        triggered by the ongoing request. Default uses a `SimpleNamespace` instance.
+
+         .. versionadded:: 3.0
 
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
@@ -567,6 +573,180 @@ The client session supports the context manager protocol for self closing.
       Detach connector from session without closing the former.
 
       Session is switched to closed state anyway.
+
+   .. attribute:: on_request_start
+
+      Property that gives access to the signals that will be executed when a
+      request starts, based on the :class:`~signals.Signal` implementation.
+
+      The coroutines listening will receive as a param the `trace_context`,
+      `method`, `host`, `port` and `headers`.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_redirect
+
+      Property that gives access to the signals that will be executed when a
+      redirect happens during a request flow, based on
+      the :class:`~signals.FuncSignal` implementation.
+
+      The functions that are listening will receive the
+      `trace_context` and `resp` params.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_end
+
+      Property that gives access to the signals that will be executed when a
+      request ends, based on
+      the :class:`~signals.Signal` implementation.
+
+      The coroutines that are listening will receive the `trace_context`
+      and `resp` params
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_exception
+
+      Property that gives access to the signals that will be executed when a
+      request finishes with an exception, based on
+      the :class:`~signals.Signal` implementation.
+
+      The coroutines listening will receive the `trace_context`
+      and `exception` params.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_queued_start
+
+      Property that gives access to the signals that will be executed when a
+      request has been queued waiting for an available connection, based on
+      the :class:`~signals.FuncSignal` implementation.
+
+      The functions that are listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_queued_end
+
+      Property that gives access to the signals that will be executed when a
+      request that was queued already has an available connection, based
+      on the :class:`~signals.FuncSignal` implementation.
+
+      The functions that are listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_createconn_start
+
+      Property that gives access to the signals that will be executed when a
+      request creates a new connection, based on
+      the :class:`~http.signals.FuncSignal` implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_createconn_end
+
+      Property that gives access to the signals that will be executed when a
+      request that created a new connection finishes its creation, based
+      on the :class:`~http.signals.FuncSignal` implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_reuseconn
+
+      Property that gives access to the signals that will be executed when a
+      request reuses a connection, based on the
+      :class:`~http.signals.FuncSignal` implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_resolvehost_start
+
+      Property that gives access to the signals that will be executed when a
+      request starts to resolve the domain related with the request, based on
+      the :class:`~http.signals.FuncSignal` implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_resolvehost_end
+
+      Property that gives access to the signals that will be executed when a
+      request finishes to resolve the domain related with the request, based
+      on the :class:`~http.signals.FuncSignal` implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_dnscache_hit
+
+      Property that gives access to the signals that will be executed when a
+      request was able to use a cached DNS resolution for the domain related
+      with the request, based on the :class:`~http.signals.FuncSignal`
+      implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_dnscache_miss
+
+      Property that gives access to the signals that will be executed when a
+      request was not able to use a cached DNS resolution for the domain related
+      with the request, based on the :class:`~http.signals.FuncSignal`
+      implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_headers_sent
+
+      Property that gives access to the signals that will be executed when a
+      request have sent the headers, based on the
+      :class:`~http.signals.FuncSignal` implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_content_sent
+
+      Property that gives access to the signals that will be executed when a
+      request have sent the content, based on the
+      :class:`~http.signals.FuncSignal` implementation.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_headers_received
+
+      Property that gives access to the signals that will be executed when a
+      request have received the response headers, based on the
+      :class:`~http.signals.FuncSignal` implementation.
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
+
+   .. attribute:: on_request_content_received
+
+      Property that gives access to the signals that will be executed when a
+      request have received the response content, based on the
+      :class:`~http.signals.FuncSignal` implementation.
+
+
+      The functions listening will receive the `trace_context` param.
+
+      .. versionadded:: 3.0
 
 
 Basic API
@@ -1222,6 +1402,7 @@ Response object
 
        A namedtuple with request URL and headers from :class:`ClientRequest`
        object, :class:`aiohttp.RequestInfo` instance.
+
 
 
 ClientWebSocketResponse

@@ -37,7 +37,7 @@ def request(buf):
 
     app = mock.Mock()
     app._debug = False
-    app.on_response_prepare = signals.Signal(app)
+    app.on_response_prepare = signals.AppSignal(app)
     req = make_mocked_request(method, path, app=app, payload_writer=writer)
     return req
 

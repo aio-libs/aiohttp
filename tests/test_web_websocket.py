@@ -16,7 +16,7 @@ def app(loop):
     ret = mock.Mock()
     ret.loop = loop
     ret._debug = False
-    ret.on_response_prepare = signals.Signal(ret)
+    ret.on_response_prepare = signals.AppSignal(ret)
     return ret
 
 

@@ -648,6 +648,29 @@ def test_url_parse_non_strict_mode(parser):
     assert payload.is_eof()
 
 
+@pytest.mark.parametrize("parser_cls", RESPONSE_PARSERS)
+def test_tracing_response(protocol, loop, parser_cls):
+    trace_context = mock.Mock()
+    on_headers_received = mock.Mock()
+    on_content_received = mock.Mock()
+    parser = parser_cls(
+        protocol,
+        loop,
+        on_headers_received=on_headers_received,
+        on_content_received=on_content_received,
+        trace_context=trace_context
+    )
+
+    headers = b'HTTP/1.1 200 Ok\r\nContent-Length: 4\r\n\r\n'
+    parser.feed_data(headers)
+    on_headers_received.send.assert_called_with(trace_context)
+    assert not on_content_received.called
+
+    body = b'body'
+    parser.feed_data(body)
+    on_content_received.send.assert_called_with(trace_context)
+
+
 class TestParsePayload(unittest.TestCase):
 
     def setUp(self):

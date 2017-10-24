@@ -121,7 +121,9 @@ class TestProxy(unittest.TestCase):
             (proto.transport, proto))
         self.loop.run_until_complete(connector.connect(req))
 
-        connector._create_proxy_connection.assert_called_with(req)
+        connector._create_proxy_connection.assert_called_with(
+            req,
+            trace_context=None)
         ((proxy_req,), _) = connector._create_direct_connection.call_args
         proxy_req.send.assert_called_with(mock.ANY)
 
@@ -146,7 +148,9 @@ class TestProxy(unittest.TestCase):
             (proto.transport, proto))
         self.loop.run_until_complete(connector.connect(req))
 
-        connector._create_proxy_connection.assert_called_with(req)
+        connector._create_proxy_connection.assert_called_with(
+            req,
+            trace_context=None)
         ((proxy_req,), _) = connector._create_direct_connection.call_args
         proxy_req.send.assert_called_with(mock.ANY)
 
@@ -182,7 +186,9 @@ class TestProxy(unittest.TestCase):
             (transport, proto))
         self.loop.run_until_complete(connector.connect(req))
 
-        connector._create_proxy_connection.assert_called_with(req)
+        connector._create_proxy_connection.assert_called_with(
+            req,
+            trace_context=None)
         ((proxy_req,), _) = connector._create_direct_connection.call_args
         self.assertTrue(proxy_req.verify_ssl)
         self.assertEqual(proxy_req.fingerprint, req.fingerprint)
@@ -595,7 +601,10 @@ class TestProxy(unittest.TestCase):
         self.assertNotIn('AUTHORIZATION', proxy_req.headers)
         self.assertIn('PROXY-AUTHORIZATION', proxy_req.headers)
 
-        connector._resolve_host.assert_called_with('proxy.example.com', 80)
+        connector._resolve_host.assert_called_with(
+            'proxy.example.com',
+            80,
+            trace_context=None)
 
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()

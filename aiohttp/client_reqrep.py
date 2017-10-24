@@ -87,7 +87,9 @@ class ClientRequest:
                  proxy=None, proxy_auth=None,
                  timer=None, session=None, auto_decompress=True,
                  verify_ssl=None, fingerprint=None, ssl_context=None,
-                 proxy_headers=None):
+                 proxy_headers=None, on_headers_sent=None,
+                 on_content_sent=None, on_headers_received=None,
+                 on_content_received=None, trace_context=None):
 
         if verify_ssl is False and ssl_context is not None:
             raise ValueError(
@@ -117,6 +119,12 @@ class ClientRequest:
         self._auto_decompress = auto_decompress
         self._verify_ssl = verify_ssl
         self._ssl_context = ssl_context
+
+        self._on_headers_sent = on_headers_sent
+        self._on_content_sent = on_content_sent
+        self._on_headers_received = on_headers_received
+        self._on_content_received = on_content_received
+        self._trace_context = trace_context
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -400,6 +408,9 @@ class ClientRequest:
                 for chunk in self.body:
                     writer.write(chunk)
 
+            if self._on_content_sent is not None:
+                self._on_content_sent.send(self._trace_context)
+
             yield from writer.write_eof()
         except OSError as exc:
             new_exc = ClientOSError(
@@ -462,6 +473,9 @@ class ClientRequest:
             self.method, path, self.version)
         writer.write_headers(status_line, self.headers)
 
+        if self._on_headers_sent is not None:
+            self._on_headers_sent.send(self._trace_context)
+
         self._writer = asyncio.ensure_future(
             self.write_bytes(writer, conn), loop=self.loop)
 
@@ -469,7 +483,11 @@ class ClientRequest:
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress
+            auto_decompress=self._auto_decompress,
+            session=self._session,
+            on_headers_received=self._on_headers_received,
+            on_content_received=self._on_content_received,
+            trace_context=self._trace_context
         )
 
         self.response._post_init(self.loop, self._session)
@@ -513,7 +531,9 @@ class ClientResponse(HeadersMixin):
 
     def __init__(self, method, url, *,
                  writer=None, continue100=None, timer=None,
-                 request_info=None, auto_decompress=True):
+                 request_info=None, auto_decompress=True,
+                 session=None, on_headers_received=None,
+                 on_content_received=None, trace_context=None):
         assert isinstance(url, URL)
 
         self.method = method
@@ -529,6 +549,9 @@ class ClientResponse(HeadersMixin):
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
+        self._on_headers_received = on_headers_received
+        self._on_content_received = on_content_received
+        self._trace_context = trace_context
 
     @property
     def url(self):
@@ -615,7 +638,9 @@ class ClientResponse(HeadersMixin):
             skip_payload=self.method.lower() == 'head',
             skip_status_codes=(204, 304),
             read_until_eof=read_until_eof,
-            auto_decompress=self._auto_decompress)
+            auto_decompress=self._auto_decompress,
+            on_headers_received=self._on_headers_received,
+            on_content_received=self._on_content_received)
 
         with self._timer:
             while True:

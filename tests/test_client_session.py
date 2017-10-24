@@ -4,6 +4,7 @@ import gc
 import re
 import types
 from http.cookies import SimpleCookie
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -11,8 +12,9 @@ from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import web
+from aiohttp import hdrs, helpers, web
 from aiohttp.client import ClientSession
+from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
 
 
@@ -373,7 +375,7 @@ async def test_reraise_os_error(create_session):
     req.send = mock.Mock(side_effect=err)
     session = create_session(request_class=req_factory)
 
-    async def create_connection(req):
+    async def create_connection(req, trace_context=None):
         # return self.transport, self.protocol
         return mock.Mock()
     session._connector._create_connection = create_connection
@@ -474,3 +476,142 @@ def test_client_session_implicit_loop_warn():
 
     asyncio.set_event_loop(None)
     loop.close()
+
+
+@asyncio.coroutine
+def test_request_tracing(loop):
+    trace_context = {}
+    on_request_start = mock.Mock()
+    on_request_redirect = mock.Mock()
+    on_request_end = mock.Mock()
+    on_request_headers_sent = mock.Mock()
+    on_request_content_sent = mock.Mock()
+
+    session = aiohttp.ClientSession(loop=loop)
+    session.on_request_start.append(on_request_start)
+    session.on_request_redirect.append(on_request_redirect)
+    session.on_request_end.append(on_request_end)
+    session.on_request_headers_sent.append(on_request_headers_sent)
+    session.on_request_content_sent.append(on_request_content_sent)
+
+    resp = yield from session.get(
+        'http://example.com',
+        trace_context=trace_context
+    )
+
+    on_request_start.assert_called_once_with(
+        trace_context,
+        hdrs.METH_GET,
+        "example.com",
+        80,
+        CIMultiDict()
+    )
+
+    on_request_end.assert_called_once_with(trace_context, resp)
+    on_request_headers_sent.assert_called_once_with(trace_context)
+    on_request_content_sent.assert_called_once_with(trace_context)
+    assert not on_request_redirect.called
+
+
+@asyncio.coroutine
+def test_request_tracing_default_trace_context(loop):
+    on_request_start = mock.Mock()
+
+    session = aiohttp.ClientSession(loop=loop)
+    session.on_request_start.append(on_request_start)
+
+    yield from session.get('http://example.com')
+
+    assert isinstance(on_request_start.call_args[0][0], SimpleNamespace)
+
+
+@asyncio.coroutine
+def test_request_tracing_exception(loop):
+    on_request_end = mock.Mock()
+    on_request_exception = mock.Mock()
+
+    with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
+        error = Exception()
+        f = helpers.create_future(loop)
+        f.set_exception(error)
+        connect_patched.return_value = f
+
+        session = aiohttp.ClientSession(loop=loop)
+        session.on_request_end.append(on_request_end)
+        session.on_request_exception.append(on_request_exception)
+
+        try:
+            yield from session.get('http://example.com')
+        except Exception:
+            pass
+
+        on_request_exception.assert_called_once_with(mock.ANY, error)
+        assert not on_request_end.called
+
+
+@asyncio.coroutine
+def test_request_tracing_interpose_headers(loop):
+
+    class MyClientRequest(ClientRequest):
+        headers = None
+
+        def __init__(self, *args, **kwargs):
+            super(MyClientRequest, self).__init__(*args, **kwargs)
+            MyClientRequest.headers = self.headers
+
+    @asyncio.coroutine
+    def new_headers(trace_context, method, host, port, headers):
+        headers['foo'] = 'bar'
+
+    session = aiohttp.ClientSession(loop=loop, request_class=MyClientRequest)
+    session.on_request_start.append(new_headers)
+
+    yield from session.get('http://example.com')
+    assert MyClientRequest.headers['foo'] == 'bar'
+
+
+@asyncio.coroutine
+def test_request_tracing_proxies_connector_signals(loop):
+    connector = TCPConnector(loop=loop)
+    session = aiohttp.ClientSession(connector=connector, loop=loop)
+    assert id(session.on_request_queued_start) == id(connector.on_queued_start)
+    assert id(session.on_request_queued_end) == id(connector.on_queued_end)
+    assert id(session.on_request_createconn_start) ==\
+        id(connector.on_createconn_start)
+    assert id(session.on_request_createconn_end) ==\
+        id(connector.on_createconn_end)
+    assert id(session.on_request_reuseconn) == id(connector.on_reuseconn)
+    assert id(session.on_request_resolvehost_start) ==\
+        id(connector.on_resolvehost_start)
+    assert id(session.on_request_resolvehost_end) ==\
+        id(connector.on_resolvehost_end)
+    assert id(session.on_request_dnscache_hit) ==\
+        id(connector.on_dnscache_hit)
+    assert id(session.on_request_dnscache_miss) ==\
+        id(connector.on_dnscache_miss)
+
+
+@asyncio.coroutine
+def test_request_tracing_clientrequest_signals(loop):
+
+    class MyClientRequest(ClientRequest):
+
+        def __init__(self, *args, **kwargs):
+            super(MyClientRequest, self).__init__(*args, **kwargs)
+            MyClientRequest.on_headers_sent = self._on_headers_sent
+            MyClientRequest.on_content_sent = self._on_content_sent
+            MyClientRequest.on_headers_received = self._on_headers_received
+            MyClientRequest.on_content_received = self._on_content_received
+            MyClientRequest.trace_context = self._trace_context
+
+    trace_context = mock.Mock()
+
+    session = aiohttp.ClientSession(loop=loop, request_class=MyClientRequest)
+    yield from session.get('http://example.com', trace_context=trace_context)
+    assert MyClientRequest.on_headers_sent == session.on_request_headers_sent
+    assert MyClientRequest.on_content_sent == session.on_request_content_sent
+    assert MyClientRequest.on_headers_received ==\
+        session.on_request_headers_received
+    assert MyClientRequest.on_content_received ==\
+        session.on_request_content_received
+    assert MyClientRequest.trace_context == trace_context

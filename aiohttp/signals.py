@@ -25,6 +25,25 @@ class Signal(BaseSignal):
     arguments.
     """
 
+    __slots__ = ()
+
+    @asyncio.coroutine
+    def send(self, *args, **kwargs):
+        """
+        Sends data to all registered receivers.
+        """
+        yield from self._send(*args, **kwargs)
+
+
+class AppSignal(BaseSignal):
+    """Coroutine-based signal implementation.
+
+    To connect a callback to a signal, use any list method.
+
+    Signals are fired using the :meth:`send` coroutine, which takes named
+    arguments.
+    """
+
     __slots__ = ('_app', '_name', '_pre', '_post')
 
     def __init__(self, app):

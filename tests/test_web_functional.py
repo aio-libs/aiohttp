@@ -1576,3 +1576,53 @@ async def test_iter_any(test_server, loop):
     async with aiohttp.ClientSession(loop=loop) as session:
         async with await session.post(server.make_url('/'), data=data) as resp:
             assert resp.status == 200
+
+
+async def test_request_tracing(loop, test_client):
+
+    on_request_start = mock.Mock()
+    on_request_end = mock.Mock()
+    on_request_redirect = mock.Mock()
+    on_request_headers_sent = mock.Mock()
+    on_request_content_sent = mock.Mock()
+    on_request_headers_received = mock.Mock()
+    on_request_content_received = mock.Mock()
+    on_request_createconn_start = mock.Mock()
+    on_request_createconn_end = mock.Mock()
+
+    async def redirector(request):
+        raise web.HTTPFound(location=URL('/redirected'))
+
+    async def redirected(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/redirector', redirector)
+    app.router.add_get('/redirected', redirected)
+
+    client = await test_client(app)
+    client.session.on_request_start.append(on_request_start)
+    client.session.on_request_end.append(on_request_end)
+    client.session.on_request_redirect.append(on_request_redirect)
+    client.session.on_request_headers_sent.append(on_request_headers_sent)
+    client.session.on_request_content_sent.append(on_request_content_sent)
+    client.session.on_request_headers_received.append(
+        on_request_headers_received)
+    client.session.on_request_content_received.append(
+        on_request_content_received)
+    client.session.on_request_createconn_start.append(
+        on_request_createconn_start)
+    client.session.on_request_createconn_end.append(
+        on_request_createconn_end)
+
+    await client.get('/redirector', data="foo")
+
+    assert on_request_start.called
+    assert on_request_end.called
+    assert on_request_redirect.called
+    assert on_request_headers_sent.called
+    assert on_request_content_sent.called
+    assert on_request_headers_received.called
+    assert on_request_content_received.called
+    assert on_request_createconn_start.called
+    assert on_request_createconn_end.called

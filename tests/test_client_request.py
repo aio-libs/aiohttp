@@ -499,7 +499,31 @@ def test_gen_netloc_no_port(make_request):
         '012345678901234567890'
 
 
-async def test_connection_header(loop, conn):
+@asyncio.coroutine
+def test_tracing(loop, conn):
+    trace_context = mock.Mock()
+    on_headers_sent = mock.Mock()
+    on_content_sent = mock.Mock()
+
+    req = ClientRequest(
+        'get',
+        URL('http://python.org'),
+        data=b'foo',
+        on_headers_sent=on_headers_sent,
+        on_content_sent=on_content_sent,
+        trace_context=trace_context,
+        loop=loop
+    )
+    resp = req.send(conn)
+    yield from req.close()
+    resp.close()
+
+    on_headers_sent.send.assert_called_with(trace_context)
+    on_content_sent.send.assert_called_with(trace_context)
+
+
+@asyncio.coroutine
+def test_connection_header(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
     req.keep_alive = mock.Mock()
     req.headers.clear()
@@ -1071,7 +1095,7 @@ async def test_custom_req_rep(loop):
             called = True
             return resp
 
-    async def create_connection(req):
+    async def create_connection(req, trace_context=None):
         assert isinstance(req, CustomRequest)
         return mock.Mock()
     connector = BaseConnector(loop=loop)
