@@ -1,0 +1,1 @@
+Calling str() on all headers values on http_writer.writer_headers method

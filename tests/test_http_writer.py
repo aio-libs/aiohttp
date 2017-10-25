@@ -147,3 +147,24 @@ def test_write_drain(stream, loop):
     msg.write(b'1', drain=True)
     assert msg.drain.called
     assert msg.buffer_size == 0
+
+
+def test_write_headers_for_any_value(stream, loop):
+    from multidict import CIMultiDict
+    msg = http.PayloadWriter(stream, loop)
+    status_line = 'GET /test HTTP/1.1'
+    headers = CIMultiDict({
+        'total': 10,
+        'version': '0.1.0',
+    })
+    end = '\r\n'
+    sep = ': '
+    expected_header = '{status_line}{headers}{end}'.format(
+        status_line=status_line,
+        headers=''.join([k + sep + str(v) + end for k, v in headers.items()]),
+        end=end
+    )
+    expected_header = expected_header.encode('utf-8')
+    msg.write_headers(status_line, headers, sep, end)
+    assert msg._buffer
+    assert msg._buffer[0] == expected_header

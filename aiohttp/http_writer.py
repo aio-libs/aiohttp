@@ -244,7 +244,7 @@ class PayloadWriter(AbstractPayloadWriter):
         """Write request/response status and headers."""
         # status + headers
         headers = status_line + ''.join(
-            [k + SEP + v + END for k, v in headers.items()])
+            [k + SEP + str(v) + END for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
 
         size = len(headers)
