@@ -11,7 +11,6 @@ pytest_plugins = 'pytester'
 
 def test_aiohttp_plugin(testdir):
     testdir.makepyfile("""\
-import asyncio
 import pytest
 from unittest import mock
 
@@ -21,8 +20,7 @@ from aiohttp import web
 pytest_plugins = 'aiohttp.pytest_plugin'
 
 
-@asyncio.coroutine
-def hello(request):
+async def hello(request):
     return web.Response(body=b'Hello, world')
 
 
@@ -32,74 +30,65 @@ def create_app(loop):
     return app
 
 
-@asyncio.coroutine
-def test_hello(test_client):
-    client = yield from test_client(create_app)
-    resp = yield from client.get('/')
+async def test_hello(test_client):
+    client = await test_client(create_app)
+    resp = await client.get('/')
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert 'Hello, world' in text
 
 
-@asyncio.coroutine
-def test_hello_from_app(test_client, loop):
+async def test_hello_from_app(test_client, loop):
     app = web.Application()
     app.router.add_get('/', hello)
-    client = yield from test_client(app)
-    resp = yield from client.get('/')
+    client = await test_client(app)
+    resp = await client.get('/')
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert 'Hello, world' in text
 
 
-@asyncio.coroutine
-def test_hello_with_loop(test_client, loop):
-    client = yield from test_client(create_app)
-    resp = yield from client.get('/')
+async def test_hello_with_loop(test_client, loop):
+    client = await test_client(create_app)
+    resp = await client.get('/')
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert 'Hello, world' in text
 
 
-@asyncio.coroutine
-def test_hello_fails(test_client):
-    client = yield from test_client(create_app)
-    resp = yield from client.get('/')
+async def test_hello_fails(test_client):
+    client = await test_client(create_app)
+    resp = await client.get('/')
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert 'Hello, wield' in text
 
 
-@asyncio.coroutine
-def test_hello_with_fake_loop(test_client):
+async def test_hello_with_fake_loop(test_client):
     with pytest.raises(AssertionError):
         fake_loop = mock.Mock()
-        yield from test_client(web.Application(loop=fake_loop))
+        await test_client(web.Application(loop=fake_loop))
 
 
-@asyncio.coroutine
-def test_set_args(test_client, loop):
+async def test_set_args(test_client, loop):
     with pytest.raises(AssertionError):
         app = web.Application()
-        yield from test_client(app, 1, 2, 3)
+        await test_client(app, 1, 2, 3)
 
 
-@asyncio.coroutine
-def test_set_keyword_args(test_client, loop):
+async def test_set_keyword_args(test_client, loop):
     app = web.Application()
     with pytest.raises(TypeError):
-        yield from test_client(app, param=1)
+        await test_client(app, param=1)
 
 
-@asyncio.coroutine
-def test_noop():
+async def test_noop():
     pass
 
 
-@asyncio.coroutine
-def previous(request):
+async def previous(request):
     if request.method == 'POST':
-        request.app['value'] = (yield from request.post())['value']
+        request.app['value'] = (await request.post())['value']
         return web.Response(body=b'thanks for the data')
     else:
         v = request.app.get('value', 'unknown')
@@ -117,25 +106,23 @@ def cli(loop, test_client):
     return loop.run_until_complete(test_client(create_stateful_app))
 
 
-@asyncio.coroutine
-def test_set_value(cli):
-    resp = yield from cli.post('/', data={'value': 'foo'})
+async def test_set_value(cli):
+    resp = await cli.post('/', data={'value': 'foo'})
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert text == 'thanks for the data'
     assert cli.server.app['value'] == 'foo'
 
 
-@asyncio.coroutine
-def test_get_value(cli):
-    resp = yield from cli.get('/')
+async def test_get_value(cli):
+    resp = await cli.get('/')
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert text == 'value: unknown'
     cli.server.app['value'] = 'bar'
-    resp = yield from cli.get('/')
+    resp = await cli.get('/')
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert text == 'value: bar'
 
 
@@ -143,14 +130,13 @@ def test_noncoro():
     assert True
 
 
-@asyncio.coroutine
-def test_client_failed_to_create(test_client):
+async def test_client_failed_to_create(test_client):
 
     def make_app(loop):
         raise RuntimeError()
 
     with pytest.raises(RuntimeError):
-        yield from test_client(make_app)
+        await test_client(make_app)
 
 """)
     testdir.runpytest('-p', 'no:sugar')
@@ -163,7 +149,6 @@ def test_client_failed_to_create(test_client):
 @pytest.mark.skipif(sys.version_info < (3, 5), reason='old python')
 def test_warning_checks(testdir, capsys):
     testdir.makepyfile("""\
-import asyncio
 
 pytest_plugins = 'aiohttp.pytest_plugin'
 
@@ -186,7 +171,6 @@ async def test_bad():
 
 def test_aiohttp_plugin_async_fixture(testdir, capsys):
     testdir.makepyfile("""\
-import asyncio
 import pytest
 
 from aiohttp import web
@@ -195,8 +179,7 @@ from aiohttp import web
 pytest_plugins = 'aiohttp.pytest_plugin'
 
 
-@asyncio.coroutine
-def hello(request):
+async def hello(request):
     return web.Response(body=b'Hello, world')
 
 
@@ -207,28 +190,24 @@ def create_app(loop):
 
 
 @pytest.fixture
-@asyncio.coroutine
-def cli(test_client):
-    client = yield from test_client(create_app)
+async def cli(test_client):
+    client = await test_client(create_app)
     return client
 
 
 @pytest.fixture
-@asyncio.coroutine
-def foo():
+async def foo():
     return 42
 
 
 @pytest.fixture
-@asyncio.coroutine
-def bar(request):
+async def bar(request):
     # request should be accessible in async fixtures if needed
     return request.function
 
 
-@asyncio.coroutine
-def test_hello(cli):
-    resp = yield from cli.get('/')
+async def test_hello(cli):
+    resp = await cli.get('/')
     assert resp.status == 200
 
 
@@ -256,7 +235,6 @@ def test_bar(loop, bar):
 @pytest.mark.skipif(sys.version_info < (3, 6), reason='old python')
 def test_aiohttp_plugin_async_gen_fixture(testdir):
     testdir.makepyfile("""\
-import asyncio
 import pytest
 from unittest import mock
 
