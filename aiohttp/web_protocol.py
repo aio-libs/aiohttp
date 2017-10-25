@@ -521,14 +521,12 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         if status == 500:
             msg = "<h1>500 Internal Server Error</h1>"
             if self.debug:
-                try:
+                with suppress(Exception):
                     tb = traceback.format_exc()
                     tb = html_escape(tb)
                     msg += '<br><h2>Traceback:</h2>\n<pre>'
                     msg += tb
                     msg += '</pre>'
-                except:  # pragma: no cover
-                    pass
             else:
                 msg += "Server got itself in trouble"
                 msg = ("<html><head><title>500 Internal Server Error</title>"

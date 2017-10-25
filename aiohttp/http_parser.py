@@ -102,7 +102,7 @@ class HttpParser:
                     self._lines.append('')
                 try:
                     return self.parse_message(self._lines)
-                except:
+                except Exception:
                     return None
 
     def feed_data(self, data,
@@ -372,7 +372,7 @@ class HttpRequestParserPy(HttpParser):
                 version = HttpVersion(int(n1), int(n2))
             else:
                 raise BadStatusLine(version)
-        except:
+        except Exception:
             raise BadStatusLine(version)
 
         # read headers

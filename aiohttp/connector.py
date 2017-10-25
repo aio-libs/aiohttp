@@ -4,6 +4,7 @@ import sys
 import traceback
 import warnings
 from collections import defaultdict
+from contextlib import suppress
 from hashlib import md5, sha1, sha256
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
@@ -99,10 +100,8 @@ class Connection:
         callbacks, self._callbacks = self._callbacks[:], []
 
         for cb in callbacks:
-            try:
+            with suppress(Exception):
                 cb()
-            except:
-                pass
 
     def close(self):
         self._notify_release()
@@ -148,7 +147,8 @@ class BaseConnector(object):
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
-    disable_cleanup_closed - Disable clean-up closed ssl transports.
+    enable_cleanup_closed - Enables clean-up closed ssl transports.
+                            Disabled by default.
     loop - Optional event loop.
     """
 
@@ -394,7 +394,7 @@ class BaseConnector(object):
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-            except:
+            except Exception:
                 # signal to waiter
                 for waiter in self._waiters[key]:
                     if not waiter.done():
@@ -563,8 +563,6 @@ class TCPConnector(BaseConnector):
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
-    resolve - (Deprecated) Set to True to do DNS lookup for
-        host name.
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
@@ -577,11 +575,13 @@ class TCPConnector(BaseConnector):
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
+    enable_cleanup_closed - Enables clean-up closed ssl transports.
+                            Disabled by default.
     loop - Optional event loop.
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=sentinel, use_dns_cache=True, ttl_dns_cache=10,
+                 use_dns_cache=True, ttl_dns_cache=10,
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
@@ -870,7 +870,7 @@ class TCPConnector(BaseConnector):
             proxy_resp = proxy_req.send(conn)
             try:
                 resp = yield from proxy_resp.start(conn, True)
-            except:
+            except Exception:
                 proxy_resp.close()
                 conn.close()
                 raise
