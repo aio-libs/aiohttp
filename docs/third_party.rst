@@ -57,9 +57,6 @@ aiohttp extensions
 - `aiohttp-jinja2 <https://github.com/aio-libs/aiohttp-jinja2>`_ Jinja2
   template renderer for aiohttp.web.
 
-- `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
-  GraphQL and GraphIQL interface for aiohttp.
-
 Database drivers
 ^^^^^^^^^^^^^^^^
 
@@ -199,3 +196,6 @@ period ask to raise he status.
   Open-source home automation platform running on Python 3.
 
 - `discord.py <https://github.com/Rapptz/discord.py>`_ Discord client library.
+
+- `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
+  GraphQL and GraphIQL interface for aiohttp.
