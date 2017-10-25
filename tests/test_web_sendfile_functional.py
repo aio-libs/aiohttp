@@ -24,96 +24,87 @@ def sender(request):
     return maker
 
 
-@asyncio.coroutine
-def test_static_file_ok(loop, test_client, sender):
+async def test_static_file_ok(loop, test_client, sender):
     filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/')
+    resp = await client.get('/')
     assert resp.status == 200
-    txt = yield from resp.text()
+    txt = await resp.text()
     assert 'file content' == txt.rstrip()
     assert 'application/octet-stream' == resp.headers['Content-Type']
     assert resp.headers.get('Content-Encoding') is None
-    yield from resp.release()
+    await resp.release()
 
 
-@asyncio.coroutine
-def test_static_file_ok_string_path(loop, test_client, sender):
+async def test_static_file_ok_string_path(loop, test_client, sender):
     filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(str(filepath))
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/')
+    resp = await client.get('/')
     assert resp.status == 200
-    txt = yield from resp.text()
+    txt = await resp.text()
     assert 'file content' == txt.rstrip()
     assert 'application/octet-stream' == resp.headers['Content-Type']
     assert resp.headers.get('Content-Encoding') is None
-    yield from resp.release()
+    await resp.release()
 
 
-@asyncio.coroutine
-def test_static_file_not_exists(loop, test_client):
-
-    app = web.Application()
-    client = yield from test_client(lambda loop: app)
-
-    resp = yield from client.get('/fake')
-    assert resp.status == 404
-    yield from resp.release()
-
-
-@asyncio.coroutine
-def test_static_file_name_too_long(loop, test_client):
+async def test_static_file_not_exists(loop, test_client):
 
     app = web.Application()
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/x*500')
+    resp = await client.get('/fake')
     assert resp.status == 404
-    yield from resp.release()
+    await resp.release()
 
 
-@asyncio.coroutine
-def test_static_file_upper_directory(loop, test_client):
+async def test_static_file_name_too_long(loop, test_client):
 
     app = web.Application()
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/../../')
+    resp = await client.get('/x*500')
     assert resp.status == 404
-    yield from resp.release()
+    await resp.release()
 
 
-@asyncio.coroutine
-def test_static_file_with_content_type(loop, test_client, sender):
+async def test_static_file_upper_directory(loop, test_client):
+
+    app = web.Application()
+    client = await test_client(lambda loop: app)
+
+    resp = await client.get('/../../')
+    assert resp.status == 404
+    await resp.release()
+
+
+async def test_static_file_with_content_type(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.jpg')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath, chunk_size=16)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/')
+    resp = await client.get('/')
     assert resp.status == 200
-    body = yield from resp.read()
+    body = await resp.read()
     with filepath.open('rb') as f:
         content = f.read()
         assert content == body
@@ -122,23 +113,21 @@ def test_static_file_with_content_type(loop, test_client, sender):
     resp.close()
 
 
-@asyncio.coroutine
-def test_static_file_custom_content_type(loop, test_client, sender):
+async def test_static_file_custom_content_type(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'hello.txt.gz')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         resp = sender(filepath, chunk_size=16)
         resp.content_type = 'application/pdf'
         return resp
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/')
+    resp = await client.get('/')
     assert resp.status == 200
-    body = yield from resp.read()
+    body = await resp.read()
     with filepath.open('rb') as f:
         content = f.read()
         assert content == body
@@ -147,44 +136,42 @@ def test_static_file_custom_content_type(loop, test_client, sender):
     resp.close()
 
 
-@asyncio.coroutine
-def test_static_file_custom_content_type_compress(loop, test_client, sender):
+async def test_static_file_custom_content_type_compress(
+    loop, test_client, sender
+):
     filepath = (pathlib.Path(__file__).parent / 'hello.txt')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         resp = sender(filepath, chunk_size=16)
         resp.content_type = 'application/pdf'
         return resp
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/')
+    resp = await client.get('/')
     assert resp.status == 200
-    body = yield from resp.read()
+    body = await resp.read()
     assert b'hello aiohttp\n' == body
     assert resp.headers['Content-Type'] == 'application/pdf'
     assert resp.headers.get('Content-Encoding') == 'gzip'
     resp.close()
 
 
-@asyncio.coroutine
-def test_static_file_with_content_encoding(loop, test_client, sender):
+async def test_static_file_with_content_encoding(loop, test_client, sender):
     filepath = pathlib.Path(__file__).parent / 'hello.txt.gz'
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/')
+    resp = await client.get('/')
     assert 200 == resp.status
-    body = yield from resp.read()
+    body = await resp.read()
     assert b'hello aiohttp\n' == body
     ct = resp.headers['CONTENT-TYPE']
     assert 'text/plain' == ct
@@ -193,90 +180,90 @@ def test_static_file_with_content_encoding(loop, test_client, sender):
     resp.close()
 
 
-@asyncio.coroutine
-def test_static_file_if_modified_since(loop, test_client, sender):
+async def test_static_file_if_modified_since(loop, test_client, sender):
     filename = 'data.unknown_mime_type'
     filepath = pathlib.Path(__file__).parent / filename
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
-    resp = yield from client.get('/')
+    resp = await client.get('/')
     assert 200 == resp.status
     lastmod = resp.headers.get('Last-Modified')
     assert lastmod is not None
     resp.close()
 
-    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
-    body = yield from resp.read()
+    resp = await client.get('/', headers={'If-Modified-Since': lastmod})
+    body = await resp.read()
     assert 304 == resp.status
     assert resp.headers.get('Content-Length') is None
     assert b'' == body
     resp.close()
 
 
-@asyncio.coroutine
-def test_static_file_if_modified_since_past_date(loop, test_client, sender):
+async def test_static_file_if_modified_since_past_date(
+    loop, test_client, sender
+):
     filename = 'data.unknown_mime_type'
     filepath = pathlib.Path(__file__).parent / filename
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
 
-    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
+    resp = await client.get('/', headers={'If-Modified-Since': lastmod})
     assert 200 == resp.status
     resp.close()
 
 
-@asyncio.coroutine
-def test_static_file_if_modified_since_invalid_date(loop, test_client, sender):
+async def test_static_file_if_modified_since_invalid_date(
+    loop, test_client, sender
+):
     filename = 'data.unknown_mime_type'
     filepath = pathlib.Path(__file__).parent / filename
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     lastmod = 'not a valid HTTP-date'
 
-    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
+    resp = await client.get('/', headers={'If-Modified-Since': lastmod})
     assert 200 == resp.status
     resp.close()
 
 
-@asyncio.coroutine
-def test_static_file_if_modified_since_future_date(loop, test_client, sender):
+async def test_static_file_if_modified_since_future_date(
+    loop,
+    test_client,
+    sender
+):
     filename = 'data.unknown_mime_type'
     filepath = pathlib.Path(__file__).parent / filename
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
 
-    resp = yield from client.get('/', headers={'If-Modified-Since': lastmod})
-    body = yield from resp.read()
+    resp = await client.get('/', headers={'If-Modified-Since': lastmod})
+    body = await resp.read()
     assert 304 == resp.status
     assert resp.headers.get('Content-Length') is None
     assert b'' == body
@@ -284,8 +271,7 @@ def test_static_file_if_modified_since_future_date(loop, test_client, sender):
 
 
 @pytest.mark.skipif(not ssl, reason="ssl not supported")
-@asyncio.coroutine
-def test_static_file_ssl(loop, test_server, test_client):
+async def test_static_file_ssl(loop, test_server, test_client):
     dirname = os.path.dirname(__file__)
     filename = 'data.unknown_mime_type'
     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -295,39 +281,38 @@ def test_static_file_ssl(loop, test_server, test_client):
     )
     app = web.Application()
     app.router.add_static('/static', dirname)
-    server = yield from test_server(app, ssl=ssl_ctx)
+    server = await test_server(app, ssl=ssl_ctx)
     conn = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
-    client = yield from test_client(server, connector=conn)
+    client = await test_client(server, connector=conn)
 
-    resp = yield from client.get('/static/'+filename)
+    resp = await client.get('/static/'+filename)
     assert 200 == resp.status
-    txt = yield from resp.text()
+    txt = await resp.text()
     assert 'file content' == txt.rstrip()
     ct = resp.headers['CONTENT-TYPE']
     assert 'application/octet-stream' == ct
     assert resp.headers.get('CONTENT-ENCODING') is None
 
 
-@asyncio.coroutine
-def test_static_file_directory_traversal_attack(loop, test_client):
+async def test_static_file_directory_traversal_attack(loop, test_client):
     dirname = os.path.dirname(__file__)
     relpath = '../README.rst'
     assert os.path.isfile(os.path.join(dirname, relpath))
 
     app = web.Application()
     app.router.add_static('/static', dirname)
-    client = yield from test_client(app)
+    client = await test_client(app)
 
-    resp = yield from client.get('/static/'+relpath)
+    resp = await client.get('/static/'+relpath)
     assert 404 == resp.status
 
     url_relpath2 = '/static/dir/../' + relpath
-    resp = yield from client.get(url_relpath2)
+    resp = await client.get(url_relpath2)
     assert 404 == resp.status
 
     url_abspath = \
         '/static/' + os.path.abspath(os.path.join(dirname, relpath))
-    resp = yield from client.get(url_abspath)
+    resp = await client.get(url_abspath)
     assert 404 == resp.status
 
 
@@ -340,8 +325,7 @@ def test_static_route_path_existence_check():
         web.StaticResource("/", nodirectory)
 
 
-@asyncio.coroutine
-def test_static_file_huge(loop, test_client, tmpdir):
+async def test_static_file_huge(loop, test_client, tmpdir):
     filename = 'huge_data.unknown_mime_type'
 
     # fill 100MB file
@@ -353,9 +337,9 @@ def test_static_file_huge(loop, test_client, tmpdir):
 
     app = web.Application()
     app.router.add_static('/static', str(tmpdir))
-    client = yield from test_client(app)
+    client = await test_client(app)
 
-    resp = yield from client.get('/static/'+filename)
+    resp = await client.get('/static/'+filename)
     assert 200 == resp.status
     ct = resp.headers['CONTENT-TYPE']
     assert 'application/octet-stream' == ct
@@ -366,7 +350,7 @@ def test_static_file_huge(loop, test_client, tmpdir):
     off = 0
     cnt = 0
     while off < file_st.st_size:
-        chunk = yield from resp.content.readany()
+        chunk = await resp.content.readany()
         expected = f.read(len(chunk))
         assert chunk == expected
         off += len(chunk)
@@ -374,23 +358,21 @@ def test_static_file_huge(loop, test_client, tmpdir):
     f.close()
 
 
-@asyncio.coroutine
-def test_static_file_range(loop, test_client, sender):
+async def test_static_file_range(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent.parent / 'LICENSE.txt')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath, chunk_size=16)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     with filepath.open('rb') as f:
         content = f.read()
 
     # Ensure the whole file requested in parts is correct
-    responses = yield from asyncio.gather(
+    responses = await asyncio.gather(
         client.get('/', headers={'Range': 'bytes=0-999'}),
         client.get('/', headers={'Range': 'bytes=1000-1999'}),
         client.get('/', headers={'Range': 'bytes=2000-'}),
@@ -404,7 +386,7 @@ def test_static_file_range(loop, test_client, sender):
     assert responses[2].status == 206, \
         "failed 'bytes=2000-': %s" % responses[2].reason
 
-    body = yield from asyncio.gather(
+    body = await asyncio.gather(
         *(resp.read() for resp in responses),
         loop=loop
     )
@@ -420,49 +402,49 @@ def test_static_file_range(loop, test_client, sender):
     assert content == b"".join(body)
 
 
-@asyncio.coroutine
-def test_static_file_range_end_bigger_than_size(loop, test_client, sender):
+async def test_static_file_range_end_bigger_than_size(
+    loop,
+    test_client,
+    sender
+):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath, chunk_size=16)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     with filepath.open('rb') as f:
         content = f.read()
 
         # Ensure the whole file requested in parts is correct
-        response = yield from client.get(
+        response = await client.get(
             '/', headers={'Range': 'bytes=61000-62000'})
 
         assert response.status == 206, \
             "failed 'bytes=61000-62000': %s" % response.reason
 
-        body = yield from response.read()
+        body = await response.read()
         assert len(body) == 108, \
             "failed 'bytes=0-999', received %d bytes" % len(body[0])
 
         assert content[61000:] == body
 
 
-@asyncio.coroutine
-def test_static_file_range_beyond_eof(loop, test_client, sender):
+async def test_static_file_range_beyond_eof(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath, chunk_size=16)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     # Ensure the whole file requested in parts is correct
-    response = yield from client.get(
+    response = await client.get(
         '/', headers={'Range': 'bytes=1000000-1200000'})
 
     assert response.status == 206, \
@@ -470,67 +452,63 @@ def test_static_file_range_beyond_eof(loop, test_client, sender):
     assert response.headers['content-length'] == '0'
 
 
-@asyncio.coroutine
-def test_static_file_range_tail(loop, test_client, sender):
+async def test_static_file_range_tail(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath, chunk_size=16)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     with filepath.open('rb') as f:
         content = f.read()
 
     # Ensure the tail of the file is correct
-    resp = yield from client.get('/', headers={'Range': 'bytes=-500'})
+    resp = await client.get('/', headers={'Range': 'bytes=-500'})
     assert resp.status == 206, resp.reason
-    body4 = yield from resp.read()
+    body4 = await resp.read()
     resp.close()
     assert content[-500:] == body4
 
 
-@asyncio.coroutine
-def test_static_file_invalid_range(loop, test_client, sender):
+async def test_static_file_invalid_range(loop, test_client, sender):
     filepath = (pathlib.Path(__file__).parent / 'aiohttp.png')
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return sender(filepath, chunk_size=16)
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = yield from test_client(lambda loop: app)
+    client = await test_client(lambda loop: app)
 
     # range must be in bytes
-    resp = yield from client.get('/', headers={'Range': 'blocks=0-10'})
+    resp = await client.get('/', headers={'Range': 'blocks=0-10'})
     assert resp.status == 416, 'Range must be in bytes'
     resp.close()
 
     # start > end
-    resp = yield from client.get('/', headers={'Range': 'bytes=100-0'})
+    resp = await client.get('/', headers={'Range': 'bytes=100-0'})
     assert resp.status == 416, "Range start can't be greater than end"
     resp.close()
 
     # start > end
-    resp = yield from client.get('/', headers={'Range': 'bytes=10-9'})
+    resp = await client.get('/', headers={'Range': 'bytes=10-9'})
     assert resp.status == 416, "Range start can't be greater than end"
     resp.close()
 
     # non-number range
-    resp = yield from client.get('/', headers={'Range': 'bytes=a-f'})
+    resp = await client.get('/', headers={'Range': 'bytes=a-f'})
     assert resp.status == 416, 'Range must be integers'
     resp.close()
 
     # double dash range
-    resp = yield from client.get('/', headers={'Range': 'bytes=0--10'})
+    resp = await client.get('/', headers={'Range': 'bytes=0--10'})
     assert resp.status == 416, 'double dash in range'
     resp.close()
 
     # no range
-    resp = yield from client.get('/', headers={'Range': 'bytes=-'})
+    resp = await client.get('/', headers={'Range': 'bytes=-'})
     assert resp.status == 416, 'no range given'
     resp.close()

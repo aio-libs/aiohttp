@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from aiohttp import web
@@ -12,8 +10,7 @@ def router():
 
 
 def test_get(router):
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes([web.get('/', handler)])
@@ -30,8 +27,7 @@ def test_get(router):
 
 
 def test_head(router):
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes([web.head('/', handler)])
@@ -44,8 +40,7 @@ def test_head(router):
 
 
 def test_post(router):
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes([web.post('/', handler)])
@@ -57,8 +52,7 @@ def test_post(router):
 
 
 def test_put(router):
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes([web.put('/', handler)])
@@ -71,8 +65,7 @@ def test_put(router):
 
 
 def test_patch(router):
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes([web.patch('/', handler)])
@@ -85,8 +78,7 @@ def test_patch(router):
 
 
 def test_delete(router):
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes([web.delete('/', handler)])
@@ -99,8 +91,7 @@ def test_delete(router):
 
 
 def test_route(router):
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes([web.route('OTHER', '/', handler)])
@@ -116,8 +107,7 @@ def test_head_deco(router):
     routes = web.RouteTableDef()
 
     @routes.head('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes(routes)
@@ -133,8 +123,7 @@ def test_get_deco(router):
     routes = web.RouteTableDef()
 
     @routes.get('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes(routes)
@@ -154,8 +143,7 @@ def test_post_deco(router):
     routes = web.RouteTableDef()
 
     @routes.post('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes(routes)
@@ -171,8 +159,7 @@ def test_put_deco(router):
     routes = web.RouteTableDef()
 
     @routes.put('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes(routes)
@@ -188,8 +175,7 @@ def test_patch_deco(router):
     routes = web.RouteTableDef()
 
     @routes.patch('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes(routes)
@@ -205,8 +191,7 @@ def test_delete_deco(router):
     routes = web.RouteTableDef()
 
     @routes.delete('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes(routes)
@@ -222,8 +207,7 @@ def test_route_deco(router):
     routes = web.RouteTableDef()
 
     @routes.route('OTHER', '/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     router.add_routes(routes)
@@ -239,8 +223,7 @@ def test_routedef_sequence_protocol():
     routes = web.RouteTableDef()
 
     @routes.delete('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     assert len(routes) == 1
@@ -255,8 +238,7 @@ def test_repr_route_def():
     routes = web.RouteTableDef()
 
     @routes.get('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     rd = routes[0]
@@ -267,8 +249,7 @@ def test_repr_route_def_with_extra_info():
     routes = web.RouteTableDef()
 
     @routes.get('/path', extra='info')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     rd = routes[0]
@@ -279,8 +260,7 @@ def test_repr_route_table_def():
     routes = web.RouteTableDef()
 
     @routes.get('/path')
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     assert repr(routes) == "<RouteTableDef count=1>"

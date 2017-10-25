@@ -26,20 +26,17 @@ class FakeQueryResult:
         self.host = host
 
 
-@asyncio.coroutine
-def fake_result(addresses):
+async def fake_result(addresses):
     return FakeResult(addresses=tuple(addresses))
 
 
-@asyncio.coroutine
-def fake_query_result(result):
+async def fake_query_result(result):
     return [FakeQueryResult(host=h)
             for h in result]
 
 
 def fake_addrinfo(hosts):
-    @asyncio.coroutine
-    def fake(*args, **kwargs):
+    async def fake(*args, **kwargs):
         if not hosts:
             raise socket.gaierror
 
