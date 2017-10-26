@@ -1043,7 +1043,7 @@ The following code demonstrates middlewares execution order::
        return response
 
    @web.middleware
-   async def middleware2(app, handler):
+   async def middleware2(request, handler):
        print('Middleware 2 called')
        response = await handler(request)
        print('Middleware 2 finished')
