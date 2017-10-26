@@ -1,4 +1,3 @@
-import asyncio
 from io import StringIO
 
 import pytest
@@ -16,8 +15,7 @@ def registry():
 
 class Payload(payload.Payload):
 
-    @asyncio.coroutine
-    def write(self, writer):
+    async def write(self, writer):
         pass
 
 
