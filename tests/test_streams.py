@@ -68,8 +68,8 @@ class TestStreamReader(unittest.TestCase):
         stream = self._make_one()
         wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
 
-        def cb():
-            yield from asyncio.sleep(0.1, loop=self.loop)
+        async def cb():
+            await asyncio.sleep(0.1, loop=self.loop)
             stream.feed_eof()
 
         asyncio.Task(cb(), loop=self.loop)
@@ -595,8 +595,8 @@ class TestStreamReader(unittest.TestCase):
     def test_readchunk_wait_eof(self):
         stream = self._make_one()
 
-        def cb():
-            yield from asyncio.sleep(0.1, loop=self.loop)
+        async def cb():
+            await asyncio.sleep(0.1, loop=self.loop)
             stream.feed_eof()
 
         asyncio.Task(cb(), loop=self.loop)
@@ -899,6 +899,7 @@ class DataQueueMixin:
         self.assertIs(self.buffer.exception(), exc)
 
     def test_exception_waiter(self):
+
         async def set_err():
             self.buffer.set_exception(ValueError())
 

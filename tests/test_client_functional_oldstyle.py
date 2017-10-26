@@ -162,20 +162,20 @@ class Router:
 
         return wrapper
 
-    def dispatch(self):  # pragma: no cover
+    async def dispatch(self):  # pragma: no cover
         for route, fn in self._mapping:
             match = route.match(self._path)
             if match is not None:
                 try:
-                    return (yield from getattr(self, fn)(match))
+                    return (await getattr(self, fn)(match))
                 except Exception:
                     out = io.StringIO()
                     traceback.print_exc(file=out)
-                    return (yield from self._response(500, out.getvalue()))
+                    return (await self._response(500, out.getvalue()))
 
                 return ()
 
-        return (yield from self._response(self._start_response(404)))
+        return (await self._response(self._start_response(404)))
 
     def _start_response(self, code):
         return web.Response(status=code)
@@ -460,8 +460,8 @@ class TestHttpClientFunctional(unittest.TestCase):
             fut = helpers.create_future(self.loop)
 
             @aiohttp.streamer
-            def stream(writer):
-                yield from fut
+            async def stream(writer):
+                await fut
                 writer.write(data)
 
             self.loop.call_later(0.01, fut.set_result, True)

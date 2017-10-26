@@ -870,9 +870,9 @@ async def test_data_stream_exc(loop, conn):
     fut = helpers.create_future(loop)
 
     @aiohttp.streamer
-    def gen(writer):
+    async def gen(writer):
         writer.write(b'binary data')
-        yield from fut
+        await fut
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -896,8 +896,8 @@ async def test_data_stream_exc_chain(loop, conn):
     fut = helpers.create_future(loop)
 
     @aiohttp.streamer
-    def gen(writer):
-        yield from fut
+    async def gen(writer):
+        await fut
 
     req = ClientRequest('POST', URL('http://python.org/'),
                         data=gen(), loop=loop)
@@ -923,10 +923,10 @@ async def test_data_stream_exc_chain(loop, conn):
 
 async def test_data_stream_continue(loop, buf, conn):
     @aiohttp.streamer
-    def gen(writer):
+    async def gen(writer):
         writer.write(b'binary data')
         writer.write(b' result')
-        yield from writer.write_eof()
+        await writer.write_eof()
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(),
@@ -968,8 +968,8 @@ async def test_data_continue(loop, buf, conn):
 
 async def test_close(loop, buf, conn):
     @aiohttp.streamer
-    def gen(writer):
-        yield from asyncio.sleep(0.00001, loop=loop)
+    async def gen(writer):
+        await asyncio.sleep(0.00001, loop=loop)
         writer.write(b'result')
 
     req = ClientRequest(
@@ -1046,6 +1046,7 @@ async def test_custom_req_rep(loop):
     conn = None
 
     class CustomResponse(ClientResponse):
+
         async def start(self, connection, read_until_eof=False):
             nonlocal conn
             conn = connection
