@@ -215,7 +215,7 @@ class TestProxy(unittest.TestCase):
         Request_mock.assert_called_with(mock.ANY, mock.ANY, "xn--9caa.com:80",
                                         mock.ANY, loop=loop)
 
-    def test_proxy_connection_error(self):
+    def test_proxy_dns_error(self):
         connector = aiohttp.TCPConnector(loop=self.loop)
         connector._resolve_host = make_mocked_coro(
             raise_exception=OSError('dont take it serious'))
@@ -225,11 +225,26 @@ class TestProxy(unittest.TestCase):
             proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
-        expected_headers = dict(req.headers)
         with self.assertRaises(aiohttp.ClientConnectorError):
             self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.url.path, '/')
-        self.assertEqual(dict(req.headers), expected_headers)
+
+    def test_proxy_connection_error(self):
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._resolve_host = make_mocked_coro([{
+            'hostname': 'www.python.org',
+            'host': '127.0.0.1', 'port': 80,
+            'family': socket.AF_INET, 'proto': 0,
+            'flags': socket.AI_NUMERICHOST}])
+        connector._loop.create_connection = make_mocked_coro(
+            raise_exception=OSError('dont take it serious'))
+
+        req = ClientRequest(
+            'GET', URL('http://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            loop=self.loop,
+        )
+        with self.assertRaises(aiohttp.ClientProxyConnectionError):
+            self.loop.run_until_complete(connector.connect(req))
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_auth(self, ClientRequestMock):
@@ -313,30 +328,6 @@ class TestProxy(unittest.TestCase):
             auth=None, loop=mock.ANY, headers=mock.ANY, fingerprint=None,
             ssl_context=None, verify_ssl=None)
         conn.close()
-
-    @mock.patch('aiohttp.connector.ClientRequest')
-    def test_auth__not_modifying_request(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET',
-                                  URL('http://user:pass@proxy.example.com'),
-                                  loop=self.loop)
-        ClientRequestMock.return_value = proxy_req
-        proxy_req_headers = dict(proxy_req.headers)
-
-        connector = aiohttp.TCPConnector(loop=self.loop)
-        connector._resolve_host = make_mocked_coro(
-            raise_exception=OSError('nothing personal'))
-
-        req = ClientRequest(
-            'GET', URL('http://www.python.org'),
-            proxy=URL('http://user:pass@proxy.example.com'),
-            loop=self.loop,
-        )
-        req_headers = dict(req.headers)
-        with self.assertRaises(aiohttp.ClientConnectorError):
-            self.loop.run_until_complete(connector.connect(req))
-        self.assertEqual(req.headers, req_headers)
-        self.assertEqual(req.url.path, '/')
-        self.assertEqual(proxy_req.headers, proxy_req_headers)
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect(self, ClientRequestMock):
