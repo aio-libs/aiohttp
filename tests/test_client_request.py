@@ -1046,8 +1046,7 @@ async def test_custom_req_rep(loop):
     conn = None
 
     class CustomResponse(ClientResponse):
-        @asyncio.coroutine
-        def start(self, connection, read_until_eof=False):
+        async def start(self, connection, read_until_eof=False):
             nonlocal conn
             conn = connection
             self.status = 123

@@ -479,8 +479,7 @@ class TestStreamReader(unittest.TestCase):
     def test_exception_waiter(self):
         stream = self._make_one()
 
-        @asyncio.coroutine
-        def set_err():
+        async def set_err():
             stream.set_exception(ValueError())
 
         t1 = asyncio.Task(stream.readline(), loop=self.loop)
@@ -492,9 +491,8 @@ class TestStreamReader(unittest.TestCase):
     def test_exception_cancel(self):
         stream = self._make_one()
 
-        @asyncio.coroutine
-        def read_a_line():
-            yield from stream.readline()
+        async def read_a_line():
+            await stream.readline()
 
         t = asyncio.Task(read_a_line(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -901,8 +899,7 @@ class DataQueueMixin:
         self.assertIs(self.buffer.exception(), exc)
 
     def test_exception_waiter(self):
-        @asyncio.coroutine
-        def set_err():
+        async def set_err():
             self.buffer.set_exception(ValueError())
 
         t1 = asyncio.Task(self.buffer.read(), loop=self.loop)

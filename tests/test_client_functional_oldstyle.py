@@ -57,8 +57,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             return urllib.parse.urljoin(
                 self._url, '/'.join(str(s) for s in suffix))
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         if properties.get('close', False):
             return
 
@@ -68,7 +67,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
                 break
 
         rob = router(properties, request)
-        return (yield from rob.dispatch())
+        return (await rob.dispatch())
 
     class TestHttpServer(web.RequestHandler):
 
@@ -181,8 +180,7 @@ class Router:
     def _start_response(self, code):
         return web.Response(status=code)
 
-    @asyncio.coroutine
-    def _response(self, response, body=None,
+    async def _response(self, response, body=None,
                   headers=None, chunked=False, write_body=None):
         r_headers = {}
         for key, val in self._headers.items():
@@ -212,7 +210,7 @@ class Router:
             resp['content'] = body
         else:
             resp['content'] = (
-                yield from self._request.read()).decode('utf-8', 'ignore')
+                await self._request.read()).decode('utf-8', 'ignore')
 
         ct = self._headers.get('content-type', '').lower()
 
@@ -226,7 +224,7 @@ class Router:
             for key, val in self._headers.items():
                 out.write(bytes('{}: {}\r\n'.format(key, val), 'latin1'))
 
-            b = yield from self._request.read()
+            b = await self._request.read()
             out.write(b'\r\n')
             out.write(b)
             out.write(b'\r\n')
@@ -267,7 +265,7 @@ class Router:
         if chunked:
             self._request.writer.enable_chunking()
 
-        yield from response.prepare(self._request)
+        await response.prepare(self._request)
 
         # write payload
         if write_body:
@@ -619,13 +617,12 @@ class TestHttpClientFunctional(unittest.TestCase):
 
     def test_dont_close_explicit_connector(self):
 
-        @asyncio.coroutine
-        def go(url):
+        async def go(url):
             connector = aiohttp.TCPConnector(loop=self.loop)
             session = client.ClientSession(loop=self.loop, connector=connector)
 
-            r = yield from session.request('GET', url)
-            yield from r.read()
+            r = await session.request('GET', url)
+            await r.read()
             self.assertEqual(1, len(connector._conns))
             connector.close()
             session.close()
@@ -656,9 +653,8 @@ class TestHttpClientFunctional(unittest.TestCase):
             def connection_lost(self, exc):
                 self.transp = None
 
-        @asyncio.coroutine
-        def go():
-            server = yield from self.loop.create_server(
+        async def go():
+            server = await self.loop.create_server(
                 Proto, '127.0.0.1', unused_port())
 
             addr = server.sockets[0].getsockname()
@@ -668,13 +664,13 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             url = 'http://{}:{}/'.format(*addr)
             for i in range(2):
-                r = yield from session.request('GET', url)
-                yield from r.read()
+                r = await session.request('GET', url)
+                await r.read()
                 self.assertEqual(0, len(connector._conns))
             session.close()
             connector.close()
             server.close()
-            yield from server.wait_closed()
+            await server.wait_closed()
 
         self.loop.run_until_complete(go())
 
@@ -699,9 +695,8 @@ class TestHttpClientFunctional(unittest.TestCase):
             def connection_lost(self, exc):
                 self.transp = None
 
-        @asyncio.coroutine
-        def go():
-            server = yield from self.loop.create_server(
+        async def go():
+            server = await self.loop.create_server(
                 Proto, '127.0.0.1', unused_port())
 
             addr = server.sockets[0].getsockname()
@@ -711,18 +706,18 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             url = 'http://{}:{}/'.format(*addr)
 
-            r = yield from session.request('GET', url)
-            yield from r.read()
+            r = await session.request('GET', url)
+            await r.read()
             self.assertEqual(1, len(connector._conns))
 
             with self.assertRaises(aiohttp.ServerDisconnectedError):
-                yield from session.request('GET', url)
+                await session.request('GET', url)
             self.assertEqual(0, len(connector._conns))
 
             session.close()
             connector.close()
             server.close()
-            yield from server.wait_closed()
+            await server.wait_closed()
 
         self.loop.run_until_complete(go())
 
