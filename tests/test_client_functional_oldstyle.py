@@ -181,7 +181,7 @@ class Router:
         return web.Response(status=code)
 
     async def _response(self, response, body=None,
-                        headers=None, chunked=False, write_body=None):
+                  headers=None, chunked=False, write_body=None):
         r_headers = {}
         for key, val in self._headers.items():
             key = '-'.join(p.capitalize() for p in key.split('-'))
