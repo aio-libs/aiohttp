@@ -12,6 +12,10 @@ def setup_routes(app):
     app.router.add_get('/poll/{question_id}/results',
                        results, name='results')
     app.router.add_post('/poll/{question_id}/vote', vote, name='vote')
+    setup_static_routes(app)
+
+
+def setup_static_routes(app):
     app.router.add_static('/static/',
-                          path=str(PROJECT_ROOT / 'static'),
+                          path=PROJECT_ROOT / 'static',
                           name='static')
