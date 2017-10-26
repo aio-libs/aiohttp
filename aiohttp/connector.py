@@ -5,6 +5,7 @@ import traceback
 import warnings
 from collections import defaultdict
 from contextlib import suppress
+from functools import partialmethod
 from hashlib import md5, sha1, sha256
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
@@ -779,6 +780,31 @@ class TCPConnector(BaseConnector):
             return (None, None)
 
     @asyncio.coroutine
+    def __wrap_create_connection(self, req, *args, **kwargs):
+        assert '_client_error' in kwargs
+        _client_error = kwargs.pop('_client_error')
+
+        try:
+            return (yield from self._loop.create_connection(*args, **kwargs))
+        except certificate_errors as exc:
+            raise ClientConnectorCertificateError(
+                req.connection_key, exc) from exc
+        except ssl_errors as exc:
+            raise ClientConnectorSSLError(req.connection_key, exc) from exc
+        except OSError as exc:
+            raise _client_error(req.connection_key, exc) from exc
+
+    _wrap_direct_connection = partialmethod(
+        __wrap_create_connection,
+        _client_error=ClientConnectorError
+    )
+
+    _wrap_proxy_connection = partialmethod(
+        __wrap_create_connection,
+        _client_error=ClientProxyConnectionError
+    )
+
+    @asyncio.coroutine
     def _create_direct_connection(self, req):
         sslcontext = self._get_ssl_context(req)
         fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
@@ -786,42 +812,35 @@ class TCPConnector(BaseConnector):
         hosts = yield from self._resolve_host(req.url.raw_host, req.port)
 
         for hinfo in hosts:
-            try:
-                host = hinfo['host']
-                port = hinfo['port']
-                transp, proto = yield from self._loop.create_connection(
-                    self._factory, host, port,
-                    ssl=sslcontext, family=hinfo['family'],
-                    proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None,
-                    local_addr=self._local_addr)
-                has_cert = transp.get_extra_info('sslcontext')
-                if has_cert and fingerprint:
-                    sock = transp.get_extra_info('socket')
-                    if not hasattr(sock, 'getpeercert'):
-                        # Workaround for asyncio 3.5.0
-                        # Starting from 3.5.1 version
-                        # there is 'ssl_object' extra info in transport
-                        sock = transp._ssl_protocol._sslpipe.ssl_object
-                    # gives DER-encoded cert as a sequence of bytes (or None)
-                    cert = sock.getpeercert(binary_form=True)
-                    assert cert
-                    got = hashfunc(cert).digest()
-                    expected = fingerprint
-                    if got != expected:
-                        transp.close()
-                        if not self._cleanup_closed_disabled:
-                            self._cleanup_closed_transports.append(transp)
-                        raise ServerFingerprintMismatch(
-                            expected, got, host, port)
-                return transp, proto
-            except certificate_errors as exc:
-                raise ClientConnectorCertificateError(
-                    req.connection_key, exc) from exc
-            except ssl_errors as exc:
-                raise ClientConnectorSSLError(req.connection_key, exc) from exc
-            except OSError as exc:
-                raise ClientConnectorError(req.connection_key, exc) from exc
+            host = hinfo['host']
+            port = hinfo['port']
+            transp, proto = yield from self._wrap_direct_connection(
+                req,
+                self._factory, host, port,
+                ssl=sslcontext, family=hinfo['family'],
+                proto=hinfo['proto'], flags=hinfo['flags'],
+                server_hostname=hinfo['hostname'] if sslcontext else None,
+                local_addr=self._local_addr)
+            has_cert = transp.get_extra_info('sslcontext')
+            if has_cert and fingerprint:
+                sock = transp.get_extra_info('socket')
+                if not hasattr(sock, 'getpeercert'):
+                    # Workaround for asyncio 3.5.0
+                    # Starting from 3.5.1 version
+                    # there is 'ssl_object' extra info in transport
+                    sock = transp._ssl_protocol._sslpipe.ssl_object
+                # gives DER-encoded cert as a sequence of bytes (or None)
+                cert = sock.getpeercert(binary_form=True)
+                assert cert
+                got = hashfunc(cert).digest()
+                expected = fingerprint
+                if got != expected:
+                    transp.close()
+                    if not self._cleanup_closed_disabled:
+                        self._cleanup_closed_transports.append(transp)
+                    raise ServerFingerprintMismatch(
+                        expected, got, host, port)
+            return transp, proto
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):
@@ -894,7 +913,8 @@ class TCPConnector(BaseConnector):
                 finally:
                     transport.close()
 
-                transport, proto = yield from self._loop.create_connection(
+                transport, proto = yield from self._wrap_proxy_connection(
+                    req,
                     self._factory, ssl=sslcontext, sock=rawsock,
                     server_hostname=req.host)
             finally:
