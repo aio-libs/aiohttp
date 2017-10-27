@@ -559,14 +559,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
                     ff = FileField(field.name, field.filename,
                                    tmp, content_type, field.headers)
-                    out.add(field.name, ff)
+                    out.add(str(field.name), ff)
                 else:
                     value = yield from field.read(decode=True)
                     if content_type is None or \
                             content_type.startswith('text/'):
                         charset = field.get_charset(default='utf-8')
                         value = value.decode(charset)
-                    out.add(field.name, value)
+                    out.add(str(field.name), value)
                     size += len(value)
                     if max_size > 0 and size > max_size:
                         raise ValueError(
