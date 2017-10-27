@@ -8,7 +8,7 @@ from multidict import CIMultiDict
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
-from aiohttp.test_utils import make_mocked_request
+from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
 
@@ -529,8 +529,7 @@ async def test_cannot_write_after_eof():
     writer = mock.Mock()
     resp_impl = await resp.prepare(
         make_request('GET', '/', writer=writer))
-    resp_impl.write_eof = mock.Mock()
-    resp_impl.write_eof.return_value = ()
+    resp_impl.write_eof = make_mocked_coro(None)
 
     resp.write(b'data')
     await resp.write_eof()
@@ -565,9 +564,8 @@ async def test_cannot_write_eof_twice():
     resp = StreamResponse()
     writer = mock.Mock()
     resp_impl = await resp.prepare(make_request('GET', '/'))
-    resp_impl.write = mock.Mock()
-    resp_impl.write_eof = mock.Mock()
-    resp_impl.write_eof.return_value = ()
+    resp_impl.write = make_mocked_coro(None)
+    resp_impl.write_eof = make_mocked_coro(None)
 
     resp.write(b'data')
     assert resp_impl.write.called
@@ -1003,16 +1001,16 @@ async def test_send_set_cookie_header(buf, writer):
 
 
 async def test_consecutive_write_eof():
-    req = make_request('GET', '/')
+    payload_writer = mock.Mock()
+    payload_writer.write_eof = make_mocked_coro()
+    req = make_request('GET', '/', payload_writer=payload_writer)
     data = b'data'
     resp = Response(body=data)
 
     await resp.prepare(req)
-    with mock.patch('aiohttp.web.StreamResponse.write_eof') as super_write_eof:
-        await resp.write_eof()
-        resp._eof_sent = True
-        await resp.write_eof()
-        super_write_eof.assert_called_once_with(data)
+    await resp.write_eof()
+    await resp.write_eof()
+    payload_writer.write_eof.assert_called_once_with(data)
 
 
 def test_set_text_with_content_type():
