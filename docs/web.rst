@@ -1083,7 +1083,7 @@ a JSON REST service::
             content_type='application/json')
 
     @web.middleware
-    async def error_middleware(app, handler):
+    async def error_middleware(request, handler):
         try:
             response = await handler(request)
             if response.status == 404:
