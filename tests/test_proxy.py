@@ -2,6 +2,7 @@ import asyncio
 import gc
 import hashlib
 import socket
+import ssl
 import unittest
 from unittest import mock
 
@@ -205,7 +206,6 @@ class TestProxy(unittest.TestCase):
         loop = mock.Mock()
         request = ClientRequest("CONNECT", URL("http://éé.com/"),
                                 loop=loop)
-
         request.response_class = mock.Mock()
         request.write_bytes = mock.Mock()
         request.write_bytes.return_value = asyncio.Future(loop=loop)
@@ -365,6 +365,90 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
         self.loop.run_until_complete(req.close())
+
+    @mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect_certificate_error(self, ClientRequestMock):
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
+                                  loop=self.loop)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
+        proxy_resp._loop = self.loop
+        proxy_req.send = send_mock = mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
+
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._resolve_host = make_mocked_coro(
+            [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
+              'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
+
+        seq = 0
+
+        async def create_connection(*args, **kwargs):
+            nonlocal seq
+            seq += 1
+
+            # connection to http://proxy.example.com
+            if seq == 1:
+                return mock.Mock(), mock.Mock()
+            # connection to https://www.python.org
+            elif seq == 2:
+                raise ssl.CertificateError
+            else:
+                assert False
+
+        self.loop.create_connection = create_connection
+
+        req = ClientRequest(
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            loop=self.loop,
+        )
+        with self.assertRaises(aiohttp.ClientConnectorCertificateError):
+            self.loop.run_until_complete(connector._create_connection(req))
+
+    @mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect_ssl_error(self, ClientRequestMock):
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
+                                  loop=self.loop)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
+        proxy_resp._loop = self.loop
+        proxy_req.send = send_mock = mock.Mock()
+        send_mock.return_value = proxy_resp
+        proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
+
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._resolve_host = make_mocked_coro(
+            [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
+              'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
+
+        seq = 0
+
+        async def create_connection(*args, **kwargs):
+            nonlocal seq
+            seq += 1
+
+            # connection to http://proxy.example.com
+            if seq == 1:
+                return mock.Mock(), mock.Mock()
+            # connection to https://www.python.org
+            elif seq == 2:
+                raise ssl.SSLError
+            else:
+                assert False
+
+        self.loop.create_connection = create_connection
+
+        req = ClientRequest(
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            loop=self.loop,
+        )
+        with self.assertRaises(aiohttp.ClientConnectorSSLError):
+            self.loop.run_until_complete(connector._create_connection(req))
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_runtime_error(self, ClientRequestMock):
