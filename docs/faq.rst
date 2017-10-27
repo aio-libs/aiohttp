@@ -368,3 +368,16 @@ use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
 for different http calls but process them in logical chains use single
 :class:`aiohttp.TCPConnector` with separate
 client session and ``own_connector=False``.
+
+
+How to access db connection stored in app from subapplication?
+--------------------------------------------------------------
+
+Restricting access from subapplication to main (or outer) app is the
+deliberate choice.
+
+Subapplication is an isolated unit by design. If you need to share
+database object please do it explicitly::
+
+   subapp['db'] = mainapp['db']
+   mainapp.add_subapp('/prefix', subapp)
