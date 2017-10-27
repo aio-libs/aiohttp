@@ -164,9 +164,8 @@ class Application(MutableMapping):
         def reg_handler(signame):
             subsig = getattr(subapp, signame)
 
-            @asyncio.coroutine
-            def handler(app):
-                yield from subsig.send(subapp)
+            async def handler(app):
+                await subsig.send(subapp)
             appsig = getattr(self, signame)
             appsig.append(handler)
 
@@ -254,29 +253,26 @@ class Application(MutableMapping):
                       access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
 
-    @asyncio.coroutine
-    def startup(self):
+    async def startup(self):
         """Causes on_startup signal
 
         Should be called in the event loop along with the request handler.
         """
-        yield from self.on_startup.send(self)
+        await self.on_startup.send(self)
 
-    @asyncio.coroutine
-    def shutdown(self):
+    async def shutdown(self):
         """Causes on_shutdown signal
 
         Should be called before cleanup()
         """
-        yield from self.on_shutdown.send(self)
+        await self.on_shutdown.send(self)
 
-    @asyncio.coroutine
-    def cleanup(self):
+    async def cleanup(self):
         """Causes on_cleanup signal
 
         Should be called after shutdown()
         """
-        yield from self.on_cleanup.send(self)
+        await self.on_cleanup.send(self)
 
     def _make_request(self, message, payload, protocol, writer, task,
                       _cls=web_request.Request):
@@ -295,9 +291,8 @@ class Application(MutableMapping):
                               DeprecationWarning, stacklevel=2)
                 yield m, False
 
-    @asyncio.coroutine
-    def _handle(self, request):
-        match_info = yield from self._router.resolve(request)
+    async def _handle(self, request):
+        match_info = await self._router.resolve(request)
         assert isinstance(match_info, AbstractMatchInfo), match_info
         match_info.add_app(self)
 
@@ -308,8 +303,8 @@ class Application(MutableMapping):
         request._match_info = match_info
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
-            resp = yield from match_info.expect_handler(request)
-            yield from request.writer.drain()
+            resp = await match_info.expect_handler(request)
+            await request.writer.drain()
 
         if resp is None:
             handler = match_info.handler
@@ -318,9 +313,9 @@ class Application(MutableMapping):
                     if new_style:
                         handler = partial(m, handler=handler)
                     else:
-                        handler = yield from m(app, handler)
+                        handler = await m(app, handler)
 
-            resp = yield from handler(request)
+            resp = await handler(request)
 
         assert isinstance(resp, web_response.StreamResponse), \
             ("Handler {!r} should return response instance, "
