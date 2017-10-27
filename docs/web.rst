@@ -405,6 +405,7 @@ But sometimes the cancellation is bad: on ``POST`` request very often
 is needed to save data to DB regardless to peer closing.
 
 Cancellation prevention could be implemented in several ways:
+
 * Applying :func:`asyncio.shield` to coroutine that saves data into DB.
 * Spawning a new task for DB saving
 * Using aiojobs_ or other third party library.
