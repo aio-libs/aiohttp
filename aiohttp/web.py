@@ -426,6 +426,51 @@ def _make_server_creators(handler, *, loop, ssl_context,
     return server_creations, uris
 
 
+async def run_async_app(app, *, host=None, port=None, path=None, sock=None,
+                  shutdown_timeout=60.0, ssl_context=None,
+                  print=print, backlog=128, access_log_format=None,
+                  access_log=access_logger, handle_signals=True, loop=None):
+    await app.startup()
+    try:
+        make_handler_kwargs = dict()
+        # if access_log_format is not None:
+        #     make_handler_kwargs['access_log_format'] = access_log_format
+        handler = app.make_handler(loop=loop, access_log=access_log,
+                                   **make_handler_kwargs)
+
+        server_creations, uris = _make_server_creators(
+            handler,
+            loop=loop, ssl_context=ssl_context,
+            host=host, port=port, path=path, sock=sock,
+            backlog=backlog)
+        servers = await asyncio.gather(*server_creations, loop=loop)
+
+        if handle_signals:
+            try:
+                loop.add_signal_handler(signal.SIGINT, raise_graceful_exit)
+                loop.add_signal_handler(signal.SIGTERM, raise_graceful_exit)
+            except NotImplementedError:  # pragma: no cover
+                # add_signal_handler is not implemented on Windows
+                pass
+        try:
+            print("======== Running on {} ========\n"
+                      "(Press CTRL+C to quit)".format(', '.join(uris)))
+            while True:
+                await asyncio.sleep(1)
+        except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+            pass
+        finally:
+            server_closures = []
+            for srv in servers:
+                srv.close()
+                server_closures.append(srv.wait_closed())
+            await asyncio.gather(*server_closures, loop=loop)
+            await app.shutdown()
+            await handler.shutdown(shutdown_timeout)
+    finally:
+        await app.cleanup()
+
+
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
