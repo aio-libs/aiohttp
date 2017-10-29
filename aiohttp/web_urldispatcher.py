@@ -81,9 +81,8 @@ class AbstractResource(Sized, Iterable):
     def url_for(self, **kwargs):
         """Construct url for resource with additional params."""
 
-    @asyncio.coroutine
     @abc.abstractmethod  # pragma: no branch
-    def resolve(self, request):
+    async def resolve(self, request):
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
@@ -245,8 +244,7 @@ class MatchInfoError(UrlMappingMatchInfo):
                                                 self._exception.reason)
 
 
-@asyncio.coroutine
-def _defaultExpectHandler(request):
+async def _defaultExpectHandler(request):
     """Default handler for Expect header.
 
     Just send "100 Continue" to client.
@@ -543,8 +541,7 @@ class StaticResource(PrefixResource):
     def __iter__(self):
         return iter(self._routes.values())
 
-    @asyncio.coroutine
-    def _handle(self, request):
+    async def _handle(self, request):
         filename = unquote(request.match_info['filename'])
         try:
             filepath = self._directory.joinpath(filename).resolve()
@@ -712,8 +709,7 @@ class SystemRoute(AbstractRoute):
     def get_info(self):
         return {'http_exception': self._http_exception}
 
-    @asyncio.coroutine
-    def _handler(self, request):
+    async def _handler(self, request):
         raise self._http_exception
 
     @property
