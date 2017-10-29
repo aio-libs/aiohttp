@@ -83,14 +83,13 @@ class EchoServer(asyncio.Protocol):
     def connection_lost(self, exc):
         print('Connection lost')
 
-    @asyncio.coroutine
-    def dispatch(self):
+    async def dispatch(self):
         reader = self.stream.set_parser(my_protocol_parser)
         writer = MyProtocolWriter(self.transport)
 
         while True:
             try:
-                msg = yield from reader.read()
+                msg = await reader.read()
             except aiohttp.ConnectionError:
                 # client has been disconnected
                 break
@@ -106,9 +105,8 @@ class EchoServer(asyncio.Protocol):
                 break
 
 
-@asyncio.coroutine
-def start_client(loop, host, port):
-    transport, stream = yield from loop.create_connection(
+async def start_client(loop, host, port):
+    transport, stream = await loop.create_connection(
         aiohttp.StreamProtocol, host, port)
     reader = stream.reader.set_parser(my_protocol_parser)
     writer = MyProtocolWriter(transport)
@@ -118,7 +116,7 @@ def start_client(loop, host, port):
 
     while True:
         try:
-            msg = yield from reader.read()
+            msg = await reader.read()
         except aiohttp.ConnectionError:
             print('Server has been disconnected.')
             break

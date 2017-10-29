@@ -19,8 +19,7 @@ except ImportError:  # pragma: no cover
 
 class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
-    @asyncio.coroutine
-    def handle_request(self, message, payload):
+    async def handle_request(self, message, payload):
         print('method = {!r}; path = {!r}; version = {!r}'.format(
             message.method, message.path, message.version))
 
@@ -95,7 +94,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
             except OSError:
                 response.write(b'Cannot open')
 
-        yield from response.write_eof()
+        await response.write_eof()
         if response.keep_alive():
             self.keep_alive(True)
 

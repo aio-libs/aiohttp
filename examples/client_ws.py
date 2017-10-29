@@ -29,10 +29,9 @@ def start_client(loop, url):
             ws.send_str(name + ': ' + line)
     loop.add_reader(sys.stdin.fileno(), stdin_callback)
 
-    @asyncio.coroutine
-    def dispatch():
+    async def dispatch():
         while True:
-            msg = yield from ws.receive()
+            msg = await ws.receive()
 
             if msg.type == aiohttp.WSMsgType.TEXT:
                 print('Text: ', msg.data.strip())
@@ -44,7 +43,7 @@ def start_client(loop, url):
                 print('Pong received')
             else:
                 if msg.type == aiohttp.WSMsgType.CLOSE:
-                    yield from ws.close()
+                    await ws.close()
                 elif msg.type == aiohttp.WSMsgType.ERROR:
                     print('Error during receive %s' % ws.exception())
                 elif msg.type == aiohttp.WSMsgType.CLOSED:

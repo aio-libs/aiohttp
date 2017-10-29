@@ -8,18 +8,15 @@ import asyncio
 from aiohttp.web import Application, HTTPException, Response, run_app
 
 
-@asyncio.coroutine
-def handler(request):
+async def handler(request):
     return Response(text="Everything is fine")
 
 
-@asyncio.coroutine
-def middleware_factory(app, next_handler):
+async def middleware_factory(app, next_handler):
 
-    @asyncio.coroutine
-    def middleware(request):
+    async def middleware(request):
         try:
-            response = yield from next_handler(request)
+            response = await next_handler(request)
         except HTTPException as exc:
             response = exc
         if not response.prepared:

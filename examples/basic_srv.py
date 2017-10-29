@@ -11,13 +11,12 @@ from aiohttp import MultiDict
 
 class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
 
-    @asyncio.coroutine
-    def handle_request(self, message, payload):
+    async def handle_request(self, message, payload):
         response = aiohttp.Response(
             self.writer, 200, http_version=message.version)
         get_params = MultiDict(parse_qsl(urlparse(message.path).query))
         if message.method == 'POST':
-            post_params = yield from payload.read()
+            post_params = await payload.read()
         else:
             post_params = None
         content = "<h1>It Works!</h1>"
@@ -30,7 +29,7 @@ class HttpRequestHandler(aiohttp.server.ServerHttpProtocol):
         response.add_header('Content-Length', str(len(bcontent)))
         response.send_headers()
         response.write(bcontent)
-        yield from response.write_eof()
+        await response.write_eof()
 
 
 if __name__ == '__main__':

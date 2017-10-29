@@ -24,20 +24,18 @@ class Crawler:
         # connector stores cookies between requests and uses connection pool
         self.session = aiohttp.ClientSession(loop=loop)
 
-    @asyncio.coroutine
-    def run(self):
+    async def run(self):
         t = asyncio.ensure_future(self.addurls([(self.rooturl, '')]),
                                   loop=self.loop)
-        yield from asyncio.sleep(1, loop=self.loop)
+        await asyncio.sleep(1, loop=self.loop)
         while self.busy:
-            yield from asyncio.sleep(1, loop=self.loop)
+            await asyncio.sleep(1, loop=self.loop)
 
-        yield from t
-        yield from self.session.close()
+        await t
+        await self.session.close()
         self.loop.stop()
 
-    @asyncio.coroutine
-    def addurls(self, urls):
+    async def addurls(self, urls):
         for url, parenturl in urls:
             url = urllib.parse.urljoin(parenturl, url)
             url, frag = urllib.parse.urldefrag(url)
@@ -46,27 +44,26 @@ class Crawler:
                     url not in self.done and
                     url not in self.todo):
                 self.todo.add(url)
-                yield from self.sem.acquire()
+                await self.sem.acquire()
                 task = asyncio.ensure_future(self.process(url), loop=self.loop)
                 task.add_done_callback(lambda t: self.sem.release())
                 task.add_done_callback(self.tasks.remove)
                 self.tasks.add(task)
 
-    @asyncio.coroutine
-    def process(self, url):
+    async def process(self, url):
         print('processing:', url)
 
         self.todo.remove(url)
         self.busy.add(url)
         try:
-            resp = yield from self.session.get(url)
+            resp = await self.session.get(url)
         except Exception as exc:
             print('...', url, 'has error', repr(str(exc)))
             self.done[url] = False
         else:
             if (resp.status == 200 and
                     ('text/html' in resp.headers.get('content-type'))):
-                data = (yield from resp.read()).decode('utf-8', 'replace')
+                data = (await resp.read()).decode('utf-8', 'replace')
                 urls = re.findall(r'(?i)href=["\']?([^\s"\'<>]+)', data)
                 asyncio.Task(self.addurls([(u, url) for u in urls]))
 

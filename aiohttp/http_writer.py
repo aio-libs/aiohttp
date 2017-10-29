@@ -252,8 +252,7 @@ class PayloadWriter(AbstractPayloadWriter):
         self.output_size += size
         self._buffer.append(headers)
 
-    @asyncio.coroutine
-    def write_eof(self, chunk=b''):
+    async def write_eof(self, chunk=b''):
         if self._eof:
             return
 
@@ -276,7 +275,7 @@ class PayloadWriter(AbstractPayloadWriter):
         if chunk:
             self.buffer_data(chunk)
 
-        yield from self.drain(True)
+        await self.drain(True)
 
         self._eof = True
         self._transport = None
