@@ -761,10 +761,6 @@ class ClientSession:
         return self._on_request_headers_received
 
     @property
-    def on_request_content_chunk_received(self):
-        return self._on_request_content_chunk_received
-
-    @property
     def on_request_content_received(self):
         return self._on_request_content_received
 
