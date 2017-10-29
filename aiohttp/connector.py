@@ -773,49 +773,61 @@ class TCPConnector(BaseConnector):
         else:
             return (None, None)
 
-    async def _create_direct_connection(self, req):
+    async def _wrap_create_connection(self, *args,
+                                      req, client_error=ClientConnectorError,
+                                      **kwargs):
+        try:
+            return await self._loop.create_connection(*args, **kwargs)
+        except certificate_errors as exc:
+            raise ClientConnectorCertificateError(
+                req.connection_key, exc) from exc
+        except ssl_errors as exc:
+            raise ClientConnectorSSLError(req.connection_key, exc) from exc
+        except OSError as exc:
+            raise client_error(req.connection_key, exc) from exc
+
+    async def _create_direct_connection(self, req,
+                                        *, client_error=ClientConnectorError):
         sslcontext = self._get_ssl_context(req)
         fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
-        hosts = await self._resolve_host(req.url.raw_host, req.port)
+        try:
+            hosts = await self._resolve_host(req.url.raw_host, req.port)
+        except OSError as exc:
+            # in case of proxy it is not ClientProxyConnectionError
+            # it is problem of resolving proxy ip itself
+            raise ClientConnectorError(req.connection_key, exc) from exc
 
         for hinfo in hosts:
-            try:
-                host = hinfo['host']
-                port = hinfo['port']
-                transp, proto = await self._loop.create_connection(
-                    self._factory, host, port,
-                    ssl=sslcontext, family=hinfo['family'],
-                    proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None,
-                    local_addr=self._local_addr)
-                has_cert = transp.get_extra_info('sslcontext')
-                if has_cert and fingerprint:
-                    sock = transp.get_extra_info('socket')
-                    if not hasattr(sock, 'getpeercert'):
-                        # Workaround for asyncio 3.5.0
-                        # Starting from 3.5.1 version
-                        # there is 'ssl_object' extra info in transport
-                        sock = transp._ssl_protocol._sslpipe.ssl_object
-                    # gives DER-encoded cert as a sequence of bytes (or None)
-                    cert = sock.getpeercert(binary_form=True)
-                    assert cert
-                    got = hashfunc(cert).digest()
-                    expected = fingerprint
-                    if got != expected:
-                        transp.close()
-                        if not self._cleanup_closed_disabled:
-                            self._cleanup_closed_transports.append(transp)
-                        raise ServerFingerprintMismatch(
-                            expected, got, host, port)
-                return transp, proto
-            except certificate_errors as exc:
-                raise ClientConnectorCertificateError(
-                    req.connection_key, exc) from exc
-            except ssl_errors as exc:
-                raise ClientConnectorSSLError(req.connection_key, exc) from exc
-            except OSError as exc:
-                raise ClientConnectorError(req.connection_key, exc) from exc
+            host = hinfo['host']
+            port = hinfo['port']
+            transp, proto = await self._wrap_create_connection(
+                self._factory, host, port,
+                ssl=sslcontext, family=hinfo['family'],
+                proto=hinfo['proto'], flags=hinfo['flags'],
+                server_hostname=hinfo['hostname'] if sslcontext else None,
+                local_addr=self._local_addr,
+                req=req, client_error=client_error)
+            has_cert = transp.get_extra_info('sslcontext')
+            if has_cert and fingerprint:
+                sock = transp.get_extra_info('socket')
+                if not hasattr(sock, 'getpeercert'):
+                    # Workaround for asyncio 3.5.0
+                    # Starting from 3.5.1 version
+                    # there is 'ssl_object' extra info in transport
+                    sock = transp._ssl_protocol._sslpipe.ssl_object
+                # gives DER-encoded cert as a sequence of bytes (or None)
+                cert = sock.getpeercert(binary_form=True)
+                assert cert
+                got = hashfunc(cert).digest()
+                expected = fingerprint
+                if got != expected:
+                    transp.close()
+                    if not self._cleanup_closed_disabled:
+                        self._cleanup_closed_transports.append(transp)
+                    raise ServerFingerprintMismatch(
+                        expected, got, host, port)
+            return transp, proto
 
     async def _create_proxy_connection(self, req):
         headers = {}
@@ -831,12 +843,10 @@ class TCPConnector(BaseConnector):
             verify_ssl=req.verify_ssl,
             fingerprint=req.fingerprint,
             ssl_context=req.ssl_context)
-        try:
-            # create connection to proxy server
-            transport, proto = await self._create_direct_connection(
-                proxy_req)
-        except OSError as exc:
-            raise ClientProxyConnectionError(proxy_req, exc) from exc
+
+        # create connection to proxy server
+        transport, proto = await self._create_direct_connection(
+            proxy_req, client_error=ClientProxyConnectionError)
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
@@ -887,9 +897,10 @@ class TCPConnector(BaseConnector):
                 finally:
                     transport.close()
 
-                transport, proto = await self._loop.create_connection(
+                transport, proto = await self._wrap_create_connection(
                     self._factory, ssl=sslcontext, sock=rawsock,
-                    server_hostname=req.host)
+                    server_hostname=req.host,
+                    req=req)
             finally:
                 proxy_resp.close()
 
@@ -911,7 +922,7 @@ class UnixConnector(BaseConnector):
 
     >>> conn = UnixConnector(path='/path/to/socket')
     >>> session = ClientSession(connector=conn)
-    >>> resp = yield from session.get('http://python.org')
+    >>> resp = await from session.get('http://python.org')
 
     """
 
