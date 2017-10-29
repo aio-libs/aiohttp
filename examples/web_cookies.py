@@ -18,29 +18,25 @@ tmpl = '''\
 </html>'''
 
 
-@asyncio.coroutine
-def root(request):
+async def root(request):
     resp = web.Response(content_type='text/html')
     resp.text = tmpl.format(pformat(request.cookies))
     return resp
 
 
-@asyncio.coroutine
-def login(request):
+async def login(request):
     resp = web.HTTPFound(location='/')
     resp.set_cookie('AUTH', 'secret')
     return resp
 
 
-@asyncio.coroutine
-def logout(request):
+async def logout(request):
     resp = web.HTTPFound(location='/')
     resp.del_cookie('AUTH')
     return resp
 
 
-@asyncio.coroutine
-def init(loop):
+async def init(loop):
     app = web.Application(loop=loop)
     app.router.add_get('/', root)
     app.router.add_get('/login', login)
