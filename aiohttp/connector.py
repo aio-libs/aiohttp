@@ -370,7 +370,7 @@ class BaseConnector(object):
 
         # Wait if there are no available connections.
         if available <= 0:
-            fut = helpers.create_future(self._loop)
+            fut = self._loop.create_future()
 
             # This connection will now count towards the limit.
             waiters = self._waiters[key]

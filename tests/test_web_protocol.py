@@ -566,7 +566,7 @@ async def test_keep_alive(make_srv, loop, transport, ceil):
 
     srv.keep_alive(True)
     srv.handle_request = mock.Mock()
-    srv.handle_request.return_value = helpers.create_future(loop)
+    srv.handle_request.return_value = loop.create_future()
     srv.handle_request.return_value.set_result(1)
 
     srv.data_received(

@@ -40,7 +40,7 @@ class TestStreamReader(unittest.TestCase):
 
     def test_create_waiter(self):
         stream = self._make_one()
-        stream._waiter = helpers.create_future(self.loop)
+        stream._waiter = self.loop.create_future
         with self.assertRaises(RuntimeError):
             self.loop.run_until_complete(stream._wait('test'))
 
@@ -567,7 +567,7 @@ class TestStreamReader(unittest.TestCase):
     def test_read_nowait_waiter(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')
-        stream._waiter = helpers.create_future(self.loop)
+        stream._waiter = self.loop.create_future()
 
         self.assertRaises(RuntimeError, stream.read_nowait)
 
@@ -729,7 +729,7 @@ class TestStreamReader(unittest.TestCase):
 
     def test___repr__waiter(self):
         stream = self._make_one()
-        stream._waiter = helpers.create_future(self.loop)
+        stream._waiter = self.loop.create_future()
         self.assertRegex(
             repr(stream),
             "<StreamReader w=<Future pending[\S ]*>>")
@@ -960,8 +960,8 @@ class TestChunksQueue(unittest.TestCase, DataQueueMixin):
 
 def test_feed_data_waiters(loop):
     reader = streams.StreamReader(loop=loop)
-    waiter = reader._waiter = helpers.create_future(loop)
-    eof_waiter = reader._eof_waiter = helpers.create_future(loop)
+    waiter = reader._waiter = loop.create_future()
+    eof_waiter = reader._eof_waiter = loop.create_future()
 
     reader.feed_data(b'1')
     assert list(reader._buffer) == [b'1']
@@ -976,7 +976,7 @@ def test_feed_data_waiters(loop):
 
 def test_feed_data_completed_waiters(loop):
     reader = streams.StreamReader(loop=loop)
-    waiter = reader._waiter = helpers.create_future(loop)
+    waiter = reader._waiter = loop.create_future()
 
     waiter.set_result(1)
     reader.feed_data(b'1')
@@ -986,8 +986,8 @@ def test_feed_data_completed_waiters(loop):
 
 def test_feed_eof_waiters(loop):
     reader = streams.StreamReader(loop=loop)
-    waiter = reader._waiter = helpers.create_future(loop)
-    eof_waiter = reader._eof_waiter = helpers.create_future(loop)
+    waiter = reader._waiter = loop.create_future()
+    eof_waiter = reader._eof_waiter = loop.create_future()
 
     reader.feed_eof()
     assert reader._eof
@@ -1000,8 +1000,8 @@ def test_feed_eof_waiters(loop):
 
 def test_feed_eof_cancelled(loop):
     reader = streams.StreamReader(loop=loop)
-    waiter = reader._waiter = helpers.create_future(loop)
-    eof_waiter = reader._eof_waiter = helpers.create_future(loop)
+    waiter = reader._waiter = loop.create_future()
+    eof_waiter = reader._eof_waiter = loop.create_future()
 
     waiter.set_result(1)
     eof_waiter.set_result(1)
@@ -1081,8 +1081,8 @@ def test_on_eof_eof_is_set_exception(loop):
 
 def test_set_exception(loop):
     reader = streams.StreamReader(loop=loop)
-    waiter = reader._waiter = helpers.create_future(loop)
-    eof_waiter = reader._eof_waiter = helpers.create_future(loop)
+    waiter = reader._waiter = loop.create_future()
+    eof_waiter = reader._eof_waiter = loop.create_future()
 
     exc = ValueError()
     reader.set_exception(exc)
@@ -1095,8 +1095,8 @@ def test_set_exception(loop):
 
 def test_set_exception_cancelled(loop):
     reader = streams.StreamReader(loop=loop)
-    waiter = reader._waiter = helpers.create_future(loop)
-    eof_waiter = reader._eof_waiter = helpers.create_future(loop)
+    waiter = reader._waiter = loop.create_future()
+    eof_waiter = reader._eof_waiter = loop.create_future()
 
     waiter.set_result(1)
     eof_waiter.set_result(1)

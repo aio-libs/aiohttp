@@ -9,7 +9,7 @@ from contextlib import suppress
 from html import escape as html_escape
 
 from . import helpers, http
-from .helpers import CeilTimeout, create_future
+from .helpers import CeilTimeout
 from .http import (HttpProcessingError, HttpRequestParser, PayloadWriter,
                    StreamWriter)
 from .log import access_logger, server_logger
@@ -492,7 +492,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                                         self._process_keepalive)
 
                             # wait for next request
-                            waiter = create_future(loop)
+                            waiter = loop.create_future()
                             self._waiters.append(waiter)
                             try:
                                 message, payload = await waiter

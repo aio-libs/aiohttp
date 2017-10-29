@@ -215,10 +215,6 @@ def proxies_from_env():
     return ret
 
 
-def create_future(loop):
-    return loop.create_future()
-
-
 def current_task(loop=None):
     if loop is None:
         loop = asyncio.get_event_loop()

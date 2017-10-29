@@ -186,7 +186,7 @@ class ClientWebSocketResponse:
                 return WS_CLOSED_MESSAGE
 
             try:
-                self._waiting = create_future(self._loop)
+                self._waiting = self._loop.create_future()
                 try:
                     with async_timeout.timeout(
                             timeout or self._receive_timeout,

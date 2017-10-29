@@ -867,7 +867,7 @@ async def test_data_file(loop, buf, conn):
 
 
 async def test_data_stream_exc(loop, conn):
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
 
     @aiohttp.streamer
     async def gen(writer):
@@ -893,7 +893,7 @@ async def test_data_stream_exc(loop, conn):
 
 
 async def test_data_stream_exc_chain(loop, conn):
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
 
     @aiohttp.streamer
     async def gen(writer):
