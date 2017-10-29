@@ -131,13 +131,6 @@ def deprecated_noop(message):
 coroutines._DEBUG = old_debug
 
 
-try:
-    from asyncio import isfuture
-except ImportError:
-    def isfuture(fut):
-        return isinstance(fut, asyncio.Future)
-
-
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     """Http basic authentication helper."""
 

@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import helpers, streams, test_utils
+from aiohttp import streams, test_utils
 
 
 DATA = b'line1\nline2\nline3\n'
@@ -829,7 +829,7 @@ class DataQueueMixin:
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
         waiter = self.buffer._waiter
-        self.assertTrue(helpers.isfuture(waiter))
+        self.assertTrue(asyncio.isfuture(waiter))
 
         read_task.cancel()
         self.assertRaises(
@@ -883,7 +883,7 @@ class DataQueueMixin:
     def test_read_exception_on_wait(self):
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
         test_utils.run_briefly(self.loop)
-        self.assertTrue(helpers.isfuture(self.buffer._waiter))
+        self.assertTrue(asyncio.isfuture(self.buffer._waiter))
 
         self.buffer.feed_eof()
         self.buffer.set_exception(ValueError())
