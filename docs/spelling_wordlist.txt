@@ -225,6 +225,7 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+subapplication
 subclasses
 submodules
 subpackage
