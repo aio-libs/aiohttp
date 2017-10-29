@@ -69,7 +69,7 @@ class SendfilePayloadWriter(PayloadWriter):
         loop = self.loop
         try:
             await loop.sock_sendall(out_socket, b''.join(self._buffer))
-            fut = create_future(loop)
+            fut = loop.create_future()
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
             await fut
         except Exception:
