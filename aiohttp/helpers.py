@@ -9,7 +9,6 @@ import functools
 import inspect
 import os
 import re
-import sys
 import time
 import warnings
 import weakref
@@ -27,9 +26,6 @@ from yarl import URL
 from . import hdrs
 from .abc import AbstractAccessLogger
 from .log import client_logger
-
-
-PY_352 = sys.version_info >= (3, 5, 2)
 
 
 __all__ = ('BasicAuth',)
@@ -219,14 +215,8 @@ def proxies_from_env():
     return ret
 
 
-if PY_352:
-    def create_future(loop):
-        return loop.create_future()
-else:
-    def create_future(loop):  # pragma: no cover
-        """Compatibility wrapper for the loop.create_future() call introduced in
-        3.5.2."""
-        return asyncio.Future(loop=loop)
+def create_future(loop):
+    return loop.create_future()
 
 
 def current_task(loop=None):

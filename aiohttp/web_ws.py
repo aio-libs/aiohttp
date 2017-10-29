@@ -5,7 +5,7 @@ from collections import namedtuple
 import async_timeout
 
 from . import hdrs
-from .helpers import PY_352, call_later, create_future
+from .helpers import call_later, create_future
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
                    WebSocketError, WebSocketReader, WSMessage, WSMsgType,
                    do_handshake)
@@ -336,9 +336,6 @@ class WebSocketResponse(StreamResponse):
 
     def __aiter__(self):
         return self
-
-    if not PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
     async def __anext__(self):
         msg = await self.receive()

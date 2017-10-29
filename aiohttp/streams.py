@@ -25,9 +25,6 @@ class AsyncStreamIterator:
     def __aiter__(self):
         return self
 
-    if not helpers.PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
-
     async def __anext__(self):
         try:
             rv = await self.read_func()
@@ -50,9 +47,6 @@ class AsyncStreamReaderMixin:
 
     def __aiter__(self):
         return AsyncStreamIterator(self.readline)
-
-    if not helpers.PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
     def iter_chunked(self, n):
         """Returns an asynchronous iterator that yields chunks of size n.
@@ -551,9 +545,6 @@ class DataQueue:
 
     def __aiter__(self):
         return AsyncStreamIterator(self.read)
-
-    if not helpers.PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
 
 class ChunksQueue(DataQueue):
