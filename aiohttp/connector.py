@@ -354,8 +354,7 @@ class BaseConnector(object):
         """
         return self._closed
 
-    @asyncio.coroutine
-    def connect(self, req, trace_context=None):
+    async def connect(self, req, trace_context=None):
         """Get from pool or create new connection."""
 
         if trace_context is None:
@@ -391,7 +390,7 @@ class BaseConnector(object):
             self.on_queued_start.send(trace_context)
 
             try:
-                yield from fut
+                await fut
             finally:
                 # remove a waiter even if it was cancelled
                 waiters.remove(fut)
@@ -409,7 +408,7 @@ class BaseConnector(object):
             self.on_createconn_start.send(trace_context)
 
             try:
-                proto = yield from self._create_connection(
+                proto = await self._create_connection(
                     req,
                     trace_context=trace_context
                 )
@@ -524,8 +523,7 @@ class BaseConnector(object):
                 self._cleanup_handle = helpers.weakref_handle(
                     self, '_cleanup', self._keepalive_timeout, self._loop)
 
-    @asyncio.coroutine
-    def _create_connection(self, req, trace_context=None):
+    async def _create_connection(self, req, trace_context=None):
         raise NotImplementedError()
 
     @property
@@ -738,36 +736,35 @@ class TCPConnector(BaseConnector):
         else:
             self._cached_hosts.clear()
 
-    @asyncio.coroutine
-    def _resolve_host(self, host, port, trace_context=None):
+    async def _resolve_host(self, host, port, trace_context=None):
         if is_ip_address(host):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
         if not self._use_dns_cache:
             self.on_resolvehost_start.send(trace_context)
-            res = (yield from self._resolver.resolve(
+            res = (await self._resolver.resolve(
                 host, port, family=self._family))
             self.on_resolvehost_end.send(trace_context)
             return res
 
         key = (host, port)
 
-        if (key in self._cached_hosts) and\
+        if (key in self._cached_hosts) and \
                 (not self._cached_hosts.expired(key)):
             self.on_dnscache_hit.send(trace_context)
             return self._cached_hosts.next_addrs(key)
 
         if key in self._throttle_dns_events:
             self.on_dnscache_hit.send(trace_context)
-            yield from self._throttle_dns_events[key].wait()
+            await self._throttle_dns_events[key].wait()
         else:
             self.on_dnscache_miss.send(trace_context)
             self._throttle_dns_events[key] = \
                 EventResultOrError(self._loop)
             try:
                 self.on_resolvehost_start.send(trace_context)
-                addrs = yield from \
+                addrs = await \
                     asyncio.shield(self._resolver.resolve(host,
                                                           port,
                                                           family=self._family),
@@ -785,19 +782,18 @@ class TCPConnector(BaseConnector):
 
         return self._cached_hosts.next_addrs(key)
 
-    @asyncio.coroutine
-    def _create_connection(self, req, trace_context=None):
+    async def _create_connection(self, req, trace_context=None):
         """Create connection.
 
         Has same keyword arguments as BaseEventLoop.create_connection.
         """
         if req.proxy:
-            _, proto = yield from self._create_proxy_connection(
+            _, proto = await self._create_proxy_connection(
                 req,
                 trace_context=None
             )
         else:
-            _, proto = yield from self._create_direct_connection(
+            _, proto = await self._create_direct_connection(
                 req,
                 trace_context=None
             )
@@ -843,12 +839,11 @@ class TCPConnector(BaseConnector):
         else:
             return (None, None)
 
-    @asyncio.coroutine
-    def _create_direct_connection(self, req, trace_context=None):
+    async def _create_direct_connection(self, req, trace_context=None):
         sslcontext = self._get_ssl_context(req)
         fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
-        hosts = yield from self._resolve_host(
+        hosts = await self._resolve_host(
             req.url.raw_host,
             req.port,
             trace_context=trace_context
@@ -858,7 +853,7 @@ class TCPConnector(BaseConnector):
             try:
                 host = hinfo['host']
                 port = hinfo['port']
-                transp, proto = yield from self._loop.create_connection(
+                transp, proto = await self._loop.create_connection(
                     self._factory, host, port,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
@@ -892,8 +887,7 @@ class TCPConnector(BaseConnector):
             except OSError as exc:
                 raise ClientConnectorError(req.connection_key, exc) from exc
 
-    @asyncio.coroutine
-    def _create_proxy_connection(self, req, trace_context=None):
+    async def _create_proxy_connection(self, req, trace_context=None):
         headers = {}
         if req.proxy_headers is not None:
             headers = req.proxy_headers
@@ -909,7 +903,7 @@ class TCPConnector(BaseConnector):
             ssl_context=req.ssl_context)
         try:
             # create connection to proxy server
-            transport, proto = yield from self._create_direct_connection(
+            transport, proto = await self._create_direct_connection(
                 proxy_req)
         except OSError as exc:
             raise ClientProxyConnectionError(proxy_req, exc) from exc
@@ -938,7 +932,7 @@ class TCPConnector(BaseConnector):
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = proxy_req.send(conn)
             try:
-                resp = yield from proxy_resp.start(conn, True)
+                resp = await proxy_resp.start(conn, True)
             except Exception:
                 proxy_resp.close()
                 conn.close()
@@ -963,7 +957,7 @@ class TCPConnector(BaseConnector):
                 finally:
                     transport.close()
 
-                transport, proto = yield from self._loop.create_connection(
+                transport, proto = await self._loop.create_connection(
                     self._factory, ssl=sslcontext, sock=rawsock,
                     server_hostname=req.host)
             finally:
@@ -1019,8 +1013,7 @@ class UnixConnector(BaseConnector):
         """Path to unix socket."""
         return self._path
 
-    @asyncio.coroutine
-    def _create_connection(self, req, trace_context=None):
-        _, proto = yield from self._loop.create_unix_connection(
+    async def _create_connection(self, req, trace_context=None):
+        _, proto = await self._loop.create_unix_connection(
             self._factory, self._path)
         return proto

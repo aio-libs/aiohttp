@@ -390,17 +390,16 @@ class ClientRequest:
 
         return True
 
-    @asyncio.coroutine
-    def write_bytes(self, writer, conn):
+    async def write_bytes(self, writer, conn):
         """Support coroutines that yields bytes objects."""
         # 100 response
         if self._continue is not None:
-            yield from writer.drain()
-            yield from self._continue
+            await writer.drain()
+            await self._continue
 
         try:
             if isinstance(self.body, payload.Payload):
-                yield from self.body.write(writer)
+                await self.body.write(writer)
             else:
                 if isinstance(self.body, (bytes, bytearray)):
                     self.body = (self.body,)
@@ -411,7 +410,7 @@ class ClientRequest:
             if self._on_content_sent is not None:
                 self._on_content_sent.send(self._trace_context)
 
-            yield from writer.write_eof()
+            await writer.write_eof()
         except OSError as exc:
             new_exc = ClientOSError(
                 exc.errno,
@@ -493,11 +492,10 @@ class ClientRequest:
         self.response._post_init(self.loop, self._session)
         return self.response
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         if self._writer is not None:
             try:
-                yield from self._writer
+                await self._writer
             finally:
                 self._writer = None
 
@@ -626,8 +624,7 @@ class ClientResponse(HeadersMixin):
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
-    @asyncio.coroutine
-    def start(self, connection, read_until_eof=False):
+    async def start(self, connection, read_until_eof=False):
         """Start response processing."""
         self._closed = False
         self._protocol = connection.protocol
@@ -646,7 +643,7 @@ class ClientResponse(HeadersMixin):
             while True:
                 # read response
                 try:
-                    (message, payload) = yield from self._protocol.read()
+                    (message, payload) = await self._protocol.read()
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info, self.history,
@@ -754,21 +751,19 @@ class ClientResponse(HeadersMixin):
             content.set_exception(
                 ClientConnectionError('Connection closed'))
 
-    @asyncio.coroutine
-    def wait_for_close(self):
+    async def wait_for_close(self):
         if self._writer is not None:
             try:
-                yield from self._writer
+                await self._writer
             finally:
                 self._writer = None
         self.release()
 
-    @asyncio.coroutine
-    def read(self):
+    async def read(self):
         """Read response payload."""
         if self._content is None:
             try:
-                self._content = yield from self.content.read()
+                self._content = await self.content.read()
             except Exception:
                 self.close()
                 raise
@@ -791,23 +786,21 @@ class ClientResponse(HeadersMixin):
 
         return encoding
 
-    @asyncio.coroutine
-    def text(self, encoding=None, errors='strict'):
+    async def text(self, encoding=None, errors='strict'):
         """Read response payload and decode."""
         if self._content is None:
-            yield from self.read()
+            await self.read()
 
         if encoding is None:
             encoding = self._get_encoding()
 
         return self._content.decode(encoding, errors=errors)
 
-    @asyncio.coroutine
-    def json(self, *, encoding=None, loads=json.loads,
-             content_type='application/json'):
+    async def json(self, *, encoding=None, loads=json.loads,
+                   content_type='application/json'):
         """Read and decodes JSON response."""
         if self._content is None:
-            yield from self.read()
+            await self.read()
 
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
@@ -828,12 +821,10 @@ class ClientResponse(HeadersMixin):
 
         return loads(stripped.decode(encoding))
 
-    @asyncio.coroutine
-    def __aenter__(self):
+    async def __aenter__(self):
         return self
 
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         # similar to _RequestContextManager, we do not need to check
         # for exceptions, response object can closes connection
         # is state is broken
