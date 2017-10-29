@@ -42,15 +42,15 @@ skip_if_no_unix_socks = pytest.mark.skipif(
 )
 del _has_unix_domain_socks, _abstract_path_failed
 
-has_ipv6 = socket.has_ipv6
-if has_ipv6:
+HAS_IPV6 = socket.has_ipv6
+if HAS_IPV6:
     # The socket.has_ipv6 flag may be True if Python was built with IPv6
     # support, but the target system still may not have it.
     # So let's ensure that we really have IPv6 support.
     try:
         socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     except OSError:
-        has_ipv6 = False
+        HAS_IPV6 = False
 
 
 # tokio event loop does not allow to override attributes
@@ -461,7 +461,7 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
         assert "http://0.0.0.0:{}".format(port) in printer.call_args[0][0]
 
 
-@pytest.mark.skipif(not has_ipv6, reason="IPv6 is not available")
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
 def test_run_app_preexisting_inet6_socket(loop, mocker):
     skip_if_no_dict(loop)
 
