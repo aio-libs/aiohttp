@@ -6,7 +6,7 @@ import json
 import async_timeout
 
 from .client_exceptions import ClientError
-from .helpers import PY_352, call_later, create_future
+from .helpers import call_later
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
 
@@ -186,7 +186,7 @@ class ClientWebSocketResponse:
                 return WS_CLOSED_MESSAGE
 
             try:
-                self._waiting = create_future(self._loop)
+                self._waiting = self._loop.create_future()
                 try:
                     with async_timeout.timeout(
                             timeout or self._receive_timeout,
@@ -252,9 +252,6 @@ class ClientWebSocketResponse:
 
     def __aiter__(self):
         return self
-
-    if not PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
     async def __anext__(self):
         msg = await self.receive()

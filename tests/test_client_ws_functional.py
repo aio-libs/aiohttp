@@ -4,7 +4,7 @@ import async_timeout
 import pytest
 
 import aiohttp
-from aiohttp import hdrs, helpers, web
+from aiohttp import hdrs, web
 
 
 @pytest.fixture
@@ -136,7 +136,7 @@ async def test_send_recv_json(loop, test_client):
 
 async def test_ping_pong(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -172,7 +172,7 @@ async def test_ping_pong(loop, test_client):
 
 async def test_ping_pong_manual(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -273,7 +273,7 @@ async def test_concurrent_close(loop, test_client):
 
 async def test_close_from_server(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -305,7 +305,7 @@ async def test_close_from_server(loop, test_client):
 
 async def test_close_manual(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -748,7 +748,7 @@ async def test_client_ws_async_with_shortcut(loop, test_server):
 
 async def test_closed_async_for(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()

@@ -95,7 +95,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             host, port, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 
-        waiter = helpers.create_future(thread_loop)
+        waiter = thread_loop.create_future()
         loop.call_soon_threadsafe(
             fut.set_result, (thread_loop, waiter,
                              server.sockets[0].getsockname()))
@@ -117,7 +117,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             thread_loop.close()
             gc.collect()
 
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
     server_thread = threading.Thread(target=run, args=(loop, fut))
     server_thread.start()
 
@@ -457,7 +457,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             with open(fname, 'rb') as f:
                 data = f.read()
 
-            fut = helpers.create_future(self.loop)
+            fut = self.loop.create_future()
 
             @aiohttp.streamer
             async def stream(writer):

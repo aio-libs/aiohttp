@@ -1,7 +1,6 @@
 import asyncio
 import collections
 
-from . import helpers
 from .log import internal_logger
 
 
@@ -25,9 +24,6 @@ class AsyncStreamIterator:
     def __aiter__(self):
         return self
 
-    if not helpers.PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
-
     async def __anext__(self):
         try:
             rv = await self.read_func()
@@ -50,9 +46,6 @@ class AsyncStreamReaderMixin:
 
     def __aiter__(self):
         return AsyncStreamIterator(self.readline)
-
-    if not helpers.PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
     def iter_chunked(self, n):
         """Returns an asynchronous iterator that yields chunks of size n.
@@ -190,7 +183,7 @@ class StreamReader(AsyncStreamReaderMixin):
             return
 
         assert self._eof_waiter is None
-        self._eof_waiter = helpers.create_future(self._loop)
+        self._eof_waiter = self._loop.create_future()
         try:
             await self._eof_waiter
         finally:
@@ -247,7 +240,7 @@ class StreamReader(AsyncStreamReaderMixin):
             raise RuntimeError('%s() called while another coroutine is '
                                'already waiting for incoming data' % func_name)
 
-        waiter = self._waiter = helpers.create_future(self._loop)
+        waiter = self._waiter = self._loop.create_future()
         try:
             if self._timer:
                 with self._timer:
@@ -532,7 +525,7 @@ class DataQueue:
     async def read(self):
         if not self._buffer and not self._eof:
             assert not self._waiter
-            self._waiter = helpers.create_future(self._loop)
+            self._waiter = self._loop.create_future()
             try:
                 await self._waiter
             except (asyncio.CancelledError, asyncio.TimeoutError):
@@ -551,9 +544,6 @@ class DataQueue:
 
     def __aiter__(self):
         return AsyncStreamIterator(self.read)
-
-    if not helpers.PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
 
 class ChunksQueue(DataQueue):

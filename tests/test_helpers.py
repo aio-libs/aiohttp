@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import gc
 import os
-import sys
 import tempfile
 from unittest import mock
 
@@ -302,31 +301,6 @@ class TestReify:
 
         with pytest.raises(AttributeError):
             a.prop = 123
-
-
-@pytest.mark.skipif(sys.version_info < (3, 5, 2), reason='old python')
-def test_create_future_with_new_loop():
-    # We should use the new create_future() if it's available.
-    mock_loop = mock.Mock()
-    expected = 'hello'
-    mock_loop.create_future.return_value = expected
-    assert expected == helpers.create_future(mock_loop)
-
-
-@pytest.mark.skipif(sys.version_info >= (3, 5, 2), reason='new python')
-def test_create_future_with_old_loop(mocker):
-    MockFuture = mocker.patch('asyncio.Future')
-    # The old loop (without create_future()) should just have a Future object
-    # wrapped around it.
-    mock_loop = mock.Mock()
-    del mock_loop.create_future
-
-    expected = 'hello'
-    MockFuture.return_value = expected
-
-    future = helpers.create_future(mock_loop)
-    MockFuture.assert_called_with(loop=mock_loop)
-    assert expected == future
 
 # ----------------------------------- is_ip_address() ----------------------
 

@@ -6,7 +6,7 @@ import socket
 import zlib
 
 from .abc import AbstractPayloadWriter
-from .helpers import create_future, noop
+from .helpers import noop
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -292,6 +292,6 @@ class PayloadWriter(AbstractPayloadWriter):
         else:
             # wait for transport
             if self._drain_waiter is None:
-                self._drain_waiter = create_future(self.loop)
+                self._drain_waiter = self.loop.create_future()
 
             yield from self._drain_waiter

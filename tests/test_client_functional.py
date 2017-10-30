@@ -15,7 +15,6 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.helpers import create_future
 from aiohttp.multipart import MultipartWriter
 
 
@@ -585,7 +584,7 @@ async def test_timeout_on_session_read_timeout(loop, test_client, mocker):
 
 async def test_timeout_on_reading_data(loop, test_client, mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
-    fut = create_future(loop=loop)
+    fut = loop.create_future()
 
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})

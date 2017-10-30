@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, helpers, signals
+from aiohttp import WSMessage, WSMsgType, signals
 from aiohttp.log import ws_logger
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
@@ -354,11 +354,11 @@ async def test_receive_exc_in_reader(make_request, loop):
 
     ws._reader = mock.Mock()
     exc = ValueError()
-    res = helpers.create_future(loop)
+    res = loop.create_future()
     res.set_exception(exc)
     ws._reader.read = make_mocked_coro(res)
     ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = helpers.create_future(loop)
+    ws._payload_writer.drain.return_value = loop.create_future()
     ws._payload_writer.drain.return_value.set_result(True)
 
     msg = await ws.receive()
@@ -373,7 +373,7 @@ async def test_receive_cancelled(make_request, loop):
     await ws.prepare(req)
 
     ws._reader = mock.Mock()
-    res = helpers.create_future(loop)
+    res = loop.create_future()
     res.set_exception(asyncio.CancelledError())
     ws._reader.read = make_mocked_coro(res)
 
@@ -387,7 +387,7 @@ async def test_receive_timeouterror(make_request, loop):
     await ws.prepare(req)
 
     ws._reader = mock.Mock()
-    res = helpers.create_future(loop)
+    res = loop.create_future()
     res.set_exception(asyncio.TimeoutError())
     ws._reader.read = make_mocked_coro(res)
 
@@ -429,10 +429,10 @@ async def test_close_exc(make_request, loop, mocker):
 
     ws._reader = mock.Mock()
     exc = ValueError()
-    ws._reader.read.return_value = helpers.create_future(loop)
+    ws._reader.read.return_value = loop.create_future()
     ws._reader.read.return_value.set_exception(exc)
     ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = helpers.create_future(loop)
+    ws._payload_writer.drain.return_value = loop.create_future()
     ws._payload_writer.drain.return_value.set_result(True)
 
     await ws.close()
@@ -440,7 +440,7 @@ async def test_close_exc(make_request, loop, mocker):
     assert ws.exception() is exc
 
     ws._closed = False
-    ws._reader.read.return_value = helpers.create_future(loop)
+    ws._reader.read.return_value = loop.create_future()
     ws._reader.read.return_value.set_exception(asyncio.CancelledError())
     with pytest.raises(asyncio.CancelledError):
         await ws.close()

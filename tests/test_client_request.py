@@ -14,7 +14,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, helpers, payload
+from aiohttp import BaseConnector, hdrs, payload
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
@@ -839,7 +839,7 @@ async def test_data_stream(loop, buf, conn):
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     resp = req.send(conn)
-    assert helpers.isfuture(req._writer)
+    assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
 
@@ -858,7 +858,7 @@ async def test_data_file(loop, buf, conn):
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     resp = req.send(conn)
-    assert helpers.isfuture(req._writer)
+    assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
     assert buf.split(b'\r\n\r\n', 1)[1] == \
@@ -867,7 +867,7 @@ async def test_data_file(loop, buf, conn):
 
 
 async def test_data_stream_exc(loop, conn):
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
 
     @aiohttp.streamer
     async def gen(writer):
@@ -893,7 +893,7 @@ async def test_data_stream_exc(loop, conn):
 
 
 async def test_data_stream_exc_chain(loop, conn):
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
 
     @aiohttp.streamer
     async def gen(writer):

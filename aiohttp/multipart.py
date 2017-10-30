@@ -13,7 +13,7 @@ from multidict import CIMultiDict
 
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
-from .helpers import CHAR, PY_352, TOKEN, parse_mimetype, reify
+from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HttpParser
 from .payload import (BytesPayload, LookupError, Payload, StringPayload,
                       get_payload, payload_type)
@@ -172,9 +172,6 @@ class MultipartResponseWrapper(object):
     def __aiter__(self):
         return self
 
-    if not PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
-
     @asyncio.coroutine
     def __anext__(self):
         part = yield from self.next()
@@ -222,9 +219,6 @@ class BodyPartReader(object):
 
     def __aiter__(self):
         return self
-
-    if not PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
     @asyncio.coroutine
     def __anext__(self):
@@ -544,9 +538,6 @@ class MultipartReader(object):
 
     def __aiter__(self):
         return self
-
-    if not PY_352:  # pragma: no cover
-        __aiter__ = asyncio.coroutine(__aiter__)
 
     @asyncio.coroutine
     def __anext__(self):

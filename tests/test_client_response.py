@@ -8,7 +8,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import helpers, http
+from aiohttp import http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 
 
@@ -116,7 +116,7 @@ async def test_read_and_release_connection(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result(b'payload')
         return fut
     content = response.content = mock.Mock()
@@ -131,7 +131,7 @@ async def test_read_and_release_connection_with_error(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     content = response.content = mock.Mock()
-    content.read.return_value = helpers.create_future(loop)
+    content.read.return_value = loop.create_future()
     content.read.return_value.set_exception(ValueError)
 
     with pytest.raises(ValueError):
@@ -142,7 +142,7 @@ async def test_read_and_release_connection_with_error(loop, session):
 async def test_release(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
     fut.set_result(b'')
     content = response.content = mock.Mock()
     content.readany.return_value = fut
@@ -207,7 +207,7 @@ async def test_text(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -226,7 +226,7 @@ async def test_text_bad_encoding(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тестkey": "пройденvalue"}'.encode('cp1251'))
         return fut
 
@@ -248,7 +248,7 @@ async def test_text_custom_encoding(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -269,7 +269,7 @@ async def test_text_detect_encoding(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -288,7 +288,7 @@ async def test_text_after_read(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -307,7 +307,7 @@ async def test_json(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -364,7 +364,7 @@ async def test_json_override_encoding(loop, session):
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 

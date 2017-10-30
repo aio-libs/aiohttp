@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import helpers, log, web
+from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
 
 
@@ -117,7 +117,7 @@ async def test_app_register_on_finish():
 
 async def test_app_register_coro(loop):
     app = web.Application()
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
 
     async def cb(app):
         await asyncio.sleep(0.001, loop=loop)
