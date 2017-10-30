@@ -777,7 +777,12 @@ class TCPConnector(BaseConnector):
         sslcontext = self._get_ssl_context(req)
         fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
-        hosts = await self._resolve_host(req.url.raw_host, req.port)
+        try:
+            hosts = await self._resolve_host(req.url.raw_host, req.port)
+        except OSError as exc:
+            # in case of proxy it is not ClientProxyConnectionError
+            # it is problem of resolving proxy ip itself
+            raise ClientConnectorError(req.connection_key, exc) from exc
 
         for hinfo in hosts:
             try:

@@ -18,7 +18,7 @@ import aiohttp
 from aiohttp import client, web
 from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection, _DNSCacheTable
-from aiohttp.test_utils import unused_port
+from aiohttp.test_utils import make_mocked_coro, unused_port
 
 
 @pytest.fixture()
@@ -493,6 +493,19 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
 
         with pytest.raises(asyncio.futures.CancelledError):
             await f
+
+
+async def test_dns_error(loop):
+    connector = aiohttp.TCPConnector(loop=loop)
+    connector._resolve_host = make_mocked_coro(
+        raise_exception=OSError('dont take it serious'))
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await connector.connect(req)
 
 
 def test_get_pop_empty_conns(loop):
