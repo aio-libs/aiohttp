@@ -215,7 +215,7 @@ class TestProxy(unittest.TestCase):
         Request_mock.assert_called_with(mock.ANY, mock.ANY, "xn--9caa.com:80",
                                         mock.ANY, loop=loop)
 
-    def test_proxy_connection_error(self):
+    def test_proxy_dns_error(self):
         connector = aiohttp.TCPConnector(loop=self.loop)
         connector._resolve_host = make_mocked_coro(
             raise_exception=OSError('dont take it serious'))

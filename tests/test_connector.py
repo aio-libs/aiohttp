@@ -9,6 +9,7 @@ import socket
 import ssl
 import tempfile
 import unittest
+import uuid
 from unittest import mock
 
 import pytest
@@ -18,7 +19,7 @@ import aiohttp
 from aiohttp import client, helpers, web
 from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection, _DNSCacheTable
-from aiohttp.test_utils import unused_port
+from aiohttp.test_utils import make_mocked_coro, unused_port
 
 
 @pytest.fixture()
@@ -505,6 +506,19 @@ def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
 
         with pytest.raises(asyncio.futures.CancelledError):
             yield from f
+
+
+def test_dns_error(loop):
+    connector = aiohttp.TCPConnector(loop=loop)
+    connector._resolve_host = make_mocked_coro(
+        raise_exception=OSError('dont take it serious'))
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
 
 
 def test_get_pop_empty_conns(loop):
@@ -1279,6 +1293,34 @@ def test_tcp_connector(test_client, loop):
 
     r = yield from client.get('/')
     assert r.status == 200
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="requires unix socket")
+def test_unix_connector_not_found(loop):
+    connector = aiohttp.UnixConnector('/' + uuid.uuid4().hex, loop=loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="requires unix socket")
+def test_unix_connector_permission(loop):
+    loop.create_unix_connection = make_mocked_coro(
+        raise_exception=PermissionError())
+    connector = aiohttp.UnixConnector('/' + uuid.uuid4().hex, loop=loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
 
 
 def test_default_use_dns_cache(loop):
