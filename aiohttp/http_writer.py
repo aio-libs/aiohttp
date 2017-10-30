@@ -6,7 +6,7 @@ import socket
 import zlib
 
 from .abc import AbstractPayloadWriter
-from .helpers import create_future, noop
+from .helpers import noop
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -252,8 +252,7 @@ class PayloadWriter(AbstractPayloadWriter):
         self.output_size += size
         self._buffer.append(headers)
 
-    @asyncio.coroutine
-    def write_eof(self, chunk=b''):
+    async def write_eof(self, chunk=b''):
         if self._eof:
             return
 
@@ -276,7 +275,7 @@ class PayloadWriter(AbstractPayloadWriter):
         if chunk:
             self.buffer_data(chunk)
 
-        yield from self.drain(True)
+        await self.drain(True)
 
         self._eof = True
         self._transport = None
@@ -293,6 +292,6 @@ class PayloadWriter(AbstractPayloadWriter):
         else:
             # wait for transport
             if self._drain_waiter is None:
-                self._drain_waiter = create_future(self.loop)
+                self._drain_waiter = self.loop.create_future()
 
             yield from self._drain_waiter

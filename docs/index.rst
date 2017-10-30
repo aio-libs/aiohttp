@@ -53,7 +53,7 @@ Client example::
     import async_timeout
 
     async def fetch(session, url):
-        with async_timeout.timeout(10):
+        async with async_timeout.timeout(10):
             async with session.get(url) as response:
                 return await response.text()
 
@@ -79,24 +79,6 @@ Server example::
     app.router.add_get('/{name}', handle)
 
     web.run_app(app)
-
-.. note::
-
-   Throughout this documentation, examples utilize the `async/await` syntax
-   introduced by :pep:`492` that is only valid for Python 3.5+.
-
-   If you are using Python 3.4, please replace ``await`` with
-   ``yield from`` and ``async def`` with a ``@coroutine`` decorator.
-   For example, this::
-
-       async def coro(...):
-           ret = await f()
-
-   should be replaced by::
-
-       @asyncio.coroutine
-       def coro(...):
-           ret = yield from f()
 
 
 Tutorial
@@ -207,6 +189,7 @@ Contents
    web_lowlevel
    abc
    multipart
+   multipart_reference
    streams
    api
    logging

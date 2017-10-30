@@ -23,7 +23,7 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
+from .helpers import (CeilTimeout, TimeoutHandle, _BaseCoroMixin,
                       deprecated_noop, proxies_from_env, sentinel,
                       strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
@@ -277,7 +277,7 @@ class ClientSession:
                         resp = req.send(conn)
                         try:
                             yield from resp.start(conn, read_until_eof)
-                        except:
+                        except Exception:
                             resp.close()
                             conn.close()
                             raise
@@ -356,7 +356,7 @@ class ClientSession:
             resp._history = tuple(history)
             return resp
 
-        except:
+        except Exception:
             # cleanup timer
             tm.close()
             if handle:
@@ -668,14 +668,13 @@ class ClientSession:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            return self
+    @asyncio.coroutine
+    def __aenter__(self):
+        return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_val, exc_tb):
-            yield from self.close()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        yield from self.close()
 
 
 class _BaseRequestContextManager(_BaseCoroMixin):
@@ -686,30 +685,27 @@ class _BaseRequestContextManager(_BaseCoroMixin):
         super().__init__(coro)
         self._coro = coro
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            self._resp = yield from self._coro
-            return self._resp
+    @asyncio.coroutine
+    def __aenter__(self):
+        self._resp = yield from self._coro
+        return self._resp
 
 
 class _RequestContextManager(_BaseRequestContextManager):
-    if PY_35:
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc, tb):
-            # We're basing behavior on the exception as it can be caused by
-            # user code unrelated to the status of the connection.  If you
-            # would like to close a connection you must do that
-            # explicitly.  Otherwise connection error handling should kick in
-            # and close/recycle the connection as required.
-            self._resp.release()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc, tb):
+        # We're basing behavior on the exception as it can be caused by
+        # user code unrelated to the status of the connection.  If you
+        # would like to close a connection you must do that
+        # explicitly.  Otherwise connection error handling should kick in
+        # and close/recycle the connection as required.
+        self._resp.release()
 
 
 class _WSRequestContextManager(_BaseRequestContextManager):
-    if PY_35:
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc, tb):
-            yield from self._resp.close()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc, tb):
+        yield from self._resp.close()
 
 
 class _SessionRequestContextManager(_RequestContextManager):
@@ -724,17 +720,16 @@ class _SessionRequestContextManager(_RequestContextManager):
     def __iter__(self):
         try:
             return (yield from self._coro)
-        except:
-            self._session.close()
+        except Exception:
+            yield from self._session.close()
             raise
 
-    if PY_35:
-        def __await__(self):
-            try:
-                return (yield from self._coro)
-            except:
-                self._session.close()
-                raise
+    def __await__(self):
+        try:
+            return (yield from self._coro)
+        except Exception:
+            yield from self._session.close()
+            raise
 
 
 def request(method, url, *,

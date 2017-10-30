@@ -9,17 +9,18 @@ import functools
 import inspect
 import os
 import re
-import sys
 import time
 import warnings
 import weakref
 from collections import namedtuple
+from collections.abc import Coroutine
+from contextlib import suppress
 from math import ceil
 from pathlib import Path
 from urllib.parse import quote
 from urllib.request import getproxies
 
-from async_timeout import timeout
+import async_timeout
 from yarl import URL
 
 from . import hdrs
@@ -27,26 +28,10 @@ from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
-try:
-    from asyncio import ensure_future
-except ImportError:
-    ensure_future = asyncio.async
-
-PY_34 = sys.version_info < (3, 5)
-PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
-
-if sys.version_info >= (3, 4, 3):
-    from http.cookies import SimpleCookie  # noqa
-else:
-    from .backport_cookies import SimpleCookie  # noqa
-
-
-__all__ = ('BasicAuth', 'Timeout')
+__all__ = ('BasicAuth',)
 
 
 sentinel = object()
-Timeout = timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
 
 CHAR = set(chr(i) for i in range(0, 128))
@@ -56,14 +41,7 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-if PY_35:
-    from collections.abc import Coroutine
-    base = Coroutine
-else:
-    base = object
-
-
-class _BaseCoroMixin(base):
+class _BaseCoroMixin(Coroutine):
 
     __slots__ = ('_coro')
 
@@ -99,18 +77,9 @@ class _BaseCoroMixin(base):
         ret = yield from self._coro
         return ret
 
-    if PY_35:
-        def __await__(self):
-            ret = yield from self._coro
-            return ret
-
-
-if not PY_35:
-    try:
-        from asyncio import coroutines
-        coroutines._COROUTINE_TYPES += (_BaseCoroMixin,)
-    except:  # pragma: no cover
-        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
+    def __await__(self):
+        ret = yield from self._coro
+        return ret
 
 
 class _CoroGuard(_BaseCoroMixin):
@@ -135,10 +104,9 @@ class _CoroGuard(_BaseCoroMixin):
         self._awaited = True
         return super().__iter__()
 
-    if PY_35:
-        def __await__(self):
-            self._awaited = True
-            return super().__await__()
+    def __await__(self):
+        self._awaited = True
+        return super().__await__()
 
     def __del__(self):
         self._coro = None
@@ -161,13 +129,6 @@ def deprecated_noop(message):
 
 
 coroutines._DEBUG = old_debug
-
-
-try:
-    from asyncio import isfuture
-except ImportError:
-    def isfuture(fut):
-        return isinstance(fut, asyncio.Future)
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -247,16 +208,6 @@ def proxies_from_env():
     return ret
 
 
-if PY_352:
-    def create_future(loop):
-        return loop.create_future()
-else:
-    def create_future(loop):  # pragma: no cover
-        """Compatibility wrapper for the loop.create_future() call introduced in
-        3.5.2."""
-        return asyncio.Future(loop=loop)
-
-
 def current_task(loop=None):
     if loop is None:
         loop = asyncio.get_event_loop()
@@ -275,21 +226,25 @@ def isasyncgenfunction(obj):
     return False
 
 
+MimeType = namedtuple('MimeType', 'type subtype suffix parameters')
+
+
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
     mimetype is a MIME type string.
 
-    Returns a 4 element tuple for MIME type, subtype, suffix and parameters.
+    Returns a MimeType object.
 
     Example:
 
     >>> parse_mimetype('text/html; charset=utf-8')
-    ('text', 'html', '', {'charset': 'utf-8'})
+    MimeType(type='text', subtype='html', suffix='',
+             parameters={'charset': 'utf-8'})
 
     """
     if not mimetype:
-        return '', '', '', {}
+        return MimeType(type='', subtype='', suffix='', parameters={})
 
     parts = mimetype.split(';')
     params = []
@@ -308,7 +263,8 @@ def parse_mimetype(mimetype):
         if '/' in fulltype else (fulltype, '')
     stype, suffix = stype.split('+', 1) if '+' in stype else (stype, '')
 
-    return mtype, stype, suffix, params
+    return MimeType(type=mtype, subtype=stype, suffix=suffix,
+                    parameters=params)
 
 
 def guess_filename(obj, default=None):
@@ -544,7 +500,7 @@ class reify:
         self.wrapped = wrapped
         try:
             self.__doc__ = wrapped.__doc__
-        except:  # pragma: no cover
+        except Exception:  # pragma: no cover
             self.__doc__ = ""
         self.name = wrapped.__name__
 
@@ -630,10 +586,8 @@ def _weakref_handle(info):
     ref, name = info
     ob = ref()
     if ob is not None:
-        try:
+        with suppress(Exception):
             getattr(ob, name)()
-        except:
-            pass
 
 
 def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):
@@ -680,10 +634,8 @@ class TimeoutHandle:
 
     def __call__(self):
         for cb, args, kwargs in self._callbacks:
-            try:
+            with suppress(Exception):
                 cb(*args, **kwargs)
-            except:
-                pass
 
         self._callbacks.clear()
 
@@ -734,7 +686,7 @@ class TimerContext:
             self._cancelled = True
 
 
-class CeilTimeout(Timeout):
+class CeilTimeout(async_timeout.timeout):
 
     def __enter__(self):
         if self._timeout is not None:
@@ -781,8 +733,7 @@ class HeadersMixin:
     @property
     def content_length(self, *, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
         """The value of Content-Length HTTP header."""
-        l = self._headers.get(_CONTENT_LENGTH)
-        if l is None:
-            return None
-        else:
-            return int(l)
+        content_length = self._headers.get(_CONTENT_LENGTH)
+
+        if content_length:
+            return int(content_length)

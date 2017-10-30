@@ -292,19 +292,10 @@ Creating connection engine
 
 For making DB queries we need an engine instance. Assuming ``conf`` is
 a :class:`dict` with configuration info Postgres connection could be
-done by the following coroutine::
+done by the following coroutine:
 
-   async def init_pg(app):
-       conf = app['config']
-       engine = await aiopg.sa.create_engine(
-           database=conf['database'],
-           user=conf['user'],
-           password=conf['password'],
-           host=conf['host'],
-           port=conf['port'],
-           minsize=conf['minsize'],
-           maxsize=conf['maxsize'])
-       app['db'] = engine
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/db.py
+  :pyobject: init_pg
 
 The best place for connecting to DB is
 :attr:`~aiohtp.web.Application.on_startup` signal::
@@ -319,13 +310,11 @@ There is a good practice to close all resources on program exit.
 
 Let's close DB connection in :attr:`~aiohtp.web.Application.on_cleanup` signal::
 
-   async def close_pg(app):
-       app['db'].close()
-       await app['db'].wait_closed()
+    app.on_cleanup.append(close_pg)
 
 
-   app.on_cleanup.append(close_pg)
-
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/db.py
+  :pyobject: close_pg
 
 
 .. _aiohttp-tutorial-templates:
@@ -333,21 +322,10 @@ Let's close DB connection in :attr:`~aiohtp.web.Application.on_cleanup` signal::
 Templates
 ---------
 
-Let's add more useful views::
+Let's add more useful views:
 
-   @aiohttp_jinja2.template('detail.html')
-   async def poll(request):
-       async with request['db'].acquire() as conn:
-           question_id = request.match_info['question_id']
-           try:
-               question, choices = await db.get_question(conn,
-                                                         question_id)
-           except db.RecordNotFound as e:
-               raise web.HTTPNotFound(text=str(e))
-           return {
-               'question': question,
-               'choices': choices
-           }
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/views.py
+  :pyobject: poll
 
 Templates are very convenient way for web page writing. We return a
 dict with page content, ``aiohttp_jinja2.template`` decorator
@@ -385,12 +363,10 @@ proxy like NGINX or using CDN services.
 
 But for development handling static files by aiohttp server is very convenient.
 
-Fortunately it can be done easy by single call::
+Fortunately it can be done easy by single call:
 
-    app.router.add_static('/static/',
-                          path=str(project_root / 'static'),
-                          name='static')
-
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/routes.py
+  :pyobject: setup_static_routes
 
 where ``project_root`` is the path to root folder.
 
@@ -408,12 +384,10 @@ Here we'll add a simple middleware for displaying pretty looking pages
 for *404 Not Found* and *500 Internal Error*.
 
 Middlewares could be registered in ``app`` by adding new middleware to
-``app.middlewares`` list::
+``app.middlewares`` list:
 
-   def setup_middlewares(app):
-       error_middleware = error_pages({404: handle_404,
-                                       500: handle_500})
-       app.middlewares.append(error_middleware)
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/middlewares.py
+  :pyobject: setup_middlewares
 
 Middleware itself is a factory which accepts *application* and *next
 handler* (the following middleware or *web-handler* in case of the
@@ -423,41 +397,17 @@ The factory returns *middleware handler* which has the same signature
 as regular *web-handler* -- it accepts *request* and returns
 *response*.
 
-Middleware for processing HTTP exceptions::
+Middleware for processing HTTP exceptions:
 
-   def error_pages(overrides):
-       async def middleware(app, handler):
-           async def middleware_handler(request):
-               try:
-                   response = await handler(request)
-                   override = overrides.get(response.status)
-                   if override is None:
-                       return response
-                   else:
-                       return await override(request, response)
-               except web.HTTPException as ex:
-                   override = overrides.get(ex.status)
-                   if override is None:
-                       raise
-                   else:
-                       return await override(request, ex)
-           return middleware_handler
-       return middleware
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/middlewares.py
+  :pyobject: error_pages
 
-Registered overrides are trivial Jinja2 template renderers::
+Registered overrides are trivial Jinja2 template renderers:
 
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/middlewares.py
+  :pyobject: handle_404
 
-   async def handle_404(request, response):
-       response = aiohttp_jinja2.render_template('404.html',
-                                                 request,
-                                                 {})
-       return response
-
-
-   async def handle_500(request, response):
-       response = aiohttp_jinja2.render_template('500.html',
-                                                 request,
-                                                 {})
-       return response
+.. literalinclude:: ../demos/polls/aiohttpdemo_polls/middlewares.py
+  :pyobject: handle_500
 
 .. seealso:: :ref:`aiohttp-web-middlewares`

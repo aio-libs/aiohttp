@@ -1,10 +1,8 @@
-import asyncio
 import mimetypes
 import os
 import pathlib
 
 from . import hdrs
-from .helpers import create_future
 from .http_writer import PayloadWriter
 from .log import server_logger
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
@@ -55,13 +53,12 @@ class SendfilePayloadWriter(PayloadWriter):
         else:
             fut.set_result(None)
 
-    @asyncio.coroutine
-    def sendfile(self, fobj, count):
+    async def sendfile(self, fobj, count):
         if self._transport is None:
             if self._drain_waiter is None:
-                self._drain_waiter = create_future(self.loop)
+                self._drain_waiter = self.loop.create_future()
 
-            yield from self._drain_waiter
+            await self._drain_waiter
 
         out_socket = self._transport.get_extra_info("socket").dup()
         out_socket.setblocking(False)
@@ -71,11 +68,11 @@ class SendfilePayloadWriter(PayloadWriter):
 
         loop = self.loop
         try:
-            yield from loop.sock_sendall(out_socket, b''.join(self._buffer))
-            fut = create_future(loop)
+            await loop.sock_sendall(out_socket, b''.join(self._buffer))
+            fut = loop.create_future()
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
-            yield from fut
-        except:
+            await fut
+        except Exception:
             server_logger.debug('Socket error')
             self._transport.close()
         finally:
@@ -85,8 +82,7 @@ class SendfilePayloadWriter(PayloadWriter):
         self._transport = None
         self._stream.release()
 
-    @asyncio.coroutine
-    def write_eof(self, chunk=b''):
+    async def write_eof(self, chunk=b''):
         pass
 
 
@@ -102,8 +98,7 @@ class FileResponse(StreamResponse):
         self._path = path
         self._chunk_size = chunk_size
 
-    @asyncio.coroutine
-    def _sendfile_system(self, request, fobj, count):
+    async def _sendfile_system(self, request, fobj, count):
         # Write count bytes of fobj to resp using
         # the os.sendfile system call.
         #
@@ -118,18 +113,17 @@ class FileResponse(StreamResponse):
         transport = request.transport
         if (transport.get_extra_info("sslcontext") or
                 transport.get_extra_info("socket") is None):
-            writer = yield from self._sendfile_fallback(request, fobj, count)
+            writer = await self._sendfile_fallback(request, fobj, count)
         else:
             writer = request._protocol.writer.replace(
                 request._writer, SendfilePayloadWriter)
             request._writer = writer
-            yield from super().prepare(request)
-            yield from writer.sendfile(fobj, count)
+            await super().prepare(request)
+            await writer.sendfile(fobj, count)
 
         return writer
 
-    @asyncio.coroutine
-    def _sendfile_fallback(self, request, fobj, count):
+    async def _sendfile_fallback(self, request, fobj, count):
         # Mimic the _sendfile_system() method, but without using the
         # os.sendfile() system call. This should be used on systems
         # that don't support the os.sendfile().
@@ -138,7 +132,7 @@ class FileResponse(StreamResponse):
         # fobj is transferred in chunks controlled by the
         # constructor's chunk_size argument.
 
-        writer = (yield from super().prepare(request))
+        writer = (await super().prepare(request))
 
         self.set_tcp_cork(True)
         try:
@@ -146,7 +140,7 @@ class FileResponse(StreamResponse):
 
             chunk = fobj.read(chunk_size)
             while True:
-                yield from writer.write(chunk)
+                await writer.write(chunk)
                 count = count - chunk_size
                 if count <= 0:
                     break
@@ -154,7 +148,7 @@ class FileResponse(StreamResponse):
         finally:
             self.set_tcp_nodelay(True)
 
-        yield from writer.drain()
+        await writer.drain()
         return writer
 
     if hasattr(os, "sendfile") and not NOSENDFILE:  # pragma: no cover
@@ -162,8 +156,7 @@ class FileResponse(StreamResponse):
     else:  # pragma: no cover
         _sendfile = _sendfile_fallback
 
-    @asyncio.coroutine
-    def prepare(self, request):
+    async def prepare(self, request):
         filepath = self._path
 
         gzip = False
@@ -180,7 +173,7 @@ class FileResponse(StreamResponse):
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             self.set_status(HTTPNotModified.status_code)
             self._length_check = False
-            return (yield from super().prepare(request))
+            return (await super().prepare(request))
 
         if hdrs.CONTENT_TYPE not in self.headers:
             ct, encoding = mimetypes.guess_type(str(filepath))
@@ -201,7 +194,7 @@ class FileResponse(StreamResponse):
             end = rng.stop
         except ValueError:
             self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
-            return (yield from super().prepare(request))
+            return (await super().prepare(request))
 
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
@@ -243,6 +236,6 @@ class FileResponse(StreamResponse):
                 if start:
                     fobj.seek(start)
 
-                return (yield from self._sendfile(request, fobj, count))
+                return (await self._sendfile(request, fobj, count))
 
-        return (yield from super().prepare(request))
+        return (await super().prepare(request))
