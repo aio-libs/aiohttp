@@ -36,9 +36,8 @@ class _stream_wrapper:
         self.args = args
         self.kwargs = kwargs
 
-    @asyncio.coroutine
-    def __call__(self, writer):
-        yield from self.coro(writer, *self.args, **self.kwargs)
+    async def __call__(self, writer):
+        await self.coro(writer, *self.args, **self.kwargs)
 
 
 class streamer:
@@ -53,9 +52,8 @@ class streamer:
 @payload_type(_stream_wrapper)
 class StreamWrapperPayload(Payload):
 
-    @asyncio.coroutine
-    def write(self, writer):
-        yield from self._value(writer)
+    async def write(self, writer):
+        await self._value(writer)
 
 
 @payload_type(streamer)
@@ -64,6 +62,5 @@ class StreamPayload(StreamWrapperPayload):
     def __init__(self, value, *args, **kwargs):
         super().__init__(value(), *args, **kwargs)
 
-    @asyncio.coroutine
-    def write(self, writer):
-        yield from self._value(writer)
+    async def write(self, writer):
+        await self._value(writer)
