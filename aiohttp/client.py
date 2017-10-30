@@ -724,16 +724,16 @@ class _SessionRequestContextManager(_RequestContextManager):
     def __iter__(self):
         try:
             return (yield from self._coro)
-        except:
-            self._session.close()
+        except BaseException:
+            yield from self._session.close()
             raise
 
     if PY_35:
         def __await__(self):
             try:
                 return (yield from self._coro)
-            except:
-                self._session.close()
+            except BaseException:
+                yield from self._session.close()
                 raise
 
 
