@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 import aiohttp
-from aiohttp import helpers, web
+from aiohttp import web
 from aiohttp.http import WSMsgType
 
 
@@ -171,7 +171,7 @@ async def test_websocket_receive_json(loop, test_client):
 
 async def test_send_recv_text(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -205,7 +205,7 @@ async def test_send_recv_text(loop, test_client):
 
 async def test_send_recv_bytes(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -239,7 +239,7 @@ async def test_send_recv_bytes(loop, test_client):
 
 
 async def test_send_recv_json(loop, test_client):
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -273,7 +273,7 @@ async def test_send_recv_json(loop, test_client):
 
 
 async def test_close_timeout(loop, test_client):
-    aborted = helpers.create_future(loop)
+    aborted = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse(timeout=0.1)
@@ -367,7 +367,7 @@ async def test_concurrent_close(loop, test_client):
 
 async def test_auto_pong_with_closing_by_peer(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -397,7 +397,7 @@ async def test_auto_pong_with_closing_by_peer(loop, test_client):
 
 async def test_ping(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -424,7 +424,7 @@ async def test_ping(loop, test_client):
 
 async def test_client_ping(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -450,7 +450,7 @@ async def test_client_ping(loop, test_client):
 
 async def test_pong(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse(autoping=False)
@@ -485,7 +485,7 @@ async def test_pong(loop, test_client):
 
 async def test_change_status(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -510,7 +510,7 @@ async def test_change_status(loop, test_client):
 
 async def test_handle_protocol(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse(protocols=('foo', 'bar'))
@@ -532,7 +532,7 @@ async def test_handle_protocol(loop, test_client):
 
 async def test_server_close_handshake(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse(protocols=('foo', 'bar'))
@@ -556,7 +556,7 @@ async def test_server_close_handshake(loop, test_client):
 
 async def test_client_close_handshake(loop, test_client, ceil):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse(
@@ -592,7 +592,7 @@ async def test_client_close_handshake(loop, test_client, ceil):
 async def test_server_close_handshake_server_eats_client_messages(
     loop, test_client
 ):
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse(protocols=('foo', 'bar'))
@@ -721,7 +721,7 @@ async def test_heartbeat_no_pong(loop, test_client, ceil):
 
 
 async def test_server_ws_async_for(loop, test_server):
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -754,7 +754,7 @@ async def test_server_ws_async_for(loop, test_server):
 
 async def test_closed_async_for(loop, test_client):
 
-    closed = helpers.create_future(loop)
+    closed = loop.create_future()
 
     async def handler(request):
         ws = web.WebSocketResponse()
