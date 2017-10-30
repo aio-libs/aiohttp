@@ -15,7 +15,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import client, helpers, web
+from aiohttp import client, web
 from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection, _DNSCacheTable
 from aiohttp.test_utils import unused_port
@@ -566,7 +566,7 @@ async def test_connect(loop):
     key = ('host', 80, False)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     connection = await conn.connect(req)
@@ -581,7 +581,7 @@ async def test_close_during_connect(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
     req = ClientRequest('GET', URL('http://host:80'), loop=loop)
 
     conn = aiohttp.BaseConnector(loop=loop)
@@ -836,7 +836,7 @@ async def test_connect_with_limit(loop, key):
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     connection1 = await conn.connect(req)
@@ -877,7 +877,7 @@ async def test_connect_with_limit_and_limit_per_host(loop, key):
     conn = aiohttp.BaseConnector(loop=loop, limit=1000, limit_per_host=1)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     acquired = False
@@ -911,7 +911,7 @@ async def test_connect_with_no_limit_and_limit_per_host(loop, key):
     conn = aiohttp.BaseConnector(loop=loop, limit=0, limit_per_host=1)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     acquired = False
@@ -943,7 +943,7 @@ async def test_connect_with_no_limits(loop, key):
     conn = aiohttp.BaseConnector(loop=loop, limit=0, limit_per_host=0)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     acquired = False
@@ -977,7 +977,7 @@ async def test_connect_with_limit_cancelled(loop):
     key = ('host', 80, False)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     connection = await conn.connect(req)
@@ -998,7 +998,7 @@ async def test_connect_with_capacity_release_waiters(loop):
         conn = aiohttp.BaseConnector(limit=1, loop=loop)
         conn._create_connection = mock.Mock()
         conn._create_connection.return_value = \
-            helpers.create_future(loop)
+            loop.create_future()
         conn._create_connection.return_value.set_exception(err)
 
         with pytest.raises(Exception):
@@ -1083,7 +1083,7 @@ async def test_close_with_acquired_connection(loop):
     key = ('host', 80, False)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     connection = await conn.connect(req)
@@ -1152,7 +1152,7 @@ async def test_error_on_connection(loop):
     proto = mock.Mock()
     i = 0
 
-    fut = helpers.create_future(loop=loop)
+    fut = loop.create_future()
     exc = OSError()
 
     async def create_connection(req):
@@ -1193,8 +1193,8 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
     proto = mock.Mock()
     i = 0
 
-    fut1 = helpers.create_future(loop=loop)
-    fut2 = helpers.create_future(loop=loop)
+    fut1 = loop.create_future()
+    fut2 = loop.create_future()
     exc = OSError()
 
     async def create_connection(req):

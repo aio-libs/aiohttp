@@ -3,7 +3,6 @@ import os
 import pathlib
 
 from . import hdrs
-from .helpers import create_future
 from .http_writer import PayloadWriter
 from .log import server_logger
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
@@ -57,7 +56,7 @@ class SendfilePayloadWriter(PayloadWriter):
     async def sendfile(self, fobj, count):
         if self._transport is None:
             if self._drain_waiter is None:
-                self._drain_waiter = create_future(self.loop)
+                self._drain_waiter = self.loop.create_future()
 
             await self._drain_waiter
 
@@ -70,7 +69,7 @@ class SendfilePayloadWriter(PayloadWriter):
         loop = self.loop
         try:
             await loop.sock_sendall(out_socket, b''.join(self._buffer))
-            fut = create_future(loop)
+            fut = loop.create_future()
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
             await fut
         except Exception:

@@ -9,7 +9,7 @@ from unittest import mock
 import pytest
 
 import aiohttp.multipart
-from aiohttp import helpers, payload
+from aiohttp import payload
 from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
                           CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from aiohttp.helpers import parse_mimetype
@@ -69,7 +69,7 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         self.loop.close()
 
     def future(self, obj):
-        fut = helpers.create_future(self.loop)
+        fut = self.loop.create_future()
         fut.set_result(obj)
         return fut
 
@@ -193,7 +193,7 @@ class PartReaderTestCase(TestCase):
         stream = Stream(b'')
 
         def prepare(data):
-            f = helpers.create_future(self.loop)
+            f = self.loop.create_future()
             f.set_result(data)
             return f
 
@@ -234,7 +234,7 @@ class PartReaderTestCase(TestCase):
         stream = Stream(b'')
 
         def prepare(data):
-            f = helpers.create_future(self.loop)
+            f = self.loop.create_future()
             f.set_result(data)
             return f
 
