@@ -785,6 +785,13 @@ class TCPConnector(BaseConnector):
         sslcontext = self._get_ssl_context(req)
         fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
+        try:
+            hosts = yield from self._resolve_host(req.url.raw_host, req.port)
+        except OSError as exc:
+            # in case of proxy it is not ClientProxyConnectionError
+            # it is problem of resolving proxy ip itself
+            raise ClientConnectorError(req.connection_key, exc) from exc
+
         hosts = yield from self._resolve_host(req.url.raw_host, req.port)
 
         for hinfo in hosts:
@@ -938,6 +945,10 @@ class UnixConnector(BaseConnector):
 
     @asyncio.coroutine
     def _create_connection(self, req):
-        _, proto = yield from self._loop.create_unix_connection(
-            self._factory, self._path)
+        try:
+            _, proto = yield from self._loop.create_unix_connection(
+                self._factory, self._path)
+        except OSError as exc:
+            raise ClientConnectorError(req.connection_key, exc) from exc
+
         return proto
