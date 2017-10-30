@@ -8,7 +8,6 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import helpers
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -282,7 +281,7 @@ async def test__run_exc(worker, loop):
         worker.cfg.max_requests = 100
 
         with mock.patch('aiohttp.worker.asyncio.sleep') as m_sleep:
-            slp = helpers.create_future(loop)
+            slp = loop.create_future()
             slp.set_exception(KeyboardInterrupt)
             m_sleep.return_value = slp
 
@@ -304,10 +303,10 @@ async def test_close(worker, loop):
     app = worker.wsgi = mock.Mock()
     app.cleanup = make_mocked_coro(None)
     handler.connections = [object()]
-    handler.shutdown.return_value = helpers.create_future(loop)
+    handler.shutdown.return_value = loop.create_future()
     handler.shutdown.return_value.set_result(1)
 
-    app.shutdown.return_value = helpers.create_future(loop)
+    app.shutdown.return_value = loop.create_future()
     app.shutdown.return_value.set_result(None)
 
     await worker.close()
@@ -329,7 +328,7 @@ async def test_close_wsgi(worker, loop):
     worker.loop = loop
     worker.wsgi = lambda env, start_resp: start_resp()
     handler.connections = [object()]
-    handler.shutdown.return_value = helpers.create_future(loop)
+    handler.shutdown.return_value = loop.create_future()
     handler.shutdown.return_value.set_result(1)
 
     await worker.close()
