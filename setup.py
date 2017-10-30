@@ -9,6 +9,7 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
 from setuptools import Extension, setup
 from setuptools.command.test import test as TestCommand
 
+
 try:
     from Cython.Build import cythonize
     USE_CYTHON = True

@@ -370,7 +370,7 @@ class BaseConnector(object):
 
         # Wait if there are no available connections.
         if available <= 0:
-            fut = helpers.create_future(self._loop)
+            fut = self._loop.create_future()
 
             # This connection will now count towards the limit.
             waiters = self._waiters[key]
@@ -906,13 +906,6 @@ class UnixConnector(BaseConnector):
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
     loop - Optional event loop.
-
-    Usage:
-
-    >>> conn = UnixConnector(path='/path/to/socket')
-    >>> session = ClientSession(connector=conn)
-    >>> resp = yield from session.get('http://python.org')
-
     """
 
     def __init__(self, path, force_close=False, keepalive_timeout=sentinel,

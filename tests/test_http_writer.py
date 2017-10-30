@@ -36,13 +36,13 @@ def stream(transport):
     return stream
 
 
-def test_write_payload_eof(stream, loop):
+async def test_write_payload_eof(stream, loop):
     write = stream.transport.write = mock.Mock()
     msg = http.PayloadWriter(stream, loop)
 
     msg.write(b'data1')
     msg.write(b'data2')
-    msg.write_eof()
+    await msg.write_eof()
 
     content = b''.join([c[1][0] for c in list(write.mock_calls)])
     assert b'data1data2' == content.split(b'\r\n\r\n', 1)[-1]
