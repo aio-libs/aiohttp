@@ -848,8 +848,6 @@ class TCPConnector(BaseConnector):
 
             return transp, proto
         else:
-            assert last_exc is not None
-
             raise last_exc
 
     @asyncio.coroutine
