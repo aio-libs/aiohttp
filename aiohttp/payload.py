@@ -126,9 +126,8 @@ class Payload(ABC):
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
             disptype, quote_fields=quote_fields, **params)
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def write(self, writer):
+    async def write(self, writer):
         """Write payload.
 
         writer is an AbstractPayloadWriter instance:
@@ -234,12 +233,11 @@ class TextIOPayload(IOBasePayload):
         except OSError:
             return None
 
-    @asyncio.coroutine
-    def write(self, writer):
+    async def write(self, writer):
         try:
             chunk = self._value.read(DEFAULT_LIMIT)
             while chunk:
-                yield from writer.write(chunk.encode(self._encoding))
+                await writer.write(chunk.encode(self._encoding))
                 chunk = self._value.read(DEFAULT_LIMIT)
         finally:
             self._value.close()
@@ -269,24 +267,22 @@ class BufferedReaderPayload(IOBasePayload):
 
 class StreamReaderPayload(Payload):
 
-    @asyncio.coroutine
-    def write(self, writer):
-        chunk = yield from self._value.read(DEFAULT_LIMIT)
+    async def write(self, writer):
+        chunk = await self._value.read(DEFAULT_LIMIT)
         while chunk:
-            yield from writer.write(chunk)
-            chunk = yield from self._value.read(DEFAULT_LIMIT)
+            await writer.write(chunk)
+            chunk = await self._value.read(DEFAULT_LIMIT)
 
 
 class DataQueuePayload(Payload):
 
-    @asyncio.coroutine
-    def write(self, writer):
+    async def write(self, writer):
         while True:
             try:
-                chunk = yield from self._value.read()
+                chunk = await self._value.read()
                 if not chunk:
                     break
-                yield from writer.write(chunk)
+                await writer.write(chunk)
             except EofStream:
                 break
 
