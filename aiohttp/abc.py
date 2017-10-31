@@ -84,7 +84,7 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    async def __await__(self):
+    def __await__(self):
         """Execute the view handler."""
 
 
