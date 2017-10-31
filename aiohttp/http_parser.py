@@ -31,7 +31,7 @@ __all__ = (
 ASCIISET = set(string.printable)
 METHRE = re.compile('[A-Z0-9$-_.]+')
 VERSRE = re.compile(r'HTTP/(\d+).(\d+)')
-HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
+HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\"]')
 
 RawRequestMessage = collections.namedtuple(
     'RawRequestMessage',

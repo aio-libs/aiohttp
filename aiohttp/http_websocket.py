@@ -353,7 +353,7 @@ class WebSocketReader:
 
                     if opcode == WSMsgType.TEXT:
                         try:
-                            text = payload_merged.decode('utf-8')
+                            text = payload_merged.decode()
                             self.queue.feed_data(
                                 WSMessage(WSMsgType.TEXT, text, ''), len(text))
                         except UnicodeDecodeError as exc:
@@ -411,7 +411,7 @@ class WebSocketReader:
                             'Received fragmented control frame')
 
                     has_mask = (second_byte >> 7) & 1
-                    length = (second_byte) & 0x7f
+                    length = second_byte & 0x7f
 
                     # Control frames MUST have a payload
                     # length of 125 bytes or less
@@ -592,19 +592,19 @@ class WebSocketWriter:
     def pong(self, message=b''):
         """Send pong message."""
         if isinstance(message, str):
-            message = message.encode('utf-8')
+            message = message.encode()
         return self._send_frame(message, WSMsgType.PONG)
 
     def ping(self, message=b''):
         """Send ping message."""
         if isinstance(message, str):
-            message = message.encode('utf-8')
+            message = message.encode()
         return self._send_frame(message, WSMsgType.PING)
 
     def send(self, message, binary=False):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
-            message = message.encode('utf-8')
+            message = message.encode()
         if binary:
             return self._send_frame(message, WSMsgType.BINARY)
         else:
@@ -613,7 +613,7 @@ class WebSocketWriter:
     def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
-            message = message.encode('utf-8')
+            message = message.encode()
         try:
             return self._send_frame(
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)

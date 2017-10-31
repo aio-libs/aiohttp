@@ -340,21 +340,21 @@ class StreamReader(AsyncStreamReaderMixin):
                     self._cursor == self._http_chunk_splits[0]):
                 # end of http chunk without available data
                 self._http_chunk_splits = self._http_chunk_splits[1:]
-                return (b"", True)
+                return b"", True
             await self._wait('readchunk')
 
         if not self._buffer:
             # end of file
-            return (b"", False)
+            return b"", False
         elif self._http_chunk_splits is not None:
             while self._http_chunk_splits:
                 pos = self._http_chunk_splits[0]
                 self._http_chunk_splits = self._http_chunk_splits[1:]
                 if pos > self._cursor:
-                    return (self._read_nowait(pos-self._cursor), True)
-            return (self._read_nowait(-1), False)
+                    return self._read_nowait(pos - self._cursor), True
+            return self._read_nowait(-1), False
         else:
-            return (self._read_nowait_chunk(-1), False)
+            return self._read_nowait_chunk(-1), False
 
     async def readexactly(self, n):
         if self._exception is not None:
@@ -451,14 +451,14 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def readline(self):
         return b''
 
-    async def read(self, n=-1):
+    async def read(self):
         return b''
 
     async def readany(self):
         return b''
 
     async def readchunk(self):
-        return (b'', False)
+        return b'', False
 
     async def readexactly(self, n):
         raise asyncio.streams.IncompleteReadError(b'', n)
@@ -551,7 +551,7 @@ class ChunksQueue(DataQueue):
 
     async def read(self):
         try:
-            return (await super().read())
+            return await super().read()
         except EofStream:
             return b''
 
@@ -574,14 +574,14 @@ class FlowControlStreamReader(StreamReader):
 
     async def read(self, n=-1):
         try:
-            return (await super().read(n))
+            return await super().read(n)
         finally:
             if self._size < self._b_limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
 
     async def readline(self):
         try:
-            return (await super().readline())
+            return await super().readline()
         finally:
             if self._size < self._b_limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()

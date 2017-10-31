@@ -76,6 +76,6 @@ def normalize_path_middleware(
                 if resolves:
                     return redirect_class(request.path + query)
 
-        return (await handler(request))
+        return await handler(request)
 
     return normalize_path_middleware
