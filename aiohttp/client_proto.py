@@ -129,10 +129,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                             skip_payload=False,
                             skip_status_codes=(),
                             read_until_eof=False,
-                            auto_decompress=True,
-                            on_headers_received=None,
-                            on_content_received=None,
-                            trace_context=None):
+                            auto_decompress=True):
         self._skip_payload = skip_payload
         self._skip_status_codes = skip_status_codes
         self._read_until_eof = read_until_eof
@@ -140,10 +137,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
             self, self._loop, timer=timer,
             payload_exception=ClientPayloadError,
             read_until_eof=read_until_eof,
-            auto_decompress=auto_decompress,
-            on_headers_received=on_headers_received,
-            on_content_received=on_content_received,
-            trace_context=trace_context)
+            auto_decompress=auto_decompress)
 
         if self._tail:
             data, self._tail = self._tail, b''

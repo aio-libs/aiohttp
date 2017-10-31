@@ -67,9 +67,7 @@ class HttpParser:
                  timer=None, code=None, method=None, readall=False,
                  payload_exception=None,
                  response_with_body=True, read_until_eof=False,
-                 auto_decompress=True,
-                 on_headers_received=None, on_content_received=None,
-                 trace_context=None):
+                 auto_decompress=True):
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
@@ -89,10 +87,6 @@ class HttpParser:
         self._payload = None
         self._payload_parser = None
         self._auto_decompress = auto_decompress
-
-        self._on_headers_received = on_headers_received
-        self._on_content_received = on_content_received
-        self._trace_context = trace_context
 
     def feed_eof(self):
         if self._payload_parser is not None:
@@ -148,9 +142,6 @@ class HttpParser:
                             msg = self.parse_message(self._lines)
                         finally:
                             self._lines.clear()
-
-                        if self._on_headers_received is not None:
-                            self._on_headers_received.send(self._trace_context)
 
                         # payload length
                         length = msg.headers.get(CONTENT_LENGTH)
@@ -248,9 +239,6 @@ class HttpParser:
             data = data[start_pos:]
         else:
             data = EMPTY
-
-        if self._on_headers_received is not None:
-            self._on_content_received.send(self._trace_context)
 
         return messages, self._upgraded, data
 

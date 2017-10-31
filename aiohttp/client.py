@@ -115,10 +115,6 @@ class ClientSession:
         self._on_request_end = Signal()
         self._on_request_exception = Signal()
         self._on_request_redirect = FuncSignal()
-        self._on_request_headers_sent = FuncSignal()
-        self._on_request_content_sent = FuncSignal()
-        self._on_request_headers_received = FuncSignal()
-        self._on_request_content_received = FuncSignal()
 
         # Convert to list of tuples
         if headers:
@@ -286,12 +282,7 @@ class ClientSession:
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
                         verify_ssl=verify_ssl, fingerprint=fingerprint,
-                        ssl_context=ssl_context, proxy_headers=proxy_headers,
-                        on_headers_sent=self.on_request_headers_sent,
-                        on_content_sent=self.on_request_content_sent,
-                        on_headers_received=self.on_request_headers_received,
-                        on_content_received=self.on_request_content_received,
-                        trace_context=trace_context)
+                        ssl_context=ssl_context, proxy_headers=proxy_headers)
 
                     # connection timeout
                     try:
@@ -745,24 +736,6 @@ class ClientSession:
     @property
     def on_request_dnscache_miss(self):
         return self._connector.on_dnscache_miss
-
-    # req resp signals
-
-    @property
-    def on_request_headers_sent(self):
-        return self._on_request_headers_sent
-
-    @property
-    def on_request_content_sent(self):
-        return self._on_request_content_sent
-
-    @property
-    def on_request_headers_received(self):
-        return self._on_request_headers_received
-
-    @property
-    def on_request_content_received(self):
-        return self._on_request_content_received
 
     def detach(self):
         """Detach connector from session without closing the former.

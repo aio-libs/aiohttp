@@ -709,45 +709,6 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.0
 
-   .. attribute:: on_request_headers_sent
-
-      Property that gives access to the signals that will be executed when a
-      request have sent the headers, based on the
-      :class:`~http.signals.FuncSignal` implementation.
-
-      The functions listening will receive the `trace_context` param.
-
-      .. versionadded:: 3.0
-
-   .. attribute:: on_request_content_sent
-
-      Property that gives access to the signals that will be executed when a
-      request have sent the content, based on the
-      :class:`~http.signals.FuncSignal` implementation.
-
-      .. versionadded:: 3.0
-
-   .. attribute:: on_request_headers_received
-
-      Property that gives access to the signals that will be executed when a
-      request have received the response headers, based on the
-      :class:`~http.signals.FuncSignal` implementation.
-
-      The functions listening will receive the `trace_context` param.
-
-      .. versionadded:: 3.0
-
-   .. attribute:: on_request_content_received
-
-      Property that gives access to the signals that will be executed when a
-      request have received the response content, based on the
-      :class:`~http.signals.FuncSignal` implementation.
-
-
-      The functions listening will receive the `trace_context` param.
-
-      .. versionadded:: 3.0
-
 
 Basic API
 ---------

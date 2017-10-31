@@ -484,15 +484,11 @@ def test_request_tracing(loop):
     on_request_start = mock.Mock()
     on_request_redirect = mock.Mock()
     on_request_end = mock.Mock()
-    on_request_headers_sent = mock.Mock()
-    on_request_content_sent = mock.Mock()
 
     session = aiohttp.ClientSession(loop=loop)
     session.on_request_start.append(on_request_start)
     session.on_request_redirect.append(on_request_redirect)
     session.on_request_end.append(on_request_end)
-    session.on_request_headers_sent.append(on_request_headers_sent)
-    session.on_request_content_sent.append(on_request_content_sent)
 
     resp = yield from session.get(
         'http://example.com',
@@ -508,8 +504,6 @@ def test_request_tracing(loop):
     )
 
     on_request_end.assert_called_once_with(trace_context, resp)
-    on_request_headers_sent.assert_called_once_with(trace_context)
-    on_request_content_sent.assert_called_once_with(trace_context)
     assert not on_request_redirect.called
 
 
@@ -589,29 +583,3 @@ def test_request_tracing_proxies_connector_signals(loop):
         id(connector.on_dnscache_hit)
     assert id(session.on_request_dnscache_miss) ==\
         id(connector.on_dnscache_miss)
-
-
-@asyncio.coroutine
-def test_request_tracing_clientrequest_signals(loop):
-
-    class MyClientRequest(ClientRequest):
-
-        def __init__(self, *args, **kwargs):
-            super(MyClientRequest, self).__init__(*args, **kwargs)
-            MyClientRequest.on_headers_sent = self._on_headers_sent
-            MyClientRequest.on_content_sent = self._on_content_sent
-            MyClientRequest.on_headers_received = self._on_headers_received
-            MyClientRequest.on_content_received = self._on_content_received
-            MyClientRequest.trace_context = self._trace_context
-
-    trace_context = mock.Mock()
-
-    session = aiohttp.ClientSession(loop=loop, request_class=MyClientRequest)
-    yield from session.get('http://example.com', trace_context=trace_context)
-    assert MyClientRequest.on_headers_sent == session.on_request_headers_sent
-    assert MyClientRequest.on_content_sent == session.on_request_content_sent
-    assert MyClientRequest.on_headers_received ==\
-        session.on_request_headers_received
-    assert MyClientRequest.on_content_received ==\
-        session.on_request_content_received
-    assert MyClientRequest.trace_context == trace_context
