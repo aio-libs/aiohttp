@@ -43,7 +43,7 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 class _BaseCoroMixin(Coroutine):
 
-    __slots__ = ('_coro')
+    __slots__ = ('_coro',)
 
     def __init__(self, coro):
         self._coro = coro
