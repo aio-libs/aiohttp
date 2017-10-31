@@ -349,9 +349,9 @@ class PlainResource(Resource):
 
 class DynamicResource(Resource):
 
-    DYN = re.compile(r'{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}')
+    DYN = re.compile(r'{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)}')
     DYN_WITH_RE = re.compile(
-        r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
+        r'{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)}')
     GOOD = r'[^{}/]+'
 
     def __init__(self, path, *, name=None):
@@ -573,7 +573,7 @@ class StaticResource(PrefixResource):
         return ret
 
     def _directory_as_html(self, filepath):
-        """returns directory's index as html"""
+        """Render directory index as html."""
         # sanity check
         assert filepath.is_dir()
 

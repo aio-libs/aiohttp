@@ -589,6 +589,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     @asyncio.coroutine
     def _prepare_hook(self, response):
         return
+        yield  # pragma: no cover
 
 
 class Request(BaseRequest):

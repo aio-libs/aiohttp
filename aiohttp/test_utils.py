@@ -33,7 +33,7 @@ def run_briefly(loop):
 
 def unused_port():
     """Return a port that is unused on the current host."""
-    with socket.socket() as s:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('127.0.0.1', 0))
         return s.getsockname()[1]
 
@@ -55,7 +55,7 @@ class BaseTestServer(ABC):
         if self.server:
             return
         self._loop = loop
-        self._socket = socket.socket()
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.bind((self.host, 0))
         self.port = self._socket.getsockname()[1]
         self._ssl = kwargs.pop('ssl', None)
@@ -500,7 +500,7 @@ def make_mocked_request(method, path, headers=None, *,
     if headers:
         headers = CIMultiDict(headers)
         raw_hdrs = tuple(
-            (k.encode(), v.encode('utf-8')) for k, v in headers.items())
+            (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items())
     else:
         headers = CIMultiDict()
         raw_hdrs = ()

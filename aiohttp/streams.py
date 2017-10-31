@@ -451,7 +451,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def readline(self):
         return b''
 
-    async def read(self):
+    async def read(self, n=-1):
         return b''
 
     async def readany(self):

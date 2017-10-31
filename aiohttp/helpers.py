@@ -43,7 +43,7 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 class _BaseCoroMixin(Coroutine):
 
-    __slots__ = '_coro'
+    __slots__ = ('_coro',)
 
     def __init__(self, coro):
         self._coro = coro
@@ -342,8 +342,8 @@ class AccessLogger(AbstractAccessLogger):
         'o': 'response_header',
     }
 
-    LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%({([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
+    LOG_FORMAT = '%a %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+    FORMAT_RE = re.compile(r'%({([A-Za-z0-9\-_]+)}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
 
