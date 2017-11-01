@@ -629,7 +629,7 @@ async def test_connect_tracing(loop):
     conn.on_createconn_start.append(on_createconn_start)
     conn.on_createconn_end.append(on_createconn_end)
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     await conn.connect(req, trace_context=trace_context)
@@ -944,7 +944,7 @@ async def test_connect_queued_operation_tracing(loop, key):
     conn.on_queued_end.append(on_queued_end)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
-    conn._create_connection.return_value = helpers.create_future(loop)
+    conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
     connection1 = await conn.connect(req, trace_context=trace_context)
