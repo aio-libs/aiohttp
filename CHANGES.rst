@@ -25,7 +25,7 @@ Changelog
 - Fix connection attempts for multiple dns hosts. (#2424)
 - Fix ValueError for AF_INET6 sockets if a preexisting INET6 socket to the
   `aiohttp.web.run_app` function. (#2431)
-- _SessionRequestContextManager closes the session properly now. (#2441)
+- `_SessionRequestContextManager` closes the session properly now. (#2441)
 - Rename `from_env` to `trust_env` in client reference. (#2451)
 
 

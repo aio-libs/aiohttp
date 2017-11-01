@@ -239,6 +239,7 @@ symlinks
 syscall
 syscalls
 Systemd
+tarball
 TCP
 teardown
 Teardown
