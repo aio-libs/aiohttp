@@ -2,6 +2,7 @@
 
 import asyncio
 import gc
+import hashlib
 import os.path
 import platform
 import shutil
@@ -361,6 +362,111 @@ def test_tcp_connector_certificate_error(loop):
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
     assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
                               '[CertificateError: ()]')
+
+
+@asyncio.coroutine
+def test_tcp_connector_multiple_hosts_errors(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+
+    ip1 = '192.168.1.1'
+    ip2 = '192.168.1.2'
+    ip3 = '192.168.1.3'
+    ip4 = '192.168.1.4'
+    ip5 = '192.168.1.5'
+    ips = [ip1, ip2, ip3, ip4, ip5]
+    ips_tried = []
+
+    fingerprint = hashlib.sha256(b'foo').digest()
+
+    req = ClientRequest('GET', URL('https://mocked.host'),
+                        fingerprint=fingerprint,
+                        loop=loop)
+
+    @asyncio.coroutine
+    def _resolve_host(host, port):
+        return [{
+            'hostname': host,
+            'host': ip,
+            'port': port,
+            'family': socket.AF_INET,
+            'proto': 0,
+            'flags': socket.AI_NUMERICHOST}
+            for ip in ips]
+
+    conn._resolve_host = _resolve_host
+
+    os_error = certificate_error = ssl_error = fingerprint_error = False
+    connected = False
+
+    @asyncio.coroutine
+    def create_connection(*args, **kwargs):
+        nonlocal os_error, certificate_error, ssl_error, fingerprint_error
+        nonlocal connected
+
+        ip = args[1]
+
+        ips_tried.append(ip)
+
+        if ip == ip1:
+            os_error = True
+            raise OSError
+
+        if ip == ip2:
+            certificate_error = True
+            raise ssl.CertificateError
+
+        if ip == ip3:
+            ssl_error = True
+            raise ssl.SSLError
+
+        if ip == ip4:
+            fingerprint_error = True
+            tr, pr = mock.Mock(), None
+
+            def get_extra_info(param):
+                if param == 'sslcontext':
+                    return True
+
+                if param == 'socket':
+                    s = mock.Mock()
+                    s.getpeercert.return_value = b'not foo'
+                    return s
+
+                assert False
+
+            tr.get_extra_info = get_extra_info
+            return tr, pr
+
+        if ip == ip5:
+            connected = True
+            tr, pr = mock.Mock(), None
+
+            def get_extra_info(param):
+                if param == 'sslcontext':
+                    return True
+
+                if param == 'socket':
+                    s = mock.Mock()
+                    s.getpeercert.return_value = b'foo'
+                    return s
+
+                assert False
+
+            tr.get_extra_info = get_extra_info
+            return tr, pr
+
+        assert False
+
+    conn._loop.create_connection = create_connection
+
+    yield from conn.connect(req)
+    assert ips == ips_tried
+
+    assert os_error
+    assert certificate_error
+    assert ssl_error
+    assert fingerprint_error
+    assert connected
 
 
 @asyncio.coroutine
