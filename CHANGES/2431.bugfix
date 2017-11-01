@@ -1,1 +1,0 @@
-fixed ValueError for AF_INET6 sockets if a preexisting INET6 socket to the `aiohttp.web.run_app` function.
