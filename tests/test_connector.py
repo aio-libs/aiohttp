@@ -658,7 +658,7 @@ def test_release_not_started(loop):
     # assert conn._conns == {1: [(proto, 10)]}
     rec = conn._conns[1]
     assert rec[0][0] == proto
-    assert rec[0][1] == pytest.approx(loop.time(), abs=0.01)
+    assert rec[0][1] == pytest.approx(loop.time(), abs=0.05)
     assert not proto.close.called
     conn.close()
 
