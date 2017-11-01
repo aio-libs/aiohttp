@@ -195,34 +195,7 @@ solved without major API change, but we are working hard for keeping
 these changes as rare as possible.
 
 
-Contents
-========
+Table Of Contents
+=================
 
-.. toctree::
-
-   client
-   client_reference
-   tutorial
-   web
-   web_reference
-   web_lowlevel
-   abc
-   multipart
-   streams
-   api
-   logging
-   testing
-   deployment
-   faq
-   external
-   essays
-   contributing
-   changes
-   glossary
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+To see the full table of contents open the :ref:`link <mastertoc>`.
