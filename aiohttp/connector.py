@@ -4,7 +4,9 @@ import sys
 import traceback
 import warnings
 from collections import defaultdict
+from contextlib import suppress
 from hashlib import md5, sha1, sha256
+from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import MappingProxyType
@@ -19,7 +21,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
-from .helpers import SimpleCookie, is_ip_address, noop, sentinel
+from .helpers import is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .log import client_logger
 from .resolver import DefaultResolver
@@ -98,10 +100,8 @@ class Connection:
         callbacks, self._callbacks = self._callbacks[:], []
 
         for cb in callbacks:
-            try:
+            with suppress(Exception):
                 cb()
-            except:
-                pass
 
     def close(self):
         self._notify_release()
@@ -347,8 +347,7 @@ class BaseConnector(object):
         """
         return self._closed
 
-    @asyncio.coroutine
-    def connect(self, req):
+    async def connect(self, req):
         """Get from pool or create new connection."""
         key = req.connection_key
 
@@ -371,13 +370,13 @@ class BaseConnector(object):
 
         # Wait if there are no available connections.
         if available <= 0:
-            fut = helpers.create_future(self._loop)
+            fut = self._loop.create_future()
 
             # This connection will now count towards the limit.
             waiters = self._waiters[key]
             waiters.append(fut)
             try:
-                yield from fut
+                await fut
             finally:
                 # remove a waiter even if it was cancelled
                 waiters.remove(fut)
@@ -390,11 +389,11 @@ class BaseConnector(object):
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
             try:
-                proto = yield from self._create_connection(req)
+                proto = await self._create_connection(req)
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-            except:
+            except Exception:
                 # signal to waiter
                 for waiter in self._waiters[key]:
                     if not waiter.done():
@@ -498,8 +497,7 @@ class BaseConnector(object):
                 self._cleanup_handle = helpers.weakref_handle(
                     self, '_cleanup', self._keepalive_timeout, self._loop)
 
-    @asyncio.coroutine
-    def _create_connection(self, req):
+    async def _create_connection(self, req):
         raise NotImplementedError()
 
 
@@ -563,8 +561,6 @@ class TCPConnector(BaseConnector):
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
-    resolve - (Deprecated) Set to True to do DNS lookup for
-        host name.
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
@@ -583,7 +579,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
-                 resolve=sentinel, use_dns_cache=True, ttl_dns_cache=10,
+                 use_dns_cache=True, ttl_dns_cache=10,
                  family=0, ssl_context=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
@@ -689,29 +685,27 @@ class TCPConnector(BaseConnector):
         else:
             self._cached_hosts.clear()
 
-    @asyncio.coroutine
-    def _resolve_host(self, host, port):
+    async def _resolve_host(self, host, port):
         if is_ip_address(host):
             return [{'hostname': host, 'host': host, 'port': port,
                      'family': self._family, 'proto': 0, 'flags': 0}]
 
         if not self._use_dns_cache:
-            return (yield from self._resolver.resolve(
+            return (await self._resolver.resolve(
                 host, port, family=self._family))
 
         key = (host, port)
 
-        if (key in self._cached_hosts) and\
+        if (key in self._cached_hosts) and \
                 (not self._cached_hosts.expired(key)):
             return self._cached_hosts.next_addrs(key)
 
         if key in self._throttle_dns_events:
-            yield from self._throttle_dns_events[key].wait()
+            await self._throttle_dns_events[key].wait()
         else:
-            self._throttle_dns_events[key] = \
-                EventResultOrError(self._loop)
+            self._throttle_dns_events[key] = EventResultOrError(self._loop)
             try:
-                addrs = yield from \
+                addrs = await \
                     asyncio.shield(self._resolver.resolve(host,
                                                           port,
                                                           family=self._family),
@@ -728,16 +722,15 @@ class TCPConnector(BaseConnector):
 
         return self._cached_hosts.next_addrs(key)
 
-    @asyncio.coroutine
-    def _create_connection(self, req):
+    async def _create_connection(self, req):
         """Create connection.
 
         Has same keyword arguments as BaseEventLoop.create_connection.
         """
         if req.proxy:
-            _, proto = yield from self._create_proxy_connection(req)
+            _, proto = await self._create_proxy_connection(req)
         else:
-            _, proto = yield from self._create_direct_connection(req)
+            _, proto = await self._create_direct_connection(req)
 
         return proto
 
@@ -780,12 +773,11 @@ class TCPConnector(BaseConnector):
         else:
             return (None, None)
 
-    @asyncio.coroutine
-    def _wrap_create_connection(self, *args,
-                                req, client_error=ClientConnectorError,
-                                **kwargs):
+    async def _wrap_create_connection(self, *args,
+                                      req, client_error=ClientConnectorError,
+                                      **kwargs):
         try:
-            return (yield from self._loop.create_connection(*args, **kwargs))
+            return await self._loop.create_connection(*args, **kwargs)
         except certificate_errors as exc:
             raise ClientConnectorCertificateError(
                 req.connection_key, exc) from exc
@@ -794,14 +786,13 @@ class TCPConnector(BaseConnector):
         except OSError as exc:
             raise client_error(req.connection_key, exc) from exc
 
-    @asyncio.coroutine
-    def _create_direct_connection(self, req,
-                                  *, client_error=ClientConnectorError):
+    async def _create_direct_connection(self, req,
+                                        *, client_error=ClientConnectorError):
         sslcontext = self._get_ssl_context(req)
         fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
         try:
-            hosts = yield from self._resolve_host(req.url.raw_host, req.port)
+            hosts = await self._resolve_host(req.url.raw_host, req.port)
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
@@ -814,7 +805,7 @@ class TCPConnector(BaseConnector):
             port = hinfo['port']
 
             try:
-                transp, proto = yield from self._wrap_create_connection(
+                transp, proto = await self._wrap_create_connection(
                     self._factory, host, port,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
@@ -850,8 +841,7 @@ class TCPConnector(BaseConnector):
         else:
             raise last_exc
 
-    @asyncio.coroutine
-    def _create_proxy_connection(self, req):
+    async def _create_proxy_connection(self, req):
         headers = {}
         if req.proxy_headers is not None:
             headers = req.proxy_headers
@@ -867,7 +857,7 @@ class TCPConnector(BaseConnector):
             ssl_context=req.ssl_context)
 
         # create connection to proxy server
-        transport, proto = yield from self._create_direct_connection(
+        transport, proto = await self._create_direct_connection(
             proxy_req, client_error=ClientProxyConnectionError)
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
@@ -894,8 +884,8 @@ class TCPConnector(BaseConnector):
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = proxy_req.send(conn)
             try:
-                resp = yield from proxy_resp.start(conn, True)
-            except:
+                resp = await proxy_resp.start(conn, True)
+            except Exception:
                 proxy_resp.close()
                 conn.close()
                 raise
@@ -919,7 +909,7 @@ class TCPConnector(BaseConnector):
                 finally:
                     transport.close()
 
-                transport, proto = yield from self._wrap_create_connection(
+                transport, proto = await self._wrap_create_connection(
                     self._factory, ssl=sslcontext, sock=rawsock,
                     server_hostname=req.host,
                     req=req)
@@ -939,13 +929,6 @@ class UnixConnector(BaseConnector):
     limit - The total number of simultaneous connections.
     limit_per_host - Number of simultaneous connections to one host.
     loop - Optional event loop.
-
-    Usage:
-
-    >>> conn = UnixConnector(path='/path/to/socket')
-    >>> session = ClientSession(connector=conn)
-    >>> resp = yield from session.get('http://python.org')
-
     """
 
     def __init__(self, path, force_close=False, keepalive_timeout=sentinel,
@@ -960,10 +943,9 @@ class UnixConnector(BaseConnector):
         """Path to unix socket."""
         return self._path
 
-    @asyncio.coroutine
-    def _create_connection(self, req):
+    async def _create_connection(self, req):
         try:
-            _, proto = yield from self._loop.create_unix_connection(
+            _, proto = await self._loop.create_unix_connection(
                 self._factory, self._path)
         except OSError as exc:
             raise ClientConnectorError(req.connection_key, exc) from exc

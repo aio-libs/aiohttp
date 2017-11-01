@@ -2,8 +2,10 @@ import asyncio
 import json
 from collections import namedtuple
 
+import async_timeout
+
 from . import hdrs
-from .helpers import PY_35, PY_352, Timeout, call_later, create_future
+from .helpers import call_later
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
                    WebSocketError, WebSocketReader, WSMessage, WSMsgType,
                    do_handshake)
@@ -194,18 +196,16 @@ class WebSocketResponse(StreamResponse):
     def send_json(self, data, *, dumps=json.dumps):
         return self.send_str(dumps(data))
 
-    @asyncio.coroutine
-    def write_eof(self):
+    async def write_eof(self):
         if self._eof_sent:
             return
         if self._payload_writer is None:
             raise RuntimeError("Response has not been started")
 
-        yield from self.close()
+        await self.close()
         self._eof_sent = True
 
-    @asyncio.coroutine
-    def close(self, *, code=1000, message=b''):
+    async def close(self, *, code=1000, message=b''):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
 
@@ -215,13 +215,13 @@ class WebSocketResponse(StreamResponse):
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
             self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
-            yield from self._waiting
+            await self._waiting
 
         if not self._closed:
             self._closed = True
             try:
                 self._writer.close(code, message)
-                yield from self.drain()
+                await self.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
@@ -234,8 +234,8 @@ class WebSocketResponse(StreamResponse):
                 return True
 
             try:
-                with Timeout(self._timeout, loop=self._loop):
-                    msg = yield from self._reader.read()
+                with async_timeout.timeout(self._timeout, loop=self._loop):
+                    msg = await self._reader.read()
             except asyncio.CancelledError:
                 self._close_code = 1006
                 raise
@@ -254,8 +254,7 @@ class WebSocketResponse(StreamResponse):
         else:
             return False
 
-    @asyncio.coroutine
-    def receive(self, timeout=None):
+    async def receive(self, timeout=None):
         if self._reader is None:
             raise RuntimeError('Call .prepare() first')
 
@@ -273,11 +272,11 @@ class WebSocketResponse(StreamResponse):
                 return WS_CLOSING_MESSAGE
 
             try:
-                self._waiting = create_future(self._loop)
+                self._waiting = self._loop.create_future()
                 try:
-                    with Timeout(
+                    with async_timeout.timeout(
                             timeout or self._receive_timeout, loop=self._loop):
-                        msg = yield from self._reader.read()
+                        msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:
                     waiter = self._waiting
@@ -288,20 +287,20 @@ class WebSocketResponse(StreamResponse):
                 raise
             except WebSocketError as exc:
                 self._close_code = exc.code
-                yield from self.close(code=exc.code)
+                await self.close(code=exc.code)
                 return WSMessage(WSMsgType.ERROR, exc, None)
             except Exception as exc:
                 self._exception = exc
                 self._closing = True
                 self._close_code = 1006
-                yield from self.close()
+                await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
             if msg.type == WSMsgType.CLOSE:
                 self._closing = True
                 self._close_code = msg.data
                 if not self._closed and self._autoclose:
-                    yield from self.close()
+                    await self.close()
             elif msg.type == WSMsgType.CLOSING:
                 self._closing = True
             elif msg.type == WSMsgType.PING and self._autoping:
@@ -312,44 +311,36 @@ class WebSocketResponse(StreamResponse):
 
             return msg
 
-    @asyncio.coroutine
-    def receive_str(self, *, timeout=None):
-        msg = yield from self.receive(timeout)
+    async def receive_str(self, *, timeout=None):
+        msg = await self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not WSMsgType.TEXT".format(
                     msg.type, msg.data))
         return msg.data
 
-    @asyncio.coroutine
-    def receive_bytes(self, *, timeout=None):
-        msg = yield from self.receive(timeout)
+    async def receive_bytes(self, *, timeout=None):
+        msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.type,
                                                                msg.data))
         return msg.data
 
-    @asyncio.coroutine
-    def receive_json(self, *, loads=json.loads, timeout=None):
-        data = yield from self.receive_str(timeout=timeout)
+    async def receive_json(self, *, loads=json.loads, timeout=None):
+        data = await self.receive_str(timeout=timeout)
         return loads(data)
 
     def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
 
-    if PY_35:
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
-
-        @asyncio.coroutine
-        def __anext__(self):
-            msg = yield from self.receive()
-            if msg.type in (WSMsgType.CLOSE,
-                            WSMsgType.CLOSING,
-                            WSMsgType.CLOSED):
-                raise StopAsyncIteration  # NOQA
-            return msg
+    async def __anext__(self):
+        msg = await self.receive()
+        if msg.type in (WSMsgType.CLOSE,
+                        WSMsgType.CLOSING,
+                        WSMsgType.CLOSED):
+            raise StopAsyncIteration  # NOQA
+        return msg

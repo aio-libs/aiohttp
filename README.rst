@@ -44,7 +44,7 @@ To retrieve something from the web:
   import async_timeout
 
   async def fetch(session, url):
-      with async_timeout.timeout(10):
+      async with async_timeout.timeout(10):
           async with session.get(url) as response:
               return await response.text()
 
@@ -94,19 +94,6 @@ This is simple usage example:
 
     web.run_app(app)
 
-
-Note: examples are written for Python 3.5+ and utilize PEP-492 aka
-async/await.  If you are using Python 3.4 please replace ``await`` with
-``yield from`` and ``async def`` with ``@coroutine`` e.g.::
-
-    async def coro(...):
-        ret = await f()
-
-should be replaced by::
-
-    @asyncio.coroutine
-    def coro(...):
-        ret = yield from f()
 
 Documentation
 =============

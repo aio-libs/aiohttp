@@ -2,7 +2,7 @@
 #
 # Based on https://github.com/MagicStack/httptools
 #
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
