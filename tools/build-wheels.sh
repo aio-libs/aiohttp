@@ -44,7 +44,7 @@ rm -fv /io/dist/*-linux_*.whl
 echo
 echo
 echo "Cleanup non-$package_name wheels"
-find /io/dist -maxdepth 1 -type f ! -name "$package_name"'-*-manylinux1_'"$arch"'.whl' -print0 | xargs -0 rm -rf
+find /io/dist -maxdepth 1 -type f ! -name "$package_name"'-*-manylinux1_*.whl' -print0 | xargs -0 rm -rf
 
 echo
 echo
