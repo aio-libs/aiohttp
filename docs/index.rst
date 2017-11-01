@@ -181,36 +181,3 @@ Table Of Contents
 =================
 
 To see the full table of contents open the :ref:`link <mastertoc>`.
-=======
-Contents
---------
-
-.. toctree::
-
-   client
-   client_reference
-   tutorial
-   web
-   web_reference
-   web_lowlevel
-   abc
-   multipart
-   multipart_reference
-   streams
-   api
-   logging
-   testing
-   deployment
-   faq
-   external
-   essays
-   contributing
-   changes
-   glossary
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
