@@ -377,8 +377,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
                         fingerprint=fingerprint,
                         loop=loop)
 
-    @asyncio.coroutine
-    def _resolve_host(host, port):
+    async def _resolve_host(host, port):
         return [{
             'hostname': host,
             'host': ip,
@@ -393,8 +392,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
     os_error = certificate_error = ssl_error = fingerprint_error = False
     connected = False
 
-    @asyncio.coroutine
-    def create_connection(*args, **kwargs):
+    async def create_connection(*args, **kwargs):
         nonlocal os_error, certificate_error, ssl_error, fingerprint_error
         nonlocal connected
 
