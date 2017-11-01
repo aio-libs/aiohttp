@@ -6,7 +6,7 @@ fi
 set -euo pipefail
 # ref: https://coderwall.com/p/fkfaqq/safer-bash-scripts-with-set-euxo-pipefail
 
-PYTHON_VERSIONS="cp34-cp34m cp35-cp35m cp36-cp36m"
+PYTHON_VERSIONS="cp35-cp35m cp36-cp36m"
 
 # Avoid creation of __pycache__/*.py[c|o]
 export PYTHONDONTWRITEBYTECODE=1
@@ -44,7 +44,7 @@ rm -fv /io/dist/*-linux_*.whl
 echo
 echo
 echo "Cleanup non-$package_name wheels"
-find /io/dist -maxdepth 1 -type f ! -name "$package_name"'-*-manylinux1_'"$arch"'.whl' -print0 | xargs -0 rm -rf
+find /io/dist -maxdepth 1 -type f ! -name "$package_name"'-*-manylinux1_*.whl' -print0 | xargs -0 rm -rf
 
 echo
 echo
