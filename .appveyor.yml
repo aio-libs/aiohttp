@@ -1,6 +1,6 @@
 environment:
   PYPI_PASSWD:
-    secure: syNUF3e8AEPY327rWBkKag==
+    secure: u+K6dKi7+CXXVFEUG4V7zUyV3w7Ntg0Ork/RGVV0eSQ=
   matrix:
     - PYTHON: "C:\\Python35"
     - PYTHON: "C:\\Python35-x64"
@@ -8,7 +8,7 @@ environment:
     - PYTHON: "C:\\Python36-x64"
 
 install:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U wheel setuptools"
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 build: false
@@ -25,7 +25,7 @@ artifacts:
 deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username fafhrd --password $env:PYPI_PASSWD"
+          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username andrew.svetlov --password $env:PYPI_PASSWD"
       }
 
 #notifications:
