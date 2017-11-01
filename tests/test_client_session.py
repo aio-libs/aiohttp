@@ -526,7 +526,7 @@ def test_request_tracing_exception(loop):
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
-        f = helpers.create_future(loop)
+        f = loop.create_future()
         f.set_exception(error)
         connect_patched.return_value = f
 
