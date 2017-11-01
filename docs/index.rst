@@ -3,17 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-aiohttp: Asynchronous HTTP Client/Server
-========================================
+===============================================================
+aiohttp: Asynchronous HTTP Client/Server for Python and asyncio
+===============================================================
 
-HTTP client/server for :term:`asyncio` (:pep:`3156`).
+HTTP client/server for :term:`asyncio` and Python.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp
 .. _Freenode: http://freenode.net
 
 
 Key Features
-------------
+============
 
 - Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
 - Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
@@ -22,7 +23,7 @@ Key Features
   :ref:`aiohttp-web-signals` and pluggable routing.
 
 Library Installation
---------------------
+====================
 
 .. code-block:: bash
 
@@ -44,7 +45,7 @@ This option is highly recommended:
    $ pip install aiodns
 
 Getting Started
----------------
+===============
 
 Client example::
 
@@ -100,13 +101,13 @@ Server example::
 
 
 Tutorial
---------
+========
 
 :ref:`Polls tutorial <aiohttp-tutorial>`
 
 
 Source code
------------
+===========
 
 The project is hosted on GitHub_
 
@@ -119,7 +120,7 @@ Continuous Integration.
 
 
 Dependencies
-------------
+============
 
 - Python 3.4.2+
 - *chardet*
@@ -144,7 +145,7 @@ Dependencies
 
 
 Communication channels
-----------------------
+======================
 
 *aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
 
@@ -157,14 +158,14 @@ We support `Stack Overflow
 Please add *aiohttp* tag to your question there.
 
 Contributing
-------------
+============
 
 Please read the :ref:`instructions for contributors<aiohttp-contributing>`
 before making a Pull Request.
 
 
 Authors and License
--------------------
+===================
 
 The ``aiohttp`` package is written mostly by Nikolay Kim and Andrew Svetlov.
 
@@ -176,7 +177,7 @@ Feel free to improve this package and send a pull request to GitHub_.
 .. _aiohttp-backward-compatibility-policy:
 
 Policy for Backward Incompatible Changes
-----------------------------------------
+========================================
 
 *aiohttp* keeps backward compatibility.
 
@@ -195,7 +196,7 @@ these changes as rare as possible.
 
 
 Contents
---------
+========
 
 .. toctree::
 
