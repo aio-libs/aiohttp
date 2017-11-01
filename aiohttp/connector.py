@@ -807,16 +807,24 @@ class TCPConnector(BaseConnector):
             # it is problem of resolving proxy ip itself
             raise ClientConnectorError(req.connection_key, exc) from exc
 
+        last_exc = None
+
         for hinfo in hosts:
             host = hinfo['host']
             port = hinfo['port']
-            transp, proto = yield from self._wrap_create_connection(
-                self._factory, host, port,
-                ssl=sslcontext, family=hinfo['family'],
-                proto=hinfo['proto'], flags=hinfo['flags'],
-                server_hostname=hinfo['hostname'] if sslcontext else None,
-                local_addr=self._local_addr,
-                req=req, client_error=client_error)
+
+            try:
+                transp, proto = yield from self._wrap_create_connection(
+                    self._factory, host, port,
+                    ssl=sslcontext, family=hinfo['family'],
+                    proto=hinfo['proto'], flags=hinfo['flags'],
+                    server_hostname=hinfo['hostname'] if sslcontext else None,
+                    local_addr=self._local_addr,
+                    req=req, client_error=client_error)
+            except ClientConnectorError as exc:
+                last_exc = exc
+                continue
+
             has_cert = transp.get_extra_info('sslcontext')
             if has_cert and fingerprint:
                 sock = transp.get_extra_info('socket')
@@ -834,9 +842,13 @@ class TCPConnector(BaseConnector):
                     transp.close()
                     if not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transp)
-                    raise ServerFingerprintMismatch(
+                    last_exc = ServerFingerprintMismatch(
                         expected, got, host, port)
+                    continue
+
             return transp, proto
+        else:
+            raise last_exc
 
     @asyncio.coroutine
     def _create_proxy_connection(self, req):
