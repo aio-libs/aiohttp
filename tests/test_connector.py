@@ -2,6 +2,7 @@
 
 import asyncio
 import gc
+import hashlib
 import os.path
 import platform
 import shutil
@@ -9,6 +10,7 @@ import socket
 import ssl
 import tempfile
 import unittest
+import uuid
 from unittest import mock
 
 import pytest
@@ -18,7 +20,7 @@ import aiohttp
 from aiohttp import client, web
 from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection, _DNSCacheTable
-from aiohttp.test_utils import unused_port
+from aiohttp.test_utils import make_mocked_coro, unused_port
 
 
 @pytest.fixture()
@@ -358,6 +360,108 @@ async def test_tcp_connector_certificate_error(loop):
                               '[CertificateError: ()]')
 
 
+async def test_tcp_connector_multiple_hosts_errors(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+
+    ip1 = '192.168.1.1'
+    ip2 = '192.168.1.2'
+    ip3 = '192.168.1.3'
+    ip4 = '192.168.1.4'
+    ip5 = '192.168.1.5'
+    ips = [ip1, ip2, ip3, ip4, ip5]
+    ips_tried = []
+
+    fingerprint = hashlib.sha256(b'foo').digest()
+
+    req = ClientRequest('GET', URL('https://mocked.host'),
+                        fingerprint=fingerprint,
+                        loop=loop)
+
+    async def _resolve_host(host, port):
+        return [{
+            'hostname': host,
+            'host': ip,
+            'port': port,
+            'family': socket.AF_INET,
+            'proto': 0,
+            'flags': socket.AI_NUMERICHOST}
+            for ip in ips]
+
+    conn._resolve_host = _resolve_host
+
+    os_error = certificate_error = ssl_error = fingerprint_error = False
+    connected = False
+
+    async def create_connection(*args, **kwargs):
+        nonlocal os_error, certificate_error, ssl_error, fingerprint_error
+        nonlocal connected
+
+        ip = args[1]
+
+        ips_tried.append(ip)
+
+        if ip == ip1:
+            os_error = True
+            raise OSError
+
+        if ip == ip2:
+            certificate_error = True
+            raise ssl.CertificateError
+
+        if ip == ip3:
+            ssl_error = True
+            raise ssl.SSLError
+
+        if ip == ip4:
+            fingerprint_error = True
+            tr, pr = mock.Mock(), None
+
+            def get_extra_info(param):
+                if param == 'sslcontext':
+                    return True
+
+                if param == 'socket':
+                    s = mock.Mock()
+                    s.getpeercert.return_value = b'not foo'
+                    return s
+
+                assert False
+
+            tr.get_extra_info = get_extra_info
+            return tr, pr
+
+        if ip == ip5:
+            connected = True
+            tr, pr = mock.Mock(), None
+
+            def get_extra_info(param):
+                if param == 'sslcontext':
+                    return True
+
+                if param == 'socket':
+                    s = mock.Mock()
+                    s.getpeercert.return_value = b'foo'
+                    return s
+
+                assert False
+
+            tr.get_extra_info = get_extra_info
+            return tr, pr
+
+        assert False
+
+    conn._loop.create_connection = create_connection
+
+    await conn.connect(req)
+    assert ips == ips_tried
+
+    assert os_error
+    assert certificate_error
+    assert ssl_error
+    assert fingerprint_error
+    assert connected
+
+
 async def test_tcp_connector_resolve_host(loop):
     conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
 
@@ -493,6 +597,19 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
 
         with pytest.raises(asyncio.futures.CancelledError):
             await f
+
+
+def test_dns_error(loop):
+    connector = aiohttp.TCPConnector(loop=loop)
+    connector._resolve_host = make_mocked_coro(
+        raise_exception=OSError('dont take it serious'))
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
 
 
 def test_get_pop_empty_conns(loop):
@@ -1245,6 +1362,34 @@ async def test_tcp_connector(test_client, loop):
 
     r = await client.get('/')
     assert r.status == 200
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="requires unix socket")
+def test_unix_connector_not_found(loop):
+    connector = aiohttp.UnixConnector('/' + uuid.uuid4().hex, loop=loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="requires unix socket")
+def test_unix_connector_permission(loop):
+    loop.create_unix_connection = make_mocked_coro(
+        raise_exception=PermissionError())
+    connector = aiohttp.UnixConnector('/' + uuid.uuid4().hex, loop=loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
 
 
 def test_default_use_dns_cache(loop):

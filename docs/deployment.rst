@@ -1,8 +1,8 @@
 .. _aiohttp-deployment:
 
-=========================
-aiohttp server deployment
-=========================
+=================
+Server Deployment
+=================
 
 There are several options for aiohttp server deployment:
 

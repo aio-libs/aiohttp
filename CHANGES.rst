@@ -1,6 +1,6 @@
-=======
-Changes
-=======
+=========
+Changelog
+=========
 
 ..
     You should *NOT* be adding new change log entries to this file, this
