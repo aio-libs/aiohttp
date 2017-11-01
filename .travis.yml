@@ -3,7 +3,6 @@ sudo: false
 language: python
 
 python:
-- 3.5.2
 - 3.5
 - &mainstream_python 3.6
 - 3.6-dev
@@ -37,12 +36,12 @@ _helpers:
   <<: *_reset_steps
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/dev.txt
+  - pip install -U -r requirements/ci.txt
 - &_doc_base
   <<: *_lint_base
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/dev.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
+  - pip install -U -r requirements/ci.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:

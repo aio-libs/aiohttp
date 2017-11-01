@@ -416,7 +416,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
         if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
             uris.append('{}://unix:{}:'.format(scheme, sock.getsockname()))
         else:
-            host, port = sock.getsockname()
+            host, port = sock.getsockname()[:2]
             uris.append(str(base_url.with_host(host).with_port(port)))
     return server_creations, uris
 

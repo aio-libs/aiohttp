@@ -1,6 +1,6 @@
 from unittest import mock
 
-from aiohttp import hdrs, helpers
+from aiohttp import hdrs
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web_fileresponse import FileResponse, SendfilePayloadWriter
 
@@ -10,7 +10,7 @@ def test_static_handle_eof(loop):
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         m_os.sendfile.return_value = 0
         writer = SendfilePayloadWriter(fake_loop, mock.Mock())
         writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
@@ -26,7 +26,7 @@ def test_static_handle_again(loop):
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         m_os.sendfile.side_effect = BlockingIOError()
         writer = SendfilePayloadWriter(fake_loop, mock.Mock())
         writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
@@ -44,7 +44,7 @@ def test_static_handle_exception(loop):
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         exc = OSError()
         m_os.sendfile.side_effect = exc
         writer = SendfilePayloadWriter(fake_loop, mock.Mock())
@@ -61,7 +61,7 @@ def test__sendfile_cb_return_on_cancelling(loop):
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
         in_fd = 31
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.cancel()
         writer = SendfilePayloadWriter(fake_loop, mock.Mock())
         writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)

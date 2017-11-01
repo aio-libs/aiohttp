@@ -1380,7 +1380,7 @@ manually.
 
    .. attribute:: closed
 
-      Read-only property, ``True`` if :meth:`close` has been called of
+      Read-only property, ``True`` if :meth:`close` has been called or
       :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
    .. attribute:: protocol

@@ -9,7 +9,6 @@ import functools
 import inspect
 import os
 import re
-import sys
 import time
 import warnings
 import weakref
@@ -29,9 +28,6 @@ from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
-PY_352 = sys.version_info >= (3, 5, 2)
-
-
 __all__ = ('BasicAuth',)
 
 
@@ -47,7 +43,7 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 class _BaseCoroMixin(Coroutine):
 
-    __slots__ = ('_coro')
+    __slots__ = ('_coro',)
 
     def __init__(self, coro):
         self._coro = coro
@@ -135,13 +131,6 @@ def deprecated_noop(message):
 coroutines._DEBUG = old_debug
 
 
-try:
-    from asyncio import isfuture
-except ImportError:
-    def isfuture(fut):
-        return isinstance(fut, asyncio.Future)
-
-
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     """Http basic authentication helper."""
 
@@ -217,16 +206,6 @@ def proxies_from_env():
             continue
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
-
-
-if PY_352:
-    def create_future(loop):
-        return loop.create_future()
-else:
-    def create_future(loop):  # pragma: no cover
-        """Compatibility wrapper for the loop.create_future() call introduced in
-        3.5.2."""
-        return asyncio.Future(loop=loop)
 
 
 def current_task(loop=None):

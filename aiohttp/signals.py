@@ -2,7 +2,6 @@ import asyncio
 from itertools import count
 
 from aiohttp.frozenlist import FrozenList
-from aiohttp.helpers import isfuture
 
 
 class BaseSignal(FrozenList):
@@ -12,7 +11,7 @@ class BaseSignal(FrozenList):
     async def _send(self, *args, **kwargs):
         for receiver in self:
             res = receiver(*args, **kwargs)
-            if asyncio.iscoroutine(res) or isfuture(res):
+            if asyncio.iscoroutine(res) or asyncio.isfuture(res):
                 await res
 
 

@@ -804,14 +804,14 @@ class _SessionRequestContextManager(_RequestContextManager):
         try:
             return (yield from self._coro)
         except Exception:
-            self._session.close()
+            yield from self._session.close()
             raise
 
     def __await__(self):
         try:
             return (yield from self._coro)
         except Exception:
-            self._session.close()
+            yield from self._session.close()
             raise
 
 

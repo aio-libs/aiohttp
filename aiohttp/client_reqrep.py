@@ -327,7 +327,7 @@ class ClientRequest:
             expect = True
 
         if expect:
-            self._continue = helpers.create_future(self.loop)
+            self._continue = self.loop.create_future()
 
     def update_proxy(self, proxy, proxy_auth, proxy_headers):
         if proxy and not proxy.scheme == 'http':

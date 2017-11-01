@@ -2,4 +2,3 @@
 ipdb==0.10.3
 pytest-sugar==0.9.0
 ipython==6.2.1
-towncrier==17.8.0
