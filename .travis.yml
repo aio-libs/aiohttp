@@ -212,6 +212,7 @@ jobs:
     - docker
     script:
     - ./tools/run_docker.sh "aiohttp"
+    - pip install -r requirements/ci.txt  # to compile *.c files by Cython
     deploy:
       provider: pypi
       # `skip_cleanup: true` is required to preserve binary wheels, built
