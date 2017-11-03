@@ -97,9 +97,10 @@ def test_run_wsgi(worker, loop):
     assert loop.is_closed()
 
 
-def test_handle_quit(worker):
+def test_handle_quit(worker, loop):
     with mock.patch('asyncio.ensure_future') as m_ensure_future:
         worker.loop = mock.Mock()
+        worker.close = mock.Mock()
         worker.handle_quit(object(), object())
         assert not worker.alive
         assert worker.exit_code == 0
@@ -185,7 +186,7 @@ def test__get_valid_log_format_exc(worker):
     assert '%(name)s' in str(exc)
 
 
-async def test__run_ok(worker, loop):
+async def test__run_ok_tcp(worker, loop):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
