@@ -162,8 +162,11 @@ def content_disposition_filename(params, name='filename'):
 
 
 class MultipartResponseWrapper(object):
-    """Wrapper around the :class:`MultipartBodyReader` to take care about
-    underlying connection and close it when it needs in."""
+    """Wrapper around the MultipartBodyReader.
+
+    It takes care about
+    underlying connection and close it when it needs in.
+    """
 
     def __init__(self, resp, stream):
         self.resp = resp
@@ -180,10 +183,7 @@ class MultipartResponseWrapper(object):
         return part
 
     def at_eof(self):
-        """Returns ``True`` when all response data had been read.
-
-        :rtype: bool
-        """
+        """Returns True when all response data had been read."""
         return self.resp.content.at_eof()
 
     async def next(self):
@@ -238,11 +238,9 @@ class BodyPartReader(object):
     def read(self, *, decode=False):
         """Reads body part data.
 
-        :param bool decode: Decodes data following by encoding
-                            method from `Content-Encoding` header. If it missed
-                            data remains untouched
-
-        :rtype: bytearray
+        decode: Decodes data following by encoding
+                method from Content-Encoding header. If it missed
+                data remains untouched
         """
         if self._at_eof:
             return b''
@@ -257,9 +255,7 @@ class BodyPartReader(object):
     def read_chunk(self, size=chunk_size):
         """Reads body part content chunk of the specified size.
 
-        :param int size: chunk size
-
-        :rtype: bytearray
+        size: chunk size
         """
         if self._at_eof:
             return b''
@@ -278,13 +274,8 @@ class BodyPartReader(object):
         return chunk
 
     async def _read_chunk_from_length(self, size):
-        """Reads body part content chunk of the specified size.
-        The body part must has `Content-Length` header with proper value.
-
-        :param int size: chunk size
-
-        :rtype: bytearray
-        """
+        # Reads body part content chunk of the specified size.
+        # The body part must has Content-Length header with proper value.
         assert self._length is not None, \
             'Content-Length required for chunked read'
         chunk_size = min(size, self._length - self._read_bytes)
@@ -292,13 +283,8 @@ class BodyPartReader(object):
         return chunk
 
     async def _read_chunk_from_stream(self, size):
-        """Reads content chunk of body part with unknown length.
-        The `Content-Length` header for body part is not necessary.
-
-        :param int size: chunk size
-
-        :rtype: bytearray
-        """
+        # Reads content chunk of body part with unknown length.
+        # The Content-Length header for body part is not necessary.
         assert size >= len(self._boundary) + 2, \
             'Chunk size must be greater or equal than boundary length + 2'
         first_chunk = self._prev_chunk is None
@@ -328,10 +314,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def readline(self):
-        """Reads body part by line by line.
-
-        :rtype: bytearray
-        """
+        """Reads body part by line by line."""
         if self._at_eof:
             return b''
 
@@ -361,10 +344,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def release(self):
-        """Like :meth:`read`, but reads all the data to the void.
-
-        :rtype: None
-        """
+        """Like read(), but reads all the data to the void."""
         if self._at_eof:
             return
         while not self._at_eof:
@@ -372,13 +352,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def text(self, *, encoding=None):
-        """Like :meth:`read`, but assumes that body part contains text data.
-
-        :param str encoding: Custom text encoding. Overrides specified
-                             in charset param of `Content-Type` header
-
-        :rtype: str
-        """
+        """Like read(), but assumes that body part contains text data."""
         data = yield from self.read(decode=True)
         # see https://www.w3.org/TR/html5/forms.html#multipart/form-data-encoding-algorithm # NOQA
         # and https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#dom-xmlhttprequest-send # NOQA
@@ -387,11 +361,7 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def json(self, *, encoding=None):
-        """Like :meth:`read`, but assumes that body parts contains JSON data.
-
-        :param str encoding: Custom JSON encoding. Overrides specified
-                             in charset param of `Content-Type` header
-        """
+        """Like read(), but assumes that body parts contains JSON data."""
         data = yield from self.read(decode=True)
         if not data:
             return None
@@ -400,11 +370,8 @@ class BodyPartReader(object):
 
     @asyncio.coroutine
     def form(self, *, encoding=None):
-        """Like :meth:`read`, but assumes that body parts contains form
+        """Like read(), but assumes that body parts contains form
         urlencoded data.
-
-        :param str encoding: Custom form encoding. Overrides specified
-                             in charset param of `Content-Type` header
         """
         data = yield from self.read(decode=True)
         if not data:
@@ -415,28 +382,12 @@ class BodyPartReader(object):
                          encoding=encoding)
 
     def at_eof(self):
-        """Returns ``True`` if the boundary was reached or
-        ``False`` otherwise.
-
-        :rtype: bool
-        """
+        """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
     def decode(self, data):
-        """Decodes data according the specified `Content-Encoding`
-        or `Content-Transfer-Encoding` headers value.
-
-        Supports ``gzip``, ``deflate`` and ``identity`` encodings for
-        `Content-Encoding` header.
-
-        Supports ``base64``, ``quoted-printable``, ``binary`` encodings for
-        `Content-Transfer-Encoding` header.
-
-        :param bytearray data: Data to decode.
-
-        :raises: :exc:`RuntimeError` - if encoding is unknown.
-
-        :rtype: bytes
+        """Decodes data according the specified Content-Encoding
+        or Content-Transfer-Encoding headers value.
         """
         if CONTENT_TRANSFER_ENCODING in self.headers:
             data = self._decode_content_transfer(data)
@@ -470,24 +421,25 @@ class BodyPartReader(object):
                                ''.format(encoding))
 
     def get_charset(self, default=None):
-        """Returns charset parameter from ``Content-Type`` header or default.
-        """
+        """Returns charset parameter from Content-Type header or default."""
         ctype = self.headers.get(CONTENT_TYPE, '')
         mimetype = parse_mimetype(ctype)
         return mimetype.parameters.get('charset', default)
 
     @reify
     def name(self):
-        """Returns filename specified in Content-Disposition header or ``None``
-        if missed or header is malformed."""
+        """Returns name specified in Content-Disposition header or None
+        if missed or header is malformed.
+        """
         _, params = parse_content_disposition(
             self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, 'name')
 
     @reify
     def filename(self):
-        """Returns filename specified in Content-Disposition header or ``None``
-        if missed or header is malformed."""
+        """Returns filename specified in Content-Disposition header or None
+        if missed or header is malformed.
+        """
         _, params = parse_content_disposition(
             self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, 'filename')
@@ -557,10 +509,8 @@ class MultipartReader(object):
         return obj
 
     def at_eof(self):
-        """Returns ``True`` if the final boundary was reached or
-        ``False`` otherwise.
-
-        :rtype: bool
+        """Returns True if the final boundary was reached or
+        False otherwise.
         """
         return self._at_eof
 
