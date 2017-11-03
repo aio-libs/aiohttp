@@ -234,8 +234,7 @@ class ClientSession:
         yield from self.on_request_start.send(
             trace_context,
             method,
-            url.host,
-            url.port,
+            url,
             headers
         )
 

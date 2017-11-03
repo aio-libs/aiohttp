@@ -580,7 +580,7 @@ The client session supports the context manager protocol for self closing.
       request starts, based on the :class:`~signals.Signal` implementation.
 
       The coroutines listening will receive as a param the `trace_context`,
-      `method`, `host`, `port` and `headers`.
+      `method`, `url` and `headers`.
 
       .. versionadded:: 3.0
 

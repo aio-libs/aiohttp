@@ -498,8 +498,7 @@ def test_request_tracing(loop):
     on_request_start.assert_called_once_with(
         trace_context,
         hdrs.METH_GET,
-        "example.com",
-        80,
+        URL("http://example.com"),
         CIMultiDict()
     )
 
@@ -554,7 +553,7 @@ def test_request_tracing_interpose_headers(loop):
             MyClientRequest.headers = self.headers
 
     @asyncio.coroutine
-    def new_headers(trace_context, method, host, port, headers):
+    def new_headers(trace_context, method, url, headers):
         headers['foo'] = 'bar'
 
     session = aiohttp.ClientSession(loop=loop, request_class=MyClientRequest)
