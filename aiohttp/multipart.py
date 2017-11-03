@@ -794,7 +794,7 @@ class MultipartWriter(Payload):
         yield from writer.write(b'--' + self._boundary + b'--\r\n')
 
 
-class MultipartPayloadWritero:
+class MultipartPayloadWriter:
 
     def __init__(self, writer):
         self._writer = writer
