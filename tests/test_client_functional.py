@@ -2226,7 +2226,17 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
 
 
 async def test_close_detached_session_on_non_existing_addr(loop):
-    session = aiohttp.ClientSession(loop=loop)
+    class FakeResolver(AbstractResolver):
+        async def resolve(host, port=0, family=socket.AF_INET):
+            return {}
+
+        async def close(self):
+            pass
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(),
+                                     loop=loop)
+
+    session = aiohttp.ClientSession(connector=connector)
 
     async with session:
         cm = session.get('http://non-existing.example.com')
