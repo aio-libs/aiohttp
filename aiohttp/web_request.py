@@ -62,7 +62,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, writer, task,
+    def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
                  *, client_max_size=1024**2,
                  state=None,
@@ -71,8 +71,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             state = {}
         self._message = message
         self._protocol = protocol
-        self._transport = protocol.transport
-        self._writer = writer
+        self._payload_writer = payload_writer
 
         self._payload = payload
         self._headers = message.headers
@@ -133,7 +132,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             message,
             self._payload,
             self._protocol,
-            self._writer,
+            self._payload_writer,
             self._task,
             self._loop,
             client_max_size=self._client_max_size,
@@ -154,7 +153,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def writer(self):
-        return self._writer
+        return self._payload_writer
 
     @property
     def message(self):
@@ -261,7 +260,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         scheme = self._scheme
         if scheme is not None:
             return scheme
-        if self._transport.get_extra_info('sslcontext'):
+        if self.transport.get_extra_info('sslcontext'):
             return 'https'
         else:
             return 'http'
@@ -316,8 +315,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         remote = self._remote
         if remote is not None:
             return remote
-        transport = self._transport
-        peername = transport.get_extra_info('peername')
+        peername = self.transport.get_extra_info('peername')
         if isinstance(peername, (list, tuple)):
             return peername[0]
         else:

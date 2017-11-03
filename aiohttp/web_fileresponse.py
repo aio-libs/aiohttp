@@ -116,8 +116,8 @@ class FileResponse(StreamResponse):
             writer = await self._sendfile_fallback(request, fobj, count)
         else:
             writer = request._protocol.writer.replace(
-                request._writer, SendfilePayloadWriter)
-            request._writer = writer
+                request._payload_writer, SendfilePayloadWriter)
+            request._payload_writer = writer
             await super().prepare(request)
             await writer.sendfile(fobj, count)
 
