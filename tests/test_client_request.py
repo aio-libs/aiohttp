@@ -1027,6 +1027,8 @@ def test_terminate_with_closed_loop(loop, conn):
     assert req._writer is not None
     writer = req._writer = mock.Mock()
 
+    loop.run_until_complete(asyncio.sleep(0.05, loop=loop))
+
     loop.close()
     req.terminate()
     assert req._writer is None
