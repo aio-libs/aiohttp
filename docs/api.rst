@@ -210,12 +210,3 @@ For concrete usage examples see :ref:`signals in aiohttp.web
    .. method:: freeze()
 
       Freeze the list. After the call any content modification is forbidden.
-
-
-aiohttp.multipart module
-------------------------
-
-.. automodule:: aiohttp.multipart
-    :members:
-    :undoc-members:
-    :show-inheritance:
