@@ -123,3 +123,64 @@ Multipart reference
       if missed or header is malformed.
 
       Readonly :class:`str` property.
+
+
+.. class:: MultipartReader(headers, content)
+
+   Multipart body reader.
+
+   .. classmethod:: from_response(cls, response)
+
+      Constructs reader instance from HTTP response.
+
+      :param response: :class:`~aiohttp.client.ClientResponse` instance
+
+   .. method:: at_eof()
+
+      Returns ``True`` if the final boundary was reached or
+      ``False`` otherwise.
+
+      :rtype: bool
+
+   .. comethod:: next()
+
+      Emits the next multipart body part.
+
+   .. comethod:: release()
+
+      Reads all the body parts to the void till the final boundary.
+
+   .. comethod:: fetch_next_part()
+
+      Returns the next body part reader.
+
+
+.. class:: MultipartWriter(subtype='mixed', boundary=None)
+
+   Multipart body writer.
+
+   .. attribute:: boundary
+
+   .. method:: append(obj, headers=None)
+
+      Append an object to writer.
+
+   .. method:: append_payload(payload)
+
+      Adds a new body part to multipart writer.
+
+   .. method:: append_json(obj, headers=None)
+
+      Helper to append JSON part.
+
+   .. method:: append_form(obj, headers=None)
+
+      Helper to append form urlencoded part.
+
+   .. attribute:: size
+
+      Size of the payload.
+
+   .. comethod:: write(writer)
+
+      Write body.

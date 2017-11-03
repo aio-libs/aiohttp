@@ -509,10 +509,8 @@ class MultipartReader(object):
         return obj
 
     def at_eof(self):
-        """Returns ``True`` if the final boundary was reached or
-        ``False`` otherwise.
-
-        :rtype: bool
+        """Returns True if the final boundary was reached or
+        False otherwise.
         """
         return self._at_eof
 
@@ -796,7 +794,7 @@ class MultipartWriter(Payload):
         yield from writer.write(b'--' + self._boundary + b'--\r\n')
 
 
-class MultipartPayloadWriter:
+class MultipartPayloadWritero:
 
     def __init__(self, writer):
         self._writer = writer
