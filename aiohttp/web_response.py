@@ -343,7 +343,7 @@ class StreamResponse(HeadersMixin):
         self._keep_alive = keep_alive
 
         version = request.version
-        writer = self._payload_writer = request._writer
+        writer = self._payload_writer = request._payload_writer
 
         headers = self._headers
         for cookie in self._cookies.values():
