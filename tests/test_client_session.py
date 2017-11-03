@@ -502,7 +502,13 @@ def test_request_tracing(loop):
         CIMultiDict()
     )
 
-    on_request_end.assert_called_once_with(trace_context, resp)
+    on_request_end.assert_called_once_with(
+        trace_context,
+        hdrs.METH_GET,
+        URL("http://example.com"),
+        CIMultiDict(),
+        resp
+    )
     assert not on_request_redirect.called
 
 
@@ -538,7 +544,13 @@ def test_request_tracing_exception(loop):
         except Exception:
             pass
 
-        on_request_exception.assert_called_once_with(mock.ANY, error)
+        on_request_exception.assert_called_once_with(
+            mock.ANY,
+            hdrs.METH_GET,
+            URL("http://example.com"),
+            CIMultiDict(),
+            error
+        )
         assert not on_request_end.called
 
 

@@ -591,7 +591,7 @@ The client session supports the context manager protocol for self closing.
       the :class:`~signals.FuncSignal` implementation.
 
       The functions that are listening will receive the
-      `trace_context` and `resp` params.
+      `trace_context`, `method`, `url`, `headers` and `resp` params.
 
       .. versionadded:: 3.0
 
@@ -601,8 +601,8 @@ The client session supports the context manager protocol for self closing.
       request ends, based on
       the :class:`~signals.Signal` implementation.
 
-      The coroutines that are listening will receive the `trace_context`
-      and `resp` params
+      The coroutines that are listening will receive the `trace_context`,
+      `method`, `url`, `headers` and `resp` params
 
       .. versionadded:: 3.0
 
@@ -612,8 +612,8 @@ The client session supports the context manager protocol for self closing.
       request finishes with an exception, based on
       the :class:`~signals.Signal` implementation.
 
-      The coroutines listening will receive the `trace_context`
-      and `exception` params.
+      The coroutines listening will receive the `trace_context`,
+      `method`, `url`, `headers` and `exception` params.
 
       .. versionadded:: 3.0
 

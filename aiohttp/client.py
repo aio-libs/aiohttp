@@ -315,7 +315,13 @@ class ClientSession:
                     if resp.status in (
                             301, 302, 303, 307, 308) and allow_redirects:
 
-                        self.on_request_redirect.send(trace_context, resp)
+                        self.on_request_redirect.send(
+                            trace_context,
+                            method,
+                            url,
+                            headers,
+                            resp
+                        )
 
                         redirects += 1
                         history.append(resp)
@@ -380,7 +386,13 @@ class ClientSession:
                     handle.cancel()
 
             resp._history = tuple(history)
-            yield from self.on_request_end.send(trace_context, resp)
+            yield from self.on_request_end.send(
+                trace_context,
+                method,
+                url,
+                headers,
+                resp
+            )
             return resp
 
         except Exception as e:
@@ -390,7 +402,13 @@ class ClientSession:
                 handle.cancel()
                 handle = None
 
-            yield from self.on_request_exception.send(trace_context, e)
+            yield from self.on_request_exception.send(
+                trace_context,
+                method,
+                url,
+                headers, 
+                e
+            )
             raise
 
     def ws_connect(self, url, *,
