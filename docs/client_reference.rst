@@ -1552,6 +1552,18 @@ Response errors
       Instance of :class:`RequestInfo` object, contains information
       about request.
 
+   .. attribute:: code
+
+      HTTP status code of response (:class:`int`), e.g. ``200``.
+
+   .. attribute:: message
+
+      Message of response (:class:`str`), e.g. ``"OK"``.
+
+   .. attribute:: headers
+
+      Headers in response, a list of pairs.
+
    .. attribute:: history
 
       History from failed response, if available, else empty tuple.
