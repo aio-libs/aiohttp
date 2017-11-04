@@ -7,7 +7,7 @@
        as a target branch;
      - If this is a bug fix or documentation amendment, select the latest
        [release branch](https://github.com/aio-libs/aiohttp/branches) (which
-       looks like "x.x.x") -->
+       looks like "X.Y" e.g. "2.3") -->
 
 ## What do these changes do?
 
