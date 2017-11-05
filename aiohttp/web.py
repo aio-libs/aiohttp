@@ -448,6 +448,7 @@ class Server:
     @asyncio.coroutine
     def start(self):
         for app in self._apps:
+            app._set_loop(self.loop)
             yield from app.startup()
 
         self._servers = yield from self._create_servers(self._handler)
