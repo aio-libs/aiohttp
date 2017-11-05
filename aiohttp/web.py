@@ -473,14 +473,15 @@ class Server:
             yield from app.cleanup()
 
 
-def run_app(app, *, print=print, handle_signals=True, loop=None, **kwargs):
+def run_app(*apps, print=print, handle_signals=True, loop=None, **kwargs):
     """Run an app locally"""
     user_supplied_loop = loop is not None
     if loop is None:
         loop = asyncio.get_event_loop()
 
     server = Server(loop=loop, **kwargs)
-    server.register(app)
+    for app in apps:
+        server.register(app)
 
     uris = loop.run_until_complete(server.start())
 
