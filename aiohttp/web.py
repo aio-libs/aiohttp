@@ -352,7 +352,7 @@ class Server:
         self.backlog = backlog
         self.access_log_format = access_log_format
         self.access_log = access_log
-        self.base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+        self.base_url = URL.build(scheme=scheme, host='localhost', port=port)
 
         if path is None:
             self.paths = ()
