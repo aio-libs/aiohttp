@@ -2,7 +2,7 @@ async-timeout==2.0.0
 brotlipy==0.7.0
 cchardet==2.1.1
 chardet==3.0.4
-coverage==4.4.1
+coverage==4.4.2
 cython==0.27.2
 flake8==3.5.0
 gunicorn==19.7.1
