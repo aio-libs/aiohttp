@@ -7,7 +7,8 @@ FAQ
 Are there any plans for @app.route decorator like in Flask?
 -----------------------------------------------------------
 
-We have it already: :ref:`aiohttp-web-alternative-routes-definition`.
+We have it already (*aiohttp>=2.3* required):
+:ref:`aiohttp-web-alternative-routes-definition`.
 
 The difference is: ``@app.route`` should have an ``app`` in module
 global namespace, which makes *circular import hell* easy.
