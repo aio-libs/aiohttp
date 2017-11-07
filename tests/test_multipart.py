@@ -28,9 +28,8 @@ def buf():
 def stream(buf):
     writer = mock.Mock()
 
-    def write(chunk):
+    async def write(chunk):
         buf.extend(chunk)
-        return ()
 
     writer.write.side_effect = write
     return writer

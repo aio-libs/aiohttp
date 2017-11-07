@@ -1263,13 +1263,29 @@ manually.
 
       Returns exception if any occurs or returns None.
 
-   .. method:: ping(message=b'')
+   .. comethod:: ping(message=b'')
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: pong(message=b'')
+
+      Send :const:`~aiohttp.WSMsgType.PONG` to peer.
+
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
+                      or :class:`bytes`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: send_str(data)
 
@@ -1279,6 +1295,10 @@ manually.
 
       :raise TypeError: if data is not :class:`str`
 
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
    .. comethod:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
@@ -1287,6 +1307,10 @@ manually.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: send_json(data, *, dumps=json.dumps)
 
@@ -1304,6 +1328,10 @@ manually.
 
       :raise TypeError: if value returned by ``dumps(data)`` is not
                         :class:`str`
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: close(*, code=1000, message=b'')
 
