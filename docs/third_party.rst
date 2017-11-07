@@ -199,3 +199,6 @@ period ask to raise he status.
 
 - `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
   GraphQL and GraphIQL interface for aiohttp.
+
+- `aiohttp-sentry <https://github.com/underyx/aiohttp-sentry>`_
+  An aiohttp middleware for reporting errors to Sentry. Python 3.5+ is required.
