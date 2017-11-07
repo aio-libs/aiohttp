@@ -320,6 +320,9 @@ viewed using the :meth:`UrlDispatcher.named_resources` method::
    :meth:`UrlDispatcher.resources` instead of
    :meth:`UrlDispatcher.named_routes` / :meth:`UrlDispatcher.routes`.
 
+
+.. _aiohttp-web-alternative-routes-definition:
+
 Alternative ways for registering routes
 ---------------------------------------
 
