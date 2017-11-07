@@ -61,7 +61,7 @@ class ClientWebSocketResponse:
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            self.ping()
+            self._writer.ping()
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -106,25 +106,25 @@ class ClientWebSocketResponse:
     def exception(self):
         return self._exception
 
-    def ping(self, message='b'):
-        self._writer.ping(message)
+    async def ping(self, message='b'):
+        await self._writer.ping(message)
 
-    def pong(self, message='b'):
-        self._writer.pong(message)
+    async def pong(self, message='b'):
+        await self._writer.pong(message)
 
-    def send_str(self, data):
+    async def send_str(self, data):
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
-        return self._writer.send(data, binary=False)
+        await self._writer.send(data, binary=False)
 
-    def send_bytes(self, data):
+    async def send_bytes(self, data):
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
-        return self._writer.send(data, binary=True)
+        await self._writer.send(data, binary=True)
 
-    def send_json(self, data, *, dumps=json.dumps):
-        return self.send_str(dumps(data))
+    async def send_json(self, data, *, dumps=json.dumps):
+        await self.send_str(dumps(data))
 
     async def close(self, *, code=1000, message=b''):
         # we need to break `receive()` cycle first,
@@ -223,7 +223,7 @@ class ClientWebSocketResponse:
             elif msg.type == WSMsgType.CLOSING:
                 self._closing = True
             elif msg.type == WSMsgType.PING and self._autoping:
-                self.pong(msg.data)
+                await self.pong(msg.data)
                 continue
             elif msg.type == WSMsgType.PONG and self._autoping:
                 continue

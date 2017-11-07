@@ -115,34 +115,6 @@ async def test_websocket_send_json(loop, test_client):
     assert data['test'] == expected_value
 
 
-async def test_websocket_send_drain(loop, test_client):
-
-    async def handler(request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-
-        ws._writer._limit = 1
-
-        data = await ws.receive_json()
-        drain = ws.send_json(data)
-        assert drain
-
-        await drain
-        await ws.close()
-        return ws
-
-    app = web.Application()
-    app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
-
-    ws = await client.ws_connect('/')
-    expected_value = 'value'
-    await ws.send_json({'test': expected_value})
-
-    data = await ws.receive_json()
-    assert data['test'] == expected_value
-
-
 async def test_websocket_receive_json(loop, test_client):
 
     async def handler(request):
@@ -386,7 +358,7 @@ async def test_auto_pong_with_closing_by_peer(loop, test_client):
     client = await test_client(app)
 
     ws = await client.ws_connect('/', autoclose=False, autoping=False)
-    ws.ping()
+    await ws.ping()
     await ws.send_str('ask')
 
     msg = await ws.receive()
@@ -403,7 +375,7 @@ async def test_ping(loop, test_client):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        ws.ping('data')
+        await ws.ping('data')
         await ws.receive()
         closed.set_result(None)
         return ws
@@ -417,7 +389,7 @@ async def test_ping(loop, test_client):
     msg = await ws.receive()
     assert msg.type == WSMsgType.PING
     assert msg.data == b'data'
-    ws.pong()
+    await ws.pong()
     await ws.close()
     await closed
 
@@ -440,11 +412,11 @@ async def test_client_ping(loop, test_client):
 
     ws = await client.ws_connect('/', autoping=False)
 
-    ws.ping('data')
+    await ws.ping('data')
     msg = await ws.receive()
     assert msg.type == WSMsgType.PONG
     assert msg.data == b'data'
-    ws.pong()
+    await ws.pong()
     await ws.close()
 
 
@@ -458,7 +430,7 @@ async def test_pong(loop, test_client):
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.PING
-        ws.pong('data')
+        await ws.pong('data')
 
         msg = await ws.receive()
         assert msg.type == WSMsgType.CLOSE
@@ -473,7 +445,7 @@ async def test_pong(loop, test_client):
 
     ws = await client.ws_connect('/', autoping=False)
 
-    ws.ping('data')
+    await ws.ping('data')
     msg = await ws.receive()
     assert msg.type == WSMsgType.PONG
     assert msg.data == b'data'
@@ -613,7 +585,7 @@ async def test_server_close_handshake_server_eats_client_messages(
 
     await ws.send_str('text')
     await ws.send_bytes(b'bytes')
-    ws.ping()
+    await ws.ping()
 
     await ws.close()
     await closed
@@ -743,7 +715,7 @@ async def test_server_ws_async_for(loop, test_server):
 
             items = ['q1', 'q2', 'q3']
             for item in items:
-                resp.send_str(item)
+                await resp.send_str(item)
                 msg = await resp.receive()
                 assert msg.type == aiohttp.WSMsgType.TEXT
                 assert item + '/answer' == msg.data

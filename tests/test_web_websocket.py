@@ -59,34 +59,34 @@ def make_request(app, protocol, writer):
     return maker
 
 
-def test_nonstarted_ping():
+async def test_nonstarted_ping():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
-        ws.ping()
+        await ws.ping()
 
 
-def test_nonstarted_pong():
+async def test_nonstarted_pong():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
-        ws.pong()
+        await ws.pong()
 
 
-def test_nonstarted_send_str():
+async def test_nonstarted_send_str():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
-        ws.send_str('string')
+        await ws.send_str('string')
 
 
-def test_nonstarted_send_bytes():
+async def test_nonstarted_send_bytes():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
-        ws.send_bytes(b'bytes')
+        await ws.send_bytes(b'bytes')
 
 
-def test_nonstarted_send_json():
+async def test_nonstarted_send_json():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
-        ws.send_json({'type': 'json'})
+        await ws.send_json({'type': 'json'})
 
 
 async def test_nonstarted_close():
@@ -146,7 +146,7 @@ async def test_send_str_nonstring(make_request):
     ws = WebSocketResponse()
     await ws.prepare(req)
     with pytest.raises(TypeError):
-        ws.send_str(b'bytes')
+        await ws.send_str(b'bytes')
 
 
 async def test_send_bytes_nonbytes(make_request):
@@ -154,7 +154,7 @@ async def test_send_bytes_nonbytes(make_request):
     ws = WebSocketResponse()
     await ws.prepare(req)
     with pytest.raises(TypeError):
-        ws.send_bytes('string')
+        await ws.send_bytes('string')
 
 
 async def test_send_json_nonjson(make_request):
@@ -162,13 +162,13 @@ async def test_send_json_nonjson(make_request):
     ws = WebSocketResponse()
     await ws.prepare(req)
     with pytest.raises(TypeError):
-        ws.send_json(set())
+        await ws.send_json(set())
 
 
-def test_write_non_prepared():
+async def test_write_non_prepared():
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
-        ws.write(b'data')
+        await ws.write(b'data')
 
 
 def test_websocket_ready():
@@ -248,7 +248,7 @@ async def test_send_str_closed(make_request, mocker):
     await ws.close()
 
     mocker.spy(ws_logger, 'warning')
-    ws.send_str('string')
+    await ws.send_str('string')
     assert ws_logger.warning.called
 
 
@@ -260,7 +260,7 @@ async def test_send_bytes_closed(make_request, mocker):
     await ws.close()
 
     mocker.spy(ws_logger, 'warning')
-    ws.send_bytes(b'bytes')
+    await ws.send_bytes(b'bytes')
     assert ws_logger.warning.called
 
 
@@ -272,7 +272,7 @@ async def test_send_json_closed(make_request, mocker):
     await ws.close()
 
     mocker.spy(ws_logger, 'warning')
-    ws.send_json({'type': 'json'})
+    await ws.send_json({'type': 'json'})
     assert ws_logger.warning.called
 
 
@@ -284,7 +284,7 @@ async def test_ping_closed(make_request, mocker):
     await ws.close()
 
     mocker.spy(ws_logger, 'warning')
-    ws.ping()
+    await ws.ping()
     assert ws_logger.warning.called
 
 
@@ -296,7 +296,7 @@ async def test_pong_closed(make_request, mocker):
     await ws.close()
 
     mocker.spy(ws_logger, 'warning')
-    ws.pong()
+    await ws.pong()
     assert ws_logger.warning.called
 
 

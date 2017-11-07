@@ -1,6 +1,5 @@
 """Http related parsers and protocol."""
 
-import asyncio
 import collections
 import socket
 import zlib
@@ -112,17 +111,16 @@ class StreamWriter:
         except OSError:
             pass
 
-    @asyncio.coroutine
-    def drain(self):
+    async def drain(self):
         """Flush the write buffer.
 
         The intended use is to write
 
           w.write(data)
-          yield from w.drain()
+          await w.drain()
         """
         if self._protocol.transport is not None:
-            yield from self._protocol._drain_helper()
+            await self._protocol._drain_helper()
 
 
 class PayloadWriter(AbstractPayloadWriter):
@@ -281,17 +279,16 @@ class PayloadWriter(AbstractPayloadWriter):
         self._transport = None
         self._stream.release()
 
-    @asyncio.coroutine
-    def drain(self, last=False):
+    async def drain(self, last=False):
         if self._transport is not None:
             if self._buffer:
                 self._transport.write(b''.join(self._buffer))
                 if not last:
                     self._buffer.clear()
-            yield from self._stream.drain()
+            await self._stream.drain()
         else:
             # wait for transport
             if self._drain_waiter is None:
                 self._drain_waiter = self.loop.create_future()
 
-            yield from self._drain_waiter
+            await self._drain_waiter

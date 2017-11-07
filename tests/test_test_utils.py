@@ -180,11 +180,11 @@ def test_get_route(loop, test_client):
 
 async def test_client_websocket(loop, test_client):
     resp = await test_client.ws_connect("/websocket")
-    resp.send_str("foo")
+    await resp.send_str("foo")
     msg = await resp.receive()
     assert msg.type == aiohttp.WSMsgType.TEXT
     assert "foo" in msg.data
-    resp.send_str("close")
+    await resp.send_str("close")
     msg = await resp.receive()
     assert msg.type == aiohttp.WSMsgType.CLOSE
 

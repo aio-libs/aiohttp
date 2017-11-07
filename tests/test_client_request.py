@@ -59,7 +59,7 @@ def conn(stream):
 
 
 @pytest.fixture
-def stream(buf, transport):
+def stream(buf, transport, loop):
     stream = mock.Mock()
     stream.transport = transport
 
@@ -67,7 +67,8 @@ def stream(buf, transport):
         writer.set_transport(transport)
 
     stream.acquire.side_effect = acquire
-    stream.drain.return_value = ()
+    stream.drain.return_value = loop.create_future()
+    stream.drain.return_value.set_result(None)
     return stream
 
 

@@ -1,0 +1,2 @@
+`send_str()`, `send_bytes()`, `send_json()`, `ping()` and `pong()` are
+genuine async functions now.

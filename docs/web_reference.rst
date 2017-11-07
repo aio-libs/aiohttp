@@ -885,11 +885,10 @@ WebSocketResponse
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
 
-   .. versionadded:: 1.3.0
-
    To enable back-pressure from slow websocket clients treat methods
-   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as
-   coroutines.  By default write buffer size is set to 64k.
+   :meth:`ping()`, :meth:`pong()`, :meth:`send_str()`,
+   :meth:`send_bytes()`, :meth:`send_json()` as coroutines.  By
+   default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -901,8 +900,6 @@ WebSocketResponse
                          :const:`~aiohttp.WSMsgType.PING`
                          requests, you need to do this explicitly
                          using :meth:`ping` method.
-
-   .. versionadded:: 1.3.0
 
    :param float heartbeat: Send `ping` message every `heartbeat`
                            seconds and wait `pong` response, close
@@ -916,16 +913,14 @@ WebSocketResponse
    :param float compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
 
-   .. versionadded:: 0.19
+   The class supports ``async for`` statement for iterating over
+   incoming messages::
 
-      The class supports ``async for`` statement for iterating over
-      incoming messages::
+      ws = web.WebSocketResponse()
+      await ws.prepare(request)
 
-         ws = web.WebSocketResponse()
-         await ws.prepare(request)
-
-         async for msg in ws:
-             print(msg.data)
+          async for msg in ws:
+              print(msg.data)
 
 
    .. coroutinemethod:: prepare(request)
@@ -937,8 +932,6 @@ WebSocketResponse
 
 
       :raises HTTPException: if websocket handshake has failed.
-
-      .. versionadded:: 0.18
 
    .. method:: can_prepare(request)
 
@@ -985,7 +978,7 @@ WebSocketResponse
 
       Returns last occurred exception or None.
 
-   .. method:: ping(message=b'')
+   .. comethod:: ping(message=b'')
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
@@ -995,7 +988,11 @@ WebSocketResponse
 
       :raise RuntimeError: if connections is not started or closing.
 
-   .. method:: pong(message=b'')
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: pong(message=b'')
 
       Send *unsolicited* :const:`~aiohttp.WSMsgType.PONG` to peer.
 
@@ -1005,7 +1002,11 @@ WebSocketResponse
 
       :raise RuntimeError: if connections is not started or closing.
 
-   .. coroutinemethod:: send_str(data)
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: send_str(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
@@ -1015,7 +1016,11 @@ WebSocketResponse
 
       :raise TypeError: if data is not :class:`str`
 
-   .. coroutinemethod:: send_bytes(data)
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
@@ -1026,7 +1031,11 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. coroutinemethod:: send_json(data, *, dumps=json.dumps)
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: send_json(data, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
@@ -1042,7 +1051,11 @@ WebSocketResponse
 
       :raise TypeError: if value returned by ``dumps`` param is not :class:`str`
 
-   .. coroutinemethod:: close(*, code=1000, message=b'')
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
@@ -1057,7 +1070,7 @@ WebSocketResponse
 
       :raise RuntimeError: if connection is not started
 
-   .. coroutinemethod:: receive(timeout=None)
+   .. comethod:: receive(timeout=None)
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
@@ -1075,13 +1088,14 @@ WebSocketResponse
          Can only be called by the request handling task.
 
       :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 
-   .. coroutinemethod:: receive_str(*, timeout=None)
+   .. comethod:: receive_str(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is :const:`~aiohttp.WSMsgType.TEXT`.
@@ -1091,13 +1105,14 @@ WebSocketResponse
          Can only be called by the request handling task.
 
       :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return str: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
-   .. coroutinemethod:: receive_bytes(*, timeout=None)
+   .. comethod:: receive_bytes(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1108,13 +1123,14 @@ WebSocketResponse
          Can only be called by the request handling task.
 
       :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return bytes: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
-   .. coroutinemethod:: receive_json(*, loads=json.loads, timeout=None)
+   .. comethod:: receive_json(*, loads=json.loads, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
       JSON string to a Python dict.
@@ -1128,15 +1144,14 @@ WebSocketResponse
                               with parsed JSON (:func:`json.loads` by
                               default).
 
-   :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+      :param timeout: timeout for `receive` operation.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return dict: loaded JSON content
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
-
-      .. versionadded:: 0.22
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`

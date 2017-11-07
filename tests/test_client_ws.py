@@ -353,7 +353,7 @@ async def test_send_data_after_close(ws_key, key_data, loop, mocker):
                                (resp.send_str, ('s',)),
                                (resp.send_bytes, (b'b',)),
                                (resp.send_json, ({},))):
-                meth(*args)
+                await meth(*args)
                 assert ws_logger.warning.called
                 ws_logger.warning.reset_mock()
 
@@ -377,9 +377,12 @@ async def test_send_data_type_errors(ws_key, key_data, loop):
                 resp = await aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org')
 
-                pytest.raises(TypeError, resp.send_str, b's')
-                pytest.raises(TypeError, resp.send_bytes, 'b')
-                pytest.raises(TypeError, resp.send_json, set())
+                with pytest.raises(TypeError):
+                    await resp.send_str(b's')
+                with pytest.raises(TypeError):
+                    await resp.send_bytes('b')
+                with pytest.raises(TypeError):
+                    await resp.send_json(set())
 
 
 async def test_reader_read_exception(ws_key, key_data, loop):

@@ -25,14 +25,15 @@ def transport(buf):
 
 
 @pytest.fixture
-def stream(transport):
+def stream(transport, loop):
     stream = mock.Mock(transport=transport)
 
     def acquire(writer):
         writer.set_transport(transport)
 
     stream.acquire = acquire
-    stream.drain.return_value = ()
+    stream.drain.return_value = loop.create_future()
+    stream.drain.return_value.set_result(None)
     return stream
 
 
