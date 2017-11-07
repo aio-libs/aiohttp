@@ -152,9 +152,8 @@ class BytesPayload(Payload):
                           " lock the event loop. You should probably pass an "
                           "io.BytesIO object instead", ResourceWarning)
 
-    @asyncio.coroutine
-    def write(self, writer):
-        yield from writer.write(self._value)
+    async def write(self, writer):
+        await writer.write(self._value)
 
 
 class StringPayload(BytesPayload):
@@ -195,12 +194,11 @@ class IOBasePayload(Payload):
         if self._filename is not None and disposition is not None:
             self.set_content_disposition(disposition, filename=self._filename)
 
-    @asyncio.coroutine
-    def write(self, writer):
+    async def write(self, writer):
         try:
             chunk = self._value.read(DEFAULT_LIMIT)
             while chunk:
-                yield from writer.write(chunk)
+                await writer.write(chunk)
                 chunk = self._value.read(DEFAULT_LIMIT)
         finally:
             self._value.close()
