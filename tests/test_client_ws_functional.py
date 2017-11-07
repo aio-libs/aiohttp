@@ -127,7 +127,7 @@ async def test_send_recv_json(loop, test_client):
     client = await test_client(app)
     resp = await client.ws_connect('/')
     payload = {'request': 'test'}
-    resp.send_json(payload)
+    await resp.send_json(payload)
 
     data = await resp.receive_json()
     assert data['response'] == payload['request']
@@ -143,7 +143,7 @@ async def test_ping_pong(loop, test_client):
         await ws.prepare(request)
 
         msg = await ws.receive_bytes()
-        ws.ping()
+        await ws.ping()
         await ws.send_bytes(msg+b'/answer')
         try:
             await ws.close()
@@ -156,7 +156,7 @@ async def test_ping_pong(loop, test_client):
     client = await test_client(app)
     resp = await client.ws_connect('/')
 
-    resp.ping()
+    await resp.ping()
     await resp.send_bytes(b'ask')
 
     msg = await resp.receive()
@@ -179,7 +179,7 @@ async def test_ping_pong_manual(loop, test_client):
         await ws.prepare(request)
 
         msg = await ws.receive_bytes()
-        ws.ping()
+        await ws.ping()
         await ws.send_bytes(msg+b'/answer')
         try:
             await ws.close()
@@ -192,7 +192,7 @@ async def test_ping_pong_manual(loop, test_client):
     client = await test_client(app)
     resp = await client.ws_connect('/', autoping=False)
 
-    resp.ping()
+    await resp.ping()
     await resp.send_bytes(b'ask')
 
     msg = await resp.receive()
@@ -200,7 +200,7 @@ async def test_ping_pong_manual(loop, test_client):
 
     msg = await resp.receive()
     assert msg.type == aiohttp.WSMsgType.PING
-    resp.pong()
+    await resp.pong()
 
     msg = await resp.receive()
     assert msg.data == b'ask/answer'

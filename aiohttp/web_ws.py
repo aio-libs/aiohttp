@@ -76,7 +76,7 @@ class WebSocketResponse(StreamResponse):
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            self.ping()
+            await self.ping()
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -166,34 +166,34 @@ class WebSocketResponse(StreamResponse):
     def exception(self):
         return self._exception
 
-    def ping(self, message='b'):
+    async def ping(self, message='b'):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        self._writer.ping(message)
+        await self._writer.ping(message)
 
-    def pong(self, message='b'):
+    async def pong(self, message='b'):
         # unsolicited pong
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        self._writer.pong(message)
+        await self._writer.pong(message)
 
-    def send_str(self, data):
+    async def send_str(self, data):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
-        return self._writer.send(data, binary=False)
+        await self._writer.send(data, binary=False)
 
-    def send_bytes(self, data):
+    async def send_bytes(self, data):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
-        return self._writer.send(data, binary=True)
+        await self._writer.send(data, binary=True)
 
-    def send_json(self, data, *, dumps=json.dumps):
-        return self.send_str(dumps(data))
+    async def send_json(self, data, *, dumps=json.dumps):
+        await self.send_str(dumps(data))
 
     async def write_eof(self):
         if self._eof_sent:
@@ -303,7 +303,7 @@ class WebSocketResponse(StreamResponse):
             elif msg.type == WSMsgType.CLOSING:
                 self._closing = True
             elif msg.type == WSMsgType.PING and self._autoping:
-                self.pong(msg.data)
+                await self.pong(msg.data)
                 continue
             elif msg.type == WSMsgType.PONG and self._autoping:
                 continue
@@ -330,7 +330,7 @@ class WebSocketResponse(StreamResponse):
         data = await self.receive_str(timeout=timeout)
         return loads(data)
 
-    def write(self, data):
+    async def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
 
     def __aiter__(self):

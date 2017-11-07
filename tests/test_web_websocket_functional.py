@@ -124,10 +124,7 @@ async def test_websocket_send_drain(loop, test_client):
         ws._writer._limit = 1
 
         data = await ws.receive_json()
-        drain = ws.send_json(data)
-        assert drain
-
-        await drain
+        await ws.send_json(data)
         await ws.close()
         return ws
 
