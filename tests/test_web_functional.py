@@ -1574,5 +1574,5 @@ async def test_iter_any(test_server, loop):
     server = await test_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
-        async with await session.post(server.make_url('/'), data=data) as resp:
+        async with session.post(server.make_url('/'), data=data) as resp:
             assert resp.status == 200

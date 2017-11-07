@@ -21,10 +21,12 @@ def app(loop):
 
 
 @pytest.fixture
-def writer():
+def writer(loop):
     writer = mock.Mock()
-    writer.drain.return_value = ()
-    writer.write_eof.return_value = ()
+    writer.drain.return_value = loop.create_future()
+    writer.drain.return_value.set_result(None)
+    writer.write_eof.return_value = loop.create_future()
+    writer.write_eof.return_value.set_result(None)
     return writer
 
 
