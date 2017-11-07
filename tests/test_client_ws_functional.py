@@ -770,7 +770,7 @@ async def test_closed_async_for(loop, test_client):
     async for msg in resp:
         messages.append(msg)
         if b'started' == msg.data:
-            resp.send_bytes(b'ask')
+            await resp.send_bytes(b'ask')
             await resp.close()
 
     assert 1 == len(messages)

@@ -61,7 +61,7 @@ class ClientWebSocketResponse:
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            await self.ping()
+            self._writer.ping()
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
