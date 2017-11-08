@@ -72,7 +72,6 @@ class Application(MutableMapping):
         self._frozen = False
         self._subapps = []
 
-
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)

@@ -747,33 +747,47 @@ If no redirects occurred or ``allow_redirects`` is set to ``False``,
 history will be an empty sequence.
 
 
-Client signals
----------------
+Client tracing 
+--------------
 
-The execution flow of a specific request can be followed attaching listeners functions
-to the signals provided by the :class:`ClientSession` instance, for example the following
-snippet shows how the start and the end of the request flow can be followed::
+The execution flow of a specific request can be followed attaching listeners coroutines
+to the signals provided by the :class:`TraceConfig` instance, this instance will be used
+as a parameter for the :class:`ClientSession` constructor having as a result a client that
+triggers the different signals supported by the :class:`TraceConfig`. By default any instance
+of :class:`ClientSession` class comes with the signals ability disabled. The following
+snippet shows how the start and the end signals of a request flow can be followed::
 
-    async def on_request_start(trace_context, method, host, port, headers):
+    async def on_request_start(session, trace_context, method, host, port, headers):
         print("Starting request")
 
-    async def on_request_end(trace_context, resp):
+    async def on_request_end(session, trace_context, resp):
         print("Ending request")
 
-    session = aiohttp.ClientSession()
-    session.on_request_start.append(on_request_start)
-    session.on_request_end.append(on_request_end)
-    session.get('http://example.com/some/redirect/')
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    async with aiohttp.ClientSession(trace_config=trace_config) as client:
+        client.get('http://example.com/some/redirect/')
 
-By default all signals related to the same request take as a param
-a :class:`SimpleNamespace` instance. This can be used to share the state
-through to the different signals. However, the ``trace_context`` param can
-be overwritten at the beginning of the request execution, giving an alternative
-object as the following snippet shows::
+All signals take as a parameters first, the :class:`ClientSession` instance used by
+the specific request related to that signals and second, a :class:`SimpleNamespace`
+instance called ``trace_context``. The ``trace_context`` object can be used to share
+the state through to the different signals that belong to the same request, perhaps::
+
+    async def on_request_start(session, trace_context, method, host, port, headers):
+        trace_context.start = session.loop.time()
+
+    async def on_request_end(session, trace_context, resp):
+        elapsed = session.loop.time() - trace_context.start
+        print("Request took {}".format(elapsed))
+
+The ``trace_context`` param is by default a :class:`SimpleNampespace` that is initialized at
+the beginning of the request flow. However, this can be overwritten at the beginning of the
+request execution giving an alternative object as the following snippet shows::
 
     session.get('http://example.com/some/redirect/', trace_context={'foo': 'bar'})
 
-.. seealso:: :ref:`aiohttp-client-reference` section for
+.. seealso:: :ref:`aiohttp-tracing-reference` section for
              more information about the different signals supported.
 
 

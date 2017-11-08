@@ -4,7 +4,6 @@ import gc
 import re
 import types
 from http.cookies import SimpleCookie
-from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -375,7 +374,7 @@ async def test_reraise_os_error(create_session):
     req.send = mock.Mock(side_effect=err)
     session = create_session(request_class=req_factory)
 
-    async def create_connection(req, trace_context=None):
+    async def create_connection(req, trace=None):
         # return self.transport, self.protocol
         return mock.Mock()
     session._connector._create_connection = create_connection
@@ -478,24 +477,26 @@ def test_client_session_implicit_loop_warn():
     loop.close()
 
 
-@asyncio.coroutine
-def test_request_tracing(loop):
+async def test_request_tracing(loop):
     trace_context = {}
-    on_request_start = mock.Mock()
-    on_request_redirect = mock.Mock()
-    on_request_end = mock.Mock()
+    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
 
-    session = aiohttp.ClientSession(loop=loop)
-    session.on_request_start.append(on_request_start)
-    session.on_request_redirect.append(on_request_redirect)
-    session.on_request_end.append(on_request_end)
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    trace_config.on_request_redirect.append(on_request_redirect)
 
-    resp = yield from session.get(
+    session = aiohttp.ClientSession(loop=loop, trace_config=trace_config)
+
+    resp = await session.get(
         'http://example.com',
         trace_context=trace_context
     )
 
     on_request_start.assert_called_once_with(
+        session,
         trace_context,
         hdrs.METH_GET,
         URL("http://example.com"),
@@ -503,6 +504,7 @@ def test_request_tracing(loop):
     )
 
     on_request_end.assert_called_once_with(
+        session,
         trace_context,
         hdrs.METH_GET,
         URL("http://example.com"),
@@ -512,22 +514,15 @@ def test_request_tracing(loop):
     assert not on_request_redirect.called
 
 
-@asyncio.coroutine
-def test_request_tracing_default_trace_context(loop):
-    on_request_start = mock.Mock()
+async def test_request_tracing_exception(loop):
+    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_exception = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
 
-    session = aiohttp.ClientSession(loop=loop)
-    session.on_request_start.append(on_request_start)
-
-    yield from session.get('http://example.com')
-
-    assert isinstance(on_request_start.call_args[0][0], SimpleNamespace)
-
-
-@asyncio.coroutine
-def test_request_tracing_exception(loop):
-    on_request_end = mock.Mock()
-    on_request_exception = mock.Mock()
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_end.append(on_request_end)
+    trace_config.on_request_exception.append(on_request_exception)
 
     with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
         error = Exception()
@@ -535,16 +530,15 @@ def test_request_tracing_exception(loop):
         f.set_exception(error)
         connect_patched.return_value = f
 
-        session = aiohttp.ClientSession(loop=loop)
-        session.on_request_end.append(on_request_end)
-        session.on_request_exception.append(on_request_exception)
+        session = aiohttp.ClientSession(loop=loop, trace_config=trace_config)
 
         try:
-            yield from session.get('http://example.com')
+            await session.get('http://example.com')
         except Exception:
             pass
 
         on_request_exception.assert_called_once_with(
+            session,
             mock.ANY,
             hdrs.METH_GET,
             URL("http://example.com"),
@@ -554,8 +548,7 @@ def test_request_tracing_exception(loop):
         assert not on_request_end.called
 
 
-@asyncio.coroutine
-def test_request_tracing_interpose_headers(loop):
+async def test_request_tracing_interpose_headers(loop):
 
     class MyClientRequest(ClientRequest):
         headers = None
@@ -565,32 +558,17 @@ def test_request_tracing_interpose_headers(loop):
             MyClientRequest.headers = self.headers
 
     @asyncio.coroutine
-    def new_headers(trace_context, method, url, headers):
+    def new_headers(session, trace_context, method, url, headers):
         headers['foo'] = 'bar'
 
-    session = aiohttp.ClientSession(loop=loop, request_class=MyClientRequest)
-    session.on_request_start.append(new_headers)
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(new_headers)
 
-    yield from session.get('http://example.com')
+    session = aiohttp.ClientSession(
+        loop=loop,
+        request_class=MyClientRequest,
+        trace_config=trace_config
+    )
+
+    await session.get('http://example.com')
     assert MyClientRequest.headers['foo'] == 'bar'
-
-
-@asyncio.coroutine
-def test_request_tracing_proxies_connector_signals(loop):
-    connector = TCPConnector(loop=loop)
-    session = aiohttp.ClientSession(connector=connector, loop=loop)
-    assert id(session.on_request_queued_start) == id(connector.on_queued_start)
-    assert id(session.on_request_queued_end) == id(connector.on_queued_end)
-    assert id(session.on_request_createconn_start) ==\
-        id(connector.on_createconn_start)
-    assert id(session.on_request_createconn_end) ==\
-        id(connector.on_createconn_end)
-    assert id(session.on_request_reuseconn) == id(connector.on_reuseconn)
-    assert id(session.on_request_resolvehost_start) ==\
-        id(connector.on_resolvehost_start)
-    assert id(session.on_request_resolvehost_end) ==\
-        id(connector.on_resolvehost_end)
-    assert id(session.on_request_dnscache_hit) ==\
-        id(connector.on_dnscache_hit)
-    assert id(session.on_request_dnscache_miss) ==\
-        id(connector.on_dnscache_miss)

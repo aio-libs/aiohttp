@@ -11,6 +11,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import FormData, HttpVersion10, HttpVersion11, multipart, web
+from aiohttp import TraceConfig
 
 
 try:
@@ -1580,11 +1581,13 @@ async def test_iter_any(test_server, loop):
 
 async def test_request_tracing(loop, test_client):
 
-    on_request_start = mock.Mock()
-    on_request_end = mock.Mock()
-    on_request_redirect = mock.Mock()
-    on_request_createconn_start = mock.Mock()
-    on_request_createconn_end = mock.Mock()
+    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_connection_create_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock()))
+    on_connection_create_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock()))
 
     async def redirector(request):
         raise web.HTTPFound(location=URL('/redirected'))
@@ -1592,23 +1595,26 @@ async def test_request_tracing(loop, test_client):
     async def redirected(request):
         return web.Response()
 
+    trace_config = TraceConfig()
+
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    trace_config.on_request_redirect.append(on_request_redirect)
+    trace_config.on_connection_create_start.append(
+        on_connection_create_start)
+    trace_config.on_connection_create_end.append(
+        on_connection_create_end)
+
     app = web.Application()
     app.router.add_get('/redirector', redirector)
     app.router.add_get('/redirected', redirected)
 
-    client = await test_client(app)
-    client.session.on_request_start.append(on_request_start)
-    client.session.on_request_end.append(on_request_end)
-    client.session.on_request_redirect.append(on_request_redirect)
-    client.session.on_request_createconn_start.append(
-        on_request_createconn_start)
-    client.session.on_request_createconn_end.append(
-        on_request_createconn_end)
+    client = await test_client(app, trace_config=trace_config)
 
     await client.get('/redirector', data="foo")
 
     assert on_request_start.called
     assert on_request_end.called
     assert on_request_redirect.called
-    assert on_request_createconn_start.called
-    assert on_request_createconn_end.called
+    assert on_connection_create_start.called
+    assert on_connection_create_end.called

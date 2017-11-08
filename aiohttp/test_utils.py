@@ -20,7 +20,7 @@ from aiohttp.client import _RequestContextManager
 from . import ClientSession, hdrs
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
-from .signals import AppSignal
+from .signals import Signal
 from .web import Request, Server, UrlMappingMatchInfo
 
 
@@ -455,7 +455,7 @@ def teardown_test_loop(loop, fast=False):
 def _create_app_mock():
     app = mock.Mock()
     app._debug = False
-    app.on_response_prepare = AppSignal(app)
+    app.on_response_prepare = Signal(app)
     return app
 
 

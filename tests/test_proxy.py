@@ -124,7 +124,7 @@ class TestProxy(unittest.TestCase):
 
         connector._create_proxy_connection.assert_called_with(
             req,
-            trace_context=None)
+            trace=None)
         ((proxy_req,), _) = connector._create_direct_connection.call_args
         proxy_req.send.assert_called_with(mock.ANY)
 
@@ -151,7 +151,7 @@ class TestProxy(unittest.TestCase):
 
         connector._create_proxy_connection.assert_called_with(
             req,
-            trace_context=None)
+            trace=None)
         ((proxy_req,), _) = connector._create_direct_connection.call_args
         proxy_req.send.assert_called_with(mock.ANY)
 
@@ -189,7 +189,7 @@ class TestProxy(unittest.TestCase):
 
         connector._create_proxy_connection.assert_called_with(
             req,
-            trace_context=None)
+            trace=None)
         ((proxy_req,), _) = connector._create_direct_connection.call_args
         self.assertTrue(proxy_req.verify_ssl)
         self.assertEqual(proxy_req.fingerprint, req.fingerprint)
@@ -685,7 +685,7 @@ class TestProxy(unittest.TestCase):
         connector._resolve_host.assert_called_with(
             'proxy.example.com',
             80,
-            trace_context=None)
+            trace=None)
 
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()

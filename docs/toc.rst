@@ -8,6 +8,7 @@ Table of Contents
    Introduction <index>
    client
    client_reference
+   tracing_reference
    tutorial
    web
    web_reference
