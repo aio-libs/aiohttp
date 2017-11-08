@@ -1,10 +1,11 @@
+import re
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict
 
 from aiohttp.signals import Signal
-from aiohttp.test_utils import make_mocked_request
+from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import Application, Response
 
 
@@ -139,3 +140,28 @@ def test_cannot_delitem_in_frozen_signal(app):
         del signal[0]
 
     assert list(signal) == [m1]
+
+
+async def test_cannot_send_non_frozen_signal(app):
+    signal = Signal(app)
+
+    callback = make_mocked_coro()
+
+    signal.append(callback)
+
+    with pytest.raises(RuntimeError):
+        await signal.send()
+
+    assert not callback.called
+
+
+async def test_repr(app):
+    signal = Signal(app)
+
+    callback = make_mocked_coro()
+
+    signal.append(callback)
+
+    assert re.match(r"<Signal owner=<Application .+>, frozen=False, "
+                    r"\[<Mock id='\d+'>\]>",
+                    repr(signal))
