@@ -610,6 +610,10 @@ class WebSocketWriter:
         else:
             return self._send_frame(message, WSMsgType.TEXT)
 
+    def drain(self):
+        """Flush the write buffer."""
+        return self.stream.drain()
+
     def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):

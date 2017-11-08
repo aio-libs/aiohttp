@@ -1,0 +1,1 @@
+Add `drain` method to the `ClientWebSocketResponse` class.

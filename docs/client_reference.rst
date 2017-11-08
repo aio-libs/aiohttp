@@ -1333,6 +1333,11 @@ manually.
 
          The method is converted into :term:`coroutine`
 
+   .. comethod:: drain()
+
+      A :ref:`coroutine<coroutine>` to let the write buffer of the
+      underlying transport a chance to be flushed.
+
    .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending

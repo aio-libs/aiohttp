@@ -620,3 +620,32 @@ async def test_ws_connect_deflate_server_ext_bad(loop, ws_key, key_data):
             with pytest.raises(client.WSServerHandshakeError):
                 await aiohttp.ClientSession(loop=loop).ws_connect(
                     'http://test.org', compress=15)
+
+
+async def test_drain(loop, ws_key, key_data, mocker):
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: hdrs.WEBSOCKET,
+        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key
+    }
+
+    class MockStreamWriter:
+        drain_called = 0
+
+        async def drain(self):
+            self.drain_called += 1
+
+    with mock.patch('aiohttp.client.os') as m_os:
+        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = loop.create_future()
+            m_req.return_value.set_result(resp)
+
+            res = await aiohttp.ClientSession(loop=loop).ws_connect(
+                'http://test.org')
+            stream = res._writer.stream = MockStreamWriter()
+            await res.drain()
+
+    assert stream.drain_called == 1
