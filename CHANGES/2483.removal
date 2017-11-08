@@ -1,0 +1,2 @@
+`StreamResponse.drain()` is not a part of public API anymore, just use
+`await resp.write()`.
