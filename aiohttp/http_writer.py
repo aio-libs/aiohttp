@@ -1,12 +1,11 @@
 """Http related parsers and protocol."""
 
-import asyncio
 import collections
 import socket
 import zlib
 
 from .abc import AbstractPayloadWriter
-from .helpers import create_future, noop
+from .helpers import noop
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -112,17 +111,16 @@ class StreamWriter:
         except OSError:
             pass
 
-    @asyncio.coroutine
-    def drain(self):
+    async def drain(self):
         """Flush the write buffer.
 
         The intended use is to write
 
           w.write(data)
-          yield from w.drain()
+          await w.drain()
         """
         if self._protocol.transport is not None:
-            yield from self._protocol._drain_helper()
+            await self._protocol._drain_helper()
 
 
 class PayloadWriter(AbstractPayloadWriter):
@@ -252,8 +250,7 @@ class PayloadWriter(AbstractPayloadWriter):
         self.output_size += size
         self._buffer.append(headers)
 
-    @asyncio.coroutine
-    def write_eof(self, chunk=b''):
+    async def write_eof(self, chunk=b''):
         if self._eof:
             return
 
@@ -276,23 +273,22 @@ class PayloadWriter(AbstractPayloadWriter):
         if chunk:
             self.buffer_data(chunk)
 
-        yield from self.drain(True)
+        await self.drain(True)
 
         self._eof = True
         self._transport = None
         self._stream.release()
 
-    @asyncio.coroutine
-    def drain(self, last=False):
+    async def drain(self, last=False):
         if self._transport is not None:
             if self._buffer:
                 self._transport.write(b''.join(self._buffer))
                 if not last:
                     self._buffer.clear()
-            yield from self._stream.drain()
+            await self._stream.drain()
         else:
             # wait for transport
             if self._drain_waiter is None:
-                self._drain_waiter = create_future(self.loop)
+                self._drain_waiter = self.loop.create_future()
 
-            yield from self._drain_waiter
+            await self._drain_waiter

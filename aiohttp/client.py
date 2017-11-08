@@ -23,7 +23,7 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_35, CeilTimeout, TimeoutHandle, _BaseCoroMixin,
+from .helpers import (CeilTimeout, TimeoutHandle, _BaseCoroMixin,
                       deprecated_noop, proxies_from_env, sentinel,
                       strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
@@ -108,12 +108,8 @@ class ClientSession:
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
 
-        # Convert to list of tuples
-        if headers:
-            headers = CIMultiDict(headers)
-        else:
-            headers = CIMultiDict()
-        self._default_headers = headers
+        # Convert headers to MultiDict
+        self._default_headers = CIMultiDict(headers or {})
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
@@ -192,7 +188,7 @@ class ClientSession:
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
-        proxy_headers = self._prepare_headers(proxy_headers)
+        proxy_headers = CIMultiDict(proxy_headers or {})
 
         try:
             url = URL(url)
@@ -277,7 +273,7 @@ class ClientSession:
                         resp = req.send(conn)
                         try:
                             yield from resp.start(conn, read_until_eof)
-                        except:
+                        except Exception:
                             resp.close()
                             conn.close()
                             raise
@@ -356,7 +352,7 @@ class ClientSession:
             resp._history = tuple(history)
             return resp
 
-        except:
+        except Exception:
             # cleanup timer
             tm.close()
             if handle:
@@ -668,14 +664,13 @@ class ClientSession:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            return self
+    @asyncio.coroutine
+    def __aenter__(self):
+        return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_val, exc_tb):
-            yield from self.close()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        yield from self.close()
 
 
 class _BaseRequestContextManager(_BaseCoroMixin):
@@ -686,30 +681,27 @@ class _BaseRequestContextManager(_BaseCoroMixin):
         super().__init__(coro)
         self._coro = coro
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            self._resp = yield from self._coro
-            return self._resp
+    @asyncio.coroutine
+    def __aenter__(self):
+        self._resp = yield from self._coro
+        return self._resp
 
 
 class _RequestContextManager(_BaseRequestContextManager):
-    if PY_35:
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc, tb):
-            # We're basing behavior on the exception as it can be caused by
-            # user code unrelated to the status of the connection.  If you
-            # would like to close a connection you must do that
-            # explicitly.  Otherwise connection error handling should kick in
-            # and close/recycle the connection as required.
-            self._resp.release()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc, tb):
+        # We're basing behavior on the exception as it can be caused by
+        # user code unrelated to the status of the connection.  If you
+        # would like to close a connection you must do that
+        # explicitly.  Otherwise connection error handling should kick in
+        # and close/recycle the connection as required.
+        self._resp.release()
 
 
 class _WSRequestContextManager(_BaseRequestContextManager):
-    if PY_35:
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc, tb):
-            yield from self._resp.close()
+    @asyncio.coroutine
+    def __aexit__(self, exc_type, exc, tb):
+        yield from self._resp.close()
 
 
 class _SessionRequestContextManager(_RequestContextManager):
@@ -724,17 +716,16 @@ class _SessionRequestContextManager(_RequestContextManager):
     def __iter__(self):
         try:
             return (yield from self._coro)
-        except BaseException:
+        except Exception:
             yield from self._session.close()
             raise
 
-    if PY_35:
-        def __await__(self):
-            try:
-                return (yield from self._coro)
-            except BaseException:
-                yield from self._session.close()
-                raise
+    def __await__(self):
+        try:
+            return (yield from self._coro)
+        except Exception:
+            yield from self._session.close()
+            raise
 
 
 def request(method, url, *,
@@ -784,10 +775,10 @@ def request(method, url, *,
     loop - Optional event loop.
     Usage::
       >>> import aiohttp
-      >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
+      >>> resp = await aiohttp.request('GET', 'http://python.org/')
       >>> resp
       <ClientResponse(python.org/) [200]>
-      >>> data = yield from resp.read()
+      >>> data = await resp.read()
     """
     connector_owner = False
     if connector is None:

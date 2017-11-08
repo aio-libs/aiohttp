@@ -1109,12 +1109,19 @@ Response object
 
    .. attribute:: charset
 
-   Read-only property that specifies the *encoding* for the request's BODY.
+      Read-only property that specifies the *encoding* for the request's BODY.
 
       The value is parsed from the *Content-Type* HTTP header.
 
       Returns :class:`str` like ``'utf-8'`` or ``None`` if no *Content-Type*
       header present in HTTP headers or it has no charset information.
+
+   .. attribute:: content_disposition
+
+      Read-only property that specified the *Content-Disposition* HTTP header.
+
+      Instance of :class:`ContentDisposition` or ``None`` if no *Content-Disposition*
+      header present in HTTP headers.
 
    .. attribute:: history
 
@@ -1256,13 +1263,29 @@ manually.
 
       Returns exception if any occurs or returns None.
 
-   .. method:: ping(message=b'')
+   .. comethod:: ping(message=b'')
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: pong(message=b'')
+
+      Send :const:`~aiohttp.WSMsgType.PONG` to peer.
+
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
+                      or :class:`bytes`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: send_str(data)
 
@@ -1272,6 +1295,10 @@ manually.
 
       :raise TypeError: if data is not :class:`str`
 
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
    .. comethod:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
@@ -1280,6 +1307,10 @@ manually.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: send_json(data, *, dumps=json.dumps)
 
@@ -1297,6 +1328,10 @@ manually.
 
       :raise TypeError: if value returned by ``dumps(data)`` is not
                         :class:`str`
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: close(*, code=1000, message=b'')
 
@@ -1561,6 +1596,21 @@ All exceptions are available as members of *aiohttp* module.
 
       Invalid URL, :class:`yarl.URL` instance.
 
+.. class:: ContentDisposition
+
+    Represent Content-Disposition header
+
+    .. attribute:: value
+
+    A :class:`str` instance. Value of Content-Disposition header itself, e.g. ``attachment``.
+
+    .. attribute:: filename
+
+    A :class:`str` instance. Content filename extracted from parameters. May be ``None``.
+
+    .. attribute:: parameters
+
+    Read-only mapping contains all parameters.
 
 Response errors
 ^^^^^^^^^^^^^^^

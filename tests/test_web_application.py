@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import helpers, log, web
+from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
 
 
@@ -44,17 +44,6 @@ def test_set_loop_with_different_loops(loop):
 
     with pytest.raises(RuntimeError):
         app._set_loop(loop=object())
-
-
-def test_on_loop_available(loop):
-    app = web.Application()
-
-    cb = mock.Mock()
-    with pytest.warns(DeprecationWarning):
-        app.on_loop_available.append(cb)
-
-    app._set_loop(loop)
-    cb.assert_called_with(app)
 
 
 @pytest.mark.parametrize('debug', [True, False])
@@ -104,30 +93,27 @@ def test_app_make_handler_access_log_class(loop, mocker):
                            loop=loop, debug=mock.ANY)
 
 
-@asyncio.coroutine
-def test_app_register_on_finish():
+async def test_app_register_on_finish():
     app = web.Application()
     cb1 = mock.Mock()
     cb2 = mock.Mock()
     app.on_cleanup.append(cb1)
     app.on_cleanup.append(cb2)
-    yield from app.cleanup()
+    await app.cleanup()
     cb1.assert_called_once_with(app)
     cb2.assert_called_once_with(app)
 
 
-@asyncio.coroutine
-def test_app_register_coro(loop):
+async def test_app_register_coro(loop):
     app = web.Application()
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
 
-    @asyncio.coroutine
-    def cb(app):
-        yield from asyncio.sleep(0.001, loop=loop)
+    async def cb(app):
+        await asyncio.sleep(0.001, loop=loop)
         fut.set_result(123)
 
     app.on_cleanup.append(cb)
-    yield from app.cleanup()
+    await app.cleanup()
     assert fut.done()
     assert 123 == fut.result()
 
@@ -145,25 +131,22 @@ def test_logging():
     assert app.logger is logger
 
 
-@asyncio.coroutine
-def test_on_shutdown():
+async def test_on_shutdown():
     app = web.Application()
     called = False
 
-    @asyncio.coroutine
-    def on_shutdown(app_param):
+    async def on_shutdown(app_param):
         nonlocal called
         assert app is app_param
         called = True
 
     app.on_shutdown.append(on_shutdown)
 
-    yield from app.shutdown()
+    await app.shutdown()
     assert called
 
 
-@asyncio.coroutine
-def test_on_startup(loop):
+async def test_on_startup(loop):
     app = web.Application()
     app._set_loop(loop)
 
@@ -177,31 +160,28 @@ def test_on_startup(loop):
         assert app is app_param
         blocking_called = True
 
-    @asyncio.coroutine
-    def long_running1(app_param):
+    async def long_running1(app_param):
         nonlocal long_running1_called
         assert app is app_param
         long_running1_called = True
 
-    @asyncio.coroutine
-    def long_running2(app_param):
+    async def long_running2(app_param):
         nonlocal long_running2_called
         assert app is app_param
         long_running2_called = True
 
-    @asyncio.coroutine
-    def on_startup_all_long_running(app_param):
+    async def on_startup_all_long_running(app_param):
         nonlocal all_long_running_called
         assert app is app_param
         all_long_running_called = True
-        return (yield from asyncio.gather(long_running1(app_param),
-                                          long_running2(app_param),
-                                          loop=app_param.loop))
+        return await asyncio.gather(long_running1(app_param),
+                                    long_running2(app_param),
+                                    loop=app_param.loop)
 
     app.on_startup.append(on_startup_blocking)
     app.on_startup.append(on_startup_all_long_running)
 
-    yield from app.startup()
+    await app.startup()
     assert blocking_called
     assert long_running1_called
     assert long_running2_called

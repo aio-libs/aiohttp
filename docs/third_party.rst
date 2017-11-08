@@ -196,3 +196,9 @@ period ask to raise he status.
   Open-source home automation platform running on Python 3.
 
 - `discord.py <https://github.com/Rapptz/discord.py>`_ Discord client library.
+
+- `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
+  GraphQL and GraphIQL interface for aiohttp.
+
+- `aiohttp-sentry <https://github.com/underyx/aiohttp-sentry>`_
+  An aiohttp middleware for reporting errors to Sentry. Python 3.5+ is required.

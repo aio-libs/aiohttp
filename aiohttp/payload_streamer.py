@@ -3,11 +3,11 @@
 As a simple case, you can upload data from file::
 
    @aiohttp.streamer
-   def file_sender(writer, file_name=None):
+   async def file_sender(writer, file_name=None):
       with open(file_name, 'rb') as f:
           chunk = f.read(2**16)
           while chunk:
-              yield from writer.write(chunk)
+              await writer.write(chunk)
 
               chunk = f.read(2**16)
 
@@ -36,9 +36,8 @@ class _stream_wrapper:
         self.args = args
         self.kwargs = kwargs
 
-    @asyncio.coroutine
-    def __call__(self, writer):
-        yield from self.coro(writer, *self.args, **self.kwargs)
+    async def __call__(self, writer):
+        await self.coro(writer, *self.args, **self.kwargs)
 
 
 class streamer:
@@ -53,9 +52,8 @@ class streamer:
 @payload_type(_stream_wrapper)
 class StreamWrapperPayload(Payload):
 
-    @asyncio.coroutine
-    def write(self, writer):
-        yield from self._value(writer)
+    async def write(self, writer):
+        await self._value(writer)
 
 
 @payload_type(streamer)
@@ -64,6 +62,5 @@ class StreamPayload(StreamWrapperPayload):
     def __init__(self, value, *args, **kwargs):
         super().__init__(value(), *args, **kwargs)
 
-    @asyncio.coroutine
-    def write(self, writer):
-        yield from self._value(writer)
+    async def write(self, writer):
+        await self._value(writer)

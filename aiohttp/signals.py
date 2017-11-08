@@ -2,19 +2,17 @@ import asyncio
 from itertools import count
 
 from aiohttp.frozenlist import FrozenList
-from aiohttp.helpers import isfuture
 
 
 class BaseSignal(FrozenList):
 
     __slots__ = ()
 
-    @asyncio.coroutine
-    def _send(self, *args, **kwargs):
+    async def _send(self, *args, **kwargs):
         for receiver in self:
             res = receiver(*args, **kwargs)
-            if asyncio.iscoroutine(res) or isfuture(res):
-                yield from res
+            if asyncio.iscoroutine(res) or asyncio.isfuture(res):
+                await res
 
 
 class Signal(BaseSignal):
@@ -36,8 +34,7 @@ class Signal(BaseSignal):
         self._pre = app.on_pre_signal
         self._post = app.on_post_signal
 
-    @asyncio.coroutine
-    def send(self, *args, **kwargs):
+    async def send(self, *args, **kwargs):
         """
         Sends data to all registered receivers.
         """
@@ -46,11 +43,11 @@ class Signal(BaseSignal):
             debug = self._app._debug
             if debug:
                 ordinal = self._pre.ordinal()
-                yield from self._pre.send(
+                await self._pre.send(
                     ordinal, self._name, *args, **kwargs)
-            yield from self._send(*args, **kwargs)
+            await self._send(*args, **kwargs)
             if debug:
-                yield from self._post.send(
+                await self._post.send(
                     ordinal, self._name, *args, **kwargs)
 
 
@@ -77,9 +74,8 @@ class DebugSignal(BaseSignal):
 
     __slots__ = ()
 
-    @asyncio.coroutine
-    def send(self, ordinal, name, *args, **kwargs):
-        yield from self._send(ordinal, name, *args, **kwargs)
+    async def send(self, ordinal, name, *args, **kwargs):
+        await self._send(ordinal, name, *args, **kwargs)
 
 
 class PreSignal(DebugSignal):
