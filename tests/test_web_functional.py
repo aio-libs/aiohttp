@@ -1247,7 +1247,7 @@ async def test_subapp_on_startup(loop, test_server):
 async def test_subapp_on_shutdown(loop, test_server):
     order = []
 
-    def on_signal(app):
+    async def on_signal(app):
         order.append(app)
 
     app = web.Application()

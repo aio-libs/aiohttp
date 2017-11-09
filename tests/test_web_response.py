@@ -13,10 +13,13 @@ from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
 
 def make_request(method, path, headers=CIMultiDict(),
-                 version=HttpVersion11, **kwargs):
+                 version=HttpVersion11, on_response_prepare=None, **kwargs):
     app = kwargs.pop('app', None) or mock.Mock()
     app._debug = False
-    app.on_response_prepare = signals.Signal(app)
+    if on_response_prepare is None:
+        on_response_prepare = signals.Signal(app)
+    app.on_response_prepare = on_response_prepare
+    app.on_response_prepare.freeze()
     protocol = kwargs.pop('protocol', None) or mock.Mock()
     return make_mocked_request(method, path, headers,
                                version=version, protocol=protocol,
@@ -726,11 +729,13 @@ async def test_prepare_twice():
 
 async def test_prepare_calls_signal():
     app = mock.Mock()
-    req = make_request('GET', '/', app=app)
+    sig = make_mocked_coro()
+    on_response_prepare = signals.Signal(app)
+    on_response_prepare.append(sig)
+    req = make_request('GET', '/', app=app,
+                       on_response_prepare=on_response_prepare)
     resp = StreamResponse()
 
-    sig = mock.Mock()
-    app.on_response_prepare.append(sig)
     await resp.prepare(req)
 
     sig.assert_called_with(req, resp)
