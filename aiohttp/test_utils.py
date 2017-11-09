@@ -18,7 +18,7 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import noop, sentinel
+from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Request, Server, UrlMappingMatchInfo
@@ -526,8 +526,9 @@ def make_mocked_request(method, path, headers=None, *,
 
     if payload_writer is sentinel:
         payload_writer = mock.Mock()
-        payload_writer.write_eof.side_effect = noop
-        payload_writer.drain.side_effect = noop
+        payload_writer.write = make_mocked_coro(None)
+        payload_writer.write_eof = make_mocked_coro(None)
+        payload_writer.drain = make_mocked_coro(None)
 
     protocol.transport = transport
     protocol.writer = writer

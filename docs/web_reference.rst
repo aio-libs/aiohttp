@@ -348,7 +348,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :return: a cloned :class:`Request` instance.
 
-   .. coroutinemethod:: read()
+   .. comethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
 
@@ -357,7 +357,7 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.read` call will return the same value.
 
-   .. coroutinemethod:: text()
+   .. comethod:: text()
 
       Read request body, decode it using :attr:`charset` encoding or
       ``UTF-8`` if no encoding was specified in *MIME-type*.
@@ -369,7 +369,7 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. coroutinemethod:: json(*, loads=json.loads)
+   .. comethod:: json(*, loads=json.loads)
 
       Read request body decoded as *json*.
 
@@ -391,7 +391,7 @@ and :ref:`aiohttp-web-signals` handlers.
          :meth:`~Request.json` call will return the same value.
 
 
-   .. coroutinemethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+   .. comethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
 
       Returns :class:`aiohttp.multipart.MultipartReader` which processes
       incoming *multipart* request.
@@ -412,7 +412,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :ref:`aiohttp-multipart`
 
-   .. coroutinemethod:: post()
+   .. comethod:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
@@ -430,7 +430,7 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.post` call will return the same value.
 
-   .. coroutinemethod:: release()
+   .. comethod:: release()
 
       Release request.
 
@@ -610,7 +610,7 @@ StreamResponse
    .. method:: enable_chunked_encoding
 
       Enables :attr:`chunked` encoding for response. There are no ways to
-      disable it back. With enabled :attr:`chunked` encoding each `write()`
+      disable it back. With enabled :attr:`chunked` encoding each :meth:`write`
       operation encoded in separate chunk.
 
       .. warning:: chunked encoding can be enabled for ``HTTP/1.1`` only.
@@ -760,7 +760,7 @@ StreamResponse
 
       Clear :attr:`tcp_cork` if *value* is ``True``.
 
-   .. coroutinemethod:: prepare(request)
+   .. comethod:: prepare(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the
                                           response answers.
@@ -773,11 +773,13 @@ StreamResponse
 
       .. versionadded:: 0.18
 
-   .. method:: write(data)
+   .. comethod:: write(data)
 
-      Send byte-ish data as the part of *response BODY*.
+      Send byte-ish data as the part of *response BODY*::
 
-      :meth:`prepare` must be called before.
+          await resp.write(data)
+
+      :meth:`prepare` must be invoked before the call.
 
       Raises :exc:`TypeError` if data is not :class:`bytes`,
       :class:`bytearray` or :class:`memoryview` instance.
@@ -786,23 +788,7 @@ StreamResponse
 
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
 
-   .. coroutinemethod:: drain()
-
-      A :ref:`coroutine<coroutine>` to let the write buffer of the
-      underlying transport a chance to be flushed.
-
-      The intended use is to write::
-
-          resp.write(data)
-          await resp.drain()
-
-      Yielding from :meth:`drain` gives the opportunity for the loop
-      to schedule the write operation and flush the buffer. It should
-      especially be used when a possibly large amount of data is
-      written to the transport, and the coroutine does not yield-from
-      between calls to :meth:`write`.
-
-   .. coroutinemethod:: write_eof()
+   .. comethod:: write_eof()
 
       A :ref:`coroutine<coroutine>` *may* be called as a mark of the
       *HTTP response* processing finish.
@@ -923,7 +909,7 @@ WebSocketResponse
               print(msg.data)
 
 
-   .. coroutinemethod:: prepare(request)
+   .. comethod:: prepare(request)
 
       Starts websocket. After the call you can use websocket methods.
 
@@ -1403,7 +1389,7 @@ duplicated like one using :meth:`Application.copy`.
        await loop.create_server(app.make_handler(),
                                 '0.0.0.0', 8080)
 
-   .. coroutinemethod:: startup()
+   .. comethod:: startup()
 
       A :ref:`coroutine<coroutine>` that will be called along with the
       application's request handler.
@@ -1411,7 +1397,7 @@ duplicated like one using :meth:`Application.copy`.
       The purpose of the method is calling :attr:`on_startup` signal
       handlers.
 
-   .. coroutinemethod:: shutdown()
+   .. comethod:: shutdown()
 
       A :ref:`coroutine<coroutine>` that should be called on
       server stopping but before :meth:`cleanup()`.
@@ -1419,7 +1405,7 @@ duplicated like one using :meth:`Application.copy`.
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
 
-   .. coroutinemethod:: cleanup()
+   .. comethod:: cleanup()
 
       A :ref:`coroutine<coroutine>` that should be called on
       server stopping but after :meth:`shutdown`.
@@ -1465,7 +1451,7 @@ A protocol factory compatible with
 
       .. versionadded:: 1.0
 
-   .. coroutinemethod:: Server.shutdown(timeout)
+   .. comethod:: Server.shutdown(timeout)
 
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
@@ -1707,7 +1693,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       .. versionadded:: 1.1
 
-   .. coroutinemethod:: resolve(request)
+   .. comethod:: resolve(request)
 
       A :ref:`coroutine<coroutine>` that returns
       :class:`AbstractMatchInfo` for *request*.
@@ -1860,7 +1846,7 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
-   .. coroutinemethod:: resolve(method, path)
+   .. comethod:: resolve(method, path)
 
       Resolve resource by finding appropriate :term:`web-handler` for
       ``(method, path)`` combination.
@@ -2057,7 +2043,7 @@ and *405 Method Not Allowed*.
 
       Actually it's a shortcut for ``route.resource.url_for(...)``.
 
-   .. coroutinemethod:: handle_expect_header(request)
+   .. comethod:: handle_expect_header(request)
 
       ``100-continue`` handler.
 

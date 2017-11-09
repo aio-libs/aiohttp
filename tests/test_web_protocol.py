@@ -749,7 +749,7 @@ async def test_pipeline_response_order(
         nonlocal processed
         resp = web.StreamResponse()
         await resp.prepare(request)
-        resp.write(b'test2')
+        await resp.write(b'test2')
         await resp.write_eof()
         processed.append(2)
         return resp

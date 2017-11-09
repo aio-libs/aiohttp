@@ -63,7 +63,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
 
         for hdr, val in request.message.headers.items():
             if (hdr.upper() == 'EXPECT') and (val == '100-continue'):
-                request.writer.write(b'HTTP/1.0 100 Continue\r\n\r\n')
+                await request.writer.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                 break
 
         rob = router(properties, request)
@@ -274,7 +274,7 @@ class Router:
             except Exception:
                 return
         else:
-            response.write(body.encode('utf8'))
+            await response.write(body.encode('utf8'))
 
         return response
 
@@ -462,7 +462,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             @aiohttp.streamer
             async def stream(writer):
                 await fut
-                writer.write(data)
+                await writer.write(data)
 
             self.loop.call_later(0.01, fut.set_result, True)
 

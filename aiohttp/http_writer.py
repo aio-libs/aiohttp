@@ -116,7 +116,7 @@ class StreamWriter:
 
         The intended use is to write
 
-          w.write(data)
+          await w.write(data)
           await w.drain()
         """
         if self._protocol.transport is not None:
