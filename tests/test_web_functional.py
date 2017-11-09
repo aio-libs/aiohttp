@@ -935,9 +935,9 @@ async def test_stream_response_multiple_chunks(loop, test_client):
         resp = web.StreamResponse()
         resp.enable_chunked_encoding()
         await resp.prepare(request)
-        resp.write(b'x')
-        resp.write(b'y')
-        resp.write(b'z')
+        await resp.write(b'x')
+        await resp.write(b'y')
+        await resp.write(b'z')
         return resp
 
     app = web.Application()
@@ -1464,7 +1464,7 @@ async def test_await(test_server, loop):
         await resp.prepare(request)
         await resp.drain()
         await asyncio.sleep(0.01, loop=loop)
-        resp.write(b'test')
+        await resp.write(b'test')
         await asyncio.sleep(0.01, loop=loop)
         await resp.write_eof()
         return resp
