@@ -99,10 +99,10 @@ def test_stream_response_len():
 
 
 def test_request_iter():
-    req = make_mocked_request('GET', '/')
-    req['key'] = 'value'
-    req['key2'] = 'value2'
-    assert set(req) == {'key', 'key2'}
+    resp = StreamResponse()
+    resp['key'] = 'value'
+    resp['key2'] = 'value2'
+    assert set(resp) == {'key', 'key2'}
 
 
 def test_content_length():
