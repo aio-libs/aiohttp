@@ -126,6 +126,9 @@ class ClientWebSocketResponse:
     async def send_json(self, data, *, dumps=json.dumps):
         await self.send_str(dumps(data))
 
+    async def drain(self):
+        await self._writer.drain()
+
     async def close(self, *, code=1000, message=b''):
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
