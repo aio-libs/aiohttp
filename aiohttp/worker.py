@@ -47,6 +47,7 @@ class GunicornWebWorker(base.Worker):
 
     def run(self):
         if hasattr(self.wsgi, 'startup'):
+            self.wsgi.freeze()
             self.loop.run_until_complete(self.wsgi.startup())
         self._runner = asyncio.ensure_future(self._run(), loop=self.loop)
 
