@@ -17,6 +17,7 @@ def app(loop):
     ret.loop = loop
     ret._debug = False
     ret.on_response_prepare = signals.Signal(ret)
+    ret.on_response_prepare.freeze()
     return ret
 
 

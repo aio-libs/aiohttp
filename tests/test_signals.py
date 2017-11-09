@@ -1,21 +1,17 @@
+import re
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict
 
 from aiohttp.signals import Signal
-from aiohttp.test_utils import make_mocked_request
+from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import Application, Response
 
 
 @pytest.fixture
 def app():
     return Application()
-
-
-@pytest.fixture
-def debug_app():
-    return Application(debug=True)
 
 
 def make_request(app, method, path, headers=CIMultiDict()):
@@ -25,6 +21,7 @@ def make_request(app, method, path, headers=CIMultiDict()):
 async def test_add_signal_handler_not_a_callable(app):
     callback = True
     app.on_response_prepare.append(callback)
+    app.on_response_prepare.freeze()
     with pytest.raises(TypeError):
         await app.on_response_prepare(None, None)
 
@@ -39,6 +36,7 @@ async def test_function_signal_dispatch(app):
         callback_mock(**kwargs)
 
     signal.append(callback)
+    signal.freeze()
 
     await signal.send(**kwargs)
     callback_mock.assert_called_once_with(**kwargs)
@@ -55,6 +53,7 @@ async def test_function_signal_dispatch2(app):
         callback_mock(*args, **kwargs)
 
     signal.append(callback)
+    signal.freeze()
 
     await signal.send(*args, **kwargs)
     callback_mock.assert_called_once_with(*args, **kwargs)
@@ -67,6 +66,7 @@ async def test_response_prepare(app):
         callback(*args, **kwargs)
 
     app.on_response_prepare.append(cb)
+    app.on_response_prepare.freeze()
 
     request = make_request(app, 'GET', '/')
     response = Response(body=b'')
@@ -82,27 +82,10 @@ async def test_non_coroutine(app):
     callback = mock.Mock()
 
     signal.append(callback)
+    signal.freeze()
 
-    await signal.send(**kwargs)
-    callback.assert_called_once_with(**kwargs)
-
-
-async def test_debug_signal(debug_app):
-    assert debug_app.debug, "Should be True"
-    signal = Signal(debug_app)
-
-    callback = mock.Mock()
-    pre = mock.Mock()
-    post = mock.Mock()
-
-    signal.append(callback)
-    debug_app.on_pre_signal.append(pre)
-    debug_app.on_post_signal.append(post)
-
-    await signal.send(1, a=2)
-    callback.assert_called_once_with(1, a=2)
-    pre.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
-    post.assert_called_once_with(1, 'aiohttp.signals:Signal', 1, a=2)
+    with pytest.raises(TypeError):
+        await signal.send(**kwargs)
 
 
 def test_setitem(app):
@@ -157,3 +140,28 @@ def test_cannot_delitem_in_frozen_signal(app):
         del signal[0]
 
     assert list(signal) == [m1]
+
+
+async def test_cannot_send_non_frozen_signal(app):
+    signal = Signal(app)
+
+    callback = make_mocked_coro()
+
+    signal.append(callback)
+
+    with pytest.raises(RuntimeError):
+        await signal.send()
+
+    assert not callback.called
+
+
+async def test_repr(app):
+    signal = Signal(app)
+
+    callback = make_mocked_coro()
+
+    signal.append(callback)
+
+    assert re.match(r"<Signal owner=<Application .+>, frozen=False, "
+                    r"\[<Mock id='\d+'>\]>",
+                    repr(signal))
