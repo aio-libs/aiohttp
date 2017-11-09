@@ -991,6 +991,19 @@ Otherwise, something based on your company name/url would be satisfactory (i.e.
 ``org.company.app``).
 
 
+.. versionadded:: 3.0
+
+:class:`aiohttp.web.StreamResponse` and :class:`aiohttp.web.Response` objects
+also support :class:`collections.abc.MutableMapping` interface. This is useful
+when you want to share data with signals and middlewares once all the work in
+the handler is done::
+
+    async def handler(request):
+      [ do all the work ]
+      response['my_metric'] = 123
+      return response
+
+
 .. _aiohttp-web-middlewares:
 
 Middlewares

@@ -1,3 +1,4 @@
+import collections
 import datetime
 import json
 import re
@@ -74,6 +75,34 @@ def test_stream_response_ctor():
     req = mock.Mock()
     resp._req = req
     assert resp.task is req.task
+
+
+def test_stream_response_is_mutable_mapping():
+    resp = StreamResponse()
+    assert isinstance(resp, collections.MutableMapping)
+    resp['key'] = 'value'
+    assert 'value' == resp['key']
+
+
+def test_stream_response_delitem():
+    resp = StreamResponse()
+    resp['key'] = 'value'
+    del resp['key']
+    assert 'key' not in resp
+
+
+def test_stream_response_len():
+    resp = StreamResponse()
+    assert len(resp) == 0
+    resp['key'] = 'value'
+    assert len(resp) == 1
+
+
+def test_request_iter():
+    req = make_mocked_request('GET', '/')
+    req['key'] = 'value'
+    req['key2'] = 'value2'
+    assert set(req) == {'key', 'key2'}
 
 
 def test_content_length():

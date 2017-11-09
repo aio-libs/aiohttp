@@ -1,3 +1,4 @@
+import collections
 import datetime
 import enum
 import json
@@ -33,11 +34,11 @@ class ContentCoding(enum.Enum):
 ############################################################
 
 
-class StreamResponse(HeadersMixin):
+class StreamResponse(collections.MutableMapping, HeadersMixin):
 
     _length_check = True
 
-    def __init__(self, *, status=200, reason=None, headers=None):
+    def __init__(self, *, status=200, reason=None, headers=None, state=None):
         self._body = None
         self._keep_alive = None
         self._chunked = False
@@ -49,6 +50,7 @@ class StreamResponse(HeadersMixin):
         self._payload_writer = None
         self._eof_sent = False
         self._body_length = 0
+        self._state = state or {}
 
         if headers is not None:
             self._headers = CIMultiDict(headers)
@@ -438,6 +440,21 @@ class StreamResponse(HeadersMixin):
             info = "not prepared"
         return "<{} {} {}>".format(self.__class__.__name__,
                                    self.reason, info)
+
+    def __getitem__(self, key):
+        return self._state[key]
+
+    def __setitem__(self, key, value):
+        self._state[key] = value
+
+    def __delitem__(self, key):
+        del self._state[key]
+
+    def __len__(self):
+        return len(self._state)
+
+    def __iter__(self):
+        return iter(self._state)
 
 
 class Response(StreamResponse):
