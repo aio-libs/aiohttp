@@ -526,18 +526,16 @@ async def test_write_before_start():
 
 async def test_cannot_write_after_eof():
     resp = StreamResponse()
-    writer = mock.Mock()
-    resp_impl = await resp.prepare(
-        make_request('GET', '/', writer=writer))
-    resp_impl.write_eof = make_mocked_coro(None)
+    req = make_request('GET', '/')
+    await resp.prepare(req)
 
     await resp.write(b'data')
     await resp.write_eof()
-    writer.write.reset_mock()
+    req.writer.write.reset_mock()
 
     with pytest.raises(RuntimeError):
         await resp.write(b'next data')
-    assert not writer.write.called
+    assert not req.writer.write.called
 
 
 async def test___repr___after_eof():

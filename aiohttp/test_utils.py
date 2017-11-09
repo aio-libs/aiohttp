@@ -525,6 +525,7 @@ def make_mocked_request(method, path, headers=None, *,
 
     if payload_writer is sentinel:
         payload_writer = mock.Mock()
+        payload_writer.write = make_mocked_coro(None)
         payload_writer.write_eof = make_mocked_coro(None)
         payload_writer.drain = make_mocked_coro(None)
 
