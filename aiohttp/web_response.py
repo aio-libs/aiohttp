@@ -393,7 +393,7 @@ class StreamResponse(HeadersMixin):
 
         return writer
 
-    def write(self, data):
+    async def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \
             "data argument must be byte-ish (%r)" % type(data)
 
@@ -402,7 +402,7 @@ class StreamResponse(HeadersMixin):
         if self._payload_writer is None:
             raise RuntimeError("Cannot call write() before prepare()")
 
-        return self._payload_writer.write(data)
+        await self._payload_writer.write(data)
 
     async def drain(self):
         assert not self._eof_sent, "EOF has already been sent"

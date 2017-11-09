@@ -514,14 +514,14 @@ async def test_write_non_byteish():
     await resp.prepare(make_request('GET', '/'))
 
     with pytest.raises(AssertionError):
-        resp.write(123)
+        await resp.write(123)
 
 
-def test_write_before_start():
+async def test_write_before_start():
     resp = StreamResponse()
 
     with pytest.raises(RuntimeError):
-        resp.write(b'data')
+        await resp.write(b'data')
 
 
 async def test_cannot_write_after_eof():
@@ -531,12 +531,12 @@ async def test_cannot_write_after_eof():
         make_request('GET', '/', writer=writer))
     resp_impl.write_eof = make_mocked_coro(None)
 
-    resp.write(b'data')
+    await resp.write(b'data')
     await resp.write_eof()
     writer.write.reset_mock()
 
     with pytest.raises(RuntimeError):
-        resp.write(b'next data')
+        await resp.write(b'next data')
     assert not writer.write.called
 
 
@@ -546,7 +546,7 @@ async def test___repr___after_eof():
 
     assert resp.prepared
 
-    resp.write(b'data')
+    await resp.write(b'data')
     await resp.write_eof()
     assert not resp.prepared
     resp_repr = repr(resp)
@@ -567,7 +567,7 @@ async def test_cannot_write_eof_twice():
     resp_impl.write = make_mocked_coro(None)
     resp_impl.write_eof = make_mocked_coro(None)
 
-    resp.write(b'data')
+    await resp.write(b'data')
     assert resp_impl.write.called
 
     await resp.write_eof()
@@ -575,22 +575,6 @@ async def test_cannot_write_eof_twice():
     resp_impl.write.reset_mock()
     await resp.write_eof()
     assert not writer.write.called
-
-
-async def _test_write_returns_drain():
-    resp = StreamResponse()
-    await resp.prepare(make_request('GET', '/'))
-
-    with mock.patch('aiohttp.http_writer.noop') as noop:
-        assert noop == resp.write(b'data')
-
-
-async def _test_write_returns_empty_tuple_on_empty_data():
-    resp = StreamResponse()
-    await resp.prepare(make_request('GET', '/'))
-
-    with mock.patch('aiohttp.http_writer.noop') as noop:
-        assert noop.return_value == resp.write(b'')
 
 
 def test_force_close():
