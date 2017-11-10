@@ -67,17 +67,6 @@ class AbstractResource(Sized, Iterable):
         return self._name
 
     @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for resource with additional params.
-
-        Deprecated, use url_for() instead.
-
-        """
-        warnings.warn(".url(...) is deprecated, use .url_for instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-
-    @abc.abstractmethod  # pragma: no branch
     def url_for(self, **kwargs):
         """Construct url for resource with additional params."""
 
@@ -170,17 +159,6 @@ class AbstractRoute(abc.ABC):
     @abc.abstractmethod  # pragma: no branch
     def url_for(self, *args, **kwargs):
         """Construct url for route with additional params."""
-
-    @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for resource with additional params.
-
-        Deprecated, use url_for() instead.
-
-        """
-        warnings.warn(".url(...) is deprecated, use .url_for instead",
-                      DeprecationWarning,
-                      stacklevel=3)
 
     async def handle_expect_header(self, request):
         return await self._expect_handler(request)
@@ -334,10 +312,6 @@ class PlainResource(Resource):
     def get_info(self):
         return {'path': self._path}
 
-    def url(self, *, query=None):
-        super().url()
-        return str(self.url_for().with_query(query))
-
     def url_for(self):
         return URL(self._path)
 
@@ -411,10 +385,6 @@ class DynamicResource(Resource):
         url = self._formatter.format_map(parts)
         return URL(url)
 
-    def url(self, *, parts, query=None):
-        super().url(**parts)
-        return str(self.url_for(**parts).with_query(query))
-
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
         return ("<DynamicResource {name} {formatter}"
@@ -466,12 +436,6 @@ class StaticResource(PrefixResource):
 
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
-
-    def url(self, *, filename, append_version=None, query=None):
-        url = self.url_for(filename=filename, append_version=append_version)
-        if query is not None:
-            return str(url.update_query(query))
-        return str(url)
 
     def url_for(self, *, filename, append_version=None):
         if append_version is None:
@@ -629,11 +593,6 @@ class PrefixedSubAppResource(PrefixResource):
         raise RuntimeError(".url_for() is not supported "
                            "by sub-application root")
 
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
-        raise RuntimeError(".url() is not supported "
-                           "by sub-application root")
-
     def get_info(self):
         return {'app': self._app,
                 'prefix': self._prefix}
@@ -681,11 +640,6 @@ class ResourceRoute(AbstractRoute):
         """Construct url for route with additional params."""
         return self._resource.url_for(*args, **kwargs)
 
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
-        super().url(**kwargs)
-        return self._resource.url(**kwargs)
-
     def get_info(self):
         return self._resource.get_info()
 
@@ -698,9 +652,6 @@ class SystemRoute(AbstractRoute):
 
     def url_for(self, *args, **kwargs):
         raise RuntimeError(".url_for() is not allowed for SystemRoute")
-
-    def url(self, *args, **kwargs):
-        raise RuntimeError(".url() is not allowed for SystemRoute")
 
     @property
     def name(self):
