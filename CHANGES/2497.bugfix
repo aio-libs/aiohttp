@@ -1,0 +1,1 @@
+Ignore `NotImplementedError` raised by `set_child_watcher` from `uvloop`.
