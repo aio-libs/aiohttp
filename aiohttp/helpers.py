@@ -30,7 +30,7 @@ from .log import client_logger
 try:
     from asyncio import ensure_future
 except ImportError:
-    ensure_future = asyncio.async
+    ensure_future = getattr(asyncio, 'async')
 
 PY_34 = sys.version_info < (3, 5)
 PY_35 = sys.version_info >= (3, 5)
