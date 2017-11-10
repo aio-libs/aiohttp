@@ -323,30 +323,9 @@ def test_route_dynamic(router):
                              name='name')
 
     route2 = next(iter(router['name']))
-    with pytest.warns(DeprecationWarning):
-        url = route2.url(parts={'name': 'John'})
-    assert '/get/John' == url
-    assert route is route2
-
-
-def test_route_dynamic2(router):
-    handler = make_handler()
-    route = router.add_route('GET', '/get/{name}', handler,
-                             name='name')
-
-    route2 = next(iter(router['name']))
     url = route2.url_for(name='John')
     assert '/get/John' == str(url)
     assert route is route2
-
-
-def test_route_with_qs(router):
-    handler = make_handler()
-    router.add_route('GET', '/get', handler, name='name')
-
-    with pytest.warns(DeprecationWarning):
-        url = router['name'].url(query=[('a', 'b'), ('c', '1')])
-    assert '/get?a=b&c=1' == url
 
 
 def test_add_static(router):
@@ -354,8 +333,8 @@ def test_add_static(router):
                                  os.path.dirname(aiohttp.__file__),
                                  name='static')
     assert router['static'] is resource
-    url = resource.url(filename='/dir/a.txt')
-    assert '/st/dir/a.txt' == url
+    url = resource.url_for(filename='/dir/a.txt')
+    assert '/st/dir/a.txt' == str(url)
     assert len(resource) == 2
 
 
@@ -363,10 +342,11 @@ def test_add_static_append_version(router):
     resource = router.add_static('/st',
                                  os.path.dirname(__file__),
                                  name='static')
-    url = resource.url(filename='/data.unknown_mime_type', append_version=True)
+    url = resource.url_for(filename='/data.unknown_mime_type',
+                           append_version=True)
     expect_url = '/st/data.unknown_mime_type?' \
                  'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
-    assert expect_url == url
+    assert expect_url == str(url)
 
 
 def test_add_static_append_version_set_from_constructor(router):
@@ -374,10 +354,10 @@ def test_add_static_append_version_set_from_constructor(router):
                                  os.path.dirname(__file__),
                                  append_version=True,
                                  name='static')
-    url = resource.url(filename='/data.unknown_mime_type')
+    url = resource.url_for(filename='/data.unknown_mime_type')
     expect_url = '/st/data.unknown_mime_type?' \
                  'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
-    assert expect_url == url
+    assert expect_url == str(url)
 
 
 def test_add_static_append_version_override_constructor(router):
@@ -385,36 +365,37 @@ def test_add_static_append_version_override_constructor(router):
                                  os.path.dirname(__file__),
                                  append_version=True,
                                  name='static')
-    url = resource.url(filename='/data.unknown_mime_type',
-                       append_version=False)
+    url = resource.url_for(filename='/data.unknown_mime_type',
+                           append_version=False)
     expect_url = '/st/data.unknown_mime_type'
-    assert expect_url == url
+    assert expect_url == str(url)
 
 
 def test_add_static_append_version_filename_without_slash(router):
     resource = router.add_static('/st',
                                  os.path.dirname(__file__),
                                  name='static')
-    url = resource.url(filename='data.unknown_mime_type', append_version=True)
+    url = resource.url_for(filename='data.unknown_mime_type',
+                           append_version=True)
     expect_url = '/st/data.unknown_mime_type?' \
                  'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
-    assert expect_url == url
+    assert expect_url == str(url)
 
 
 def test_add_static_append_version_non_exists_file(router):
     resource = router.add_static('/st',
                                  os.path.dirname(__file__),
                                  name='static')
-    url = resource.url(filename='/non_exists_file', append_version=True)
-    assert '/st/non_exists_file' == url
+    url = resource.url_for(filename='/non_exists_file', append_version=True)
+    assert '/st/non_exists_file' == str(url)
 
 
 def test_add_static_append_version_non_exists_file_without_slash(router):
     resource = router.add_static('/st',
                                  os.path.dirname(__file__),
                                  name='static')
-    url = resource.url(filename='non_exists_file', append_version=True)
-    assert '/st/non_exists_file' == url
+    url = resource.url_for(filename='non_exists_file', append_version=True)
+    assert '/st/non_exists_file' == str(url)
 
 
 def test_add_static_append_version_follow_symlink(router, tmpdir):
@@ -430,12 +411,12 @@ def test_add_static_append_version_follow_symlink(router, tmpdir):
     resource = router.add_static('/st', tmp_dir_path, follow_symlinks=True,
                                  append_version=True)
 
-    url = resource.url(
+    url = resource.url_for(
         filename='/append_version_symlink/data.unknown_mime_type')
 
     expect_url = '/st/append_version_symlink/data.unknown_mime_type?' \
                  'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
-    assert expect_url == url
+    assert expect_url == str(url)
 
 
 def test_add_static_append_version_not_follow_symlink(router, tmpdir):
@@ -452,30 +433,8 @@ def test_add_static_append_version_not_follow_symlink(router, tmpdir):
                                  append_version=True)
 
     filename = '/append_version_symlink/data.unknown_mime_type'
-    url = resource.url(filename=filename)
-    assert '/st/append_version_symlink/data.unknown_mime_type' == url
-
-
-def test_add_static_append_version_with_query(router):
-    resource = router.add_static('/st',
-                                 os.path.dirname(__file__),
-                                 name='static')
-    url = resource.url(filename='/data.unknown_mime_type',
-                       append_version=True,
-                       query={'key': 'val'})
-    expect_url = '/st/data.unknown_mime_type?' \
-                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D&key=val'
-    assert expect_url == url
-
-
-def test_add_static_append_version_non_exists_file_with_query(router):
-    resource = router.add_static('/st',
-                                 os.path.dirname(__file__),
-                                 name='static')
-    url = resource.url(filename='/non_exists_file',
-                       append_version=True,
-                       query={'key': 'val'})
-    assert '/st/non_exists_file?key=val' == url
+    url = resource.url_for(filename=filename)
+    assert '/st/append_version_symlink/data.unknown_mime_type' == str(url)
 
 
 def test_plain_not_match(router):
@@ -1019,13 +978,6 @@ def test_subapp_get_info(app, loop):
     subapp = web.Application()
     resource = subapp.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
-
-
-def test_subapp_url(app, loop):
-    subapp = web.Application()
-    resource = app.add_subapp('/pre', subapp)
-    with pytest.raises(RuntimeError):
-        resource.url()
 
 
 def test_subapp_url_for(app, loop):
