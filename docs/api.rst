@@ -163,15 +163,7 @@ WebSocket utilities
 
       Returns parsed JSON data.
 
-      .. versionadded:: 0.22
-
       :param loads: optional JSON decoder function.
-
-   .. attribute:: tp
-
-      Deprecated alias for :attr:`type`.
-
-      .. deprecated:: 1.0
 
 
 Signals
