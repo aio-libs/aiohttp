@@ -1343,7 +1343,6 @@ duplicated like one using :meth:`Application.copy`.
     :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
     :param int keepalive_timeout: Number of seconds before closing Keep-Alive
       connection. Default: ``75`` seconds (NGINX's default value).
-    :param slow_request_timeout: Slow request timeout. Default: ``0``.
     :param logger: Custom logger object. Default:
       :data:`aiohttp.log.server_logger`.
     :param access_log: Custom logging object. Default:
