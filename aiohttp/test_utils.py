@@ -452,7 +452,8 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
         policy = asyncio.get_event_loop_policy()
         watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
-        policy.set_child_watcher(watcher)
+        with contextlib.suppress(NotImplementedError):
+            policy.set_child_watcher(watcher)
     return loop
 
 
