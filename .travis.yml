@@ -143,6 +143,7 @@ jobs:
     env:
     - docs
     script:
+    - towncrier --yes
     - make doc-spelling
 
   - <<: *_lint_base
