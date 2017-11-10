@@ -253,11 +253,6 @@ def test_srv_keep_alive(srv):
     assert not srv._keepalive
 
 
-def test_slow_request(make_srv):
-    with pytest.warns(DeprecationWarning):
-        make_srv(slow_request_timeout=0.01)
-
-
 async def test_simple(srv, loop, buf):
     srv.data_received(
         b'GET / HTTP/1.1\r\n\r\n')
