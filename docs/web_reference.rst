@@ -1793,19 +1793,6 @@ Resource classes hierarchy::
 
       :return: :class:`~yarl.URL` -- resulting URL instance.
 
-   .. method:: url(**kwargs)
-
-      Construct an URL for route with additional params.
-
-      **kwargs** depends on a list accepted by inherited resource
-      class parameters.
-
-      :return: :class:`str` -- resulting URL string.
-
-      .. deprecated:: 1.1
-
-         Use :meth:`url_for` instead.
-
 
 .. class:: Resource
 
