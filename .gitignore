@@ -45,3 +45,4 @@ virtualenv.py
 .develop
 .gitconfig
 .flake
+.python-version
