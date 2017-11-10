@@ -1,4 +1,3 @@
-import asyncio
 import socket
 from collections import MutableMapping
 from unittest import mock
@@ -119,30 +118,27 @@ def test_non_keepalive_on_closing():
     assert not req.keep_alive
 
 
-@asyncio.coroutine
-def test_call_POST_on_GET_request():
+async def test_call_POST_on_GET_request():
     req = make_mocked_request('GET', '/')
 
-    ret = yield from req.post()
+    ret = await req.post()
     assert CIMultiDict() == ret
 
 
-@asyncio.coroutine
-def test_call_POST_on_weird_content_type():
+async def test_call_POST_on_weird_content_type():
     req = make_mocked_request(
         'POST', '/',
         headers=CIMultiDict({'CONTENT-TYPE': 'something/weird'}))
 
-    ret = yield from req.post()
+    ret = await req.post()
     assert CIMultiDict() == ret
 
 
-@asyncio.coroutine
-def test_call_POST_twice():
+async def test_call_POST_twice():
     req = make_mocked_request('GET', '/')
 
-    ret1 = yield from req.post()
-    ret2 = yield from req.post()
+    ret1 = await req.post()
+    ret2 = await req.post()
     assert ret1 is ret2
 
 
@@ -400,6 +396,13 @@ def test_clone():
     assert req2.rel_url == URL('/path')
 
 
+def test_clone_client_max_size():
+    req = make_mocked_request('GET', '/path', client_max_size=1024)
+    req2 = req.clone()
+    assert req._client_max_size == req2._client_max_size
+    assert req2._client_max_size == 1024
+
+
 def test_clone_method():
     req = make_mocked_request('GET', '/path')
     req2 = req.clone(method='POST')
@@ -433,19 +436,17 @@ def test_clone_headers_dict():
     assert req2.raw_headers == ((b'B', b'C'),)
 
 
-@asyncio.coroutine
-def test_cannot_clone_after_read(loop):
+async def test_cannot_clone_after_read(loop):
     payload = StreamReader(loop=loop)
     payload.feed_data(b'data')
     payload.feed_eof()
     req = make_mocked_request('GET', '/path', payload=payload)
-    yield from req.read()
+    await req.read()
     with pytest.raises(RuntimeError):
         req.clone()
 
 
-@asyncio.coroutine
-def test_make_too_big_request(loop):
+async def test_make_too_big_request(loop):
     payload = StreamReader(loop=loop)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
@@ -453,13 +454,12 @@ def test_make_too_big_request(loop):
     payload.feed_eof()
     req = make_mocked_request('POST', '/', payload=payload)
     with pytest.raises(HTTPRequestEntityTooLarge) as err:
-        yield from req.read()
+        await req.read()
 
     assert err.value.status_code == 413
 
 
-@asyncio.coroutine
-def test_make_too_big_request_adjust_limit(loop):
+async def test_make_too_big_request_adjust_limit(loop):
     payload = StreamReader(loop=loop)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
@@ -468,12 +468,11 @@ def test_make_too_big_request_adjust_limit(loop):
     max_size = 1024**2 + 2
     req = make_mocked_request('POST', '/', payload=payload,
                               client_max_size=max_size)
-    txt = yield from req.read()
+    txt = await req.read()
     assert len(txt) == 1024**2 + 1
 
 
-@asyncio.coroutine
-def test_multipart_formdata(loop):
+async def test_multipart_formdata(loop):
     payload = StreamReader(loop=loop)
     payload.feed_data(b"""-----------------------------326931944431359\r
 Content-Disposition: form-data; name="a"\r
@@ -490,12 +489,11 @@ d\r
     req = make_mocked_request('POST', '/',
                               headers={'CONTENT-TYPE': content_type},
                               payload=payload)
-    result = yield from req.post()
+    result = await req.post()
     assert dict(result) == {'a': 'b', 'c': 'd'}
 
 
-@asyncio.coroutine
-def test_make_too_big_request_limit_None(loop):
+async def test_make_too_big_request_limit_None(loop):
     payload = StreamReader(loop=loop)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
@@ -504,7 +502,7 @@ def test_make_too_big_request_limit_None(loop):
     max_size = None
     req = make_mocked_request('POST', '/', payload=payload,
                               client_max_size=max_size)
-    txt = yield from req.read()
+    txt = await req.read()
     assert len(txt) == 1024**2 + 1
 
 

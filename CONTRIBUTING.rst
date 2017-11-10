@@ -113,7 +113,7 @@ Use:
 to run test suite and collect coverage information. Once the command
 has finished check your coverage at the file that appears in the last
 line of the output:
-``open file:///.../aiohttp/coverage/index.html``
+``open file:///.../aiohttp/htmlcov/index.html``
 
 Please go to the link and make sure that your code change is covered.
 

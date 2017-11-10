@@ -1,18 +1,33 @@
-Frequently Asked Questions
-==========================
+FAQ
+===
+
 .. contents::
    :local:
 
 Are there any plans for @app.route decorator like in Flask?
 -----------------------------------------------------------
-There are couple issues here:
 
-* This adds huge problem name "configuration as side effect of importing".
-* Route matching is order specific, it is very hard to maintain import order.
-* In semi large application better to have routes table defined in one place.
+We have it already (*aiohttp>=2.3* required):
+:ref:`aiohttp-web-alternative-routes-definition`.
 
-For this reason feature will not be implemented. But if you really want to
-use decorators just derive from web.Application and add desired method.
+The difference is: ``@app.route`` should have an ``app`` in module
+global namespace, which makes *circular import hell* easy.
+
+*aiohttp* provides a :class:`~aiohttp.web.RouteTableDef` decoupled
+ from an application instance::
+
+   routes = web.RouteTableDef()
+
+   @routes.get('/get')
+   async def handle_get(request):
+       ...
+
+
+   @routes.post('/post')
+   async def handle_post(request):
+       ...
+
+   app.router.add_routes(routes)
 
 
 Has aiohttp the Flask Blueprint or Django App concept?
@@ -368,3 +383,16 @@ use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
 for different http calls but process them in logical chains use single
 :class:`aiohttp.TCPConnector` with separate
 client session and ``own_connector=False``.
+
+
+How to access db connection stored in app from subapplication?
+--------------------------------------------------------------
+
+Restricting access from subapplication to main (or outer) app is the
+deliberate choice.
+
+Subapplication is an isolated unit by design. If you need to share
+database object please do it explicitly::
+
+   subapp['db'] = mainapp['db']
+   mainapp.add_subapp('/prefix', subapp)

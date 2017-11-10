@@ -1,5 +1,3 @@
-.. module:: aiohttp.streams
-
 .. _aiohttp-streams:
 
 Streaming API

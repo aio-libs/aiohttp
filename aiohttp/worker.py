@@ -10,7 +10,7 @@ import sys
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
-from .helpers import AccessLogger, create_future, ensure_future
+from .helpers import AccessLogger
 
 
 try:
@@ -47,8 +47,9 @@ class GunicornWebWorker(base.Worker):
 
     def run(self):
         if hasattr(self.wsgi, 'startup'):
+            self.wsgi.freeze()
             self.loop.run_until_complete(self.wsgi.startup())
-        self._runner = ensure_future(self._run(), loop=self.loop)
+        self._runner = asyncio.ensure_future(self._run(), loop=self.loop)
 
         try:
             self.loop.run_until_complete(self._runner)
@@ -75,8 +76,7 @@ class GunicornWebWorker(base.Worker):
                 "aiohttp.wsgi is not supported anymore, "
                 "consider to switch to aiohttp.web.Application")
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         if self.servers:
             servers = self.servers
             self.servers = None
@@ -86,25 +86,24 @@ class GunicornWebWorker(base.Worker):
                 self.log.info("Stopping server: %s, connections: %s",
                               self.pid, len(handler.connections))
                 server.close()
-                yield from server.wait_closed()
+                await server.wait_closed()
 
             # send on_shutdown event
             if hasattr(self.wsgi, 'shutdown'):
-                yield from self.wsgi.shutdown()
+                await self.wsgi.shutdown()
 
             # stop alive connections
             tasks = [
                 handler.shutdown(
                     timeout=self.cfg.graceful_timeout / 100 * 95)
                 for handler in servers.values()]
-            yield from asyncio.gather(*tasks, loop=self.loop)
+            await asyncio.gather(*tasks, loop=self.loop)
 
             # cleanup application
             if hasattr(self.wsgi, 'cleanup'):
-                yield from self.wsgi.cleanup()
+                await self.wsgi.cleanup()
 
-    @asyncio.coroutine
-    def _run(self):
+    async def _run(self):
 
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
 
@@ -112,10 +111,10 @@ class GunicornWebWorker(base.Worker):
             handler = self.make_handler(self.wsgi)
 
             if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
-                srv = yield from self.loop.create_unix_server(
+                srv = await self.loop.create_unix_server(
                     handler, sock=sock.sock, ssl=ctx)
             else:
-                srv = yield from self.loop.create_server(
+                srv = await self.loop.create_server(
                     handler, sock=sock.sock, ssl=ctx)
             self.servers[srv] = handler
 
@@ -135,17 +134,17 @@ class GunicornWebWorker(base.Worker):
                     self.alive = False
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
-                    yield from self._wait_next_notify()
+                    await self._wait_next_notify()
 
         except BaseException:
             pass
 
-        yield from self.close()
+        await self.close()
 
     def _wait_next_notify(self):
         self._notify_waiter_done()
 
-        self._notify_waiter = waiter = create_future(self.loop)
+        self._notify_waiter = waiter = self.loop.create_future()
         self.loop.call_later(1.0, self._notify_waiter_done)
 
         return waiter
@@ -190,7 +189,7 @@ class GunicornWebWorker(base.Worker):
         self.cfg.worker_int(self)
 
         # init closing process
-        self._closing = ensure_future(self.close(), loop=self.loop)
+        self._closing = asyncio.ensure_future(self.close(), loop=self.loop)
 
         # close loop
         self.loop.call_later(0.1, self._notify_waiter_done)

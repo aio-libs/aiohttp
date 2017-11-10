@@ -225,6 +225,7 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+subapplication
 subclasses
 submodules
 subpackage
@@ -239,6 +240,7 @@ symlinks
 syscall
 syscalls
 Systemd
+tarball
 TCP
 teardown
 Teardown

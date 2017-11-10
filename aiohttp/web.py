@@ -20,7 +20,7 @@ from .frozenlist import FrozenList
 from .helpers import AccessLogger
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
-from .signals import FuncSignal, PostSignal, PreSignal, Signal
+from .signals import Signal
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
@@ -72,9 +72,6 @@ class Application(MutableMapping):
         self._frozen = False
         self._subapps = []
 
-        self._on_pre_signal = PreSignal()
-        self._on_post_signal = PostSignal()
-        self._on_loop_available = FuncSignal(self)
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
@@ -123,7 +120,6 @@ class Application(MutableMapping):
                 "web.Application instance initialized with different loop")
 
         self._loop = loop
-        self._on_loop_available.send(self)
 
         # set loop debug
         if self._debug is ...:
@@ -144,9 +140,6 @@ class Application(MutableMapping):
         self._frozen = True
         self._middlewares = tuple(self._prepare_middleware())
         self._router.freeze()
-        self._on_loop_available.freeze()
-        self._on_pre_signal.freeze()
-        self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
         self._on_startup.freeze()
         self._on_shutdown.freeze()
@@ -164,9 +157,8 @@ class Application(MutableMapping):
         def reg_handler(signame):
             subsig = getattr(subapp, signame)
 
-            @asyncio.coroutine
-            def handler(app):
-                yield from subsig.send(subapp)
+            async def handler(app):
+                await subsig.send(subapp)
             appsig = getattr(self, signame)
             appsig.append(handler)
 
@@ -194,22 +186,8 @@ class Application(MutableMapping):
         return resource
 
     @property
-    def on_loop_available(self):
-        warnings.warn("on_loop_available is deprecated and will be removed",
-                      DeprecationWarning, stacklevel=2)
-        return self._on_loop_available
-
-    @property
     def on_response_prepare(self):
         return self._on_response_prepare
-
-    @property
-    def on_pre_signal(self):
-        return self._on_pre_signal
-
-    @property
-    def on_post_signal(self):
-        return self._on_post_signal
 
     @property
     def on_startup(self):
@@ -254,29 +232,26 @@ class Application(MutableMapping):
                       access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
 
-    @asyncio.coroutine
-    def startup(self):
+    async def startup(self):
         """Causes on_startup signal
 
         Should be called in the event loop along with the request handler.
         """
-        yield from self.on_startup.send(self)
+        await self.on_startup.send(self)
 
-    @asyncio.coroutine
-    def shutdown(self):
+    async def shutdown(self):
         """Causes on_shutdown signal
 
         Should be called before cleanup()
         """
-        yield from self.on_shutdown.send(self)
+        await self.on_shutdown.send(self)
 
-    @asyncio.coroutine
-    def cleanup(self):
+    async def cleanup(self):
         """Causes on_cleanup signal
 
         Should be called after shutdown()
         """
-        yield from self.on_cleanup.send(self)
+        await self.on_cleanup.send(self)
 
     def _make_request(self, message, payload, protocol, writer, task,
                       _cls=web_request.Request):
@@ -295,9 +270,8 @@ class Application(MutableMapping):
                               DeprecationWarning, stacklevel=2)
                 yield m, False
 
-    @asyncio.coroutine
-    def _handle(self, request):
-        match_info = yield from self._router.resolve(request)
+    async def _handle(self, request):
+        match_info = await self._router.resolve(request)
         assert isinstance(match_info, AbstractMatchInfo), match_info
         match_info.add_app(self)
 
@@ -308,8 +282,8 @@ class Application(MutableMapping):
         request._match_info = match_info
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
-            resp = yield from match_info.expect_handler(request)
-            yield from request.writer.drain()
+            resp = await match_info.expect_handler(request)
+            await request.writer.drain()
 
         if resp is None:
             handler = match_info.handler
@@ -318,9 +292,9 @@ class Application(MutableMapping):
                     if new_style:
                         handler = partial(m, handler=handler)
                     else:
-                        handler = yield from m(app, handler)
+                        handler = await m(app, handler)
 
-            resp = yield from handler(request)
+            resp = await handler(request)
 
         assert isinstance(resp, web_response.StreamResponse), \
             ("Handler {!r} should return response instance, "
@@ -421,7 +395,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
         if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
             uris.append('{}://unix:{}:'.format(scheme, sock.getsockname()))
         else:
-            host, port = sock.getsockname()
+            host, port = sock.getsockname()[:2]
             uris.append(str(base_url.with_host(host).with_port(port)))
     return server_creations, uris
 
@@ -436,6 +410,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         loop = asyncio.get_event_loop()
 
     app._set_loop(loop)
+    app.freeze()
     loop.run_until_complete(app.startup())
 
     try:

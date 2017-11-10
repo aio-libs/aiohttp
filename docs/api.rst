@@ -192,6 +192,13 @@ callbacks by ``await sig.send(data)``.
 For concrete usage examples see :ref:`signals in aiohttp.web
 <aiohttp-web-signals>` chapter.
 
+.. versionchanged:: 3.0
+
+   ``sig.send()`` call is forbidden for non-frozen signal.
+
+   Support for regular (non-async) callbacks is dropped. All callbacks
+   should be async functions.
+
 
 .. class:: Signal
 
@@ -210,12 +217,3 @@ For concrete usage examples see :ref:`signals in aiohttp.web
    .. method:: freeze()
 
       Freeze the list. After the call any content modification is forbidden.
-
-
-aiohttp.multipart module
-------------------------
-
-.. automodule:: aiohttp.multipart
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -3,17 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-aiohttp: Asynchronous HTTP Client/Server
-========================================
+===============================================================
+aiohttp: Asynchronous HTTP Client/Server for Python and asyncio
+===============================================================
 
-HTTP client/server for :term:`asyncio` (:pep:`3156`).
+HTTP client/server for :term:`asyncio` and Python.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp
 .. _Freenode: http://freenode.net
 
 
 Key Features
-------------
+============
 
 - Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
 - Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
@@ -22,7 +23,7 @@ Key Features
   :ref:`aiohttp-web-signals` and pluggable routing.
 
 Library Installation
---------------------
+====================
 
 .. code-block:: bash
 
@@ -44,7 +45,7 @@ This option is highly recommended:
    $ pip install aiodns
 
 Getting Started
----------------
+===============
 
 Client example::
 
@@ -53,7 +54,7 @@ Client example::
     import async_timeout
 
     async def fetch(session, url):
-        with async_timeout.timeout(10):
+        async with async_timeout.timeout(10):
             async with session.get(url) as response:
                 return await response.text()
 
@@ -80,33 +81,15 @@ Server example::
 
     web.run_app(app)
 
-.. note::
-
-   Throughout this documentation, examples utilize the `async/await` syntax
-   introduced by :pep:`492` that is only valid for Python 3.5+.
-
-   If you are using Python 3.4, please replace ``await`` with
-   ``yield from`` and ``async def`` with a ``@coroutine`` decorator.
-   For example, this::
-
-       async def coro(...):
-           ret = await f()
-
-   should be replaced by::
-
-       @asyncio.coroutine
-       def coro(...):
-           ret = yield from f()
-
 
 Tutorial
---------
+========
 
 :ref:`Polls tutorial <aiohttp-tutorial>`
 
 
 Source code
------------
+===========
 
 The project is hosted on GitHub_
 
@@ -119,7 +102,7 @@ Continuous Integration.
 
 
 Dependencies
-------------
+============
 
 - Python 3.4.2+
 - *chardet*
@@ -144,7 +127,7 @@ Dependencies
 
 
 Communication channels
-----------------------
+======================
 
 *aio-libs* google group: https://groups.google.com/forum/#!forum/aio-libs
 
@@ -157,14 +140,14 @@ We support `Stack Overflow
 Please add *aiohttp* tag to your question there.
 
 Contributing
-------------
+============
 
 Please read the :ref:`instructions for contributors<aiohttp-contributing>`
 before making a Pull Request.
 
 
 Authors and License
--------------------
+===================
 
 The ``aiohttp`` package is written mostly by Nikolay Kim and Andrew Svetlov.
 
@@ -176,7 +159,7 @@ Feel free to improve this package and send a pull request to GitHub_.
 .. _aiohttp-backward-compatibility-policy:
 
 Policy for Backward Incompatible Changes
-----------------------------------------
+========================================
 
 *aiohttp* keeps backward compatibility.
 
@@ -194,34 +177,7 @@ solved without major API change, but we are working hard for keeping
 these changes as rare as possible.
 
 
-Contents
---------
+Table Of Contents
+=================
 
-.. toctree::
-
-   client
-   client_reference
-   tutorial
-   web
-   web_reference
-   web_lowlevel
-   abc
-   multipart
-   streams
-   api
-   logging
-   testing
-   deployment
-   faq
-   external
-   essays
-   contributing
-   changes
-   glossary
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+To see the full table of contents open the :ref:`link <mastertoc>`.
