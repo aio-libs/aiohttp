@@ -92,8 +92,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                  max_headers=32768,
                  max_field_size=8190,
                  lingering_time=10.0,
-                 max_concurrent_handlers=1,
-                 **kwargs):
+                 max_concurrent_handlers=1):
 
         super().__init__(loop=loop)
 
