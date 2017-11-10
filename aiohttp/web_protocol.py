@@ -3,7 +3,6 @@ import asyncio.streams
 import http.server
 import socket
 import traceback
-import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
@@ -84,7 +83,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def __init__(self, manager, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
                  tcp_keepalive=True,
-                 slow_request_timeout=None,
                  logger=server_logger,
                  access_log_class=helpers.AccessLogger,
                  access_log=access_logger,
@@ -94,15 +92,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                  max_headers=32768,
                  max_field_size=8190,
                  lingering_time=10.0,
-                 max_concurrent_handlers=1,
-                 **kwargs):
-
-        # process deprecated params
-        logger = kwargs.get('logger', logger)
-
-        if slow_request_timeout is not None:
-            warnings.warn(
-                'slow_request_timeout is deprecated', DeprecationWarning)
+                 max_concurrent_handlers=1):
 
         super().__init__(loop=loop)
 

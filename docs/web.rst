@@ -146,10 +146,6 @@ family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
 
    :ref:`aiohttp-router-refactoring-021` for more details
 
-.. versionadded:: 0.21.0
-
-   Introduce resources.
-
 
 .. _aiohttp-web-variable-handler:
 
@@ -305,20 +301,6 @@ viewed using the :meth:`UrlDispatcher.named_resources` method::
 
    for name, resource in app.router.named_resources().items():
        print(name, resource)
-
-
-
-.. versionadded:: 0.18
-   :meth:`UrlDispatcher.routes`
-
-.. versionadded:: 0.19
-   :meth:`UrlDispatcher.named_routes`
-
-.. deprecated:: 0.21
-
-   Use :meth:`UrlDispatcher.named_resources` /
-   :meth:`UrlDispatcher.resources` instead of
-   :meth:`UrlDispatcher.named_routes` / :meth:`UrlDispatcher.routes`.
 
 
 .. _aiohttp-web-alternative-routes-definition:
@@ -1156,8 +1138,6 @@ exception.
 Signals
 -------
 
-.. versionadded:: 0.18
-
 Although :ref:`middlewares <aiohttp-web-middlewares>` can customize
 :ref:`request handlers<aiohttp-web-handler>` before or after a :class:`Response`
 has been prepared, they can't customize a :class:`Response` **while** it's
@@ -1391,8 +1371,6 @@ Custom resource implementation
 
 To register custom resource use :meth:`UrlDispatcher.register_resource`.
 Resource instance must implement `AbstractResource` interface.
-
-.. versionadded:: 1.2.1
 
 
 .. _aiohttp-web-graceful-shutdown:

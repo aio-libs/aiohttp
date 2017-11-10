@@ -916,6 +916,14 @@ def test_ctor_charset_without_text():
     assert 'koi8-r' == resp.charset
 
 
+def test_ctor_content_type_with_extra():
+    resp = Response(text='test test', content_type='text/plain; version=0.0.4')
+
+    assert resp.content_type == 'text/plain'
+    assert resp.headers['content-type'] == \
+        'text/plain; version=0.0.4; charset=utf-8'
+
+
 def test_ctor_both_content_type_param_and_header_with_text():
     with pytest.raises(ValueError):
         Response(headers={'Content-Type': 'application/json'},

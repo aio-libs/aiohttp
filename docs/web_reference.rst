@@ -320,8 +320,6 @@ and :ref:`aiohttp-web-signals` handlers.
 
             return buffer[request.http_range]
 
-      .. versionadded:: 1.2
-
    .. attribute:: if_modified_since
 
       Read-only property that returns the date specified in the
@@ -541,16 +539,12 @@ StreamResponse
       Read-only :class:`bool` property, ``True`` if :meth:`prepare` has
       been called, ``False`` otherwise.
 
-      .. versionadded:: 0.18
-
    .. attribute:: task
 
       A task that serves HTTP request handling.
 
       May be useful for graceful shutdown of long-running requests
       (streaming, long polling or web-socket).
-
-      .. versionadded:: 1.2
 
    .. attribute:: status
 
@@ -701,11 +695,6 @@ StreamResponse
 
       :param str path: optional cookie path, ``'/'`` by default
 
-      .. versionchanged:: 1.0
-
-         Fixed cookie expiration support for
-         Internet Explorer (version less than 11).
-
    .. attribute:: content_length
 
       *Content-Length* for outgoing response.
@@ -770,8 +759,6 @@ StreamResponse
 
       The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
       signal handlers.
-
-      .. versionadded:: 0.18
 
    .. comethod:: write(data)
 
@@ -1343,7 +1330,6 @@ duplicated like one using :meth:`Application.copy`.
     :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
     :param int keepalive_timeout: Number of seconds before closing Keep-Alive
       connection. Default: ``75`` seconds (NGINX's default value).
-    :param slow_request_timeout: Slow request timeout. Default: ``0``.
     :param logger: Custom logger object. Default:
       :data:`aiohttp.log.server_logger`.
     :param access_log: Custom logging object. Default:
@@ -1353,15 +1339,6 @@ duplicated like one using :meth:`Application.copy`.
       Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
     :param str access_log_format: Access log format string. Default:
       :attr:`helpers.AccessLogger.LOG_FORMAT`.
-    :param bool debug: Switches debug mode. Default: ``False``.
-
-      .. deprecated:: 1.0
-
-        The usage of ``debug`` parameter in :meth:`Application.make_handler`
-        is deprecated in favor of :attr:`Application.debug`.
-        The :class:`Application`'s debug mode setting should be used
-        as a single point to setup a debug mode.
-
     :param int max_line_size: Optional maximum header line size. Default:
       ``8190``.
     :param int max_headers: Optional maximum header size. Default: ``32768``.
@@ -1448,8 +1425,6 @@ A protocol factory compatible with
    .. attribute:: requests_count
 
       Amount of processed requests.
-
-      .. versionadded:: 1.0
 
    .. comethod:: Server.shutdown(timeout)
 
@@ -1556,12 +1531,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
       name='route')`` call adds two routes: first for GET with name
       ``'route'`` and second for HEAD with name ``'route-head'``.
 
-      .. versionadded:: 1.0
-
-      .. versionchanged:: 2.0
-
-         *allow_head* parameter added.
-
    .. method:: add_post(path, handler, **kwargs)
 
       Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
@@ -1569,35 +1538,25 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       ``method`` equals to ``'POST'``.
 
-      .. versionadded:: 1.0
-
    .. method:: add_head(path, handler, **kwargs)
 
       Shortcut for adding a HEAD handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'HEAD'``.
-
-      .. versionadded:: 1.0
 
    .. method:: add_put(path, handler, **kwargs)
 
       Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PUT'``.
 
-      .. versionadded:: 1.0
-
    .. method:: add_patch(path, handler, **kwargs)
 
       Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PATCH'``.
 
-      .. versionadded:: 1.0
-
    .. method:: add_delete(path, handler, **kwargs)
 
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
-
-      .. versionadded:: 1.0
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
@@ -1626,17 +1585,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
          static content should be processed by web servers like *nginx*
          or *apache*.
 
-      .. versionchanged:: 0.18.0
-         Transfer files using the ``sendfile`` system call on supported
-         platforms.
-
-      .. versionchanged:: 0.19.0
-         Disable ``sendfile`` by setting environment variable
-         ``AIOHTTP_NOSENDFILE=1``
-
-      .. versionchanged:: 1.2.0
-         Send gzip version if file path + ``.gz`` exists.
-
       :param str prefix: URL path prefix for handled static files
 
       :param path: path to the folder in file system that contains
@@ -1653,15 +1601,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
                              say, 1Mb may increase file downloading
                              speed but consumes more memory.
 
-                             .. versionadded:: 0.16
-
-      :param callable response_factory: factory to use to generate a new
-                                        response, defaults to
-                                        :class:`StreamResponse` and should
-                                        expose a compatible API.
-
-                                        .. versionadded:: 0.17
-
       :param bool show_index: flag for allowing to show indexes of a directory,
                               by default it's not allowed and HTTP/403 will
                               be returned on directory access.
@@ -1671,9 +1610,10 @@ Router is any object that implements :class:`AbstractRouter` interface.
                               HTTP/404 will be returned on access.
 
       :param bool append_version: flag for adding file version (hash)
-                              to the url query string, this value will be used
-                              as default when you call to :meth:`StaticRoute.url`
-                              and :meth:`StaticRoute.url_for` methods.
+                              to the url query string, this value will
+                              be used as default when you call to
+                              :meth:`StaticRoute.url` and
+                              :meth:`StaticRoute.url_for` methods.
 
 
       :returns: new :class:`StaticRoute` instance.
@@ -1690,8 +1630,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
       :param Application subapp: nested application attached under *prefix*.
 
       :returns: a :class:`PrefixedSubAppResource` instance.
-
-      .. versionadded:: 1.1
 
    .. comethod:: resolve(request)
 
@@ -1734,13 +1672,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
            route in app.router.resources()
 
-      .. versionadded:: 0.21.1
-
    .. method:: routes()
 
       The method returns a *view* for *all* registered routes.
-
-      .. versionadded:: 0.18
 
    .. method:: named_resources()
 
@@ -1760,26 +1694,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
           "name" in app.router.named_resources()
 
           app.router.named_resources()["name"]
-
-      .. versionadded:: 0.21
-
-   .. method:: named_routes()
-
-      An alias for :meth:`named_resources` starting from aiohttp 0.21.
-
-      .. versionadded:: 0.19
-
-      .. versionchanged:: 0.21
-
-         The method is an alias for :meth:`named_resources`, so it
-         iterates over resources instead of routes.
-
-      .. deprecated:: 0.21
-
-         Please use named **resources** instead of named **routes**.
-
-         Several routes which belongs to the same resource shares the
-         resource name.
 
 
 .. _aiohttp-web-resource:
@@ -1878,21 +1792,6 @@ Resource classes hierarchy::
 
       :return: :class:`~yarl.URL` -- resulting URL instance.
 
-      .. versionadded:: 1.1
-
-   .. method:: url(**kwargs)
-
-      Construct an URL for route with additional params.
-
-      **kwargs** depends on a list accepted by inherited resource
-      class parameters.
-
-      :return: :class:`str` -- resulting URL string.
-
-      .. deprecated:: 1.1
-
-         Use :meth:`url_for` instead.
-
 
 .. class:: Resource
 
@@ -1932,8 +1831,6 @@ Resource classes hierarchy::
 
       Returns a :class:`~yarl.URL` for the resource.
 
-      .. versionadded:: 1.1
-
 
 .. class:: DynamicResource
 
@@ -1954,8 +1851,6 @@ Resource classes hierarchy::
          be called as ``resource.url_for(to='val1', param='val2')``
 
 
-      .. versionadded:: 1.1
-
 .. class:: StaticResource
 
    A resource, inherited from :class:`Resource`.
@@ -1974,7 +1869,9 @@ Resource classes hierarchy::
          E.g. an URL for ``'/prefix/dir/file.txt'`` should
          be generated as ``resource.url_for(filename='dir/file.txt')``
 
-      :param bool append_version: -- a flag for adding file version (hash) to the url query string for cache boosting
+      :param bool append_version: -- a flag for adding file version
+                                  (hash) to the url query string for
+                                  cache boosting
 
          By default has value from an constructor (``False`` by default)
          When set to ``True`` - ``v=FILE_HASH`` query string param will be added
@@ -1982,14 +1879,11 @@ Resource classes hierarchy::
 
          if file not found has no impact
 
-      .. versionadded:: 1.1
 
 .. class:: PrefixedSubAppResource
 
    A resource for serving nested applications. The class instance is
    returned by :class:`~aiohttp.web.Application.add_subapp` call.
-
-   .. versionadded:: 1.1
 
    .. method:: url_for(**kwargs)
 

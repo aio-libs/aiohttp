@@ -470,7 +470,7 @@ class Response(StreamResponse):
         elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
             headers = CIMultiDict(headers)
 
-        if content_type is not None and ";" in content_type:
+        if content_type is not None and "charset" in content_type:
             raise ValueError("charset must not be in content_type "
                              "argument")
 
