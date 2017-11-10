@@ -247,7 +247,7 @@ functionality, the AioHTTPTestCase is provided::
 
        an aiohttp test server, :class:`TestServer` instance.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. attribute:: loop
 
@@ -265,7 +265,7 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`TestClient` instance.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. comethod:: get_server()
 
@@ -274,7 +274,7 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`TestServer` instance.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. comethod:: get_application()
 
@@ -289,14 +289,14 @@ functionality, the AioHTTPTestCase is provided::
        This async method do nothing by default and can be overridden to execute
        asynchronous code during the ``setUp`` stage of the ``TestCase``.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. comethod:: tearDownAsync()
 
        This async method do nothing by default and can be overridden to execute
        asynchronous code during the ``tearDown`` stage of the ``TestCase``.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. method:: setUp()
 
