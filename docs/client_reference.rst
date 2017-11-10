@@ -127,7 +127,7 @@ The client session supports the context manager protocol for self closing.
 
       Close connector instance on session closing.
 
-      Passing ``connector_owner=False`` to constructor allows to share
+      Setting the parameter to ``False`` allows to share
       connection pool between sessions without sharing session state:
       cookies etc.
 
