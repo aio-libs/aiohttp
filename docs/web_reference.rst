@@ -1353,15 +1353,6 @@ duplicated like one using :meth:`Application.copy`.
       Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
     :param str access_log_format: Access log format string. Default:
       :attr:`helpers.AccessLogger.LOG_FORMAT`.
-    :param bool debug: Switches debug mode. Default: ``False``.
-
-      .. deprecated:: 1.0
-
-        The usage of ``debug`` parameter in :meth:`Application.make_handler`
-        is deprecated in favor of :attr:`Application.debug`.
-        The :class:`Application`'s debug mode setting should be used
-        as a single point to setup a debug mode.
-
     :param int max_line_size: Optional maximum header line size. Default:
       ``8190``.
     :param int max_headers: Optional maximum header size. Default: ``32768``.
