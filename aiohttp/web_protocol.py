@@ -96,10 +96,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                  lingering_time=10.0,
                  max_concurrent_handlers=1,
                  **kwargs):
-
-        # process deprecated params
-        logger = kwargs.get('logger', logger)
-
         if slow_request_timeout is not None:
             warnings.warn(
                 'slow_request_timeout is deprecated', DeprecationWarning)
