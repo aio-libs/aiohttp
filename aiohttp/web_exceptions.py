@@ -66,22 +66,31 @@ __all__ = (
 # HTTP Exceptions
 ############################################################
 
-class HTTPException(Response, Exception):
+class HTTPException(Exception):
 
     # You should set in subclasses:
     # status = 200
 
-    status_code = None
+    status = None
     empty_body = False
 
-    def __init__(self, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
-        Response.__init__(self, status=self.status_code,
-                          headers=headers, reason=reason,
-                          body=body, text=text, content_type=content_type)
-        Exception.__init__(self, self.reason)
-        if self.body is None and not self.empty_body:
-            self.text = "{}: {}".format(self.status, self.reason)
+    # backward compatibility
+    @property
+    def status_code(self):
+        return self.status
+
+    @status_code.setter
+    def status_code(self, val):
+        self.status = val
+
+    def build_response(self):
+        if self.status is None:
+            raise RuntimeError("Cannot build abstract HTTP exception: "
+                               "status is not set.")
+        ret = Response(status=self.status)
+        if not self.empty_body:
+            ret.text = "{}: {}".format(self.status, self.reason)
+        return ret
 
 
 class HTTPError(HTTPException):
@@ -97,33 +106,33 @@ class HTTPSuccessful(HTTPException):
 
 
 class HTTPOk(HTTPSuccessful):
-    status_code = 200
+    status = 200
 
 
 class HTTPCreated(HTTPSuccessful):
-    status_code = 201
+    status = 201
 
 
 class HTTPAccepted(HTTPSuccessful):
-    status_code = 202
+    status = 202
 
 
 class HTTPNonAuthoritativeInformation(HTTPSuccessful):
-    status_code = 203
+    status = 203
 
 
 class HTTPNoContent(HTTPSuccessful):
-    status_code = 204
+    status = 204
     empty_body = True
 
 
 class HTTPResetContent(HTTPSuccessful):
-    status_code = 205
+    status = 205
     empty_body = True
 
 
 class HTTPPartialContent(HTTPSuccessful):
-    status_code = 206
+    status = 206
 
 
 ############################################################
@@ -133,51 +142,53 @@ class HTTPPartialContent(HTTPSuccessful):
 
 class _HTTPMove(HTTPRedirection):
 
-    def __init__(self, location, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
+    def __init__(self, location):
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
-        self.headers['Location'] = str(location)
+        super().__init__()
         self.location = location
+
+    def build_response(self):
+        resp = super().build_response()
+        resp.headers['Location'] = str(self.location)
+        return resp
 
 
 class HTTPMultipleChoices(_HTTPMove):
-    status_code = 300
+    status = 300
 
 
 class HTTPMovedPermanently(_HTTPMove):
-    status_code = 301
+    status = 301
 
 
 class HTTPFound(_HTTPMove):
-    status_code = 302
+    status = 302
 
 
 # This one is safe after a POST (the redirected location will be
 # retrieved with GET):
 class HTTPSeeOther(_HTTPMove):
-    status_code = 303
+    status = 303
 
 
 class HTTPNotModified(HTTPRedirection):
     # FIXME: this should include a date or etag header
-    status_code = 304
+    status = 304
     empty_body = True
 
 
 class HTTPUseProxy(_HTTPMove):
     # Not a move, but looks a little like one
-    status_code = 305
+    status = 305
 
 
 class HTTPTemporaryRedirect(_HTTPMove):
-    status_code = 307
+    status = 307
 
 
 class HTTPPermanentRedirect(_HTTPMove):
-    status_code = 308
+    status = 308
 
 
 ############################################################
@@ -190,123 +201,127 @@ class HTTPClientError(HTTPError):
 
 
 class HTTPBadRequest(HTTPClientError):
-    status_code = 400
+    status = 400
 
 
 class HTTPUnauthorized(HTTPClientError):
-    status_code = 401
+    status = 401
 
 
 class HTTPPaymentRequired(HTTPClientError):
-    status_code = 402
+    status = 402
 
 
 class HTTPForbidden(HTTPClientError):
-    status_code = 403
+    status = 403
 
 
 class HTTPNotFound(HTTPClientError):
-    status_code = 404
+    status = 404
 
 
 class HTTPMethodNotAllowed(HTTPClientError):
-    status_code = 405
+    status = 405
 
-    def __init__(self, method, allowed_methods, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
-        allow = ','.join(sorted(allowed_methods))
-        super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
-        self.headers['Allow'] = allow
+    def __init__(self, method, allowed_methods):
+        super().__init__()
+        self.allow = ','.join(sorted(allowed_methods))
         self.allowed_methods = allowed_methods
         self.method = method.upper()
 
+    def build_response(self):
+        resp = super().build_response()
+        resp.headers['Allow'] = self.allow
+        return resp
+
 
 class HTTPNotAcceptable(HTTPClientError):
-    status_code = 406
+    status = 406
 
 
 class HTTPProxyAuthenticationRequired(HTTPClientError):
-    status_code = 407
+    status = 407
 
 
 class HTTPRequestTimeout(HTTPClientError):
-    status_code = 408
+    status = 408
 
 
 class HTTPConflict(HTTPClientError):
-    status_code = 409
+    status = 409
 
 
 class HTTPGone(HTTPClientError):
-    status_code = 410
+    status = 410
 
 
 class HTTPLengthRequired(HTTPClientError):
-    status_code = 411
+    status = 411
 
 
 class HTTPPreconditionFailed(HTTPClientError):
-    status_code = 412
+    status = 412
 
 
 class HTTPRequestEntityTooLarge(HTTPClientError):
-    status_code = 413
+    status = 413
 
 
 class HTTPRequestURITooLong(HTTPClientError):
-    status_code = 414
+    status = 414
 
 
 class HTTPUnsupportedMediaType(HTTPClientError):
-    status_code = 415
+    status = 415
 
 
 class HTTPRequestRangeNotSatisfiable(HTTPClientError):
-    status_code = 416
+    status = 416
 
 
 class HTTPExpectationFailed(HTTPClientError):
-    status_code = 417
+    status = 417
 
 
 class HTTPMisdirectedRequest(HTTPClientError):
-    status_code = 421
+    status = 421
 
 
 class HTTPUnprocessableEntity(HTTPClientError):
-    status_code = 422
+    status = 422
 
 
 class HTTPFailedDependency(HTTPClientError):
-    status_code = 424
+    status = 424
 
 
 class HTTPUpgradeRequired(HTTPClientError):
-    status_code = 426
+    status = 426
 
 
 class HTTPPreconditionRequired(HTTPClientError):
-    status_code = 428
+    status = 428
 
 
 class HTTPTooManyRequests(HTTPClientError):
-    status_code = 429
+    status = 429
 
 
 class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
-    status_code = 431
+    status = 431
 
 
 class HTTPUnavailableForLegalReasons(HTTPClientError):
-    status_code = 451
+    status = 451
 
-    def __init__(self, link, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
-        super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
-        self.headers['Link'] = '<%s>; rel="blocked-by"' % link
+    def __init__(self, link):
+        super().__init__()
         self.link = link
+
+    def build_response(self):
+        resp = super().build_response()
+        resp.headers['Link'] = '<%s>; rel="blocked-by"' % self.link
+        return resp
 
 
 ############################################################
@@ -326,40 +341,40 @@ class HTTPServerError(HTTPError):
 
 
 class HTTPInternalServerError(HTTPServerError):
-    status_code = 500
+    status = 500
 
 
 class HTTPNotImplemented(HTTPServerError):
-    status_code = 501
+    status = 501
 
 
 class HTTPBadGateway(HTTPServerError):
-    status_code = 502
+    status = 502
 
 
 class HTTPServiceUnavailable(HTTPServerError):
-    status_code = 503
+    status = 503
 
 
 class HTTPGatewayTimeout(HTTPServerError):
-    status_code = 504
+    status = 504
 
 
 class HTTPVersionNotSupported(HTTPServerError):
-    status_code = 505
+    status = 505
 
 
 class HTTPVariantAlsoNegotiates(HTTPServerError):
-    status_code = 506
+    status = 506
 
 
 class HTTPInsufficientStorage(HTTPServerError):
-    status_code = 507
+    status = 507
 
 
 class HTTPNotExtended(HTTPServerError):
-    status_code = 510
+    status = 510
 
 
 class HTTPNetworkAuthenticationRequired(HTTPServerError):
-    status_code = 511
+    status = 511
