@@ -36,8 +36,9 @@ async def test_render_unknown_method():
     request.method = 'UNKNOWN'
     with pytest.raises(web.HTTPMethodNotAllowed) as ctx:
         await MyView(request)
-    assert ctx.value.headers['allow'] == 'GET,OPTIONS'
-    assert ctx.value.status == 405
+    resp = ctx.value.build_response()
+    assert resp.headers['allow'] == 'GET,OPTIONS'
+    assert resp.status == 405
 
 
 async def test_render_unsupported_method():
@@ -51,5 +52,6 @@ async def test_render_unsupported_method():
     request.method = 'POST'
     with pytest.raises(web.HTTPMethodNotAllowed) as ctx:
         await MyView(request)
-    assert ctx.value.headers['allow'] == 'DELETE,GET,OPTIONS'
-    assert ctx.value.status == 405
+    resp = ctx.value.build_response()
+    assert resp.headers['allow'] == 'DELETE,GET,OPTIONS'
+    assert resp.status == 405

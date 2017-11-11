@@ -218,8 +218,9 @@ class MatchInfoError(UrlMappingMatchInfo):
         return self._exception
 
     def __repr__(self):
-        return "<MatchInfoError {}: {}>".format(self._exception.status,
-                                                self._exception.reason)
+        resp = self._exception.build_response()
+        return "<MatchInfoError {}: {}>".format(resp.status,
+                                                resp.reason)
 
 
 async def _defaultExpectHandler(request):

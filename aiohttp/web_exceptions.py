@@ -87,10 +87,10 @@ class HTTPException(Exception):
         if self.status is None:
             raise RuntimeError("Cannot build abstract HTTP exception: "
                                "status is not set.")
-        ret = Response(status=self.status)
+        resp = Response(status=self.status)
         if not self.empty_body:
-            ret.text = "{}: {}".format(self.status, self.reason)
-        return ret
+            resp.text = "{}: {}".format(resp.status, resp.reason)
+        return resp
 
 
 class HTTPError(HTTPException):

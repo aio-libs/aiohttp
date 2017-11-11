@@ -54,7 +54,8 @@ def test_all_http_exceptions_exported():
 
 
 async def test_HTTPOk(buf, request):
-    resp = web.HTTPOk()
+    exc = web.HTTPOk()
+    resp = exc.build_response()
     await resp.prepare(request)
     await resp.write_eof()
     txt = buf.decode('utf8')
@@ -66,7 +67,7 @@ async def test_HTTPOk(buf, request):
                      '200: OK'), txt)
 
 
-def test_terminal_classes_has_status_code():
+def test_terminal_classes_has_status():
     terminals = set()
     for name in dir(web):
         obj = getattr(web, name)
@@ -80,15 +81,16 @@ def test_terminal_classes_has_status_code():
                 terminals.discard(cls1)
 
     for cls in terminals:
-        assert cls.status_code is not None
-    codes = collections.Counter(cls.status_code for cls in terminals)
+        assert cls.status is not None
+    codes = collections.Counter(cls.status for cls in terminals)
     assert None not in codes
     assert 1 == codes.most_common(1)[0][1]
 
 
 async def test_HTTPFound(buf, request):
-    resp = web.HTTPFound(location='/redirect')
-    assert '/redirect' == resp.location
+    exc = web.HTTPFound(location='/redirect')
+    assert '/redirect' == exc.location
+    resp = exc.build_response()
     assert '/redirect' == resp.headers['location']
     await resp.prepare(request)
     await resp.write_eof()
@@ -111,9 +113,10 @@ def test_HTTPFound_empty_location():
 
 
 async def test_HTTPMethodNotAllowed(buf, request):
-    resp = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
-    assert 'GET' == resp.method
-    assert ['POST', 'PUT'] == resp.allowed_methods
+    exc = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
+    assert 'GET' == exc.method
+    assert ['POST', 'PUT'] == exc.allowed_methods
+    resp = exc.build_response()
     assert 'POST,PUT' == resp.headers['allow']
     await resp.prepare(request)
     await resp.write_eof()
@@ -127,48 +130,32 @@ async def test_HTTPMethodNotAllowed(buf, request):
                     '405: Method Not Allowed', txt)
 
 
-def test_override_body_with_text():
-    resp = web.HTTPNotFound(text="Page not found")
-    assert 404 == resp.status
-    assert "Page not found".encode('utf-8') == resp.body
-    assert "Page not found" == resp.text
-    assert "text/plain" == resp.content_type
-    assert "utf-8" == resp.charset
-
-
-def test_override_body_with_binary():
-    txt = "<html><body>Page not found</body></html>"
-    resp = web.HTTPNotFound(body=txt.encode('utf-8'),
-                            content_type="text/html")
-    assert 404 == resp.status
-    assert txt.encode('utf-8') == resp.body
-    assert txt == resp.text
-    assert "text/html" == resp.content_type
-    assert resp.charset is None
-
-
 def test_default_body():
-    resp = web.HTTPOk()
+    exc = web.HTTPOk()
+    resp = exc.build_response()
     assert b'200: OK' == resp.body
 
 
 def test_empty_body_204():
-    resp = web.HTTPNoContent()
+    exc = web.HTTPNoContent()
+    resp = exc.build_response()
     assert resp.body is None
 
 
 def test_empty_body_205():
-    resp = web.HTTPNoContent()
+    exc = web.HTTPNoContent()
+    resp = exc.build_response()
     assert resp.body is None
 
 
 def test_empty_body_304():
-    resp = web.HTTPNoContent()
+    exc = web.HTTPNoContent()
+    resp = exc.build_response()
     resp.body is None
 
 
 def test_link_header_451(buf, request):
-    resp = web.HTTPUnavailableForLegalReasons(link='http://warning.or.kr/')
-
-    assert 'http://warning.or.kr/' == resp.link
+    exc = web.HTTPUnavailableForLegalReasons(link='http://warning.or.kr/')
+    assert 'http://warning.or.kr/' == exc.link
+    resp = exc.build_response()
     assert '<http://warning.or.kr/>; rel="blocked-by"' == resp.headers['Link']
