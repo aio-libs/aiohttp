@@ -342,7 +342,7 @@ class AccessLogger(AbstractAccessLogger):
         'o': 'response_header',
     }
 
-    LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+    LOG_FORMAT = '%a %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
@@ -386,10 +386,6 @@ class AccessLogger(AbstractAccessLogger):
         also receive key name (by functools.partial)
 
         """
-
-        log_format = log_format.replace("%l", "-")
-        log_format = log_format.replace("%u", "-")
-
         # list of (key, method) tuples, we don't use an OrderedDict as users
         # can repeat the same key more than once
         methods = list()
