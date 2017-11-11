@@ -81,8 +81,8 @@ def test_terminal_classes_has_status():
                 terminals.discard(cls1)
 
     for cls in terminals:
-        assert cls.status is not None
-    codes = collections.Counter(cls.status for cls in terminals)
+        assert cls.status_code is not None
+    codes = collections.Counter(cls.status_code for cls in terminals)
     assert None not in codes
     assert 1 == codes.most_common(1)[0][1]
 

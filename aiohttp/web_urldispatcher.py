@@ -234,7 +234,8 @@ async def _defaultExpectHandler(request):
         if expect.lower() == "100-continue":
             request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n", drain=False)
         else:
-            raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
+            return HTTPExpectationFailed(
+                text="Unknown Expect: %s" % expect).build_response()
 
 
 class Resource(AbstractResource):

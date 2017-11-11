@@ -484,7 +484,7 @@ async def test_100_continue_custom_response(loop, test_client):
     async def expect_handler(request):
         if request.version == HttpVersion11:
             if auth_err:
-                return web.HTTPForbidden()
+                return web.HTTPForbidden().build_response()
 
             request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
@@ -1019,7 +1019,7 @@ async def test_simple_subapp(loop, test_client):
 async def test_subapp_reverse_url(loop, test_client):
 
     async def handler(request):
-        return web.HTTPMovedPermanently(
+        raise web.HTTPMovedPermanently(
             location=subapp.router['name'].url_for())
 
     async def handler2(request):
@@ -1042,7 +1042,7 @@ async def test_subapp_reverse_url(loop, test_client):
 async def test_subapp_reverse_variable_url(loop, test_client):
 
     async def handler(request):
-        return web.HTTPMovedPermanently(
+        raise web.HTTPMovedPermanently(
             location=subapp.router['name'].url_for(part='final'))
 
     async def handler2(request):
@@ -1066,7 +1066,7 @@ async def test_subapp_reverse_static_url(loop, test_client):
     fname = 'aiohttp.png'
 
     async def handler(request):
-        return web.HTTPMovedPermanently(
+        raise web.HTTPMovedPermanently(
             location=subapp.router['name'].url_for(filename=fname))
 
     app = web.Application()
@@ -1089,7 +1089,7 @@ async def test_subapp_app(loop, test_client):
 
     async def handler(request):
         assert request.app is subapp
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1106,7 +1106,7 @@ async def test_subapp_app(loop, test_client):
 async def test_subapp_not_found(loop, test_client):
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1121,7 +1121,7 @@ async def test_subapp_not_found(loop, test_client):
 async def test_subapp_not_found2(loop, test_client):
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1136,7 +1136,7 @@ async def test_subapp_not_found2(loop, test_client):
 async def test_subapp_not_allowed(loop, test_client):
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1153,7 +1153,7 @@ async def test_subapp_cannot_add_app_in_handler(loop, test_client):
 
     async def handler(request):
         request.match_info.add_app(app)
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1169,7 +1169,7 @@ async def test_subapp_middlewares(loop, test_client):
     order = []
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     async def middleware_factory(app, handler):
 
@@ -1199,7 +1199,7 @@ async def test_subapp_on_response_prepare(loop, test_client):
     order = []
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     def make_signal(app):
 
@@ -1385,7 +1385,7 @@ async def test_post_max_client_size(loop, test_client):
         try:
             await request.post()
         except ValueError:
-            return web.HTTPOk()
+            return web.Response()
         return web.HTTPBadRequest()
 
     app = web.Application(client_max_size=10)
@@ -1404,7 +1404,7 @@ async def test_post_max_client_size_for_file(loop, test_client):
         try:
             await request.post()
         except ValueError:
-            return web.HTTPOk()
+            return web.Response()
         return web.HTTPBadRequest()
 
     app = web.Application(client_max_size=2)
@@ -1485,7 +1485,7 @@ async def test_await(test_server, loop):
 async def test_response_context_manager(test_server, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -1500,7 +1500,7 @@ async def test_response_context_manager(test_server, loop):
 async def test_response_context_manager_error(test_server, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -1521,7 +1521,7 @@ async def test_response_context_manager_error(test_server, loop):
 async def test_client_api_context_manager(test_server, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
