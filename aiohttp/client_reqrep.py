@@ -466,8 +466,7 @@ class ClientRequest:
             self.method, path, self.version)
         writer.write_headers(status_line, self.headers)
 
-        self._writer = asyncio.ensure_future(
-            self.write_bytes(writer, conn), loop=self.loop)
+        self._writer = self.loop.create_task(self.write_bytes(writer, conn))
 
         self.response = self.response_class(
             self.method, self.original_url,
