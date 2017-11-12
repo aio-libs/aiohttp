@@ -9,16 +9,17 @@ import warnings
 from collections import namedtuple
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
+from types import MappingProxyType
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
-from . import hdrs, helpers, http, payload
+from . import hdrs, helpers, http, multipart, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL)
 from .formdata import FormData
-from .helpers import HeadersMixin, TimerNoop, noop
+from .helpers import HeadersMixin, TimerNoop, noop, reify
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import FlowControlStreamReader
@@ -31,6 +32,10 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo')
+
+
+ContentDisposition = collections.namedtuple(
+    'ContentDisposition', ('type', 'parameters', 'filename'))
 
 
 RequestInfo = collections.namedtuple(
@@ -461,8 +466,7 @@ class ClientRequest:
             self.method, path, self.version)
         writer.write_headers(status_line, self.headers)
 
-        self._writer = asyncio.ensure_future(
-            self.write_bytes(writer, conn), loop=self.loop)
+        self._writer = self.loop.create_task(self.write_bytes(writer, conn))
 
         self.response = self.response_class(
             self.method, self.original_url,
@@ -527,6 +531,7 @@ class ClientResponse(HeadersMixin):
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
+        self._cache = {}  # reqired for @reify method decorator
 
     @property
     def url(self):
@@ -549,6 +554,16 @@ class ClientResponse(HeadersMixin):
     @property
     def request_info(self):
         return self._request_info
+
+    @reify
+    def content_disposition(self):
+        raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
+        if raw is None:
+            return None
+        disposition_type, params = multipart.parse_content_disposition(raw)
+        params = MappingProxyType(params)
+        filename = multipart.content_disposition_filename(params)
+        return ContentDisposition(disposition_type, params, filename)
 
     def _post_init(self, loop, session):
         self._loop = loop

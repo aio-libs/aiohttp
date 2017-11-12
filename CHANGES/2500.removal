@@ -1,0 +1,2 @@
+Drop deprecated `slow_request_timeout` param and `**kwargs`` from
+`RequestHandler`.

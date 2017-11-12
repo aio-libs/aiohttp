@@ -386,10 +386,6 @@ class AccessLogger(AbstractAccessLogger):
         also receive key name (by functools.partial)
 
         """
-
-        log_format = log_format.replace("%l", "-")
-        log_format = log_format.replace("%u", "-")
-
         # list of (key, method) tuples, we don't use an OrderedDict as users
         # can repeat the same key more than once
         methods = list()

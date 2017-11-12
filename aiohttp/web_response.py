@@ -343,7 +343,7 @@ class StreamResponse(HeadersMixin):
         self._keep_alive = keep_alive
 
         version = request.version
-        writer = self._payload_writer = request._writer
+        writer = self._payload_writer = request._payload_writer
 
         headers = self._headers
         for cookie in self._cookies.values():
@@ -393,7 +393,7 @@ class StreamResponse(HeadersMixin):
 
         return writer
 
-    def write(self, data):
+    async def write(self, data):
         assert isinstance(data, (bytes, bytearray, memoryview)), \
             "data argument must be byte-ish (%r)" % type(data)
 
@@ -402,12 +402,15 @@ class StreamResponse(HeadersMixin):
         if self._payload_writer is None:
             raise RuntimeError("Cannot call write() before prepare()")
 
-        return self._payload_writer.write(data)
+        await self._payload_writer.write(data)
 
     async def drain(self):
         assert not self._eof_sent, "EOF has already been sent"
         assert self._payload_writer is not None, \
             "Response has not been started"
+        warnings.warn("drain method is deprecated, use await resp.write()",
+                      DeprecationWarning,
+                      stacklevel=2)
         await self._payload_writer.drain()
 
     async def write_eof(self, data=b''):
@@ -450,7 +453,7 @@ class Response(StreamResponse):
         elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
             headers = CIMultiDict(headers)
 
-        if content_type is not None and ";" in content_type:
+        if content_type is not None and "charset" in content_type:
             raise ValueError("charset must not be in content_type "
                              "argument")
 

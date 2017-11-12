@@ -30,8 +30,7 @@ parameter and performs one of the following actions:
 
   2. Create a :class:`StreamResponse`, send headers by
      :meth:`StreamResponse.prepare` call, send data chunks by
-     :meth:`StreamResponse.write` / :meth:`StreamResponse.drain`,
-     return finished response.
+     :meth:`StreamResponse.write` and return finished response.
 
   3. Raise :class:`HTTPException` derived exception (see
      :ref:`aiohttp-web-exceptions` section).

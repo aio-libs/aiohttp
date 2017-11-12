@@ -59,7 +59,7 @@ def conn(stream):
 
 
 @pytest.fixture
-def stream(buf, transport):
+def stream(buf, transport, loop):
     stream = mock.Mock()
     stream.transport = transport
 
@@ -67,7 +67,8 @@ def stream(buf, transport):
         writer.set_transport(transport)
 
     stream.acquire.side_effect = acquire
-    stream.drain.return_value = ()
+    stream.drain.return_value = loop.create_future()
+    stream.drain.return_value.set_result(None)
     return stream
 
 
@@ -879,11 +880,11 @@ async def test_data_stream_exc(loop, conn):
     assert req.chunked
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    async def exc():
+    async def throw_exc():
         await asyncio.sleep(0.01, loop=loop)
         fut.set_exception(ValueError)
 
-    asyncio.ensure_future(exc(), loop=loop)
+    loop.create_task(throw_exc())
 
     req.send(conn)
     await req._writer
@@ -904,11 +905,11 @@ async def test_data_stream_exc_chain(loop, conn):
 
     inner_exc = ValueError()
 
-    async def exc():
+    async def throw_exc():
         await asyncio.sleep(0.01, loop=loop)
         fut.set_exception(inner_exc)
 
-    asyncio.ensure_future(exc(), loop=loop)
+    loop.create_task(throw_exc())
 
     req.send(conn)
     await req._writer
@@ -937,7 +938,7 @@ async def test_data_stream_continue(loop, buf, conn):
         await asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
-    asyncio.ensure_future(coro(), loop=loop)
+    loop.create_task(coro())
 
     resp = req.send(conn)
     await req._writer
@@ -956,7 +957,7 @@ async def test_data_continue(loop, buf, conn):
         await asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
-    asyncio.ensure_future(coro(), loop=loop)
+    loop.create_task(coro())
 
     resp = req.send(conn)
 
@@ -1026,6 +1027,8 @@ def test_terminate_with_closed_loop(loop, conn):
     resp = req.send(conn)
     assert req._writer is not None
     writer = req._writer = mock.Mock()
+
+    loop.run_until_complete(asyncio.sleep(0.05, loop=loop))
 
     loop.close()
     req.terminate()

@@ -2,6 +2,7 @@
 
 import asyncio
 import gc
+import hashlib
 import os.path
 import platform
 import shutil
@@ -9,6 +10,7 @@ import socket
 import ssl
 import tempfile
 import unittest
+import uuid
 from unittest import mock
 
 import pytest
@@ -18,7 +20,7 @@ import aiohttp
 from aiohttp import client, web
 from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection, _DNSCacheTable
-from aiohttp.test_utils import unused_port
+from aiohttp.test_utils import make_mocked_coro, unused_port
 
 
 @pytest.fixture()
@@ -358,6 +360,108 @@ async def test_tcp_connector_certificate_error(loop):
                               '[CertificateError: ()]')
 
 
+async def test_tcp_connector_multiple_hosts_errors(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+
+    ip1 = '192.168.1.1'
+    ip2 = '192.168.1.2'
+    ip3 = '192.168.1.3'
+    ip4 = '192.168.1.4'
+    ip5 = '192.168.1.5'
+    ips = [ip1, ip2, ip3, ip4, ip5]
+    ips_tried = []
+
+    fingerprint = hashlib.sha256(b'foo').digest()
+
+    req = ClientRequest('GET', URL('https://mocked.host'),
+                        fingerprint=fingerprint,
+                        loop=loop)
+
+    async def _resolve_host(host, port):
+        return [{
+            'hostname': host,
+            'host': ip,
+            'port': port,
+            'family': socket.AF_INET,
+            'proto': 0,
+            'flags': socket.AI_NUMERICHOST}
+            for ip in ips]
+
+    conn._resolve_host = _resolve_host
+
+    os_error = certificate_error = ssl_error = fingerprint_error = False
+    connected = False
+
+    async def create_connection(*args, **kwargs):
+        nonlocal os_error, certificate_error, ssl_error, fingerprint_error
+        nonlocal connected
+
+        ip = args[1]
+
+        ips_tried.append(ip)
+
+        if ip == ip1:
+            os_error = True
+            raise OSError
+
+        if ip == ip2:
+            certificate_error = True
+            raise ssl.CertificateError
+
+        if ip == ip3:
+            ssl_error = True
+            raise ssl.SSLError
+
+        if ip == ip4:
+            fingerprint_error = True
+            tr, pr = mock.Mock(), None
+
+            def get_extra_info(param):
+                if param == 'sslcontext':
+                    return True
+
+                if param == 'socket':
+                    s = mock.Mock()
+                    s.getpeercert.return_value = b'not foo'
+                    return s
+
+                assert False
+
+            tr.get_extra_info = get_extra_info
+            return tr, pr
+
+        if ip == ip5:
+            connected = True
+            tr, pr = mock.Mock(), None
+
+            def get_extra_info(param):
+                if param == 'sslcontext':
+                    return True
+
+                if param == 'socket':
+                    s = mock.Mock()
+                    s.getpeercert.return_value = b'foo'
+                    return s
+
+                assert False
+
+            tr.get_extra_info = get_extra_info
+            return tr, pr
+
+        assert False
+
+    conn._loop.create_connection = create_connection
+
+    await conn.connect(req)
+    assert ips == ips_tried
+
+    assert os_error
+    assert certificate_error
+    assert ssl_error
+    assert fingerprint_error
+    assert connected
+
+
 async def test_tcp_connector_resolve_host(loop):
     conn = aiohttp.TCPConnector(loop=loop, use_dns_cache=True)
 
@@ -440,8 +544,8 @@ async def test_tcp_connector_dns_throttle_requests(loop, dns_response):
             ttl_dns_cache=10
         )
         m_resolver().resolve.return_value = dns_response()
-        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
-        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        loop.create_task(conn._resolve_host('localhost', 8080))
+        loop.create_task(conn._resolve_host('localhost', 8080))
         await asyncio.sleep(0, loop=loop)
         m_resolver().resolve.assert_called_once_with(
             'localhost',
@@ -459,14 +563,8 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(loop):
         )
         e = Exception()
         m_resolver().resolve.side_effect = e
-        r1 = asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080),
-            loop=loop
-        )
-        r2 = asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080),
-            loop=loop
-        )
+        r1 = loop.create_task(conn._resolve_host('localhost', 8080))
+        r2 = loop.create_task(conn._resolve_host('localhost', 8080))
         await asyncio.sleep(0, loop=loop)
         assert r1.exception() == e
         assert r2.exception() == e
@@ -483,16 +581,27 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
             ttl_dns_cache=10
         )
         m_resolver().resolve.return_value = dns_response()
-        asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080), loop=loop)
-        f = asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080), loop=loop)
+        loop.create_task(conn._resolve_host('localhost', 8080))
+        f = loop.create_task(conn._resolve_host('localhost', 8080))
 
         await asyncio.sleep(0, loop=loop)
         conn.close()
 
         with pytest.raises(asyncio.futures.CancelledError):
             await f
+
+
+def test_dns_error(loop):
+    connector = aiohttp.TCPConnector(loop=loop)
+    connector._resolve_host = make_mocked_coro(
+        raise_exception=OSError('dont take it serious'))
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
 
 
 def test_get_pop_empty_conns(loop):
@@ -541,7 +650,7 @@ def test_release_not_started(loop):
     # assert conn._conns == {1: [(proto, 10)]}
     rec = conn._conns[1]
     assert rec[0][0] == proto
-    assert rec[0][1] == pytest.approx(loop.time(), abs=0.01)
+    assert rec[0][1] == pytest.approx(loop.time(), abs=0.05)
     assert not proto.close.called
     conn.close()
 
@@ -588,7 +697,7 @@ async def test_close_during_connect(loop):
     conn._create_connection = mock.Mock()
     conn._create_connection.return_value = fut
 
-    task = asyncio.ensure_future(conn.connect(req), loop=loop)
+    task = loop.create_task(conn.connect(req))
     await asyncio.sleep(0, loop=loop)
     conn.close()
 
@@ -857,7 +966,7 @@ async def test_connect_with_limit(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -891,7 +1000,7 @@ async def test_connect_with_limit_and_limit_per_host(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -923,7 +1032,7 @@ async def test_connect_with_no_limit_and_limit_per_host(loop, key):
         acquired = True
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -957,7 +1066,7 @@ async def test_connect_with_no_limits(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert acquired
@@ -1062,7 +1171,7 @@ async def test_connect_with_limit_concurrent(loop):
             await asyncio.sleep(0, loop=loop)
             connection.release()
         tasks = [
-            asyncio.ensure_future(f(start=False), loop=loop)
+            loop.create_task(f(start=False))
             for i in range(start_requests)
         ]
         await asyncio.wait(tasks, loop=loop)
@@ -1166,8 +1275,8 @@ async def test_error_on_connection(loop):
 
     conn._create_connection = create_connection
 
-    t1 = asyncio.ensure_future(conn.connect(req), loop=loop)
-    t2 = asyncio.ensure_future(conn.connect(req), loop=loop)
+    t1 = loop.create_task(conn.connect(req))
+    t2 = loop.create_task(conn.connect(req))
     await asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()
@@ -1210,9 +1319,9 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
 
     conn._create_connection = create_connection
 
-    t1 = asyncio.ensure_future(conn.connect(req), loop=loop)
-    t2 = asyncio.ensure_future(conn.connect(req), loop=loop)
-    t3 = asyncio.ensure_future(conn.connect(req), loop=loop)
+    t1 = loop.create_task(conn.connect(req))
+    t2 = loop.create_task(conn.connect(req))
+    t3 = loop.create_task(conn.connect(req))
     await asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()
@@ -1245,6 +1354,34 @@ async def test_tcp_connector(test_client, loop):
 
     r = await client.get('/')
     assert r.status == 200
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="requires unix socket")
+def test_unix_connector_not_found(loop):
+    connector = aiohttp.UnixConnector('/' + uuid.uuid4().hex, loop=loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason="requires unix socket")
+def test_unix_connector_permission(loop):
+    loop.create_unix_connection = make_mocked_coro(
+        raise_exception=PermissionError())
+    connector = aiohttp.UnixConnector('/' + uuid.uuid4().hex, loop=loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=loop,
+    )
+    with pytest.raises(aiohttp.ClientConnectorError):
+        loop.run_until_complete(connector.connect(req))
 
 
 def test_default_use_dns_cache(loop):

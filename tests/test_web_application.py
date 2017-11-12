@@ -5,6 +5,7 @@ import pytest
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
+from aiohttp.test_utils import make_mocked_coro
 
 
 def test_app_ctor(loop):
@@ -44,17 +45,6 @@ def test_set_loop_with_different_loops(loop):
 
     with pytest.raises(RuntimeError):
         app._set_loop(loop=object())
-
-
-def test_on_loop_available(loop):
-    app = web.Application()
-
-    cb = mock.Mock()
-    with pytest.warns(DeprecationWarning):
-        app.on_loop_available.append(cb)
-
-    app._set_loop(loop)
-    cb.assert_called_with(app)
 
 
 @pytest.mark.parametrize('debug', [True, False])
@@ -106,10 +96,11 @@ def test_app_make_handler_access_log_class(loop, mocker):
 
 async def test_app_register_on_finish():
     app = web.Application()
-    cb1 = mock.Mock()
-    cb2 = mock.Mock()
+    cb1 = make_mocked_coro(None)
+    cb2 = make_mocked_coro(None)
     app.on_cleanup.append(cb1)
     app.on_cleanup.append(cb2)
+    app.freeze()
     await app.cleanup()
     cb1.assert_called_once_with(app)
     cb2.assert_called_once_with(app)
@@ -124,6 +115,7 @@ async def test_app_register_coro(loop):
         fut.set_result(123)
 
     app.on_cleanup.append(cb)
+    app.freeze()
     await app.cleanup()
     assert fut.done()
     assert 123 == fut.result()
@@ -152,7 +144,7 @@ async def test_on_shutdown():
         called = True
 
     app.on_shutdown.append(on_shutdown)
-
+    app.freeze()
     await app.shutdown()
     assert called
 
@@ -161,15 +153,9 @@ async def test_on_startup(loop):
     app = web.Application()
     app._set_loop(loop)
 
-    blocking_called = False
     long_running1_called = False
     long_running2_called = False
     all_long_running_called = False
-
-    def on_startup_blocking(app_param):
-        nonlocal blocking_called
-        assert app is app_param
-        blocking_called = True
 
     async def long_running1(app_param):
         nonlocal long_running1_called
@@ -189,11 +175,10 @@ async def test_on_startup(loop):
                                     long_running2(app_param),
                                     loop=app_param.loop)
 
-    app.on_startup.append(on_startup_blocking)
     app.on_startup.append(on_startup_all_long_running)
+    app.freeze()
 
     await app.startup()
-    assert blocking_called
     assert long_running1_called
     assert long_running2_called
     assert all_long_running_called

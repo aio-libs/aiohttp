@@ -3,11 +3,11 @@
 As a simple case, you can upload data from file::
 
    @aiohttp.streamer
-   def file_sender(writer, file_name=None):
+   async def file_sender(writer, file_name=None):
       with open(file_name, 'rb') as f:
           chunk = f.read(2**16)
           while chunk:
-              yield from writer.write(chunk)
+              await writer.write(chunk)
 
               chunk = f.read(2**16)
 

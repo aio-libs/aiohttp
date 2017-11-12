@@ -20,7 +20,7 @@ from .frozenlist import FrozenList
 from .helpers import AccessLogger
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
-from .signals import FuncSignal, PostSignal, PreSignal, Signal
+from .signals import Signal
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
@@ -72,9 +72,6 @@ class Application(MutableMapping):
         self._frozen = False
         self._subapps = []
 
-        self._on_pre_signal = PreSignal()
-        self._on_post_signal = PostSignal()
-        self._on_loop_available = FuncSignal(self)
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
@@ -123,7 +120,6 @@ class Application(MutableMapping):
                 "web.Application instance initialized with different loop")
 
         self._loop = loop
-        self._on_loop_available.send(self)
 
         # set loop debug
         if self._debug is ...:
@@ -144,9 +140,6 @@ class Application(MutableMapping):
         self._frozen = True
         self._middlewares = tuple(self._prepare_middleware())
         self._router.freeze()
-        self._on_loop_available.freeze()
-        self._on_pre_signal.freeze()
-        self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
         self._on_startup.freeze()
         self._on_shutdown.freeze()
@@ -193,22 +186,8 @@ class Application(MutableMapping):
         return resource
 
     @property
-    def on_loop_available(self):
-        warnings.warn("on_loop_available is deprecated and will be removed",
-                      DeprecationWarning, stacklevel=2)
-        return self._on_loop_available
-
-    @property
     def on_response_prepare(self):
         return self._on_response_prepare
-
-    @property
-    def on_pre_signal(self):
-        return self._on_pre_signal
-
-    @property
-    def on_post_signal(self):
-        return self._on_post_signal
 
     @property
     def on_startup(self):
@@ -431,6 +410,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         loop = asyncio.get_event_loop()
 
     app._set_loop(loop)
+    app.freeze()
     loop.run_until_complete(app.startup())
 
     try:

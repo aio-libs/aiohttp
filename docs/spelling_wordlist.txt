@@ -44,6 +44,8 @@ cls
 cmd
 codec
 Codings
+committer
+committers
 config
 Config
 configs
@@ -240,6 +242,7 @@ symlinks
 syscall
 syscalls
 Systemd
+tarball
 TCP
 teardown
 Teardown

@@ -37,8 +37,6 @@ Usage example::
      loop.run_until_complete(main(loop))
 
 
-.. versionadded:: 0.17
-
 The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
@@ -93,8 +91,6 @@ The client session supports the context manager protocol for self closing.
 
    :param version: supported HTTP version, ``HTTP 1.1`` by default.
 
-      .. versionadded:: 0.21
-
    :param cookie_jar: Cookie Jar, :class:`AbstractCookieJar` instance.
 
       By default every session instance has own private cookie jar for
@@ -107,8 +103,6 @@ The client session supports the context manager protocol for self closing.
       If no cookie processing is needed, a
       :class:`aiohttp.helpers.DummyCookieJar` instance can be
       provided.
-
-      .. versionadded:: 0.22
 
    :param callable json_serialize: Json *serializer* callable.
 
@@ -133,7 +127,7 @@ The client session supports the context manager protocol for self closing.
 
       Close connector instance on session closing.
 
-      Passing ``connector_owner=False`` to constructor allows to share
+      Setting the parameter to ``False`` allows to share
       connection pool between sessions without sharing session state:
       cookies etc.
 
@@ -143,7 +137,7 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 2.3
 
-   :param bool from_env: Get proxies information from *HTTP_PROXY* /
+   :param bool trust_env: Get proxies information from *HTTP_PROXY* /
                          *HTTPS_PROXY* environment variables if the
                          parameter is ``True`` (``False`` by default).
 
@@ -169,8 +163,6 @@ The client session supports the context manager protocol for self closing.
       Gives access to cookie jar's content and modifiers.
 
       A read-only property.
-
-      .. versionadded:: 1.0
 
    .. attribute:: requote_redirect_url
 
@@ -305,16 +297,6 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
 
-      .. versionadded:: 1.0
-
-         Added ``proxy`` and ``proxy_auth`` parameters.
-
-         Added ``timeout`` parameter.
-
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
-
    .. comethod:: get(url, *, allow_redirects=True, **kwargs)
       :async-with:
       :coroutine:
@@ -332,10 +314,6 @@ The client session supports the context manager protocol for self closing.
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
-
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: post(url, *, data=None, **kwargs)
       :async-with:
@@ -356,10 +334,6 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
-
    .. comethod:: put(url, *, data=None, **kwargs)
       :async-with:
       :coroutine:
@@ -379,10 +353,6 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
-
    .. comethod:: delete(url, **kwargs)
       :async-with:
       :coroutine:
@@ -397,10 +367,6 @@ The client session supports the context manager protocol for self closing.
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
-
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: head(url, *, allow_redirects=False, **kwargs)
       :async-with:
@@ -419,10 +385,6 @@ The client session supports the context manager protocol for self closing.
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
-
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: options(url, *, allow_redirects=True, **kwargs)
       :async-with:
@@ -443,10 +405,6 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
-
    .. comethod:: patch(url, *, data=None, **kwargs)
       :async-with:
       :coroutine:
@@ -465,10 +423,6 @@ The client session supports the context manager protocol for self closing.
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
-
-      .. versionchanged:: 1.1
-
-         URLs may be either :class:`str` or :class:`~yarl.URL`
 
    .. comethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
                             receive_timeout=None,\
@@ -654,10 +608,6 @@ certification chaining.
               assert resp.status == 200
               print(await resp.text())
 
-   .. versionchanged:: 1.1
-
-      URLs may be either :class:`str` or :class:`~yarl.URL`
-
 
 .. _aiohttp-client-reference-connectors:
 
@@ -726,8 +676,6 @@ BaseConnector
 
       Read-only property, ``True`` if connector should ultimately
       close connections on releasing.
-
-      .. versionadded:: 0.16
 
    .. attribute:: limit
 
@@ -809,8 +757,6 @@ TCPConnector
 
       Note: use of MD5 or SHA1 digests is insecure and deprecated.
 
-      .. versionadded:: 0.16
-
       .. deprecated:: 2.3
 
          Pass *verify_ssl* to ``ClientSession.get()`` etc.
@@ -821,12 +767,6 @@ TCPConnector
       Enabling an option *may* speedup connection
       establishing a bit but may introduce some
       *side effects* also.
-
-      .. versionadded:: 0.17
-
-      .. versionchanged:: 1.0
-
-         The default is changed to ``True``
 
    :param int ttl_dns_cache: expire after some seconds the DNS entries, ``None``
       means cached forever. By default 10 seconds.
@@ -853,22 +793,19 @@ TCPConnector
       Custom resolvers allow to resolve hostnames differently than the
       way the host is configured.
 
-      .. versionchanged:: 1.1
-
-         The resolver is ``aiohttp.ThreadedResolver`` by default,
-         asynchronous version is not pretty robust but might fail in
-         very rare cases.
+      The resolver is ``aiohttp.ThreadedResolver`` by default,
+      asynchronous version is pretty robust but might fail in
+      very rare cases.
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
                       for  *IPv6* only -- :const:`socket.AF_INET6`.
 
-      .. versionchanged:: 0.18
-
-         *family* is `0` by default, that means both IPv4 and IPv6 are
-         accepted. To specify only concrete version please pass
-         :const:`socket.AF_INET` or :const:`socket.AF_INET6`
-         explicitly.
+                      *family* is ``0`` by default, that means both
+                      IPv4 and IPv6 are accepted. To specify only
+                      concrete version please pass
+                      :const:`socket.AF_INET` or
+                      :const:`socket.AF_INET6` explicitly.
 
    :param ssl.SSLContext ssl_context: SSL context used for processing
       *HTTPS* requests (optional).
@@ -878,8 +815,6 @@ TCPConnector
 
    :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
       socket locally if specified.
-
-      .. versionadded:: 0.21
 
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
@@ -912,15 +847,11 @@ TCPConnector
 
       Read-only :class:`bool` property.
 
-      .. versionadded:: 0.17
-
    .. attribute:: cached_hosts
 
       The cache of resolved hosts if :attr:`dns_cache` is enabled.
 
       Read-only :class:`types.MappingProxyType` property.
-
-      .. versionadded:: 0.17
 
    .. attribute:: fingerprint
 
@@ -930,16 +861,12 @@ TCPConnector
 
       Read-only :class:`bytes` property.
 
-      .. versionadded:: 0.16
-
    .. method:: clear_dns_cache(self, host=None, port=None)
 
       Clear internal *DNS* cache.
 
       Remove specific entry if both *host* and *port* are specified,
       clear all cache otherwise.
-
-      .. versionadded:: 0.17
 
 
 UnixConnector
@@ -1039,10 +966,6 @@ Response object
    After exiting from ``async with`` block response object will be
    *released* (see :meth:`release` coroutine).
 
-   .. versionadded:: 0.18
-
-      Support for ``async with``.
-
    .. attribute:: version
 
       Response's version, :class:`HttpVersion` instance.
@@ -1109,12 +1032,19 @@ Response object
 
    .. attribute:: charset
 
-   Read-only property that specifies the *encoding* for the request's BODY.
+      Read-only property that specifies the *encoding* for the request's BODY.
 
       The value is parsed from the *Content-Type* HTTP header.
 
       Returns :class:`str` like ``'utf-8'`` or ``None`` if no *Content-Type*
       header present in HTTP headers or it has no charset information.
+
+   .. attribute:: content_disposition
+
+      Read-only property that specified the *Content-Disposition* HTTP header.
+
+      Instance of :class:`ContentDisposition` or ``None`` if no *Content-Disposition*
+      header present in HTTP headers.
 
    .. attribute:: history
 
@@ -1256,13 +1186,29 @@ manually.
 
       Returns exception if any occurs or returns None.
 
-   .. method:: ping(message=b'')
+   .. comethod:: ping(message=b'')
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
       :param message: optional payload of *ping* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: pong(message=b'')
+
+      Send :const:`~aiohttp.WSMsgType.PONG` to peer.
+
+      :param message: optional payload of *pong* message,
+                      :class:`str` (converted to *UTF-8* encoded bytes)
+                      or :class:`bytes`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: send_str(data)
 
@@ -1272,6 +1218,10 @@ manually.
 
       :raise TypeError: if data is not :class:`str`
 
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
    .. comethod:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
@@ -1280,6 +1230,10 @@ manually.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: send_json(data, *, dumps=json.dumps)
 
@@ -1297,6 +1251,10 @@ manually.
 
       :raise TypeError: if value returned by ``dumps(data)`` is not
                         :class:`str`
+
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
 
    .. comethod:: close(*, code=1000, message=b'')
 
@@ -1561,6 +1519,21 @@ All exceptions are available as members of *aiohttp* module.
 
       Invalid URL, :class:`yarl.URL` instance.
 
+.. class:: ContentDisposition
+
+    Represent Content-Disposition header
+
+    .. attribute:: value
+
+    A :class:`str` instance. Value of Content-Disposition header itself, e.g. ``attachment``.
+
+    .. attribute:: filename
+
+    A :class:`str` instance. Content filename extracted from parameters. May be ``None``.
+
+    .. attribute:: parameters
+
+    Read-only mapping contains all parameters.
 
 Response errors
 ^^^^^^^^^^^^^^^
@@ -1575,6 +1548,18 @@ Response errors
 
       Instance of :class:`RequestInfo` object, contains information
       about request.
+
+   .. attribute:: code
+
+      HTTP status code of response (:class:`int`), e.g. ``200``.
+
+   .. attribute:: message
+
+      Message of response (:class:`str`), e.g. ``"OK"``.
+
+   .. attribute:: headers
+
+      Headers in response, a list of pairs.
 
    .. attribute:: history
 

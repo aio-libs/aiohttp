@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import binascii
 import json
@@ -162,8 +161,11 @@ def content_disposition_filename(params, name='filename'):
 
 
 class MultipartResponseWrapper(object):
-    """Wrapper around the :class:`MultipartBodyReader` to take care about
-    underlying connection and close it when it needs in."""
+    """Wrapper around the MultipartBodyReader.
+
+    It takes care about
+    underlying connection and close it when it needs in.
+    """
 
     def __init__(self, resp, stream):
         self.resp = resp
@@ -172,18 +174,14 @@ class MultipartResponseWrapper(object):
     def __aiter__(self):
         return self
 
-    @asyncio.coroutine
-    def __anext__(self):
-        part = yield from self.next()
+    async def __anext__(self):
+        part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
         return part
 
     def at_eof(self):
-        """Returns ``True`` when all response data had been read.
-
-        :rtype: bool
-        """
+        """Returns True when all response data had been read."""
         return self.resp.content.at_eof()
 
     async def next(self):
@@ -220,71 +218,58 @@ class BodyPartReader(object):
     def __aiter__(self):
         return self
 
-    @asyncio.coroutine
-    def __anext__(self):
-        part = yield from self.next()
+    async def __anext__(self):
+        part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
         return part
 
-    @asyncio.coroutine
-    def next(self):
-        item = yield from self.read()
+    async def next(self):
+        item = await self.read()
         if not item:
             return None
         return item
 
-    @asyncio.coroutine
-    def read(self, *, decode=False):
+    async def read(self, *, decode=False):
         """Reads body part data.
 
-        :param bool decode: Decodes data following by encoding
-                            method from `Content-Encoding` header. If it missed
-                            data remains untouched
-
-        :rtype: bytearray
+        decode: Decodes data following by encoding
+                method from Content-Encoding header. If it missed
+                data remains untouched
         """
         if self._at_eof:
             return b''
         data = bytearray()
         while not self._at_eof:
-            data.extend((yield from self.read_chunk(self.chunk_size)))
+            data.extend((await self.read_chunk(self.chunk_size)))
         if decode:
             return self.decode(data)
         return data
 
-    @asyncio.coroutine
-    def read_chunk(self, size=chunk_size):
+    async def read_chunk(self, size=chunk_size):
         """Reads body part content chunk of the specified size.
 
-        :param int size: chunk size
-
-        :rtype: bytearray
+        size: chunk size
         """
         if self._at_eof:
             return b''
         if self._length:
-            chunk = yield from self._read_chunk_from_length(size)
+            chunk = await self._read_chunk_from_length(size)
         else:
-            chunk = yield from self._read_chunk_from_stream(size)
+            chunk = await self._read_chunk_from_stream(size)
 
         self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
             self._at_eof = True
         if self._at_eof:
-            clrf = yield from self._content.readline()
+            clrf = await self._content.readline()
             assert b'\r\n' == clrf, \
                 'reader did not read all the data or it is malformed'
         return chunk
 
     async def _read_chunk_from_length(self, size):
-        """Reads body part content chunk of the specified size.
-        The body part must has `Content-Length` header with proper value.
-
-        :param int size: chunk size
-
-        :rtype: bytearray
-        """
+        # Reads body part content chunk of the specified size.
+        # The body part must has Content-Length header with proper value.
         assert self._length is not None, \
             'Content-Length required for chunked read'
         chunk_size = min(size, self._length - self._read_bytes)
@@ -292,13 +277,8 @@ class BodyPartReader(object):
         return chunk
 
     async def _read_chunk_from_stream(self, size):
-        """Reads content chunk of body part with unknown length.
-        The `Content-Length` header for body part is not necessary.
-
-        :param int size: chunk size
-
-        :rtype: bytearray
-        """
+        # Reads content chunk of body part with unknown length.
+        # The Content-Length header for body part is not necessary.
         assert size >= len(self._boundary) + 2, \
             'Chunk size must be greater or equal than boundary length + 2'
         first_chunk = self._prev_chunk is None
@@ -326,19 +306,15 @@ class BodyPartReader(object):
         self._prev_chunk = chunk
         return result
 
-    @asyncio.coroutine
-    def readline(self):
-        """Reads body part by line by line.
-
-        :rtype: bytearray
-        """
+    async def readline(self):
+        """Reads body part by line by line."""
         if self._at_eof:
             return b''
 
         if self._unread:
             line = self._unread.popleft()
         else:
-            line = yield from self._content.readline()
+            line = await self._content.readline()
 
         if line.startswith(self._boundary):
             # the very last boundary may not come with \r\n,
@@ -352,61 +328,41 @@ class BodyPartReader(object):
                 self._unread.append(line)
                 return b''
         else:
-            next_line = yield from self._content.readline()
+            next_line = await self._content.readline()
             if next_line.startswith(self._boundary):
                 line = line[:-2]  # strip CRLF but only once
             self._unread.append(next_line)
 
         return line
 
-    @asyncio.coroutine
-    def release(self):
-        """Like :meth:`read`, but reads all the data to the void.
-
-        :rtype: None
-        """
+    async def release(self):
+        """Like read(), but reads all the data to the void."""
         if self._at_eof:
             return
         while not self._at_eof:
-            yield from self.read_chunk(self.chunk_size)
+            await self.read_chunk(self.chunk_size)
 
-    @asyncio.coroutine
-    def text(self, *, encoding=None):
-        """Like :meth:`read`, but assumes that body part contains text data.
-
-        :param str encoding: Custom text encoding. Overrides specified
-                             in charset param of `Content-Type` header
-
-        :rtype: str
-        """
-        data = yield from self.read(decode=True)
+    async def text(self, *, encoding=None):
+        """Like read(), but assumes that body part contains text data."""
+        data = await self.read(decode=True)
         # see https://www.w3.org/TR/html5/forms.html#multipart/form-data-encoding-algorithm # NOQA
         # and https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#dom-xmlhttprequest-send # NOQA
         encoding = encoding or self.get_charset(default='utf-8')
         return data.decode(encoding)
 
-    @asyncio.coroutine
-    def json(self, *, encoding=None):
-        """Like :meth:`read`, but assumes that body parts contains JSON data.
-
-        :param str encoding: Custom JSON encoding. Overrides specified
-                             in charset param of `Content-Type` header
-        """
-        data = yield from self.read(decode=True)
+    async def json(self, *, encoding=None):
+        """Like read(), but assumes that body parts contains JSON data."""
+        data = await self.read(decode=True)
         if not data:
             return None
         encoding = encoding or self.get_charset(default='utf-8')
         return json.loads(data.decode(encoding))
 
-    @asyncio.coroutine
-    def form(self, *, encoding=None):
-        """Like :meth:`read`, but assumes that body parts contains form
+    async def form(self, *, encoding=None):
+        """Like read(), but assumes that body parts contains form
         urlencoded data.
-
-        :param str encoding: Custom form encoding. Overrides specified
-                             in charset param of `Content-Type` header
         """
-        data = yield from self.read(decode=True)
+        data = await self.read(decode=True)
         if not data:
             return None
         encoding = encoding or self.get_charset(default='utf-8')
@@ -415,28 +371,12 @@ class BodyPartReader(object):
                          encoding=encoding)
 
     def at_eof(self):
-        """Returns ``True`` if the boundary was reached or
-        ``False`` otherwise.
-
-        :rtype: bool
-        """
+        """Returns True if the boundary was reached or False otherwise."""
         return self._at_eof
 
     def decode(self, data):
-        """Decodes data according the specified `Content-Encoding`
-        or `Content-Transfer-Encoding` headers value.
-
-        Supports ``gzip``, ``deflate`` and ``identity`` encodings for
-        `Content-Encoding` header.
-
-        Supports ``base64``, ``quoted-printable``, ``binary`` encodings for
-        `Content-Transfer-Encoding` header.
-
-        :param bytearray data: Data to decode.
-
-        :raises: :exc:`RuntimeError` - if encoding is unknown.
-
-        :rtype: bytes
+        """Decodes data according the specified Content-Encoding
+        or Content-Transfer-Encoding headers value.
         """
         if CONTENT_TRANSFER_ENCODING in self.headers:
             data = self._decode_content_transfer(data)
@@ -470,24 +410,25 @@ class BodyPartReader(object):
                                ''.format(encoding))
 
     def get_charset(self, default=None):
-        """Returns charset parameter from ``Content-Type`` header or default.
-        """
+        """Returns charset parameter from Content-Type header or default."""
         ctype = self.headers.get(CONTENT_TYPE, '')
         mimetype = parse_mimetype(ctype)
         return mimetype.parameters.get('charset', default)
 
     @reify
     def name(self):
-        """Returns filename specified in Content-Disposition header or ``None``
-        if missed or header is malformed."""
+        """Returns name specified in Content-Disposition header or None
+        if missed or header is malformed.
+        """
         _, params = parse_content_disposition(
             self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, 'name')
 
     @reify
     def filename(self):
-        """Returns filename specified in Content-Disposition header or ``None``
-        if missed or header is malformed."""
+        """Returns filename specified in Content-Disposition header or None
+        if missed or header is malformed.
+        """
         _, params = parse_content_disposition(
             self.headers.get(CONTENT_DISPOSITION))
         return content_disposition_filename(params, 'filename')
@@ -539,9 +480,8 @@ class MultipartReader(object):
     def __aiter__(self):
         return self
 
-    @asyncio.coroutine
-    def __anext__(self):
-        part = yield from self.next()
+    async def __anext__(self):
+        part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
         return part
@@ -557,10 +497,8 @@ class MultipartReader(object):
         return obj
 
     def at_eof(self):
-        """Returns ``True`` if the final boundary was reached or
-        ``False`` otherwise.
-
-        :rtype: bool
+        """Returns True if the final boundary was reached or
+        False otherwise.
         """
         return self._at_eof
 
@@ -818,15 +756,14 @@ class MultipartWriter(Payload):
         total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
         return total
 
-    @asyncio.coroutine
-    def write(self, writer):
+    async def write(self, writer):
         """Write body."""
         if not self._parts:
             return
 
         for part, headers, encoding, te_encoding in self._parts:
-            yield from writer.write(b'--' + self._boundary + b'\r\n')
-            yield from writer.write(headers)
+            await writer.write(b'--' + self._boundary + b'\r\n')
+            await writer.write(headers)
 
             if encoding or te_encoding:
                 w = MultipartPayloadWriter(writer)
@@ -834,14 +771,14 @@ class MultipartWriter(Payload):
                     w.enable_compression(encoding)
                 if te_encoding:
                     w.enable_encoding(te_encoding)
-                yield from part.write(w)
-                yield from w.write_eof()
+                await part.write(w)
+                await w.write_eof()
             else:
-                yield from part.write(writer)
+                await part.write(writer)
 
-            yield from writer.write(b'\r\n')
+            await writer.write(b'\r\n')
 
-        yield from writer.write(b'--' + self._boundary + b'--\r\n')
+        await writer.write(b'--' + self._boundary + b'--\r\n')
 
 
 class MultipartPayloadWriter:
@@ -863,21 +800,19 @@ class MultipartPayloadWriter:
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
         self._compress = zlib.compressobj(wbits=zlib_mode)
 
-    @asyncio.coroutine
-    def write_eof(self):
+    async def write_eof(self):
         if self._compress is not None:
             chunk = self._compress.flush()
             if chunk:
                 self._compress = None
-                yield from self.write(chunk)
+                await self.write(chunk)
 
         if self._encoding == 'base64':
             if self._encoding_buffer:
-                yield from self._writer.write(base64.b64encode(
+                await self._writer.write(base64.b64encode(
                     self._encoding_buffer))
 
-    @asyncio.coroutine
-    def write(self, chunk):
+    async def write(self, chunk):
         if self._compress is not None:
             if chunk:
                 chunk = self._compress.compress(chunk)
@@ -894,8 +829,8 @@ class MultipartPayloadWriter:
                     buffer[:div * 3], buffer[div * 3:])
                 if enc_chunk:
                     enc_chunk = base64.b64encode(enc_chunk)
-                    yield from self._writer.write(enc_chunk)
+                    await self._writer.write(enc_chunk)
         elif self._encoding == 'quoted-printable':
-            yield from self._writer.write(binascii.b2a_qp(chunk))
+            await self._writer.write(binascii.b2a_qp(chunk))
         else:
-            yield from self._writer.write(chunk)
+            await self._writer.write(chunk)

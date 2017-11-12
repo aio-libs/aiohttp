@@ -13,10 +13,13 @@ from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
 
 
 def make_request(method, path, headers=CIMultiDict(),
-                 version=HttpVersion11, **kwargs):
+                 version=HttpVersion11, on_response_prepare=None, **kwargs):
     app = kwargs.pop('app', None) or mock.Mock()
     app._debug = False
-    app.on_response_prepare = signals.Signal(app)
+    if on_response_prepare is None:
+        on_response_prepare = signals.Signal(app)
+    app.on_response_prepare = on_response_prepare
+    app.on_response_prepare.freeze()
     protocol = kwargs.pop('protocol', None) or mock.Mock()
     return make_mocked_request(method, path, headers,
                                version=version, protocol=protocol,
@@ -514,30 +517,28 @@ async def test_write_non_byteish():
     await resp.prepare(make_request('GET', '/'))
 
     with pytest.raises(AssertionError):
-        resp.write(123)
+        await resp.write(123)
 
 
-def test_write_before_start():
+async def test_write_before_start():
     resp = StreamResponse()
 
     with pytest.raises(RuntimeError):
-        resp.write(b'data')
+        await resp.write(b'data')
 
 
 async def test_cannot_write_after_eof():
     resp = StreamResponse()
-    writer = mock.Mock()
-    resp_impl = await resp.prepare(
-        make_request('GET', '/', writer=writer))
-    resp_impl.write_eof = make_mocked_coro(None)
+    req = make_request('GET', '/')
+    await resp.prepare(req)
 
-    resp.write(b'data')
+    await resp.write(b'data')
     await resp.write_eof()
-    writer.write.reset_mock()
+    req.writer.write.reset_mock()
 
     with pytest.raises(RuntimeError):
-        resp.write(b'next data')
-    assert not writer.write.called
+        await resp.write(b'next data')
+    assert not req.writer.write.called
 
 
 async def test___repr___after_eof():
@@ -546,7 +547,7 @@ async def test___repr___after_eof():
 
     assert resp.prepared
 
-    resp.write(b'data')
+    await resp.write(b'data')
     await resp.write_eof()
     assert not resp.prepared
     resp_repr = repr(resp)
@@ -567,7 +568,7 @@ async def test_cannot_write_eof_twice():
     resp_impl.write = make_mocked_coro(None)
     resp_impl.write_eof = make_mocked_coro(None)
 
-    resp.write(b'data')
+    await resp.write(b'data')
     assert resp_impl.write.called
 
     await resp.write_eof()
@@ -575,22 +576,6 @@ async def test_cannot_write_eof_twice():
     resp_impl.write.reset_mock()
     await resp.write_eof()
     assert not writer.write.called
-
-
-async def _test_write_returns_drain():
-    resp = StreamResponse()
-    await resp.prepare(make_request('GET', '/'))
-
-    with mock.patch('aiohttp.http_writer.noop') as noop:
-        assert noop == resp.write(b'data')
-
-
-async def _test_write_returns_empty_tuple_on_empty_data():
-    resp = StreamResponse()
-    await resp.prepare(make_request('GET', '/'))
-
-    with mock.patch('aiohttp.http_writer.noop') as noop:
-        assert noop.return_value == resp.write(b'')
 
 
 def test_force_close():
@@ -744,11 +729,13 @@ async def test_prepare_twice():
 
 async def test_prepare_calls_signal():
     app = mock.Mock()
-    req = make_request('GET', '/', app=app)
+    sig = make_mocked_coro()
+    on_response_prepare = signals.Signal(app)
+    on_response_prepare.append(sig)
+    req = make_request('GET', '/', app=app,
+                       on_response_prepare=on_response_prepare)
     resp = StreamResponse()
 
-    sig = mock.Mock()
-    app.on_response_prepare.append(sig)
     await resp.prepare(req)
 
     sig.assert_called_with(req, resp)
@@ -898,6 +885,14 @@ def test_ctor_charset_without_text():
     resp = Response(content_type='text/plain', charset='koi8-r')
 
     assert 'koi8-r' == resp.charset
+
+
+def test_ctor_content_type_with_extra():
+    resp = Response(text='test test', content_type='text/plain; version=0.0.4')
+
+    assert resp.content_type == 'text/plain'
+    assert resp.headers['content-type'] == \
+        'text/plain; version=0.0.4; charset=utf-8'
 
 
 def test_ctor_both_content_type_param_and_header_with_text():

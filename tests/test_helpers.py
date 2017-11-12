@@ -153,7 +153,7 @@ def test_access_logger_atoms(mocker):
     utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
-    log_format = '%a %t %P %l %u %r %s %b %T %Tf %D'
+    log_format = '%a %t %P %r %s %b %T %Tf %D'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={}, method="GET", path_qs="/path",
@@ -162,7 +162,7 @@ def test_access_logger_atoms(mocker):
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
-    expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
+    expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> '
                 'GET /path HTTP/1.1 200 42 3 3.141593 3141593')
     extra = {
         'first_request_line': 'GET /path HTTP/1.1',

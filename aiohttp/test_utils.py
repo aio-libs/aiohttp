@@ -18,7 +18,7 @@ import aiohttp
 from aiohttp.client import _RequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import noop, sentinel
+from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Request, Server, UrlMappingMatchInfo
@@ -141,6 +141,7 @@ class TestServer(BaseTestServer):
 
     async def _make_factory(self, **kwargs):
         self.app._set_loop(self._loop)
+        self.app.freeze()
         await self.app.startup()
         self.handler = self.app.make_handler(loop=self._loop, **kwargs)
         return self.handler
@@ -429,7 +430,8 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
         policy = asyncio.get_event_loop_policy()
         watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
-        policy.set_child_watcher(watcher)
+        with contextlib.suppress(NotImplementedError):
+            policy.set_child_watcher(watcher)
     return loop
 
 
@@ -525,8 +527,9 @@ def make_mocked_request(method, path, headers=None, *,
 
     if payload_writer is sentinel:
         payload_writer = mock.Mock()
-        payload_writer.write_eof.side_effect = noop
-        payload_writer.drain.side_effect = noop
+        payload_writer.write = make_mocked_coro(None)
+        payload_writer.write_eof = make_mocked_coro(None)
+        payload_writer.drain = make_mocked_coro(None)
 
     protocol.transport = transport
     protocol.writer = writer

@@ -320,8 +320,6 @@ and :ref:`aiohttp-web-signals` handlers.
 
             return buffer[request.http_range]
 
-      .. versionadded:: 1.2
-
    .. attribute:: if_modified_since
 
       Read-only property that returns the date specified in the
@@ -348,7 +346,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       :return: a cloned :class:`Request` instance.
 
-   .. coroutinemethod:: read()
+   .. comethod:: read()
 
       Read request body, returns :class:`bytes` object with body content.
 
@@ -357,7 +355,7 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.read` call will return the same value.
 
-   .. coroutinemethod:: text()
+   .. comethod:: text()
 
       Read request body, decode it using :attr:`charset` encoding or
       ``UTF-8`` if no encoding was specified in *MIME-type*.
@@ -369,7 +367,7 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. coroutinemethod:: json(*, loads=json.loads)
+   .. comethod:: json(*, loads=json.loads)
 
       Read request body decoded as *json*.
 
@@ -391,7 +389,7 @@ and :ref:`aiohttp-web-signals` handlers.
          :meth:`~Request.json` call will return the same value.
 
 
-   .. coroutinemethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+   .. comethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
 
       Returns :class:`aiohttp.multipart.MultipartReader` which processes
       incoming *multipart* request.
@@ -412,7 +410,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. seealso:: :ref:`aiohttp-multipart`
 
-   .. coroutinemethod:: post()
+   .. comethod:: post()
 
       A :ref:`coroutine <coroutine>` that reads POST parameters from
       request body.
@@ -430,7 +428,7 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.post` call will return the same value.
 
-   .. coroutinemethod:: release()
+   .. comethod:: release()
 
       Release request.
 
@@ -541,16 +539,12 @@ StreamResponse
       Read-only :class:`bool` property, ``True`` if :meth:`prepare` has
       been called, ``False`` otherwise.
 
-      .. versionadded:: 0.18
-
    .. attribute:: task
 
       A task that serves HTTP request handling.
 
       May be useful for graceful shutdown of long-running requests
       (streaming, long polling or web-socket).
-
-      .. versionadded:: 1.2
 
    .. attribute:: status
 
@@ -610,7 +604,7 @@ StreamResponse
    .. method:: enable_chunked_encoding
 
       Enables :attr:`chunked` encoding for response. There are no ways to
-      disable it back. With enabled :attr:`chunked` encoding each `write()`
+      disable it back. With enabled :attr:`chunked` encoding each :meth:`write`
       operation encoded in separate chunk.
 
       .. warning:: chunked encoding can be enabled for ``HTTP/1.1`` only.
@@ -701,11 +695,6 @@ StreamResponse
 
       :param str path: optional cookie path, ``'/'`` by default
 
-      .. versionchanged:: 1.0
-
-         Fixed cookie expiration support for
-         Internet Explorer (version less than 11).
-
    .. attribute:: content_length
 
       *Content-Length* for outgoing response.
@@ -760,7 +749,7 @@ StreamResponse
 
       Clear :attr:`tcp_cork` if *value* is ``True``.
 
-   .. coroutinemethod:: prepare(request)
+   .. comethod:: prepare(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the
                                           response answers.
@@ -771,13 +760,13 @@ StreamResponse
       The coroutine calls :attr:`~aiohttp.web.Application.on_response_prepare`
       signal handlers.
 
-      .. versionadded:: 0.18
+   .. comethod:: write(data)
 
-   .. method:: write(data)
+      Send byte-ish data as the part of *response BODY*::
 
-      Send byte-ish data as the part of *response BODY*.
+          await resp.write(data)
 
-      :meth:`prepare` must be called before.
+      :meth:`prepare` must be invoked before the call.
 
       Raises :exc:`TypeError` if data is not :class:`bytes`,
       :class:`bytearray` or :class:`memoryview` instance.
@@ -786,23 +775,7 @@ StreamResponse
 
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
 
-   .. coroutinemethod:: drain()
-
-      A :ref:`coroutine<coroutine>` to let the write buffer of the
-      underlying transport a chance to be flushed.
-
-      The intended use is to write::
-
-          resp.write(data)
-          await resp.drain()
-
-      Yielding from :meth:`drain` gives the opportunity for the loop
-      to schedule the write operation and flush the buffer. It should
-      especially be used when a possibly large amount of data is
-      written to the transport, and the coroutine does not yield-from
-      between calls to :meth:`write`.
-
-   .. coroutinemethod:: write_eof()
+   .. comethod:: write_eof()
 
       A :ref:`coroutine<coroutine>` *may* be called as a mark of the
       *HTTP response* processing finish.
@@ -885,11 +858,10 @@ WebSocketResponse
    communicate with websocket client by :meth:`send_str`,
    :meth:`receive` and others.
 
-   .. versionadded:: 1.3.0
-
    To enable back-pressure from slow websocket clients treat methods
-   `ping()`, `pong()`, `send_str()`, `send_bytes()`, `send_json()` as
-   coroutines.  By default write buffer size is set to 64k.
+   :meth:`ping()`, :meth:`pong()`, :meth:`send_str()`,
+   :meth:`send_bytes()`, :meth:`send_json()` as coroutines.  By
+   default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -901,8 +873,6 @@ WebSocketResponse
                          :const:`~aiohttp.WSMsgType.PING`
                          requests, you need to do this explicitly
                          using :meth:`ping` method.
-
-   .. versionadded:: 1.3.0
 
    :param float heartbeat: Send `ping` message every `heartbeat`
                            seconds and wait `pong` response, close
@@ -916,19 +886,17 @@ WebSocketResponse
    :param float compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
 
-   .. versionadded:: 0.19
+   The class supports ``async for`` statement for iterating over
+   incoming messages::
 
-      The class supports ``async for`` statement for iterating over
-      incoming messages::
+      ws = web.WebSocketResponse()
+      await ws.prepare(request)
 
-         ws = web.WebSocketResponse()
-         await ws.prepare(request)
-
-         async for msg in ws:
-             print(msg.data)
+          async for msg in ws:
+              print(msg.data)
 
 
-   .. coroutinemethod:: prepare(request)
+   .. comethod:: prepare(request)
 
       Starts websocket. After the call you can use websocket methods.
 
@@ -937,8 +905,6 @@ WebSocketResponse
 
 
       :raises HTTPException: if websocket handshake has failed.
-
-      .. versionadded:: 0.18
 
    .. method:: can_prepare(request)
 
@@ -985,7 +951,7 @@ WebSocketResponse
 
       Returns last occurred exception or None.
 
-   .. method:: ping(message=b'')
+   .. comethod:: ping(message=b'')
 
       Send :const:`~aiohttp.WSMsgType.PING` to peer.
 
@@ -995,7 +961,11 @@ WebSocketResponse
 
       :raise RuntimeError: if connections is not started or closing.
 
-   .. method:: pong(message=b'')
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: pong(message=b'')
 
       Send *unsolicited* :const:`~aiohttp.WSMsgType.PONG` to peer.
 
@@ -1005,7 +975,11 @@ WebSocketResponse
 
       :raise RuntimeError: if connections is not started or closing.
 
-   .. coroutinemethod:: send_str(data)
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: send_str(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
@@ -1015,7 +989,11 @@ WebSocketResponse
 
       :raise TypeError: if data is not :class:`str`
 
-   .. coroutinemethod:: send_bytes(data)
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: send_bytes(data)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
@@ -1026,7 +1004,11 @@ WebSocketResponse
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
-   .. coroutinemethod:: send_json(data, *, dumps=json.dumps)
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: send_json(data, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
@@ -1042,7 +1024,11 @@ WebSocketResponse
 
       :raise TypeError: if value returned by ``dumps`` param is not :class:`str`
 
-   .. coroutinemethod:: close(*, code=1000, message=b'')
+      .. versionchanged:: 3.0
+
+         The method is converted into :term:`coroutine`
+
+   .. comethod:: close(*, code=1000, message=b'')
 
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
@@ -1057,7 +1043,7 @@ WebSocketResponse
 
       :raise RuntimeError: if connection is not started
 
-   .. coroutinemethod:: receive(timeout=None)
+   .. comethod:: receive(timeout=None)
 
       A :ref:`coroutine<coroutine>` that waits upcoming *data*
       message from peer and returns it.
@@ -1075,13 +1061,14 @@ WebSocketResponse
          Can only be called by the request handling task.
 
       :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return: :class:`~aiohttp.WSMessage`
 
       :raise RuntimeError: if connection is not started
 
-   .. coroutinemethod:: receive_str(*, timeout=None)
+   .. comethod:: receive_str(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is :const:`~aiohttp.WSMsgType.TEXT`.
@@ -1091,13 +1078,14 @@ WebSocketResponse
          Can only be called by the request handling task.
 
       :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return str: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
 
-   .. coroutinemethod:: receive_bytes(*, timeout=None)
+   .. comethod:: receive_bytes(*, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive` but
       also asserts the message type is
@@ -1108,13 +1096,14 @@ WebSocketResponse
          Can only be called by the request handling task.
 
       :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return bytes: peer's message content.
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.TEXT`.
 
-   .. coroutinemethod:: receive_json(*, loads=json.loads, timeout=None)
+   .. comethod:: receive_json(*, loads=json.loads, timeout=None)
 
       A :ref:`coroutine<coroutine>` that calls :meth:`receive_str` and loads the
       JSON string to a Python dict.
@@ -1128,15 +1117,14 @@ WebSocketResponse
                               with parsed JSON (:func:`json.loads` by
                               default).
 
-   :param timeout: timeout for `receive` operation.
-                      timeout value overrides response`s receive_timeout attribute.
+      :param timeout: timeout for `receive` operation.
+
+         timeout value overrides response`s receive_timeout attribute.
 
       :return dict: loaded JSON content
 
       :raise TypeError: if message is :const:`~aiohttp.WSMsgType.BINARY`.
       :raise ValueError: if message is not valid JSON.
-
-      .. versionadded:: 0.22
 
 
 .. seealso:: :ref:`WebSockets handling<aiohttp-web-websockets>`
@@ -1342,7 +1330,6 @@ duplicated like one using :meth:`Application.copy`.
     :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
     :param int keepalive_timeout: Number of seconds before closing Keep-Alive
       connection. Default: ``75`` seconds (NGINX's default value).
-    :param slow_request_timeout: Slow request timeout. Default: ``0``.
     :param logger: Custom logger object. Default:
       :data:`aiohttp.log.server_logger`.
     :param access_log: Custom logging object. Default:
@@ -1352,15 +1339,6 @@ duplicated like one using :meth:`Application.copy`.
       Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
     :param str access_log_format: Access log format string. Default:
       :attr:`helpers.AccessLogger.LOG_FORMAT`.
-    :param bool debug: Switches debug mode. Default: ``False``.
-
-      .. deprecated:: 1.0
-
-        The usage of ``debug`` parameter in :meth:`Application.make_handler`
-        is deprecated in favor of :attr:`Application.debug`.
-        The :class:`Application`'s debug mode setting should be used
-        as a single point to setup a debug mode.
-
     :param int max_line_size: Optional maximum header line size. Default:
       ``8190``.
     :param int max_headers: Optional maximum header size. Default: ``32768``.
@@ -1388,7 +1366,7 @@ duplicated like one using :meth:`Application.copy`.
        await loop.create_server(app.make_handler(),
                                 '0.0.0.0', 8080)
 
-   .. coroutinemethod:: startup()
+   .. comethod:: startup()
 
       A :ref:`coroutine<coroutine>` that will be called along with the
       application's request handler.
@@ -1396,7 +1374,7 @@ duplicated like one using :meth:`Application.copy`.
       The purpose of the method is calling :attr:`on_startup` signal
       handlers.
 
-   .. coroutinemethod:: shutdown()
+   .. comethod:: shutdown()
 
       A :ref:`coroutine<coroutine>` that should be called on
       server stopping but before :meth:`cleanup()`.
@@ -1404,7 +1382,7 @@ duplicated like one using :meth:`Application.copy`.
       The purpose of the method is calling :attr:`on_shutdown` signal
       handlers.
 
-   .. coroutinemethod:: cleanup()
+   .. comethod:: cleanup()
 
       A :ref:`coroutine<coroutine>` that should be called on
       server stopping but after :meth:`shutdown`.
@@ -1448,9 +1426,7 @@ A protocol factory compatible with
 
       Amount of processed requests.
 
-      .. versionadded:: 1.0
-
-   .. coroutinemethod:: Server.shutdown(timeout)
+   .. comethod:: Server.shutdown(timeout)
 
       A :ref:`coroutine<coroutine>` that should be called to close all opened
       connections.
@@ -1555,12 +1531,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
       name='route')`` call adds two routes: first for GET with name
       ``'route'`` and second for HEAD with name ``'route-head'``.
 
-      .. versionadded:: 1.0
-
-      .. versionchanged:: 2.0
-
-         *allow_head* parameter added.
-
    .. method:: add_post(path, handler, **kwargs)
 
       Shortcut for adding a POST handler. Calls the :meth:`add_route` with \
@@ -1568,35 +1538,25 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       ``method`` equals to ``'POST'``.
 
-      .. versionadded:: 1.0
-
    .. method:: add_head(path, handler, **kwargs)
 
       Shortcut for adding a HEAD handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'HEAD'``.
-
-      .. versionadded:: 1.0
 
    .. method:: add_put(path, handler, **kwargs)
 
       Shortcut for adding a PUT handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PUT'``.
 
-      .. versionadded:: 1.0
-
    .. method:: add_patch(path, handler, **kwargs)
 
       Shortcut for adding a PATCH handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'PATCH'``.
 
-      .. versionadded:: 1.0
-
    .. method:: add_delete(path, handler, **kwargs)
 
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
-
-      .. versionadded:: 1.0
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
@@ -1625,17 +1585,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
          static content should be processed by web servers like *nginx*
          or *apache*.
 
-      .. versionchanged:: 0.18.0
-         Transfer files using the ``sendfile`` system call on supported
-         platforms.
-
-      .. versionchanged:: 0.19.0
-         Disable ``sendfile`` by setting environment variable
-         ``AIOHTTP_NOSENDFILE=1``
-
-      .. versionchanged:: 1.2.0
-         Send gzip version if file path + ``.gz`` exists.
-
       :param str prefix: URL path prefix for handled static files
 
       :param path: path to the folder in file system that contains
@@ -1652,15 +1601,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
                              say, 1Mb may increase file downloading
                              speed but consumes more memory.
 
-                             .. versionadded:: 0.16
-
-      :param callable response_factory: factory to use to generate a new
-                                        response, defaults to
-                                        :class:`StreamResponse` and should
-                                        expose a compatible API.
-
-                                        .. versionadded:: 0.17
-
       :param bool show_index: flag for allowing to show indexes of a directory,
                               by default it's not allowed and HTTP/403 will
                               be returned on directory access.
@@ -1670,9 +1610,10 @@ Router is any object that implements :class:`AbstractRouter` interface.
                               HTTP/404 will be returned on access.
 
       :param bool append_version: flag for adding file version (hash)
-                              to the url query string, this value will be used
-                              as default when you call to :meth:`StaticRoute.url`
-                              and :meth:`StaticRoute.url_for` methods.
+                              to the url query string, this value will
+                              be used as default when you call to
+                              :meth:`StaticRoute.url` and
+                              :meth:`StaticRoute.url_for` methods.
 
 
       :returns: new :class:`StaticRoute` instance.
@@ -1690,9 +1631,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :returns: a :class:`PrefixedSubAppResource` instance.
 
-      .. versionadded:: 1.1
-
-   .. coroutinemethod:: resolve(request)
+   .. comethod:: resolve(request)
 
       A :ref:`coroutine<coroutine>` that returns
       :class:`AbstractMatchInfo` for *request*.
@@ -1733,13 +1672,9 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
            route in app.router.resources()
 
-      .. versionadded:: 0.21.1
-
    .. method:: routes()
 
       The method returns a *view* for *all* registered routes.
-
-      .. versionadded:: 0.18
 
    .. method:: named_resources()
 
@@ -1759,26 +1694,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
           "name" in app.router.named_resources()
 
           app.router.named_resources()["name"]
-
-      .. versionadded:: 0.21
-
-   .. method:: named_routes()
-
-      An alias for :meth:`named_resources` starting from aiohttp 0.21.
-
-      .. versionadded:: 0.19
-
-      .. versionchanged:: 0.21
-
-         The method is an alias for :meth:`named_resources`, so it
-         iterates over resources instead of routes.
-
-      .. deprecated:: 0.21
-
-         Please use named **resources** instead of named **routes**.
-
-         Several routes which belongs to the same resource shares the
-         resource name.
 
 
 .. _aiohttp-web-resource:
@@ -1845,7 +1760,7 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
-   .. coroutinemethod:: resolve(method, path)
+   .. comethod:: resolve(method, path)
 
       Resolve resource by finding appropriate :term:`web-handler` for
       ``(method, path)`` combination.
@@ -1876,21 +1791,6 @@ Resource classes hierarchy::
       inherited resource class.
 
       :return: :class:`~yarl.URL` -- resulting URL instance.
-
-      .. versionadded:: 1.1
-
-   .. method:: url(**kwargs)
-
-      Construct an URL for route with additional params.
-
-      **kwargs** depends on a list accepted by inherited resource
-      class parameters.
-
-      :return: :class:`str` -- resulting URL string.
-
-      .. deprecated:: 1.1
-
-         Use :meth:`url_for` instead.
 
 
 .. class:: Resource
@@ -1931,8 +1831,6 @@ Resource classes hierarchy::
 
       Returns a :class:`~yarl.URL` for the resource.
 
-      .. versionadded:: 1.1
-
 
 .. class:: DynamicResource
 
@@ -1953,8 +1851,6 @@ Resource classes hierarchy::
          be called as ``resource.url_for(to='val1', param='val2')``
 
 
-      .. versionadded:: 1.1
-
 .. class:: StaticResource
 
    A resource, inherited from :class:`Resource`.
@@ -1973,7 +1869,9 @@ Resource classes hierarchy::
          E.g. an URL for ``'/prefix/dir/file.txt'`` should
          be generated as ``resource.url_for(filename='dir/file.txt')``
 
-      :param bool append_version: -- a flag for adding file version (hash) to the url query string for cache boosting
+      :param bool append_version: -- a flag for adding file version
+                                  (hash) to the url query string for
+                                  cache boosting
 
          By default has value from an constructor (``False`` by default)
          When set to ``True`` - ``v=FILE_HASH`` query string param will be added
@@ -1981,14 +1879,11 @@ Resource classes hierarchy::
 
          if file not found has no impact
 
-      .. versionadded:: 1.1
 
 .. class:: PrefixedSubAppResource
 
    A resource for serving nested applications. The class instance is
    returned by :class:`~aiohttp.web.Application.add_subapp` call.
-
-   .. versionadded:: 1.1
 
    .. method:: url_for(**kwargs)
 
@@ -2042,7 +1937,7 @@ and *405 Method Not Allowed*.
 
       Actually it's a shortcut for ``route.resource.url_for(...)``.
 
-   .. coroutinemethod:: handle_expect_header(request)
+   .. comethod:: handle_expect_header(request)
 
       ``100-continue`` handler.
 
