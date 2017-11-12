@@ -101,10 +101,10 @@ Others
 
 The list of libraries which are exists but not enlisted in former categories.
 
-They are may be perfect or not -- we don't know.
+They may be perfect or not -- we don't know.
 
 Please add your library reference here first and after some time
-period ask to raise he status.
+period ask to raise the status.
 
 - `aiohttp-cache <https://github.com/cr0hn/aiohttp-cache>`_ A cache
   system for aiohttp server.
@@ -196,3 +196,6 @@ period ask to raise he status.
   Open-source home automation platform running on Python 3.
 
 - `discord.py <https://github.com/Rapptz/discord.py>`_ Discord client library.
+
+- `async-v20 <https://github.com/jamespeterschinner/async_v20>`_
+  Asynchronous FOREX client for OANDA's v20 API. Python 3.6+
