@@ -19,10 +19,8 @@ flake: .flake
                       $(shell find examples -type f) \
                       $(shell find demos -type f)
 	@flake8 aiohttp --exclude=aiohttp/backport_cookies.py
-	@if python -c "import sys; sys.exit(sys.version_info < (3,5))"; then \
-	    flake8 examples tests demos && \
-            python setup.py check -rms; \
-	fi
+	@flake8 examples tests demos
+	python setup.py check -rms
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests examples; \
@@ -50,7 +48,7 @@ cov-dev: .develop
 	@echo "Run without extensions"
 	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
 	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
@@ -63,7 +61,7 @@ cov-ci-run: .develop
 	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 
 cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
-	@echo "open file://`pwd`/coverage/index.html"
+	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:
 	@rm -rf `find . -name __pycache__`
@@ -75,7 +73,7 @@ clean:
 	@rm -f `find . -type f -name '*.orig' `
 	@rm -f `find . -type f -name '*.rej' `
 	@rm -f .coverage
-	@rm -rf coverage
+	@rm -rf htmlcov
 	@rm -rf build
 	@rm -rf cover
 	@make -C docs clean

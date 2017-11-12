@@ -3,13 +3,12 @@ import asyncio.streams
 import http.server
 import socket
 import traceback
-import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
 
 from . import helpers, http
-from .helpers import CeilTimeout, create_future, ensure_future
+from .helpers import CeilTimeout
 from .http import (HttpProcessingError, HttpRequestParser, PayloadWriter,
                    StreamWriter)
 from .log import access_logger, server_logger
@@ -84,7 +83,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def __init__(self, manager, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
                  tcp_keepalive=True,
-                 slow_request_timeout=None,
                  logger=server_logger,
                  access_log_class=helpers.AccessLogger,
                  access_log=access_logger,
@@ -94,15 +92,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                  max_headers=32768,
                  max_field_size=8190,
                  lingering_time=10.0,
-                 max_concurrent_handlers=1,
-                 **kwargs):
-
-        # process deprecated params
-        logger = kwargs.get('logger', logger)
-
-        if slow_request_timeout is not None:
-            warnings.warn(
-                'slow_request_timeout is deprecated', DeprecationWarning)
+                 max_concurrent_handlers=1):
 
         super().__init__(loop=loop)
 
@@ -168,8 +158,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def keepalive_timeout(self):
         return self._keepalive_timeout
 
-    @asyncio.coroutine
-    def shutdown(self, timeout=15.0):
+    async def shutdown(self, timeout=15.0):
         """Worker process is about to exit, we need cleanup everything and
         stop accepting requests. It is especially important for keep-alive
         connections."""
@@ -187,7 +176,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             with CeilTimeout(timeout, loop=self._loop):
                 if self._error_handler and not self._error_handler.done():
-                    yield from self._error_handler
+                    await self._error_handler
 
                 while True:
                     h = None
@@ -196,7 +185,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                             h = handler
                             break
                     if h:
-                        yield from h
+                        await h
                     else:
                         break
 
@@ -276,7 +265,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             except HttpProcessingError as exc:
                 # something happened during parsing
                 self.close()
-                self._error_handler = ensure_future(
+                self._error_handler = asyncio.ensure_future(
                     self.handle_parse_error(
                         PayloadWriter(self.writer, self._loop),
                         400, exc, exc.message),
@@ -284,7 +273,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             except Exception as exc:
                 # 500: internal error
                 self.close()
-                self._error_handler = ensure_future(
+                self._error_handler = asyncio.ensure_future(
                     self.handle_parse_error(
                         PayloadWriter(self.writer, self._loop),
                         500, exc), loop=self._loop)
@@ -298,7 +287,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     elif self._max_concurrent_handlers:
                         self._max_concurrent_handlers -= 1
                         data = []
-                        handler = ensure_future(
+                        handler = asyncio.ensure_future(
                             self.start(msg, payload, data), loop=self._loop)
                         data.append(handler)
                         self._request_handlers.append(handler)
@@ -388,8 +377,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 pass
             self._reading_paused = False
 
-    @asyncio.coroutine
-    def start(self, message, payload, handler):
+    async def start(self, message, payload, handler):
         """Start processing of incoming requests.
 
         It reads request line, request headers and request payload, then
@@ -413,7 +401,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 message, payload, self, writer, handler)
             try:
                 try:
-                    resp = yield from self._request_handler(request)
+                    resp = await self._request_handler(request)
                 except HTTPException as exc:
                     resp = exc
                 except asyncio.CancelledError:
@@ -425,8 +413,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
 
-                yield from resp.prepare(request)
-                yield from resp.write_eof()
+                await resp.prepare(request)
+                await resp.write_eof()
 
                 # notify server about keep-alive
                 self._keepalive = resp.keep_alive
@@ -457,7 +445,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                                 timeout = min(end_t - now, lingering_time)
                                 with CeilTimeout(timeout, loop=loop):
                                     # read and ignore
-                                    yield from payload.readany()
+                                    await payload.readany()
                                 now = loop.time()
 
                     # if payload still uncompleted
@@ -494,10 +482,10 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                                         self._process_keepalive)
 
                             # wait for next request
-                            waiter = create_future(loop)
+                            waiter = loop.create_future()
                             self._waiters.append(waiter)
                             try:
-                                message, payload = yield from waiter
+                                message, payload = await waiter
                             except asyncio.CancelledError:
                                 # shutdown process
                                 break
@@ -521,14 +509,12 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         if status == 500:
             msg = "<h1>500 Internal Server Error</h1>"
             if self.debug:
-                try:
+                with suppress(Exception):
                     tb = traceback.format_exc()
                     tb = html_escape(tb)
                     msg += '<br><h2>Traceback:</h2>\n<pre>'
                     msg += tb
                     msg += '</pre>'
-                except:  # pragma: no cover
-                    pass
             else:
                 msg += "Server got itself in trouble"
                 msg = ("<html><head><title>500 Internal Server Error</title>"
@@ -545,15 +531,14 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         return resp
 
-    @asyncio.coroutine
-    def handle_parse_error(self, writer, status, exc=None, message=None):
+    async def handle_parse_error(self, writer, status, exc=None, message=None):
         request = BaseRequest(
             ERROR, EMPTY_PAYLOAD,
             self, writer, None, self._loop)
 
         resp = self.handle_error(request, status, exc, message)
-        yield from resp.prepare(request)
-        yield from resp.write_eof()
+        await resp.prepare(request)
+        await resp.write_eof()
 
         # Restore default state.
         # Should be no-op if server code didn't touch these attributes.

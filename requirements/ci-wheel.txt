@@ -1,21 +1,22 @@
-pip==9.0.1
-flake8==3.4.1
-pyflakes==1.6.0
-coverage==4.4.1
-cchardet==2.1.1
-cython==0.27.1
-chardet==3.0.4
-isort==4.2.15
-tox==2.9.1
-multidict==3.3.0
 async-timeout==2.0.0
-pytest==3.2.3
+brotlipy==0.7.0
+cchardet==2.1.1
+chardet==3.0.4
+coverage==4.4.2
+cython==0.27.3
+flake8==3.5.0
+gunicorn==19.7.1
+isort==4.2.15
+multidict==3.3.2
+pip==9.0.1
+pyflakes==1.6.0
 pytest-cov==2.5.1
 pytest-mock==1.6.3
-gunicorn==19.7.1
+pytest==3.2.3
+towncrier==17.8.0
+tox==2.9.1
 twine==1.9.1
 yarl==0.13.0
-brotlipy==0.7.0
 
 # Using PEP 508 env markers to control dependency on runtimes:
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows

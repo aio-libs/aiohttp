@@ -146,10 +146,6 @@ family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
 
    :ref:`aiohttp-router-refactoring-021` for more details
 
-.. versionadded:: 0.21.0
-
-   Introduce resources.
-
 
 .. _aiohttp-web-variable-handler:
 
@@ -307,18 +303,7 @@ viewed using the :meth:`UrlDispatcher.named_resources` method::
        print(name, resource)
 
 
-
-.. versionadded:: 0.18
-   :meth:`UrlDispatcher.routes`
-
-.. versionadded:: 0.19
-   :meth:`UrlDispatcher.named_routes`
-
-.. deprecated:: 0.21
-
-   Use :meth:`UrlDispatcher.named_resources` /
-   :meth:`UrlDispatcher.resources` instead of
-   :meth:`UrlDispatcher.named_routes` / :meth:`UrlDispatcher.routes`.
+.. _aiohttp-web-alternative-routes-definition:
 
 Alternative ways for registering routes
 ---------------------------------------
@@ -405,6 +390,7 @@ But sometimes the cancellation is bad: on ``POST`` request very often
 is needed to save data to DB regardless to peer closing.
 
 Cancellation prevention could be implemented in several ways:
+
 * Applying :func:`asyncio.shield` to coroutine that saves data into DB.
 * Spawning a new task for DB saving
 * Using aiojobs_ or other third party library.
@@ -743,15 +729,20 @@ should use :meth:`Request.multipart` which returns a :ref:`multipart reader
 
         # /!\ Don't forget to validate your inputs /!\
 
-        mp3 = await reader.next()
+        # reader.next() will `yield` the fields of your form
 
-        filename = mp3.filename
+        field = await reader.next()
+        assert field.name == 'name'
+        name = await field.read(decode=True)
 
+        field = await reader.next()
+        assert field.name == 'mp3'
+        filename = field.filename
         # You cannot rely on Content-Length if transfer is chunked.
         size = 0
         with open(os.path.join('/spool/yarrr-media/mp3/', filename), 'wb') as f:
             while True:
-                chunk = await mp3.read_chunk()  # 8192 bytes by default.
+                chunk = await field.read_chunk()  # 8192 bytes by default.
                 if not chunk:
                     break
                 size += len(chunk)
@@ -789,10 +780,10 @@ with the peer::
         print('websocket connection closed')
 
         return ws
-    
-The handler should be registered as HTTP GET processor::    
-    
-    app.router.add_get('/ws', websocket_handler)    
+
+The handler should be registered as HTTP GET processor::
+
+    app.router.add_get('/ws', websocket_handler)
 
 .. _aiohttp-web-websocket-read-same-task:
 
@@ -1134,8 +1125,6 @@ exception.
 Signals
 -------
 
-.. versionadded:: 0.18
-
 Although :ref:`middlewares <aiohttp-web-middlewares>` can customize
 :ref:`request handlers<aiohttp-web-handler>` before or after a :class:`Response`
 has been prepared, they can't customize a :class:`Response` **while** it's
@@ -1369,8 +1358,6 @@ Custom resource implementation
 
 To register custom resource use :meth:`UrlDispatcher.register_resource`.
 Resource instance must implement `AbstractResource` interface.
-
-.. versionadded:: 1.2.1
 
 
 .. _aiohttp-web-graceful-shutdown:
