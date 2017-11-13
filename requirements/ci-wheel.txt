@@ -17,6 +17,7 @@ towncrier==17.8.0
 tox==2.9.1
 twine==1.9.1
 yarl==0.13.0
+aiosocks==0.2.5
 
 # Using PEP 508 env markers to control dependency on runtimes:
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows

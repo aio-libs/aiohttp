@@ -17,6 +17,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ClientConnectorError, ClientConnectorSSLError,
                                 ClientHttpProxyError,
                                 ClientProxyConnectionError,
+                                ClientSocksProxyError,
                                 ServerFingerprintMismatch, certificate_errors,
                                 ssl_errors)
 from .client_proto import ResponseHandler
@@ -25,6 +26,11 @@ from .helpers import is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
+
+try:
+    import aiosocks
+except ImportError:  # pragma: no cover
+    aiosocks = None
 
 try:
     import ssl
@@ -778,10 +784,15 @@ class TCPConnector(BaseConnector):
         Has same keyword arguments as BaseEventLoop.create_connection.
         """
         if req.proxy:
-            _, proto = await self._create_proxy_connection(
-                req,
-                traces=None
-            )
+            if req.proxy.scheme == 'http':
+                _, proto = await self._create_http_proxy_connection(
+                    req,
+                    traces=None
+                )
+            elif req.proxy.scheme in ['socks4', 'socks5']:
+                _, proto = await self._create_socks_proxy_connection(req)
+            else:
+                raise ValueError('Unsupported proxy type')
         else:
             _, proto = await self._create_direct_connection(
                 req,
@@ -833,7 +844,13 @@ class TCPConnector(BaseConnector):
                                       req, client_error=ClientConnectorError,
                                       **kwargs):
         try:
-            return await self._loop.create_connection(*args, **kwargs)
+            if req.proxy and req.proxy.scheme in ['socks4', 'socks5']:
+                try:
+                    return await aiosocks.create_connection(*args, **kwargs)
+                except aiosocks.SocksError as exc:
+                    raise ClientSocksProxyError() from exc
+            else:
+                return await self._loop.create_connection(*args, **kwargs)
         except certificate_errors as exc:
             raise ClientConnectorCertificateError(
                 req.connection_key, exc) from exc
@@ -842,11 +859,33 @@ class TCPConnector(BaseConnector):
         except OSError as exc:
             raise client_error(req.connection_key, exc) from exc
 
+    def _check_fingerprint(self, req, transp, host, port):
+        fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
+
+        has_cert = transp.get_extra_info('sslcontext')
+        if has_cert and fingerprint:
+            sock = transp.get_extra_info('socket')
+            if not hasattr(sock, 'getpeercert'):
+                # Workaround for asyncio 3.5.0
+                # Starting from 3.5.1 version
+                # there is 'ssl_object' extra info in transport
+                sock = transp._ssl_protocol._sslpipe.ssl_object
+            # gives DER-encoded cert as a sequence of bytes (or None)
+            cert = sock.getpeercert(binary_form=True)
+            assert cert
+            got = hashfunc(cert).digest()
+            expected = fingerprint
+            if got != expected:
+                transp.close()
+                if not self._cleanup_closed_disabled:
+                    self._cleanup_closed_transports.append(transp)
+                raise ServerFingerprintMismatch(
+                    expected, got, host, port)
+
     async def _create_direct_connection(self, req,
                                         *, client_error=ClientConnectorError,
                                         traces=None):
         sslcontext = self._get_ssl_context(req)
-        fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
 
         try:
             hosts = await self._resolve_host(
@@ -876,32 +915,16 @@ class TCPConnector(BaseConnector):
                 last_exc = exc
                 continue
 
-            has_cert = transp.get_extra_info('sslcontext')
-            if has_cert and fingerprint:
-                sock = transp.get_extra_info('socket')
-                if not hasattr(sock, 'getpeercert'):
-                    # Workaround for asyncio 3.5.0
-                    # Starting from 3.5.1 version
-                    # there is 'ssl_object' extra info in transport
-                    sock = transp._ssl_protocol._sslpipe.ssl_object
-                # gives DER-encoded cert as a sequence of bytes (or None)
-                cert = sock.getpeercert(binary_form=True)
-                assert cert
-                got = hashfunc(cert).digest()
-                expected = fingerprint
-                if got != expected:
-                    transp.close()
-                    if not self._cleanup_closed_disabled:
-                        self._cleanup_closed_transports.append(transp)
-                    last_exc = ServerFingerprintMismatch(
-                        expected, got, host, port)
-                    continue
-
+            try:
+                self._check_fingerprint(req, transp, host, port)
+            except ServerFingerprintMismatch as exc:
+                last_exc = exc
+                continue
             return transp, proto
         else:
             raise last_exc
 
-    async def _create_proxy_connection(self, req, traces=None):
+    async def _create_http_proxy_connection(self, req, traces=None):
         headers = {}
         if req.proxy_headers is not None:
             headers = req.proxy_headers
@@ -977,6 +1000,60 @@ class TCPConnector(BaseConnector):
                 proxy_resp.close()
 
         return transport, proto
+
+    async def _create_socks_proxy_connection(self, req):
+        if aiosocks is None:
+            raise RuntimeError(
+                "{} requires aiosocks library".format(req.proxy.scheme))
+
+        sslcontext = self._get_ssl_context(req)
+
+        if not req.socks_remote_resolve:
+            try:
+                dst_hosts = list(await self._resolve_host(req.host, req.port))
+                dst = dst_hosts[0]['host'], dst_hosts[0]['port']
+            except OSError as exc:
+                raise ClientConnectorError(
+                    req.connection_key, exc) from exc
+        else:
+            dst = req.host, req.port
+
+        try:
+            proxy_hosts = await self._resolve_host(
+                req.proxy.host, req.proxy.port)
+        except OSError as exc:
+            raise ClientConnectorError(
+                req.connection_key, exc) from exc
+
+        last_exc = None
+
+        for hinfo in proxy_hosts:
+            if req.proxy.scheme == 'socks4':
+                proxy = aiosocks.Socks4Addr(hinfo['host'], hinfo['port'])
+            else:
+                proxy = aiosocks.Socks5Addr(hinfo['host'], hinfo['port'])
+
+            try:
+                transp, proto = await self._wrap_create_connection(
+                    self._factory, proxy, req.proxy_auth, dst,
+                    loop=self._loop, remote_resolve=req.socks_remote_resolve,
+                    ssl=sslcontext, family=hinfo['family'],
+                    proto=hinfo['proto'], flags=hinfo['flags'],
+                    local_addr=self._local_addr, req=req,
+                    client_error=ClientProxyConnectionError,
+                    server_hostname=req.host if sslcontext else None)
+            except ClientConnectorError as exc:
+                last_exc = exc
+                continue
+
+            try:
+                self._check_fingerprint(req, transp, req.host, req.port)
+            except ServerFingerprintMismatch as exc:
+                last_exc = exc
+                continue
+            return transp, proto
+        else:
+            raise last_exc
 
 
 class UnixConnector(BaseConnector):
