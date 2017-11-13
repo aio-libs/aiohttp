@@ -161,9 +161,7 @@ class CookieJar(AbstractCookieJar):
                     else:
                         cookie["expires"] = ""
 
-            # use dict method because SimpleCookie class modifies value
-            # before Python 3.4.3
-            dict.__setitem__(self._cookies[domain], name, cookie)
+            self._cookies[domain][name] = cookie
 
         self._do_expiration()
 
