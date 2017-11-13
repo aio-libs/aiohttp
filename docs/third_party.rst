@@ -101,10 +101,10 @@ Others
 
 The list of libraries which are exists but not enlisted in former categories.
 
-They are may be perfect or not -- we don't know.
+They may be perfect or not -- we don't know.
 
 Please add your library reference here first and after some time
-period ask to raise he status.
+period ask to raise the status.
 
 - `aiohttp-cache <https://github.com/cr0hn/aiohttp-cache>`_ A cache
   system for aiohttp server.
@@ -199,3 +199,9 @@ period ask to raise he status.
 
 - `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
   GraphQL and GraphIQL interface for aiohttp.
+
+- `aiohttp-sentry <https://github.com/underyx/aiohttp-sentry>`_
+  An aiohttp middleware for reporting errors to Sentry. Python 3.5+ is required.
+
+- `async-v20 <https://github.com/jamespeterschinner/async_v20>`_
+  Asynchronous FOREX client for OANDA's v20 API. Python 3.6+

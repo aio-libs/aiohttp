@@ -458,6 +458,42 @@ def test_charset_no_charset():
     assert response.charset is None
 
 
+def test_content_disposition_full():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Disposition':
+                        'attachment; filename="archive.tar.gz"; foo=bar'}
+
+    assert 'attachment' == response.content_disposition.type
+    assert 'bar' == response.content_disposition.parameters["foo"]
+    assert 'archive.tar.gz' == response.content_disposition.filename
+    with pytest.raises(TypeError):
+        response.content_disposition.parameters["foo"] = "baz"
+
+
+def test_content_disposition_no_parameters():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Disposition': 'attachment'}
+
+    assert 'attachment' == response.content_disposition.type
+    assert response.content_disposition.filename is None
+    assert {} == response.content_disposition.parameters
+
+
+def test_content_disposition_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert response.content_disposition is None
+
+
+def test_content_disposition_cache():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Disposition': 'attachment'}
+    cd = response.content_disposition
+    ClientResponse.headers = {'Content-Disposition': 'spam'}
+    assert cd is response.content_disposition
+
+
 def test_response_request_info():
     url = 'http://def-cl-resp.org'
     headers = {'Content-Type': 'application/json;charset=cp1251'}

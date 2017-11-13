@@ -630,8 +630,7 @@ async def test_readline_error_on_conn_close(loop, test_client):
         # make sure connection is closed by client.
         with pytest.raises(aiohttp.ServerDisconnectedError):
             for _ in range(10):
-                resp_.write(b'data\n')
-                await resp_.drain()
+                await resp_.write(b'data\n')
                 await asyncio.sleep(0.5, loop=loop)
             return resp_
 
@@ -665,8 +664,7 @@ async def test_no_error_on_conn_close_if_eof(loop, test_client):
     async def handler(request):
         resp_ = web.StreamResponse()
         await resp_.prepare(request)
-        resp_.write(b'data\n')
-        await resp_.drain()
+        await resp_.write(b'data\n')
         await asyncio.sleep(0.5, loop=loop)
         return resp_
 
@@ -1782,7 +1780,7 @@ async def test_bad_payload_chunked_encoding(loop, test_client):
         resp._length_check = False
         resp.headers['Transfer-Encoding'] = 'chunked'
         writer = await resp.prepare(request)
-        writer.write(b'9\r\n\r\n')
+        await writer.write(b'9\r\n\r\n')
         await writer.write_eof()
         return resp
 
@@ -1972,9 +1970,7 @@ async def test_broken_connection_2(loop, test_client):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '1000'})
         await resp.prepare(request)
-        await resp.drain()
-        resp.write(b'answer')
-        await resp.drain()
+        await resp.write(b'answer')
         request.transport.close()
         return resp
 
@@ -2226,7 +2222,17 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
 
 
 async def test_close_detached_session_on_non_existing_addr(loop):
-    session = aiohttp.ClientSession(loop=loop)
+    class FakeResolver(AbstractResolver):
+        async def resolve(host, port=0, family=socket.AF_INET):
+            return {}
+
+        async def close(self):
+            pass
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(),
+                                     loop=loop)
+
+    session = aiohttp.ClientSession(connector=connector)
 
     async with session:
         cm = session.get('http://non-existing.example.com')

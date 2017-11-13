@@ -879,10 +879,10 @@ def request(method, url, *,
     loop - Optional event loop.
     Usage::
       >>> import aiohttp
-      >>> resp = yield from aiohttp.request('GET', 'http://python.org/')
+      >>> resp = await aiohttp.request('GET', 'http://python.org/')
       >>> resp
       <ClientResponse(python.org/) [200]>
-      >>> data = yield from resp.read()
+      >>> data = await resp.read()
     """
     connector_owner = False
     if connector is None:
