@@ -20,6 +20,10 @@ Async http client/server framework
    :target: https://badge.fury.io/py/aiohttp
    :alt: Latest PyPI package version
 
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: http://aiohttp.readthedocs.io/en/latest/
+   :alt: Latest Read The Docs
+
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :target: https://gitter.im/aio-libs/Lobby
     :alt: Chat on Gitter
