@@ -645,6 +645,85 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
         on_dns_cache_hit.assert_called_once_with(session, trace_context)
 
 
+async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
+    session = mock.Mock()
+    trace_context = mock.Mock()
+    on_dns_resolvehost_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_dns_resolvehost_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_dns_resolvehost_start.append(on_dns_resolvehost_start)
+    trace_config.on_dns_resolvehost_end.append(on_dns_resolvehost_end)
+    trace_config.freeze()
+    trace = Trace(trace_config, session, trace_context)
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=False
+        )
+
+        m_resolver().resolve.side_effect = [
+            dns_response(),
+            dns_response()
+        ]
+
+        await conn._resolve_host(
+            'localhost',
+            8080,
+            trace=trace
+        )
+
+        await conn._resolve_host(
+            'localhost',
+            8080,
+            trace=trace
+        )
+
+        on_dns_resolvehost_start.assert_has_calls([
+            mock.call(session, trace_context),
+            mock.call(session, trace_context)
+        ])
+        on_dns_resolvehost_end.assert_has_calls([
+            mock.call(session, trace_context),
+            mock.call(session, trace_context)
+        ])
+
+
+async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
+    session = mock.Mock()
+    trace_context = mock.Mock()
+    on_dns_cache_hit = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_dns_cache_miss = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_dns_cache_hit.append(on_dns_cache_hit)
+    trace_config.on_dns_cache_miss.append(on_dns_cache_miss)
+    trace_config.freeze()
+    trace = Trace(trace_config, session, trace_context)
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10
+        )
+        m_resolver().resolve.return_value = dns_response()
+        loop.create_task(conn._resolve_host('localhost', 8080, trace=trace))
+        loop.create_task(conn._resolve_host('localhost', 8080, trace=trace))
+        await asyncio.sleep(0, loop=loop)
+        on_dns_cache_hit.assert_called_once_with(session, trace_context)
+        on_dns_cache_miss.assert_called_once_with(session, trace_context)
+
+
 def test_dns_error(loop):
     connector = aiohttp.TCPConnector(loop=loop)
     connector._resolve_host = make_mocked_coro(
