@@ -10,8 +10,8 @@ from multidict import MultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import FormData, HttpVersion10, HttpVersion11, multipart, web
-from aiohttp import TraceConfig
+from aiohttp import (FormData, HttpVersion10, HttpVersion11, TraceConfig,
+                     multipart, web)
 
 
 try:

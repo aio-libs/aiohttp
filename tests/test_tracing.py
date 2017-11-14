@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 from aiohttp.signals import Signal
-from aiohttp.tracing import TraceConfig, Trace, REQUEST_SIGNALS
+from aiohttp.tracing import REQUEST_SIGNALS, Trace, TraceConfig
 
 
 class TestTraceConfig:

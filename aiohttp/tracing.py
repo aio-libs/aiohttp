@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
-from aiohttp.signals import Signal
+from .signals import Signal
+
 
 __all__ = ('TraceConfig',)
 
