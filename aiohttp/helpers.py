@@ -6,13 +6,13 @@ import binascii
 import cgi
 import datetime
 import functools
+import hashlib
 import os
 import re
 import sys
 import time
 import warnings
 import weakref
-import hashlib
 from collections import namedtuple
 from math import ceil
 from pathlib import Path
@@ -40,7 +40,7 @@ else:
     from .backport_cookies import SimpleCookie  # noqa
 
 
-__all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
+__all__ = ('BasicAuth', 'DigestAuth', 'create_future', 'parse_mimetype',
            'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
 
 
@@ -243,7 +243,8 @@ def parse_key_value_list(header):
 
 class DigestAuth():
     """HTTP digest authentication helper.
-    The work here is based off of https://github.com/requests/requests/blob/v2.18.4/requests/auth.py.
+    The work here is based off of
+    https://github.com/requests/requests/blob/v2.18.4/requests/auth.py.
 
     :param str username: Username or login
     :param str password: Password
@@ -274,7 +275,7 @@ class DigestAuth():
         }
 
         if self.challenge:
-            headers[hdrs.AUTHORIZATION] = self.build_digest_header(
+            headers[hdrs.AUTHORIZATION] = self._build_digest_header(
                 method.upper(), url
             )
 
@@ -288,9 +289,9 @@ class DigestAuth():
             self.num_401 = 1
             return response
 
-        return (yield from self.handle_401(response))
+        return (yield from self._handle_401(response))
 
-    def build_digest_header(self, method, url):
+    def _build_digest_header(self, method, url):
         """
         :rtype: str
         """
@@ -309,12 +310,13 @@ class DigestAuth():
         else:
             return ''
 
-        def hash_utf8(x):
+        def H(x):
             if isinstance(x, str):
-                x = x.encode('utf-8')
+                x = x.encode()
             return hash_fn(x).hexdigest()
 
-        KD = lambda s, d: hash_utf8('%s:%s' % (s, d))
+        def KD(s, d):
+            return H('%s:%s' % (s, d))
 
         parsed = urlparse(url)
         #: path is request-uri defined in RFC 2616 which should not be empty
@@ -325,8 +327,8 @@ class DigestAuth():
         A1 = '%s:%s:%s' % (self.username, realm, self.password)
         A2 = '%s:%s' % (method, path)
 
-        HA1 = hash_utf8(A1)
-        HA2 = hash_utf8(A2)
+        HA1 = H(A1)
+        HA2 = H(A2)
 
         if nonce == self.last_nonce:
             self.nonce_count += 1
@@ -337,14 +339,14 @@ class DigestAuth():
 
         ncvalue = '%08x' % self.nonce_count
 
-        k = str(self.nonce_count).encode('utf-8')
-        k += nonce.encode('utf-8')
-        k += time.ctime().encode('utf-8')
+        k = str(self.nonce_count).encode()
+        k += nonce.encode()
+        k += time.ctime().encode()
         k += os.urandom(8)
         cnonce = (hashlib.sha1(k).hexdigest()[:16])
 
         if algorithm == 'MD5-SESS':
-            HA1 = hash_utf8('%s:%s:%s' % (HA1, nonce, cnonce))
+            HA1 = H('%s:%s:%s' % (HA1, nonce, cnonce))
 
         if not qop:
             respdig = KD(HA1, '%s:%s' % (nonce, HA2))
@@ -368,7 +370,7 @@ class DigestAuth():
         return 'Digest %s' % base
 
     @asyncio.coroutine
-    def handle_401(self, response):
+    def _handle_401(self, response):
         """
         Takes the given response and tries digest-auth, if needed.
         :rtype: ClientResponse
