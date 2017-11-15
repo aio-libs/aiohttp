@@ -472,8 +472,7 @@ class ClientRequest:
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress,
-            session=self._session)
+            auto_decompress=self._auto_decompress)
 
         self.response._post_init(self.loop, self._session)
         return self.response
@@ -515,8 +514,7 @@ class ClientResponse(HeadersMixin):
 
     def __init__(self, method, url, *,
                  writer=None, continue100=None, timer=None,
-                 request_info=None, auto_decompress=True,
-                 session=None):
+                 request_info=None, auto_decompress=True):
         assert isinstance(url, URL)
 
         self.method = method
