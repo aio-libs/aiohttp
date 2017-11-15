@@ -3,19 +3,26 @@ Async http client/server framework
 ==================================
 
 .. image:: https://raw.githubusercontent.com/aio-libs/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
-  :height: 64px
-  :width: 64px
-  :alt: aiohttp logo
+   :height: 64px
+   :width: 64px
+   :alt: aiohttp logo
 
 .. image:: https://travis-ci.org/aio-libs/aiohttp.svg?branch=master
-  :target:  https://travis-ci.org/aio-libs/aiohttp
-  :align: right
+   :target:  https://travis-ci.org/aio-libs/aiohttp
+   :align: right
+   :alt: Travis status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/aio-libs/aiohttp
+   :target: https://codecov.io/gh/aio-libs/aiohttp
+   :alt: codecov.io status for master branch
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
-    :target: https://badge.fury.io/py/aiohttp
+   :target: https://badge.fury.io/py/aiohttp
+   :alt: Latest PyPI package version
+
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: http://aiohttp.readthedocs.io/en/latest/
+   :alt: Latest Read The Docs
 
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :target: https://gitter.im/aio-libs/Lobby

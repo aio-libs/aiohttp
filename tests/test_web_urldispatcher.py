@@ -289,8 +289,6 @@ async def test_partialy_applied_handler(loop, test_client):
 def test_system_route():
     route = SystemRoute(web.HTTPCreated(reason='test'))
     with pytest.raises(RuntimeError):
-        route.url()
-    with pytest.raises(RuntimeError):
         route.url_for()
     assert route.name is None
     assert route.resource is None

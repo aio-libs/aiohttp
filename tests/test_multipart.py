@@ -924,15 +924,15 @@ def test_writer_content_transfer_encoding_unknown(buf, stream, writer):
         writer.append('Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'unknown'})
 
 
-class MultipartWriterTestCase(unittest.TestCase):
+class MultipartWriterTestCase(TestCase):
 
     def setUp(self):
+        super().setUp()
         self.buf = bytearray()
         self.stream = mock.Mock()
 
-        def write(chunk):
+        async def write(chunk):
             self.buf.extend(chunk)
-            return ()
 
         self.stream.write.side_effect = write
 
@@ -1004,8 +1004,8 @@ class MultipartWriterTestCase(unittest.TestCase):
         part = self.writer._parts[0][0]
         self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
 
-    def test_write(self):
-        self.assertEqual([], list(self.writer.write(self.stream)))
+    async def test_write(self):
+        await self.writer.write(self.stream)
 
     def test_with(self):
         with aiohttp.multipart.MultipartWriter(boundary=':') as writer:

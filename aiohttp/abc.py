@@ -123,7 +123,7 @@ class AbstractPayloadWriter(ABC):
     """Abstract payload writer."""
 
     @abstractmethod
-    def write(self, chunk):
+    async def write(self, chunk):
         """Write chunk into stream."""
 
     @abstractmethod
