@@ -24,6 +24,10 @@ Async http client/server framework
    :target: http://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: http://docs.aiohttp.org/
+   :alt: Latest Read The Docs
+
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :target: https://gitter.im/aio-libs/Lobby
     :alt: Chat on Gitter
