@@ -235,8 +235,7 @@ class ClientSession:
             trace = None
 
         if trace:
-            yield from trace.send(
-                'on_request_start',
+            yield from trace.send_request_start(
                 method,
                 url,
                 headers
@@ -320,8 +319,7 @@ class ClientSession:
                             301, 302, 303, 307, 308) and allow_redirects:
 
                         if trace:
-                            yield from trace.send(
-                                'on_request_redirect',
+                            yield from trace.send_request_redirect(
                                 method,
                                 url,
                                 headers,
@@ -393,8 +391,7 @@ class ClientSession:
             resp._history = tuple(history)
 
             if trace:
-                yield from trace.send(
-                    'on_request_end',
+                yield from trace.send_request_end(
                     method,
                     url,
                     headers,
@@ -410,8 +407,7 @@ class ClientSession:
                 handle = None
 
             if trace:
-                yield from trace.send(
-                    'on_request_exception',
+                yield from trace.send_request_exception(
                     method,
                     url,
                     headers,

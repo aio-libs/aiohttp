@@ -2,17 +2,15 @@ import asyncio
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from aiohttp.signals import Signal
-from aiohttp.tracing import REQUEST_SIGNALS, Trace, TraceConfig
+import pytest
+
+from aiohttp.tracing import Trace, TraceConfig
 
 
 class TestTraceConfig:
 
-    def test_trace_conifg(self):
+    def test_trace_context_default(self):
         trace_config = TraceConfig()
-        for signal in REQUEST_SIGNALS:
-            assert isinstance(getattr(trace_config, signal), Signal)
-
         assert isinstance(trace_config.trace_context(), SimpleNamespace)
 
     def test_trace_context_class(self):
@@ -23,25 +21,51 @@ class TestTraceConfig:
         trace_config = TraceConfig()
         trace_config.freeze()
 
-        for signal in REQUEST_SIGNALS:
-            assert getattr(trace_config, signal).frozen
+        assert trace_config.on_request_start.frozen
+        assert trace_config.on_request_end.frozen
+        assert trace_config.on_request_exception.frozen
+        assert trace_config.on_request_redirect.frozen
+        assert trace_config.on_connection_queued_start.frozen
+        assert trace_config.on_connection_queued_end.frozen
+        assert trace_config.on_connection_create_start.frozen
+        assert trace_config.on_connection_create_end.frozen
+        assert trace_config.on_connection_reuseconn.frozen
+        assert trace_config.on_dns_resolvehost_start.frozen
+        assert trace_config.on_dns_resolvehost_end.frozen
+        assert trace_config.on_dns_cache_hit.frozen
+        assert trace_config.on_dns_cache_miss.frozen
 
 
 class TestTrace:
 
-    async def test_send(self, loop):
+    @pytest.mark.parametrize('signal', [
+        'request_start',
+        'request_end',
+        'request_exception',
+        'request_redirect',
+        'connection_queued_start',
+        'connection_queued_end',
+        'connection_create_start',
+        'connection_create_end',
+        'connection_reuseconn',
+        'dns_resolvehost_start',
+        'dns_resolvehost_end',
+        'dns_cache_hit',
+        'dns_cache_miss'
+    ])
+    async def test_send(self, loop, signal):
         param = Mock()
         session = Mock()
         trace_context = Mock()
-        on_request_start = Mock(side_effect=asyncio.coroutine(Mock()))
+        callback = Mock(side_effect=asyncio.coroutine(Mock()))
 
         trace_config = TraceConfig()
-        trace_config.on_request_start.append(on_request_start)
+        getattr(trace_config, "on_%s" % signal).append(callback)
         trace_config.freeze()
         trace = Trace(trace_config, session, trace_context)
-        await trace.send('on_request_start', param)
+        await getattr(trace, "send_%s" % signal)(param)
 
-        on_request_start.assert_called_once_with(
+        callback.assert_called_once_with(
             session,
             trace_context,
             param
