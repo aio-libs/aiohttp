@@ -18,7 +18,7 @@ Async http client/server framework
     :target: https://badge.fury.io/py/aiohttp
 
 .. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
-   :target: http://aiohttp.readthedocs.io/en/latest/
+   :target: http://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
 .. image:: https://badges.gitter.im/Join%20Chat.svg

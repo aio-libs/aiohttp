@@ -227,7 +227,7 @@ class GunicornWebWorker(base.Worker):
                 "Gunicorn's style options in form of `%(name)s` are not "
                 "supported for the log formatting. Please use aiohttp's "
                 "format specification to configure access log formatting: "
-                "http://aiohttp.readthedocs.io/en/stable/logging.html"
+                "http://docs.aiohttp.org/en/stable/logging.html"
                 "#format-specification"
             )
         else:
