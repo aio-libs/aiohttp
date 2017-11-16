@@ -75,6 +75,7 @@ class Application(MutableMapping):
         self._state = {}
         self._frozen = False
         self._subapps = []
+        self._servers = []
 
         self._on_pre_signal = PreSignal()
         self._on_post_signal = PostSignal()
@@ -199,6 +200,11 @@ class Application(MutableMapping):
         if self._loop is not None:
             subapp._set_loop(self._loop)
         return resource
+
+    @property
+    def servers(self):
+        "List of asyncio servers associated with this application."
+        return self._servers
 
     @property
     def on_loop_available(self):
@@ -451,7 +457,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         servers = loop.run_until_complete(
             asyncio.gather(*server_creations, loop=loop)
         )
-        app['asyncio_servers'] = servers
+        app.servers.extend(list(servers))
 
         if handle_signals:
             try:
