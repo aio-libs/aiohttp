@@ -126,8 +126,6 @@ class ClientSession:
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
-            self._loop.run_until_complete(self.close())
-
             _warnings.warn("Unclosed client session {!r}".format(self),
                            ResourceWarning)
             context = {'client_session': self,
