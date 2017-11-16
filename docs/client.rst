@@ -5,7 +5,7 @@ Client
 
 .. module:: aiohttp
 
-The page contains all information about aiohttp client API:
+The page contains all information about aiohttp Client API:
 
 
 .. toctree::

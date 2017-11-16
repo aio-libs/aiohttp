@@ -10,7 +10,6 @@ aiohttp: Asynchronous HTTP Client/Server for Python and asyncio
 HTTP client/server for :term:`asyncio` and Python.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp
-.. _Freenode: http://freenode.net
 
 
 Key Features
@@ -186,4 +185,13 @@ these changes as rare as possible.
 Table Of Contents
 =================
 
-To see the full table of contents open the :ref:`link <mastertoc>`.
+.. toctree::
+   :name: mastertoc
+
+   client
+   web
+   utilities
+   faq
+   misc
+   external
+   contributing
