@@ -197,5 +197,11 @@ period ask to raise the status.
 
 - `discord.py <https://github.com/Rapptz/discord.py>`_ Discord client library.
 
+- `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
+  GraphQL and GraphIQL interface for aiohttp.
+
+- `aiohttp-sentry <https://github.com/underyx/aiohttp-sentry>`_
+  An aiohttp middleware for reporting errors to Sentry. Python 3.5+ is required.
+
 - `async-v20 <https://github.com/jamespeterschinner/async_v20>`_
   Asynchronous FOREX client for OANDA's v20 API. Python 3.6+

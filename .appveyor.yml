@@ -2,9 +2,6 @@ environment:
   PYPI_PASSWD:
     secure: u+K6dKi7+CXXVFEUG4V7zUyV3w7Ntg0Ork/RGVV0eSQ=
   matrix:
-    - PYTHON: "C:\\Python34"
-    - PYTHON: "C:\\Python34-x64"
-      DISTUTILS_USE_SDK: "1"
     - PYTHON: "C:\\Python35"
     - PYTHON: "C:\\Python35-x64"
     - PYTHON: "C:\\Python36"

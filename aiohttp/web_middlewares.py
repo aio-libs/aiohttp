@@ -1,4 +1,3 @@
-import asyncio
 import re
 
 from aiohttp.web_exceptions import HTTPMovedPermanently
@@ -11,11 +10,10 @@ __all__ = (
 )
 
 
-@asyncio.coroutine
-def _check_request_resolves(request, path):
+async def _check_request_resolves(request, path):
     alt_request = request.clone(rel_url=path)
 
-    match_info = yield from request.app.router.resolve(alt_request)
+    match_info = await request.app.router.resolve(alt_request)
     alt_request._match_info = match_info
 
     if not isinstance(match_info.route, SystemRoute):
@@ -52,9 +50,8 @@ def normalize_path_middleware(
     path into one.
     """
 
-    @asyncio.coroutine
     @middleware
-    def normalize_path_middleware(request, handler):
+    async def normalize_path_middleware(request, handler):
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
             if '?' in request.raw_path:
@@ -74,11 +71,11 @@ def normalize_path_middleware(
                     re.sub('//+', '/', path + '/'))
 
             for path in paths_to_check:
-                resolves, request = yield from _check_request_resolves(
+                resolves, request = await _check_request_resolves(
                     request, path)
                 if resolves:
                     return redirect_class(request.path + query)
 
-        return (yield from handler(request))
+        return (await handler(request))
 
     return normalize_path_middleware

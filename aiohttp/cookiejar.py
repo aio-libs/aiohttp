@@ -4,13 +4,13 @@ import pickle
 import re
 from collections import defaultdict
 from collections.abc import Mapping
-from http.cookies import Morsel
+from http.cookies import Morsel, SimpleCookie
 from math import ceil
 
 from yarl import URL
 
 from .abc import AbstractCookieJar
-from .helpers import SimpleCookie, is_ip_address
+from .helpers import is_ip_address
 
 
 __all__ = ('CookieJar', 'DummyCookieJar')
@@ -161,9 +161,7 @@ class CookieJar(AbstractCookieJar):
                     else:
                         cookie["expires"] = ""
 
-            # use dict method because SimpleCookie class modifies value
-            # before Python 3.4.3
-            dict.__setitem__(self._cookies[domain], name, cookie)
+            self._cookies[domain][name] = cookie
 
         self._do_expiration()
 

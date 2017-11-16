@@ -3,19 +3,26 @@ Async http client/server framework
 ==================================
 
 .. image:: https://raw.githubusercontent.com/aio-libs/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
-  :height: 64px
-  :width: 64px
-  :alt: aiohttp logo
+   :height: 64px
+   :width: 64px
+   :alt: aiohttp logo
 
 .. image:: https://travis-ci.org/aio-libs/aiohttp.svg?branch=master
-  :target:  https://travis-ci.org/aio-libs/aiohttp
-  :align: right
+   :target:  https://travis-ci.org/aio-libs/aiohttp
+   :align: right
+   :alt: Travis status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/aio-libs/aiohttp
+   :target: https://codecov.io/gh/aio-libs/aiohttp
+   :alt: codecov.io status for master branch
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
-    :target: https://badge.fury.io/py/aiohttp
+   :target: https://badge.fury.io/py/aiohttp
+   :alt: Latest PyPI package version
+
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: http://docs.aiohttp.org/
+   :alt: Latest Read The Docs
 
 .. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
    :target: http://docs.aiohttp.org/
@@ -48,7 +55,7 @@ To retrieve something from the web:
   import async_timeout
 
   async def fetch(session, url):
-      with async_timeout.timeout(10):
+      async with async_timeout.timeout(10):
           async with session.get(url) as response:
               return await response.text()
 
@@ -98,19 +105,6 @@ This is simple usage example:
 
     web.run_app(app)
 
-
-Note: examples are written for Python 3.5+ and utilize PEP-492 aka
-async/await.  If you are using Python 3.4 please replace ``await`` with
-``yield from`` and ``async def`` with ``@coroutine`` e.g.::
-
-    async def coro(...):
-        ret = await f()
-
-should be replaced by::
-
-    @asyncio.coroutine
-    def coro(...):
-        ret = yield from f()
 
 Documentation
 =============

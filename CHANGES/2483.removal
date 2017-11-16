@@ -1,0 +1,3 @@
+`StreamResponse.drain()` is not a part of public API anymore, just use
+`await StreamResponse.write()`. `StreamResponse.write` is converted to
+async function.

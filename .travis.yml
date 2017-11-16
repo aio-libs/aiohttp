@@ -3,10 +3,6 @@ sudo: false
 language: python
 
 python:
-# python3.4.2 has bug in http.cookies module, aiohttp provides fix for it
-- 3.4.2
-- 3.4.3
-- 3.5.2
 - 3.5
 - &mainstream_python 3.6
 - 3.6-dev
@@ -40,12 +36,12 @@ _helpers:
   <<: *_reset_steps
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/dev.txt
+  - pip install -U -r requirements/ci.txt
 - &_doc_base
   <<: *_lint_base
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/dev.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
+  - pip install -U -r requirements/ci.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:
@@ -147,13 +143,14 @@ jobs:
     env:
     - docs
     script:
+    - towncrier --yes
     - make doc-spelling
 
   - <<: *_lint_base
     env:
     - flake8
     script:
-    - flake8 aiohttp --exclude=aiohttp/backport_cookies.py examples tests demos
+    - flake8 aiohttp examples tests demos
 
   - <<: *_lint_base
     env:
@@ -164,18 +161,6 @@ jobs:
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
-  - <<: *osx_python_base
-    python: 3.4.2
-    env:
-    - &env_py34 PYTHON_VERSION=3.4.2
-    - *env_pyenv
-    - *env_path
-  - <<: *osx_python_base
-    python: 3.4.3
-    env:
-    - &env_py34 PYTHON_VERSION=3.4.3
-    - *env_pyenv
-    - *env_path
   - <<: *osx_python_base
     python: 3.5.3
     env:
@@ -235,14 +220,6 @@ jobs:
         all_branches: true
 
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
-    # OS X 10.10, Python 3.4
-  - <<: *osx_pypi_deploy_base_1010
-    python: 3.4
-    env:
-    - *env_os1010_msg
-    - *env_py34
-    - *env_pyenv
-    - *env_path
     # OS X 10.10, Python 3.5
   - <<: *osx_pypi_deploy_base_1010
     python: 3.5
@@ -258,14 +235,6 @@ jobs:
     - *env_py36
     - *env_pyenv
     - *env_path
-    # OS X 10.11, Python 3.4
-  - <<: *osx_pypi_deploy_base_1011
-    python: 3.4
-    env:
-    - *env_os1011_msg
-    - *env_py34
-    - *env_pyenv
-    - *env_path
     # OS X 10.11, Python 3.5
   - <<: *osx_pypi_deploy_base_1011
     python: 3.5
@@ -279,14 +248,6 @@ jobs:
     env:
     - *env_os1011_msg
     - *env_py36
-    - *env_pyenv
-    - *env_path
-    # OS X 10.12, Python 3.4
-  - <<: *osx_pypi_deploy_base_1012
-    python: 3.4
-    env:
-    - *env_os1012_msg
-    - *env_py34
     - *env_pyenv
     - *env_path
     # OS X 10.12, Python 3.5

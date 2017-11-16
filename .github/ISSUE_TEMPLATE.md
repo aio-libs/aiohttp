@@ -19,5 +19,10 @@
 ## Your environment
 
 <!-- Describe the environment you have that lead to your issue.
-     This includes project version, OS, proxy server and other bits that
-     are related to your case. -->
+     This includes aiohttp version, OS, proxy server and other bits that
+     are related to your case. 
+     
+     IMPORTANT: aiohttp is both server framework and client library.
+     For getting rid of confusing please put 'server', 'client' or 'both'
+     word here.
+     -->

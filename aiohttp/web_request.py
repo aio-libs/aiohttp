@@ -9,6 +9,7 @@ import tempfile
 import types
 import warnings
 from email.utils import parsedate
+from http.cookies import SimpleCookie
 from types import MappingProxyType
 from urllib.parse import parse_qsl
 
@@ -16,7 +17,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
+from .helpers import HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
@@ -61,7 +62,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, writer, task,
+    def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
                  *, client_max_size=1024**2,
                  state=None,
@@ -70,8 +71,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             state = {}
         self._message = message
         self._protocol = protocol
-        self._transport = protocol.transport
-        self._writer = writer
+        self._payload_writer = payload_writer
 
         self._payload = payload
         self._headers = message.headers
@@ -132,7 +132,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             message,
             self._payload,
             self._protocol,
-            self._writer,
+            self._payload_writer,
             self._task,
             self._loop,
             client_max_size=self._client_max_size,
@@ -153,7 +153,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def writer(self):
-        return self._writer
+        return self._payload_writer
 
     @property
     def message(self):
@@ -260,7 +260,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         scheme = self._scheme
         if scheme is not None:
             return scheme
-        if self._transport.get_extra_info('sslcontext'):
+        if self.transport.get_extra_info('sslcontext'):
             return 'https'
         else:
             return 'http'
@@ -315,8 +315,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         remote = self._remote
         if remote is not None:
             return remote
-        transport = self._transport
-        peername = transport.get_extra_info('peername')
+        peername = self.transport.get_extra_info('peername')
         if isinstance(peername, (list, tuple)):
             return peername[0]
         else:
@@ -469,17 +468,15 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return True if request has HTTP BODY, False otherwise."""
         return type(self._payload) is not EmptyStreamReader
 
-    @asyncio.coroutine
-    def release(self):
+    async def release(self):
         """Release request.
 
         Eat unread part of HTTP BODY if present.
         """
         while not self._payload.at_eof():
-            yield from self._payload.readany()
+            await self._payload.readany()
 
-    @asyncio.coroutine
-    def read(self):
+    async def read(self):
         """Read request body if present.
 
         Returns bytes object with full request content.
@@ -487,7 +484,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         if self._read_bytes is None:
             body = bytearray()
             while True:
-                chunk = yield from self._payload.readany()
+                chunk = await self._payload.readany()
                 body.extend(chunk)
                 if self._client_max_size \
                         and len(body) >= self._client_max_size:
@@ -497,26 +494,22 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._read_bytes = bytes(body)
         return self._read_bytes
 
-    @asyncio.coroutine
-    def text(self):
+    async def text(self):
         """Return BODY as text using encoding from .charset."""
-        bytes_body = yield from self.read()
+        bytes_body = await self.read()
         encoding = self.charset or 'utf-8'
         return bytes_body.decode(encoding)
 
-    @asyncio.coroutine
-    def json(self, *, loads=json.loads):
+    async def json(self, *, loads=json.loads):
         """Return BODY as JSON."""
-        body = yield from self.text()
+        body = await self.text()
         return loads(body)
 
-    @asyncio.coroutine
-    def multipart(self, *, reader=multipart.MultipartReader):
+    async def multipart(self, *, reader=multipart.MultipartReader):
         """Return async iterator to process BODY as multipart."""
         return reader(self._headers, self._payload)
 
-    @asyncio.coroutine
-    def post(self):
+    async def post(self):
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -534,9 +527,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         out = MultiDict()
 
         if content_type == 'multipart/form-data':
-            multipart = yield from self.multipart()
+            multipart = await self.multipart()
 
-            field = yield from multipart.next()
+            field = await multipart.next()
             while field is not None:
                 size = 0
                 max_size = self._client_max_size
@@ -545,7 +538,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 if field.filename:
                     # store file in temp file
                     tmp = tempfile.TemporaryFile()
-                    chunk = yield from field.read_chunk(size=2**16)
+                    chunk = await field.read_chunk(size=2**16)
                     while chunk:
                         chunk = field.decode(chunk)
                         tmp.write(chunk)
@@ -553,14 +546,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         if max_size > 0 and size > max_size:
                             raise ValueError(
                                 'Maximum request body size exceeded')
-                        chunk = yield from field.read_chunk(size=2**16)
+                        chunk = await field.read_chunk(size=2**16)
                     tmp.seek(0)
 
                     ff = FileField(field.name, field.filename,
                                    tmp, content_type, field.headers)
                     out.add(field.name, ff)
                 else:
-                    value = yield from field.read(decode=True)
+                    value = await field.read(decode=True)
                     if content_type is None or \
                             content_type.startswith('text/'):
                         charset = field.get_charset(default='utf-8')
@@ -571,9 +564,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         raise ValueError(
                             'Maximum request body size exceeded')
 
-                field = yield from multipart.next()
+                field = await multipart.next()
         else:
-            data = yield from self.read()
+            data = await self.read()
             if data:
                 charset = self.charset or 'utf-8'
                 out.extend(
@@ -628,10 +621,9 @@ class Request(BaseRequest):
         """Application instance."""
         return self._match_info.apps[-1]
 
-    @asyncio.coroutine
-    def _prepare_hook(self, response):
+    async def _prepare_hook(self, response):
         match_info = self._match_info
         if match_info is None:
             return
         for app in match_info.apps:
-            yield from app.on_response_prepare.send(self, response)
+            await app.on_response_prepare.send(self, response)
