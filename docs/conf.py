@@ -170,6 +170,9 @@ html_theme_options = {
     'body_text': '#482C0A',
     'sidebar_text': '#49443E',
     'sidebar_header': '#4B4032',
+    'font_family': "'Roboto', sans-serif",
+    'head_font_family': "'Roboto Slab', serif",
+    'code_font_family': "'Roboto Mono', monospace",
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
