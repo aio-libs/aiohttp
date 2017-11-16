@@ -186,8 +186,8 @@ Punycode
 py
 pyenv
 pyflakes
-pytest
 Pytest
+Quickstart
 quote’s
 readonly
 readpayload
