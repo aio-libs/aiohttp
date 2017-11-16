@@ -22,6 +22,8 @@ Key Features
 - Web-server has :ref:`aiohttp-web-middlewares`,
   :ref:`aiohttp-web-signals` and pluggable routing.
 
+.. _aiohttp-installation:
+
 Library Installation
 ====================
 
@@ -80,6 +82,10 @@ Server example::
     app.router.add_get('/{name}', handle)
 
     web.run_app(app)
+
+
+For more information please visit :ref:`aiohttp-client` and
+`ref:`aiohttp-sever` pages.
 
 
 Tutorial
