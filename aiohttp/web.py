@@ -252,20 +252,14 @@ class Application(MutableMapping):
         """
         await self.on_startup.send(self)
 
-<<<<<<< HEAD
-    @asyncio.coroutine
-    def pre_serve(self):
+    async def pre_serve(self):
         """Causes on_pre_serve signal
 
         Should be called just before run_forever().
         """
         yield from self.on_pre_serve.send(self)
 
-    @asyncio.coroutine
-    def shutdown(self):
-=======
     async def shutdown(self):
->>>>>>> master
         """Causes on_shutdown signal
 
         Should be called before cleanup()
