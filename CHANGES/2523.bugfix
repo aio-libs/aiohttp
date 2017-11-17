@@ -1,0 +1,1 @@
+Fix warning in `ClientSession.__del__` by stopping to try to close it.
