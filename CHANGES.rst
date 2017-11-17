@@ -14,6 +14,21 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.3 (2017-11-17)
+==================
+
+- Having a `;` in Response content type doesn't assume it contains a charset
+  anymore. (#2197)
+- Use `getattr(asyncio, 'async')` for keeping compatibility with Python 3.7.
+  (#2476)
+- Ignore `NotImplementedError` raised by `set_child_watcher` from `uvloop`.
+  (#2491)
+- Fix warning in `ClientSession.__del__` by stopping to try to close it.
+  (#2523)
+- Fixed typo's in Third-party libraries page. And added async-v20 to the list
+  (#2510)
+
+
 2.3.2 (2017-11-01)
 ==================
 
