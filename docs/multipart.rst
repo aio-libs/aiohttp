@@ -146,8 +146,8 @@ the second argument::
                     {'CONTENT-TYPE': 'image/gif'})
 
 For file objects `Content-Type` will be determined by using Python's
-`mimetypes`_ module and additionally `Content-Disposition` header will include
-the file's basename::
+mod:`mimetypes` module and additionally `Content-Disposition` header
+will include the file's basename::
 
     part = root.append(open(__file__, 'rb'))
 
@@ -194,8 +194,8 @@ The Internet is full of terror and sometimes you may find a server which
 implements multipart support in strange ways when an oblivious solution
 does not work.
 
-For instance, is server used `cgi.FieldStorage`_ then you have to ensure that
-no body part contains a `Content-Length` header::
+For instance, is server used :class:`cgi.FieldStorage` then you have
+to ensure that no body part contains a `Content-Length` header::
 
     for part in mpwriter:
         part.headers.pop(aiohttp.hdrs.CONTENT_LENGTH, None)
@@ -324,8 +324,4 @@ And this gives us a more cleaner solution::
 
         result.append((doc, files))
 
-.. seealso:: Multipart API in :ref:`aiohttp-api` section.
-
-
-.. _cgi.FieldStorage: https://docs.python.org/3.4/library/cgi.html
-.. _mimetypes: https://docs.python.org/3.4/library/mimetypes.html
+.. seealso:: :ref:`aiohttp-multipart-reference`

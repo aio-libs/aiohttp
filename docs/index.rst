@@ -10,7 +10,6 @@ aiohttp: Asynchronous HTTP Client/Server for Python and asyncio
 HTTP client/server for :term:`asyncio` and Python.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp
-.. _Freenode: http://freenode.net
 
 
 Key Features
@@ -21,6 +20,8 @@ Key Features
   :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box.
 - Web-server has :ref:`aiohttp-web-middlewares`,
   :ref:`aiohttp-web-signals` and pluggable routing.
+
+.. _aiohttp-installation:
 
 Library Installation
 ====================
@@ -82,6 +83,10 @@ Server example::
     web.run_app(app)
 
 
+For more information please visit :ref:`aiohttp-client` and
+`ref:`aiohttp-sever` pages.
+
+
 Tutorial
 ========
 
@@ -104,7 +109,7 @@ Continuous Integration.
 Dependencies
 ============
 
-- Python 3.4.2+
+- Python 3.5.3+
 - *chardet*
 - *multidict*
 - *async_timeout*
@@ -180,4 +185,14 @@ these changes as rare as possible.
 Table Of Contents
 =================
 
-To see the full table of contents open the :ref:`link <mastertoc>`.
+.. toctree::
+   :name: mastertoc
+   :maxdepth: 2
+
+   client
+   web
+   utilities
+   faq
+   misc
+   external
+   contributing

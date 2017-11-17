@@ -8,7 +8,7 @@ Testing
 Testing aiohttp web servers
 ---------------------------
 
-aiohttp provides plugin for pytest_ making writing web server tests
+aiohttp provides plugin for :mod:`pytest` making writing web server tests
 extremely easy, it also provides :ref:`test framework agnostic
 utilities <aiohttp-testing-framework-agnostic-utilities>` for testing
 with other frameworks such as :ref:`unittest
