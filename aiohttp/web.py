@@ -376,15 +376,6 @@ def _make_server_creators(handler, *, loop, ssl_context,
         )
         uris.append('{}://unix:{}:'.format(scheme, path))
 
-        # Clean up prior socket path if stale and not abstract.
-        # CPython 3.5.3+'s event loop already does this. See
-        # https://github.com/python/asyncio/issues/425
-        if path[0] not in (0, '\x00'):  # pragma: no branch
-            try:
-                if stat.S_ISSOCK(os.stat(path).st_mode):
-                    os.remove(path)
-            except FileNotFoundError:
-                pass
     for sock in socks:
         server_creations.append(
             loop.create_server(
