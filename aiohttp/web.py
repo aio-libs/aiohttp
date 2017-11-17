@@ -23,6 +23,7 @@ from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
 from .web_server import *  # noqa
+from .web_site import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 
@@ -35,16 +36,9 @@ __all__ = (web_protocol.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
            web_server.__all__ +
+           web_site.__all__ +
            web_middlewares.__all__ +
            ('Application', 'HttpVersion', 'MsgType'))
-
-
-class GracefulExit(SystemExit):
-    code = 1
-
-
-def raise_graceful_exit():
-    raise GracefulExit()
 
 
 def _make_server_creators(handler, *, loop, ssl_context,
