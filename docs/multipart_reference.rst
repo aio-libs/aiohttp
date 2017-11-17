@@ -1,5 +1,7 @@
 .. module:: aiohttp
 
+.. _aiohttp-multipart-reference:
+
 Multipart reference
 ===================
 
