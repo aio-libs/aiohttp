@@ -1,1 +1,0 @@
-Use `getattr(asyncio, 'async')` for keeping compatibility with Python 3.7.
