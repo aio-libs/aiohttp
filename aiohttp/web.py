@@ -271,6 +271,17 @@ class Application(MutableMapping):
                 yield m, False
 
     async def _handle(self, request):
+        match_info = await self.resolve_handler(request)
+        response = await self.expect_handler(request, match_info)
+
+        if response is None:
+            handler = await self.wrap_middlewares(match_info)
+            response = await handler(request)
+
+        self.check_response(response, match_info)
+        return response
+
+    async def resolve_handler(self, request):
         match_info = await self._router.resolve(request)
         assert isinstance(match_info, AbstractMatchInfo), match_info
         match_info.add_app(self)
@@ -278,31 +289,35 @@ class Application(MutableMapping):
         if __debug__:
             match_info.freeze()
 
-        resp = None
         request._match_info = match_info
+        return match_info
+
+    async def expect_handler(self, request, match_info):
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
-            resp = await match_info.expect_handler(request)
+            response = await match_info.expect_handler(request)
             await request.writer.drain()
+            return response
 
-        if resp is None:
-            handler = match_info.handler
-            for app in match_info.apps[::-1]:
-                for m, new_style in app._middlewares:
-                    if new_style:
-                        handler = partial(m, handler=handler)
-                    else:
-                        handler = await m(app, handler)
+    async def wrap_middlewares(self, match_info):
+        handler = match_info.handler
+        for app in match_info.apps[::-1]:
+            for m, new_style in app._middlewares:
+                if new_style:
+                    handler = partial(m, handler=handler)
+                else:
+                    handler = await m(app, handler)
 
-            resp = await handler(request)
+        return handler
 
-        assert isinstance(resp, web_response.StreamResponse), \
-            ("Handler {!r} should return response instance, "
-             "got {!r} [middlewares {!r}]").format(
-                 match_info.handler, type(resp),
-                 [middleware for middleware in app.middlewares
-                  for app in match_info.apps])
-        return resp
+    def check_response(self, response, match_info):
+        assert isinstance(response, web_response.StreamResponse), (
+            "Handler {!r} should return response instance, "
+            "got {!r} [middlewares {!r}]").format(
+                match_info.handler, type(response),
+                [middleware for app in match_info.apps
+                 for middleware in app.middlewares]
+        )
 
     def __call__(self):
         """gunicorn compatibility"""
