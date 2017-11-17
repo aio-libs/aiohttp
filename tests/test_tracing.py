@@ -56,17 +56,22 @@ class TestTrace:
     async def test_send(self, loop, signal):
         param = Mock()
         session = Mock()
-        trace_context = Mock()
+        trace_request_context = Mock()
         callback = Mock(side_effect=asyncio.coroutine(Mock()))
 
         trace_config = TraceConfig()
         getattr(trace_config, "on_%s" % signal).append(callback)
         trace_config.freeze()
-        trace = Trace(trace_config, session, trace_context)
+        trace = Trace(
+            trace_config,
+            session,
+            trace_request_context=trace_request_context
+        )
         await getattr(trace, "send_%s" % signal)(param)
 
         callback.assert_called_once_with(
             session,
-            trace_context,
-            param
+            SimpleNamespace(),
+            param,
+            trace_request_context=trace_request_context
         )

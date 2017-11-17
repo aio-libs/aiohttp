@@ -59,7 +59,7 @@ class ClientSession:
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
                  auto_decompress=True, trust_env=False,
-                 trace_config=None):
+                 trace_configs=None):
 
         implicit_loop = False
         if loop is None:
@@ -127,9 +127,9 @@ class ClientSession:
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
-        self._trace_config = trace_config
-        if self._trace_config:
-            self._trace_config.freeze()
+        self._trace_configs = trace_configs or []
+        for trace_config in self._trace_configs:
+            trace_config.freeze()
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
@@ -169,7 +169,7 @@ class ClientSession:
                  fingerprint=None,
                  ssl_context=None,
                  proxy_headers=None,
-                 trace_context=None):
+                 trace_request_context=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -227,14 +227,15 @@ class ClientSession:
 
         url = URL(url)
 
-        if self._trace_config:
-            if trace_context is None:
-                trace_context = self._trace_config.trace_context()
-            trace = Trace(self._trace_config, self, trace_context)
-        else:
-            trace = None
+        traces = [
+            Trace(
+                trace_config,
+                self,
+                trace_request_context=trace_request_context)
+            for trace_config in self._trace_configs
+        ]
 
-        if trace:
+        for trace in traces:
             yield from trace.send_request_start(
                 method,
                 url,
@@ -291,7 +292,7 @@ class ClientSession:
                         with CeilTimeout(self._conn_timeout, loop=self._loop):
                             conn = yield from self._connector.connect(
                                 req,
-                                trace=trace
+                                traces=traces
                             )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(
@@ -318,7 +319,7 @@ class ClientSession:
                     if resp.status in (
                             301, 302, 303, 307, 308) and allow_redirects:
 
-                        if trace:
+                        for trace in traces:
                             yield from trace.send_request_redirect(
                                 method,
                                 url,
@@ -390,7 +391,7 @@ class ClientSession:
 
             resp._history = tuple(history)
 
-            if trace:
+            for trace in traces:
                 yield from trace.send_request_end(
                     method,
                     url,
@@ -406,7 +407,7 @@ class ClientSession:
                 handle.cancel()
                 handle = None
 
-            if trace:
+            for trace in traces:
                 yield from trace.send_request_exception(
                     method,
                     url,

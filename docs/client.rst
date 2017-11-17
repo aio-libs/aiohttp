@@ -757,35 +757,57 @@ triggers the different signals supported by the :class:`TraceConfig`. By default
 of :class:`ClientSession` class comes with the signals ability disabled. The following
 snippet shows how the start and the end signals of a request flow can be followed::
 
-    async def on_request_start(session, trace_context, method, host, port, headers):
+    async def on_request_start(
+            session, trace_context, method, host, port, headers, request_trace_context=None):
         print("Starting request")
 
-    async def on_request_end(session, trace_context, resp):
+    async def on_request_end(session, trace_context, resp, request_trace_context=None):
         print("Ending request")
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
-    async with aiohttp.ClientSession(trace_config=trace_config) as client:
+    async with aiohttp.ClientSession(trace_configs=[trace_config]) as client:
         client.get('http://example.com/some/redirect/')
+
+The `trace_configs` is a list that can contain instances of :class:`TraceConfig` class
+that allow run the signals handlers coming from different :class:`TraceConfig` instances.
+The following example shows how two different :class:`TraceConfig` that have a different
+nature are installed to perform their job in each signal handle::
+
+    from .traceconfig import AuditRequest
+    from .traceconfig import XRay
+
+    async with aiohttp.ClientSession(trace_configs=[AuditRequest(), XRay()]) as client:
+        client.get('http://example.com/some/redirect/')
+
 
 All signals take as a parameters first, the :class:`ClientSession` instance used by
 the specific request related to that signals and second, a :class:`SimpleNamespace`
 instance called ``trace_context``. The ``trace_context`` object can be used to share
-the state through to the different signals that belong to the same request, perhaps::
+the state through to the different signals that belong to the same request and to
+the same :class:`TraceConfig` class, perhaps::
 
-    async def on_request_start(session, trace_context, method, host, port, headers):
+    async def on_request_start(
+            session, trace_context, method, host, port, headers, trace_request_context=None):
         trace_context.start = session.loop.time()
 
-    async def on_request_end(session, trace_context, resp):
+    async def on_request_end(
+            session, trace_context, resp, trace_request_context=None):
         elapsed = session.loop.time() - trace_context.start
         print("Request took {}".format(elapsed))
 
-The ``trace_context`` param is by default a :class:`SimpleNampespace` that is initialized at
-the beginning of the request flow. However, this can be overwritten at the beginning of the
-request execution giving an alternative object as the following snippet shows::
 
-    session.get('http://example.com/some/redirect/', trace_context={'foo': 'bar'})
+The ``trace_context`` param is by default a :class:`SimpleNampespace` that is initialized at
+the beginning of the request flow. However, the factory used to create this object can be
+overwritten using the ``trace_context_class`` constructor param of the 
+:class:`TraceConfig` class.
+
+The ``trace_request_context`` param can given at the beginning of the request execution and
+will be passed as a keyword argument for all of the signals, as the following snippet shows::
+
+    session.get('http://example.com/some/redirect/', trace_request_context={'foo': 'bar'})
+
 
 .. seealso:: :ref:`aiohttp-tracing-reference` section for
              more information about the different signals supported.

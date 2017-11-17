@@ -1609,7 +1609,7 @@ async def test_request_tracing(loop, test_client):
     app.router.add_get('/redirector', redirector)
     app.router.add_get('/redirected', redirected)
 
-    client = await test_client(app, trace_config=trace_config)
+    client = await test_client(app, trace_configs=[trace_config])
 
     await client.get('/redirector', data="foo")
 

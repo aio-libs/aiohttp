@@ -100,19 +100,21 @@ class TraceConfig:
 
 
 class Trace:
-    """ Internal class used to have access to the TraceConfig, ClientSession
-    and trace config at any point of a request execution."""
+    """ Internal class used to keep together the main dependencies used at the moment
+    of send a signal."""
 
-    def __init__(self, trace_config, session, trace_context):
+    def __init__(self, trace_config, session, trace_request_context=None):
         self._trace_config = trace_config
+        self._trace_context = self._trace_config.trace_context()
+        self._trace_request_context = trace_request_context
         self._session = session
-        self._trace_context = trace_context
 
     async def send_request_start(self, *args, **kwargs):
         return await self._trace_config.on_request_start.send(
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -121,6 +123,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -129,6 +132,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -137,6 +141,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -145,6 +150,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -153,6 +159,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -161,6 +168,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -169,6 +177,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -177,6 +186,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -185,6 +195,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -193,6 +204,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -201,6 +213,7 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
 
@@ -209,5 +222,6 @@ class Trace:
             self._session,
             self._trace_context,
             *args,
+            trace_request_context=self._trace_request_context,
             **kwargs
         )
