@@ -18,15 +18,11 @@ Workflow is pretty straightforward:
 
   3. Make sure all tests passed
 
-  4. Add a file into ``changes`` folder (`Changelog update`_).
+  4. Add a file into ``CHANGES`` folder (`Changelog update`_).
 
   5. Commit changes to own aiohttp clone
 
   6. Make pull request from github page for your clone against master branch
-
-  .. note::
-     If your PR has long history or many commits
-     please rebase it from main repo before creating PR.
 
 Preconditions for running aiohttp test suite
 --------------------------------------------
@@ -113,10 +109,18 @@ Use:
 to run test suite and collect coverage information. Once the command
 has finished check your coverage at the file that appears in the last
 line of the output:
-``open file:///.../aiohttp/coverage/index.html``
+``open file:///.../aiohttp/htmlcov/index.html``
 
 Please go to the link and make sure that your code change is covered.
 
+
+The project uses *codecov.io* for storing coverage results. Visit
+https://codecov.io/gh/aio-libs/aiohttp for looking on coverage of
+master branch, history, pull requests etc.
+
+The browser extension https://docs.codecov.io/docs/browser-extension
+is highly recommended for analyzing the coverage just in *Files
+Changed* tab on *GitHub Pull Request* review page.
 
 Documentation
 -------------
@@ -167,14 +171,14 @@ issue describing the change you want to make. A Pull Request itself
 reasons).
 
 Once you have an issue or pull request, you take the number and you
-create a file inside of the ``changes/`` directory named after that
+create a file inside of the ``CHANGES/`` directory named after that
 issue number with an extension of ``.removal``, ``.feature``,
 ``.bugfix``, or ``.doc``.  Thus if your issue or PR number is ``1234`` and
 this change is fixing a bug, then you would create a file
-``changes/1234.bugfix``. PRs can span multiple categories by creating
+``CHANGES/1234.bugfix``. PRs can span multiple categories by creating
 multiple files (for instance, if you added a feature and
 deprecated/removed the old feature at the same time, you would create
-``changes/NNNN.feature`` and ``changes/NNNN.removal``). Likewise if a PR touches
+``CHANGES/NNNN.feature`` and ``CHANGES/NNNN.removal``). Likewise if a PR touches
 multiple issues/PRs you may create a file for each of them with the
 exact same contents and *Towncrier* will deduplicate them.
 
@@ -190,6 +194,38 @@ The End
 -------
 
 After finishing all steps make a GitHub_ Pull Request, thanks.
+
+
+How to become an aiohttp committer
+----------------------------------
+
+Contribute!
+
+The easiest way is providing Pull Requests for issues in our bug
+tracker.  But if you have a great idea for the library improvement
+-- please make an issue and Pull Request.
+
+
+
+The rules for committers are simple:
+
+1. No wild commits! Everything should go through PRs.
+2. Take a part in reviews. It's very important part of maintainer's activity.
+3. Pickup issues created by others, especially if they are simple.
+4. Keep test suite comprehensive. In practice it means leveling up
+   coverage. 97% is not bad but we wish to have 100% someday. Well, 99%
+   is good target too.
+5. Don't hesitate to improve our docs. Documentation is very important
+   thing, it's the key for project success. The documentation should
+   not only cover our public API but help newbies to start using the
+   project and shed a light on non-obvious gotchas.
+
+
+
+After positive answer aiohttp committer creates an issue on github
+with the proposal for nomination.  If the proposal will collect only
+positive votes and no strong objection -- you'll be a new member in
+our team.
 
 
 .. _GitHub: https://github.com/aio-libs/aiohttp

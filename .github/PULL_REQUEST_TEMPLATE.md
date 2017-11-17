@@ -5,8 +5,9 @@
 
      - If you propose a new feature or improvement, select "master"
        as a target branch;
-     - If this is a bug fix or documentation amendment, select
-       the latest release branch (which looks like "0.xx") -->
+     - If this is a bug fix or documentation amendment, select the latest
+       [release branch](https://github.com/aio-libs/aiohttp/branches) (which
+       looks like "X.Y" e.g. "2.3") -->
 
 ## What do these changes do?
 
@@ -28,7 +29,7 @@
 - [ ] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
   * The format is &lt;Name&gt; &lt;Surname&gt;.
   * Please keep alphabetical order, the file is sorted by names. 
-- [ ] Add a new news fragment into the `changes` folder
+- [ ] Add a new news fragment into the `CHANGES` folder
   * name it `<issue_id>.<type>` for example (588.bug)
   * if you don't have an `issue_id` change it to the pr id after creating the pr
   * ensure type is one of the following:

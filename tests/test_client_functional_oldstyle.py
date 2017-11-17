@@ -19,6 +19,7 @@ import threading
 import traceback
 import unittest
 import urllib.parse
+from http.cookies import SimpleCookie
 from unittest import mock
 
 from multidict import MultiDict
@@ -56,18 +57,17 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             return urllib.parse.urljoin(
                 self._url, '/'.join(str(s) for s in suffix))
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         if properties.get('close', False):
             return
 
         for hdr, val in request.message.headers.items():
             if (hdr.upper() == 'EXPECT') and (val == '100-continue'):
-                request.writer.write(b'HTTP/1.0 100 Continue\r\n\r\n')
+                await request.writer.write(b'HTTP/1.0 100 Continue\r\n\r\n')
                 break
 
         rob = router(properties, request)
-        return (yield from rob.dispatch())
+        return (await rob.dispatch())
 
     class TestHttpServer(web.RequestHandler):
 
@@ -95,7 +95,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             host, port, ssl=sslcontext)
         server = thread_loop.run_until_complete(server_coroutine)
 
-        waiter = helpers.create_future(thread_loop)
+        waiter = thread_loop.create_future()
         loop.call_soon_threadsafe(
             fut.set_result, (thread_loop, waiter,
                              server.sockets[0].getsockname()))
@@ -117,7 +117,7 @@ def run_server(loop, *, listen_addr=('127.0.0.1', 0),
             thread_loop.close()
             gc.collect()
 
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
     server_thread = threading.Thread(target=run, args=(loop, fut))
     server_thread.start()
 
@@ -162,27 +162,26 @@ class Router:
 
         return wrapper
 
-    def dispatch(self):  # pragma: no cover
+    async def dispatch(self):  # pragma: no cover
         for route, fn in self._mapping:
             match = route.match(self._path)
             if match is not None:
                 try:
-                    return (yield from getattr(self, fn)(match))
+                    return (await getattr(self, fn)(match))
                 except Exception:
                     out = io.StringIO()
                     traceback.print_exc(file=out)
-                    return (yield from self._response(500, out.getvalue()))
+                    return (await self._response(500, out.getvalue()))
 
                 return ()
 
-        return (yield from self._response(self._start_response(404)))
+        return (await self._response(self._start_response(404)))
 
     def _start_response(self, code):
         return web.Response(status=code)
 
-    @asyncio.coroutine
-    def _response(self, response, body=None,
-                  headers=None, chunked=False, write_body=None):
+    async def _response(self, response, body=None,
+                        headers=None, chunked=False, write_body=None):
         r_headers = {}
         for key, val in self._headers.items():
             key = '-'.join(p.capitalize() for p in key.split('-'))
@@ -211,7 +210,7 @@ class Router:
             resp['content'] = body
         else:
             resp['content'] = (
-                yield from self._request.read()).decode('utf-8', 'ignore')
+                await self._request.read()).decode('utf-8', 'ignore')
 
         ct = self._headers.get('content-type', '').lower()
 
@@ -225,7 +224,7 @@ class Router:
             for key, val in self._headers.items():
                 out.write(bytes('{}: {}\r\n'.format(key, val), 'latin1'))
 
-            b = yield from self._request.read()
+            b = await self._request.read()
             out.write(b'\r\n')
             out.write(b)
             out.write(b'\r\n')
@@ -266,16 +265,16 @@ class Router:
         if chunked:
             self._request.writer.enable_chunking()
 
-        yield from response.prepare(self._request)
+        await response.prepare(self._request)
 
         # write payload
         if write_body:
             try:
                 write_body(response, body)
-            except:
+            except Exception:
                 return
         else:
-            response.write(body.encode('utf8'))
+            await response.write(body.encode('utf8'))
 
         return response
 
@@ -302,7 +301,7 @@ class Functional(Router):
 
     @Router.define('/cookies$')
     def cookies(self, match):
-        cookies = helpers.SimpleCookie()
+        cookies = SimpleCookie()
         cookies['c1'] = 'cookie1'
         cookies['c2'] = 'cookie2'
 
@@ -319,7 +318,7 @@ class Functional(Router):
 
     @Router.define('/cookies_partial$')
     def cookies_partial(self, match):
-        cookies = helpers.SimpleCookie()
+        cookies = SimpleCookie()
         cookies['c1'] = 'other_cookie1'
 
         resp = self._start_response(200)
@@ -458,12 +457,12 @@ class TestHttpClientFunctional(unittest.TestCase):
             with open(fname, 'rb') as f:
                 data = f.read()
 
-            fut = helpers.create_future(self.loop)
+            fut = self.loop.create_future()
 
             @aiohttp.streamer
-            def stream(writer):
-                yield from fut
-                writer.write(data)
+            async def stream(writer):
+                await fut
+                await writer.write(data)
 
             self.loop.call_later(0.01, fut.set_result, True)
 
@@ -618,13 +617,12 @@ class TestHttpClientFunctional(unittest.TestCase):
 
     def test_dont_close_explicit_connector(self):
 
-        @asyncio.coroutine
-        def go(url):
+        async def go(url):
             connector = aiohttp.TCPConnector(loop=self.loop)
             session = client.ClientSession(loop=self.loop, connector=connector)
 
-            r = yield from session.request('GET', url)
-            yield from r.read()
+            r = await session.request('GET', url)
+            await r.read()
             self.assertEqual(1, len(connector._conns))
             connector.close()
             session.close()
@@ -655,9 +653,8 @@ class TestHttpClientFunctional(unittest.TestCase):
             def connection_lost(self, exc):
                 self.transp = None
 
-        @asyncio.coroutine
-        def go():
-            server = yield from self.loop.create_server(
+        async def go():
+            server = await self.loop.create_server(
                 Proto, '127.0.0.1', unused_port())
 
             addr = server.sockets[0].getsockname()
@@ -667,13 +664,13 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             url = 'http://{}:{}/'.format(*addr)
             for i in range(2):
-                r = yield from session.request('GET', url)
-                yield from r.read()
+                r = await session.request('GET', url)
+                await r.read()
                 self.assertEqual(0, len(connector._conns))
             session.close()
             connector.close()
             server.close()
-            yield from server.wait_closed()
+            await server.wait_closed()
 
         self.loop.run_until_complete(go())
 
@@ -698,9 +695,8 @@ class TestHttpClientFunctional(unittest.TestCase):
             def connection_lost(self, exc):
                 self.transp = None
 
-        @asyncio.coroutine
-        def go():
-            server = yield from self.loop.create_server(
+        async def go():
+            server = await self.loop.create_server(
                 Proto, '127.0.0.1', unused_port())
 
             addr = server.sockets[0].getsockname()
@@ -710,18 +706,18 @@ class TestHttpClientFunctional(unittest.TestCase):
 
             url = 'http://{}:{}/'.format(*addr)
 
-            r = yield from session.request('GET', url)
-            yield from r.read()
+            r = await session.request('GET', url)
+            await r.read()
             self.assertEqual(1, len(connector._conns))
 
             with self.assertRaises(aiohttp.ServerDisconnectedError):
-                yield from session.request('GET', url)
+                await session.request('GET', url)
             self.assertEqual(0, len(connector._conns))
 
             session.close()
             connector.close()
             server.close()
-            yield from server.wait_closed()
+            await server.wait_closed()
 
         self.loop.run_until_complete(go())
 

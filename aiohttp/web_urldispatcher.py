@@ -1,12 +1,15 @@
 import abc
 import asyncio
+import base64
 import collections
+import hashlib
 import inspect
 import keyword
 import os
 import re
 import warnings
-from collections.abc import Container, Iterable, Sized
+from collections import namedtuple
+from collections.abc import Container, Iterable, Sequence, Sized
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
@@ -16,22 +19,42 @@ from types import MappingProxyType
 # Escaping of the URLs need to be consitent with the escaping done by yarl
 from yarl import URL, unquote
 
-from . import hdrs, helpers
+from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
 from .web_fileresponse import FileResponse
-from .web_response import Response, StreamResponse
+from .web_response import Response
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View')
+           'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
+           'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
+ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
+
+
+class RouteDef(namedtuple('_RouteDef', 'method, path, handler, kwargs')):
+    def __repr__(self):
+        info = []
+        for name, value in sorted(self.kwargs.items()):
+            info.append(", {}={!r}".format(name, value))
+        return ("<RouteDef {method} {path} -> {handler.__name__!r}"
+                "{info}>".format(method=self.method, path=self.path,
+                                 handler=self.handler, info=''.join(info)))
+
+    def register(self, router):
+        if self.method in hdrs.METH_ALL:
+            reg = getattr(router, 'add_'+self.method.lower())
+            reg(self.path, self.handler, **self.kwargs)
+        else:
+            router.add_route(self.method, self.path, self.handler,
+                             **self.kwargs)
 
 
 class AbstractResource(Sized, Iterable):
@@ -44,23 +67,11 @@ class AbstractResource(Sized, Iterable):
         return self._name
 
     @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for resource with additional params.
-
-        Deprecated, use url_for() instead.
-
-        """
-        warnings.warn(".url(...) is deprecated, use .url_for instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-
-    @abc.abstractmethod  # pragma: no branch
     def url_for(self, **kwargs):
         """Construct url for resource with additional params."""
 
-    @asyncio.coroutine
     @abc.abstractmethod  # pragma: no branch
-    def resolve(self, request):
+    async def resolve(self, request):
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
@@ -107,12 +118,14 @@ class AbstractRoute(abc.ABC):
               issubclass(handler, AbstractView)):
             pass
         else:
+            warnings.warn("Bare functions are deprecated, "
+                          "use async ones", DeprecationWarning)
+
             @wraps(handler)
-            @asyncio.coroutine
-            def handler_wrapper(*args, **kwargs):
+            async def handler_wrapper(*args, **kwargs):
                 result = old_handler(*args, **kwargs)
                 if asyncio.iscoroutine(result):
-                    result = yield from result
+                    result = await result
                 return result
             old_handler = handler
             handler = handler_wrapper
@@ -147,20 +160,8 @@ class AbstractRoute(abc.ABC):
     def url_for(self, *args, **kwargs):
         """Construct url for route with additional params."""
 
-    @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for resource with additional params.
-
-        Deprecated, use url_for() instead.
-
-        """
-        warnings.warn(".url(...) is deprecated, use .url_for instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-
-    @asyncio.coroutine
-    def handle_expect_header(self, request):
-        return (yield from self._expect_handler(request))
+    async def handle_expect_header(self, request):
+        return await self._expect_handler(request)
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
@@ -221,8 +222,7 @@ class MatchInfoError(UrlMappingMatchInfo):
                                                 self._exception.reason)
 
 
-@asyncio.coroutine
-def _defaultExpectHandler(request):
+async def _defaultExpectHandler(request):
     """Default handler for Expect header.
 
     Just send "100 Continue" to client.
@@ -261,8 +261,7 @@ class Resource(AbstractResource):
             'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         allowed_methods = set()
 
         match_dict = self._match(request.rel_url.raw_path)
@@ -278,8 +277,6 @@ class Resource(AbstractResource):
                 return UrlMappingMatchInfo(match_dict, route), allowed_methods
         else:
             return None, allowed_methods
-
-        yield  # pragma: no cover
 
     def __len__(self):
         return len(self._routes)
@@ -315,10 +312,6 @@ class PlainResource(Resource):
     def get_info(self):
         return {'path': self._path}
 
-    def url(self, *, query=None):
-        super().url()
-        return str(self.url_for().with_query(query))
-
     def url_for(self):
         return URL(self._path)
 
@@ -330,11 +323,43 @@ class PlainResource(Resource):
 
 class DynamicResource(Resource):
 
-    def __init__(self, pattern, formatter, *, name=None):
+    DYN = re.compile(r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}')
+    DYN_WITH_RE = re.compile(
+        r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
+    GOOD = r'[^{}/]+'
+
+    def __init__(self, path, *, name=None):
         super().__init__(name=name)
-        assert pattern.pattern.startswith(PATH_SEP)
+        pattern = ''
+        formatter = ''
+        for part in ROUTE_RE.split(path):
+            match = self.DYN.fullmatch(part)
+            if match:
+                pattern += '(?P<{}>{})'.format(match.group('var'), self.GOOD)
+                formatter += '{' + match.group('var') + '}'
+                continue
+
+            match = self.DYN_WITH_RE.fullmatch(part)
+            if match:
+                pattern += '(?P<{var}>{re})'.format(**match.groupdict())
+                formatter += '{' + match.group('var') + '}'
+                continue
+
+            if '{' in part or '}' in part:
+                raise ValueError("Invalid path '{}'['{}']".format(path, part))
+
+            path = URL(part).raw_path
+            formatter += path
+            pattern += re.escape(path)
+
+        try:
+            compiled = re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(
+                "Bad pattern '{}': {}".format(pattern, exc)) from None
+        assert compiled.pattern.startswith(PATH_SEP)
         assert formatter.startswith('/')
-        self._pattern = pattern
+        self._pattern = compiled
         self._formatter = formatter
 
     def add_prefix(self, prefix):
@@ -360,10 +385,6 @@ class DynamicResource(Resource):
         url = self._formatter.format_map(parts)
         return URL(url)
 
-    def url(self, *, parts, query=None):
-        super().url(**parts)
-        return str(self.url_for(**parts).with_query(query))
-
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
         return ("<DynamicResource {name} {formatter}"
@@ -386,11 +407,12 @@ class PrefixResource(AbstractResource):
 
 
 class StaticResource(PrefixResource):
+    VERSION_KEY = 'v'
 
     def __init__(self, prefix, directory, *, name=None,
-                 expect_handler=None, chunk_size=256*1024,
-                 response_factory=StreamResponse,
-                 show_index=False, follow_symlinks=False):
+                 expect_handler=None, chunk_size=256 * 1024,
+                 show_index=False, follow_symlinks=False,
+                 append_version=False):
         super().__init__(prefix, name=name)
         try:
             directory = Path(directory)
@@ -407,6 +429,7 @@ class StaticResource(PrefixResource):
         self._chunk_size = chunk_size
         self._follow_symlinks = follow_symlinks
         self._expect_handler = expect_handler
+        self._append_version = append_version
 
         self._routes = {'GET': ResourceRoute('GET', self._handle, self,
                                              expect_handler=expect_handler),
@@ -414,17 +437,42 @@ class StaticResource(PrefixResource):
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
 
-    def url(self, *, filename, query=None):
-        return str(self.url_for(filename=filename).with_query(query))
-
-    def url_for(self, *, filename):
+    def url_for(self, *, filename, append_version=None):
+        if append_version is None:
+            append_version = self._append_version
         if isinstance(filename, Path):
             filename = str(filename)
         while filename.startswith('/'):
             filename = filename[1:]
         filename = '/' + filename
         url = self._prefix + URL(filename).raw_path
-        return URL(url)
+        url = URL(url)
+        if append_version is True:
+            try:
+                if filename.startswith('/'):
+                    filename = filename[1:]
+                filepath = self._directory.joinpath(filename).resolve()
+                if not self._follow_symlinks:
+                    filepath.relative_to(self._directory)
+            except (ValueError, FileNotFoundError):
+                # ValueError for case when path point to symlink
+                # with follow_symlinks is False
+                return url  # relatively safe
+            if filepath.is_file():
+                # TODO cache file content
+                # with file watcher for cache invalidation
+                with open(str(filepath), mode='rb') as f:
+                    file_bytes = f.read()
+                h = self._get_file_hash(file_bytes)
+                url = url.with_query({self.VERSION_KEY: h})
+                return url
+        return url
+
+    def _get_file_hash(self, byte_array):
+        m = hashlib.sha256()  # todo sha256 can be configurable param
+        m.update(byte_array)
+        b64 = base64.urlsafe_b64encode(m.digest())
+        return b64.decode('ascii')
 
     def get_info(self):
         return {'directory': self._directory,
@@ -437,8 +485,7 @@ class StaticResource(PrefixResource):
             'OPTIONS', handler, self,
             expect_handler=self._expect_handler)
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         path = request.rel_url.raw_path
         method = request._method
         allowed_methods = set(self._routes)
@@ -451,7 +498,6 @@ class StaticResource(PrefixResource):
         match_dict = {'filename': unquote(path[len(self._prefix)+1:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
-        yield  # pragma: no cover
 
     def __len__(self):
         return len(self._routes)
@@ -459,8 +505,7 @@ class StaticResource(PrefixResource):
     def __iter__(self):
         return iter(self._routes.values())
 
-    @asyncio.coroutine
-    def _handle(self, request):
+    async def _handle(self, request):
         filename = unquote(request.match_info['filename'])
         try:
             filepath = self._directory.joinpath(filename).resolve()
@@ -548,20 +593,14 @@ class PrefixedSubAppResource(PrefixResource):
         raise RuntimeError(".url_for() is not supported "
                            "by sub-application root")
 
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
-        raise RuntimeError(".url() is not supported "
-                           "by sub-application root")
-
     def get_info(self):
         return {'app': self._app,
                 'prefix': self._prefix}
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
-        match_info = yield from self._app.router.resolve(request)
+        match_info = await self._app.router.resolve(request)
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
@@ -601,11 +640,6 @@ class ResourceRoute(AbstractRoute):
         """Construct url for route with additional params."""
         return self._resource.url_for(*args, **kwargs)
 
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
-        super().url(**kwargs)
-        return self._resource.url(**kwargs)
-
     def get_info(self):
         return self._resource.get_info()
 
@@ -619,9 +653,6 @@ class SystemRoute(AbstractRoute):
     def url_for(self, *args, **kwargs):
         raise RuntimeError(".url_for() is not allowed for SystemRoute")
 
-    def url(self, *args, **kwargs):
-        raise RuntimeError(".url() is not allowed for SystemRoute")
-
     @property
     def name(self):
         return None
@@ -629,8 +660,7 @@ class SystemRoute(AbstractRoute):
     def get_info(self):
         return {'http_exception': self._http_exception}
 
-    @asyncio.coroutine
-    def _handler(self, request):
+    async def _handler(self, request):
         raise self._http_exception
 
     @property
@@ -647,19 +677,17 @@ class SystemRoute(AbstractRoute):
 
 class View(AbstractView):
 
-    @asyncio.coroutine
-    def __iter__(self):
+    async def _iter(self):
         if self.request._method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
         method = getattr(self, self.request._method.lower(), None)
         if method is None:
             self._raise_allowed_methods()
-        resp = yield from method()
+        resp = await method()
         return resp
 
-    if helpers.PY_35:
-        def __await__(self):
-            return (yield from self.__iter__())
+    def __await__(self):
+        return self._iter().__await__()
 
     def _raise_allowed_methods(self):
         allowed_methods = {
@@ -702,11 +730,6 @@ class RoutesView(Sized, Iterable, Container):
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
-    DYN = re.compile(r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*)\}')
-    DYN_WITH_RE = re.compile(
-        r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
-    GOOD = r'[^{}/]+'
-    ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
     NAME_SPLIT_RE = re.compile(r'[.:-]')
 
     def __init__(self):
@@ -714,13 +737,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._resources = []
         self._named_resources = {}
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         method = request._method
         allowed_methods = set()
 
         for resource in self._resources:
-            match_dict, allowed = yield from resource.resolve(request)
+            match_dict, allowed = await resource.resolve(request)
             if match_dict is not None:
                 return match_dict
             else:
@@ -781,40 +803,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_resource(self, path, *, name=None):
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
-        if not ('{' in path or '}' in path or self.ROUTE_RE.search(path)):
+        if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
             url = URL(path)
             resource = PlainResource(url.raw_path, name=name)
             self.register_resource(resource)
             return resource
-
-        pattern = ''
-        formatter = ''
-        for part in self.ROUTE_RE.split(path):
-            match = self.DYN.fullmatch(part)
-            if match:
-                pattern += '(?P<{}>{})'.format(match.group('var'), self.GOOD)
-                formatter += '{' + match.group('var') + '}'
-                continue
-
-            match = self.DYN_WITH_RE.fullmatch(part)
-            if match:
-                pattern += '(?P<{var}>{re})'.format(**match.groupdict())
-                formatter += '{' + match.group('var') + '}'
-                continue
-
-            if '{' in part or '}' in part:
-                raise ValueError("Invalid path '{}'['{}']".format(path, part))
-
-            path = URL(part).raw_path
-            formatter += path
-            pattern += re.escape(path)
-
-        try:
-            compiled = re.compile(pattern)
-        except re.error as exc:
-            raise ValueError(
-                "Bad pattern '{}': {}".format(pattern, exc)) from None
-        resource = DynamicResource(compiled, formatter, name=name)
+        resource = DynamicResource(path, name=name)
         self.register_resource(resource)
         return resource
 
@@ -825,8 +819,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler)
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256*1024, response_factory=StreamResponse,
-                   show_index=False, follow_symlinks=False):
+                   chunk_size=256 * 1024,
+                   show_index=False, follow_symlinks=False,
+                   append_version=False):
         """Add static files view.
 
         prefix - url prefix
@@ -840,9 +835,9 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   name=name,
                                   expect_handler=expect_handler,
                                   chunk_size=chunk_size,
-                                  response_factory=response_factory,
                                   show_index=show_index,
-                                  follow_symlinks=follow_symlinks)
+                                  follow_symlinks=follow_symlinks,
+                                  append_version=append_version)
         self.register_resource(resource)
         return resource
 
@@ -894,3 +889,86 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         super().freeze()
         for resource in self._resources:
             resource.freeze()
+
+    def add_routes(self, routes):
+        """Append routes to route table.
+
+        Parameter should be a sequence of RouteDef objects.
+        """
+        # TODO: add_table maybe?
+        for route in routes:
+            route.register(self)
+
+
+def route(method, path, handler, **kwargs):
+    return RouteDef(method, path, handler, kwargs)
+
+
+def head(path, handler, **kwargs):
+    return route(hdrs.METH_HEAD, path, handler, **kwargs)
+
+
+def get(path, handler, *, name=None, allow_head=True, **kwargs):
+    return route(hdrs.METH_GET, path, handler, name=name,
+                 allow_head=allow_head, **kwargs)
+
+
+def post(path, handler, **kwargs):
+    return route(hdrs.METH_POST, path, handler, **kwargs)
+
+
+def put(path, handler, **kwargs):
+    return route(hdrs.METH_PUT, path, handler, **kwargs)
+
+
+def patch(path, handler, **kwargs):
+    return route(hdrs.METH_PATCH, path, handler, **kwargs)
+
+
+def delete(path, handler, **kwargs):
+    return route(hdrs.METH_DELETE, path, handler, **kwargs)
+
+
+class RouteTableDef(Sequence):
+    """Route definition table"""
+    def __init__(self):
+        self._items = []
+
+    def __repr__(self):
+        return "<RouteTableDef count={}>".format(len(self._items))
+
+    def __getitem__(self, index):
+        return self._items[index]
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def __len__(self):
+        return len(self._items)
+
+    def __contains__(self, item):
+        return item in self._items
+
+    def route(self, method, path, **kwargs):
+        def inner(handler):
+            self._items.append(RouteDef(method, path, handler, kwargs))
+            return handler
+        return inner
+
+    def head(self, path, **kwargs):
+        return self.route(hdrs.METH_HEAD, path, **kwargs)
+
+    def get(self, path, **kwargs):
+        return self.route(hdrs.METH_GET, path, **kwargs)
+
+    def post(self, path, **kwargs):
+        return self.route(hdrs.METH_POST, path, **kwargs)
+
+    def put(self, path, **kwargs):
+        return self.route(hdrs.METH_PUT, path, **kwargs)
+
+    def patch(self, path, **kwargs):
+        return self.route(hdrs.METH_PATCH, path, **kwargs)
+
+    def delete(self, path, **kwargs):
+        return self.route(hdrs.METH_DELETE, path, **kwargs)

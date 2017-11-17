@@ -42,6 +42,16 @@ skip_if_no_unix_socks = pytest.mark.skipif(
 )
 del _has_unix_domain_socks, _abstract_path_failed
 
+HAS_IPV6 = socket.has_ipv6
+if HAS_IPV6:
+    # The socket.has_ipv6 flag may be True if Python was built with IPv6
+    # support, but the target system still may not have it.
+    # So let's ensure that we really have IPv6 support.
+    try:
+        socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    except OSError:
+        HAS_IPV6 = False
+
 
 # tokio event loop does not allow to override attributes
 def skip_if_no_dict(loop):
@@ -232,7 +242,7 @@ def test_run_app_mixed_bindings(mocker, run_app_kwargs, expected_server_calls,
     loop = mocker.MagicMock()
     mocker.patch('asyncio.gather')
 
-    web.run_app(app, loop=loop, print=lambda *args: None, **run_app_kwargs)
+    web.run_app(app, loop=loop, print=None, **run_app_kwargs)
 
     assert loop.create_unix_server.mock_calls == expected_unix_server_calls
     assert loop.create_server.mock_calls == expected_server_calls
@@ -279,7 +289,7 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     skip_if_no_dict(loop)
 
     port = unused_port()
-    host = 'localhost'
+    host = '127.0.0.1'
 
     mocker.spy(loop, 'create_server')
 
@@ -467,6 +477,31 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
         )
         app.startup.assert_called_once_with()
         assert "http://0.0.0.0:{}".format(port) in printer.call_args[0][0]
+
+
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
+def test_run_app_preexisting_inet6_socket(loop, mocker):
+    skip_if_no_dict(loop)
+
+    mocker.spy(loop, 'create_server')
+
+    app = web.Application()
+    mocker.spy(app, 'startup')
+
+    sock = socket.socket(socket.AF_INET6)
+    with contextlib.closing(sock):
+        sock.bind(('::', 0))
+        port = sock.getsockname()[1]
+
+        printer = mock.Mock(wraps=stopper(loop))
+        web.run_app(app, loop=loop, sock=sock, print=printer)
+
+        assert not loop.is_closed()
+        loop.create_server.assert_called_with(
+            mock.ANY, sock=sock, backlog=128, ssl=None
+        )
+        app.startup.assert_called_once_with()
+        assert "http://:::{}".format(port) in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks

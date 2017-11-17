@@ -17,6 +17,13 @@ from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
 
 
+try:
+    import brotli
+    HAS_BROTLI = True
+except ImportError:  # pragma: no cover
+    HAS_BROTLI = False
+
+
 __all__ = (
     'HttpParser', 'HttpRequestParser', 'HttpResponseParser',
     'RawRequestMessage', 'RawResponseMessage')
@@ -59,7 +66,8 @@ class HttpParser:
                  max_line_size=8190, max_headers=32768, max_field_size=8190,
                  timer=None, code=None, method=None, readall=False,
                  payload_exception=None,
-                 response_with_body=True, read_until_eof=False):
+                 response_with_body=True, read_until_eof=False,
+                 auto_decompress=True):
         self.protocol = protocol
         self.loop = loop
         self.max_line_size = max_line_size
@@ -78,6 +86,7 @@ class HttpParser:
         self._upgraded = False
         self._payload = None
         self._payload_parser = None
+        self._auto_decompress = auto_decompress
 
     def feed_eof(self):
         if self._payload_parser is not None:
@@ -93,7 +102,7 @@ class HttpParser:
                     self._lines.append('')
                 try:
                     return self.parse_message(self._lines)
-                except:
+                except Exception:
                     return None
 
     def feed_data(self, data,
@@ -162,7 +171,8 @@ class HttpParser:
                                 chunked=msg.chunked, method=method,
                                 compression=msg.compression,
                                 code=self.code, readall=self.readall,
-                                response_with_body=self.response_with_body)
+                                response_with_body=self.response_with_body,
+                                auto_decompress=self._auto_decompress)
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
                         elif method == METH_CONNECT:
@@ -171,7 +181,8 @@ class HttpParser:
                             self._upgraded = True
                             self._payload_parser = HttpPayloadParser(
                                 payload, method=msg.method,
-                                compression=msg.compression, readall=True)
+                                compression=msg.compression, readall=True,
+                                auto_decompress=self._auto_decompress)
                         else:
                             if (getattr(msg, 'code', 100) >= 199 and
                                     length is None and self.read_until_eof):
@@ -182,7 +193,8 @@ class HttpParser:
                                     chunked=msg.chunked, method=method,
                                     compression=msg.compression,
                                     code=self.code, readall=True,
-                                    response_with_body=self.response_with_body)
+                                    response_with_body=self.response_with_body,
+                                    auto_decompress=self._auto_decompress)
                                 if not payload_parser.done:
                                     self._payload_parser = payload_parser
                             else:
@@ -319,7 +331,7 @@ class HttpParser:
         enc = headers.get(hdrs.CONTENT_ENCODING)
         if enc:
             enc = enc.lower()
-            if enc in ('gzip', 'deflate'):
+            if enc in ('gzip', 'deflate', 'br'):
                 encoding = enc
 
         # chunking
@@ -360,7 +372,7 @@ class HttpRequestParserPy(HttpParser):
                 version = HttpVersion(int(n1), int(n2))
             else:
                 raise BadStatusLine(version)
-        except:
+        except Exception:
             raise BadStatusLine(version)
 
         # read headers
@@ -432,7 +444,7 @@ class HttpPayloadParser:
     def __init__(self, payload,
                  length=None, chunked=False, compression=None,
                  code=None, method=None,
-                 readall=False, response_with_body=True):
+                 readall=False, response_with_body=True, auto_decompress=True):
         self.payload = payload
 
         self._length = 0
@@ -440,10 +452,11 @@ class HttpPayloadParser:
         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
         self._chunk_size = 0
         self._chunk_tail = b''
+        self._auto_decompress = auto_decompress
         self.done = False
 
         # payload decompression wrapper
-        if (response_with_body and compression):
+        if response_with_body and compression and self._auto_decompress:
             payload = DeflateBuffer(payload, compression)
 
         # payload parser
@@ -532,6 +545,7 @@ class HttpPayloadParser:
                         else:
                             self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
+                            self.payload.begin_http_chunk_receiving()
                     else:
                         self._chunk_tail = chunk
                         return False, None
@@ -541,11 +555,8 @@ class HttpPayloadParser:
                     required = self._chunk_size
                     chunk_len = len(chunk)
 
-                    if required >= chunk_len:
+                    if required > chunk_len:
                         self._chunk_size = required - chunk_len
-                        if self._chunk_size == 0:
-                            self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
-
                         self.payload.feed_data(chunk, chunk_len)
                         return False, None
                     else:
@@ -553,6 +564,7 @@ class HttpPayloadParser:
                         self.payload.feed_data(chunk[:required], required)
                         chunk = chunk[required:]
                         self._chunk = ChunkState.PARSE_CHUNKED_CHUNK_EOF
+                        self.payload.end_http_chunk_receiving()
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
@@ -600,10 +612,16 @@ class DeflateBuffer:
         self.encoding = encoding
         self._started_decoding = False
 
-        zlib_mode = (16 + zlib.MAX_WBITS
-                     if encoding == 'gzip' else -zlib.MAX_WBITS)
-
-        self.zlib = zlib.decompressobj(wbits=zlib_mode)
+        if encoding == 'br':
+            if not HAS_BROTLI:  # pragma: no cover
+                raise ContentEncodingError(
+                    'Can not decode content-encoding: brotli (br). '
+                    'Please install `brotlipy`')
+            self.decompressor = brotli.Decompressor()
+        else:
+            zlib_mode = (16 + zlib.MAX_WBITS
+                         if encoding == 'gzip' else -zlib.MAX_WBITS)
+            self.decompressor = zlib.decompressobj(wbits=zlib_mode)
 
     def set_exception(self, exc):
         self.out.set_exception(exc)
@@ -611,12 +629,12 @@ class DeflateBuffer:
     def feed_data(self, chunk, size):
         self.size += size
         try:
-            chunk = self.zlib.decompress(chunk)
+            chunk = self.decompressor.decompress(chunk)
         except Exception:
             if not self._started_decoding and self.encoding == 'deflate':
-                self.zlib = zlib.decompressobj()
+                self.decompressor = zlib.decompressobj()
                 try:
-                    chunk = self.zlib.decompress(chunk)
+                    chunk = self.decompressor.decompress(chunk)
                 except Exception:
                     raise ContentEncodingError(
                         'Can not decode content-encoding: %s' % self.encoding)
@@ -629,14 +647,20 @@ class DeflateBuffer:
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self):
-        chunk = self.zlib.flush()
+        chunk = self.decompressor.flush()
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if not self.zlib.eof:
+            if self.encoding != 'br' and not self.decompressor.eof:
                 raise ContentEncodingError('deflate')
 
         self.out.feed_eof()
+
+    def begin_http_chunk_receiving(self):
+        self.out.begin_http_chunk_receiving()
+
+    def end_http_chunk_receiving(self):
+        self.out.end_http_chunk_receiving()
 
 
 HttpRequestParser = HttpRequestParserPy

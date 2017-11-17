@@ -9,6 +9,7 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
 from setuptools import Extension, setup
 from setuptools.command.test import test as TestCommand
 
+
 try:
     from Cython.Build import cythonize
     USE_CYTHON = True
@@ -17,10 +18,13 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
+
 extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
               Extension('aiohttp._http_parser',
                         ['aiohttp/_http_parser' + ext,
-                         'vendor/http-parser/http_parser.c'],),
+                         'vendor/http-parser/http_parser.c'],
+                        define_macros=[('HTTP_PARSER_STRICT', 0)],
+                        ),
               Extension('aiohttp._frozenlist',
                         ['aiohttp/_frozenlist' + ext])]
 
@@ -89,7 +93,6 @@ args = dict(
         'Intended Audience :: Developers',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Development Status :: 5 - Production/Stable',
@@ -107,7 +110,7 @@ args = dict(
     url='https://github.com/aio-libs/aiohttp/',
     license='Apache 2',
     packages=['aiohttp'],
-    python_requires='>=3.4.2',
+    python_requires='>=3.5.0',
     install_requires=install_requires,
     tests_require=tests_require,
     include_package_data=True,

@@ -66,3 +66,19 @@ def test_send_text_masked(stream, writer):
                              random=random.Random(123))
     writer.send(b'text')
     stream.transport.write.assert_called_with(b'\x81\x84\rg\xb3fy\x02\xcb\x12')
+
+
+def test_send_compress_text(stream, writer):
+    writer = WebSocketWriter(stream, compress=15)
+    writer.send(b'text')
+    stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')
+    writer.send(b'text')
+    stream.transport.write.assert_called_with(b'\xc1\x05*\x01b\x00\x00')
+
+
+def test_send_compress_text_notakeover(stream, writer):
+    writer = WebSocketWriter(stream, compress=15, notakeover=True)
+    writer.send(b'text')
+    stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')
+    writer.send(b'text')
+    stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')

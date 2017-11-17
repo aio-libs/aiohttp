@@ -3,8 +3,9 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import helpers, log, web
-from aiohttp.abc import AbstractRouter
+from aiohttp import log, web
+from aiohttp.abc import AbstractAccessLogger, AbstractRouter
+from aiohttp.test_utils import make_mocked_coro
 
 
 def test_app_ctor(loop):
@@ -46,17 +47,6 @@ def test_set_loop_with_different_loops(loop):
         app._set_loop(loop=object())
 
 
-def test_on_loop_available(loop):
-    app = web.Application()
-
-    cb = mock.Mock()
-    with pytest.warns(DeprecationWarning):
-        app.on_loop_available.append(cb)
-
-    app._set_loop(loop)
-    cb.assert_called_with(app)
-
-
 @pytest.mark.parametrize('debug', [True, False])
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(debug=debug)
@@ -65,6 +55,7 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
+                           access_log_class=mock.ANY,
                            loop=loop,
                            debug=debug)
 
@@ -76,33 +67,56 @@ def test_app_make_handler_args(loop, mocker):
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
+                           access_log_class=mock.ANY,
                            loop=loop, debug=mock.ANY, test=True)
 
 
-@asyncio.coroutine
-def test_app_register_on_finish():
+def test_app_make_handler_access_log_class(loop, mocker):
+    class Logger:
+        pass
+
     app = web.Application()
-    cb1 = mock.Mock()
-    cb2 = mock.Mock()
+
+    with pytest.raises(TypeError):
+        app.make_handler(access_log_class=Logger, loop=loop)
+
+    class Logger(AbstractAccessLogger):
+
+        def log(self, request, response, time):
+            self.logger.info('msg')
+
+    srv = mocker.patch('aiohttp.web.Server')
+
+    app.make_handler(access_log_class=Logger, loop=loop)
+    srv.assert_called_with(app._handle,
+                           access_log_class=Logger,
+                           request_factory=app._make_request,
+                           loop=loop, debug=mock.ANY)
+
+
+async def test_app_register_on_finish():
+    app = web.Application()
+    cb1 = make_mocked_coro(None)
+    cb2 = make_mocked_coro(None)
     app.on_cleanup.append(cb1)
     app.on_cleanup.append(cb2)
-    yield from app.cleanup()
+    app.freeze()
+    await app.cleanup()
     cb1.assert_called_once_with(app)
     cb2.assert_called_once_with(app)
 
 
-@asyncio.coroutine
-def test_app_register_coro(loop):
+async def test_app_register_coro(loop):
     app = web.Application()
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
 
-    @asyncio.coroutine
-    def cb(app):
-        yield from asyncio.sleep(0.001, loop=loop)
+    async def cb(app):
+        await asyncio.sleep(0.001, loop=loop)
         fut.set_result(123)
 
     app.on_cleanup.append(cb)
-    yield from app.cleanup()
+    app.freeze()
+    await app.cleanup()
     assert fut.done()
     assert 123 == fut.result()
 
@@ -120,64 +134,51 @@ def test_logging():
     assert app.logger is logger
 
 
-@asyncio.coroutine
-def test_on_shutdown():
+async def test_on_shutdown():
     app = web.Application()
     called = False
 
-    @asyncio.coroutine
-    def on_shutdown(app_param):
+    async def on_shutdown(app_param):
         nonlocal called
         assert app is app_param
         called = True
 
     app.on_shutdown.append(on_shutdown)
-
-    yield from app.shutdown()
+    app.freeze()
+    await app.shutdown()
     assert called
 
 
-@asyncio.coroutine
-def test_on_startup(loop):
+async def test_on_startup(loop):
     app = web.Application()
     app._set_loop(loop)
 
-    blocking_called = False
     long_running1_called = False
     long_running2_called = False
     all_long_running_called = False
 
-    def on_startup_blocking(app_param):
-        nonlocal blocking_called
-        assert app is app_param
-        blocking_called = True
-
-    @asyncio.coroutine
-    def long_running1(app_param):
+    async def long_running1(app_param):
         nonlocal long_running1_called
         assert app is app_param
         long_running1_called = True
 
-    @asyncio.coroutine
-    def long_running2(app_param):
+    async def long_running2(app_param):
         nonlocal long_running2_called
         assert app is app_param
         long_running2_called = True
 
-    @asyncio.coroutine
-    def on_startup_all_long_running(app_param):
+    async def on_startup_all_long_running(app_param):
         nonlocal all_long_running_called
         assert app is app_param
         all_long_running_called = True
-        return (yield from asyncio.gather(long_running1(app_param),
-                                          long_running2(app_param),
-                                          loop=app_param.loop))
+        return await asyncio.gather(long_running1(app_param),
+                                    long_running2(app_param),
+                                    loop=app_param.loop)
 
-    app.on_startup.append(on_startup_blocking)
     app.on_startup.append(on_startup_all_long_running)
+    app.freeze()
 
-    yield from app.startup()
-    assert blocking_called
+    await app.startup()
     assert long_running1_called
     assert long_running2_called
     assert all_long_running_called
@@ -201,27 +202,6 @@ def test_app_freeze():
 
     app.freeze()
     assert len(subapp.freeze.call_args_list) == 1
-
-
-def test_secure_proxy_ssl_header_default():
-    app = web.Application()
-    assert app._secure_proxy_ssl_header is None
-
-
-def test_secure_proxy_ssl_header_non_default(loop):
-    app = web.Application()
-    hdr = ('X-Forwarded-Proto', 'https')
-    app.make_handler(secure_proxy_ssl_header=hdr, loop=loop)
-    assert app._secure_proxy_ssl_header is hdr
-
-
-def test_secure_proxy_ssl_header_init(loop):
-    hdr = ('X-Forwarded-Proto', 'https')
-    with pytest.warns(DeprecationWarning):
-        app = web.Application(secure_proxy_ssl_header=hdr)
-    assert app._secure_proxy_ssl_header is hdr
-    app.make_handler(loop=loop)
-    assert app._secure_proxy_ssl_header is hdr
 
 
 def test_equality():

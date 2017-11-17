@@ -8,7 +8,7 @@ Testing
 Testing aiohttp web servers
 ---------------------------
 
-aiohttp provides plugin for pytest_ making writing web server tests
+aiohttp provides plugin for :mod:`pytest` making writing web server tests
 extremely easy, it also provides :ref:`test framework agnostic
 utilities <aiohttp-testing-framework-agnostic-utilities>` for testing
 with other frameworks such as :ref:`unittest
@@ -243,6 +243,12 @@ functionality, the AioHTTPTestCase is provided::
 
        an aiohttp test client, :class:`TestClient` instance.
 
+    .. attribute:: server
+
+       an aiohttp test server, :class:`TestServer` instance.
+
+       .. versionadded:: 2.3
+
     .. attribute:: loop
 
        The event loop in which the application and server are running.
@@ -252,6 +258,24 @@ functionality, the AioHTTPTestCase is provided::
        The application returned by :meth:`get_app`
        (:class:`aiohttp.web.Application` instance).
 
+    .. comethod:: get_client()
+
+       This async method can be overridden to return the :class:`TestClient`
+       object used in the test.
+
+       :return: :class:`TestClient` instance.
+
+       .. versionadded:: 2.3
+
+    .. comethod:: get_server()
+
+       This async method can be overridden to return the :class:`TestServer`
+       object used in the test.
+
+       :return: :class:`TestServer` instance.
+
+       .. versionadded:: 2.3
+
     .. comethod:: get_application()
 
        This async method should be overridden
@@ -259,6 +283,20 @@ functionality, the AioHTTPTestCase is provided::
        object to test.
 
        :return: :class:`aiohttp.web.Application` instance.
+
+    .. comethod:: setUpAsync()
+
+       This async method do nothing by default and can be overridden to execute
+       asynchronous code during the ``setUp`` stage of the ``TestCase``.
+
+       .. versionadded:: 2.3
+
+    .. comethod:: tearDownAsync()
+
+       This async method do nothing by default and can be overridden to execute
+       asynchronous code during the ``tearDown`` stage of the ``TestCase``.
+
+       .. versionadded:: 2.3
 
     .. method:: setUp()
 
@@ -331,12 +369,13 @@ conditions that hard to reproduce on real server::
                                   version=HttpVersion(1, 1), \
                                   closing=False, \
                                   app=None, \
+                                  match_info=sentinel, \
                                   reader=sentinel, \
                                   writer=sentinel, \
                                   transport=sentinel, \
                                   payload=sentinel, \
                                   sslcontext=None, \
-                                  secure_proxy_ssl_header=None)
+                                  loop=...)
 
    Creates mocked web.Request testing purposes.
 
@@ -352,6 +391,9 @@ conditions that hard to reproduce on real server::
    :param headers: mapping containing the headers. Can be anything accepted
        by the multidict.CIMultiDict constructor.
    :type headers: dict, multidict.CIMultiDict, list of pairs
+
+   :param match_info: mapping containing the info to match with url parameters.
+   :type match_info: dict
 
    :param version: namedtuple with encoded HTTP version
    :type version: aiohttp.protocol.HttpVersion
@@ -375,12 +417,13 @@ conditions that hard to reproduce on real server::
    :param sslcontext: ssl.SSLContext object, for HTTPS connection
    :type sslcontext: ssl.SSLContext
 
-   :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
-       combination that signifies a request is secure.
-   :type secure_proxy_ssl_header: tuple
+   :param loop: An event loop instance, mocked loop by default.
+   :type loop: :class:`asyncio.AbstractEventLoop`
 
    :return: :class:`aiohttp.web.Request` object.
 
+   .. versionadded:: 2.3
+      *match_info* parameter.
 
 .. _aiohttp-testing-writing-testable-services:
 

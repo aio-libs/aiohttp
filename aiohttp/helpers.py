@@ -6,45 +6,32 @@ import binascii
 import cgi
 import datetime
 import functools
+import inspect
 import os
 import re
-import sys
 import time
 import warnings
 import weakref
 from collections import namedtuple
+from collections.abc import Coroutine
+from contextlib import suppress
 from math import ceil
 from pathlib import Path
-from time import gmtime
 from urllib.parse import quote
+from urllib.request import getproxies
 
-from async_timeout import timeout
+import async_timeout
+from yarl import URL
 
 from . import hdrs
-from .abc import AbstractCookieJar
+from .abc import AbstractAccessLogger
+from .log import client_logger
 
 
-try:
-    from asyncio import ensure_future
-except ImportError:
-    ensure_future = asyncio.async
-
-PY_34 = sys.version_info < (3, 5)
-PY_35 = sys.version_info >= (3, 5)
-PY_352 = sys.version_info >= (3, 5, 2)
-
-if sys.version_info >= (3, 4, 3):
-    from http.cookies import SimpleCookie  # noqa
-else:
-    from .backport_cookies import SimpleCookie  # noqa
-
-
-__all__ = ('BasicAuth', 'create_future', 'parse_mimetype',
-           'Timeout', 'ensure_future', 'noop', 'DummyCookieJar')
+__all__ = ('BasicAuth',)
 
 
 sentinel = object()
-Timeout = timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
 
 CHAR = set(chr(i) for i in range(0, 128))
@@ -54,22 +41,21 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-if PY_35:
-    from collections.abc import Coroutine
-    base = Coroutine
-else:
-    base = object
+class _BaseCoroMixin(Coroutine):
 
-
-class _BaseCoroMixin(base):
-
-    __slots__ = ('_coro', 'send', 'throw', 'close')
+    __slots__ = ('_coro',)
 
     def __init__(self, coro):
         self._coro = coro
-        self.send = coro.send
-        self.throw = coro.throw
-        self.close = coro.close
+
+    def send(self, arg):
+        return self._coro.send(arg)
+
+    def throw(self, arg):
+        return self._coro.throw(arg)
+
+    def close(self):
+        return self._coro.close()
 
     @property
     def gi_frame(self):
@@ -91,21 +77,17 @@ class _BaseCoroMixin(base):
         ret = yield from self._coro
         return ret
 
-    if PY_35:
-        def __await__(self):
-            ret = yield from self._coro
-            return ret
-
-
-if not PY_35:
-    try:
-        from asyncio import coroutines
-        coroutines._COROUTINE_TYPES += (_BaseCoroMixin,)
-    except:  # pragma: no cover
-        pass  # Python 3.4.2 and 3.4.3 has no coroutines._COROUTINE_TYPES
+    def __await__(self):
+        ret = yield from self._coro
+        return ret
 
 
 class _CoroGuard(_BaseCoroMixin):
+    """Only to be used with func:`deprecated_noop`.
+
+    Otherwise the stack information in the raised warning doesn't line up with
+    the user's code anymore.
+    """
     __slots__ = ('_msg', '_awaited')
 
     def __init__(self, coro, msg):
@@ -113,20 +95,23 @@ class _CoroGuard(_BaseCoroMixin):
         self._msg = msg
         self._awaited = False
 
+    def send(self, arg):
+        self._awaited = True
+        return self._coro.send(arg)
+
     @asyncio.coroutine
     def __iter__(self):
         self._awaited = True
         return super().__iter__()
 
-    if PY_35:
-        def __await__(self):
-            self._awaited = True
-            return super().__await__()
+    def __await__(self):
+        self._awaited = True
+        return super().__await__()
 
     def __del__(self):
         self._coro = None
         if not self._awaited:
-            warnings.warn(self._msg, DeprecationWarning)
+            warnings.warn(self._msg, DeprecationWarning, stacklevel=2)
 
 
 coroutines = asyncio.coroutines
@@ -146,20 +131,8 @@ def deprecated_noop(message):
 coroutines._DEBUG = old_debug
 
 
-try:
-    from asyncio import isfuture
-except ImportError:
-    def isfuture(fut):
-        return isinstance(fut, asyncio.Future)
-
-
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
-    """Http basic authentication helper.
-
-    :param str login: Login
-    :param str password: Password
-    :param str encoding: (optional) encoding ('latin1' by default)
-    """
+    """Http basic authentication helper."""
 
     def __new__(cls, login, password='', encoding='latin1'):
         if login is None:
@@ -176,8 +149,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
     @classmethod
     def decode(cls, auth_header, encoding='latin1'):
-        """Create a :class:`BasicAuth` object from an ``Authorization`` HTTP
-        header."""
+        """Create a BasicAuth object from an Authorization HTTP header."""
         split = auth_header.strip().split(' ')
         if len(split) == 2:
             if split[0].strip().lower() != 'basic':
@@ -195,20 +167,45 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
         return cls(username, password, encoding=encoding)
 
+    @classmethod
+    def from_url(cls, url, *, encoding='latin1'):
+        """Create BasicAuth from url."""
+        if not isinstance(url, URL):
+            raise TypeError("url should be yarl.URL instance")
+        if url.user is None:
+            return None
+        return cls(url.user, url.password or '', encoding=encoding)
+
     def encode(self):
         """Encode credentials."""
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
-if PY_352:
-    def create_future(loop):
-        return loop.create_future()
-else:
-    def create_future(loop):  # pragma: no cover
-        """Compatibility wrapper for the loop.create_future() call introduced in
-        3.5.2."""
-        return asyncio.Future(loop=loop)
+def strip_auth_from_url(url):
+    auth = BasicAuth.from_url(url)
+    if auth is None:
+        return url, None
+    else:
+        return url.with_user(None), auth
+
+
+ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
+
+
+def proxies_from_env():
+    proxy_urls = {k: URL(v) for k, v in getproxies().items()
+                  if k in ('http', 'https')}
+    stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
+    ret = {}
+    for proto, val in stripped.items():
+        proxy, auth = val
+        if proxy.scheme == 'https':
+            client_logger.warning(
+                "HTTPS proxies %s are not supported, ignoring", proxy)
+            continue
+        ret[proto] = ProxyInfo(proxy, auth)
+    return ret
 
 
 def current_task(loop=None):
@@ -223,22 +220,31 @@ def current_task(loop=None):
     return task
 
 
+def isasyncgenfunction(obj):
+    if hasattr(inspect, 'isasyncgenfunction'):
+        return inspect.isasyncgenfunction(obj)
+    return False
+
+
+MimeType = namedtuple('MimeType', 'type subtype suffix parameters')
+
+
 def parse_mimetype(mimetype):
     """Parses a MIME type into its components.
 
-    :param str mimetype: MIME type
+    mimetype is a MIME type string.
 
-    :returns: 4 element tuple for MIME type, subtype, suffix and parameters
-    :rtype: tuple
+    Returns a MimeType object.
 
     Example:
 
     >>> parse_mimetype('text/html; charset=utf-8')
-    ('text', 'html', '', {'charset': 'utf-8'})
+    MimeType(type='text', subtype='html', suffix='',
+             parameters={'charset': 'utf-8'})
 
     """
     if not mimetype:
-        return '', '', '', {}
+        return MimeType(type='', subtype='', suffix='', parameters={})
 
     parts = mimetype.split(';')
     params = []
@@ -257,12 +263,13 @@ def parse_mimetype(mimetype):
         if '/' in fulltype else (fulltype, '')
     stype, suffix = stype.split('+', 1) if '+' in stype else (stype, '')
 
-    return mtype, stype, suffix, params
+    return MimeType(type=mtype, subtype=stype, suffix=suffix,
+                    parameters=params)
 
 
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
-    if name and name[0] != '<' and name[-1] != '>':
+    if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
         return Path(name).name
     return default
 
@@ -270,9 +277,10 @@ def guess_filename(obj, default=None):
 def content_disposition_header(disptype, quote_fields=True, **params):
     """Sets ``Content-Disposition`` header.
 
-    :param str disptype: Disposition type: inline, attachment, form-data.
-                         Should be valid extension token (see RFC 2183)
-    :param dict params: Disposition params
+    disptype is a disposition type: inline, attachment, form-data.
+    Should be valid extension token (see RFC 2183)
+
+    params is a dict with disposition params.
     """
     if not disptype or not (TOKEN > set(disptype)):
         raise ValueError('bad content disposition type {!r}'
@@ -294,14 +302,14 @@ def content_disposition_header(disptype, quote_fields=True, **params):
     return value
 
 
-class AccessLogger:
+class AccessLogger(AbstractAccessLogger):
     """Helper object to log access.
 
     Usage:
         log = logging.getLogger("spam")
         log_format = "%a %{User-Agent}i"
         access_logger = AccessLogger(log, log_format)
-        access_logger.log(message, environ, response, transport, time)
+        access_logger.log(request, response, time)
 
     Format:
         %%  The percent sign
@@ -332,10 +340,9 @@ class AccessLogger:
         'D': 'request_time_micro',
         'i': 'request_header',
         'o': 'response_header',
-        'e': 'environ'
     }
 
-    LOG_FORMAT = '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+    LOG_FORMAT = '%a %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
@@ -345,11 +352,11 @@ class AccessLogger:
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
 
-        :param logger: logger object to be used for logging
-        :param log_format: apache compatible log format
+        logger is a logger object to be used for logging.
+        log_format is an string with apache compatible log format description.
 
         """
-        self.logger = logger
+        super().__init__(logger, log_format=log_format)
 
         _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
@@ -379,10 +386,6 @@ class AccessLogger:
         also receive key name (by functools.partial)
 
         """
-
-        log_format = log_format.replace("%l", "-")
-        log_format = log_format.replace("%u", "-")
-
         # list of (key, method) tuples, we don't use an OrderedDict as users
         # can repeat the same key more than once
         methods = list()
@@ -403,87 +406,67 @@ class AccessLogger:
         return log_format, methods
 
     @staticmethod
-    def _format_e(key, args):
-        return (args[1] or {}).get(key, '-')
-
-    @staticmethod
-    def _format_i(key, args):
-        if not args[0]:
+    def _format_i(key, request, response, time):
+        if request is None:
             return '(no headers)'
 
         # suboptimal, make istr(key) once
-        return args[0].headers.get(key, '-')
+        return request.headers.get(key, '-')
 
     @staticmethod
-    def _format_o(key, args):
+    def _format_o(key, request, response, time):
         # suboptimal, make istr(key) once
-        return args[2].headers.get(key, '-')
+        return response.headers.get(key, '-')
 
     @staticmethod
-    def _format_a(args):
-        if args[3] is None:
+    def _format_a(request, response, time):
+        if request is None:
             return '-'
-        peername = args[3].get_extra_info('peername')
-        if isinstance(peername, (list, tuple)):
-            return peername[0]
-        else:
-            return peername
+        ip = request.remote
+        return ip if ip is not None else '-'
 
     @staticmethod
-    def _format_t(args):
+    def _format_t(request, response, time):
         return datetime.datetime.utcnow().strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
-    def _format_P(args):
+    def _format_P(request, response, time):
         return "<%s>" % os.getpid()
 
     @staticmethod
-    def _format_r(args):
-        msg = args[0]
-        if not msg:
+    def _format_r(request, response, time):
+        if request is None:
             return '-'
-        return '%s %s HTTP/%s.%s' % tuple((msg.method,
-                                           msg.path) + msg.version)
+        return '%s %s HTTP/%s.%s' % tuple((request.method,
+                                           request.path_qs) + request.version)
 
     @staticmethod
-    def _format_s(args):
-        return args[2].status
+    def _format_s(request, response, time):
+        return response.status
 
     @staticmethod
-    def _format_b(args):
-        return args[2].body_length
+    def _format_b(request, response, time):
+        return response.body_length
 
     @staticmethod
-    def _format_O(args):
-        return args[2].body_length
+    def _format_T(request, response, time):
+        return round(time)
 
     @staticmethod
-    def _format_T(args):
-        return round(args[4])
+    def _format_Tf(request, response, time):
+        return '%06f' % time
 
     @staticmethod
-    def _format_Tf(args):
-        return '%06f' % args[4]
+    def _format_D(request, response, time):
+        return round(time * 1000000)
 
-    @staticmethod
-    def _format_D(args):
-        return round(args[4] * 1000000)
+    def _format_line(self, request, response, time):
+        return ((key, method(request, response, time))
+                for key, method in self._methods)
 
-    def _format_line(self, args):
-        return ((key, method(args)) for key, method in self._methods)
-
-    def log(self, message, environ, response, transport, time):
-        """Log access.
-
-        :param message: Request object. May be None.
-        :param environ: Environment dict. May be None.
-        :param response: Response object.
-        :param transport: Tansport object. May be None
-        :param float time: Time taken to serve the request.
-        """
+    def log(self, request, response, time):
         try:
-            fmt_info = self._format_line(
-                [message, environ, response, transport, time])
+            fmt_info = self._format_line(request, response, time)
 
             values = list()
             extra = dict()
@@ -513,7 +496,7 @@ class reify:
         self.wrapped = wrapped
         try:
             self.__doc__ = wrapped.__doc__
-        except:  # pragma: no cover
+        except Exception:  # pragma: no cover
             self.__doc__ = ""
         self.name = wrapped.__name__
 
@@ -569,77 +552,38 @@ def is_ip_address(host):
                         .format(host, type(host)))
 
 
-class TimeService:
+_cached_current_datetime = None
+_cached_formatted_datetime = None
 
-    def __init__(self, loop, *, interval=1.0):
-        self._loop = loop
-        self._interval = interval
-        self._time = time.time()
-        self._loop_time = loop.time()
-        self._count = 0
-        self._strtime = None
-        self._cb = loop.call_at(self._loop_time + self._interval, self._on_cb)
 
-    def close(self):
-        if self._cb:
-            self._cb.cancel()
+def rfc822_formatted_time():
+    global _cached_current_datetime
+    global _cached_formatted_datetime
 
-        self._cb = None
-        self._loop = None
-
-    def _on_cb(self, reset_count=10*60):
-        if self._count >= reset_count:
-            # reset timer every 10 minutes
-            self._count = 0
-            self._time = time.time()
-        else:
-            self._time += self._interval
-
-        self._strtime = None
-        self._loop_time = ceil(self._loop.time())
-        self._cb = self._loop.call_at(
-            self._loop_time + self._interval, self._on_cb)
-
-    def _format_date_time(self):
+    now = int(time.time())
+    if now != _cached_current_datetime:
         # Weekday and month names for HTTP date/time formatting;
         # always English!
-        # Tuples are contants stored in codeobject!
+        # Tuples are constants stored in codeobject!
         _weekdayname = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-        _monthname = (None,  # Dummy so we can use 1-based month numbers
+        _monthname = ("",  # Dummy so we can use 1-based month numbers
                       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-        year, month, day, hh, mm, ss, wd, y, z = gmtime(self._time)
-        return "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
+        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(now)
+        _cached_formatted_datetime = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
             _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
         )
-
-    def time(self):
-        return self._time
-
-    def strtime(self):
-        s = self._strtime
-        if s is None:
-            self._strtime = s = self._format_date_time()
-        return self._strtime
-
-    @property
-    def loop_time(self):
-        return self._loop_time
-
-    @property
-    def interval(self):
-        return self._interval
+        _cached_current_datetime = now
+    return _cached_formatted_datetime
 
 
 def _weakref_handle(info):
     ref, name = info
     ob = ref()
     if ob is not None:
-        try:
+        with suppress(Exception):
             getattr(ob, name)()
-        except:
-            pass
 
 
 def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):
@@ -686,10 +630,8 @@ class TimeoutHandle:
 
     def __call__(self):
         for cb, args, kwargs in self._callbacks:
-            try:
+            with suppress(Exception):
                 cb(*args, **kwargs)
-            except:
-                pass
 
         self._callbacks.clear()
 
@@ -740,7 +682,7 @@ class TimerContext:
             self._cancelled = True
 
 
-class CeilTimeout(Timeout):
+class CeilTimeout(async_timeout.timeout):
 
     def __enter__(self):
         if self._timeout is not None:
@@ -787,35 +729,7 @@ class HeadersMixin:
     @property
     def content_length(self, *, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
         """The value of Content-Length HTTP header."""
-        l = self._headers.get(_CONTENT_LENGTH)
-        if l is None:
-            return None
-        else:
-            return int(l)
+        content_length = self._headers.get(_CONTENT_LENGTH)
 
-
-class DummyCookieJar(AbstractCookieJar):
-    """Implements a dummy cookie storage.
-
-    It can be used with the ClientSession when no cookie processing is needed.
-
-    """
-
-    def __init__(self, *, loop=None):
-        super().__init__(loop=loop)
-
-    def __iter__(self):
-        while False:
-            yield None
-
-    def __len__(self):
-        return 0
-
-    def clear(self):
-        pass
-
-    def update_cookies(self, cookies, response_url=None):
-        pass
-
-    def filter_cookies(self, request_url):
-        return None
+        if content_length:
+            return int(content_length)

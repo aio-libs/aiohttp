@@ -5,38 +5,38 @@ import asyncio
 import aiohttp
 
 
-def client(loop, url, name):
-    ws = yield from aiohttp.ws_connect(url + '/getCaseCount')
-    num_tests = int((yield from ws.receive()).data)
+async def client(loop, url, name):
+    ws = await aiohttp.ws_connect(url + '/getCaseCount')
+    num_tests = int((await ws.receive()).data)
     print('running %d cases' % num_tests)
-    yield from ws.close()
+    await ws.close()
 
     for i in range(1, num_tests + 1):
         print('running test case:', i)
         text_url = url + '/runCase?case=%d&agent=%s' % (i, name)
-        ws = yield from aiohttp.ws_connect(text_url)
+        ws = await aiohttp.ws_connect(text_url)
         while True:
-            msg = yield from ws.receive()
+            msg = await ws.receive()
 
             if msg.type == aiohttp.WSMsgType.text:
-                yield from ws.send_str(msg.data)
+                await ws.send_str(msg.data)
             elif msg.type == aiohttp.WSMsgType.binary:
-                yield from ws.send_bytes(msg.data)
+                await ws.send_bytes(msg.data)
             elif msg.type == aiohttp.WSMsgType.close:
-                yield from ws.close()
+                await ws.close()
                 break
             else:
                 break
 
     url = url + '/updateReports?agent=%s' % name
-    ws = yield from aiohttp.ws_connect(url)
-    yield from ws.close()
+    ws = await aiohttp.ws_connect(url)
+    await ws.close()
 
 
-def run(loop, url, name):
+async def run(loop, url, name):
     try:
-        yield from client(loop, url, name)
-    except:
+        await client(loop, url, name)
+    except Exception:
         import traceback
         traceback.print_exc()
 

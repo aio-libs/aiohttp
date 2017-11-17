@@ -4,13 +4,16 @@ import pickle
 import re
 from collections import defaultdict
 from collections.abc import Mapping
-from http.cookies import Morsel
+from http.cookies import Morsel, SimpleCookie
 from math import ceil
 
 from yarl import URL
 
 from .abc import AbstractCookieJar
-from .helpers import SimpleCookie, is_ip_address
+from .helpers import is_ip_address
+
+
+__all__ = ('CookieJar', 'DummyCookieJar')
 
 
 class CookieJar(AbstractCookieJar):
@@ -74,7 +77,7 @@ class CookieJar(AbstractCookieJar):
         cookies = self._cookies
         expirations = self._expirations
         for (domain, name), when in expirations.items():
-            if when < now:
+            if when <= now:
                 cookies[domain].pop(name, None)
                 to_del.append((domain, name))
                 self._host_only_cookies.discard((domain, name))
@@ -158,9 +161,7 @@ class CookieJar(AbstractCookieJar):
                     else:
                         cookie["expires"] = ""
 
-            # use dict method because SimpleCookie class modifies value
-            # before Python 3.4.3
-            dict.__setitem__(self._cookies[domain], name, cookie)
+            self._cookies[domain][name] = cookie
 
         self._do_expiration()
 
@@ -304,3 +305,30 @@ class CookieJar(AbstractCookieJar):
         return datetime.datetime(year, month, day,
                                  hour, minute, second,
                                  tzinfo=datetime.timezone.utc)
+
+
+class DummyCookieJar(AbstractCookieJar):
+    """Implements a dummy cookie storage.
+
+    It can be used with the ClientSession when no cookie processing is needed.
+
+    """
+
+    def __init__(self, *, loop=None):
+        super().__init__(loop=loop)
+
+    def __iter__(self):
+        while False:
+            yield None
+
+    def __len__(self):
+        return 0
+
+    def clear(self):
+        pass
+
+    def update_cookies(self, cookies, response_url=None):
+        pass
+
+    def filter_cookies(self, request_url):
+        return None
