@@ -16,6 +16,12 @@ from aiohttp import web
 from aiohttp.test_utils import loop_context
 
 
+class AsyncMock(mock.MagicMock):
+    "A Mock subclass with an async __call__."
+    async def __call__(self, *args, **kwargs):
+        return super().__call__(*args, **kwargs)
+
+
 # Test for features of OS' socket support
 _has_unix_domain_socks = hasattr(socket, 'AF_UNIX')
 if _has_unix_domain_socks:
@@ -109,7 +115,7 @@ def test_run_app_calls_on_pre_serve(loop):
     skip_if_no_dict(loop)
 
     app = web.Application()
-    handler = mock.Mock()
+    handler = AsyncMock()
     app.on_pre_serve.append(handler)
     web.run_app(app, loop=loop, print=stopper(loop))
     handler.assert_called()

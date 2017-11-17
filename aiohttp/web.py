@@ -257,7 +257,7 @@ class Application(MutableMapping):
 
         Should be called just before run_forever().
         """
-        yield from self.on_pre_serve.send(self)
+        await self.on_pre_serve.send(self)
 
     async def shutdown(self):
         """Causes on_shutdown signal
