@@ -230,3 +230,8 @@ def test_equality():
 
     assert app1 == app1
     assert app1 != app2
+
+
+def test_app_servers_is_initially_empty():
+    app = web.Application()
+    assert len(app.servers) == 0

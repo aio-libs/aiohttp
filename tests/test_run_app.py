@@ -95,6 +95,24 @@ def test_run_app_close_loop(loop, mocker):
     asyncio.set_event_loop(None)
 
 
+def test_run_app_calls_on_pre_serve(loop):
+    skip_if_no_dict(loop)
+
+    app = web.Application()
+    handler = mock.Mock()
+    app.on_pre_serve.append(handler)
+    web.run_app(app, loop=loop, print=stopper(loop))
+    handler.assert_called()
+
+
+def test_run_app_populates_servers(loop):
+    skip_if_no_dict(loop)
+
+    app = web.Application()
+    web.run_app(app, loop=loop, print=stopper(loop))
+    assert len(app.servers) > 0
+
+
 mock_unix_server_single = [
     mock.call(mock.ANY, '/tmp/testsock1.sock', ssl=None, backlog=128),
 ]
