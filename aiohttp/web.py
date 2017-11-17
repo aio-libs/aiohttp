@@ -1,8 +1,6 @@
 import asyncio
-import os
 import signal
 import socket
-import stat
 import sys
 import warnings
 from argparse import ArgumentParser
