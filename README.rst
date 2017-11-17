@@ -140,7 +140,7 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.4.2
+- Python >= 3.5.3
 - async-timeout_
 - chardet_
 - multidict_
