@@ -17,7 +17,7 @@ Changelog
 2.3.3 (2017-11-17)
 ==================
 
-- Having a `;` in Response content type doesn't assume it contains a charset
+- Having a `;` in Response content type does not assume it contains a charset
   anymore. (#2197)
 - Use `getattr(asyncio, 'async')` for keeping compatibility with Python 3.7.
   (#2476)
