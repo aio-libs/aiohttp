@@ -990,14 +990,7 @@ Middlewares
 :mod:`aiohttp.web` provides a powerful mechanism for customizing
 :ref:`request handlers<aiohttp-web-handler>` via *middlewares*.
 
-*Middlewares* are setup by providing a sequence of *middleware factories* to
-the keyword-only ``middlewares`` parameter when creating an
-:class:`Application`::
-
-   app = web.Application(middlewares=[middleware_factory_1,
-                                      middleware_factory_2])
-
-A *middleware* is just a coroutine that can modify either the request or
+A *middleware* is a coroutine that can modify either the request or
 response. For example, here's a simple *middleware* which appends
 ``' wink'`` to the response::
 
@@ -1013,6 +1006,12 @@ response. For example, here's a simple *middleware* which appends
 
 Every *middleware* should accept two parameters, a
 :class:`request <Request>` instance and a *handler*, and return the response.
+
+When creating an :class:`Application`, these *middlewares* are passed to
+the keyword-only ``middlewares`` parameter::
+
+   app = web.Application(middlewares=[middleware_1,
+                                      middleware_2])
 
 Internally, a single :ref:`request handler <aiohttp-web-handler>` is constructed
 by applying the middleware chain to the original handler in reverse order,
