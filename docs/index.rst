@@ -187,6 +187,7 @@ Table Of Contents
 
 .. toctree::
    :name: mastertoc
+   :maxdepth: 2
 
    client
    web
