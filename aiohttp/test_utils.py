@@ -15,7 +15,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import _RequestContextManager
+from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 
 from . import ClientSession, hdrs
 from .helpers import sentinel
@@ -278,13 +278,19 @@ class TestClient:
             self.request(hdrs.METH_DELETE, path, *args, **kwargs)
         )
 
-    async def ws_connect(self, path, *args, **kwargs):
+    def ws_connect(self, path, *args, **kwargs):
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
 
         """
-        ws = await self._session.ws_connect(
+        return _WSRequestContextManager(
+            self._ws_connect(path, *args, **kwargs)
+        )
+
+    @asyncio.coroutine
+    def _ws_connect(self, path, *args, **kwargs):
+        ws = yield from self._session.ws_connect(
             self.make_url(path), *args, **kwargs)
         self._websockets.append(ws)
         return ws
