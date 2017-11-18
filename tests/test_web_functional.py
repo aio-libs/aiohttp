@@ -1576,3 +1576,16 @@ async def test_iter_any(test_server, loop):
     async with aiohttp.ClientSession(loop=loop) as session:
         async with session.post(server.make_url('/'), data=data) as resp:
             assert resp.status == 200
+
+
+async def test_return_http_exception_deprecated(loop, test_client):
+
+    async def handler(request):
+        return web.HTTPForbidden()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await test_client(app)
+
+    with pytest.warns(DeprecationWarning):
+        await client.get('/')
