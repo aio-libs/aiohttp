@@ -66,7 +66,7 @@ __all__ = (
 # HTTP Exceptions
 ############################################################
 
-class HTTPException(Response, Exception):
+class HTTPException(Exception):
 
     # You should set in subclasses:
     # status = 200
@@ -74,14 +74,14 @@ class HTTPException(Response, Exception):
     status_code = None
     empty_body = False
 
-    def __init__(self, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
-        Response.__init__(self, status=self.status_code,
-                          headers=headers, reason=reason,
-                          body=body, text=text, content_type=content_type)
-        Exception.__init__(self, self.reason)
-        if self.body is None and not self.empty_body:
-            self.text = "{}: {}".format(self.status, self.reason)
+    def build_response(self):
+        if self.status_code is None:
+            raise RuntimeError("Cannot build abstract HTTP exception: "
+                               "status is not set.")
+        resp = Response(status=self.status_code)
+        if not self.empty_body:
+            resp.text = "{}: {}".format(resp.status, resp.reason)
+        return resp
 
 
 class HTTPError(HTTPException):
@@ -133,14 +133,16 @@ class HTTPPartialContent(HTTPSuccessful):
 
 class _HTTPMove(HTTPRedirection):
 
-    def __init__(self, location, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
+    def __init__(self, location):
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
-        super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
-        self.headers['Location'] = str(location)
+        super().__init__()
         self.location = location
+
+    def build_response(self):
+        resp = super().build_response()
+        resp.headers['Location'] = str(self.location)
+        return resp
 
 
 class HTTPMultipleChoices(_HTTPMove):
@@ -212,14 +214,16 @@ class HTTPNotFound(HTTPClientError):
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
 
-    def __init__(self, method, allowed_methods, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
-        allow = ','.join(sorted(allowed_methods))
-        super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
-        self.headers['Allow'] = allow
+    def __init__(self, method, allowed_methods):
+        super().__init__()
+        self.allow = ','.join(sorted(allowed_methods))
         self.allowed_methods = allowed_methods
         self.method = method.upper()
+
+    def build_response(self):
+        resp = super().build_response()
+        resp.headers['Allow'] = self.allow
+        return resp
 
 
 class HTTPNotAcceptable(HTTPClientError):
@@ -301,12 +305,14 @@ class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
 class HTTPUnavailableForLegalReasons(HTTPClientError):
     status_code = 451
 
-    def __init__(self, link, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
-        super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
-        self.headers['Link'] = '<%s>; rel="blocked-by"' % link
+    def __init__(self, link):
+        super().__init__()
         self.link = link
+
+    def build_response(self):
+        resp = super().build_response()
+        resp.headers['Link'] = '<%s>; rel="blocked-by"' % self.link
+        return resp
 
 
 ############################################################

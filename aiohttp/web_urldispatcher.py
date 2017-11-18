@@ -218,8 +218,9 @@ class MatchInfoError(UrlMappingMatchInfo):
         return self._exception
 
     def __repr__(self):
-        return "<MatchInfoError {}: {}>".format(self._exception.status,
-                                                self._exception.reason)
+        resp = self._exception.build_response()
+        return "<MatchInfoError {}: {}>".format(resp.status,
+                                                resp.reason)
 
 
 async def _defaultExpectHandler(request):
@@ -233,7 +234,8 @@ async def _defaultExpectHandler(request):
         if expect.lower() == "100-continue":
             request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n", drain=False)
         else:
-            raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
+            return HTTPExpectationFailed(
+                text="Unknown Expect: %s" % expect).build_response()
 
 
 class Resource(AbstractResource):

@@ -111,7 +111,7 @@ class WebSocketResponse(StreamResponse):
         except HttpProcessingError as err:
             if err.code == 405:
                 raise HTTPMethodNotAllowed(
-                    request.method, [hdrs.METH_GET], body=b'')
+                    request.method, [hdrs.METH_GET])
             elif err.code == 400:
                 raise HTTPBadRequest(text=err.message, headers=err.headers)
             else:  # pragma: no cover

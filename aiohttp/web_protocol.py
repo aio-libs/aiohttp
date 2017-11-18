@@ -403,7 +403,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 try:
                     resp = await self._request_handler(request)
                 except HTTPException as exc:
-                    resp = exc
+                    resp = exc.build_response()
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
