@@ -590,6 +590,11 @@ The exceptions are also a subclass of :class:`Response`, allowing you to either
 ``raise`` or ``return`` them in a
 :ref:`request handler <aiohttp-web-handler>` for the same effect.
 
+.. warning::
+
+   Returning :class:`~HTTPException` or its subclasses is deprecated and will
+   be removed in subsequent aiohttp versions.
+
 The following snippets are the same::
 
     async def handler(request):

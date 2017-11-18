@@ -1,0 +1,1 @@
+Add DeprecationWarning for returning HTTPException
