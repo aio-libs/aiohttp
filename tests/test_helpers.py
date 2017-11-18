@@ -1,4 +1,5 @@
 import asyncio
+import binascii
 import datetime
 import gc
 import hashlib
@@ -11,7 +12,7 @@ from unittest import mock
 import pytest
 from yarl import URL
 
-from aiohttp import helpers, web
+from aiohttp import helpers, web, client_exceptions
 
 
 # -------------------- coro guard --------------------------------
@@ -561,7 +562,7 @@ def test_dummy_cookie_jar(loop):
 
 @asyncio.coroutine
 def test_digest_auth_MD5(loop, test_client):
-    opaque = os.urandom(16).hex()
+    opaque = binascii.hexlify(os.urandom(16))
     username = 'username'
     password = 'password'
 
@@ -614,13 +615,13 @@ def test_digest_auth_MD5(loop, test_client):
 
     auth = helpers.DigestAuth(username, password, client)
 
-    resp = yield from auth.request('GET', '/')
+    resp = yield from auth.request('GET', '/?test=true')
     assert 200 == resp.status
 
 
 @asyncio.coroutine
 def test_digest_auth_MD5_sess(loop, test_client):
-    opaque = os.urandom(16).hex()
+    opaque = binascii.hexlify(os.urandom(16))
     username = 'usr'
     password = 'psswd'
 
@@ -680,7 +681,7 @@ def test_digest_auth_MD5_sess(loop, test_client):
 
 @asyncio.coroutine
 def test_digest_auth_no_qop(loop, test_client):
-    opaque = os.urandom(16).hex()
+    opaque = binascii.hexlify(os.urandom(16))
     username = 'root'
     password = 'passphrase'
 
@@ -734,8 +735,49 @@ def test_digest_auth_no_qop(loop, test_client):
 
 
 @asyncio.coroutine
+def test_digest_auth_qop_aut_int(loop, test_client):
+    opaque = binascii.hexlify(os.urandom(16))
+    username = 'username'
+    password = 'password'
+
+    def H(x):
+        if isinstance(x, str):
+            x = x.encode()
+        return hashlib.md5(x).hexdigest()
+
+    @asyncio.coroutine
+    def handler(request):
+        realm = 'test@example.com'
+        response = web.Response(status=401)
+        data = '%s:%s' % (time.ctime().encode(), 'secret')
+        nonce = hashlib.sha1(data.encode()).hexdigest()
+        pairs = ', '.join([
+            'realm="%s"' % realm,
+            'algorithm="MD5"',
+            'qop="auth-int"',
+            'nonce="%s"' % nonce,
+            'opaque="%s"' % opaque,
+        ])
+        response.headers['WWW-Authenticate'] = 'Digest %s' % pairs
+        return response
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    auth = helpers.DigestAuth(username, password, client)
+
+    try:
+        yield from auth.request('GET', '/')
+    except client_exceptions.ClientError as e:
+        assert e.args[0] == 'Unsupported qop value: auth-int'
+    else:
+        assert False
+
+
+@asyncio.coroutine
 def test_digest_auth_sha(loop, test_client):
-    opaque = os.urandom(16).hex()
+    opaque = binascii.hexlify(os.urandom(16))
     username = 'username'
     password = 'password'
 
@@ -776,6 +818,227 @@ def test_digest_auth_sha(loop, test_client):
             'realm="%s"' % realm,
             'qop="auth"',
             'algorithm=SHA',
+            'nonce="%s"' % nonce,
+            'opaque="%s"' % opaque,
+        ])
+        response.headers['WWW-Authenticate'] = 'Digest %s' % pairs
+        return response
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    auth = helpers.DigestAuth(username, password, client)
+
+    resp = yield from auth.request('GET', '/')
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_digest_auth_previous(loop, test_client):
+    username = 'username'
+    password = 'password'
+
+    def H(x):
+        if isinstance(x, str):
+            x = x.encode()
+        return hashlib.md5(x).hexdigest()
+
+    @asyncio.coroutine
+    def handler(request):
+        realm = 'test@example.com'
+        if 'Authorization' in request.headers:
+            pattern = re.compile(r'digest ', flags=re.IGNORECASE)
+            auth_data = helpers.parse_key_value_list(
+                pattern.sub('', request.headers['Authorization'], count=1)
+            )
+
+            A1 = '%s:%s:%s' % (username, realm, password)
+            A2 = '%s:%s' % (request.method, auth_data['uri'])
+
+            secret = H(A1)
+            data = '%s:%s:%s:%s:%s' % (
+                auth_data['nonce'],
+                auth_data['nc'],
+                auth_data['cnonce'],
+                auth_data['qop'],
+                H(A2)
+            )
+
+            assert H('%s:%s' % (secret, data)) == auth_data['response']
+
+            return web.Response()
+
+        assert False
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    # previous param comes from test_digest_auth_MD5.
+    auth = helpers.DigestAuth(
+        username,
+        password,
+        client,
+        {
+            'nonce_count': 1,
+            'last_nonce': '769ca61b934d2d9f5330f6208d4a14b2185a2c15',
+            'challenge': {
+                'qop': 'auth',
+                'algorithm': 'MD5',
+                'realm': 'test@example.com',
+                'nonce': '769ca61b934d2d9f5330f6208d4a14b2185a2c15',
+                'opaque': 'c3701d7ade598835ed0861fc179ee3ea',
+            }
+        })
+
+    resp = yield from auth.request('GET', '/')
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_digest_auth_no_opaque(loop, test_client):
+    opaque = binascii.hexlify(os.urandom(16))
+    username = 'username'
+    password = 'password'
+
+    def H(x):
+        if isinstance(x, str):
+            x = x.encode()
+        return hashlib.md5(x).hexdigest()
+
+    @asyncio.coroutine
+    def handler(request):
+        realm = 'test@example.com'
+        if 'Authorization' in request.headers:
+            pattern = re.compile(r'digest ', flags=re.IGNORECASE)
+            auth_data = helpers.parse_key_value_list(
+                pattern.sub('', request.headers['Authorization'], count=1)
+            )
+
+            A1 = '%s:%s:%s' % (username, realm, password)
+            A2 = '%s:%s' % (request.method, auth_data['uri'])
+
+            secret = H(A1)
+            data = '%s:%s:%s:%s:%s' % (
+                auth_data['nonce'],
+                auth_data['nc'],
+                auth_data['cnonce'],
+                auth_data['qop'],
+                H(A2)
+            )
+
+            assert H('%s:%s' % (secret, data)) == auth_data['response']
+
+            return web.Response()
+
+        response = web.Response(status=401)
+        data = '%s:%s' % (time.ctime().encode(), 'secret')
+        nonce = hashlib.sha1(data.encode()).hexdigest()
+        pairs = ', '.join([
+            'realm="%s"' % realm,
+            'qop="auth"',
+            'algorithm=MD5',
+            'nonce="%s"' % nonce,
+        ])
+        response.headers['WWW-Authenticate'] = 'Digest %s' % pairs
+        return response
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    auth = helpers.DigestAuth(username, password, client)
+
+    resp = yield from auth.request('GET', '/')
+    assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_digest_auth_bad_algorithm(loop, test_client):
+    opaque = binascii.hexlify(os.urandom(16))
+    username = 'username'
+    password = 'password'
+
+    def H(x):
+        if isinstance(x, str):
+            x = x.encode()
+        return hashlib.md5(x).hexdigest()
+
+    @asyncio.coroutine
+    def handler(request):
+        realm = 'test@example.com'
+        if 'Authorization' in request.headers:
+            assert request.headers['Authorization'] == ''
+
+            return web.Response(status=401)
+
+        response = web.Response(status=401)
+        data = '%s:%s' % (time.ctime().encode(), 'secret')
+        nonce = hashlib.sha1(data.encode()).hexdigest()
+        pairs = ', '.join([
+            'realm="%s"' % realm,
+            'qop="auth"',
+            'algorithm="nonsense"',
+            'nonce="%s"' % nonce,
+            'opaque="%s"' % opaque,
+        ])
+        response.headers['WWW-Authenticate'] = 'Digest %s' % pairs
+        return response
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    auth = helpers.DigestAuth(username, password, client)
+
+    resp = yield from auth.request('GET', '/')
+    assert 401 == resp.status
+
+
+
+@asyncio.coroutine
+def test_digest_auth_no_algorithm(loop, test_client):
+    opaque = binascii.hexlify(os.urandom(16))
+    username = 'username'
+    password = 'password'
+
+    def H(x):
+        if isinstance(x, str):
+            x = x.encode()
+        return hashlib.md5(x).hexdigest()
+
+    @asyncio.coroutine
+    def handler(request):
+        realm = 'test@example.com'
+        if 'Authorization' in request.headers:
+            pattern = re.compile(r'digest ', flags=re.IGNORECASE)
+            auth_data = helpers.parse_key_value_list(
+                pattern.sub('', request.headers['Authorization'], count=1)
+            )
+
+            A1 = '%s:%s:%s' % (username, realm, password)
+            A2 = '%s:%s' % (request.method, auth_data['uri'])
+
+            secret = H(A1)
+            data = '%s:%s:%s:%s:%s' % (
+                auth_data['nonce'],
+                auth_data['nc'],
+                auth_data['cnonce'],
+                auth_data['qop'],
+                H(A2)
+            )
+
+            assert H('%s:%s' % (secret, data)) == auth_data['response']
+
+            return web.Response()
+
+        response = web.Response(status=401)
+        data = '%s:%s' % (time.ctime().encode(), 'secret')
+        nonce = hashlib.sha1(data.encode()).hexdigest()
+        pairs = ', '.join([
+            'realm="%s"' % realm,
+            'qop="auth"',
             'nonce="%s"' % nonce,
             'opaque="%s"' % opaque,
         ])

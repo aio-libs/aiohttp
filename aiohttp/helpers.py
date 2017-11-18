@@ -21,7 +21,7 @@ from urllib.parse import quote, urlparse
 
 from async_timeout import timeout
 
-from . import hdrs
+from . import hdrs, client_exceptions
 from .abc import AbstractCookieJar
 
 
@@ -218,9 +218,6 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
 
 
 def parse_pair(pair):
-    if '=' not in pair:
-        return pair, None
-
     key, value = pair.split('=', 1)
 
     # If it has a trailing comma, remove it.
@@ -251,13 +248,15 @@ class DigestAuth():
     :param ClientSession session: Session to use digest auth
     """
 
-    def __init__(self, username, password, session):
+    def __init__(self, username, password, session, previous=None):
+        if previous is None:
+            previous = {}
+
         self.username = username
         self.password = password
-        self.last_nonce = ''
-        self.nonce_count = 0
-        self.challenge = None
-        self.num_401 = 0
+        self.last_nonce = previous.get('last_nonce', '')
+        self.nonce_count = previous.get('nonce_count', 0)
+        self.challenge = previous.get('challenge')
         self.args = {}
         self.session = session
 
@@ -286,7 +285,6 @@ class DigestAuth():
         # If the response is not in the 400 range, do not try digest
         # authentication.
         if not 400 <= response.status < 500:
-            self.num_401 = 1
             return response
 
         return (yield from self._handle_401(response))
@@ -311,9 +309,7 @@ class DigestAuth():
             return ''
 
         def H(x):
-            if isinstance(x, str):
-                x = x.encode()
-            return hash_fn(x).hexdigest()
+            return hash_fn(x.encode()).hexdigest()
 
         def KD(s, d):
             return H('%s:%s' % (s, d))
@@ -356,14 +352,20 @@ class DigestAuth():
             )
             respdig = KD(HA1, noncebit)
         else:
-            return ''
+            raise client_exceptions.ClientError(
+                'Unsupported qop value: %s' % qop
+            )
 
-        base = 'username="%s", realm="%s", nonce="%s", uri="%s", ' \
-               'response="%s"' % (self.username, realm, nonce, path, respdig)
+        base = ', '.join([
+            'username="%s"' % self.username,
+            'realm="%s"' % realm,
+            'nonce="%s"' % nonce,
+            'uri="%s"' % path,
+            'response="%s"' % respdig,
+            'algorithm="%s"' % algorithm,
+        ])
         if opaque:
             base += ', opaque="%s"' % opaque
-        if algorithm:
-            base += ', algorithm="%s"' % algorithm
         if qop:
             base += ', qop="auth", nc=%s, cnonce="%s"' % (ncvalue, cnonce)
 
@@ -377,9 +379,7 @@ class DigestAuth():
         """
         auth_header = response.headers.get('www-authenticate', '')
 
-        if 'digest' in auth_header.lower() and self.num_401 < 2:
-
-            self.num_401 += 1
+        if 'digest' in auth_header.lower():
             pattern = re.compile(r'digest ', flags=re.IGNORECASE)
             self.challenge = parse_key_value_list(
                 pattern.sub('', auth_header, count=1)
@@ -389,10 +389,9 @@ class DigestAuth():
                 self.args['method'],
                 self.args['url'],
                 headers=self.args['headers'],
-                **self.args['kwargs'],
+                **self.args['kwargs']
             ))
 
-        self.num_401 = 1
         return response
 
 

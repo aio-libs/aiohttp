@@ -1352,6 +1352,8 @@ DigestAuth
    :param str login: login
    :param str password: password
    :param `ClientSession` session: underlying session that will use digest auth
+   :param dict previous: dict containing previous auth data. ``None`` by
+                         default (optional).
 
    .. comethod:: request(method, url, *, params=None, data=None, \
                                json=None,\
@@ -1428,6 +1430,17 @@ DigestAuth
           auth = aiohttp.DigestAuth('usr', 'psswd', client)
           resp = await auth.request('GET', 'http://httpbin.org/digest-auth/auth/usr/psswd/MD5/never')
           assert resp.status == 200
+          # If you don't re-use the DigestAuth object you can store this data
+          # and pass it as the last argument the next time you instantiate a
+          # DigestAuth object. For example,
+          # aiohttp.DigestAuth('usr', 'psswd', client, previous). This will
+          # save a second request being launched to re-authenticate.
+          previous = {
+              'nonce_count': auth.nonce_count,
+              'last_nonce': auth.last_nonce,
+              'challenge': auth.challenge,
+          }
+
           return await resp.text()
 
       async def main():
