@@ -21,7 +21,11 @@ Async http client/server framework
    :alt: Latest PyPI package version
 
 .. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
-   :target: http://aiohttp.readthedocs.io/en/latest/
+   :target: http://docs.aiohttp.org/
+   :alt: Latest Read The Docs
+
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: http://docs.aiohttp.org/
    :alt: Latest Read The Docs
 
 .. image:: https://badges.gitter.im/Join%20Chat.svg
@@ -136,7 +140,7 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.4.2
+- Python >= 3.5.3
 - async-timeout_
 - chardet_
 - multidict_

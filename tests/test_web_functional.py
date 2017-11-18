@@ -1618,3 +1618,16 @@ async def test_request_tracing(loop, test_client):
     assert on_request_redirect.called
     assert on_connection_create_start.called
     assert on_connection_create_end.called
+
+
+async def test_return_http_exception_deprecated(loop, test_client):
+
+    async def handler(request):
+        return web.HTTPForbidden()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await test_client(app)
+
+    with pytest.warns(DeprecationWarning):
+        await client.get('/')
