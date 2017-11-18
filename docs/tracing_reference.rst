@@ -28,8 +28,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request starts, based on the :class:`~signals.Signal` implementation.
 
-      The coroutines listening will receive as a param the `session`,
-      `trace_config_ctx`, `method`, `url` and `headers`.
+      The coroutines listening will receive as a param the ``session``,
+      ``trace_config_ctx``, ``method``, ``url`` and ``headers``.
 
       .. versionadded:: 3.0
 
@@ -38,8 +38,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       redirect happens during a request flow.
 
-      The coroutines that are listening will receive the `session`,
-      `trace_config_ctx`, `method`, `url`, `headers` and `resp` params.
+      The coroutines that are listening will receive the ``session``,
+      ``trace_config_ctx``, ``method``, ``url``, ``headers`` and ``resp`` params.
 
       .. versionadded:: 3.0
 
@@ -48,8 +48,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request ends.
 
-      The coroutines that are listening will receive the `session`,
-      `trace_config_ctx`, `method`, `url`, `headers` and `resp` params
+      The coroutines that are listening will receive the ``session``,
+      ``trace_config_ctx``, ``method``, ``url``, ``headers`` and ``resp`` params
 
       .. versionadded:: 3.0
 
@@ -58,8 +58,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request finishes with an exception.
 
-      The coroutines listening will receive the `session`,
-      `trace_config_ctx`, `method`, `url`, `headers` and `exception` params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx``, ``method``, ``url``, ``headers`` and ``exception`` params.
 
       .. versionadded:: 3.0
 
@@ -68,8 +68,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request has been queued waiting for an available connection.
 
-      The coroutines that are listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines that are listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
 
@@ -78,8 +78,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request that was queued already has an available connection.
 
-      The coroutines that are listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines that are listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
 
@@ -88,8 +88,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request creates a new connection.
 
-      The coroutines listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
 
@@ -98,8 +98,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request that created a new connection finishes its creation.
 
-      The coroutines listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
 
@@ -108,8 +108,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request reuses a connection.
 
-      The coroutines listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
 
@@ -118,8 +118,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request starts to resolve the domain related with the request.
 
-      The coroutines listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
 
@@ -128,7 +128,7 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request finishes to resolve the domain related with the request.
 
-      The coroutines listening will receive the `session` and `trace_config_ctx`
+      The coroutines listening will receive the ``session`` and ``trace_config_ctx``
       params.
 
       .. versionadded:: 3.0
@@ -139,8 +139,8 @@ the request flow.
       request was able to use a cached DNS resolution for the domain related
       with the request.
 
-      The coroutines listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
 
@@ -150,7 +150,7 @@ the request flow.
       request was not able to use a cached DNS resolution for the domain related
       with the request.
 
-      The coroutines listening will receive the `session` and
-      `trace_config_ctx` params.
+      The coroutines listening will receive the ``session`` and
+      ``trace_config_ctx`` params.
 
       .. versionadded:: 3.0
