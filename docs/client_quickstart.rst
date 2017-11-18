@@ -158,7 +158,7 @@ Any of session's request methods like :func:`request`,
 `json` parameter::
 
   async with aiohttp.ClientSession() as session:
-      async with session.post(json={'test': 'object'})
+      async with session.post(url, json={'test': 'object'})
 
 
 By default session uses python's standard :mod:`json` module for
@@ -169,7 +169,7 @@ parameter::
   import ujson
 
   async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
-      async with session.post(json={'test': 'object'})
+      async with session.post(url, json={'test': 'object'})
 
 .. note::
 
