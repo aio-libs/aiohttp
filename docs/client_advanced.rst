@@ -240,8 +240,8 @@ The example limits amount of parallel connections to the same to `30`.
 
 The default is `0` (no limit on per host bases).
 
-Tunning the DNS cache
----------------------
+Tuning the DNS cache
+--------------------
 By default :class:`~aiohttp.TCPConnector` comes with the DNS cache
 table enabled, and resolutions will be cached by default for `10` seconds.
 This behavior can be changed either to change of the TTL for a resolution,
