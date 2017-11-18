@@ -288,8 +288,9 @@ class TestClient:
             self._ws_connect(path, *args, **kwargs)
         )
 
-    async def _ws_connect(self, path, *args, **kwargs):
-        ws = await self._session.ws_connect(
+    @asyncio.coroutine
+    def _ws_connect(self, path, *args, **kwargs):
+        ws = yield from self._session.ws_connect(
             self.make_url(path), *args, **kwargs)
         self._websockets.append(ws)
         return ws
