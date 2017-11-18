@@ -342,8 +342,6 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     assert "https://unix:{}:".format(sock_path) in printer.call_args[0][0]
 
 
-
-
 @skip_if_no_unix_socks
 @skip_if_no_abstract_paths
 def test_run_app_abstract_linux_socket(loop, mocker):
