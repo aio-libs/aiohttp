@@ -1,8 +1,0 @@
-Google analytics
-Add Python to main page
-v:stable doesn't work
-Mention "Latest stable" in Library Installation, version number and release date
-
-Add asyncio to Title 
-Add PyPI badge
-hotjar
