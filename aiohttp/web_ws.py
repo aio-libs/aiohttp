@@ -32,9 +32,9 @@ class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
 class WebSocketResponse(StreamResponse):
 
     def __init__(self, *,
-                 timeout=10.0, receive_timeout=None,
-                 autoclose=True, autoping=True, heartbeat=None,
-                 protocols=(), compress=True):
+                 timeout=None, receive_timeout=None, send_timeout=None,
+                 close_timeout=10.0, autoclose=True, autoping=True,
+                 heartbeat=None, protocols=(), compress=True):
         super().__init__(status=101)
         self._protocols = protocols
         self._ws_protocol = None
@@ -47,8 +47,9 @@ class WebSocketResponse(StreamResponse):
         self._loop = None
         self._waiting = None
         self._exception = None
-        self._timeout = timeout
         self._receive_timeout = receive_timeout
+        self._send_timeout = send_timeout
+        self._close_timeout = timeout or close_timeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
@@ -177,23 +178,27 @@ class WebSocketResponse(StreamResponse):
             raise RuntimeError('Call .prepare() first')
         await self._writer.pong(message)
 
-    async def send_str(self, data):
+    async def send_str(self, data, *, timeout=None):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
-        await self._writer.send(data, binary=False)
+        with async_timeout.timeout(timeout or self._send_timeout,
+                                   loop=self._loop):
+            await self._writer.send(data, binary=False)
 
-    async def send_bytes(self, data):
+    async def send_bytes(self, data, *, timeout=None):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
-        await self._writer.send(data, binary=True)
+        with async_timeout.timeout(timeout or self._send_timeout,
+                                   loop=self._loop):
+            await self._writer.send(data, binary=True)
 
-    async def send_json(self, data, *, dumps=json.dumps):
-        await self.send_str(dumps(data))
+    async def send_json(self, data, *, timeout=None, dumps=json.dumps):
+        await self.send_str(dumps(data), timeout=timeout)
 
     async def write_eof(self):
         if self._eof_sent:
@@ -233,7 +238,8 @@ class WebSocketResponse(StreamResponse):
                 return True
 
             try:
-                with async_timeout.timeout(self._timeout, loop=self._loop):
+                with async_timeout.timeout(self._close_timeout,
+                                           loop=self._loop):
                     msg = await self._reader.read()
             except asyncio.CancelledError:
                 self._close_code = 1006
