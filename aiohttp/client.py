@@ -169,7 +169,7 @@ class ClientSession:
                  fingerprint=None,
                  ssl_context=None,
                  proxy_headers=None,
-                 trace_request_context=None):
+                 trace_request_ctx=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -231,7 +231,7 @@ class ClientSession:
             Trace(
                 trace_config,
                 self,
-                trace_request_context=trace_request_context)
+                trace_request_ctx=trace_request_ctx)
             for trace_config in self._trace_configs
         ]
 

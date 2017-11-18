@@ -294,9 +294,9 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
-      :param trace_context: Object used to give as a param for the all signals
-        triggered by the ongoing request. Default uses the object returned 
-        by the :class:`TraceConfig.trace_context()` method.
+      :param trace_request_ctx: Object used to give as a kw param for the all
+        signals triggered by the ongoing request and for all :class:`TraceConfig`
+        configured. Default passes a None value.
 
          .. versionadded:: 3.0
 

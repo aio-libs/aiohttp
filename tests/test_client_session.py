@@ -478,14 +478,14 @@ def test_client_session_implicit_loop_warn():
 
 
 async def test_request_tracing(loop):
-    trace_context = mock.Mock()
-    trace_request_context = {}
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = {}
     on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
 
     trace_config = aiohttp.TraceConfig(
-        trace_context_class=mock.Mock(return_value=trace_context)
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
@@ -495,26 +495,26 @@ async def test_request_tracing(loop):
 
     resp = await session.get(
         'http://example.com',
-        trace_request_context=trace_request_context
+        trace_request_ctx=trace_request_ctx
     )
 
     on_request_start.assert_called_once_with(
         session,
-        trace_context,
+        trace_config_ctx,
         hdrs.METH_GET,
         URL("http://example.com"),
         CIMultiDict(),
-        trace_request_context=trace_request_context
+        trace_request_ctx=trace_request_ctx
     )
 
     on_request_end.assert_called_once_with(
         session,
-        trace_context,
+        trace_config_ctx,
         hdrs.METH_GET,
         URL("http://example.com"),
         CIMultiDict(),
         resp,
-        trace_request_context=trace_request_context
+        trace_request_ctx=trace_request_ctx
     )
     assert not on_request_redirect.called
 
@@ -552,7 +552,7 @@ async def test_request_tracing_exception(loop):
             URL("http://example.com"),
             CIMultiDict(),
             error,
-            trace_request_context=mock.ANY
+            trace_request_ctx=mock.ANY
         )
         assert not on_request_end.called
 
@@ -569,11 +569,11 @@ async def test_request_tracing_interpose_headers(loop):
     @asyncio.coroutine
     def new_headers(
             session,
-            trace_context,
+            trace_config_ctx,
             method,
             url,
             headers,
-            trace_request_context=None):
+            trace_request_ctx=None):
         headers['foo'] = 'bar'
 
     trace_config = aiohttp.TraceConfig()

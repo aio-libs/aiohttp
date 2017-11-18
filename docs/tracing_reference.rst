@@ -14,12 +14,12 @@ Trace config is the configuration object used to trace requests launched by
 a Client session object using different events related to different parts of
 the request flow.
 
-.. class:: TraceConfig(trace_context_class=SimpleNamespace)
+.. class:: TraceConfig(trace_config_ctx_class=SimpleNamespace)
 
-   :param trace_context_class: factory used to create trace contexts,
+   :param trace_config_ctx_class: factory used to create trace contexts,
       default class used :class:`SimpleNamespace`
 
-   .. method:: trace_context()
+   .. method:: trace_config_ctx()
 
       Return a new trace context.
 
@@ -29,7 +29,7 @@ the request flow.
       request starts, based on the :class:`~signals.Signal` implementation.
 
       The coroutines listening will receive as a param the `session`,
-      `trace_context`, `method`, `url` and `headers`.
+      `trace_config_ctx`, `method`, `url` and `headers`.
 
       .. versionadded:: 3.0
 
@@ -39,7 +39,7 @@ the request flow.
       redirect happens during a request flow.
 
       The coroutines that are listening will receive the `session`,
-      `trace_context`, `method`, `url`, `headers` and `resp` params.
+      `trace_config_ctx`, `method`, `url`, `headers` and `resp` params.
 
       .. versionadded:: 3.0
 
@@ -49,7 +49,7 @@ the request flow.
       request ends.
 
       The coroutines that are listening will receive the `session`,
-      `trace_context`, `method`, `url`, `headers` and `resp` params
+      `trace_config_ctx`, `method`, `url`, `headers` and `resp` params
 
       .. versionadded:: 3.0
 
@@ -59,7 +59,7 @@ the request flow.
       request finishes with an exception.
 
       The coroutines listening will receive the `session`,
-      `trace_context`, `method`, `url`, `headers` and `exception` params.
+      `trace_config_ctx`, `method`, `url`, `headers` and `exception` params.
 
       .. versionadded:: 3.0
 
@@ -69,7 +69,7 @@ the request flow.
       request has been queued waiting for an available connection.
 
       The coroutines that are listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0
 
@@ -79,7 +79,7 @@ the request flow.
       request that was queued already has an available connection.
 
       The coroutines that are listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0
 
@@ -89,7 +89,7 @@ the request flow.
       request creates a new connection.
 
       The coroutines listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0
 
@@ -99,7 +99,7 @@ the request flow.
       request that created a new connection finishes its creation.
 
       The coroutines listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0
 
@@ -109,7 +109,7 @@ the request flow.
       request reuses a connection.
 
       The coroutines listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0
 
@@ -119,7 +119,7 @@ the request flow.
       request starts to resolve the domain related with the request.
 
       The coroutines listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0
 
@@ -128,7 +128,7 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request finishes to resolve the domain related with the request.
 
-      The coroutines listening will receive the `session` and `trace_context`
+      The coroutines listening will receive the `session` and `trace_config_ctx`
       params.
 
       .. versionadded:: 3.0
@@ -140,7 +140,7 @@ the request flow.
       with the request.
 
       The coroutines listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0
 
@@ -151,6 +151,6 @@ the request flow.
       with the request.
 
       The coroutines listening will receive the `session` and
-      `trace_context` params.
+      `trace_config_ctx` params.
 
       .. versionadded:: 3.0

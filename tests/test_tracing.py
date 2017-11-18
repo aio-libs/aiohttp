@@ -9,13 +9,13 @@ from aiohttp.tracing import Trace, TraceConfig
 
 class TestTraceConfig:
 
-    def test_trace_context_default(self):
+    def test_trace_config_ctx_default(self):
         trace_config = TraceConfig()
-        assert isinstance(trace_config.trace_context(), SimpleNamespace)
+        assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
 
-    def test_trace_context_class(self):
-        trace_config = TraceConfig(trace_context_class=dict)
-        assert isinstance(trace_config.trace_context(), dict)
+    def test_trace_config_ctx_class(self):
+        trace_config = TraceConfig(trace_config_ctx_class=dict)
+        assert isinstance(trace_config.trace_config_ctx(), dict)
 
     def test_freeze(self):
         trace_config = TraceConfig()
@@ -56,7 +56,7 @@ class TestTrace:
     async def test_send(self, loop, signal):
         param = Mock()
         session = Mock()
-        trace_request_context = Mock()
+        trace_request_ctx = Mock()
         callback = Mock(side_effect=asyncio.coroutine(Mock()))
 
         trace_config = TraceConfig()
@@ -65,7 +65,7 @@ class TestTrace:
         trace = Trace(
             trace_config,
             session,
-            trace_request_context=trace_request_context
+            trace_request_ctx=trace_request_ctx
         )
         await getattr(trace, "send_%s" % signal)(param)
 
@@ -73,5 +73,5 @@ class TestTrace:
             session,
             SimpleNamespace(),
             param,
-            trace_request_context=trace_request_context
+            trace_request_ctx=trace_request_ctx
         )
