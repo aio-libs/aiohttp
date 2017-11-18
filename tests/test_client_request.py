@@ -500,7 +500,6 @@ def test_gen_netloc_no_port(make_request):
         '012345678901234567890'
 
 
-@asyncio.coroutine
 def test_connection_header(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
     req.keep_alive = mock.Mock()
