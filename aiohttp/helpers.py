@@ -18,14 +18,13 @@ from collections.abc import Coroutine
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
-from time import gmtime
 from urllib.parse import quote, urlparse
 from urllib.request import getproxies
 
 import async_timeout
 from yarl import URL
 
-from . import hdrs, client_exceptions
+from . import client_exceptions, hdrs
 from .abc import AbstractAccessLogger
 from .log import client_logger
 
@@ -227,8 +226,7 @@ class DigestAuth():
         self.args = {}
         self.session = session
 
-    @asyncio.coroutine
-    def request(self, method, url, *, headers=None, **kwargs):
+    async def request(self, method, url, *, headers=None, **kwargs):
         if headers is None:
             headers = {}
 
@@ -245,7 +243,7 @@ class DigestAuth():
                 method.upper(), url
             )
 
-        response = yield from self.session.request(
+        response = await self.session.request(
             method, url, headers=headers, **kwargs
         )
 
@@ -254,7 +252,7 @@ class DigestAuth():
         if not 400 <= response.status < 500:
             return response
 
-        return (yield from self._handle_401(response))
+        return await self._handle_401(response)
 
     def _build_digest_header(self, method, url):
         """
@@ -338,8 +336,7 @@ class DigestAuth():
 
         return 'Digest %s' % base
 
-    @asyncio.coroutine
-    def _handle_401(self, response):
+    async def _handle_401(self, response):
         """
         Takes the given response and tries digest-auth, if needed.
         :rtype: ClientResponse
@@ -352,24 +349,14 @@ class DigestAuth():
                 pattern.sub('', auth_header, count=1)
             )
 
-            return (yield from self.request(
+            return await self.request(
                 self.args['method'],
                 self.args['url'],
                 headers=self.args['headers'],
                 **self.args['kwargs']
-            ))
+            )
 
         return response
-
-
-if PY_352:
-    def create_future(loop):
-        return loop.create_future()
-else:
-    def create_future(loop):  # pragma: no cover
-        """Compatibility wrapper for the loop.create_future() call introduced in
-        3.5.2."""
-        return asyncio.Future(loop=loop)
 
 
 def strip_auth_from_url(url):
