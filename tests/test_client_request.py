@@ -500,7 +500,7 @@ def test_gen_netloc_no_port(make_request):
         '012345678901234567890'
 
 
-async def test_connection_header(loop, conn):
+def test_connection_header(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
     req.keep_alive = mock.Mock()
     req.headers.clear()
@@ -1074,7 +1074,7 @@ async def test_custom_req_rep(loop):
             called = True
             return resp
 
-    async def create_connection(req):
+    async def create_connection(req, traces=None):
         assert isinstance(req, CustomRequest)
         return mock.Mock()
     connector = BaseConnector(loop=loop)

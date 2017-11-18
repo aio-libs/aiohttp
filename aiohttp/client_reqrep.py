@@ -472,8 +472,7 @@ class ClientRequest:
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress
-        )
+            auto_decompress=self._auto_decompress)
 
         self.response._post_init(self.loop, self._session)
         return self.response
