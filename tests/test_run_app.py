@@ -42,6 +42,16 @@ skip_if_no_unix_socks = pytest.mark.skipif(
 )
 del _has_unix_domain_socks, _abstract_path_failed
 
+HAS_IPV6 = socket.has_ipv6
+if HAS_IPV6:
+    # The socket.has_ipv6 flag may be True if Python was built with IPv6
+    # support, but the target system still may not have it.
+    # So let's ensure that we really have IPv6 support.
+    try:
+        socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    except OSError:
+        HAS_IPV6 = False
+
 
 # tokio event loop does not allow to override attributes
 def skip_if_no_dict(loop):
@@ -62,15 +72,15 @@ def stopper(loop):
 
 def test_run_app_http(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_server')
 
     app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, loop=loop, print=stopper(loop))
+    web.run_app(app, print=stopper(loop))
 
-    assert not loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
                                           ssl=None, backlog=128)
     app.startup.assert_called_once_with()
@@ -78,6 +88,7 @@ def test_run_app_http(loop, mocker):
 
 def test_run_app_close_loop(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_server')
 
@@ -88,7 +99,6 @@ def test_run_app_close_loop(loop, mocker):
 
     web.run_app(app, print=stopper(loop))
 
-    assert loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
                                           ssl=None, backlog=128)
     app.startup.assert_called_once_with()
@@ -211,10 +221,11 @@ mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
 def test_run_app_mixed_bindings(mocker, run_app_kwargs, expected_server_calls,
                                 expected_unix_server_calls):
     app = mocker.MagicMock()
-    loop = mocker.MagicMock()
+    loop = mocker.MagicMock(spec=asyncio.AbstractEventLoop)
+    asyncio.set_event_loop(loop)
     mocker.patch('asyncio.gather')
 
-    web.run_app(app, loop=loop, print=lambda *args: None, **run_app_kwargs)
+    web.run_app(app, print=None, **run_app_kwargs)
 
     assert loop.create_unix_server.mock_calls == expected_unix_server_calls
     assert loop.create_server.mock_calls == expected_server_calls
@@ -223,15 +234,14 @@ def test_run_app_mixed_bindings(mocker, run_app_kwargs, expected_server_calls,
 def test_run_app_http_access_format(loop, mocker):
     skip_if_no_dict(loop)
 
+    asyncio.set_event_loop(loop)
     mocker.spy(loop, 'create_server')
 
     app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, loop=loop,
-                print=stopper(loop), access_log_format='%a')
+    web.run_app(app, print=stopper(loop), access_log_format='%a')
 
-    assert not loop.is_closed()
     cs = loop.create_server
     cs.assert_called_with(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128)
     assert cs.call_args[0][0]._kwargs['access_log_format'] == '%a'
@@ -241,6 +251,7 @@ def test_run_app_http_access_format(loop, mocker):
 def test_run_app_https(loop, mocker):
     skip_if_no_dict(loop)
 
+    asyncio.set_event_loop(loop)
     mocker.spy(loop, 'create_server')
 
     app = web.Application()
@@ -248,10 +259,8 @@ def test_run_app_https(loop, mocker):
 
     ssl_context = ssl.create_default_context()
 
-    web.run_app(app, loop=loop,
-                ssl_context=ssl_context, print=stopper(loop))
+    web.run_app(app, ssl_context=ssl_context, print=stopper(loop))
 
-    assert not loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8443,
                                           ssl=ssl_context, backlog=128)
     app.startup.assert_called_once_with()
@@ -259,6 +268,7 @@ def test_run_app_https(loop, mocker):
 
 def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     port = unused_port()
     host = '127.0.0.1'
@@ -268,10 +278,8 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
     app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, loop=loop,
-                host=host, port=port, print=stopper(loop))
+    web.run_app(app, host=host, port=port, print=stopper(loop))
 
-    assert not loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, host, port,
                                           ssl=None, backlog=128)
     app.startup.assert_called_once_with()
@@ -279,15 +287,15 @@ def test_run_app_nondefault_host_port(loop, unused_port, mocker):
 
 def test_run_app_custom_backlog(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_server')
 
     app = web.Application()
     mocker.spy(app, 'startup')
 
-    web.run_app(app, loop=loop, backlog=10, print=stopper(loop))
+    web.run_app(app, backlog=10, print=stopper(loop))
 
-    assert not loop.is_closed()
     loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
                                           ssl=None, backlog=10)
     app.startup.assert_called_once_with()
@@ -296,6 +304,7 @@ def test_run_app_custom_backlog(loop, mocker):
 @skip_if_no_unix_socks
 def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_unix_server')
 
@@ -304,10 +313,8 @@ def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
 
     sock_path = str(shorttmpdir.join('socket.sock'))
     printer = mock.Mock(wraps=stopper(loop))
-    web.run_app(app, loop=loop, path=sock_path,
-                print=printer)
+    web.run_app(app, path=sock_path, print=printer)
 
-    assert not loop.is_closed()
     loop.create_unix_server.assert_called_with(mock.ANY, sock_path,
                                                ssl=None, backlog=128)
     app.startup.assert_called_once_with()
@@ -317,6 +324,7 @@ def test_run_app_http_unix_socket(loop, mocker, shorttmpdir):
 @skip_if_no_unix_socks
 def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_unix_server')
 
@@ -326,10 +334,8 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
     sock_path = str(shorttmpdir.join('socket.sock'))
     ssl_context = ssl.create_default_context()
     printer = mock.Mock(wraps=stopper(loop))
-    web.run_app(app, loop=loop, path=sock_path, ssl_context=ssl_context,
-                print=printer)
+    web.run_app(app, path=sock_path, ssl_context=ssl_context, print=printer)
 
-    assert not loop.is_closed()
     loop.create_unix_server.assert_called_with(mock.ANY, sock_path,
                                                ssl=ssl_context, backlog=128)
     app.startup.assert_called_once_with()
@@ -337,58 +343,18 @@ def test_run_app_https_unix_socket(loop, mocker, shorttmpdir):
 
 
 @skip_if_no_unix_socks
-def test_run_app_stale_unix_socket(loop, mocker, shorttmpdir):
-    """Older asyncio event loop implementations are known to halt server
-    creation when a socket path from a previous server bind still exists.
-    """
-    skip_if_no_dict(loop)
-
-    app = web.Application()
-
-    sock_path = shorttmpdir.join('socket.sock')
-    sock_path_string = str(sock_path)
-
-    web.run_app(app, loop=loop,
-                path=sock_path_string, print=stopper(loop))
-    assert not loop.is_closed()
-
-    if sock_path.check():
-        # New app run using same socket path
-        with loop_context() as loop:
-            mocker.spy(loop, 'create_unix_server')
-
-            app = web.Application()
-
-            mocker.spy(app, 'startup')
-            mocker.spy(os, 'remove')
-            printer = mock.Mock(wraps=stopper(loop))
-
-            web.run_app(app, loop=loop,
-                        path=sock_path_string, print=printer)
-            os.remove.assert_called_with(sock_path_string)
-            loop.create_unix_server.assert_called_with(
-                mock.ANY,
-                sock_path_string,
-                ssl=None,
-                backlog=128
-            )
-            app.startup.assert_called_once_with()
-            assert ("http://unix:{}:".format(sock_path)
-                    in printer.call_args[0][0])
-
-
-@skip_if_no_unix_socks
 @skip_if_no_abstract_paths
 def test_run_app_abstract_linux_socket(loop, mocker):
     sock_path = b"\x00" + uuid4().hex.encode('ascii')
+    asyncio.set_event_loop(loop)
 
     app = web.Application()
     web.run_app(
-        app, path=sock_path.decode('ascii', 'ignore'), loop=loop,
-        print=stopper(loop))
+        app, path=sock_path.decode('ascii', 'ignore'), print=stopper(loop))
 
     # New app run using same socket path
     with loop_context() as loop:
+        asyncio.set_event_loop(loop)
         mocker.spy(loop, 'create_unix_server')
 
         app = web.Application()
@@ -396,7 +362,7 @@ def test_run_app_abstract_linux_socket(loop, mocker):
         mocker.spy(app, 'startup')
         mocker.spy(os, 'remove')
 
-        web.run_app(app, path=sock_path, print=stopper(loop), loop=loop)
+        web.run_app(app, path=sock_path, print=stopper(loop))
 
         # Abstract paths don't exist on the file system, so no attempt should
         # be made to remove.
@@ -413,6 +379,7 @@ def test_run_app_abstract_linux_socket(loop, mocker):
 
 @skip_if_no_unix_socks
 def test_run_app_existing_file_conflict(loop, mocker, shorttmpdir):
+    asyncio.set_event_loop(loop)
     app = web.Application()
     sock_path = shorttmpdir.join('socket.sock')
     sock_path.ensure()
@@ -420,8 +387,7 @@ def test_run_app_existing_file_conflict(loop, mocker, shorttmpdir):
     mocker.spy(os, 'remove')
 
     with pytest.raises(OSError):
-        web.run_app(app, loop=loop,
-                    path=sock_path_str, print=mock.Mock())
+        web.run_app(app, path=sock_path_str, print=mock.Mock())
 
     # No attempt should be made to remove a non-socket file
     assert mock.call([sock_path_str]) not in os.remove.mock_calls
@@ -429,6 +395,7 @@ def test_run_app_existing_file_conflict(loop, mocker, shorttmpdir):
 
 def test_run_app_preexisting_inet_socket(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_server')
 
@@ -441,9 +408,8 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
         _, port = sock.getsockname()
 
         printer = mock.Mock(wraps=stopper(loop))
-        web.run_app(app, loop=loop, sock=sock, print=printer)
+        web.run_app(app, sock=sock, print=printer)
 
-        assert not loop.is_closed()
         loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
@@ -451,9 +417,35 @@ def test_run_app_preexisting_inet_socket(loop, mocker):
         assert "http://0.0.0.0:{}".format(port) in printer.call_args[0][0]
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
+def test_run_app_preexisting_inet6_socket(loop, mocker):
+    skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
+
+    mocker.spy(loop, 'create_server')
+
+    app = web.Application()
+    mocker.spy(app, 'startup')
+
+    sock = socket.socket(socket.AF_INET6)
+    with contextlib.closing(sock):
+        sock.bind(('::', 0))
+        port = sock.getsockname()[1]
+
+        printer = mock.Mock(wraps=stopper(loop))
+        web.run_app(app, sock=sock, print=printer)
+
+        loop.create_server.assert_called_with(
+            mock.ANY, sock=sock, backlog=128, ssl=None
+        )
+        app.startup.assert_called_once_with()
+        assert "http://:::{}".format(port) in printer.call_args[0][0]
+
+
 @skip_if_no_unix_socks
 def test_run_app_preexisting_unix_socket(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_server')
 
@@ -467,9 +459,8 @@ def test_run_app_preexisting_unix_socket(loop, mocker):
         os.unlink(sock_path)
 
         printer = mock.Mock(wraps=stopper(loop))
-        web.run_app(app, loop=loop, sock=sock, print=printer)
+        web.run_app(app, sock=sock, print=printer)
 
-        assert not loop.is_closed()
         loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
@@ -479,6 +470,7 @@ def test_run_app_preexisting_unix_socket(loop, mocker):
 
 def test_run_app_multiple_preexisting_sockets(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_server')
 
@@ -494,7 +486,7 @@ def test_run_app_multiple_preexisting_sockets(loop, mocker):
         _, port2 = sock2.getsockname()
 
         printer = mock.Mock(wraps=stopper(loop))
-        web.run_app(app, loop=loop, sock=(sock1, sock2), print=printer)
+        web.run_app(app, sock=(sock1, sock2), print=printer)
 
         loop.create_server.assert_has_calls([
             mock.call(mock.ANY, sock=sock1, backlog=128, ssl=None),
@@ -539,6 +531,7 @@ def test_sigterm(loop, mocker):
 
 def test_startup_cleanup_signals(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     mocker.spy(loop, 'create_server')
 
@@ -546,7 +539,7 @@ def test_startup_cleanup_signals(loop, mocker):
     mocker.spy(app, 'startup')
     mocker.spy(app, 'cleanup')
 
-    web.run_app(app, loop=loop, host=(), print=stopper(loop))
+    web.run_app(app, host=(), print=stopper(loop))
 
     app.startup.assert_called_once_with()
     app.cleanup.assert_called_once_with()
@@ -554,6 +547,7 @@ def test_startup_cleanup_signals(loop, mocker):
 
 def test_startup_cleanup_signals_even_on_failure(loop, mocker):
     skip_if_no_dict(loop)
+    asyncio.set_event_loop(loop)
 
     setattr(loop, 'create_server', mock.Mock(side_effect=RuntimeError()))
 
@@ -562,7 +556,7 @@ def test_startup_cleanup_signals_even_on_failure(loop, mocker):
     mocker.spy(app, 'cleanup')
 
     with pytest.raises(RuntimeError):
-        web.run_app(app, loop=loop, print=stopper(loop))
+        web.run_app(app, print=stopper(loop))
 
     app.startup.assert_called_once_with()
     app.cleanup.assert_called_once_with()

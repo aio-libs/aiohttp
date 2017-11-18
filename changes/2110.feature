@@ -1,1 +1,0 @@
-add ability to disable automatic response decompression

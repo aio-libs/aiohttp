@@ -19,13 +19,13 @@ from types import MappingProxyType
 # Escaping of the URLs need to be consitent with the escaping done by yarl
 from yarl import URL, unquote
 
-from . import hdrs, helpers
+from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
 from .web_fileresponse import FileResponse
-from .web_response import Response, StreamResponse
+from .web_response import Response
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -67,23 +67,11 @@ class AbstractResource(Sized, Iterable):
         return self._name
 
     @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for resource with additional params.
-
-        Deprecated, use url_for() instead.
-
-        """
-        warnings.warn(".url(...) is deprecated, use .url_for instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-
-    @abc.abstractmethod  # pragma: no branch
     def url_for(self, **kwargs):
         """Construct url for resource with additional params."""
 
-    @asyncio.coroutine
     @abc.abstractmethod  # pragma: no branch
-    def resolve(self, request):
+    async def resolve(self, request):
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
@@ -134,11 +122,10 @@ class AbstractRoute(abc.ABC):
                           "use async ones", DeprecationWarning)
 
             @wraps(handler)
-            @asyncio.coroutine
-            def handler_wrapper(*args, **kwargs):
+            async def handler_wrapper(*args, **kwargs):
                 result = old_handler(*args, **kwargs)
                 if asyncio.iscoroutine(result):
-                    result = yield from result
+                    result = await result
                 return result
             old_handler = handler
             handler = handler_wrapper
@@ -173,20 +160,8 @@ class AbstractRoute(abc.ABC):
     def url_for(self, *args, **kwargs):
         """Construct url for route with additional params."""
 
-    @abc.abstractmethod  # pragma: no branch
-    def url(self, **kwargs):
-        """Construct url for resource with additional params.
-
-        Deprecated, use url_for() instead.
-
-        """
-        warnings.warn(".url(...) is deprecated, use .url_for instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-
-    @asyncio.coroutine
-    def handle_expect_header(self, request):
-        return (yield from self._expect_handler(request))
+    async def handle_expect_header(self, request):
+        return await self._expect_handler(request)
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
@@ -247,8 +222,7 @@ class MatchInfoError(UrlMappingMatchInfo):
                                                 self._exception.reason)
 
 
-@asyncio.coroutine
-def _defaultExpectHandler(request):
+async def _defaultExpectHandler(request):
     """Default handler for Expect header.
 
     Just send "100 Continue" to client.
@@ -287,8 +261,7 @@ class Resource(AbstractResource):
             'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         allowed_methods = set()
 
         match_dict = self._match(request.rel_url.raw_path)
@@ -304,8 +277,6 @@ class Resource(AbstractResource):
                 return UrlMappingMatchInfo(match_dict, route), allowed_methods
         else:
             return None, allowed_methods
-
-        yield  # pragma: no cover
 
     def __len__(self):
         return len(self._routes)
@@ -340,10 +311,6 @@ class PlainResource(Resource):
 
     def get_info(self):
         return {'path': self._path}
-
-    def url(self, *, query=None):
-        super().url()
-        return str(self.url_for().with_query(query))
 
     def url_for(self):
         return URL(self._path)
@@ -418,10 +385,6 @@ class DynamicResource(Resource):
         url = self._formatter.format_map(parts)
         return URL(url)
 
-    def url(self, *, parts, query=None):
-        super().url(**parts)
-        return str(self.url_for(**parts).with_query(query))
-
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
         return ("<DynamicResource {name} {formatter}"
@@ -448,7 +411,6 @@ class StaticResource(PrefixResource):
 
     def __init__(self, prefix, directory, *, name=None,
                  expect_handler=None, chunk_size=256 * 1024,
-                 response_factory=StreamResponse,
                  show_index=False, follow_symlinks=False,
                  append_version=False):
         super().__init__(prefix, name=name)
@@ -474,12 +436,6 @@ class StaticResource(PrefixResource):
 
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
-
-    def url(self, *, filename, append_version=None, query=None):
-        url = self.url_for(filename=filename, append_version=append_version)
-        if query is not None:
-            return str(url.update_query(query))
-        return str(url)
 
     def url_for(self, *, filename, append_version=None):
         if append_version is None:
@@ -529,8 +485,7 @@ class StaticResource(PrefixResource):
             'OPTIONS', handler, self,
             expect_handler=self._expect_handler)
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         path = request.rel_url.raw_path
         method = request._method
         allowed_methods = set(self._routes)
@@ -543,7 +498,6 @@ class StaticResource(PrefixResource):
         match_dict = {'filename': unquote(path[len(self._prefix)+1:])}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
-        yield  # pragma: no cover
 
     def __len__(self):
         return len(self._routes)
@@ -551,8 +505,7 @@ class StaticResource(PrefixResource):
     def __iter__(self):
         return iter(self._routes.values())
 
-    @asyncio.coroutine
-    def _handle(self, request):
+    async def _handle(self, request):
         filename = unquote(request.match_info['filename'])
         try:
             filepath = self._directory.joinpath(filename).resolve()
@@ -640,20 +593,14 @@ class PrefixedSubAppResource(PrefixResource):
         raise RuntimeError(".url_for() is not supported "
                            "by sub-application root")
 
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
-        raise RuntimeError(".url() is not supported "
-                           "by sub-application root")
-
     def get_info(self):
         return {'app': self._app,
                 'prefix': self._prefix}
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
-        match_info = yield from self._app.router.resolve(request)
+        match_info = await self._app.router.resolve(request)
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
@@ -693,11 +640,6 @@ class ResourceRoute(AbstractRoute):
         """Construct url for route with additional params."""
         return self._resource.url_for(*args, **kwargs)
 
-    def url(self, **kwargs):
-        """Construct url for route with additional params."""
-        super().url(**kwargs)
-        return self._resource.url(**kwargs)
-
     def get_info(self):
         return self._resource.get_info()
 
@@ -711,9 +653,6 @@ class SystemRoute(AbstractRoute):
     def url_for(self, *args, **kwargs):
         raise RuntimeError(".url_for() is not allowed for SystemRoute")
 
-    def url(self, *args, **kwargs):
-        raise RuntimeError(".url() is not allowed for SystemRoute")
-
     @property
     def name(self):
         return None
@@ -721,8 +660,7 @@ class SystemRoute(AbstractRoute):
     def get_info(self):
         return {'http_exception': self._http_exception}
 
-    @asyncio.coroutine
-    def _handler(self, request):
+    async def _handler(self, request):
         raise self._http_exception
 
     @property
@@ -739,19 +677,17 @@ class SystemRoute(AbstractRoute):
 
 class View(AbstractView):
 
-    @asyncio.coroutine
-    def __iter__(self):
+    async def _iter(self):
         if self.request._method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
         method = getattr(self, self.request._method.lower(), None)
         if method is None:
             self._raise_allowed_methods()
-        resp = yield from method()
+        resp = await method()
         return resp
 
-    if helpers.PY_35:
-        def __await__(self):
-            return (yield from self.__iter__())
+    def __await__(self):
+        return self._iter().__await__()
 
     def _raise_allowed_methods(self):
         allowed_methods = {
@@ -801,13 +737,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._resources = []
         self._named_resources = {}
 
-    @asyncio.coroutine
-    def resolve(self, request):
+    async def resolve(self, request):
         method = request._method
         allowed_methods = set()
 
         for resource in self._resources:
-            match_dict, allowed = yield from resource.resolve(request)
+            match_dict, allowed = await resource.resolve(request)
             if match_dict is not None:
                 return match_dict
             else:
@@ -884,7 +819,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   expect_handler=expect_handler)
 
     def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256 * 1024, response_factory=StreamResponse,
+                   chunk_size=256 * 1024,
                    show_index=False, follow_symlinks=False,
                    append_version=False):
         """Add static files view.
@@ -900,7 +835,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
                                   name=name,
                                   expect_handler=expect_handler,
                                   chunk_size=chunk_size,
-                                  response_factory=response_factory,
                                   show_index=show_index,
                                   follow_symlinks=follow_symlinks,
                                   append_version=append_version)

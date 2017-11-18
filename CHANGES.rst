@@ -1,6 +1,199 @@
-=======
-Changes
-=======
+=========
+Changelog
+=========
+
+..
+    You should *NOT* be adding new change log entries to this file, this
+    file is managed by towncrier. You *may* edit previous change logs to
+    fix problems like typo corrections or such.
+    To add a new change log entry, please see
+    https://pip.pypa.io/en/latest/development/#adding-a-news-entry
+    we named the news folder "changes".
+
+    WARNING: Don't drop the next directive!
+
+.. towncrier release notes start
+
+2.3.3 (2017-11-17)
+==================
+
+- Having a `;` in Response content type does not assume it contains a charset
+  anymore. (#2197)
+- Use `getattr(asyncio, 'async')` for keeping compatibility with Python 3.7.
+  (#2476)
+- Ignore `NotImplementedError` raised by `set_child_watcher` from `uvloop`.
+  (#2491)
+- Fix warning in `ClientSession.__del__` by stopping to try to close it.
+  (#2523)
+- Fixed typo's in Third-party libraries page. And added async-v20 to the list
+  (#2510)
+
+
+2.3.2 (2017-11-01)
+==================
+
+- Fix passing client max size on cloning request obj. (#2385)
+- Fix ClientConnectorSSLError and ClientProxyConnectionError for proxy
+  connector. (#2408)
+- Drop generated `_http_parser` shared object from tarball distribution. (#2414)
+- Fix connector convert OSError to ClientConnectorError. (#2423)
+- Fix connection attempts for multiple dns hosts. (#2424)
+- Fix ValueError for AF_INET6 sockets if a preexisting INET6 socket to the
+  `aiohttp.web.run_app` function. (#2431)
+- `_SessionRequestContextManager` closes the session properly now. (#2441)
+- Rename `from_env` to `trust_env` in client reference. (#2451)
+
+
+2.3.1 (2017-10-18)
+==================
+
+- Relax attribute lookup in warning about old-styled middleware (#2340)
+
+
+2.3.0 (2017-10-18)
+==================
+
+Features
+--------
+
+- Add SSL related params to `ClientSession.request` (#1128)
+- Make enable_compression work on HTTP/1.0 (#1828)
+- Deprecate registering synchronous web handlers (#1993)
+- Switch to `multidict 3.0`. All HTTP headers preserve casing now but compared
+  in case-insensitive way. (#1994)
+- Improvement for `normalize_path_middleware`. Added possibility to handle URLs
+  with query string. (#1995)
+- Use towncrier for CHANGES.txt build (#1997)
+- Implement `trust_env=True` param in `ClientSession`. (#1998)
+- Added variable to customize proxy headers (#2001)
+- Implement `router.add_routes` and router decorators. (#2004)
+- Deprecated `BaseRequest.has_body` in favor of
+  `BaseRequest.can_read_body` Added `BaseRequest.body_exists`
+  attribute that stays static for the lifetime of the request (#2005)
+- Provide `BaseRequest.loop` attribute (#2024)
+- Make `_CoroGuard` awaitable and fix `ClientSession.close` warning message
+  (#2026)
+- Responses to redirects without Location header are returned instead of
+  raising a RuntimeError (#2030)
+- Added `get_client`, `get_server`, `setUpAsync` and `tearDownAsync` methods to
+  AioHTTPTestCase (#2032)
+- Add automatically a SafeChildWatcher to the test loop (#2058)
+- add ability to disable automatic response decompression (#2110)
+- Add support for throttling DNS request, avoiding the requests saturation when
+  there is a miss in the DNS cache and many requests getting into the connector
+  at the same time. (#2111)
+- Use request for getting access log information instead of message/transport
+  pair. Add `RequestBase.remote` property for accessing to IP of client
+  initiated HTTP request. (#2123)
+- json() raises a ContentTypeError exception if the content-type does not meet
+  the requirements instead of raising a generic ClientResponseError. (#2136)
+- Make the HTTP client able to return HTTP chunks when chunked transfer
+  encoding is used. (#2150)
+- add `append_version` arg into `StaticResource.url` and
+  `StaticResource.url_for` methods for getting an url with hash (version) of
+  the file. (#2157)
+- Fix parsing the Forwarded header. * commas and semicolons are allowed inside
+  quoted-strings; * empty forwarded-pairs (as in for=_1;;by=_2) are allowed; *
+  non-standard parameters are allowed (although this alone could be easily done
+  in the previous parser). (#2173)
+- Don't require ssl module to run. aiohttp does not require SSL to function.
+  The code paths involved with SSL will only be hit upon SSL usage. Raise
+  `RuntimeError` if HTTPS protocol is required but ssl module is not present.
+  (#2221)
+- Accept coroutine fixtures in pytest plugin (#2223)
+- Call `shutdown_asyncgens` before event loop closing on Python 3.6. (#2227)
+- Speed up Signals when there are no receivers (#2229)
+- Raise `InvalidURL` instead of `ValueError` on fetches with invalid URL.
+  (#2241)
+- Move `DummyCookieJar` into `cookiejar.py` (#2242)
+- `run_app`: Make `print=None` disable printing (#2260)
+- Support `brotli` encoding (generic-purpose lossless compression algorithm)
+  (#2270)
+- Add server support for WebSockets Per-Message Deflate. Add client option to
+  add deflate compress header in WebSockets request header. If calling
+  ClientSession.ws_connect() with `compress=15` the client will support deflate
+  compress negotiation. (#2273)
+- Support `verify_ssl`, `fingerprint`, `ssl_context` and `proxy_headers` by
+  `client.ws_connect`. (#2292)
+- Added `aiohttp.ClientConnectorSSLError` when connection fails due
+  `ssl.SSLError` (#2294)
+- `aiohttp.web.Application.make_handler` support `access_log_class` (#2315)
+- Build HTTP parser extension in non-strict mode by default. (#2332)
+
+
+Bugfixes
+--------
+
+- Clear auth information on redirecting to other domain (#1699)
+- Fix missing app.loop on startup hooks during tests (#2060)
+- Fix issue with synchronous session closing when using `ClientSession` as an
+  asynchronous context manager. (#2063)
+- Fix issue with `CookieJar` incorrectly expiring cookies in some edge cases.
+  (#2084)
+- Force use of IPv4 during test, this will make tests run in a Docker container
+  (#2104)
+- Warnings about unawaited coroutines now correctly point to the user's code.
+  (#2106)
+- Fix issue with `IndexError` being raised by the `StreamReader.iter_chunks()`
+  generator. (#2112)
+- Support HTTP 308 Permanent redirect in client class. (#2114)
+- Fix `FileResponse` sending empty chunked body on 304. (#2143)
+- Do not add `Content-Length: 0` to GET/HEAD/TRACE/OPTIONS requests by default.
+  (#2167)
+- Fix parsing the Forwarded header according to RFC 7239. (#2170)
+- Securely determining remote/scheme/host #2171 (#2171)
+- Fix header name parsing, if name is split into multiple lines (#2183)
+- Handle session close during connection, `KeyError:
+  <aiohttp.connector._TransportPlaceholder>` (#2193)
+- Fixes uncaught `TypeError` in `helpers.guess_filename` if `name` is not a
+  string (#2201)
+- Raise OSError on async DNS lookup if resolved domain is an alias for another
+  one, which does not have an A or CNAME record. (#2231)
+- Fix incorrect warning in `StreamReader`. (#2251)
+- Properly clone state of web request (#2284)
+- Fix C HTTP parser for cases when status line is split into different TCP
+  packets. (#2311)
+- Fix `web.FileResponse` overriding user supplied Content-Type (#2317)
+
+
+Improved Documentation
+----------------------
+
+- Add a note about possible performance degradation in `await resp.text()` if
+  charset was not provided by `Content-Type` HTTP header. Pass explicit
+  encoding to solve it. (#1811)
+- Drop `disqus` widget from documentation pages. (#2018)
+- Add a graceful shutdown section to the client usage documentation. (#2039)
+- Document `connector_owner` parameter. (#2072)
+- Update the doc of web.Application (#2081)
+- Fix mistake about access log disabling. (#2085)
+- Add example usage of on_startup and on_shutdown signals by creating and
+  disposing an aiopg connection engine. (#2131)
+- Document `encoded=True` for `yarl.URL`, it disables all yarl transformations.
+  (#2198)
+- Document that all app's middleware factories are run for every request.
+  (#2225)
+- Reflect the fact that default resolver is threaded one starting from aiohttp
+  1.1 (#2228)
+
+
+Deprecations and Removals
+-------------------------
+
+- Drop deprecated `Server.finish_connections` (#2006)
+- Drop %O format from logging, use %b instead. Drop %e format from logging,
+  environment variables are not supported anymore. (#2123)
+- Drop deprecated secure_proxy_ssl_header support (#2171)
+- Removed TimeService in favor of simple caching. TimeService also had a bug
+  where it lost about 0.5 seconds per second. (#2176)
+- Drop unused response_factory from static files API (#2290)
+
+
+Misc
+----
+
+- #2013, #2014, #2048, #2094, #2149, #2187, #2214, #2225, #2243, #2248
+
 
 2.2.5 (2017-08-03)
 ==================

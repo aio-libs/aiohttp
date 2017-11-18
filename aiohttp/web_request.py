@@ -3,11 +3,13 @@ import collections
 import datetime
 import json
 import re
+import socket
 import string
 import tempfile
 import types
 import warnings
 from email.utils import parsedate
+from http.cookies import SimpleCookie
 from types import MappingProxyType
 from urllib.parse import parse_qsl
 
@@ -15,7 +17,7 @@ from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, SimpleCookie, reify, sentinel
+from .helpers import HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
@@ -60,13 +62,16 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    def __init__(self, message, payload, protocol, writer, time_service, task,
+    def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
-                 *, secure_proxy_ssl_header=None, client_max_size=1024**2):
+                 *, client_max_size=1024**2,
+                 state=None,
+                 scheme=None, host=None, remote=None):
+        if state is None:
+            state = {}
         self._message = message
         self._protocol = protocol
-        self._transport = protocol.transport
-        self._writer = writer
+        self._payload_writer = payload_writer
 
         self._payload = payload
         self._headers = message.headers
@@ -76,16 +81,19 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._post = None
         self._read_bytes = None
 
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
-        self._time_service = time_service
-        self._state = {}
+        self._state = state
         self._cache = {}
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
 
+        self._scheme = scheme
+        self._host = host
+        self._remote = remote
+
     def clone(self, *, method=sentinel, rel_url=sentinel,
-              headers=sentinel):
+              headers=sentinel, scheme=sentinel, host=sentinel,
+              remote=sentinel):
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
@@ -112,15 +120,24 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         message = self._message._replace(**dct)
 
+        kwargs = {}
+        if scheme is not sentinel:
+            kwargs['scheme'] = scheme
+        if host is not sentinel:
+            kwargs['host'] = host
+        if remote is not sentinel:
+            kwargs['remote'] = remote
+
         return self.__class__(
             message,
             self._payload,
             self._protocol,
-            self._writer,
-            self._time_service,
+            self._payload_writer,
             self._task,
             self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header)
+            client_max_size=self._client_max_size,
+            state=self._state.copy(),
+            **kwargs)
 
     @property
     def task(self):
@@ -136,7 +153,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def writer(self):
-        return self._writer
+        return self._payload_writer
 
     @property
     def message(self):
@@ -170,24 +187,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ########
 
     @property
-    def scheme(self):
-        """A string representing the scheme of the request.
-
-        'http' or 'https'.
-        """
-        return self.url.scheme
-
-    @property
     def secure(self):
-        """A bool indicating if the request is handled with SSL or
-        'secure_proxy_ssl_header' is matching
-
-        """
-        return self.url.scheme == 'https'
+        """A bool indicating if the request is handled with SSL."""
+        return self.scheme == 'https'
 
     @reify
     def forwarded(self):
-        """ A tuple containing all parsed Forwarded header(s).
+        """A tuple containing all parsed Forwarded header(s).
 
         Makes an effort to parse Forwarded headers as specified by RFC 7239:
 
@@ -246,21 +252,18 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return tuple(elems)
 
     @reify
-    def _scheme(self):
-        proto = None
-        if self._transport.get_extra_info('sslcontext'):
-            proto = 'https'
-        elif self._secure_proxy_ssl_header is not None:
-            header, value = self._secure_proxy_ssl_header
-            if self.headers.get(header) == value:
-                proto = 'https'
+    def scheme(self):
+        """A string representing the scheme of the request.
+
+        'http' or 'https'.
+        """
+        scheme = self._scheme
+        if scheme is not None:
+            return scheme
+        if self.transport.get_extra_info('sslcontext'):
+            return 'https'
         else:
-            proto = next(
-                (f['proto'] for f in self.forwarded if 'proto' in f), None
-            )
-            if not proto and hdrs.X_FORWARDED_PROTO in self._message.headers:
-                proto = self._message.headers[hdrs.X_FORWARDED_PROTO]
-        return proto or 'http'
+            return 'http'
 
     @property
     def method(self):
@@ -290,14 +293,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         Returns str, or None if no hostname is found in the headers.
         """
-        host = next(
-            (f['host'] for f in self.forwarded if 'host' in f), None
-        )
-        if host is None:
-            host = self._message.headers.get(hdrs.X_FORWARDED_HOST)
-        if host is None:
-            host = self._message.headers.get(hdrs.HOST)
-        return host
+        host = self._host
+        if host is not None:
+            return host
+        host = self._message.headers.get(hdrs.HOST)
+        if host is not None:
+            return host
+        else:
+            return socket.getfqdn()
 
     @reify
     def remote(self):
@@ -309,27 +312,19 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - X-Forwarded-For
         - peername of opened socket
         """
-        ip = next(
-            (f['for'] for f in self.forwarded if 'for' in f), None
-        )
-        if ip is None:
-            ips = self._message.headers.get(hdrs.X_FORWARDED_FOR)
-            if ips is not None:
-                ip = ips.split(',')[0].strip()
-        if ip is None:
-            transport = self._transport
-            peername = transport.get_extra_info('peername')
-            if isinstance(peername, (list, tuple)):
-                ip = peername[0]
-            else:
-                ip = peername
-        return ip
+        remote = self._remote
+        if remote is not None:
+            return remote
+        peername = self.transport.get_extra_info('peername')
+        if isinstance(peername, (list, tuple)):
+            return peername[0]
+        else:
+            return peername
 
     @reify
     def url(self):
-        return URL('{}://{}{}'.format(self._scheme,
-                                      self.host,
-                                      str(self._rel_url)))
+        url = URL.build(scheme=self.scheme, host=self.host)
+        return url.join(self._rel_url)
 
     @property
     def path(self):
@@ -405,11 +400,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Is keepalive enabled by client?"""
         return not self._message.should_close
 
-    @property
-    def time_service(self):
-        """Time service"""
-        return self._time_service
-
     @reify
     def cookies(self):
         """Return request cookies.
@@ -478,17 +468,15 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return True if request has HTTP BODY, False otherwise."""
         return type(self._payload) is not EmptyStreamReader
 
-    @asyncio.coroutine
-    def release(self):
+    async def release(self):
         """Release request.
 
         Eat unread part of HTTP BODY if present.
         """
         while not self._payload.at_eof():
-            yield from self._payload.readany()
+            await self._payload.readany()
 
-    @asyncio.coroutine
-    def read(self):
+    async def read(self):
         """Read request body if present.
 
         Returns bytes object with full request content.
@@ -496,7 +484,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         if self._read_bytes is None:
             body = bytearray()
             while True:
-                chunk = yield from self._payload.readany()
+                chunk = await self._payload.readany()
                 body.extend(chunk)
                 if self._client_max_size \
                         and len(body) >= self._client_max_size:
@@ -506,26 +494,22 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._read_bytes = bytes(body)
         return self._read_bytes
 
-    @asyncio.coroutine
-    def text(self):
+    async def text(self):
         """Return BODY as text using encoding from .charset."""
-        bytes_body = yield from self.read()
+        bytes_body = await self.read()
         encoding = self.charset or 'utf-8'
         return bytes_body.decode(encoding)
 
-    @asyncio.coroutine
-    def json(self, *, loads=json.loads):
+    async def json(self, *, loads=json.loads):
         """Return BODY as JSON."""
-        body = yield from self.text()
+        body = await self.text()
         return loads(body)
 
-    @asyncio.coroutine
-    def multipart(self, *, reader=multipart.MultipartReader):
+    async def multipart(self, *, reader=multipart.MultipartReader):
         """Return async iterator to process BODY as multipart."""
         return reader(self._headers, self._payload)
 
-    @asyncio.coroutine
-    def post(self):
+    async def post(self):
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -543,9 +527,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         out = MultiDict()
 
         if content_type == 'multipart/form-data':
-            multipart = yield from self.multipart()
+            multipart = await self.multipart()
 
-            field = yield from multipart.next()
+            field = await multipart.next()
             while field is not None:
                 size = 0
                 max_size = self._client_max_size
@@ -554,7 +538,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 if field.filename:
                     # store file in temp file
                     tmp = tempfile.TemporaryFile()
-                    chunk = yield from field.read_chunk(size=2**16)
+                    chunk = await field.read_chunk(size=2**16)
                     while chunk:
                         chunk = field.decode(chunk)
                         tmp.write(chunk)
@@ -562,14 +546,14 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         if max_size > 0 and size > max_size:
                             raise ValueError(
                                 'Maximum request body size exceeded')
-                        chunk = yield from field.read_chunk(size=2**16)
+                        chunk = await field.read_chunk(size=2**16)
                     tmp.seek(0)
 
                     ff = FileField(field.name, field.filename,
                                    tmp, content_type, field.headers)
                     out.add(field.name, ff)
                 else:
-                    value = yield from field.read(decode=True)
+                    value = await field.read(decode=True)
                     if content_type is None or \
                             content_type.startswith('text/'):
                         charset = field.get_charset(default='utf-8')
@@ -580,9 +564,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         raise ValueError(
                             'Maximum request body size exceeded')
 
-                field = yield from multipart.next()
+                field = await multipart.next()
         else:
-            data = yield from self.read()
+            data = await self.read()
             if data:
                 charset = self.charset or 'utf-8'
                 out.extend(
@@ -615,6 +599,18 @@ class Request(BaseRequest):
         # or information about traversal lookup
         self._match_info = None  # initialized after route resolving
 
+    def clone(self, *, method=sentinel, rel_url=sentinel,
+              headers=sentinel, scheme=sentinel, host=sentinel,
+              remote=sentinel):
+        ret = super().clone(method=method,
+                            rel_url=rel_url,
+                            headers=headers,
+                            scheme=scheme,
+                            host=host,
+                            remote=remote)
+        ret._match_info = self._match_info
+        return ret
+
     @property
     def match_info(self):
         """Result of route resolving."""
@@ -625,10 +621,9 @@ class Request(BaseRequest):
         """Application instance."""
         return self._match_info.apps[-1]
 
-    @asyncio.coroutine
-    def _prepare_hook(self, response):
+    async def _prepare_hook(self, response):
         match_info = self._match_info
         if match_info is None:
             return
         for app in match_info.apps:
-            yield from app.on_response_prepare.send(self, response)
+            await app.on_response_prepare.send(self, response)

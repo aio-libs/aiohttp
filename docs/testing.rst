@@ -8,7 +8,7 @@ Testing
 Testing aiohttp web servers
 ---------------------------
 
-aiohttp provides plugin for pytest_ making writing web server tests
+aiohttp provides plugin for :mod:`pytest` making writing web server tests
 extremely easy, it also provides :ref:`test framework agnostic
 utilities <aiohttp-testing-framework-agnostic-utilities>` for testing
 with other frameworks such as :ref:`unittest
@@ -247,7 +247,7 @@ functionality, the AioHTTPTestCase is provided::
 
        an aiohttp test server, :class:`TestServer` instance.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. attribute:: loop
 
@@ -265,7 +265,7 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`TestClient` instance.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. comethod:: get_server()
 
@@ -274,7 +274,7 @@ functionality, the AioHTTPTestCase is provided::
 
        :return: :class:`TestServer` instance.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. comethod:: get_application()
 
@@ -289,14 +289,14 @@ functionality, the AioHTTPTestCase is provided::
        This async method do nothing by default and can be overridden to execute
        asynchronous code during the ``setUp`` stage of the ``TestCase``.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. comethod:: tearDownAsync()
 
        This async method do nothing by default and can be overridden to execute
        asynchronous code during the ``tearDown`` stage of the ``TestCase``.
 
-       .. versionadded:: 2.3.0
+       .. versionadded:: 2.3
 
     .. method:: setUp()
 
@@ -369,12 +369,12 @@ conditions that hard to reproduce on real server::
                                   version=HttpVersion(1, 1), \
                                   closing=False, \
                                   app=None, \
+                                  match_info=sentinel, \
                                   reader=sentinel, \
                                   writer=sentinel, \
                                   transport=sentinel, \
                                   payload=sentinel, \
                                   sslcontext=None, \
-                                  secure_proxy_ssl_header=None,
                                   loop=...)
 
    Creates mocked web.Request testing purposes.
@@ -391,6 +391,9 @@ conditions that hard to reproduce on real server::
    :param headers: mapping containing the headers. Can be anything accepted
        by the multidict.CIMultiDict constructor.
    :type headers: dict, multidict.CIMultiDict, list of pairs
+
+   :param match_info: mapping containing the info to match with url parameters.
+   :type match_info: dict
 
    :param version: namedtuple with encoded HTTP version
    :type version: aiohttp.protocol.HttpVersion
@@ -414,15 +417,13 @@ conditions that hard to reproduce on real server::
    :param sslcontext: ssl.SSLContext object, for HTTPS connection
    :type sslcontext: ssl.SSLContext
 
-   :param secure_proxy_ssl_header: A tuple representing a HTTP header/value
-       combination that signifies a request is secure.
-   :type secure_proxy_ssl_header: tuple
-
    :param loop: An event loop instance, mocked loop by default.
-   :type secure_proxy_ssl_header: :class:`asyncio.AbstractEventLoop`
+   :type loop: :class:`asyncio.AbstractEventLoop`
 
    :return: :class:`aiohttp.web.Request` object.
 
+   .. versionadded:: 2.3
+      *match_info* parameter.
 
 .. _aiohttp-testing-writing-testable-services:
 

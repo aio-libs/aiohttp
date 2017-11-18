@@ -2,8 +2,8 @@ abc
 aiodns
 aioes
 aiohttp
-aiohttp’s
 aiohttpdemo
+aiohttp’s
 aiopg
 alives
 api
@@ -28,6 +28,7 @@ basename
 BasicAuth
 BodyPartReader
 botocore
+Bugfixes
 builtin
 BytesIO
 cchardet
@@ -41,7 +42,10 @@ CIMultiDict
 ClientSession
 cls
 cmd
+codec
 Codings
+committer
+committers
 config
 Config
 configs
@@ -87,8 +91,8 @@ gethostbyname
 github
 google
 gunicorn
-gunicorn’s
 Gunicorn
+gunicorn’s
 gzipped
 hackish
 highlevel
@@ -122,9 +126,11 @@ kwarg
 latin
 linux
 localhost
+Locator
 login
 lookup
 lookups
+lossless
 Mako
 manylinux
 metadata
@@ -137,6 +143,7 @@ misformed
 Mongo
 msg
 MsgType
+multi
 multidict
 multidicts
 multidict’s
@@ -175,11 +182,13 @@ programmatically
 proxied
 PRs
 pubsub
+Punycode
 py
 pyenv
 pyflakes
 pytest
 Pytest
+Quickstart
 quote’s
 readonly
 readpayload
@@ -193,8 +202,6 @@ refactoring
 regex
 regexps
 regexs
-request’s
-Request’s
 reloader
 renderer
 renderers
@@ -202,7 +209,10 @@ repo
 repr
 repr’s
 RequestContextManager
+request’s
+Request’s
 requote
+requoting
 resolvers
 reusage
 Runit
@@ -218,6 +228,7 @@ SocketSocketTransport
 ssl
 SSLContext
 startup
+subapplication
 subclasses
 submodules
 subpackage
@@ -232,6 +243,7 @@ symlinks
 syscall
 syscalls
 Systemd
+tarball
 TCP
 teardown
 Teardown
@@ -245,6 +257,7 @@ tp
 tuples
 UI
 un
+unawaited
 unicode
 unittest
 Unittest

@@ -9,5 +9,5 @@
 {% endfor %}
 </ul>
 
-<a href="{{ url('poll', parts={'question_id': question.id}) }}">Vote again?</a>
+<a href="{{ url('poll', question_id=question.id) }}">Vote again?</a>
 {% endblock %}

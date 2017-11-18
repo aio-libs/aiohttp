@@ -4,13 +4,13 @@ import itertools
 import os
 import tempfile
 import unittest
+from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
 from yarl import URL
 
-from aiohttp import CookieJar
-from aiohttp.helpers import SimpleCookie
+from aiohttp import CookieJar, DummyCookieJar
 
 
 @pytest.fixture
@@ -596,3 +596,15 @@ class TestCookieJarSafe(TestCookieJarBase):
 
         # Assert that there is a cookie.
         assert len(jar) == 1
+
+
+def test_dummy_cookie_jar(loop):
+    cookie = SimpleCookie('foo=bar; Domain=example.com;')
+    dummy_jar = DummyCookieJar(loop=loop)
+    assert len(dummy_jar) == 0
+    dummy_jar.update_cookies(cookie)
+    assert len(dummy_jar) == 0
+    with pytest.raises(StopIteration):
+        next(iter(dummy_jar))
+    assert dummy_jar.filter_cookies(URL("http://example.com/")) is None
+    dummy_jar.clear()

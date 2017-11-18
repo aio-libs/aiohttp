@@ -1,4 +1,3 @@
-import asyncio
 import collections
 import re
 from unittest import mock
@@ -39,6 +38,7 @@ def request(buf):
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
+    app.on_response_prepare.freeze()
     req = make_mocked_request(method, path, app=app, payload_writer=writer)
     return req
 
@@ -53,11 +53,10 @@ def test_all_http_exceptions_exported():
             assert name in web.__all__
 
 
-@asyncio.coroutine
-def test_HTTPOk(buf, request):
+async def test_HTTPOk(buf, request):
     resp = web.HTTPOk()
-    yield from resp.prepare(request)
-    yield from resp.write_eof()
+    await resp.prepare(request)
+    await resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match(('HTTP/1.1 200 OK\r\n'
                      'Content-Type: text/plain; charset=utf-8\r\n'
@@ -87,13 +86,12 @@ def test_terminal_classes_has_status_code():
     assert 1 == codes.most_common(1)[0][1]
 
 
-@asyncio.coroutine
-def test_HTTPFound(buf, request):
+async def test_HTTPFound(buf, request):
     resp = web.HTTPFound(location='/redirect')
     assert '/redirect' == resp.location
     assert '/redirect' == resp.headers['location']
-    yield from resp.prepare(request)
-    yield from resp.write_eof()
+    await resp.prepare(request)
+    await resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 302 Found\r\n'
                     'Content-Type: text/plain; charset=utf-8\r\n'
@@ -112,14 +110,13 @@ def test_HTTPFound_empty_location():
         web.HTTPFound(location=None)
 
 
-@asyncio.coroutine
-def test_HTTPMethodNotAllowed(buf, request):
+async def test_HTTPMethodNotAllowed(buf, request):
     resp = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
     assert 'GET' == resp.method
     assert ['POST', 'PUT'] == resp.allowed_methods
     assert 'POST,PUT' == resp.headers['allow']
-    yield from resp.prepare(request)
-    yield from resp.write_eof()
+    await resp.prepare(request)
+    await resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 405 Method Not Allowed\r\n'
                     'Content-Type: text/plain; charset=utf-8\r\n'

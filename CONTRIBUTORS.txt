@@ -10,6 +10,7 @@ Aleksey Kutepov
 Alex Hayes
 Alex Key
 Alex Khomchenko
+Alex Kuzmenko
 Alex Lisovoy
 Alexander Bayandin
 Alexander Karpinsky
@@ -22,6 +23,7 @@ Alexandru Mihai
 Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
+Amin Etesamian
 Amy Boyle
 Andrei Ursulenko
 Andrej Antonov
@@ -29,11 +31,13 @@ Andrew Leech
 Andrew Lytvyn
 Andrew Svetlov
 Andrii Soldatenko
+Antoine Pietri
 Anton Kasyanov
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
 Boris Feld
+Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
@@ -47,10 +51,12 @@ Chris Moore
 Christopher Schmitt
 Claudiu Popa
 Damien Nadé
+Dan Xu
 Daniel García
 Daniel Nelson
 Danny Song
 David Michael Brown
+Denilson Amorim
 Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
@@ -94,6 +100,7 @@ Jesus Cea
 Jinkyu Yi
 Joel Watts
 John Feusi
+Jon Nabozny
 Joongi Kim
 Josep Cugat
 Julia Tsemusheva
@@ -134,6 +141,7 @@ Nicolas Braem
 Nikolay Novik
 Olaf Conradi
 Pahaz Blinov
+Panagiotis Kolokotronis
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
@@ -175,6 +183,7 @@ Vaibhav Sagar
 Vamsi Krishna Avula
 Vasiliy Faronov
 Vasyl Baran
+Victor Kovtun
 Vikas Kawadia
 Vitalik Verhovodov
 Vitaly Haritonsky
@@ -189,6 +198,7 @@ Will McGugan
 Willem de Groot
 Wilson Ong
 Yannick Koechlin
+Yannick Péroux
 Yegor Roganov
 Young-Ho Cha
 Yuriy Shatrov
