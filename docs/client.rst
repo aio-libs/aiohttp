@@ -14,3 +14,4 @@ The page contains all information about aiohttp Client API:
    client_quickstart
    client_advanced
    client_reference
+   tracing_reference
