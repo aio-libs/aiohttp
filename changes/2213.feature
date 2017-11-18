@@ -1,0 +1,1 @@
+Added a digest authentication helper class.

@@ -1366,60 +1366,60 @@ DigestAuth
                                read_until_eof=True)
       :coroutine:
 
-   Perform an asynchronous HTTP request. Return a response object
-   (:class:`ClientResponse` or derived from).
+      Perform an asynchronous HTTP request. Return a response object
+      (:class:`ClientResponse` or derived from).
 
-   :param str method: HTTP method
+      :param str method: HTTP method
 
-   :param url: Requested URL, :class:`str` or :class:`~yarl.URL`
+      :param url: Requested URL, :class:`str` or :class:`~yarl.URL`
 
-   :param dict params: Parameters to be sent in the query
-                       string of the new request (optional)
+      :param dict params: Parameters to be sent in the query
+                          string of the new request (optional)
 
-   :param data: Dictionary, bytes, or file-like object to
-                send in the body of the request (optional)
+      :param data: Dictionary, bytes, or file-like object to
+                   send in the body of the request (optional)
 
-   :param json: Any json compatible python object (optional). *json* and *data*
-                parameters could not be used at the same time.
+      :param json: Any json compatible python object (optional). *json* and *data*
+                   parameters could not be used at the same time.
 
-   :param dict headers: HTTP Headers to send with the request (optional)
+      :param dict headers: HTTP Headers to send with the request (optional)
 
-   :param dict cookies: Cookies to send with the request (optional)
+      :param dict cookies: Cookies to send with the request (optional)
 
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional)
+      :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
+                                     Authorization (optional)
 
-   :param bool allow_redirects: If set to ``False``, do not follow redirects.
-                                ``True`` by default (optional).
+      :param bool allow_redirects: If set to ``False``, do not follow redirects.
+                                   ``True`` by default (optional).
 
-   :param aiohttp.protocol.HttpVersion version: Request HTTP version (optional)
+      :param aiohttp.protocol.HttpVersion version: Request HTTP version (optional)
 
-   :param bool compress: Set to ``True`` if request has to be compressed
-                         with deflate encoding.
-                         ``False`` instructs aiohttp to not compress data.
-                         ``None`` by default (optional).
+      :param bool compress: Set to ``True`` if request has to be compressed
+                            with deflate encoding.
+                            ``False`` instructs aiohttp to not compress data.
+                            ``None`` by default (optional).
 
-   :param int chunked: Enables chunked transfer encoding.
-                       ``None`` by default (optional).
+      :param int chunked: Enables chunked transfer encoding.
+                          ``None`` by default (optional).
 
-   :param bool expect100: Expect 100-continue response from server.
-                          ``False`` by default (optional).
+      :param bool expect100: Expect 100-continue response from server.
+                             ``False`` by default (optional).
 
-   :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
-      instance to support connection pooling.
+      :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
+         instance to support connection pooling.
 
-   :param bool read_until_eof: Read response until EOF if response
-                               does not have Content-Length header.
-                               ``True`` by default (optional).
+      :param bool read_until_eof: Read response until EOF if response
+                                  does not have Content-Length header.
+                                  ``True`` by default (optional).
 
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-                used for processing HTTP requests.
-                If param is ``None``, :func:`asyncio.get_event_loop`
-                is used for getting default event loop.
+      :param loop: :ref:`event loop<asyncio-event-loop>`
+                   used for processing HTTP requests.
+                   If param is ``None``, :func:`asyncio.get_event_loop`
+                   is used for getting default event loop.
 
-      .. deprecated:: 2.0
+         .. deprecated:: 2.0
 
-   :return ClientResponse: a :class:`client response <ClientResponse>` object.
+      :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
    Usage::
 

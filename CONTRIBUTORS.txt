@@ -93,6 +93,7 @@ Jeroen van der Heijden
 Jesus Cea
 Jinkyu Yi
 Joel Watts
+John Feusi
 Joongi Kim
 Josep Cugat
 Julia Tsemusheva
