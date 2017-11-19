@@ -18,7 +18,7 @@ from collections.abc import Coroutine
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 from urllib.request import getproxies
 
 import async_timeout
@@ -284,12 +284,7 @@ class DigestAuth():
         def KD(s, d):
             return H('%s:%s' % (s, d))
 
-        parsed = urlparse(url)
-        #: path is request-uri defined in RFC 2616 which should not be empty
-        path = parsed.path or "/"
-        if parsed.query:
-            path += '?' + parsed.query
-
+        path = URL(url).path_qs
         A1 = '%s:%s:%s' % (self.username, realm, self.password)
         A2 = '%s:%s' % (method, path)
 
