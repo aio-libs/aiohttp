@@ -288,27 +288,18 @@ async def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     assert txt == 'Test message'
 
 
-@pytest.mark.parametrize('fingerprint', [
-    b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06=',
-    b's\x93\xfd:\xed\x08\x1do\xa9\xaeq9\x1a\xe3\xc5\x7f\x89\xe7l\xf9',
-    b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
-    b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
-    ids=['md5', 'sha1', 'sha256'])
 async def test_tcp_connector_fingerprint_ok(test_server, test_client,
-                                            loop, ssl_ctx, fingerprint):
+                                            loop, ssl_ctx):
+
+    fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
+                   b'\xcb~7U\x14D@L'
+                   b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b')
 
     async def handler(request):
         return web.HTTPOk(text='Test message')
 
-    # Test for deprecation warning on md5 and sha1 len digests.
-    if len(fingerprint) == 16 or len(fingerprint) == 20:
-        with pytest.warns(DeprecationWarning) as cm:
-            connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
-                                             fingerprint=fingerprint)
-        assert 'Use sha256.' in str(cm[0].message)
-    else:
-        connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
-                                         fingerprint=fingerprint)
+    connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
+                                     fingerprint=fingerprint)
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = await test_server(app, ssl=ssl_ctx)
@@ -319,14 +310,12 @@ async def test_tcp_connector_fingerprint_ok(test_server, test_client,
     resp.close()
 
 
-@pytest.mark.parametrize('fingerprint', [
-    b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06=',
-    b's\x93\xfd:\xed\x08\x1do\xa9\xaeq9\x1a\xe3\xc5\x7f\x89\xe7l\xf9',
-    b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd\xcb~7U\x14D@L'
-    b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b'],
-    ids=['md5', 'sha1', 'sha256'])
 async def test_tcp_connector_fingerprint_fail(test_server, test_client,
-                                              loop, ssl_ctx, fingerprint):
+                                              loop, ssl_ctx):
+
+    fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
+                   b'\xcb~7U\x14D@L'
+                   b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b')
 
     async def handler(request):
         return web.HTTPOk(text='Test message')
