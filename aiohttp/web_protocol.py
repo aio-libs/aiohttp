@@ -3,6 +3,7 @@ import asyncio.streams
 import http.server
 import socket
 import traceback
+import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
@@ -426,6 +427,14 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # log access
                 if self.access_log:
                     self.log_access(request, resp, loop.time() - now)
+
+                # Deprication warning (See #2415)
+                if isinstance(resp, HTTPException):
+                    warnings.warn(
+                        "returning HTTPException object is deprecated (#2415) "
+                        "and will be removed, "
+                        "please raise the exception instead",
+                        DeprecationWarning)
 
                 # check payload
                 if not payload.is_eof():

@@ -1,8 +1,6 @@
 import asyncio
-import os
 import signal
 import socket
-import stat
 import sys
 from argparse import ArgumentParser
 from collections import Iterable
@@ -97,15 +95,6 @@ def _make_server_creators(handler, *, loop, ssl_context,
         )
         uris.append('{}://unix:{}:'.format(scheme, path))
 
-        # Clean up prior socket path if stale and not abstract.
-        # CPython 3.5.3+'s event loop already does this. See
-        # https://github.com/python/asyncio/issues/425
-        if path[0] not in (0, '\x00'):  # pragma: no branch
-            try:
-                if stat.S_ISSOCK(os.stat(path).st_mode):
-                    os.remove(path)
-            except FileNotFoundError:
-                pass
     for sock in socks:
         server_creations.append(
             loop.create_server(
@@ -124,11 +113,9 @@ def _make_server_creators(handler, *, loop, ssl_context,
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
-            access_log=access_logger, handle_signals=True, loop=None):
+            access_log=access_logger, handle_signals=True):
     """Run an app locally"""
-    user_supplied_loop = loop is not None
-    if loop is None:
-        loop = asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
 
     app._set_loop(loop)
     app.freeze()
@@ -176,10 +163,9 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
             loop.run_until_complete(handler.shutdown(shutdown_timeout))
     finally:
         loop.run_until_complete(app.cleanup())
-    if not user_supplied_loop:
-        if hasattr(loop, 'shutdown_asyncgens'):
-            loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
+    if hasattr(loop, 'shutdown_asyncgens'):
+        loop.run_until_complete(loop.shutdown_asyncgens())
+    loop.close()
 
 
 def main(argv):
