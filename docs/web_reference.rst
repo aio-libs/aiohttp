@@ -846,7 +846,8 @@ Response
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
-.. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
+.. class:: WebSocketResponse(*, timeout=None, receive_timeout=None, \
+                             send_timeout=None, close_timeout=10.0, \
                              autoclose=True, autoping=True, heartbeat=None, \
                              protocols=(), compress=True)
 
@@ -979,11 +980,15 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_str(data)
+   .. comethod:: send_str(data, *, timeout=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
+
+      :param timeout: timeout for `send` operation.
+
+         timeout value overrides response`s send_timeout attribute.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -993,11 +998,15 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_bytes(data)
+   .. comethod:: send_bytes(data, *, timeout=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
+
+      :param timeout: timeout for `send` operation.
+
+         timeout value overrides response`s send_timeout attribute.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1008,11 +1017,15 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_json(data, *, dumps=json.dumps)
+   .. comethod:: send_json(data, *, timeout=None, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
       :param data: data to send.
+
+      :param timeout: timeout for `send` operation.
+
+         timeout value overrides response`s send_timeout attribute.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
