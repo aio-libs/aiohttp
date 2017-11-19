@@ -243,10 +243,23 @@ The example limits amount of parallel connections to the same to `30`.
 
 The default is `0` (no limit on per host bases).
 
+Tuning the DNS cache
+--------------------
+By default :class:`~aiohttp.TCPConnector` comes with the DNS cache
+table enabled, and resolutions will be cached by default for `10` seconds.
+This behavior can be changed either to change of the TTL for a resolution,
+as can be seen in the following example::
+
+    conn = aiohttp.TCPConnector(ttl_dns_cache=300)
+
+or disabling the use of the DNS cache table, meaning that all requests will
+end up making a DNS resolution, as the following example shows::
+
+    conn = aiohttp.TCPConnector(use_dns_cache=False)
+
 
 Resolving using custom nameservers
 ----------------------------------
-
 In order to specify the nameservers to when resolving the hostnames,
 :term:`aiodns` is required::
 
