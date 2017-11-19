@@ -1430,7 +1430,7 @@ DigestAuth
       :param dict params: Parameters to be sent in the query
                           string of the new request (optional)
 
-      :param data: Dictionary, bytes, or file-like object to
+      :param dict|bytes|file data: Dictionary, bytes, or file-like object to
                    send in the body of the request (optional)
 
       :param json: Any json compatible python object (optional). *json* and *data*
@@ -1471,9 +1471,9 @@ DigestAuth
                    If param is ``None``, :func:`asyncio.get_event_loop`
                    is used for getting default event loop.
 
-         .. deprecated:: 2.0
+                   .. deprecated:: 2.0
 
-      :return ClientResponse: a :class:`client response <ClientResponse>` object.
+      :rtype: :class:`client response <ClientResponse>`
 
    Usage::
 
