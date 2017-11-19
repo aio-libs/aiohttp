@@ -1,5 +1,4 @@
 import asyncio
-import signal
 import socket
 import sys
 from argparse import ArgumentParser
@@ -9,8 +8,8 @@ from importlib import import_module
 from yarl import URL
 
 from . import (web_exceptions, web_fileresponse, web_middlewares, web_protocol,
-               web_request, web_response, web_server, web_urldispatcher,
-               web_ws)
+               web_request, web_response, web_server, web_site,
+               web_urldispatcher, web_ws)
 from .http import HttpVersion  # noqa
 from .log import access_logger
 from .web_application import Application  # noqa
@@ -117,52 +116,28 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
     """Run an app locally"""
     loop = asyncio.get_event_loop()
 
-    app._set_loop(loop)
-    app.freeze()
-    loop.run_until_complete(app.startup())
+    runner = AppRunner(app, handle_signals=handle_signals,
+                       access_log_format=access_log_format,
+                       access_log=access_log)
+
+    loop.run_until_complete(runner.setup())
 
     try:
-        make_handler_kwargs = dict()
-        if access_log_format is not None:
-            make_handler_kwargs['access_log_format'] = access_log_format
-        handler = app.make_handler(loop=loop, access_log=access_log,
-                                   **make_handler_kwargs)
-
-        server_creations, uris = _make_server_creators(
-            handler,
-            loop=loop, ssl_context=ssl_context,
-            host=host, port=port, path=path, sock=sock,
-            backlog=backlog)
-        servers = loop.run_until_complete(
-            asyncio.gather(*server_creations, loop=loop)
-        )
-
-        if handle_signals:
-            try:
-                loop.add_signal_handler(signal.SIGINT, raise_graceful_exit)
-                loop.add_signal_handler(signal.SIGTERM, raise_graceful_exit)
-            except NotImplementedError:  # pragma: no cover
-                # add_signal_handler is not implemented on Windows
-                pass
+        if host is None and port is None and sock is None:
+            site = TCPSite(runner, shutdown_timeout=shutdown_timeout,
+                           ssl_context=ssl_context, backlog=backlog)
+            loop.run_until_complete(site.start())
 
         try:
             if print:
+                urls = sorted(str(s.url) for s in runner.sites)
                 print("======== Running on {} ========\n"
-                      "(Press CTRL+C to quit)".format(', '.join(uris)))
+                      "(Press CTRL+C to quit)".format(', '.join(urls)))
             loop.run_forever()
         except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
             pass
-        finally:
-            server_closures = []
-            for srv in servers:
-                srv.close()
-                server_closures.append(srv.wait_closed())
-            loop.run_until_complete(
-                asyncio.gather(*server_closures, loop=loop))
-            loop.run_until_complete(app.shutdown())
-            loop.run_until_complete(handler.shutdown(shutdown_timeout))
     finally:
-        loop.run_until_complete(app.cleanup())
+        loop.run_until_complete(runner.cleanup())
     if hasattr(loop, 'shutdown_asyncgens'):
         loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
