@@ -380,12 +380,20 @@ If your HTTP server uses UNIX domain sockets you can use
 Proxy support
 -------------
 
-aiohttp supports HTTP/HTTPS proxies. You have to use
-*proxy* parameter::
+aiohttp supports HTTP/HTTPS and SOCKS4/SOCKS5 proxies. For socks proxies :term:`aiosocks` required.
+You have to use *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
                               proxy="http://some.proxy.com") as resp:
+           print(resp.status)
+
+       async with session.get("http://python.org",
+                              proxy="socks4://127.0.0.1:2345") as resp:
+           print(resp.status)
+
+       async with session.get("http://python.org",
+                              proxy="socks5://127.0.0.1:1234") as resp:
            print(resp.status)
 
 It also supports proxy authorization::
@@ -397,7 +405,23 @@ It also supports proxy authorization::
                               proxy_auth=proxy_auth) as resp:
            print(resp.status)
 
-Authentication credentials can be passed in proxy URL::
+       import aiosocks
+
+       socks4_auth = aiosocks.Socks4Auth('user')
+       socks5_auth = aiosocks.Socks5Auth('user', 'pass')
+
+       async with session.get("http://python.org",
+                              proxy="socks4://127.0.0.1:2345",
+                              proxy_auth=socks4_auth) as resp:
+           print(resp.status)
+
+       async with session.get("http://python.org",
+                              proxy="socks5://127.0.0.1:1234",
+                              proxy_auth=socks5_auth) as resp:
+           print(resp.status)
+
+
+Authentication credentials can be passed in proxy URL (HTTP/HTTPS proxy only)::
 
    session.get("http://python.org",
                proxy="http://user:pass@some.proxy.com")
@@ -411,6 +435,14 @@ insensitive)::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org", trust_env=True) as resp:
+           print(resp.status)
+
+Remote destination host resolve for socks proxies::
+
+    async with aiohttp.ClientSession() as session:
+       async with session.get("http://python.org",
+                              proxy="socks4://127.0.0.1:2345",
+                              socks_remote_resolve=True) as resp:
            print(resp.status)
 
 Response Status Codes

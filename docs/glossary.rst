@@ -16,6 +16,12 @@
 
       https://pypi.python.org/pypi/aiodns
 
+   aiosocks
+
+      SOCKS proxy for asyncio.
+
+      https://pypi.python.org/pypi/aiosocks
+
    asyncio
 
       The library for writing single-threaded concurrent code using
