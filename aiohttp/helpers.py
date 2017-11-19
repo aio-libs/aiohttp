@@ -349,11 +349,9 @@ class DigestAuth():
         """
         auth_header = response.headers.get('www-authenticate', '')
 
-        if 'digest' in auth_header.lower():
-            pattern = re.compile(r'digest ', flags=re.IGNORECASE)
-            self.challenge = parse_key_value_list(
-                pattern.sub('', auth_header, count=1)
-            )
+        first_word, data = auth_header.split(' ', 1)
+        if 'digest' == first_word.lower():
+            self.challenge = parse_key_value_list(data)
 
             return await self.request(
                 self.args['method'],
