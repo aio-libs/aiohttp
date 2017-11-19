@@ -247,12 +247,12 @@ class DigestAuth():
             method, url, headers=headers, **kwargs
         )
 
-        # If the response is not in the 400 range, do not try digest
-        # authentication.
-        if not 400 <= response.status < 500:
-            return response
+        # Only try performing digest authentication if the response status is
+        # from 400 to 500.
+        if 400 <= response.status < 500:
+            return await self._handle_401(response)
 
-        return await self._handle_401(response)
+        return response
 
     def _build_digest_header(self, method, url):
         """
