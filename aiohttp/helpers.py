@@ -265,6 +265,11 @@ class DigestAuth():
         algorithm = self.challenge.get('algorithm', 'MD5').upper()
         opaque = self.challenge.get('opaque')
 
+        if qop and not (qop == 'auth' or 'auth' in qop.split(',')):
+            raise client_exceptions.ClientError(
+                'Unsupported qop value: %s' % qop
+            )
+
         # lambdas assume digest modules are imported at the top level
         if algorithm == 'MD5' or algorithm == 'MD5-SESS':
             hash_fn = hashlib.md5
@@ -311,17 +316,15 @@ class DigestAuth():
         if algorithm == 'MD5-SESS':
             HA1 = H('%s:%s:%s' % (HA1, nonce, cnonce))
 
-        if not qop:
-            response_digest = KD(HA1, '%s:%s' % (nonce, HA2))
-        elif qop == 'auth' or 'auth' in qop.split(','):
+        # This assumes qop was validated to be 'auth' above. If 'auth-int'
+        # support is added this will need to change.
+        if qop:
             noncebit = ':'.join([
                 nonce, ncvalue, cnonce, 'auth', HA2
             ])
             response_digest = KD(HA1, noncebit)
         else:
-            raise client_exceptions.ClientError(
-                'Unsupported qop value: %s' % qop
-            )
+            response_digest = KD(HA1, '%s:%s' % (nonce, HA2))
 
         base = ', '.join([
             'username="%s"' % self.username,
