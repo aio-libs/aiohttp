@@ -294,6 +294,12 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
+      :param trace_request_ctx: Object used to give as a kw param for the all
+        signals triggered by the ongoing request and for all :class:`TraceConfig`
+        configured. Default passes a None value.
+
+         .. versionadded:: 3.0
+
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
 
@@ -521,6 +527,7 @@ The client session supports the context manager protocol for self closing.
       Detach connector from session without closing the former.
 
       Session is switched to closed state anyway.
+
 
 
 Basic API
@@ -1152,6 +1159,7 @@ Response object
 
        A namedtuple with request URL and headers from :class:`ClientRequest`
        object, :class:`aiohttp.RequestInfo` instance.
+
 
 
 ClientWebSocketResponse

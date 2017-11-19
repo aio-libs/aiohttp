@@ -14,6 +14,7 @@ from .cookiejar import *  # noqa
 from .payload import *  # noqa
 from .payload_streamer import *  # noqa
 from .resolver import *  # noqa
+from .tracing import *  # noqa
 
 try:
     from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
@@ -30,6 +31,7 @@ __all__ = (client.__all__ +  # noqa
            payload.__all__ +  # noqa
            payload_streamer.__all__ +  # noqa
            streams.__all__ +  # noqa
+           tracing.__all__ + # noqa
            ('hdrs', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
             'WSMsgType', 'WSCloseCode',
             'WebSocketError', 'WSMessage',
