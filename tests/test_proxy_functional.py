@@ -1,5 +1,8 @@
 import asyncio
 import os
+import socket
+import ssl
+import struct
 from unittest import mock
 
 import pytest
@@ -7,6 +10,13 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.test_utils import RawTestServer, unused_port
+
+
+try:
+    import aiosocks
+except ImportError:
+    aiosocks = None
 
 
 @pytest.fixture
@@ -57,6 +67,90 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
         return proxy_mock
 
     return proxy_server
+
+
+class FakeSocks4Srv:
+    def __init__(self, loop):
+        self._loop = loop
+        self._retranslators = []
+        self._writers = []
+        self._srv = None
+        self.port = unused_port()
+
+    async def negotiate(self, reader, writer):
+        writer.write(b'\x00\x5a\x04W\x01\x01\x01\x01')
+        data = await reader.readexactly(9)
+
+        dst_port = struct.unpack('>H', data[2:4])[0]
+        dst_addr = socket.inet_ntoa(data[4:8])
+
+        cl_reader, cl_writer = await asyncio.open_connection(
+            host=dst_addr, port=dst_port, loop=self._loop)
+        self._writers.append(cl_writer)
+
+        cl_fut = asyncio.ensure_future(
+            self.retranslate(reader, cl_writer), loop=self._loop)
+        dst_fut = asyncio.ensure_future(
+            self.retranslate(cl_reader, writer), loop=self._loop)
+
+        self._retranslators += [cl_fut, dst_fut]
+
+    async def retranslate(self, reader, writer):
+        while True:
+            try:
+                bytes = await reader.read(10)
+                if not bytes:
+                    break
+                writer.write(bytes)
+                await writer.drain()
+            except:  # noqa
+                break
+
+    async def start_server(self):
+        class Socks4Protocol(asyncio.StreamReaderProtocol):
+            def __init__(self, _loop, socks_srv):
+                self._loop = _loop
+                self._socks_srv = socks_srv
+                reader = asyncio.StreamReader(loop=self._loop)
+                super().__init__(
+                    reader, client_connected_cb=socks_srv.negotiate,
+                    loop=self._loop)
+
+        def factory():
+            return Socks4Protocol(_loop=self._loop, socks_srv=self)
+
+        self._srv = await self._loop.create_server(
+            factory, '127.0.0.1', self.port)
+
+    async def close(self):
+        for writer in self._writers:
+            writer.close()
+
+        for fut in self._retranslators:
+            if not fut.cancelled() or not fut.done():
+                fut.cancel()
+
+        self._srv.close()
+        await self._srv.wait_closed()
+
+
+@pytest.fixture
+def fake_socks4_server(loop):
+    servers = []
+
+    async def go():
+        server = FakeSocks4Srv(loop)
+        await server.start_server()
+        servers.append(server)
+        return server
+
+    yield go
+
+    async def finalize():
+        while servers:
+            await servers.pop().close()
+
+    loop.run_until_complete(finalize())
 
 
 @pytest.fixture()
@@ -551,3 +645,64 @@ async def xtest_proxy_from_env_https_with_auth(proxy_test_server,
     assert r2.host == 'aiohttp.io'
     assert r2.path_qs == '/path'
     assert r2.headers['Proxy-Authorization'] == auth.encode()
+
+
+@pytest.mark.skipif(aiosocks is None, reason="aiosocks library required")
+async def test_socks_http_connect(loop, raw_test_server, fake_socks4_server):
+    async def handler(request):
+        return web.Response(text='Test message')
+
+    raw_http_server = await raw_test_server(handler)
+    socks_server = await fake_socks4_server()
+
+    async with aiohttp.ClientSession(loop=loop) as session:
+        proxy = URL('socks4://127.0.0.1:{}'.format(socks_server.port))
+
+        async with session.get(
+                raw_http_server.make_url('/'), proxy=proxy) as resp:
+            assert resp.status == 200
+            assert (await resp.text()) == 'Test message'
+
+
+@pytest.mark.skipif(aiosocks is None, reason="aiosocks library required")
+async def test_socks_https_connect(loop, fake_socks4_server):
+    async def handler(request):
+        return web.Response(text='Test message')
+
+    here = os.path.join(os.path.dirname(__file__), '..', 'tests')
+    keyfile = os.path.join(here, 'sample.key')
+    certfile = os.path.join(here, 'sample.crt')
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    sslcontext.load_cert_chain(certfile, keyfile)
+
+    raw_http_server = RawTestServer(
+        handler, scheme='https', host='127.0.0.1', loop=loop)
+    await raw_http_server.start_server(loop=loop, ssl=sslcontext)
+
+    socks_server = await fake_socks4_server()
+
+    valid_fp = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
+                b'\xcb~7U\x14D@L'
+                b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b')
+
+    invalid_fp = (b'0\x9d\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
+                  b'\xcb~7U\x14D@L'
+                  b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x9e')
+    url = raw_http_server.make_url('/')
+    proxy = URL('socks4://127.0.0.1:{}'.format(socks_server.port))
+
+    async with aiohttp.ClientSession(loop=loop) as session:
+        async with session.get(
+                url, proxy=proxy, fingerprint=valid_fp,
+                verify_ssl=False) as resp:
+            assert resp.status == 200
+            assert (await resp.text()) == 'Test message'
+
+    async with aiohttp.ClientSession(loop=loop) as session:
+        with pytest.raises(aiohttp.ServerFingerprintMismatch):
+            async with session.get(
+                    url, proxy=proxy, fingerprint=invalid_fp,
+                    verify_ssl=False):
+                pass
+
+    await raw_http_server.close()

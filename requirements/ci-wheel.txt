@@ -1,4 +1,4 @@
-aiosocks==0.2.5
+aiosocks==0.2.6
 async-timeout==2.0.0
 brotlipy==0.7.0
 cchardet==2.1.1
