@@ -10,7 +10,6 @@ import inspect
 import os
 import re
 import time
-import warnings
 import weakref
 from collections import namedtuple
 from collections.abc import Coroutine
@@ -90,6 +89,7 @@ coroutines._DEBUG = False
 @asyncio.coroutine
 def noop(*args, **kwargs):
     return
+
 
 coroutines._DEBUG = old_debug
 

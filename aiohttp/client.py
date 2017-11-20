@@ -757,7 +757,7 @@ class _SessionRequestContextManager:
         self._session = session
 
     async def __aenter__(self):
-        self._resp = await self._coro()
+        self._resp = await self._coro
         return self._resp
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
