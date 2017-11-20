@@ -711,11 +711,11 @@ class ClientSession:
         self._connector = None
 
     def __enter__(self):
-        warnings.warn("Use async with instead", DeprecationWarning)
-        return self
+        raise RuntimeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     @asyncio.coroutine
     def __aenter__(self):

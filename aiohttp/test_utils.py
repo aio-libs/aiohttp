@@ -118,11 +118,11 @@ class BaseTestServer(ABC):
         pass  # pragma: no cover
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server(loop=self._loop))
-        return self
+        raise RuntimeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     async def __aenter__(self):
         await self.start_server(loop=self._loop)
@@ -317,11 +317,11 @@ class TestClient:
             self._closed = True
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server())
-        return self
+        raise RuntimeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     async def __aenter__(self):
         await self.start_server()
