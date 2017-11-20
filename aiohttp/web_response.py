@@ -38,7 +38,7 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
 
     _length_check = True
 
-    def __init__(self, *, status=200, reason=None, headers=None, state=None):
+    def __init__(self, *, status=200, reason=None, headers=None):
         self._body = None
         self._keep_alive = None
         self._chunked = False
@@ -50,7 +50,7 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         self._payload_writer = None
         self._eof_sent = False
         self._body_length = 0
-        self._state = state or {}
+        self._state = {}
 
         if headers is not None:
             self._headers = CIMultiDict(headers)
