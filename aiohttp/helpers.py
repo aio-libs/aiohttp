@@ -74,11 +74,11 @@ class _BaseCoroMixin(Coroutine):
 
     @asyncio.coroutine
     def __iter__(self):
-        ret = yield from self._coro
+        ret = yield from self._coro.__await__()
         return ret
 
     def __await__(self):
-        ret = yield from self._coro
+        ret = self._coro.__await__()
         return ret
 
 

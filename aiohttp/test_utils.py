@@ -220,8 +220,7 @@ class TestClient:
     def make_url(self, path):
         return self._server.make_url(path)
 
-    @asyncio.coroutine
-    def request(self, method, path, *args, **kwargs):
+    async def request(self, method, path, *args, **kwargs):
         """Routes a request to tested http server.
 
         The interface is identical to asyncio.ClientSession.request,
@@ -229,7 +228,7 @@ class TestClient:
         test server.
 
         """
-        resp = yield from self._session.request(
+        resp = await self._session.request(
             method, self.make_url(path), *args, **kwargs
         )
         # save it to close later
@@ -288,9 +287,8 @@ class TestClient:
             self._ws_connect(path, *args, **kwargs)
         )
 
-    @asyncio.coroutine
-    def _ws_connect(self, path, *args, **kwargs):
-        ws = yield from self._session.ws_connect(
+    async def _ws_connect(self, path, *args, **kwargs):
+        ws = await self._session.ws_connect(
             self.make_url(path), *args, **kwargs)
         self._websockets.append(ws)
         return ws
