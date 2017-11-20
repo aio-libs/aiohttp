@@ -770,7 +770,7 @@ class _SessionRequestContextManager:
         self._resp = await self._coro()
         return self._resp
 
-    async def __exit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         self._resp.close()
         await self._session.close()
 
