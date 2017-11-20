@@ -187,7 +187,7 @@ The client session supports the context manager protocol for self closing.
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
                          timeout=5*60, verify_ssl=None, fingerprint=None, \
-                         ssl_context=None, proxy_headers=None)
+                         ssl_context=None, proxy_headers=None, socks_remote_resolve=True)
       :async-with:
       :coroutine:
 
@@ -258,10 +258,15 @@ The client session supports the context manager protocol for self closing.
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
 
-      :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
+      :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL`
+                    Format for socks proxy: socks4://host:port or socks5://host:port (optional).
 
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
+      :param proxy_auth: :class:`aiohttp.BasicAuth` an object that represents proxy HTTP
+                                           Basic Authorization,
+
+                         :class:`aiosocks.Socks4Addr` object for socks4 proxy,
+
+                         :class:`aiosocks.Socks5Addr` object for socks5 proxy (optional).
 
       :param int timeout: override the session's timeout
                           (``read_timeout``) for IO operations.
@@ -293,6 +298,9 @@ The client session supports the context manager protocol for self closing.
          parameter proxy has been provided.
 
          .. versionadded:: 2.3
+
+      :param bool remote_socks_resolve: Resolve destination host on the remote socks server.
+                                        ``True`` by default (optional).
 
       :param trace_request_ctx: Object used to give as a kw param for the all
         signals triggered by the ongoing request and for all :class:`TraceConfig`
@@ -440,7 +448,7 @@ The client session supports the context manager protocol for self closing.
                             proxy=None, proxy_auth=None, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
-                            compress=0)
+                            compress=0, socks_remote_resolve=True)
       :async-with:
       :coroutine:
 
@@ -475,10 +483,15 @@ The client session supports the context manager protocol for self closing.
 
       :param str origin: Origin header to send to server
 
-      :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
+      :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL`
+                    Format for socks proxy: socks4://host:port or socks5://host:port (optional).
 
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
+      :param proxy_auth: :class:`aiohttp.BasicAuth` an object that represents proxy HTTP
+                                           Basic Authorization,
+
+                         :class:`aiosocks.Socks4Addr` object for socks4 proxy,
+
+                         :class:`aiosocks.Socks5Addr` object for socks5 proxy (optional).
 
       :param bool verify_ssl: Perform SSL certificate validation for
          *HTTPS* requests (enabled by default). May be disabled to
@@ -514,6 +527,9 @@ The client session supports the context manager protocol for self closing.
                            Default value is 0.
 
          .. versionadded:: 2.3
+
+      :param bool remote_socks_resolve: Resolve destination host on the remote socks server.
+                                        ``True`` by default (optional).
 
 
    .. comethod:: close()
@@ -1702,5 +1718,7 @@ Hierarchy of exceptions
       * :exc:`ServerFingerprintMismatch`
 
   * :exc:`ClientPayloadError`
+
+  * :exc:`ClientSocksProxyError`
 
   * :exc:`InvalidURL`
