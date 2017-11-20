@@ -70,14 +70,14 @@ def test_client(loop, app):
 
 def test_with_test_server_fails(loop):
     app = _create_example_app()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         with _TestServer(app, loop=loop):
             pass
 
 
 def test_with_test_client_fails(loop):
     app = _create_example_app()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         with _TestClient(_TestServer(app, loop=loop), loop=loop):
             pass
 

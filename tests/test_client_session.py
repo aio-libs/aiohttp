@@ -351,7 +351,7 @@ def test_del(connector, loop):
 
 
 def test_context_manager(connector, loop):
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TypeError):
         with ClientSession(loop=loop, connector=connector) as session:
             pass
 
