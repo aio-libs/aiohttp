@@ -350,7 +350,7 @@ async def test_format_task_get(test_server, loop):
     assert "{}".format(task).startswith("<Task pending")
     resp = await task
     resp.close()
-    client.close()
+    await client.close()
 
 
 async def test_str_params(loop, test_client):
@@ -1936,7 +1936,7 @@ async def test_request_conn_error(loop):
     client = aiohttp.ClientSession(loop=loop)
     with pytest.raises(aiohttp.ClientConnectionError):
         await client.get('http://0.0.0.0:1')
-    client.close()
+    await client.close()
 
 
 @pytest.mark.xfail
