@@ -757,28 +757,22 @@ class _WSRequestContextManager(_BaseRequestContextManager):
         yield from self._resp.close()
 
 
-class _SessionRequestContextManager(_RequestContextManager):
+class _SessionRequestContextManager:
 
-    __slots__ = _RequestContextManager.__slots__ + ('_session', )
+    __slots__ = ('_coro', '_resp', '_session')
 
     def __init__(self, coro, session):
-        super().__init__(coro)
+        self._coro = coro
+        self._resp = None
         self._session = session
 
-    @asyncio.coroutine
-    def __iter__(self):
-        try:
-            return (yield from self._coro)
-        except Exception:
-            yield from self._session.close()
-            raise
+    async def __aenter__(self):
+        self._resp = await self._coro()
+        return self._resp
 
-    def __await__(self):
-        try:
-            return (yield from self._coro)
-        except Exception:
-            yield from self._session.close()
-            raise
+    async def __exit__(self, exc_type, exc_val, exc_tb):
+        self._resp.close()
+        await self._session.close()
 
 
 def request(method, url, *,
@@ -859,4 +853,4 @@ def request(method, url, *,
                          read_until_eof=read_until_eof,
                          proxy=proxy,
                          proxy_auth=proxy_auth,),
-        session=session)
+        session)
