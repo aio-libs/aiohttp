@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import gc
 import re
-import types
 from http.cookies import SimpleCookie
 from unittest import mock
 
@@ -342,11 +341,11 @@ def test_del(connector, loop):
 
 
 def test_context_manager(connector, loop):
-    with pytest.warns(DeprecationWarning):
+    with pytest.raises(TypeError):
         with ClientSession(loop=loop, connector=connector) as session:
             pass
 
-    assert session.closed
+        assert session.closed
 
 
 async def test_borrow_connector_loop(connector, create_session, loop):
