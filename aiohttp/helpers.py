@@ -82,38 +82,6 @@ class _BaseCoroMixin(Coroutine):
         return ret
 
 
-class _CoroGuard(_BaseCoroMixin):
-    """Only to be used with func:`deprecated_noop`.
-
-    Otherwise the stack information in the raised warning doesn't line up with
-    the user's code anymore.
-    """
-    __slots__ = ('_msg', '_awaited')
-
-    def __init__(self, coro, msg):
-        super().__init__(coro)
-        self._msg = msg
-        self._awaited = False
-
-    def send(self, arg):
-        self._awaited = True
-        return self._coro.send(arg)
-
-    @asyncio.coroutine
-    def __iter__(self):
-        self._awaited = True
-        return super().__iter__()
-
-    def __await__(self):
-        self._awaited = True
-        return super().__await__()
-
-    def __del__(self):
-        self._coro = None
-        if not self._awaited:
-            warnings.warn(self._msg, DeprecationWarning, stacklevel=2)
-
-
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG
 coroutines._DEBUG = False
@@ -122,11 +90,6 @@ coroutines._DEBUG = False
 @asyncio.coroutine
 def noop(*args, **kwargs):
     return
-
-
-def deprecated_noop(message):
-    return _CoroGuard(noop(), message)
-
 
 coroutines._DEBUG = old_debug
 

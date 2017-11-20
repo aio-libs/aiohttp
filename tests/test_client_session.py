@@ -61,16 +61,6 @@ def test_close_coro(create_session, loop):
     loop.run_until_complete(session.close())
 
 
-async def test_close_deprecated(create_session):
-    session = create_session()
-
-    with pytest.warns(DeprecationWarning) as ctx:
-        await session.close()
-
-    # Assert the warning points at us and not at _CoroGuard.
-    assert ctx.list[0].filename == __file__
-
-
 def test_init_headers_simple_dict(create_session):
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})
@@ -386,19 +376,6 @@ async def test_reraise_os_error(create_session):
     assert e.strerror == err.strerror
 
 
-async def test_request_ctx_manager_props(loop):
-    await asyncio.sleep(0, loop=loop)  # to make it a task
-    with pytest.warns(DeprecationWarning):
-        with aiohttp.ClientSession(loop=loop) as client:
-            ctx_mgr = client.get('http://example.com')
-
-            next(ctx_mgr)
-            assert isinstance(ctx_mgr.gi_frame, types.FrameType)
-            assert not ctx_mgr.gi_running
-            assert isinstance(ctx_mgr.gi_code, types.CodeType)
-            await asyncio.sleep(0.1, loop=loop)
-
-
 async def test_cookie_jar_usage(loop, test_client):
     req_url = None
 
@@ -464,14 +441,14 @@ def test_proxy_str(session, params):
                                            **params)]
 
 
-async def test_client_session_implicit_loop_warn():
+def test_client_session_implicit_loop_warn():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     with pytest.warns(ResourceWarning):
         session = aiohttp.ClientSession()
         assert session._loop is loop
-        await session.close()
+        loop.run_until_complete(session.close())
 
     asyncio.set_event_loop(None)
     loop.close()

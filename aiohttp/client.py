@@ -24,8 +24,7 @@ from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (CeilTimeout, TimeoutHandle, _BaseCoroMixin,
-                      deprecated_noop, proxies_from_env, sentinel,
-                      strip_auth_from_url)
+                      proxies_from_env, sentinel, strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
