@@ -21,6 +21,7 @@ from aiohttp import client, web
 from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection, _DNSCacheTable
 from aiohttp.test_utils import make_mocked_coro, unused_port
+from aiohttp.tracing import Trace
 
 
 @pytest.fixture()
@@ -377,7 +378,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
                         fingerprint=fingerprint,
                         loop=loop)
 
-    async def _resolve_host(host, port):
+    async def _resolve_host(host, port, traces=None):
         return [{
             'hostname': host,
             'host': ip,
@@ -544,8 +545,8 @@ async def test_tcp_connector_dns_throttle_requests(loop, dns_response):
             ttl_dns_cache=10
         )
         m_resolver().resolve.return_value = dns_response()
-        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
-        asyncio.ensure_future(conn._resolve_host('localhost', 8080), loop=loop)
+        loop.create_task(conn._resolve_host('localhost', 8080))
+        loop.create_task(conn._resolve_host('localhost', 8080))
         await asyncio.sleep(0, loop=loop)
         m_resolver().resolve.assert_called_once_with(
             'localhost',
@@ -563,14 +564,8 @@ async def test_tcp_connector_dns_throttle_requests_exception_spread(loop):
         )
         e = Exception()
         m_resolver().resolve.side_effect = e
-        r1 = asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080),
-            loop=loop
-        )
-        r2 = asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080),
-            loop=loop
-        )
+        r1 = loop.create_task(conn._resolve_host('localhost', 8080))
+        r2 = loop.create_task(conn._resolve_host('localhost', 8080))
         await asyncio.sleep(0, loop=loop)
         assert r1.exception() == e
         assert r2.exception() == e
@@ -587,16 +582,211 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
             ttl_dns_cache=10
         )
         m_resolver().resolve.return_value = dns_response()
-        asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080), loop=loop)
-        f = asyncio.ensure_future(
-            conn._resolve_host('localhost', 8080), loop=loop)
+        loop.create_task(conn._resolve_host('localhost', 8080))
+        f = loop.create_task(conn._resolve_host('localhost', 8080))
 
         await asyncio.sleep(0, loop=loop)
         conn.close()
 
         with pytest.raises(asyncio.futures.CancelledError):
             await f
+
+
+async def test_tcp_connector_dns_tracing(loop, dns_response):
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = mock.Mock()
+    on_dns_resolvehost_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_dns_resolvehost_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_dns_cache_hit = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_dns_cache_miss = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_dns_resolvehost_start.append(on_dns_resolvehost_start)
+    trace_config.on_dns_resolvehost_end.append(on_dns_resolvehost_end)
+    trace_config.on_dns_cache_hit.append(on_dns_cache_hit)
+    trace_config.on_dns_cache_miss.append(on_dns_cache_miss)
+    trace_config.freeze()
+    traces = [
+        Trace(
+            trace_config,
+            session,
+            trace_request_ctx=trace_request_ctx
+        )
+    ]
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10
+        )
+
+        m_resolver().resolve.return_value = dns_response()
+
+        await conn._resolve_host(
+            'localhost',
+            8080,
+            traces=traces
+        )
+        on_dns_resolvehost_start.assert_called_once_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
+        on_dns_resolvehost_start.assert_called_once_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
+        on_dns_cache_miss.assert_called_once_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
+        assert not on_dns_cache_hit.called
+
+        await conn._resolve_host(
+            'localhost',
+            8080,
+            traces=traces
+        )
+        on_dns_cache_hit.assert_called_once_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
+
+
+async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = mock.Mock()
+    on_dns_resolvehost_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_dns_resolvehost_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_dns_resolvehost_start.append(on_dns_resolvehost_start)
+    trace_config.on_dns_resolvehost_end.append(on_dns_resolvehost_end)
+    trace_config.freeze()
+    traces = [
+        Trace(
+            trace_config,
+            session,
+            trace_request_ctx=trace_request_ctx
+        )
+    ]
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=False
+        )
+
+        m_resolver().resolve.side_effect = [
+            dns_response(),
+            dns_response()
+        ]
+
+        await conn._resolve_host(
+            'localhost',
+            8080,
+            traces=traces
+        )
+
+        await conn._resolve_host(
+            'localhost',
+            8080,
+            traces=traces
+        )
+
+        on_dns_resolvehost_start.assert_has_calls([
+            mock.call(
+                session,
+                trace_config_ctx,
+                trace_request_ctx=trace_request_ctx
+            ),
+            mock.call(
+                session,
+                trace_config_ctx,
+                trace_request_ctx=trace_request_ctx
+            )
+        ])
+        on_dns_resolvehost_end.assert_has_calls([
+            mock.call(
+                session,
+                trace_config_ctx,
+                trace_request_ctx=trace_request_ctx
+            ),
+            mock.call(
+                session,
+                trace_config_ctx,
+                trace_request_ctx=trace_request_ctx
+            )
+        ])
+
+
+async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = mock.Mock()
+    on_dns_cache_hit = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_dns_cache_miss = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_dns_cache_hit.append(on_dns_cache_hit)
+    trace_config.on_dns_cache_miss.append(on_dns_cache_miss)
+    trace_config.freeze()
+    traces = [
+        Trace(
+            trace_config,
+            session,
+            trace_request_ctx=trace_request_ctx
+        )
+    ]
+
+    with mock.patch('aiohttp.connector.DefaultResolver') as m_resolver:
+        conn = aiohttp.TCPConnector(
+            loop=loop,
+            use_dns_cache=True,
+            ttl_dns_cache=10
+        )
+        m_resolver().resolve.return_value = dns_response()
+        loop.create_task(conn._resolve_host('localhost', 8080, traces=traces))
+        loop.create_task(conn._resolve_host('localhost', 8080, traces=traces))
+        await asyncio.sleep(0, loop=loop)
+        on_dns_cache_hit.assert_called_once_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
+        on_dns_cache_miss.assert_called_once_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
 
 
 def test_dns_error(loop):
@@ -694,6 +884,54 @@ async def test_connect(loop):
     connection.close()
 
 
+async def test_connect_tracing(loop):
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = mock.Mock()
+    on_connection_create_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_connection_create_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_create_start.append(on_connection_create_start)
+    trace_config.on_connection_create_end.append(on_connection_create_end)
+    trace_config.freeze()
+    traces = [
+        Trace(
+            trace_config,
+            session,
+            trace_request_ctx=trace_request_ctx
+        )
+    ]
+
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._create_connection = mock.Mock()
+    conn._create_connection.return_value = loop.create_future()
+    conn._create_connection.return_value.set_result(proto)
+
+    await conn.connect(req, traces=traces)
+    on_connection_create_start.assert_called_with(
+        session,
+        trace_config_ctx,
+        trace_request_ctx=trace_request_ctx
+    )
+    on_connection_create_end.assert_called_with(
+        session,
+        trace_config_ctx,
+        trace_request_ctx=trace_request_ctx
+    )
+
+
 async def test_close_during_connect(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
@@ -705,7 +943,7 @@ async def test_close_during_connect(loop):
     conn._create_connection = mock.Mock()
     conn._create_connection.return_value = fut
 
-    task = asyncio.ensure_future(conn.connect(req), loop=loop)
+    task = loop.create_task(conn.connect(req))
     await asyncio.sleep(0, loop=loop)
     conn.close()
 
@@ -839,11 +1077,21 @@ def test_tcp_connector_ctor(loop):
 
 
 def test_tcp_connector_ctor_fingerprint_valid(loop):
-    valid = b'\xa2\x06G\xad\xaa\xf5\xd8\\J\x99^by;\x06='
-    # md5 and sha1 are deprecated
-    with pytest.warns(DeprecationWarning):
-        conn = aiohttp.TCPConnector(loop=loop, fingerprint=valid)
+    valid = hashlib.sha256(b"foo").digest()
+    conn = aiohttp.TCPConnector(fingerprint=valid, loop=loop)
     assert conn.fingerprint == valid
+
+
+def test_insecure_fingerprint_md5(loop):
+    with pytest.raises(ValueError):
+        aiohttp.TCPConnector(fingerprint=hashlib.md5(b"foo").digest(),
+                             loop=loop)
+
+
+def test_insecure_fingerprint_sha1(loop):
+    with pytest.raises(ValueError):
+        aiohttp.TCPConnector(fingerprint=hashlib.sha1(b"foo").digest(),
+                             loop=loop)
 
 
 def test_tcp_connector_fingerprint_invalid(loop):
@@ -974,7 +1222,7 @@ async def test_connect_with_limit(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -982,6 +1230,110 @@ async def test_connect_with_limit(loop, key):
     await asyncio.sleep(0, loop=loop)
     assert acquired
     await task
+    conn.close()
+
+
+async def test_connect_queued_operation_tracing(loop, key):
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = mock.Mock()
+    on_connection_queued_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+    on_connection_queued_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_queued_start.append(on_connection_queued_start)
+    trace_config.on_connection_queued_end.append(on_connection_queued_end)
+    trace_config.freeze()
+    traces = [
+        Trace(
+            trace_config,
+            session,
+            trace_request_ctx=trace_request_ctx
+        )
+    ]
+
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://localhost1:80'),
+                        loop=loop,
+                        response_class=mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._conns[key] = [(proto, loop.time())]
+    conn._create_connection = mock.Mock()
+    conn._create_connection.return_value = loop.create_future()
+    conn._create_connection.return_value.set_result(proto)
+
+    connection1 = await conn.connect(req, traces=traces)
+
+    async def f():
+        connection2 = await conn.connect(
+            req,
+            traces=traces
+        )
+        on_connection_queued_start.assert_called_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
+        on_connection_queued_end.assert_called_with(
+            session,
+            trace_config_ctx,
+            trace_request_ctx=trace_request_ctx
+        )
+        connection2.release()
+
+    task = asyncio.ensure_future(f(), loop=loop)
+    await asyncio.sleep(0.01, loop=loop)
+    connection1.release()
+    await task
+    conn.close()
+
+
+async def test_connect_reuseconn_tracing(loop, key):
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = mock.Mock()
+    on_connection_reuseconn = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_reuseconn.append(on_connection_reuseconn)
+    trace_config.freeze()
+    traces = [
+        Trace(
+            trace_config,
+            session,
+            trace_request_ctx=trace_request_ctx
+        )
+    ]
+
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://localhost1:80'),
+                        loop=loop,
+                        response_class=mock.Mock())
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._conns[key] = [(proto, loop.time())]
+    await conn.connect(req, traces=traces)
+
+    on_connection_reuseconn.assert_called_with(
+        session,
+        trace_config_ctx,
+        trace_request_ctx=trace_request_ctx
+    )
     conn.close()
 
 
@@ -1008,7 +1360,7 @@ async def test_connect_with_limit_and_limit_per_host(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -1040,7 +1392,7 @@ async def test_connect_with_no_limit_and_limit_per_host(loop, key):
         acquired = True
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert not acquired
@@ -1074,7 +1426,7 @@ async def test_connect_with_no_limits(loop, key):
         assert 1 == len(conn._acquired_per_host[key])
         connection2.release()
 
-    task = asyncio.ensure_future(f(), loop=loop)
+    task = loop.create_task(f())
 
     await asyncio.sleep(0.01, loop=loop)
     assert acquired
@@ -1144,7 +1496,7 @@ async def test_connect_with_limit_concurrent(loop):
     # Use a real coroutine for _create_connection; a mock would mask
     # problems that only happen when the method yields.
 
-    async def create_connection(req):
+    async def create_connection(req, traces=None):
         nonlocal num_connections
         num_connections += 1
         await asyncio.sleep(0, loop=loop)
@@ -1179,7 +1531,7 @@ async def test_connect_with_limit_concurrent(loop):
             await asyncio.sleep(0, loop=loop)
             connection.release()
         tasks = [
-            asyncio.ensure_future(f(start=False), loop=loop)
+            loop.create_task(f(start=False))
             for i in range(start_requests)
         ]
         await asyncio.wait(tasks, loop=loop)
@@ -1272,7 +1624,7 @@ async def test_error_on_connection(loop):
     fut = loop.create_future()
     exc = OSError()
 
-    async def create_connection(req):
+    async def create_connection(req, traces=None):
         nonlocal i
         i += 1
         if i == 1:
@@ -1283,8 +1635,8 @@ async def test_error_on_connection(loop):
 
     conn._create_connection = create_connection
 
-    t1 = asyncio.ensure_future(conn.connect(req), loop=loop)
-    t2 = asyncio.ensure_future(conn.connect(req), loop=loop)
+    t1 = loop.create_task(conn.connect(req))
+    t2 = loop.create_task(conn.connect(req))
     await asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()
@@ -1314,7 +1666,7 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
     fut2 = loop.create_future()
     exc = OSError()
 
-    async def create_connection(req):
+    async def create_connection(req, traces=None):
         nonlocal i
         i += 1
         if i == 1:
@@ -1327,9 +1679,9 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
 
     conn._create_connection = create_connection
 
-    t1 = asyncio.ensure_future(conn.connect(req), loop=loop)
-    t2 = asyncio.ensure_future(conn.connect(req), loop=loop)
-    t3 = asyncio.ensure_future(conn.connect(req), loop=loop)
+    t1 = loop.create_task(conn.connect(req))
+    t2 = loop.create_task(conn.connect(req))
+    t3 = loop.create_task(conn.connect(req))
     await asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()

@@ -350,11 +350,8 @@ class ClientRequest:
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
             elif hashfunc is md5 or hashfunc is sha1:
-                warnings.warn('md5 and sha1 are insecure and deprecated. '
-                              'Use sha256.',
-                              DeprecationWarning, stacklevel=2)
-                client_logger.warn('md5 and sha1 are insecure and deprecated. '
-                                   'Use sha256.')
+                raise ValueError('md5 and sha1 are insecure and '
+                                 'not supported. Use sha256.')
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -466,15 +463,13 @@ class ClientRequest:
             self.method, path, self.version)
         writer.write_headers(status_line, self.headers)
 
-        self._writer = asyncio.ensure_future(
-            self.write_bytes(writer, conn), loop=self.loop)
+        self._writer = self.loop.create_task(self.write_bytes(writer, conn))
 
         self.response = self.response_class(
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress
-        )
+            auto_decompress=self._auto_decompress)
 
         self.response._post_init(self.loop, self._session)
         return self.response

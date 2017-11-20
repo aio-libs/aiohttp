@@ -29,6 +29,7 @@ from .helpers import (CeilTimeout, TimeoutHandle, _BaseCoroMixin,
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
+from .tracing import Trace
 
 
 __all__ = (client_exceptions.__all__ +  # noqa
@@ -57,7 +58,8 @@ class ClientSession:
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
-                 auto_decompress=True, trust_env=False):
+                 auto_decompress=True, trust_env=False,
+                 trace_configs=None):
 
         implicit_loop = False
         if loop is None:
@@ -96,6 +98,7 @@ class ClientSession:
 
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
+
         self._connector = connector
         self._connector_owner = connector_owner
         self._default_auth = auth
@@ -124,10 +127,12 @@ class ClientSession:
         self._response_class = response_class
         self._ws_response_class = ws_response_class
 
+        self._trace_configs = trace_configs or []
+        for trace_config in self._trace_configs:
+            trace_config.freeze()
+
     def __del__(self, _warnings=warnings):
         if not self.closed:
-            self.close()
-
             _warnings.warn("Unclosed client session {!r}".format(self),
                            ResourceWarning)
             context = {'client_session': self,
@@ -161,7 +166,8 @@ class ClientSession:
                  verify_ssl=None,
                  fingerprint=None,
                  ssl_context=None,
-                 proxy_headers=None):
+                 proxy_headers=None,
+                 trace_request_ctx=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -218,6 +224,22 @@ class ClientSession:
         handle = tm.start()
 
         url = URL(url)
+
+        traces = [
+            Trace(
+                trace_config,
+                self,
+                trace_request_ctx=trace_request_ctx)
+            for trace_config in self._trace_configs
+        ]
+
+        for trace in traces:
+            yield from trace.send_request_start(
+                method,
+                url,
+                headers
+            )
+
         timer = tm.timer()
         try:
             with timer:
@@ -266,7 +288,10 @@ class ClientSession:
                     # connection timeout
                     try:
                         with CeilTimeout(self._conn_timeout, loop=self._loop):
-                            conn = yield from self._connector.connect(req)
+                            conn = yield from self._connector.connect(
+                                req,
+                                traces=traces
+                            )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(
                             'Connection timeout '
@@ -291,6 +316,15 @@ class ClientSession:
                     # redirects
                     if resp.status in (
                             301, 302, 303, 307, 308) and allow_redirects:
+
+                        for trace in traces:
+                            yield from trace.send_request_redirect(
+                                method,
+                                url,
+                                headers,
+                                resp
+                            )
+
                         redirects += 1
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
@@ -354,15 +388,30 @@ class ClientSession:
                     handle.cancel()
 
             resp._history = tuple(history)
+
+            for trace in traces:
+                yield from trace.send_request_end(
+                    method,
+                    url,
+                    headers,
+                    resp
+                )
             return resp
 
-        except Exception:
+        except Exception as e:
             # cleanup timer
             tm.close()
             if handle:
                 handle.cancel()
                 handle = None
 
+            for trace in traces:
+                yield from trace.send_request_exception(
+                    method,
+                    url,
+                    headers,
+                    e
+                )
             raise
 
     def ws_connect(self, url, *,
@@ -662,11 +711,11 @@ class ClientSession:
         self._connector = None
 
     def __enter__(self):
-        warnings.warn("Use async with instead", DeprecationWarning)
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     @asyncio.coroutine
     def __aenter__(self):

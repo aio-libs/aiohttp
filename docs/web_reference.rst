@@ -2246,7 +2246,7 @@ Utilities
                       ssl_context=None, print=print, backlog=128, \
                       access_log_format=None, \
                       access_log=aiohttp.log.access_logger, \
-                      handle_signals=True, loop=None)
+                      handle_signals=True)
 
    A utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2255,8 +2255,6 @@ Utilities
    Suitable as handy tool for scaffolding aiohttp based projects.
    Perhaps production config will use more sophisticated runner but it
    good enough at least at very beginning stage.
-
-   The function uses *app.loop* as event loop to run.
 
    The server will listen on any host or Unix domain socket path you supply.
    If no hosts or paths are supplied, or only a port is supplied, a TCP server
@@ -2316,13 +2314,6 @@ Utilities
 
    :param bool handle_signals: override signal TERM handling to gracefully
                                exit the application.
-
-   :param loop: an *event loop* used for running the application
-                (``None`` by default).
-
-                If the loop is not explicitly specified the function
-                closes it by :meth:`~asyncio.AbstractEventLoop.close` call but
-                **does nothing** for **non-default** loop.
 
 
 Constants

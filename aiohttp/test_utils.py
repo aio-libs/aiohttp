@@ -15,7 +15,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import _RequestContextManager
+from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 
 from . import ClientSession, hdrs
 from .helpers import sentinel
@@ -118,11 +118,11 @@ class BaseTestServer(ABC):
         pass  # pragma: no cover
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server(loop=self._loop))
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     async def __aenter__(self):
         await self.start_server(loop=self._loop)
@@ -278,13 +278,19 @@ class TestClient:
             self.request(hdrs.METH_DELETE, path, *args, **kwargs)
         )
 
-    async def ws_connect(self, path, *args, **kwargs):
+    def ws_connect(self, path, *args, **kwargs):
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
 
         """
-        ws = await self._session.ws_connect(
+        return _WSRequestContextManager(
+            self._ws_connect(path, *args, **kwargs)
+        )
+
+    @asyncio.coroutine
+    def _ws_connect(self, path, *args, **kwargs):
+        ws = yield from self._session.ws_connect(
             self.make_url(path), *args, **kwargs)
         self._websockets.append(ws)
         return ws
@@ -311,11 +317,11 @@ class TestClient:
             self._closed = True
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server())
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     async def __aenter__(self):
         await self.start_server()

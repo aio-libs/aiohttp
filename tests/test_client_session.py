@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import gc
 import re
-import types
 from http.cookies import SimpleCookie
 from unittest import mock
 
@@ -11,8 +10,9 @@ from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import web
+from aiohttp import hdrs, web
 from aiohttp.client import ClientSession
+from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
 
 
@@ -351,11 +351,11 @@ def test_del(connector, loop):
 
 
 def test_context_manager(connector, loop):
-    with pytest.warns(DeprecationWarning):
+    with pytest.raises(TypeError):
         with ClientSession(loop=loop, connector=connector) as session:
             pass
 
-    assert session.closed
+        assert session.closed
 
 
 def test_borrow_connector_loop(connector, create_session, loop):
@@ -373,7 +373,7 @@ async def test_reraise_os_error(create_session):
     req.send = mock.Mock(side_effect=err)
     session = create_session(request_class=req_factory)
 
-    async def create_connection(req):
+    async def create_connection(req, traces=None):
         # return self.transport, self.protocol
         return mock.Mock()
     session._connector._create_connection = create_connection
@@ -383,19 +383,6 @@ async def test_reraise_os_error(create_session):
     e = ctx.value
     assert e.errno == err.errno
     assert e.strerror == err.strerror
-
-
-async def test_request_ctx_manager_props(loop):
-    await asyncio.sleep(0, loop=loop)  # to make it a task
-    with pytest.warns(DeprecationWarning):
-        with aiohttp.ClientSession(loop=loop) as client:
-            ctx_mgr = client.get('http://example.com')
-
-            next(ctx_mgr)
-            assert isinstance(ctx_mgr.gi_frame, types.FrameType)
-            assert not ctx_mgr.gi_running
-            assert isinstance(ctx_mgr.gi_code, types.CodeType)
-            await asyncio.sleep(0.1, loop=loop)
 
 
 async def test_cookie_jar_usage(loop, test_client):
@@ -474,3 +461,115 @@ def test_client_session_implicit_loop_warn():
 
     asyncio.set_event_loop(None)
     loop.close()
+
+
+async def test_request_tracing(loop):
+    trace_config_ctx = mock.Mock()
+    trace_request_ctx = {}
+    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    trace_config.on_request_redirect.append(on_request_redirect)
+
+    session = aiohttp.ClientSession(loop=loop, trace_configs=[trace_config])
+
+    resp = await session.get(
+        'http://example.com',
+        trace_request_ctx=trace_request_ctx
+    )
+
+    on_request_start.assert_called_once_with(
+        session,
+        trace_config_ctx,
+        hdrs.METH_GET,
+        URL("http://example.com"),
+        CIMultiDict(),
+        trace_request_ctx=trace_request_ctx
+    )
+
+    on_request_end.assert_called_once_with(
+        session,
+        trace_config_ctx,
+        hdrs.METH_GET,
+        URL("http://example.com"),
+        CIMultiDict(),
+        resp,
+        trace_request_ctx=trace_request_ctx
+    )
+    assert not on_request_redirect.called
+
+
+async def test_request_tracing_exception(loop):
+    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_exception = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock())
+    )
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_end.append(on_request_end)
+    trace_config.on_request_exception.append(on_request_exception)
+
+    with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
+        error = Exception()
+        f = loop.create_future()
+        f.set_exception(error)
+        connect_patched.return_value = f
+
+        session = aiohttp.ClientSession(
+            loop=loop,
+            trace_configs=[trace_config]
+        )
+
+        try:
+            await session.get('http://example.com')
+        except Exception:
+            pass
+
+        on_request_exception.assert_called_once_with(
+            session,
+            mock.ANY,
+            hdrs.METH_GET,
+            URL("http://example.com"),
+            CIMultiDict(),
+            error,
+            trace_request_ctx=mock.ANY
+        )
+        assert not on_request_end.called
+
+
+async def test_request_tracing_interpose_headers(loop):
+
+    class MyClientRequest(ClientRequest):
+        headers = None
+
+        def __init__(self, *args, **kwargs):
+            super(MyClientRequest, self).__init__(*args, **kwargs)
+            MyClientRequest.headers = self.headers
+
+    @asyncio.coroutine
+    def new_headers(
+            session,
+            trace_config_ctx,
+            method,
+            url,
+            headers,
+            trace_request_ctx=None):
+        headers['foo'] = 'bar'
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(new_headers)
+
+    session = aiohttp.ClientSession(
+        loop=loop,
+        request_class=MyClientRequest,
+        trace_configs=[trace_config]
+    )
+
+    await session.get('http://example.com')
+    assert MyClientRequest.headers['foo'] == 'bar'

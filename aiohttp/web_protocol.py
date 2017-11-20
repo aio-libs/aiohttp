@@ -3,6 +3,7 @@ import asyncio.streams
 import http.server
 import socket
 import traceback
+import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
@@ -265,18 +266,17 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             except HttpProcessingError as exc:
                 # something happened during parsing
                 self.close()
-                self._error_handler = asyncio.ensure_future(
+                self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
                         PayloadWriter(self.writer, self._loop),
-                        400, exc, exc.message),
-                    loop=self._loop)
+                        400, exc, exc.message))
             except Exception as exc:
                 # 500: internal error
                 self.close()
-                self._error_handler = asyncio.ensure_future(
+                self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
                         PayloadWriter(self.writer, self._loop),
-                        500, exc), loop=self._loop)
+                        500, exc))
             else:
                 for (msg, payload) in messages:
                     self._request_count += 1
@@ -287,8 +287,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     elif self._max_concurrent_handlers:
                         self._max_concurrent_handlers -= 1
                         data = []
-                        handler = asyncio.ensure_future(
-                            self.start(msg, payload, data), loop=self._loop)
+                        handler = self._loop.create_task(
+                            self.start(msg, payload, data))
                         data.append(handler)
                         self._request_handlers.append(handler)
                     else:
@@ -427,6 +427,14 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # log access
                 if self.access_log:
                     self.log_access(request, resp, loop.time() - now)
+
+                # Deprication warning (See #2415)
+                if isinstance(resp, HTTPException):
+                    warnings.warn(
+                        "returning HTTPException object is deprecated (#2415) "
+                        "and will be removed, "
+                        "please raise the exception instead",
+                        DeprecationWarning)
 
                 # check payload
                 if not payload.is_eof():

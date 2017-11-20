@@ -49,7 +49,7 @@ class GunicornWebWorker(base.Worker):
         if hasattr(self.wsgi, 'startup'):
             self.wsgi.freeze()
             self.loop.run_until_complete(self.wsgi.startup())
-        self._runner = asyncio.ensure_future(self._run(), loop=self.loop)
+        self._runner = self.loop.create_task(self._run())
 
         try:
             self.loop.run_until_complete(self._runner)
@@ -189,7 +189,7 @@ class GunicornWebWorker(base.Worker):
         self.cfg.worker_int(self)
 
         # init closing process
-        self._closing = asyncio.ensure_future(self.close(), loop=self.loop)
+        self._closing = self.loop.create_task(self.close())
 
         # close loop
         self.loop.call_later(0.1, self._notify_waiter_done)
@@ -226,7 +226,7 @@ class GunicornWebWorker(base.Worker):
                 "Gunicorn's style options in form of `%(name)s` are not "
                 "supported for the log formatting. Please use aiohttp's "
                 "format specification to configure access log formatting: "
-                "http://aiohttp.readthedocs.io/en/stable/logging.html"
+                "http://docs.aiohttp.org/en/stable/logging.html"
                 "#format-specification"
             )
         else:

@@ -500,7 +500,7 @@ def test_gen_netloc_no_port(make_request):
         '012345678901234567890'
 
 
-async def test_connection_header(loop, conn):
+def test_connection_header(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
     req.keep_alive = mock.Mock()
     req.headers.clear()
@@ -880,11 +880,11 @@ async def test_data_stream_exc(loop, conn):
     assert req.chunked
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    async def exc():
+    async def throw_exc():
         await asyncio.sleep(0.01, loop=loop)
         fut.set_exception(ValueError)
 
-    asyncio.ensure_future(exc(), loop=loop)
+    loop.create_task(throw_exc())
 
     req.send(conn)
     await req._writer
@@ -905,11 +905,11 @@ async def test_data_stream_exc_chain(loop, conn):
 
     inner_exc = ValueError()
 
-    async def exc():
+    async def throw_exc():
         await asyncio.sleep(0.01, loop=loop)
         fut.set_exception(inner_exc)
 
-    asyncio.ensure_future(exc(), loop=loop)
+    loop.create_task(throw_exc())
 
     req.send(conn)
     await req._writer
@@ -938,7 +938,7 @@ async def test_data_stream_continue(loop, buf, conn):
         await asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
-    asyncio.ensure_future(coro(), loop=loop)
+    loop.create_task(coro())
 
     resp = req.send(conn)
     await req._writer
@@ -957,7 +957,7 @@ async def test_data_continue(loop, buf, conn):
         await asyncio.sleep(0.0001, loop=loop)
         req._continue.set_result(1)
 
-    asyncio.ensure_future(coro(), loop=loop)
+    loop.create_task(coro())
 
     resp = req.send(conn)
 
@@ -1074,7 +1074,7 @@ async def test_custom_req_rep(loop):
             called = True
             return resp
 
-    async def create_connection(req):
+    async def create_connection(req, traces=None):
         assert isinstance(req, CustomRequest)
         return mock.Mock()
     connector = BaseConnector(loop=loop)
@@ -1107,12 +1107,15 @@ def test_bad_fingerprint(loop):
                       fingerprint=b'invalid', loop=loop)
 
 
-def test_insecure_fingerprint(loop):
-    with pytest.warns(DeprecationWarning):
+def test_insecure_fingerprint_md5(loop):
+    with pytest.raises(ValueError):
         ClientRequest('get', URL('http://python.org'),
                       fingerprint=hashlib.md5(b"foo").digest(),
                       loop=loop)
-    with pytest.warns(DeprecationWarning):
+
+
+def test_insecure_fingerprint_sha1(loop):
+    with pytest.raises(ValueError):
         ClientRequest('get', URL('http://python.org'),
                       fingerprint=hashlib.sha1(b"foo").digest(),
                       loop=loop)

@@ -75,7 +75,9 @@ intersphinx_mapping = {
     'aiohttpjinja2':
         ('https://aiohttp-jinja2.readthedocs.io/en/stable/', None),
     'aiohttpsession':
-        ('https://aiohttp-session.readthedocs.io/en/stable/', None)}
+        ('https://aiohttp-session.readthedocs.io/en/stable/', None),
+    'pytest':
+        ('https://docs.pytest.org/en/latest/', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -87,7 +89,7 @@ source_suffix = '.rst'
 # source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'toc'
+master_doc = 'index'
 
 # General information about the project.
 project = 'aiohttp'
@@ -156,6 +158,7 @@ html_theme = 'alabaster'
 html_theme_options = {
     'logo': 'aiohttp-icon-128x128.png',
     'description': 'http client/server for asyncio',
+    'canonical_url': 'http://docs.aiohttp.org/en/stable/',
     'github_user': 'aio-libs',
     'github_repo': 'aiohttp',
     'github_button': True,
@@ -169,6 +172,9 @@ html_theme_options = {
     'body_text': '#482C0A',
     'sidebar_text': '#49443E',
     'sidebar_header': '#4B4032',
+    'font_family': "'Roboto', sans-serif",
+    'head_font_family': "'Roboto Slab', serif",
+    'code_font_family': "'Roboto Mono', monospace",
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
