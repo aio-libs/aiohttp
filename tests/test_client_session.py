@@ -2,7 +2,6 @@ import asyncio
 import contextlib
 import gc
 import re
-import types
 from http.cookies import SimpleCookie
 from unittest import mock
 
@@ -352,11 +351,11 @@ def test_del(connector, loop):
 
 
 def test_context_manager(connector, loop):
-    with pytest.warns(DeprecationWarning):
+    with pytest.raises(TypeError):
         with ClientSession(loop=loop, connector=connector) as session:
             pass
 
-    assert session.closed
+        assert session.closed
 
 
 def test_borrow_connector_loop(connector, create_session, loop):
@@ -384,19 +383,6 @@ async def test_reraise_os_error(create_session):
     e = ctx.value
     assert e.errno == err.errno
     assert e.strerror == err.strerror
-
-
-async def test_request_ctx_manager_props(loop):
-    await asyncio.sleep(0, loop=loop)  # to make it a task
-    with pytest.warns(DeprecationWarning):
-        with aiohttp.ClientSession(loop=loop) as client:
-            ctx_mgr = client.get('http://example.com')
-
-            next(ctx_mgr)
-            assert isinstance(ctx_mgr.gi_frame, types.FrameType)
-            assert not ctx_mgr.gi_running
-            assert isinstance(ctx_mgr.gi_code, types.CodeType)
-            await asyncio.sleep(0.1, loop=loop)
 
 
 async def test_cookie_jar_usage(loop, test_client):
