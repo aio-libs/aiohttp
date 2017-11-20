@@ -2249,7 +2249,7 @@ async def test_aiohttp_request_ctx_manager_not_found(loop):
 
     with pytest.raises(aiohttp.ClientConnectionError):
         async with aiohttp.request('GET', 'http://wrong-dns-name.com',
-                                   loop=loop) as resp:
+                                   loop=loop):
             assert False, "never executed"  # pragma: no cover
 
 
