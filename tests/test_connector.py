@@ -1818,7 +1818,7 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
         self.assertTrue(ctx.value, aiohttp.ClientSSLError)
 
-        session.close()
+        self.loop.run_until_complete(session.close())
         conn.close()
 
     def test_tcp_connector_do_not_raise_connector_ssl_error(self):
@@ -1855,7 +1855,7 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertIs(_sslcontext, sslcontext)
         r.close()
 
-        session.close()
+        self.loop.run_until_complete(session.close())
         conn.close()
 
     def test_tcp_connector_uses_provided_local_addr(self):
@@ -1881,7 +1881,7 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertEqual(
             first_conn.transport._sock.getsockname(), ('127.0.0.1', port))
         r.close()
-        session.close()
+        self.loop.run_until_complete(session.close())
         conn.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
@@ -1901,7 +1901,7 @@ class TestHttpClientConnector(unittest.TestCase):
             session.request('get', url))
         self.assertEqual(r.status, 200)
         r.close()
-        session.close()
+        self.loop.run_until_complete(session.close())
 
     def test_resolver_not_called_with_address_is_ip(self):
         resolver = mock.MagicMock()

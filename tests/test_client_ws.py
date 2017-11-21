@@ -262,7 +262,7 @@ async def test_close(loop, ws_key, key_data):
                 assert not res
                 assert writer.close.call_count == 1
 
-                session.close()
+                await session.close()
 
 
 async def test_close_exc(loop, ws_key, key_data):
@@ -292,7 +292,7 @@ async def test_close_exc(loop, ws_key, key_data):
                 assert resp.closed
                 assert resp.exception() is exc
 
-                session.close()
+                await session.close()
 
 
 async def test_close_exc2(loop, ws_key, key_data):
@@ -411,7 +411,7 @@ async def test_reader_read_exception(ws_key, key_data, loop):
                 assert msg.type == aiohttp.WSMsgType.ERROR
                 assert resp.exception() is exc
 
-                session.close()
+                await session.close()
 
 
 async def test_receive_runtime_err(loop):

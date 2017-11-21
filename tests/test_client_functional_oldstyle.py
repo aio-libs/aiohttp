@@ -373,7 +373,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual('текст', field['data'])
             self.assertEqual(r.status, 200)
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_POST_DATA_with_charset_pub_request(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -383,8 +383,9 @@ class TestHttpClientFunctional(unittest.TestCase):
             form.add_field('name', 'текст',
                            content_type='text/plain; charset=koi8-r')
 
+            session = client.ClientSession(loop=self.loop)
             r = self.loop.run_until_complete(
-                aiohttp.request('post', url, data=form, loop=self.loop))
+                session.request('post', url, data=form))
             content = self.loop.run_until_complete(r.json())
 
             self.assertEqual(1, len(content['multipart-data']))
@@ -393,6 +394,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual('текст', field['data'])
             self.assertEqual(r.status, 200)
             r.close()
+            self.loop.run_until_complete(session.close())
 
     def test_POST_DATA_with_content_transfer_encoding(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -415,7 +417,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(r.status, 200)
 
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_POST_MULTIPART(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -445,7 +447,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 content['multipart-data'][2])
             self.assertEqual(r.status, 200)
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_POST_STREAM_DATA(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -473,7 +475,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                     headers={'Content-Length': str(len(data))}))
             content = self.loop.run_until_complete(r.json())
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
@@ -501,7 +503,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                     headers={'Content-Length': str(len(data))}))
             content = self.loop.run_until_complete(r.json())
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
@@ -528,7 +530,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                     headers={'Content-Length': str(len(data))}))
             content = self.loop.run_until_complete(r.json())
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
@@ -557,7 +559,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                     headers={'Content-Length': str(len(data))}))
             content = self.loop.run_until_complete(r.json())
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
@@ -570,7 +572,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 self.loop.run_until_complete(
                     session.request('get', httpd.url('method', 'get')))
 
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_session_close(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
@@ -592,7 +594,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(content['content'], 'requests=1')
             r.close()
 
-        session.close()
+        self.loop.run_until_complete(session.close())
         conn.close()
 
     def test_multidict_headers(self):
@@ -613,7 +615,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(str(len(data)),
                              content['headers']['Content-Length'])
 
-        session.close()
+        self.loop.run_until_complete(session.close())
 
     def test_dont_close_explicit_connector(self):
 
@@ -625,7 +627,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             await r.read()
             self.assertEqual(1, len(connector._conns))
             connector.close()
-            session.close()
+            await session.close()
 
         with run_server(self.loop, router=Functional) as httpd:
             url = httpd.url('keepalive')
@@ -667,7 +669,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 r = await session.request('GET', url)
                 await r.read()
                 self.assertEqual(0, len(connector._conns))
-            session.close()
+            await session.close()
             connector.close()
             server.close()
             await server.wait_closed()
@@ -714,7 +716,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 await session.request('GET', url)
             self.assertEqual(0, len(connector._conns))
 
-            session.close()
+            await session.close()
             connector.close()
             server.close()
             await server.wait_closed()
@@ -744,7 +746,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(
                 content['headers']['Cookie'], 'c1=cookie1; c2=cookie2')
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_session_headers(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -762,7 +764,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(
                 content['headers']["X-Real-Ip"], "192.168.0.1")
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_session_headers_merge(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -785,7 +787,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(
                 content['headers']["X-Sent-By"], "aiohttp")
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_session_auth(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -801,7 +803,7 @@ class TestHttpClientFunctional(unittest.TestCase):
             self.assertEqual(
                 content['headers']["Authorization"], "Basic bG9naW46cGFzcw==")
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_session_auth_override(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -819,7 +821,7 @@ class TestHttpClientFunctional(unittest.TestCase):
                 content['headers']["Authorization"],
                 "Basic b3RoZXJfbG9naW46cGFzcw==")
             r.close()
-            session.close()
+            self.loop.run_until_complete(session.close())
 
     def test_session_auth_header_conflict(self):
         with run_server(self.loop, router=Functional) as httpd:
@@ -831,4 +833,4 @@ class TestHttpClientFunctional(unittest.TestCase):
                 self.loop.run_until_complete(
                     session.request('get', httpd.url('method', 'get'),
                                     headers=headers))
-            session.close()
+            self.loop.run_until_complete(session.close())

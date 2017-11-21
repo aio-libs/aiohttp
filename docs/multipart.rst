@@ -175,9 +175,9 @@ and form urlencoded data, so you don't have to encode it every time manually::
     mpwriter.append_form([('key', 'value')])
 
 When it's done, to make a request just pass a root :class:`MultipartWriter`
-instance as :func:`aiohttp.client.request` `data` argument::
+instance as :meth:`aiohttp.ClientSession.request` ``data`` argument::
 
-    await aiohttp.post('http://example.com', data=mpwriter)
+    await session.post('http://example.com', data=mpwriter)
 
 Behind the scenes :meth:`MultipartWriter.serialize` will yield chunks of every
 part and if body part has `Content-Encoding` or `Content-Transfer-Encoding`
