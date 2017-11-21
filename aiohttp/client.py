@@ -8,6 +8,7 @@ import os
 import sys
 import traceback
 import warnings
+from collections.abc import Coroutine
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
@@ -23,8 +24,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (CeilTimeout, TimeoutHandle, _BaseCoroMixin,
-                      proxies_from_env, sentinel, strip_auth_from_url)
+from .helpers import (CeilTimeout, TimeoutHandle, proxies_from_env, sentinel,
+                      strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -719,17 +720,34 @@ class ClientSession:
         await self.close()
 
 
-class _BaseRequestContextManager(_BaseCoroMixin):
+class _BaseRequestContextManager(Coroutine):
 
-    __slots__ = ('_resp',)
+    __slots__ = ('_coro', '_resp')
 
     def __init__(self, coro):
-        super().__init__(coro)
         self._coro = coro
 
     async def __aenter__(self):
         self._resp = await self._coro
         return self._resp
+
+    # @asyncio.coroutine
+    # def __iter__(self):
+    #     ret = yield from self._coro.__await__()
+    #     return ret
+
+    def send(self, arg):
+        return self._coro.send(arg)
+
+    def throw(self, arg):
+        return self._coro.throw(arg)
+
+    def close(self):
+        return self._coro.close()
+
+    def __await__(self):
+        ret = self._coro.__await__()
+        return ret
 
 
 class _RequestContextManager(_BaseRequestContextManager):

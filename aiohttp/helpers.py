@@ -12,7 +12,6 @@ import re
 import time
 import weakref
 from collections import namedtuple
-from collections.abc import Coroutine
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
@@ -38,47 +37,6 @@ CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
 SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
               '?', '=', '{', '}', ' ', chr(9)}
 TOKEN = CHAR ^ CTL ^ SEPARATORS
-
-
-class _BaseCoroMixin(Coroutine):
-
-    __slots__ = ('_coro',)
-
-    def __init__(self, coro):
-        self._coro = coro
-
-    def send(self, arg):
-        return self._coro.send(arg)
-
-    def throw(self, arg):
-        return self._coro.throw(arg)
-
-    def close(self):
-        return self._coro.close()
-
-    @property
-    def gi_frame(self):
-        return self._coro.gi_frame
-
-    @property
-    def gi_running(self):
-        return self._coro.gi_running
-
-    @property
-    def gi_code(self):
-        return self._coro.gi_code
-
-    def __next__(self):
-        return self.send(None)
-
-    @asyncio.coroutine
-    def __iter__(self):
-        ret = yield from self._coro.__await__()
-        return ret
-
-    def __await__(self):
-        ret = self._coro.__await__()
-        return ret
 
 
 coroutines = asyncio.coroutines
