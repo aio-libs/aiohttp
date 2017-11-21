@@ -1706,7 +1706,7 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
 async def test_tcp_connector(test_client, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -1794,7 +1794,7 @@ class TestHttpClientConnector(unittest.TestCase):
 
     def test_tcp_connector_raise_connector_ssl_error(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
         keyfile = os.path.join(here, 'sample.key')
@@ -1823,7 +1823,7 @@ class TestHttpClientConnector(unittest.TestCase):
 
     def test_tcp_connector_do_not_raise_connector_ssl_error(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
         keyfile = os.path.join(here, 'sample.key')
@@ -1860,7 +1860,7 @@ class TestHttpClientConnector(unittest.TestCase):
 
     def test_tcp_connector_uses_provided_local_addr(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         app, srv, url = self.loop.run_until_complete(
             self.create_server('get', '/', handler)
@@ -1887,7 +1887,7 @@ class TestHttpClientConnector(unittest.TestCase):
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         app, srv, url, sock_path = self.loop.run_until_complete(
             self.create_unix_server('get', '/', handler))

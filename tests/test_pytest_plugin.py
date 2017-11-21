@@ -146,29 +146,6 @@ async def test_client_failed_to_create(test_client):
     # result.assert_outcomes(passed=11, failed=1)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason='old python')
-def test_warning_checks(testdir, capsys):
-    testdir.makepyfile("""\
-
-pytest_plugins = 'aiohttp.pytest_plugin'
-
-async def foobar():
-    return 123
-
-async def test_good():
-    v = await foobar()
-    assert v == 123
-
-async def test_bad():
-    foobar()
-""")
-    result = testdir.runpytest('-p', 'no:sugar', '-s')
-    result.assert_outcomes(passed=1, failed=1)
-    stdout, _ = capsys.readouterr()
-    assert ("test_warning_checks.py:__LINE__:coroutine 'foobar' was "
-            "never awaited" in re.sub('\d{2,}', '__LINE__', stdout))
-
-
 def test_aiohttp_plugin_async_fixture(testdir, capsys):
     testdir.makepyfile("""\
 import pytest
