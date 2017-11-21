@@ -350,7 +350,7 @@ async def test_format_task_get(test_server, loop):
     assert "{}".format(task).startswith("<Task pending")
     resp = await task
     resp.close()
-    client.close()
+    await client.close()
 
 
 async def test_str_params(loop, test_client):
@@ -1936,7 +1936,7 @@ async def test_request_conn_error(loop):
     client = aiohttp.ClientSession(loop=loop)
     with pytest.raises(aiohttp.ClientConnectionError):
         await client.get('http://0.0.0.0:1')
-    client.close()
+    await client.close()
 
 
 @pytest.mark.xfail
@@ -2232,7 +2232,7 @@ async def test_close_detached_session_on_non_existing_addr(loop):
     assert session.closed
 
 
-async def test_aiohttp_request(loop, test_server):
+async def test_aiohttp_request_context_manager(loop, test_server):
     async def handler(request):
         return web.Response()
 
@@ -2244,7 +2244,22 @@ async def test_aiohttp_request(loop, test_server):
         await resp.read()
         assert resp.status == 200
 
-    resp = await aiohttp.request('GET', server.make_url('/'), loop=loop)
-    await resp.read()
-    assert resp.status == 200
-    assert resp.connection is None
+
+async def test_aiohttp_request_ctx_manager_not_found(loop):
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        async with aiohttp.request('GET', 'http://wrong-dns-name.com',
+                                   loop=loop):
+            assert False, "never executed"  # pragma: no cover
+
+
+async def test_aiohttp_request_coroutine(loop, test_server):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await test_server(app)
+
+    with pytest.raises(TypeError):
+        await aiohttp.request('GET', server.make_url('/'), loop=loop)
