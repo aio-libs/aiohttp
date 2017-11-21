@@ -220,7 +220,7 @@ class WebSocketResponse(StreamResponse):
             self._closed = True
             try:
                 self._writer.close(code, message)
-                await self.drain()
+                await self._payload_writer.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
