@@ -73,16 +73,19 @@ async def test_middleware_chain(loop, test_client):
 
 @pytest.fixture
 def cli(loop, test_client):
+    async def handler(request):
+        return web.Response(text="OK")
+
     def wrapper(extra_middlewares):
         app = web.Application()
         app.router.add_route(
-            'GET', '/resource1', lambda x: web.Response(text="OK"))
+            'GET', '/resource1', handler)
         app.router.add_route(
-            'GET', '/resource2/', lambda x: web.Response(text="OK"))
+            'GET', '/resource2/', handler)
         app.router.add_route(
-            'GET', '/resource1/a/b', lambda x: web.Response(text="OK"))
+            'GET', '/resource1/a/b', handler)
         app.router.add_route(
-            'GET', '/resource2/a/b/', lambda x: web.Response(text="OK"))
+            'GET', '/resource2/a/b/', handler)
         app.middlewares.extend(extra_middlewares)
         return test_client(app, server_kwargs={'skip_url_asserts': True})
     return wrapper
