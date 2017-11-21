@@ -542,8 +542,7 @@ async def test_request_tracing_interpose_headers(loop):
             super(MyClientRequest, self).__init__(*args, **kwargs)
             MyClientRequest.headers = self.headers
 
-    @asyncio.coroutine
-    def new_headers(
+    async def new_headers(
             session,
             trace_config_ctx,
             method,

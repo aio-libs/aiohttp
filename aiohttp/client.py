@@ -727,15 +727,6 @@ class _BaseRequestContextManager(Coroutine):
     def __init__(self, coro):
         self._coro = coro
 
-    async def __aenter__(self):
-        self._resp = await self._coro
-        return self._resp
-
-    # @asyncio.coroutine
-    # def __iter__(self):
-    #     ret = yield from self._coro.__await__()
-    #     return ret
-
     def send(self, arg):
         return self._coro.send(arg)
 
@@ -748,6 +739,13 @@ class _BaseRequestContextManager(Coroutine):
     def __await__(self):
         ret = self._coro.__await__()
         return ret
+
+    def __iter__(self):
+        return self.__await__()
+
+    async def __aenter__(self):
+        self._resp = await self._coro
+        return self._resp
 
 
 class _RequestContextManager(_BaseRequestContextManager):
