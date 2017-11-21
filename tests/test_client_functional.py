@@ -2263,3 +2263,32 @@ async def test_aiohttp_request_coroutine(loop, test_server):
 
     with pytest.raises(TypeError):
         await aiohttp.request('GET', server.make_url('/'), loop=loop)
+
+
+@asyncio.coroutine
+def test_yield_from_in_session_request(test_client):
+    # a test for backward compatibility with yield from syntax
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = yield from test_client(app)
+    resp = yield from client.get('/')
+    assert resp.status == 200
+
+
+@asyncio.coroutine
+def test_close_context_manager(test_client):
+    # a test for backward compatibility with yield from syntax
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = yield from test_client(app)
+    ctx = client.get('/')
+    ctx.close()
+    assert not ctx._coro.cr_running
