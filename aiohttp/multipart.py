@@ -12,7 +12,7 @@ from multidict import CIMultiDict
 
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
-from .helpers import CHAR, TOKEN, parse_mimetype, reify
+from .helpers import CHAR, TOKEN, format_parameter_value, parse_mimetype, reify
 from .http import HttpParser
 from .payload import (BytesPayload, LookupError, Payload, StringPayload,
                       get_payload, payload_type)
@@ -633,11 +633,21 @@ class MultipartWriter(Payload):
 
     def __init__(self, subtype='mixed', boundary=None):
         boundary = boundary if boundary is not None else uuid.uuid4().hex
+        # The underlying Payload API demands a str (utf-8), not bytes,
+        # so we need to ensure we don't lose anything during conversion.
+        # As a result, require the boundary to be ASCII only.
+        # In both situations.
         try:
-            self._boundary = boundary.encode('us-ascii')
-        except UnicodeEncodeError:
-            raise ValueError('boundary should contains ASCII only chars')
-        ctype = 'multipart/{}; boundary="{}"'.format(subtype, boundary)
+            if isinstance(boundary, bytes):
+                boundary.decode('ascii')
+                self._boundary = boundary
+            else:
+                self._boundary = boundary.encode('ascii')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            raise ValueError('boundary should contain ASCII only chars') \
+                from None
+        boundary_value = format_parameter_value(self._boundary).decode('ascii')
+        ctype = 'multipart/{}; boundary={}'.format(subtype, boundary_value)
 
         super().__init__(None, content_type=ctype)
 
