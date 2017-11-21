@@ -436,7 +436,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 if self.access_log:
                     self.log_access(request, resp, loop.time() - now)
 
-
                 # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
