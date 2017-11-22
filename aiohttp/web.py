@@ -20,7 +20,7 @@ from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
 from .web_server import *  # noqa
-from .web_site import *  # noqa
+from .web_site import AppRunner, GracefulExit, SockSite, TCPSite, UnixSite
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 
@@ -127,6 +127,8 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
             site = TCPSite(runner, shutdown_timeout=shutdown_timeout,
                            ssl_context=ssl_context, backlog=backlog)
             loop.run_until_complete(site.start())
+            SockSite
+            UnixSite
 
         try:
             if print:
