@@ -3,6 +3,7 @@
 import collections
 import socket
 import zlib
+from contextlib import suppress
 
 from .abc import AbstractPayloadWriter
 from .helpers import noop
@@ -75,7 +76,7 @@ class StreamWriter:
             return
 
         # socket may be closed already, on windows OSError get raised
-        try:
+        with suppress(OSError):
             if self._tcp_cork:
                 if CORK is not None:  # pragma: no branch
                     self._socket.setsockopt(socket.IPPROTO_TCP, CORK, False)
@@ -84,8 +85,6 @@ class StreamWriter:
             self._socket.setsockopt(
                 socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
             self._tcp_nodelay = value
-        except OSError:
-            pass
 
     @property
     def tcp_cork(self):
@@ -100,7 +99,7 @@ class StreamWriter:
         if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
             return
 
-        try:
+        with suppress(OSError):
             if self._tcp_nodelay:
                 self._socket.setsockopt(
                     socket.IPPROTO_TCP, socket.TCP_NODELAY, False)
@@ -108,8 +107,6 @@ class StreamWriter:
             if CORK is not None:  # pragma: no branch
                 self._socket.setsockopt(socket.IPPROTO_TCP, CORK, value)
                 self._tcp_cork = value
-        except OSError:
-            pass
 
     async def drain(self):
         """Flush the write buffer.
