@@ -537,7 +537,8 @@ class StaticResource(PrefixResource):
         return ret
 
     def _directory_as_html(self, filepath):
-        "returns directory's index as html"
+        # returns directory's index as html
+
         # sanity check
         assert filepath.is_dir()
 
