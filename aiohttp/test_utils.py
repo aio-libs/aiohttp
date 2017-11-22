@@ -118,11 +118,11 @@ class BaseTestServer(ABC):
         pass  # pragma: no cover
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server(loop=self._loop))
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     async def __aenter__(self):
         await self.start_server(loop=self._loop)
@@ -220,8 +220,7 @@ class TestClient:
     def make_url(self, path):
         return self._server.make_url(path)
 
-    @asyncio.coroutine
-    def request(self, method, path, *args, **kwargs):
+    async def request(self, method, path, *args, **kwargs):
         """Routes a request to tested http server.
 
         The interface is identical to asyncio.ClientSession.request,
@@ -229,7 +228,7 @@ class TestClient:
         test server.
 
         """
-        resp = yield from self._session.request(
+        resp = await self._session.request(
             method, self.make_url(path), *args, **kwargs
         )
         # save it to close later
@@ -288,9 +287,8 @@ class TestClient:
             self._ws_connect(path, *args, **kwargs)
         )
 
-    @asyncio.coroutine
-    def _ws_connect(self, path, *args, **kwargs):
-        ws = yield from self._session.ws_connect(
+    async def _ws_connect(self, path, *args, **kwargs):
+        ws = await self._session.ws_connect(
             self.make_url(path), *args, **kwargs)
         self._websockets.append(ws)
         return ws
@@ -317,11 +315,11 @@ class TestClient:
             self._closed = True
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server())
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     async def __aenter__(self):
         await self.start_server()
@@ -561,8 +559,7 @@ def make_mocked_request(method, path, headers=None, *,
 
 def make_mocked_coro(return_value=sentinel, raise_exception=sentinel):
     """Creates a coroutine mock."""
-    @asyncio.coroutine
-    def mock_coro(*args, **kwargs):
+    async def mock_coro(*args, **kwargs):
         if raise_exception is not sentinel:
             raise raise_exception
         return return_value
