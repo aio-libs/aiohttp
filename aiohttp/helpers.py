@@ -11,10 +11,8 @@ import inspect
 import os
 import re
 import time
-import warnings
 import weakref
 from collections import namedtuple
-from collections.abc import Coroutine
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
@@ -42,79 +40,6 @@ SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-class _BaseCoroMixin(Coroutine):
-
-    __slots__ = ('_coro',)
-
-    def __init__(self, coro):
-        self._coro = coro
-
-    def send(self, arg):
-        return self._coro.send(arg)
-
-    def throw(self, arg):
-        return self._coro.throw(arg)
-
-    def close(self):
-        return self._coro.close()
-
-    @property
-    def gi_frame(self):
-        return self._coro.gi_frame
-
-    @property
-    def gi_running(self):
-        return self._coro.gi_running
-
-    @property
-    def gi_code(self):
-        return self._coro.gi_code
-
-    def __next__(self):
-        return self.send(None)
-
-    @asyncio.coroutine
-    def __iter__(self):
-        ret = yield from self._coro
-        return ret
-
-    def __await__(self):
-        ret = yield from self._coro
-        return ret
-
-
-class _CoroGuard(_BaseCoroMixin):
-    """Only to be used with func:`deprecated_noop`.
-
-    Otherwise the stack information in the raised warning doesn't line up with
-    the user's code anymore.
-    """
-    __slots__ = ('_msg', '_awaited')
-
-    def __init__(self, coro, msg):
-        super().__init__(coro)
-        self._msg = msg
-        self._awaited = False
-
-    def send(self, arg):
-        self._awaited = True
-        return self._coro.send(arg)
-
-    @asyncio.coroutine
-    def __iter__(self):
-        self._awaited = True
-        return super().__iter__()
-
-    def __await__(self):
-        self._awaited = True
-        return super().__await__()
-
-    def __del__(self):
-        self._coro = None
-        if not self._awaited:
-            warnings.warn(self._msg, DeprecationWarning, stacklevel=2)
-
-
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG
 coroutines._DEBUG = False
@@ -123,10 +48,6 @@ coroutines._DEBUG = False
 @asyncio.coroutine
 def noop(*args, **kwargs):
     return
-
-
-def deprecated_noop(message):
-    return _CoroGuard(noop(), message)
 
 
 coroutines._DEBUG = old_debug

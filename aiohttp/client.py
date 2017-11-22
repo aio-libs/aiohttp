@@ -8,6 +8,7 @@ import os
 import sys
 import traceback
 import warnings
+from collections.abc import Coroutine
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
@@ -23,8 +24,7 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (CeilTimeout, TimeoutHandle, _BaseCoroMixin,
-                      deprecated_noop, proxies_from_env, sentinel,
+from .helpers import (CeilTimeout, TimeoutHandle, proxies_from_env, sentinel,
                       strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
@@ -145,29 +145,28 @@ class ClientSession:
         """Perform HTTP request."""
         return _RequestContextManager(self._request(method, url, **kwargs))
 
-    @asyncio.coroutine
-    def _request(self, method, url, *,
-                 params=None,
-                 data=None,
-                 json=None,
-                 headers=None,
-                 skip_auto_headers=None,
-                 auth=None,
-                 allow_redirects=True,
-                 max_redirects=10,
-                 encoding=None,
-                 compress=None,
-                 chunked=None,
-                 expect100=False,
-                 read_until_eof=True,
-                 proxy=None,
-                 proxy_auth=None,
-                 timeout=sentinel,
-                 verify_ssl=None,
-                 fingerprint=None,
-                 ssl_context=None,
-                 proxy_headers=None,
-                 trace_request_ctx=None):
+    async def _request(self, method, url, *,
+                       params=None,
+                       data=None,
+                       json=None,
+                       headers=None,
+                       skip_auto_headers=None,
+                       auth=None,
+                       allow_redirects=True,
+                       max_redirects=10,
+                       encoding=None,
+                       compress=None,
+                       chunked=None,
+                       expect100=False,
+                       read_until_eof=True,
+                       proxy=None,
+                       proxy_auth=None,
+                       timeout=sentinel,
+                       verify_ssl=None,
+                       fingerprint=None,
+                       ssl_context=None,
+                       proxy_headers=None,
+                       trace_request_ctx=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -234,7 +233,7 @@ class ClientSession:
         ]
 
         for trace in traces:
-            yield from trace.send_request_start(
+            await trace.send_request_start(
                 method,
                 url,
                 headers
@@ -288,7 +287,7 @@ class ClientSession:
                     # connection timeout
                     try:
                         with CeilTimeout(self._conn_timeout, loop=self._loop):
-                            conn = yield from self._connector.connect(
+                            conn = await self._connector.connect(
                                 req,
                                 traces=traces
                             )
@@ -301,7 +300,7 @@ class ClientSession:
                     try:
                         resp = req.send(conn)
                         try:
-                            yield from resp.start(conn, read_until_eof)
+                            await resp.start(conn, read_until_eof)
                         except Exception:
                             resp.close()
                             conn.close()
@@ -318,7 +317,7 @@ class ClientSession:
                             301, 302, 303, 307, 308) and allow_redirects:
 
                         for trace in traces:
-                            yield from trace.send_request_redirect(
+                            await trace.send_request_redirect(
                                 method,
                                 url,
                                 headers,
@@ -390,7 +389,7 @@ class ClientSession:
             resp._history = tuple(history)
 
             for trace in traces:
-                yield from trace.send_request_end(
+                await trace.send_request_end(
                     method,
                     url,
                     headers,
@@ -406,7 +405,7 @@ class ClientSession:
                 handle = None
 
             for trace in traces:
-                yield from trace.send_request_exception(
+                await trace.send_request_exception(
                     method,
                     url,
                     headers,
@@ -451,24 +450,23 @@ class ClientSession:
                              proxy_headers=proxy_headers,
                              compress=compress))
 
-    @asyncio.coroutine
-    def _ws_connect(self, url, *,
-                    protocols=(),
-                    timeout=10.0,
-                    receive_timeout=None,
-                    autoclose=True,
-                    autoping=True,
-                    heartbeat=None,
-                    auth=None,
-                    origin=None,
-                    headers=None,
-                    proxy=None,
-                    proxy_auth=None,
-                    verify_ssl=None,
-                    fingerprint=None,
-                    ssl_context=None,
-                    proxy_headers=None,
-                    compress=0):
+    async def _ws_connect(self, url, *,
+                          protocols=(),
+                          timeout=10.0,
+                          receive_timeout=None,
+                          autoclose=True,
+                          autoping=True,
+                          heartbeat=None,
+                          auth=None,
+                          origin=None,
+                          headers=None,
+                          proxy=None,
+                          proxy_auth=None,
+                          verify_ssl=None,
+                          fingerprint=None,
+                          ssl_context=None,
+                          proxy_headers=None,
+                          compress=0):
 
         if headers is None:
             headers = CIMultiDict()
@@ -495,15 +493,15 @@ class ClientSession:
             headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
         # send request
-        resp = yield from self.get(url, headers=headers,
-                                   read_until_eof=False,
-                                   auth=auth,
-                                   proxy=proxy,
-                                   proxy_auth=proxy_auth,
-                                   verify_ssl=verify_ssl,
-                                   fingerprint=fingerprint,
-                                   ssl_context=ssl_context,
-                                   proxy_headers=proxy_headers)
+        resp = await self.get(url, headers=headers,
+                              read_until_eof=False,
+                              auth=auth,
+                              proxy=proxy,
+                              proxy_auth=proxy_auth,
+                              verify_ssl=verify_ssl,
+                              fingerprint=fingerprint,
+                              ssl_context=ssl_context,
+                              proxy_headers=proxy_headers)
 
         try:
             # check handshake
@@ -663,7 +661,7 @@ class ClientSession:
             self._request(hdrs.METH_DELETE, url,
                           **kwargs))
 
-    def close(self):
+    async def close(self):
         """Close underlying connector.
 
         Release all acquired resources.
@@ -672,8 +670,6 @@ class ClientSession:
             if self._connector_owner:
                 self._connector.close()
             self._connector = None
-
-        return deprecated_noop('ClientSession.close() is a coroutine')
 
     @property
     def closed(self):
@@ -711,38 +707,49 @@ class ClientSession:
         self._connector = None
 
     def __enter__(self):
-        warnings.warn("Use async with instead", DeprecationWarning)
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
-    @asyncio.coroutine
-    def __aenter__(self):
+    async def __aenter__(self):
         return self
 
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc_val, exc_tb):
-        yield from self.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.close()
 
 
-class _BaseRequestContextManager(_BaseCoroMixin):
+class _BaseRequestContextManager(Coroutine):
 
-    __slots__ = ('_resp',)
+    __slots__ = ('_coro', '_resp')
 
     def __init__(self, coro):
-        super().__init__(coro)
         self._coro = coro
 
-    @asyncio.coroutine
-    def __aenter__(self):
-        self._resp = yield from self._coro
+    def send(self, arg):
+        return self._coro.send(arg)
+
+    def throw(self, arg):
+        return self._coro.throw(arg)
+
+    def close(self):
+        return self._coro.close()
+
+    def __await__(self):
+        ret = self._coro.__await__()
+        return ret
+
+    def __iter__(self):
+        return self.__await__()
+
+    async def __aenter__(self):
+        self._resp = await self._coro
         return self._resp
 
 
 class _RequestContextManager(_BaseRequestContextManager):
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type, exc, tb):
         # We're basing behavior on the exception as it can be caused by
         # user code unrelated to the status of the connection.  If you
         # would like to close a connection you must do that
@@ -752,33 +759,26 @@ class _RequestContextManager(_BaseRequestContextManager):
 
 
 class _WSRequestContextManager(_BaseRequestContextManager):
-    @asyncio.coroutine
-    def __aexit__(self, exc_type, exc, tb):
-        yield from self._resp.close()
+    async def __aexit__(self, exc_type, exc, tb):
+        await self._resp.close()
 
 
-class _SessionRequestContextManager(_RequestContextManager):
+class _SessionRequestContextManager:
 
-    __slots__ = _RequestContextManager.__slots__ + ('_session', )
+    __slots__ = ('_coro', '_resp', '_session')
 
     def __init__(self, coro, session):
-        super().__init__(coro)
+        self._coro = coro
+        self._resp = None
         self._session = session
 
-    @asyncio.coroutine
-    def __iter__(self):
-        try:
-            return (yield from self._coro)
-        except Exception:
-            yield from self._session.close()
-            raise
+    async def __aenter__(self):
+        self._resp = await self._coro
+        return self._resp
 
-    def __await__(self):
-        try:
-            return (yield from self._coro)
-        except Exception:
-            yield from self._session.close()
-            raise
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self._resp.close()
+        await self._session.close()
 
 
 def request(method, url, *,
@@ -859,4 +859,4 @@ def request(method, url, *,
                          read_until_eof=read_until_eof,
                          proxy=proxy,
                          proxy_auth=proxy_auth,),
-        session=session)
+        session)
