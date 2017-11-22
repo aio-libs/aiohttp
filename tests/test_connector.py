@@ -421,7 +421,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
                 if param == 'sslcontext':
                     return True
 
-                if param == 'socket':
+                if param == 'ssl_object':
                     s = mock.Mock()
                     s.getpeercert.return_value = b'not foo'
                     return s
@@ -439,7 +439,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
                 if param == 'sslcontext':
                     return True
 
-                if param == 'socket':
+                if param == 'ssl_object':
                     s = mock.Mock()
                     s.getpeercert.return_value = b'foo'
                     return s
