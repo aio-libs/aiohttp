@@ -412,6 +412,14 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     resp = self.handle_error(request, 504)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
+                else:
+                    # Deprecation warning (See #2415)
+                    if isinstance(resp, HTTPException):
+                        warnings.warn(
+                            "returning HTTPException object is deprecated "
+                            "(#2415) and will be removed, "
+                            "please raise the exception instead",
+                            DeprecationWarning)
 
                 await resp.prepare(request)
                 await resp.write_eof()
@@ -427,14 +435,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # log access
                 if self.access_log:
                     self.log_access(request, resp, loop.time() - now)
-
-                # Deprication warning (See #2415)
-                if isinstance(resp, HTTPException):
-                    warnings.warn(
-                        "returning HTTPException object is deprecated (#2415) "
-                        "and will be removed, "
-                        "please raise the exception instead",
-                        DeprecationWarning)
 
                 # check payload
                 if not payload.is_eof():

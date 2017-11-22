@@ -294,6 +294,12 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
+      :param trace_request_ctx: Object used to give as a kw param for the all
+        signals triggered by the ongoing request and for all :class:`TraceConfig`
+        configured. Default passes a None value.
+
+         .. versionadded:: 3.0
+
       :return ClientResponse: a :class:`client response <ClientResponse>`
          object.
 
@@ -304,7 +310,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``GET`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -322,7 +328,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``POST`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -341,7 +347,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``PUT`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -360,7 +366,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``DELETE`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -375,7 +381,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``HEAD`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -393,7 +399,7 @@ The client session supports the context manager protocol for self closing.
       Perform an ``OPTIONS`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -412,7 +418,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``PATCH`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -523,6 +529,7 @@ The client session supports the context manager protocol for self closing.
       Session is switched to closed state anyway.
 
 
+
 Basic API
 ---------
 
@@ -534,18 +541,20 @@ keepaliving, cookies and complex connection stuff like properly configured SSL
 certification chaining.
 
 
-.. coroutinefunction:: request(method, url, *, params=None, data=None, \
-                               json=None,\
-                               headers=None, cookies=None, auth=None, \
-                               allow_redirects=True, max_redirects=10, \
-                               encoding='utf-8', \
-                               version=HttpVersion(major=1, minor=1), \
-                               compress=None, chunked=None, expect100=False, \
-                               connector=None, loop=None,\
-                               read_until_eof=True)
+.. cofunction:: request(method, url, *, params=None, data=None, \
+                        json=None,\
+                        headers=None, cookies=None, auth=None, \
+                        allow_redirects=True, max_redirects=10, \
+                        encoding='utf-8', \
+                        version=HttpVersion(major=1, minor=1), \
+                        compress=None, chunked=None, expect100=False, \
+                        connector=None, loop=None,\
+                        read_until_eof=True)
 
-   Perform an asynchronous HTTP request. Return a response object
-   (:class:`ClientResponse` or derived from).
+   :async-with:
+
+   Asynchronous context manager for performing an asynchronous HTTP
+   request. Returns a :class:`ClientResponse` response object.
 
    :param str method: HTTP method
 
@@ -708,7 +717,7 @@ BaseConnector
       The call may be paused if :attr:`limit` is exhausted until used
       connections returns to pool.
 
-      :param aiohttp.client.ClientRequest request: request object
+      :param aiohttp.ClientRequest request: request object
                                                    which is connection
                                                    initiator.
 
@@ -1154,6 +1163,7 @@ Response object
        object, :class:`aiohttp.RequestInfo` instance.
 
 
+
 ClientWebSocketResponse
 -----------------------
 
@@ -1525,11 +1535,13 @@ All exceptions are available as members of *aiohttp* module.
 
     .. attribute:: value
 
-    A :class:`str` instance. Value of Content-Disposition header itself, e.g. ``attachment``.
+    A :class:`str` instance. Value of Content-Disposition header
+    itself, e.g. ``attachment``.
 
     .. attribute:: filename
 
-    A :class:`str` instance. Content filename extracted from parameters. May be ``None``.
+    A :class:`str` instance. Content filename extracted from
+    parameters. May be ``None``.
 
     .. attribute:: parameters
 

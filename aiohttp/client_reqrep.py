@@ -350,11 +350,8 @@ class ClientRequest:
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
             elif hashfunc is md5 or hashfunc is sha1:
-                warnings.warn('md5 and sha1 are insecure and deprecated. '
-                              'Use sha256.',
-                              DeprecationWarning, stacklevel=2)
-                client_logger.warn('md5 and sha1 are insecure and deprecated. '
-                                   'Use sha256.')
+                raise ValueError('md5 and sha1 are insecure and '
+                                 'not supported. Use sha256.')
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -472,8 +469,7 @@ class ClientRequest:
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress
-        )
+            auto_decompress=self._auto_decompress)
 
         self.response._post_init(self.loop, self._session)
         return self.response
