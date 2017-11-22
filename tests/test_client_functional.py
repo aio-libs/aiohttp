@@ -2333,3 +2333,36 @@ async def test_session_auth_header_conflict(test_client):
     headers = {'Authorization': "Basic b3RoZXJfbG9naW46cGFzcw=="}
     with pytest.raises(ValueError):
         await client.get('/', headers=headers)
+
+
+async def test_session_headers(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, headers={"X-Real-IP": "192.168.0.1"})
+
+    r = await client.get('/')
+    assert r.status == 200
+    content = await r.json()
+    assert content['headers']["X-Real-IP"] == "192.168.0.1"
+
+
+async def test_session_headers_merge(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, headers=[
+        ("X-Real-IP", "192.168.0.1"),
+        ("X-Sent-By", "requests")])
+
+    r = await client.get('/', headers={"X-Sent-By": "aiohttp"})
+    assert r.status == 200
+    content = await r.json()
+    assert content['headers']["X-Real-IP"] == "192.168.0.1"
+    assert content['headers']["X-Sent-By"] == "aiohttp"
