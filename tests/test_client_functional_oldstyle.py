@@ -26,7 +26,7 @@ from multidict import MultiDict
 
 import aiohttp
 import aiohttp.http
-from aiohttp import client, helpers, test_utils, web
+from aiohttp import client, test_utils, web
 from aiohttp.multipart import MultipartWriter
 from aiohttp.test_utils import run_briefly, unused_port
 
@@ -764,4 +764,3 @@ class TestHttpClientFunctional(unittest.TestCase):
                 content['headers']["X-Sent-By"], "aiohttp")
             r.close()
             self.loop.run_until_complete(session.close())
-
