@@ -2289,3 +2289,47 @@ def test_close_context_manager(test_client):
     ctx = client.get('/')
     ctx.close()
     assert not ctx._coro.cr_running
+
+
+async def test_session_auth(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+
+    r = await client.get('/')
+    assert r.status == 200
+    content = await r.json()
+    assert content['headers']["Authorization"] == "Basic bG9naW46cGFzcw=="
+
+
+async def test_session_auth_override(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+
+    r = await client.get('/', auth=aiohttp.BasicAuth("other_login", "pass"))
+    assert r.status == 200
+    content = await r.json()
+    val = content['headers']["Authorization"]
+    assert val == "Basic b3RoZXJfbG9naW46cGFzcw=="
+
+
+async def test_session_auth_header_conflict(test_client):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+    headers = {'Authorization': "Basic b3RoZXJfbG9naW46cGFzcw=="}
+    with pytest.raises(ValueError):
+        await client.get('/', headers=headers)
