@@ -56,8 +56,7 @@ async def test_site_stop_not_started():
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner)
-    await site.start()
     with pytest.raises(RuntimeError):
-        await site.start()
+        await site.stop()
 
-    assert len(runner.sites) == 1
+    assert len(runner.sites) == 0
