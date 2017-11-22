@@ -316,30 +316,6 @@ class Functional(Router):
 
         return self._response(resp)
 
-    @Router.define('/cookies_partial$')
-    def cookies_partial(self, match):
-        cookies = SimpleCookie()
-        cookies['c1'] = 'other_cookie1'
-
-        resp = self._start_response(200)
-        for cookie in cookies.output(header='').split('\n'):
-            resp.add_header('Set-Cookie', cookie.strip())
-
-        return self._response(resp)
-
-    @Router.define('/broken$')
-    def broken(self, match):
-        resp = self._start_response(200)
-
-        def write_body(resp, body):
-            self._transport.close()
-            raise ValueError()
-
-        return self._response(
-            resp,
-            body=json.dumps({'t': (b'0' * 1024).decode('utf-8')}),
-            write_body=write_body)
-
 
 class TestHttpClientFunctional(unittest.TestCase):
 
