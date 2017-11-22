@@ -111,7 +111,7 @@ class SockSite(BaseSite):
             url = URL.build(scheme=scheme, host=sock.getsockname())
         else:
             host, port = sock.getsockname()[:2]
-            url = URL.build(scheme=scheme, host=self._host, port=self._port)
+            url = URL.build(scheme=scheme, host=host, port=port)
         self._url = url
 
     @property
