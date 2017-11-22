@@ -281,7 +281,7 @@ class WebSocketResponse(StreamResponse):
                     waiter = self._waiting
                     self._waiting = None
                     waiter.set_result(True)
-            except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
+            except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
             except WebSocketError as exc:

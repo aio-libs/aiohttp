@@ -267,7 +267,7 @@ class BaseConnector(object):
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.close()
-                            if (key[-1] and not self._cleanup_closed_disabled):
+                            if key[-1] and not self._cleanup_closed_disabled:
                                 self._cleanup_closed_transports.append(
                                     transport)
                         else:
@@ -569,9 +569,7 @@ class _DNSCacheTable:
         if self._ttl is None:
             return False
 
-        return (
-            self._timestamps[host] + self._ttl
-        ) < monotonic()
+        return self._timestamps[host] + self._ttl < monotonic()
 
 
 class TCPConnector(BaseConnector):

@@ -173,7 +173,7 @@ class FileResponse(StreamResponse):
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             self.set_status(HTTPNotModified.status_code)
             self._length_check = False
-            return (await super().prepare(request))
+            return await super().prepare(request)
 
         if hdrs.CONTENT_TYPE not in self.headers:
             ct, encoding = mimetypes.guess_type(str(filepath))
@@ -194,7 +194,7 @@ class FileResponse(StreamResponse):
             end = rng.stop
         except ValueError:
             self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
-            return (await super().prepare(request))
+            return await super().prepare(request)
 
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
@@ -236,6 +236,6 @@ class FileResponse(StreamResponse):
                 if start:
                     fobj.seek(start)
 
-                return (await self._sendfile(request, fobj, count))
+                return await self._sendfile(request, fobj, count)
 
-        return (await super().prepare(request))
+        return await super().prepare(request)

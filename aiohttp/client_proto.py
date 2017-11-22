@@ -10,7 +10,7 @@ from .streams import EMPTY_PAYLOAD, DataQueue
 class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, *, loop=None, **kwargs):
+    def __init__(self, *, loop=None):
         asyncio.streams.FlowControlMixin.__init__(self, loop=loop)
         DataQueue.__init__(self, loop=loop)
 
@@ -70,7 +70,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
         try:
             uncompleted = self._parser.feed_eof()
-        except Exception as e:
+        except Exception:
             uncompleted = None
             if self._payload is not None:
                 self._payload.set_exception(
