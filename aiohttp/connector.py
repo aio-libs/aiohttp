@@ -267,7 +267,7 @@ class BaseConnector(object):
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.close()
-                            if (key[-1] and not self._cleanup_closed_disabled):
+                            if key[-1] and not self._cleanup_closed_disabled:
                                 self._cleanup_closed_transports.append(
                                     transport)
                         else:
@@ -823,11 +823,11 @@ class TCPConnector(BaseConnector):
 
     def _get_fingerprint_and_hashfunc(self, req):
         if req.fingerprint:
-            return (req.fingerprint, req._hashfunc)
+            return req.fingerprint, req._hashfunc
         elif self.fingerprint:
-            return (self.fingerprint, self._hashfunc)
+            return self.fingerprint, self._hashfunc
         else:
-            return (None, None)
+            return None, None
 
     async def _wrap_create_connection(self, *args,
                                       req, client_error=ClientConnectorError,

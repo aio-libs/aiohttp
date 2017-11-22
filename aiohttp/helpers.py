@@ -264,7 +264,7 @@ class AccessLogger(AbstractAccessLogger):
     }
 
     LOG_FORMAT = '%a %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
+    FORMAT_RE = re.compile(r'%({([A-Za-z0-9\-_]+)}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
 

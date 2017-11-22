@@ -542,7 +542,7 @@ def make_mocked_request(method, path, headers=None, *,
         payload = mock.Mock()
 
     @contextmanager
-    def timeout(*args, **kw):
+    def timeout():
         yield
 
     req = Request(message, payload,

@@ -449,7 +449,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                         with suppress(
                                 asyncio.TimeoutError, asyncio.CancelledError):
-                            while (not payload.is_eof() and now < end_t):
+                            while not payload.is_eof() and now < end_t:
                                 timeout = min(end_t - now, lingering_time)
                                 with CeilTimeout(timeout, loop=loop):
                                     # read and ignore
