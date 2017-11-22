@@ -47,9 +47,6 @@ def test_ctor():
     assert req.raw_headers == ((b'FOO', b'bar'),)
     assert req.task is req._task
 
-    with pytest.warns(DeprecationWarning):
-        assert req.GET is req.query
-
 
 def test_doubleslashes():
     # NB: //foo/bar is an absolute URL with foo netloc and /bar path
