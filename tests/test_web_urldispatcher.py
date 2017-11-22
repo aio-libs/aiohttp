@@ -165,7 +165,7 @@ async def test_url_escaping(loop, test_client, registered_path, request_url):
     """
     app = web.Application()
 
-    def handler(_):
+    async def handler(request):
         return web.Response()
     app.router.add_get(registered_path, handler)
     client = await test_client(app)
@@ -181,16 +181,17 @@ async def test_handler_metadata_persistence():
     """
     app = web.Application()
 
-    async def async_handler(_):
+    async def async_handler(request):
         """Doc"""
         return web.Response()
 
-    def sync_handler(_):
+    def sync_handler(request):
         """Doc"""
         return web.Response()
 
     app.router.add_get('/async', async_handler)
-    app.router.add_get('/sync', sync_handler)
+    with pytest.warns(DeprecationWarning):
+        app.router.add_get('/sync', sync_handler)
 
     for resource in app.router.resources():
         for route in resource:
@@ -278,7 +279,8 @@ async def test_partialy_applied_handler(loop, test_client):
     async def handler(data, request):
         return web.Response(body=data)
 
-    app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
+    with pytest.warns(DeprecationWarning):
+        app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
     client = await test_client(app)
 
     r = await client.get('/')
@@ -319,7 +321,7 @@ async def test_allow_head(loop, test_client):
     """
     app = web.Application()
 
-    def handler(_):
+    async def handler(_):
         return web.Response()
     app.router.add_get('/a', handler, name='a')
     app.router.add_get('/b', handler, allow_head=False, name='b')

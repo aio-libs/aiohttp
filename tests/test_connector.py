@@ -421,7 +421,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
                 if param == 'sslcontext':
                     return True
 
-                if param == 'socket':
+                if param == 'ssl_object':
                     s = mock.Mock()
                     s.getpeercert.return_value = b'not foo'
                     return s
@@ -439,7 +439,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
                 if param == 'sslcontext':
                     return True
 
-                if param == 'socket':
+                if param == 'ssl_object':
                     s = mock.Mock()
                     s.getpeercert.return_value = b'foo'
                     return s
@@ -1706,7 +1706,7 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
 async def test_tcp_connector(test_client, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -1794,7 +1794,7 @@ class TestHttpClientConnector(unittest.TestCase):
 
     def test_tcp_connector_raise_connector_ssl_error(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
         keyfile = os.path.join(here, 'sample.key')
@@ -1818,12 +1818,12 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
         self.assertTrue(ctx.value, aiohttp.ClientSSLError)
 
-        session.close()
+        self.loop.run_until_complete(session.close())
         conn.close()
 
     def test_tcp_connector_do_not_raise_connector_ssl_error(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
         keyfile = os.path.join(here, 'sample.key')
@@ -1855,12 +1855,12 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertIs(_sslcontext, sslcontext)
         r.close()
 
-        session.close()
+        self.loop.run_until_complete(session.close())
         conn.close()
 
     def test_tcp_connector_uses_provided_local_addr(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         app, srv, url = self.loop.run_until_complete(
             self.create_server('get', '/', handler)
@@ -1881,13 +1881,13 @@ class TestHttpClientConnector(unittest.TestCase):
         self.assertEqual(
             first_conn.transport._sock.getsockname(), ('127.0.0.1', port))
         r.close()
-        session.close()
+        self.loop.run_until_complete(session.close())
         conn.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
         async def handler(request):
-            return web.HTTPOk()
+            return web.Response()
 
         app, srv, url, sock_path = self.loop.run_until_complete(
             self.create_unix_server('get', '/', handler))
@@ -1901,7 +1901,7 @@ class TestHttpClientConnector(unittest.TestCase):
             session.request('get', url))
         self.assertEqual(r.status, 200)
         r.close()
-        session.close()
+        self.loop.run_until_complete(session.close())
 
     def test_resolver_not_called_with_address_is_ip(self):
         resolver = mock.MagicMock()

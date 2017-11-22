@@ -21,7 +21,8 @@ def connector(loop):
     conn = BaseConnector(loop=loop)
     proto = mock.Mock()
     conn._conns['a'] = [(proto, 123)]
-    return conn
+    yield conn
+    conn.close()
 
 
 @pytest.yield_fixture
@@ -34,7 +35,7 @@ def create_session(loop):
         return session
     yield maker
     if session is not None:
-        session.close()
+        loop.run_until_complete(session.close())
 
 
 @pytest.fixture
@@ -58,16 +59,6 @@ def params():
 def test_close_coro(create_session, loop):
     session = create_session()
     loop.run_until_complete(session.close())
-
-
-async def test_close_deprecated(create_session):
-    session = create_session()
-
-    with pytest.warns(DeprecationWarning) as ctx:
-        session.close()
-
-    # Assert the warning points at us and not at _CoroGuard.
-    assert ctx.list[0].filename == __file__
 
 
 def test_init_headers_simple_dict(create_session):
@@ -259,37 +250,37 @@ def test_http_DELETE(session, params):
                                            **params)]
 
 
-def test_close(create_session, connector):
+async def test_close(create_session, connector):
     session = create_session(connector=connector)
 
-    session.close()
+    await session.close()
     assert session.connector is None
     assert connector.closed
 
 
-def test_closed(session):
+async def test_closed(session):
     assert not session.closed
-    session.close()
+    await session.close()
     assert session.closed
 
 
-def test_connector(create_session, loop, mocker):
+async def test_connector(create_session, loop, mocker):
     connector = TCPConnector(loop=loop)
     mocker.spy(connector, 'close')
     session = create_session(connector=connector)
     assert session.connector is connector
 
-    session.close()
+    await session.close()
     assert connector.close.called
     connector.close()
 
 
-def test_create_connector(create_session, loop, mocker):
+async def test_create_connector(create_session, loop, mocker):
     session = create_session()
     connector = session.connector
     mocker.spy(session.connector, 'close')
 
-    session.close()
+    await session.close()
     assert connector.close.called
 
 
@@ -318,7 +309,7 @@ def test_detach(session):
 
 
 async def test_request_closed_session(session):
-    session.close()
+    await session.close()
     with pytest.raises(RuntimeError):
         await session.request('get', '/')
 
@@ -330,12 +321,12 @@ def test_close_flag_for_closed_connector(session):
     assert session.closed
 
 
-def test_double_close(connector, create_session):
+async def test_double_close(connector, create_session):
     session = create_session(connector=connector)
 
-    session.close()
+    await session.close()
     assert session.connector is None
-    session.close()
+    await session.close()
     assert session.closed
     assert connector.closed
 
@@ -358,12 +349,12 @@ def test_context_manager(connector, loop):
         assert session.closed
 
 
-def test_borrow_connector_loop(connector, create_session, loop):
+async def test_borrow_connector_loop(connector, create_session, loop):
     session = ClientSession(connector=connector, loop=None)
     try:
         assert session._loop, loop
     finally:
-        session.close()
+        await session.close()
 
 
 async def test_reraise_os_error(create_session):
@@ -431,10 +422,10 @@ def test_session_default_version(loop):
     assert session.version == aiohttp.HttpVersion11
 
 
-def test_session_loop(loop):
+async def test_session_loop(loop):
     session = aiohttp.ClientSession(loop=loop)
     assert session.loop is loop
-    session.close()
+    await session.close()
 
 
 def test_proxy_str(session, params):
@@ -457,7 +448,7 @@ def test_client_session_implicit_loop_warn():
     with pytest.warns(ResourceWarning):
         session = aiohttp.ClientSession()
         assert session._loop is loop
-        session.close()
+        loop.run_until_complete(session.close())
 
     asyncio.set_event_loop(None)
     loop.close()
@@ -552,8 +543,7 @@ async def test_request_tracing_interpose_headers(loop):
             super(MyClientRequest, self).__init__(*args, **kwargs)
             MyClientRequest.headers = self.headers
 
-    @asyncio.coroutine
-    def new_headers(
+    async def new_headers(
             session,
             trace_config_ctx,
             method,

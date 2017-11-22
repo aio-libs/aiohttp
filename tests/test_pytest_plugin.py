@@ -162,7 +162,7 @@ async def test_good():
 async def test_bad():
     foobar()
 """)
-    result = testdir.runpytest('-p', 'no:sugar', '-s')
+    result = testdir.runpytest('-p', 'no:sugar', '-s', '-W', 'default')
     result.assert_outcomes(passed=1, failed=1)
     stdout, _ = capsys.readouterr()
     assert ("test_warning_checks.py:__LINE__:coroutine 'foobar' was "
