@@ -33,8 +33,8 @@ class BaseSite(ABC):
 
     @property
     @abstractmethod
-    def url(self):
-        pass
+    def name(self):
+        pass  # pragma: no cover
 
     @abstractmethod
     async def start(self):
@@ -66,9 +66,9 @@ class TCPSite(BaseSite):
         self._port = port
 
     @property
-    def url(self):
+    def name(self):
         scheme = 'https' if self._ssl_context else 'http'
-        return URL.build(scheme=scheme, host=self._host, port=self._port)
+        return str(URL.build(scheme=scheme, host=self._host, port=self._port))
 
     async def start(self):
         await super().start()
@@ -87,9 +87,9 @@ class UnixSite(BaseSite):
         self._path = path
 
     @property
-    def url(self):
-        scheme = 'https+unix' if self._ssl_context else 'http+unix'
-        return URL.build(scheme=scheme, host=self._path)
+    def name(self):
+        scheme = 'https' if self._ssl_context else 'http'
+        return '{}://unix:{}:'.format(scheme, self._path)
 
     async def start(self):
         await super().start()
@@ -108,15 +108,15 @@ class SockSite(BaseSite):
         self._sock = sock
         scheme = 'https' if self._ssl_context else 'http'
         if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
-            url = URL.build(scheme=scheme, host=sock.getsockname())
+            name = '{}://unix:{}:'.format(scheme, sock.getsockname())
         else:
             host, port = sock.getsockname()[:2]
-            url = URL.build(scheme=scheme, host=host, port=port)
-        self._url = url
+            name = str(URL.build(scheme=scheme, host=host, port=port))
+        self._name = name
 
     @property
-    def url(self):
-        return self._url
+    def name(self):
+        return self._name
 
     async def start(self):
         await super().start()
@@ -180,6 +180,7 @@ class AppRunner:
         # still present on failure
         for site in list(self._sites):
             await site.stop()
+        await self._app.cleanup()
         if self._handle_signals:
             try:
                 loop.remove_signal_handler(signal.SIGINT)
