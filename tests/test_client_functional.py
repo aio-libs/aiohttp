@@ -15,7 +15,6 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.multipart import MultipartWriter
 
 
 @pytest.fixture
@@ -1417,34 +1416,6 @@ async def test_POST_FILES_IO(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
-async def test_POST_MULTIPART(loop, test_client):
-
-    async def handler(request):
-        data = await request.post()
-        lst = list(data.values())
-        assert 3 == len(lst)
-        assert lst[0] == 'foo'
-        assert lst[1] == {'bar': 'баз'}
-        assert b'data' == data['unknown'].file.read()
-        assert data['unknown'].content_type == 'application/octet-stream'
-        assert data['unknown'].filename == 'unknown'
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post('/', handler)
-    client = await test_client(app)
-
-    with MultipartWriter('form-data') as writer:
-        writer.append('foo')
-        writer.append_json({'bar': 'баз'})
-        writer.append_form([('тест', '4'), ('сетс', '2')])
-
-    resp = await client.post('/', data=writer)
-    assert 200 == resp.status
-    resp.close()
-
-
 async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
 
     async def handler(request):
@@ -2366,3 +2337,35 @@ async def test_session_headers_merge(test_client):
     content = await r.json()
     assert content['headers']["X-Real-IP"] == "192.168.0.1"
     assert content['headers']["X-Sent-By"] == "aiohttp"
+
+
+async def test_multidict_headers(test_client):
+    async def handler(request):
+        assert await request.read() == data
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+
+    client = await test_client(app)
+
+    data = b'sample data'
+
+    r = await client.post('/', data=data,
+                          headers=MultiDict(
+                              {'Content-Length': str(len(data))}))
+    assert r.status == 200
+
+
+async def test_request_conn_closed(test_client):
+    async def handler(request):
+        request.transport.close()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app)
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        resp = await client.get('/')
+        await resp.read()
