@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+from aiohttp import web
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -35,9 +36,11 @@ class BaseTestWorker:
     def __init__(self):
         self.servers = {}
         self.exit_code = 0
+        self._notify_waiter = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
         self.pid = 'pid'
+        self.wsgi = web.Application()
 
 
 class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
@@ -53,7 +56,8 @@ if uvloop is not None:
 
 
 @pytest.fixture(params=PARAMS)
-def worker(request):
+def worker(request, loop):
+    asyncio.set_event_loop(loop)
     ret = request.param()
     ret.notify = mock.Mock()
     return ret
@@ -72,38 +76,24 @@ def test_init_process(worker):
 
 
 def test_run(worker, loop):
-    worker.wsgi = mock.Mock()
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
 
     worker.loop = loop
-    worker._run = mock.Mock(
-        wraps=asyncio.coroutine(lambda: None))
-    worker.wsgi.startup = make_mocked_coro(None)
+    worker._run = make_mocked_coro(None)
     with pytest.raises(SystemExit):
         worker.run()
     assert worker._run.called
-    worker.wsgi.startup.assert_called_once_with()
-    assert loop.is_closed()
-
-
-def test_run_wsgi(worker, loop):
-    worker.wsgi = lambda env, start_resp: start_resp()
-
-    worker.loop = loop
-    worker._run = mock.Mock(
-        wraps=asyncio.coroutine(lambda: None))
-    with pytest.raises(SystemExit):
-        worker.run()
-    assert worker._run.called
+    worker._runner.handler is None
     assert loop.is_closed()
 
 
 def test_handle_quit(worker, loop):
     worker.loop = mock.Mock()
-    worker.close = mock.Mock()
     worker.handle_quit(object(), object())
     assert not worker.alive
     assert worker.exit_code == 0
-    assert worker.loop.create_task.called
     worker.loop.call_later.asset_called_with(
         0.1, worker._notify_waiter_done)
 
@@ -122,7 +112,9 @@ def test__wait_next_notify(worker):
     fut = worker._wait_next_notify()
 
     assert worker._notify_waiter == fut
-    worker.loop.call_later.assert_called_with(1.0, worker._notify_waiter_done)
+    worker.loop.call_later.assert_called_with(1.0,
+                                              worker._notify_waiter_done,
+                                              fut)
 
 
 def test__notify_waiter_done(worker):
@@ -144,32 +136,6 @@ def test_init_signals(worker):
     assert worker.loop.add_signal_handler.called
 
 
-def test_make_handler(worker, mocker):
-    worker.wsgi = mock.Mock()
-    worker.loop = mock.Mock()
-    worker.log = mock.Mock()
-    worker.cfg = mock.Mock()
-    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-    mocker.spy(worker, '_get_valid_log_format')
-
-    f = worker.make_handler(worker.wsgi)
-    assert f is worker.wsgi.make_handler.return_value
-    assert worker._get_valid_log_format.called
-
-
-def test_make_handler_wsgi(worker, mocker):
-    worker.wsgi = lambda env, start_resp: start_resp()
-    worker.loop = mock.Mock()
-    worker.loop.time.return_value = 1477797232
-    worker.log = mock.Mock()
-    worker.cfg = mock.Mock()
-    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-    mocker.spy(worker, '_get_valid_log_format')
-
-    with pytest.raises(RuntimeError):
-        worker.make_handler(worker.wsgi)
-
-
 @pytest.mark.parametrize('source,result', [
     (ACCEPTABLE_LOG_FORMAT, ACCEPTABLE_LOG_FORMAT),
     (AsyncioWorker.DEFAULT_GUNICORN_LOG_FORMAT,
@@ -185,231 +151,88 @@ def test__get_valid_log_format_exc(worker):
     assert '%(name)s' in str(exc)
 
 
-async def test__run_ok_tcp(worker, loop):
+async def test__run_ok_tcp(worker, loop, unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
     worker.alive = True
-    worker.servers = {}
-    sock = mock.Mock()
-    sock.cfg_addr = ('localhost', 8080)
+    sock = socket.socket()
+    addr = ('localhost', unused_port())
+    sock.bind(addr)
     worker.sockets = [sock]
-    worker.wsgi = mock.Mock()
-    worker.close = make_mocked_coro(None)
     worker.log = mock.Mock()
     worker.loop = loop
-    loop.create_server = make_mocked_coro(sock)
-    worker.wsgi.make_handler.return_value.requests_count = 1
     worker.cfg.max_requests = 100
-    worker.cfg.is_ssl = True
+    worker.cfg.is_ssl = False
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
 
-    ssl_context = mock.Mock()
-    with mock.patch('ssl.SSLContext', return_value=ssl_context):
-        with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
-            m_asyncio.sleep = mock.Mock(
-                wraps=asyncio.coroutine(lambda *a, **kw: None))
-            await worker._run()
+    worker._runner = web.AppRunner(worker.wsgi)
+    await worker._runner.setup()
+
+    await worker._run()
 
     worker.notify.assert_called_with()
     if os.getppid() != 1:  # not Docker
         worker.log.info.assert_called_with("Parent changed, shutting down: %s",
                                            worker)
 
-    args, kwargs = loop.create_server.call_args
-    assert 'ssl' in kwargs
-    ctx = kwargs['ssl']
-    assert ctx is ssl_context
+    assert worker._runner.handler is None
 
 
-@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
-                    reason="UNIX sockets are not supported")
-async def test__run_ok_unix_socket(worker, loop):
+async def test__run_ok_no_max_requests(worker, loop, unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
     worker.alive = True
-    worker.servers = {}
-    sock = mock.Mock()
-    sock.cfg_addr = ('/path/to')
-    sock.family = socket.AF_UNIX
+    sock = socket.socket()
+    addr = ('localhost', unused_port())
+    sock.bind(addr)
     worker.sockets = [sock]
-    worker.wsgi = mock.Mock()
-    worker.close = make_mocked_coro(None)
     worker.log = mock.Mock()
     worker.loop = loop
-    loop.create_unix_server = make_mocked_coro(sock)
-    worker.wsgi.make_handler.return_value.requests_count = 1
-    worker.cfg.max_requests = 100
-    worker.cfg.is_ssl = True
-    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-
-    ssl_context = mock.Mock()
-    with mock.patch('ssl.SSLContext', return_value=ssl_context):
-        with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
-            m_asyncio.sleep = mock.Mock(
-                wraps=asyncio.coroutine(lambda *a, **kw: None))
-            await worker._run()
-
-    worker.notify.assert_called_with()
-    if os.getppid() != 1:  # not Docker
-        worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                           worker)
-
-    args, kwargs = loop.create_unix_server.call_args
-    assert 'ssl' in kwargs
-    ctx = kwargs['ssl']
-    assert ctx is ssl_context
-
-
-async def test__run_exc(worker, loop):
-    with mock.patch('aiohttp.worker.os') as m_os:
-        m_os.getpid.return_value = 1
-        m_os.getppid.return_value = 1
-
-        handler = mock.Mock()
-        handler.requests_count = 0
-        worker.servers = {mock.Mock(): handler}
-        worker._wait_next_notify = mock.Mock()
-        worker.ppid = 1
-        worker.alive = True
-        worker.sockets = []
-        worker.log = mock.Mock()
-        worker.loop = loop
-        worker.cfg.is_ssl = False
-        worker.cfg.max_redirects = 0
-        worker.cfg.max_requests = 100
-
-        with mock.patch('aiohttp.worker.asyncio.sleep') as m_sleep:
-            slp = loop.create_future()
-            slp.set_exception(KeyboardInterrupt)
-            m_sleep.return_value = slp
-
-            worker.close = make_mocked_coro(None)
-
-            await worker._run()
-
-        assert worker._wait_next_notify.called
-        worker.close.assert_called_with()
-
-
-async def test_close(worker, loop):
-    srv = mock.Mock()
-    srv.wait_closed = make_mocked_coro(None)
-    handler = mock.Mock()
-    worker.servers = {srv: handler}
-    worker.log = mock.Mock()
-    worker.loop = loop
-    app = worker.wsgi = mock.Mock()
-    app.cleanup = make_mocked_coro(None)
-    handler.connections = [object()]
-    handler.shutdown.return_value = loop.create_future()
-    handler.shutdown.return_value.set_result(1)
-
-    app.shutdown.return_value = loop.create_future()
-    app.shutdown.return_value.set_result(None)
-
-    await worker.close()
-    app.shutdown.assert_called_with()
-    app.cleanup.assert_called_with()
-    handler.shutdown.assert_called_with(timeout=95.0)
-    srv.close.assert_called_with()
-    assert worker.servers is None
-
-    await worker.close()
-
-
-async def test_close_wsgi(worker, loop):
-    srv = mock.Mock()
-    srv.wait_closed = make_mocked_coro(None)
-    handler = mock.Mock()
-    worker.servers = {srv: handler}
-    worker.log = mock.Mock()
-    worker.loop = loop
-    worker.wsgi = lambda env, start_resp: start_resp()
-    handler.connections = [object()]
-    handler.shutdown.return_value = loop.create_future()
-    handler.shutdown.return_value.set_result(1)
-
-    await worker.close()
-    handler.shutdown.assert_called_with(timeout=95.0)
-    srv.close.assert_called_with()
-    assert worker.servers is None
-
-    await worker.close()
-
-
-async def test__run_ok_no_max_requests(worker, loop):
-    skip_if_no_dict(loop)
-
-    worker.ppid = 1
-    worker.alive = True
-    worker.servers = {}
-    sock = mock.Mock()
-    sock.cfg_addr = ('localhost', 8080)
-    worker.sockets = [sock]
-    worker.wsgi = mock.Mock()
-    worker.close = make_mocked_coro(None)
-    worker.log = mock.Mock()
-    worker.loop = loop
-    loop.create_server = make_mocked_coro(sock)
-    worker.wsgi.make_handler.return_value.requests_count = 1
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.max_requests = 0
-    worker.cfg.is_ssl = True
+    worker.cfg.is_ssl = False
 
-    ssl_context = mock.Mock()
-    with mock.patch('ssl.SSLContext', return_value=ssl_context):
-        with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
-            m_asyncio.sleep = mock.Mock(
-                wraps=asyncio.coroutine(lambda *a, **kw: None))
-            await worker._run()
+    worker._runner = web.AppRunner(worker.wsgi)
+    await worker._runner.setup()
+
+    await worker._run()
 
     worker.notify.assert_called_with()
     if os.getppid() != 1:  # not Docker
         worker.log.info.assert_called_with("Parent changed, shutting down: %s",
                                            worker)
-
-    args, kwargs = loop.create_server.call_args
-    assert 'ssl' in kwargs
-    ctx = kwargs['ssl']
-    assert ctx is ssl_context
+    assert worker._runner.handler is None
 
 
-async def test__run_ok_max_requests_exceeded(worker, loop):
+async def test__run_ok_max_requests_exceeded(worker, loop, unused_port):
     skip_if_no_dict(loop)
 
-    worker.ppid = 1
+    worker.ppid = os.getppid()
     worker.alive = True
     worker.servers = {}
-    sock = mock.Mock()
-    sock.cfg_addr = ('localhost', 8080)
+    sock = socket.socket()
+    addr = ('localhost', unused_port())
+    sock.bind(addr)
     worker.sockets = [sock]
-    worker.wsgi = mock.Mock()
-    worker.close = make_mocked_coro(None)
     worker.log = mock.Mock()
     worker.loop = loop
-    loop.create_server = make_mocked_coro(sock)
-    worker.wsgi.make_handler.return_value.requests_count = 15
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.max_requests = 10
-    worker.cfg.is_ssl = True
+    worker.cfg.is_ssl = False
 
-    ssl_context = mock.Mock()
-    with mock.patch('ssl.SSLContext', return_value=ssl_context):
-        with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
-            m_asyncio.sleep = mock.Mock(
-                wraps=asyncio.coroutine(lambda *a, **kw: None))
-            await worker._run()
+    worker._runner = web.AppRunner(worker.wsgi)
+    await worker._runner.setup()
+    worker._runner.handler.requests_count = 30
+
+    await worker._run()
 
     worker.notify.assert_called_with()
     worker.log.info.assert_called_with("Max requests, shutting down: %s",
                                        worker)
 
-    args, kwargs = loop.create_server.call_args
-    assert 'ssl' in kwargs
-    ctx = kwargs['ssl']
-    assert ctx is ssl_context
+    assert worker._runner.handler is None
 
 
 def test__create_ssl_context_without_certs_and_ciphers(worker):
@@ -422,3 +245,28 @@ def test__create_ssl_context_without_certs_and_ciphers(worker):
     worker.cfg.ciphers = None
     crt = worker._create_ssl_context(worker.cfg)
     assert isinstance(crt, ssl.SSLContext)
+
+
+def test__create_ssl_context_with_ciphers(worker):
+    here = pathlib.Path(__file__).parent
+    worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
+    worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
+    worker.cfg.certfile = str(here / 'sample.crt')
+    worker.cfg.keyfile = str(here / 'sample.key')
+    worker.cfg.ca_certs = None
+    worker.cfg.ciphers = 'PSK'
+    ctx = worker._create_ssl_context(worker.cfg)
+    assert isinstance(ctx, ssl.SSLContext)
+    assert isinstance(ctx.get_ciphers(), list)  # a long list of dicts
+
+
+def test__create_ssl_context_with_ca_certs(worker):
+    here = pathlib.Path(__file__).parent
+    worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
+    worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
+    worker.cfg.certfile = str(here / 'sample.crt')
+    worker.cfg.keyfile = str(here / 'sample.key')
+    worker.cfg.ca_certs = str(here / 'sample.crt')
+    worker.cfg.ciphers = None
+    ctx = worker._create_ssl_context(worker.cfg)
+    assert isinstance(ctx, ssl.SSLContext)

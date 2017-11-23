@@ -32,7 +32,7 @@ async def test_site_for_nonfrozen_app(make_runner):
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="the test is not valid for Windows")
 async def test_runner_setup_handle_signals(make_runner):
-    runner = make_runner()
+    runner = make_runner(handle_signals=True)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
     await runner.cleanup()

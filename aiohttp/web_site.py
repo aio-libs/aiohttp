@@ -5,8 +5,6 @@ from abc import ABC, abstractmethod
 
 from yarl import URL
 
-from .log import access_logger
-
 
 __all__ = ('TCPSite', 'UnixSite', 'SockSite', 'AppRunner', 'GracefulExit')
 
@@ -127,12 +125,10 @@ class SockSite(BaseSite):
 
 
 class AppRunner:
-    def __init__(self, app, *, handle_signals=True,
-                 access_log_format=None, access_log=access_logger):
+    def __init__(self, app, *, handle_signals=False, **kwargs):
         self._app = app
         self._handle_signals = handle_signals
-        self._access_log_format = access_log_format
-        self._access_log = access_log
+        self._kwargs = kwargs
         self._handler = None
         self._sites = set()
 
@@ -164,11 +160,7 @@ class AppRunner:
         await self._app.startup()
         self._app.freeze()
 
-        make_handler_kwargs = dict(access_log=self._access_log)
-        if self._access_log_format is not None:
-            make_handler_kwargs['access_log_format'] = self._access_log_format
-
-        handler = self._app.make_handler(loop=loop, **make_handler_kwargs)
+        handler = self._app.make_handler(loop=loop, **self._kwargs)
         self._handler = handler
 
     async def cleanup(self):
@@ -185,6 +177,7 @@ class AppRunner:
         for site in list(self._sites):
             await site.stop()
         await self._app.cleanup()
+        self._handler = None
         if self._handle_signals:
             try:
                 loop.remove_signal_handler(signal.SIGINT)
