@@ -4,6 +4,7 @@ import os
 import pathlib
 import socket
 import ssl
+import sys
 from unittest import mock
 
 import pytest
@@ -257,7 +258,8 @@ def test__create_ssl_context_with_ciphers(worker):
     worker.cfg.ciphers = 'PSK'
     ctx = worker._create_ssl_context(worker.cfg)
     assert isinstance(ctx, ssl.SSLContext)
-    assert isinstance(ctx.get_ciphers(), list)  # a long list of dicts
+    if sys.version_info >= (3, 6):
+        assert isinstance(ctx.get_ciphers(), list)  # a long list of dicts
 
 
 def test__create_ssl_context_with_ca_certs(worker):
