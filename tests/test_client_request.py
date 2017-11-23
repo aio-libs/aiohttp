@@ -1091,7 +1091,7 @@ async def test_custom_req_rep(loop):
     assert isinstance(resp, CustomResponse)
     assert called
     resp.close()
-    session.close()
+    await session.close()
     conn.close()
 
 
@@ -1107,12 +1107,15 @@ def test_bad_fingerprint(loop):
                       fingerprint=b'invalid', loop=loop)
 
 
-def test_insecure_fingerprint(loop):
-    with pytest.warns(DeprecationWarning):
+def test_insecure_fingerprint_md5(loop):
+    with pytest.raises(ValueError):
         ClientRequest('get', URL('http://python.org'),
                       fingerprint=hashlib.md5(b"foo").digest(),
                       loop=loop)
-    with pytest.warns(DeprecationWarning):
+
+
+def test_insecure_fingerprint_sha1(loop):
+    with pytest.raises(ValueError):
         ClientRequest('get', URL('http://python.org'),
                       fingerprint=hashlib.sha1(b"foo").digest(),
                       loop=loop)

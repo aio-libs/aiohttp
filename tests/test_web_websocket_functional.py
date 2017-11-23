@@ -22,9 +22,9 @@ async def test_websocket_can_prepare(loop, test_client):
     async def handler(request):
         ws = web.WebSocketResponse()
         if not ws.can_prepare(request):
-            return web.HTTPUpgradeRequired()
+            raise web.HTTPUpgradeRequired()
 
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)

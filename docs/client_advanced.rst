@@ -206,8 +206,11 @@ To tweak or change *transport* layer of requests you can pass a custom
 
 .. note::
 
-   You can not re-use custom *connector*, *session* object takes ownership
-   of the *connector*.
+   By default *session* object takes the ownership of the connector, among
+   other things closing the connections once the *session* is closed. If
+   you are keen on share the same *connector* through different *session*
+   instances you must give the  *connector_owner* parameter as **False**
+   for each *session* instance.
 
 .. seealso:: :ref:`aiohttp-client-reference-connectors` section for
              more information about different connector types and
@@ -240,10 +243,23 @@ The example limits amount of parallel connections to the same to `30`.
 
 The default is `0` (no limit on per host bases).
 
+Tuning the DNS cache
+--------------------
+By default :class:`~aiohttp.TCPConnector` comes with the DNS cache
+table enabled, and resolutions will be cached by default for `10` seconds.
+This behavior can be changed either to change of the TTL for a resolution,
+as can be seen in the following example::
+
+    conn = aiohttp.TCPConnector(ttl_dns_cache=300)
+
+or disabling the use of the DNS cache table, meaning that all requests will
+end up making a DNS resolution, as the following example shows::
+
+    conn = aiohttp.TCPConnector(use_dns_cache=False)
+
 
 Resolving using custom nameservers
 ----------------------------------
-
 In order to specify the nameservers to when resolving the hostnames,
 :term:`aiodns` is required::
 

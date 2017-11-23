@@ -23,10 +23,6 @@ def _create_example_app():
     async def hello(request):
         return web.Response(body=_hello_world_bytes)
 
-    async def gzip_hello(request):
-        return web.Response(body=_hello_world_gz,
-                            headers={'Content-Encoding': 'gzip'})
-
     async def websocket_handler(request):
 
         ws = web.WebSocketResponse()
@@ -47,7 +43,6 @@ def _create_example_app():
 
     app = web.Application()
     app.router.add_route('*', '/', hello)
-    app.router.add_route('*', '/gzip_hello', gzip_hello)
     app.router.add_route('*', '/websocket', websocket_handler)
     app.router.add_route('*', '/cookie', cookie_handler)
     return app
@@ -73,64 +68,18 @@ def test_client(loop, app):
     loop.run_until_complete(client.close())
 
 
-def test_full_server_scenario():
-    with loop_context() as loop:
-        app = _create_example_app()
-        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
-
-            async def test_get_route():
-                nonlocal client
-                resp = await client.request("GET", "/")
-                assert resp.status == 200
-                text = await resp.text()
-                assert _hello_world_str == text
-
-            loop.run_until_complete(test_get_route())
+def test_with_test_server_fails(loop):
+    app = _create_example_app()
+    with pytest.raises(TypeError):
+        with _TestServer(app, loop=loop):
+            pass
 
 
-def test_auto_gzip_decompress():
-    with loop_context() as loop:
-        app = _create_example_app()
-        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
-
-            async def test_get_route():
-                nonlocal client
-                resp = await client.request("GET", "/gzip_hello")
-                assert resp.status == 200
-                data = await resp.read()
-                assert data == _hello_world_bytes
-
-            loop.run_until_complete(test_get_route())
-
-
-def test_noauto_gzip_decompress():
-    with loop_context() as loop:
-        app = _create_example_app()
-        with _TestClient(_TestServer(app, loop=loop), loop=loop,
-                         auto_decompress=False) as client:
-
-            async def test_get_route():
-                nonlocal client
-                resp = await client.request("GET", "/gzip_hello")
-                assert resp.status == 200
-                data = await resp.read()
-                assert data == _hello_world_gz
-
-            loop.run_until_complete(test_get_route())
-
-
-def test_server_with_create_test_teardown():
-    with loop_context() as loop:
-        app = _create_example_app()
-        with _TestClient(_TestServer(app, loop=loop), loop=loop) as client:
-
-            async def test_get_route():
-                resp = await client.request("GET", "/")
-                assert resp.status == 200
-                text = await resp.text()
-                assert _hello_world_str == text
-
-            loop.run_until_complete(test_get_route())
+def test_with_test_client_fails(loop):
+    app = _create_example_app()
+    with pytest.raises(TypeError):
+        with _TestClient(_TestServer(app, loop=loop), loop=loop):
+            pass
 
 
 def test_test_client_close_is_idempotent():
@@ -255,29 +204,26 @@ def test_make_mocked_request_transport():
     assert req.transport is transport
 
 
-def test_test_client_props(loop):
+async def test_test_client_props(loop):
     app = _create_example_app()
     client = _TestClient(_TestServer(app, host='localhost', loop=loop),
                          loop=loop)
     assert client.host == 'localhost'
     assert client.port is None
-    with client:
+    async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
     assert client.port is None
 
 
-def test_test_server_context_manager(loop):
+async def test_test_server_context_manager(loop):
     app = _create_example_app()
-    with _TestServer(app, loop=loop) as server:
-        async def go():
-            client = aiohttp.ClientSession(loop=loop)
-            resp = await client.head(server.make_url('/'))
-            assert resp.status == 200
-            resp.close()
-            client.close()
-
-        loop.run_until_complete(go())
+    async with _TestServer(app, loop=loop) as server:
+        client = aiohttp.ClientSession(loop=loop)
+        resp = await client.head(server.make_url('/'))
+        assert resp.status == 200
+        resp.close()
+        await client.close()
 
 
 def test_client_unsupported_arg():
@@ -285,9 +231,9 @@ def test_client_unsupported_arg():
         _TestClient('string')
 
 
-def test_server_make_url_yarl_compatibility(loop):
+async def test_server_make_url_yarl_compatibility(loop):
     app = _create_example_app()
-    with _TestServer(app, loop=loop) as server:
+    async with _TestServer(app, loop=loop) as server:
         make_url = server.make_url
         assert make_url(URL('/foo')) == make_url('/foo')
         with pytest.raises(AssertionError):

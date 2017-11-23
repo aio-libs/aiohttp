@@ -23,7 +23,6 @@ from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
 from .helpers import is_ip_address, noop, sentinel
 from .locks import EventResultOrError
-from .log import client_logger
 from .resolver import DefaultResolver
 
 
@@ -268,7 +267,7 @@ class BaseConnector(object):
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.close()
-                            if (key[-1] and not self._cleanup_closed_disabled):
+                            if key[-1] and not self._cleanup_closed_disabled:
                                 self._cleanup_closed_transports.append(
                                     transport)
                         else:
@@ -526,9 +525,6 @@ class BaseConnector(object):
         raise NotImplementedError()
 
 
-_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
-
-
 class _DNSCacheTable:
 
     def __init__(self, ttl=None):
@@ -573,16 +569,14 @@ class _DNSCacheTable:
         if self._ttl is None:
             return False
 
-        return (
-            self._timestamps[host] + self._ttl
-        ) < monotonic()
+        return self._timestamps[host] + self._ttl < monotonic()
 
 
 class TCPConnector(BaseConnector):
     """TCP connector.
 
     verify_ssl - Set to True to check ssl certifications.
-    fingerprint - Pass the binary md5, sha1, or sha256
+    fingerprint - Pass the binary sha256
         digest of the expected certificate in DER format to verify
         that the certificate the server presents matches. See also
         https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning
@@ -628,11 +622,8 @@ class TCPConnector(BaseConnector):
             if not hashfunc:
                 raise ValueError('fingerprint has invalid length')
             elif hashfunc is md5 or hashfunc is sha1:
-                warnings.warn('md5 and sha1 are insecure and deprecated. '
-                              'Use sha256.',
-                              DeprecationWarning, stacklevel=2)
-                client_logger.warn('md5 and sha1 are insecure and deprecated. '
-                                   'Use sha256.')
+                raise ValueError('md5 and sha1 are insecure and '
+                                 'not supported. Use sha256.')
             self._hashfunc = hashfunc
         self._fingerprint = fingerprint
 
@@ -678,7 +669,7 @@ class TCPConnector(BaseConnector):
                 sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                 sslcontext.options |= ssl.OP_NO_SSLv2
                 sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= _SSL_OP_NO_COMPRESSION
+                sslcontext.options |= ssl.OP_NO_COMPRESSION
                 sslcontext.set_default_verify_paths()
             else:
                 sslcontext = ssl.create_default_context()
@@ -822,7 +813,7 @@ class TCPConnector(BaseConnector):
                     sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
                     sslcontext.options |= ssl.OP_NO_SSLv2
                     sslcontext.options |= ssl.OP_NO_SSLv3
-                    sslcontext.options |= _SSL_OP_NO_COMPRESSION
+                    sslcontext.options |= ssl.OP_NO_COMPRESSION
                     sslcontext.set_default_verify_paths()
         else:
             sslcontext = None
@@ -885,14 +876,9 @@ class TCPConnector(BaseConnector):
 
             has_cert = transp.get_extra_info('sslcontext')
             if has_cert and fingerprint:
-                sock = transp.get_extra_info('socket')
-                if not hasattr(sock, 'getpeercert'):
-                    # Workaround for asyncio 3.5.0
-                    # Starting from 3.5.1 version
-                    # there is 'ssl_object' extra info in transport
-                    sock = transp._ssl_protocol._sslpipe.ssl_object
+                sslobj = transp.get_extra_info('ssl_object')
                 # gives DER-encoded cert as a sequence of bytes (or None)
-                cert = sock.getpeercert(binary_form=True)
+                cert = sslobj.getpeercert(binary_form=True)
                 assert cert
                 got = hashfunc(cert).digest()
                 expected = fingerprint

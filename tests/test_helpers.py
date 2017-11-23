@@ -14,31 +14,6 @@ from aiohttp import client_exceptions, helpers, web
 from aiohttp.abc import AbstractAccessLogger
 
 
-# -------------------- coro guard --------------------------------
-
-async def test_warn():
-    with pytest.warns(DeprecationWarning) as ctx:
-        helpers.deprecated_noop('Text')
-
-    w = ctx.list[0]
-
-    assert str(w.message) == 'Text'
-    # Assert the warning points at us and not at _CoroGuard.
-    assert w.filename == __file__
-
-
-async def test_no_warn_on_await():
-    with pytest.warns(None) as ctx:
-        await helpers.deprecated_noop('Text')
-    assert not ctx.list
-
-
-def test_coro_guard_close():
-    guard = helpers.deprecated_noop('Text')
-    guard.close()
-    assert not guard.gi_running
-
-
 # ------------------- parse_mimetype ----------------------------------
 
 @pytest.mark.parametrize('mimetype, expected', [
