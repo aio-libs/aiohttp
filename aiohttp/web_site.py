@@ -23,8 +23,8 @@ class BaseSite(ABC):
     def __init__(self, runner, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
-        if not runner.app.frozen:
-            raise RuntimeError("Freeze app before running a site")
+        if runner.handler is None:
+            raise RuntimeError("Call runner.setup() before making a site")
         self._runner = runner
         self._shutdown_timeout = shutdown_timeout
         self._ssl_context = ssl_context
@@ -173,6 +173,10 @@ class AppRunner:
 
     async def cleanup(self):
         loop = asyncio.get_event_loop()
+
+        if self._handler is None:
+            # no started yet, do nothing
+            return
 
         # The loop over sites is intentional, an exception on gather()
         # leaves self._sites in unpredictable state.

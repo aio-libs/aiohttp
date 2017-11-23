@@ -7,9 +7,23 @@ import pytest
 from aiohttp import web
 
 
-async def test_site_for_nonfrozen_app():
-    app = web.Application()
-    runner = web.AppRunner(app)
+@pytest.fixture
+async def make_runner(loop):
+    asyncio.set_event_loop(loop)
+    runners = []
+
+    def go(**kwargs):
+        app = web.Application()
+        runner = web.AppRunner(app, **kwargs)
+        runners.append(runner)
+        return runner
+    yield go
+    for runner in runners:
+        await runner.cleanup()
+
+
+async def test_site_for_nonfrozen_app(make_runner):
+    runner = make_runner()
     with pytest.raises(RuntimeError):
         web.TCPSite(runner)
     assert len(runner.sites) == 0
@@ -17,10 +31,8 @@ async def test_site_for_nonfrozen_app():
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="the test is not valid for Windows")
-async def test_runner_setup_handle_signals(loop):
-    asyncio.set_event_loop(loop)
-    app = web.Application()
-    runner = web.AppRunner(app)
+async def test_runner_setup_handle_signals(make_runner):
+    runner = make_runner()
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
     await runner.cleanup()
@@ -29,19 +41,16 @@ async def test_runner_setup_handle_signals(loop):
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="the test is not valid for Windows")
-async def test_runner_setup_without_signal_handling(loop):
-    asyncio.set_event_loop(loop)
-    app = web.Application()
-    runner = web.AppRunner(app, handle_signals=False)
+async def test_runner_setup_without_signal_handling(make_runner):
+    runner = make_runner(handle_signals=False)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
     await runner.cleanup()
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
 
 
-async def test_site_double_added():
-    app = web.Application()
-    runner = web.AppRunner(app)
+async def test_site_double_added(make_runner):
+    runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
     await site.start()
@@ -51,9 +60,8 @@ async def test_site_double_added():
     assert len(runner.sites) == 1
 
 
-async def test_site_stop_not_started():
-    app = web.Application()
-    runner = web.AppRunner(app)
+async def test_site_stop_not_started(make_runner):
+    runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
     with pytest.raises(RuntimeError):
@@ -62,16 +70,14 @@ async def test_site_stop_not_started():
     assert len(runner.sites) == 0
 
 
-async def test_custom_log_format():
-    app = web.Application()
-    runner = web.AppRunner(app, access_log_format='abc')
+async def test_custom_log_format(make_runner):
+    runner = make_runner(access_log_format='abc')
     await runner.setup()
     assert runner._handler._kwargs['access_log_format'] == 'abc'
 
 
-async def test_unreg_site():
-    app = web.Application()
-    runner = web.AppRunner(app)
+async def test_unreg_site(make_runner):
+    runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
     with pytest.raises(RuntimeError):
