@@ -5,6 +5,7 @@ import os
 import re
 import signal
 import sys
+from contextlib import suppress
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -58,12 +59,11 @@ class GunicornWebWorker(base.Worker):
         self.loop.run_until_complete(self._runner.setup())
         self._task = self.loop.create_task(self._run())
 
-        try:
+        with suppress(Exception):  # ignore all finalization problems
             self.loop.run_until_complete(self._task)
-        finally:
-            if hasattr(self.loop, 'shutdown_asyncgens'):
-                self.loop.run_until_complete(self.loop.shutdown_asyncgens())
-            self.loop.close()
+        if hasattr(self.loop, 'shutdown_asyncgens'):
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+        self.loop.close()
 
         sys.exit(self.exit_code)
 
