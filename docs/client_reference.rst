@@ -1162,6 +1162,12 @@ Response object
        A namedtuple with request URL and headers from :class:`ClientRequest`
        object, :class:`aiohttp.RequestInfo` instance.
 
+   .. method:: get_encoding()
+
+      Automatically detect content encoding using ``charset`` info in
+      ``Content-Type`` HTTP header. If this info is not exists or there
+      are no appropriate codecs for encoding then :term:`cchardet` /
+      :term:`chardet` is used.
 
 
 ClientWebSocketResponse
