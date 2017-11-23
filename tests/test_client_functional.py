@@ -15,6 +15,7 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
+from aiohttp.test_utils import unused_port
 
 
 @pytest.fixture
@@ -2369,3 +2370,103 @@ async def test_request_conn_closed(test_client):
     with pytest.raises(aiohttp.ServerDisconnectedError):
         resp = await client.get('/')
         await resp.read()
+
+
+async def test_dont_close_explicit_connector(test_client):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app)
+    r = await client.get('/')
+    await r.read()
+
+    assert 1 == len(client.session.connector._conns)
+
+
+async def test_server_close_keepalive_connection(loop):
+
+    class Proto(asyncio.Protocol):
+
+        def connection_made(self, transport):
+            self.transp = transport
+            self.data = b''
+
+        def data_received(self, data):
+            self.data += data
+            if data.endswith(b'\r\n\r\n'):
+                self.transp.write(
+                    b'HTTP/1.1 200 OK\r\n'
+                    b'CONTENT-LENGTH: 2\r\n'
+                    b'CONNECTION: close\r\n'
+                    b'\r\n'
+                    b'ok')
+                self.transp.close()
+
+        def connection_lost(self, exc):
+            self.transp = None
+
+    server = await loop.create_server(
+        Proto, '127.0.0.1', unused_port())
+
+    addr = server.sockets[0].getsockname()
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    session = aiohttp.ClientSession(loop=loop, connector=connector)
+
+    url = 'http://{}:{}/'.format(*addr)
+    for i in range(2):
+        r = await session.request('GET', url)
+        await r.read()
+        assert 0 == len(connector._conns)
+    await session.close()
+    connector.close()
+    server.close()
+    await server.wait_closed()
+
+
+async def test_handle_keepalive_on_closed_connection(loop):
+
+    class Proto(asyncio.Protocol):
+
+        def connection_made(self, transport):
+            self.transp = transport
+            self.data = b''
+
+        def data_received(self, data):
+            self.data += data
+            if data.endswith(b'\r\n\r\n'):
+                self.transp.write(
+                    b'HTTP/1.1 200 OK\r\n'
+                    b'CONTENT-LENGTH: 2\r\n'
+                    b'\r\n'
+                    b'ok')
+                self.transp.close()
+
+        def connection_lost(self, exc):
+            self.transp = None
+
+    server = await loop.create_server(
+        Proto, '127.0.0.1', unused_port())
+
+    addr = server.sockets[0].getsockname()
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    session = aiohttp.ClientSession(loop=loop, connector=connector)
+
+    url = 'http://{}:{}/'.format(*addr)
+
+    r = await session.request('GET', url)
+    await r.read()
+    assert 1 == len(connector._conns)
+
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        await session.request('GET', url)
+    assert 0 == len(connector._conns)
+
+    await session.close()
+    connector.close()
+    server.close()
+    await server.wait_closed()
