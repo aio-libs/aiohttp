@@ -60,3 +60,19 @@ async def test_site_stop_not_started():
         await site.stop()
 
     assert len(runner.sites) == 0
+
+
+async def test_custom_log_format():
+    app = web.Application()
+    runner = web.AppRunner(app, access_log_format='abc')
+    await runner.setup()
+    assert runner._handler._kwargs['access_log_format'] == 'abc'
+
+
+async def test_unreg_site():
+    app = web.Application()
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner)
+    with pytest.raises(RuntimeError):
+        runner._unreg_site(site)
