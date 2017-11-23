@@ -1,7 +1,6 @@
 """HTTP client functional tests."""
 
 import asyncio
-import binascii
 import cgi
 import contextlib
 import email.parser
@@ -20,14 +19,10 @@ import traceback
 import unittest
 import urllib.parse
 from http.cookies import SimpleCookie
-from unittest import mock
-
-from multidict import MultiDict
 
 import aiohttp
 import aiohttp.http
 from aiohttp import client, test_utils, web
-from aiohttp.multipart import MultipartWriter
 from aiohttp.test_utils import run_briefly, unused_port
 
 
@@ -330,226 +325,6 @@ class TestHttpClientFunctional(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    def test_POST_DATA_with_charset(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            form = aiohttp.FormData()
-            form.add_field('name', 'текст',
-                           content_type='text/plain; charset=koi8-r')
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request('post', url, data=form))
-            content = self.loop.run_until_complete(r.json())
-
-            self.assertEqual(1, len(content['multipart-data']))
-            field = content['multipart-data'][0]
-            self.assertEqual('name', field['name'])
-            self.assertEqual('текст', field['data'])
-            self.assertEqual(r.status, 200)
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-    def test_POST_DATA_with_charset_pub_request(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            form = aiohttp.FormData()
-            form.add_field('name', 'текст',
-                           content_type='text/plain; charset=koi8-r')
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request('post', url, data=form))
-            content = self.loop.run_until_complete(r.json())
-
-            self.assertEqual(1, len(content['multipart-data']))
-            field = content['multipart-data'][0]
-            self.assertEqual('name', field['name'])
-            self.assertEqual('текст', field['data'])
-            self.assertEqual(r.status, 200)
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-    def test_POST_DATA_with_content_transfer_encoding(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            form = aiohttp.FormData()
-            form.add_field('name', b'123',
-                           content_transfer_encoding='base64')
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request('post', url, data=form))
-            content = self.loop.run_until_complete(r.json())
-
-            self.assertEqual(1, len(content['multipart-data']))
-            field = content['multipart-data'][0]
-            self.assertEqual('name', field['name'])
-            self.assertEqual(b'123', binascii.a2b_base64(field['data']))
-            # self.assertEqual('base64', field['content-transfer-encoding'])
-            self.assertEqual(r.status, 200)
-
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-    def test_POST_MULTIPART(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            with MultipartWriter('form-data') as writer:
-                writer.append('foo')
-                writer.append_json({'bar': 'баз'})
-                writer.append_form([('тест', '4'), ('сетс', '2')])
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request('post', url, data=writer))
-
-            content = self.loop.run_until_complete(r.json())
-
-            self.assertEqual(3, len(content['multipart-data']))
-            self.assertEqual({'content-type': 'text/plain', 'data': 'foo'},
-                             content['multipart-data'][0])
-            self.assertEqual({'content-type': 'application/json',
-                              'data': '{"bar": "\\u0431\\u0430\\u0437"}'},
-                             content['multipart-data'][1])
-            self.assertEqual(
-                {'content-type': 'application/x-www-form-urlencoded',
-                 'data': '%D1%82%D0%B5%D1%81%D1%82=4&'
-                         '%D1%81%D0%B5%D1%82%D1%81=2'},
-                content['multipart-data'][2])
-            self.assertEqual(r.status, 200)
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-    def test_POST_STREAM_DATA(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            here = os.path.dirname(__file__)
-            fname = os.path.join(here, 'sample.key')
-
-            with open(fname, 'rb') as f:
-                data = f.read()
-
-            fut = self.loop.create_future()
-
-            @aiohttp.streamer
-            async def stream(writer):
-                await fut
-                await writer.write(data)
-
-            self.loop.call_later(0.01, fut.set_result, True)
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request(
-                    'post', url, data=stream(),
-                    headers={'Content-Length': str(len(data))}))
-            content = self.loop.run_until_complete(r.json())
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-            self.assertEqual(str(len(data)),
-                             content['headers']['Content-Length'])
-            self.assertEqual('application/octet-stream',
-                             content['headers']['Content-Type'])
-
-    def test_POST_StreamReader(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            here = os.path.dirname(__file__)
-            fname = os.path.join(here, 'sample.key')
-
-            with open(fname, 'rb') as f:
-                data = f.read()
-
-            stream = aiohttp.StreamReader(loop=self.loop)
-            stream.feed_data(data)
-            stream.feed_eof()
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request(
-                    'post', url, data=stream,
-                    headers={'Content-Length': str(len(data))}))
-            content = self.loop.run_until_complete(r.json())
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-            self.assertEqual(str(len(data)),
-                             content['headers']['Content-Length'])
-
-    def test_POST_DataQueue(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            here = os.path.dirname(__file__)
-            fname = os.path.join(here, 'sample.key')
-
-            with open(fname, 'rb') as f:
-                data = f.read()
-
-            stream = aiohttp.DataQueue(loop=self.loop)
-            stream.feed_data(data[:100], 100)
-            stream.feed_data(data[100:], len(data[100:]))
-            stream.feed_eof()
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request(
-                    'post', url, data=stream,
-                    headers={'Content-Length': str(len(data))}))
-            content = self.loop.run_until_complete(r.json())
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-            self.assertEqual(str(len(data)),
-                             content['headers']['Content-Length'])
-
-    def test_POST_ChunksQueue(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            here = os.path.dirname(__file__)
-            fname = os.path.join(here, 'sample.key')
-
-            with open(fname, 'rb') as f:
-                data = f.read()
-
-            stream = aiohttp.ChunksQueue(loop=self.loop)
-            stream.feed_data(data[:100], 100)
-
-            d = data[100:]
-            stream.feed_data(d, len(d))
-            stream.feed_eof()
-
-            session = client.ClientSession(loop=self.loop)
-            r = self.loop.run_until_complete(
-                session.request(
-                    'post', url, data=stream,
-                    headers={'Content-Length': str(len(data))}))
-            content = self.loop.run_until_complete(r.json())
-            r.close()
-            self.loop.run_until_complete(session.close())
-
-            self.assertEqual(str(len(data)),
-                             content['headers']['Content-Length'])
-
-    def test_request_conn_closed(self):
-        with run_server(self.loop, router=Functional) as httpd:
-            httpd['close'] = True
-            session = client.ClientSession(loop=self.loop)
-            with self.assertRaises(aiohttp.ServerDisconnectedError):
-                self.loop.run_until_complete(
-                    session.request('get', httpd.url('method', 'get')))
-
-            self.loop.run_until_complete(session.close())
-
     def test_session_close(self):
         conn = aiohttp.TCPConnector(loop=self.loop)
         session = client.ClientSession(loop=self.loop, connector=conn)
@@ -572,26 +347,6 @@ class TestHttpClientFunctional(unittest.TestCase):
 
         self.loop.run_until_complete(session.close())
         conn.close()
-
-    def test_multidict_headers(self):
-        session = client.ClientSession(loop=self.loop)
-        with run_server(self.loop, router=Functional) as httpd:
-            url = httpd.url('method', 'post')
-
-            data = b'sample data'
-
-            r = self.loop.run_until_complete(
-                session.request(
-                    'post', url, data=data,
-                    headers=MultiDict(
-                        {'Content-Length': str(len(data))})))
-            content = self.loop.run_until_complete(r.json())
-            r.close()
-
-            self.assertEqual(str(len(data)),
-                             content['headers']['Content-Length'])
-
-        self.loop.run_until_complete(session.close())
 
     def test_dont_close_explicit_connector(self):
 
@@ -698,28 +453,3 @@ class TestHttpClientFunctional(unittest.TestCase):
             await server.wait_closed()
 
         self.loop.run_until_complete(go())
-
-    @mock.patch('aiohttp.client_reqrep.client_logger')
-    def test_session_cookies(self, m_log):
-        with run_server(self.loop, router=Functional) as httpd:
-            session = client.ClientSession(loop=self.loop)
-
-            resp = self.loop.run_until_complete(
-                session.request('get', httpd.url('cookies')))
-            self.assertEqual(resp.cookies['c1'].value, 'cookie1')
-            self.assertEqual(resp.cookies['c2'].value, 'cookie2')
-            resp.close()
-
-            # Add the received cookies as shared for sending them to the test
-            # server, which is only accessible via IP
-            session.cookie_jar.update_cookies(resp.cookies)
-
-            # Assert, that we send those cookies in next requests
-            r = self.loop.run_until_complete(
-                session.request('get', httpd.url('method', 'get')))
-            self.assertEqual(r.status, 200)
-            content = self.loop.run_until_complete(r.json())
-            self.assertEqual(
-                content['headers']['Cookie'], 'c1=cookie1; c2=cookie2')
-            r.close()
-            self.loop.run_until_complete(session.close())
