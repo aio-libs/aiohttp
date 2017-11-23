@@ -4,7 +4,6 @@ import os
 import pathlib
 import socket
 import ssl
-import sys
 from unittest import mock
 
 import pytest
