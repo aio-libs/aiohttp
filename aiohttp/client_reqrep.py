@@ -757,7 +757,7 @@ class ClientResponse(HeadersMixin):
 
         return self._content
 
-    def _get_encoding(self):
+    def get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         mimetype = helpers.parse_mimetype(ctype)
 
@@ -784,7 +784,7 @@ class ClientResponse(HeadersMixin):
             await self.read()
 
         if encoding is None:
-            encoding = self._get_encoding()
+            encoding = self.get_encoding()
 
         return self._content.decode(encoding, errors=errors)
 
@@ -809,7 +809,7 @@ class ClientResponse(HeadersMixin):
             return None
 
         if encoding is None:
-            encoding = self._get_encoding()
+            encoding = self.get_encoding()
 
         return loads(stripped.decode(encoding))
 
