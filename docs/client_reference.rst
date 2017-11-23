@@ -1168,6 +1168,8 @@ Response object
       ``Content-Type`` HTTP header. If this info is not exists or there
       are no appropriate codecs for encoding then :term:`cchardet` /
       :term:`chardet` is used.
+      
+      .. versionadded:: 3.0
 
 
 ClientWebSocketResponse
