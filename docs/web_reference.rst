@@ -505,6 +505,11 @@ The common case for sending an answer from
    def handler(request):
        return Response("All right!")
 
+Response classes are :obj:`dict` like objects,
+allowing them to be used for :ref:`sharing
+data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
+and :ref:`aiohttp-web-signals` handlers.
+
 
 StreamResponse
 ^^^^^^^^^^^^^^
