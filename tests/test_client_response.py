@@ -283,6 +283,26 @@ async def test_text_detect_encoding(loop, session):
     assert response._connection is None
 
 
+async def test_text_detect_encoding_if_invalid_charset(loop, session):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop, session)
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {'Content-Type': 'text/plain;charset=invalid'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    await response.read()
+    res = await response.text()
+    assert res == '{"тест": "пройден"}'
+    assert response._connection is None
+    assert response._get_encoding() == 'windows-1251'
+
+
 async def test_text_after_read(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)

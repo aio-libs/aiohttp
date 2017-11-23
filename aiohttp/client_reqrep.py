@@ -1,4 +1,5 @@
 import asyncio
+import codecs
 import collections
 import io
 import json
@@ -761,6 +762,11 @@ class ClientResponse(HeadersMixin):
         mimetype = helpers.parse_mimetype(ctype)
 
         encoding = mimetype.parameters.get('charset')
+        if encoding:
+            try:
+                codecs.lookup(encoding)
+            except LookupError:
+                encoding = None
         if not encoding:
             if mimetype.type == 'application' and mimetype.subtype == 'json':
                 # RFC 7159 states that the default encoding is UTF-8.
