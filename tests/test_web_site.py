@@ -8,7 +8,7 @@ from aiohttp import web
 
 
 @pytest.fixture
-async def make_runner(loop):
+def make_runner(loop):
     asyncio.set_event_loop(loop)
     runners = []
 
@@ -19,7 +19,7 @@ async def make_runner(loop):
         return runner
     yield go
     for runner in runners:
-        await runner.cleanup()
+        loop.run_until_complete(runner.cleanup())
 
 
 async def test_site_for_nonfrozen_app(make_runner):
