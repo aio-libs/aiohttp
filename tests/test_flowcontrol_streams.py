@@ -17,8 +17,8 @@ class TestFlowControlStreamReader(unittest.TestCase):
         self.loop.close()
 
     def _make_one(self, allow_pause=True, *args, **kwargs):
-        out = streams.FlowControlStreamReader(
-            self.protocol, buffer_limit=1, loop=self.loop, *args, **kwargs)
+        out = streams.StreamReader(
+            self.protocol, limit=1, loop=self.loop, *args, **kwargs)
         out._allow_pause = allow_pause
         return out
 
@@ -40,17 +40,17 @@ class TestFlowControlStreamReader(unittest.TestCase):
 
     def test_readline(self):
         r = self._make_one()
-        r.feed_data(b'data\n', 5)
+        r.feed_data(b'd\n', 5)
         res = self.loop.run_until_complete(r.readline())
-        self.assertEqual(res, b'data\n')
+        self.assertEqual(res, b'd\n')
         self.assertFalse(r._protocol.resume_reading.called)
 
     def test_readline_resume_paused(self):
         r = self._make_one()
         r._protocol._reading_paused = True
-        r.feed_data(b'data\n', 5)
+        r.feed_data(b'd\n', 5)
         res = self.loop.run_until_complete(r.readline())
-        self.assertEqual(res, b'data\n')
+        self.assertEqual(res, b'd\n')
         self.assertTrue(r._protocol.resume_reading.called)
 
     def test_readany(self):

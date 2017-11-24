@@ -7,7 +7,7 @@ from .log import internal_logger
 
 __all__ = (
     'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue',
-    'FlowControlStreamReader', 'FlowControlDataQueue')
+    'FlowControlDataQueue')
 
 DEFAULT_LIMIT = 2 ** 16
 
@@ -88,8 +88,11 @@ class StreamReader(AsyncStreamReaderMixin):
 
     total_bytes = 0
 
-    def __init__(self, limit=DEFAULT_LIMIT, timer=None, loop=None):
+    def __init__(self, protocol,
+                 *, limit=DEFAULT_LIMIT, timer=None, loop=None):
+        self._protocol = protocol
         self._limit = limit
+        self._b_limit = limit * 2
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -199,7 +202,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer.appendleft(data)
         self._eof_counter = 0
 
-    def feed_data(self, data):
+    # TODO: size is ignored, remove the param later
+    def feed_data(self, data, size=0):
         assert not self._eof, 'feed_data after feed_eof'
 
         if not data:
@@ -213,6 +217,9 @@ class StreamReader(AsyncStreamReaderMixin):
         if waiter is not None:
             self._waiter = None
             set_result(waiter, False)
+
+        if self._size > self._b_limit and not self._protocol._reading_paused:
+            self._protocol.pause_reading()
 
     def begin_http_chunk_receiving(self):
         if self._http_chunk_splits is None:
@@ -264,7 +271,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if ichar:
                     not_enough = False
 
-                if line_size > self._limit:
+                if line_size > self._b_limit:
                     raise ValueError('Line is too long')
 
             if self._eof:
@@ -398,6 +405,9 @@ class StreamReader(AsyncStreamReaderMixin):
 
         self._size -= len(data)
         self._cursor += len(data)
+
+        if self._size < self._b_limit and self._protocol._reading_paused:
+            self._protocol.resume_reading()
         return data
 
     def _read_nowait(self, n):
@@ -536,63 +546,6 @@ class DataQueue:
 
     def __aiter__(self):
         return AsyncStreamIterator(self.read)
-
-
-class FlowControlStreamReader(StreamReader):
-
-    def __init__(self, protocol, buffer_limit=DEFAULT_LIMIT, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._protocol = protocol
-        self._b_limit = buffer_limit * 2
-
-    def feed_data(self, data, size=0):
-        super().feed_data(data)
-
-        if self._size > self._b_limit and not self._protocol._reading_paused:
-            self._protocol.pause_reading()
-
-    async def read(self, n=-1):
-        try:
-            return (await super().read(n))
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readline(self):
-        try:
-            return (await super().readline())
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readany(self):
-        try:
-            return await super().readany()
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readchunk(self):
-        try:
-            return await super().readchunk()
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readexactly(self, n):
-        try:
-            return await super().readexactly(n)
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    def read_nowait(self, n=-1):
-        try:
-            return super().read_nowait(n)
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
 
 
 class FlowControlDataQueue(DataQueue):

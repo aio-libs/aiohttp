@@ -1533,36 +1533,6 @@ async def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
     resp.close()
 
 
-async def test_POST_StreamReader(fname, loop, test_client):
-
-    async def handler(request):
-        assert request.content_type == 'application/octet-stream'
-        content = await request.read()
-        with fname.open('rb') as f:
-            expected = f.read()
-        assert request.content_length == len(expected)
-        assert content == expected
-
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post('/', handler)
-    client = await test_client(app)
-
-    with fname.open('rb') as f:
-        data = f.read()
-
-    stream = aiohttp.StreamReader(loop=loop)
-    stream.feed_data(data)
-    stream.feed_eof()
-
-    resp = await client.post(
-        '/', data=stream,
-        headers={'Content-Length': str(len(data))})
-    assert 200 == resp.status
-    resp.close()
-
-
 async def test_json(loop, test_client):
 
     async def handler(request):
