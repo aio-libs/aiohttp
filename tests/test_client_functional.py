@@ -1799,6 +1799,26 @@ async def test_bad_payload_content_length(loop, test_client):
     resp.close()
 
 
+async def test_payload_content_length_by_chunks(loop, test_client):
+
+    async def handler(request):
+        resp = web.StreamResponse(headers={'content-length': '3'})
+        await resp.prepare(request)
+        await resp.write(b'answer')
+        await resp.write(b'two')
+        request.transport.close()
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/')
+    data = await resp.read()
+    assert data == b'ans'
+    resp.close()
+
+
 async def test_chunked(loop, test_client):
 
     async def handler(request):
