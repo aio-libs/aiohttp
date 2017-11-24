@@ -5,7 +5,7 @@ from collections import namedtuple
 import async_timeout
 
 from . import hdrs
-from .helpers import call_later
+from .helpers import call_later, set_result
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
                    WebSocketError, WebSocketReader, WSMessage, WSMsgType,
                    do_handshake)
@@ -285,9 +285,9 @@ class WebSocketResponse(StreamResponse):
                     self._reset_heartbeat()
                 finally:
                     waiter = self._waiting
+                    set_result(waiter, True)
                     self._waiting = None
-                    waiter.set_result(True)
-            except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
+            except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
             except WebSocketError as exc:

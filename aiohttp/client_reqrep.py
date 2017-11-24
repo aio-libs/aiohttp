@@ -1,4 +1,5 @@
 import asyncio
+import codecs
 import collections
 import io
 import json
@@ -19,7 +20,7 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL)
 from .formdata import FormData
-from .helpers import HeadersMixin, TimerNoop, noop, reify
+from .helpers import HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import FlowControlStreamReader
@@ -640,8 +641,8 @@ class ClientResponse(HeadersMixin):
                         message.code > 199 or message.code == 101):
                     break
 
-                if self._continue is not None and not self._continue.done():
-                    self._continue.set_result(True)
+                if self._continue is not None:
+                    set_result(self._continue, True)
                     self._continue = None
 
         # payload eof handler
@@ -756,11 +757,16 @@ class ClientResponse(HeadersMixin):
 
         return self._content
 
-    def _get_encoding(self):
+    def get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         mimetype = helpers.parse_mimetype(ctype)
 
         encoding = mimetype.parameters.get('charset')
+        if encoding:
+            try:
+                codecs.lookup(encoding)
+            except LookupError:
+                encoding = None
         if not encoding:
             if mimetype.type == 'application' and mimetype.subtype == 'json':
                 # RFC 7159 states that the default encoding is UTF-8.
@@ -778,7 +784,7 @@ class ClientResponse(HeadersMixin):
             await self.read()
 
         if encoding is None:
-            encoding = self._get_encoding()
+            encoding = self.get_encoding()
 
         return self._content.decode(encoding, errors=errors)
 
@@ -803,7 +809,7 @@ class ClientResponse(HeadersMixin):
             return None
 
         if encoding is None:
-            encoding = self._get_encoding()
+            encoding = self.get_encoding()
 
         return loads(stripped.decode(encoding))
 

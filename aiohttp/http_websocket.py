@@ -411,7 +411,7 @@ class WebSocketReader:
                             'Received fragmented control frame')
 
                     has_mask = (second_byte >> 7) & 1
-                    length = (second_byte) & 0x7f
+                    length = second_byte & 0x7f
 
                     # Control frames MUST have a payload
                     # length of 125 bytes or less

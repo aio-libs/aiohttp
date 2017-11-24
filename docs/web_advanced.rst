@@ -284,6 +284,17 @@ This is mostly useful for :ref:`aiohttp-web-middlewares` and
 :ref:`aiohttp-web-signals` handlers to store data for further processing by the
 next handlers in the chain.
 
+:class:`aiohttp.web.StreamResponse` and :class:`aiohttp.web.Response` objects
+also support :class:`collections.abc.MutableMapping` interface. This is useful
+when you want to share data with signals and middlewares once all the work in
+the handler is done::
+
+    async def handler(request):
+      [ do all the work ]
+      response['my_metric'] = 123
+      return response
+
+
 To avoid clashing with other *aiohttp* users and third-party libraries, please
 choose a unique key name for storing data.
 

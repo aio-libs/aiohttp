@@ -15,7 +15,7 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
-from aiohttp.multipart import MultipartWriter
+from aiohttp.test_utils import unused_port
 
 
 @pytest.fixture
@@ -1417,34 +1417,6 @@ async def test_POST_FILES_IO(loop, test_client):
     resp.close()
 
 
-@pytest.mark.xfail
-async def test_POST_MULTIPART(loop, test_client):
-
-    async def handler(request):
-        data = await request.post()
-        lst = list(data.values())
-        assert 3 == len(lst)
-        assert lst[0] == 'foo'
-        assert lst[1] == {'bar': 'баз'}
-        assert b'data' == data['unknown'].file.read()
-        assert data['unknown'].content_type == 'application/octet-stream'
-        assert data['unknown'].filename == 'unknown'
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post('/', handler)
-    client = await test_client(app)
-
-    with MultipartWriter('form-data') as writer:
-        writer.append('foo')
-        writer.append_json({'bar': 'баз'})
-        writer.append_form([('тест', '4'), ('сетс', '2')])
-
-    resp = await client.post('/', data=writer)
-    assert 200 == resp.status
-    resp.close()
-
-
 async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
 
     async def handler(request):
@@ -1722,6 +1694,27 @@ async def test_encoding_gzip(loop, test_client):
     resp.close()
 
 
+async def test_encoding_gzip_write_by_chunks(loop, test_client):
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        resp.enable_compression(web.ContentCoding.gzip)
+        await resp.prepare(request)
+        await resp.write(b'0')
+        await resp.write(b'0')
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    txt = await resp.text()
+    assert txt == '00'
+    resp.close()
+
+
 async def test_encoding_gzip_nochunk(loop, test_client):
 
     async def handler(request):
@@ -1803,6 +1796,26 @@ async def test_bad_payload_content_length(loop, test_client):
     with pytest.raises(aiohttp.ClientPayloadError):
         await resp.read()
 
+    resp.close()
+
+
+async def test_payload_content_length_by_chunks(loop, test_client):
+
+    async def handler(request):
+        resp = web.StreamResponse(headers={'content-length': '3'})
+        await resp.prepare(request)
+        await resp.write(b'answer')
+        await resp.write(b'two')
+        request.transport.close()
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/')
+    data = await resp.read()
+    assert data == b'ans'
     resp.close()
 
 
@@ -2289,3 +2302,212 @@ def test_close_context_manager(test_client):
     ctx = client.get('/')
     ctx.close()
     assert not ctx._coro.cr_running
+
+
+async def test_session_auth(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+
+    r = await client.get('/')
+    assert r.status == 200
+    content = await r.json()
+    assert content['headers']["Authorization"] == "Basic bG9naW46cGFzcw=="
+
+
+async def test_session_auth_override(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+
+    r = await client.get('/', auth=aiohttp.BasicAuth("other_login", "pass"))
+    assert r.status == 200
+    content = await r.json()
+    val = content['headers']["Authorization"]
+    assert val == "Basic b3RoZXJfbG9naW46cGFzcw=="
+
+
+async def test_session_auth_header_conflict(test_client):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+    headers = {'Authorization': "Basic b3RoZXJfbG9naW46cGFzcw=="}
+    with pytest.raises(ValueError):
+        await client.get('/', headers=headers)
+
+
+async def test_session_headers(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, headers={"X-Real-IP": "192.168.0.1"})
+
+    r = await client.get('/')
+    assert r.status == 200
+    content = await r.json()
+    assert content['headers']["X-Real-IP"] == "192.168.0.1"
+
+
+async def test_session_headers_merge(test_client):
+    async def handler(request):
+        return web.json_response({'headers': dict(request.headers)})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app, headers=[
+        ("X-Real-IP", "192.168.0.1"),
+        ("X-Sent-By", "requests")])
+
+    r = await client.get('/', headers={"X-Sent-By": "aiohttp"})
+    assert r.status == 200
+    content = await r.json()
+    assert content['headers']["X-Real-IP"] == "192.168.0.1"
+    assert content['headers']["X-Sent-By"] == "aiohttp"
+
+
+async def test_multidict_headers(test_client):
+    async def handler(request):
+        assert await request.read() == data
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+
+    client = await test_client(app)
+
+    data = b'sample data'
+
+    r = await client.post('/', data=data,
+                          headers=MultiDict(
+                              {'Content-Length': str(len(data))}))
+    assert r.status == 200
+
+
+async def test_request_conn_closed(test_client):
+    async def handler(request):
+        request.transport.close()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app)
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        resp = await client.get('/')
+        await resp.read()
+
+
+async def test_dont_close_explicit_connector(test_client):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    client = await test_client(app)
+    r = await client.get('/')
+    await r.read()
+
+    assert 1 == len(client.session.connector._conns)
+
+
+async def test_server_close_keepalive_connection(loop):
+
+    class Proto(asyncio.Protocol):
+
+        def connection_made(self, transport):
+            self.transp = transport
+            self.data = b''
+
+        def data_received(self, data):
+            self.data += data
+            if data.endswith(b'\r\n\r\n'):
+                self.transp.write(
+                    b'HTTP/1.1 200 OK\r\n'
+                    b'CONTENT-LENGTH: 2\r\n'
+                    b'CONNECTION: close\r\n'
+                    b'\r\n'
+                    b'ok')
+                self.transp.close()
+
+        def connection_lost(self, exc):
+            self.transp = None
+
+    server = await loop.create_server(
+        Proto, '127.0.0.1', unused_port())
+
+    addr = server.sockets[0].getsockname()
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    session = aiohttp.ClientSession(loop=loop, connector=connector)
+
+    url = 'http://{}:{}/'.format(*addr)
+    for i in range(2):
+        r = await session.request('GET', url)
+        await r.read()
+        assert 0 == len(connector._conns)
+    await session.close()
+    connector.close()
+    server.close()
+    await server.wait_closed()
+
+
+async def test_handle_keepalive_on_closed_connection(loop):
+
+    class Proto(asyncio.Protocol):
+
+        def connection_made(self, transport):
+            self.transp = transport
+            self.data = b''
+
+        def data_received(self, data):
+            self.data += data
+            if data.endswith(b'\r\n\r\n'):
+                self.transp.write(
+                    b'HTTP/1.1 200 OK\r\n'
+                    b'CONTENT-LENGTH: 2\r\n'
+                    b'\r\n'
+                    b'ok')
+                self.transp.close()
+
+        def connection_lost(self, exc):
+            self.transp = None
+
+    server = await loop.create_server(
+        Proto, '127.0.0.1', unused_port())
+
+    addr = server.sockets[0].getsockname()
+
+    connector = aiohttp.TCPConnector(loop=loop, limit=1)
+    session = aiohttp.ClientSession(loop=loop, connector=connector)
+
+    url = 'http://{}:{}/'.format(*addr)
+
+    r = await session.request('GET', url)
+    await r.read()
+    assert 1 == len(connector._conns)
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await session.request('GET', url)
+    assert 0 == len(connector._conns)
+
+    await session.close()
+    connector.close()
+    server.close()
+    await server.wait_closed()

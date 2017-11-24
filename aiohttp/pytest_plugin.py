@@ -38,7 +38,7 @@ def pytest_addoption(parser):
         help='enable event loop debug mode')
 
 
-def pytest_fixture_setup(fixturedef, request):
+def pytest_fixture_setup(fixturedef):
     """
     Allow fixtures to be coroutines. Run coroutine fixtures in an event loop.
     """
