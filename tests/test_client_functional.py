@@ -1694,6 +1694,27 @@ async def test_encoding_gzip(loop, test_client):
     resp.close()
 
 
+async def test_encoding_gzip_write_by_chunks(loop, test_client):
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        resp.enable_compression(web.ContentCoding.gzip)
+        await resp.prepare(request)
+        await resp.write(b'0')
+        await resp.write(b'0')
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    txt = await resp.text()
+    assert txt == '00'
+    resp.close()
+
+
 async def test_encoding_gzip_nochunk(loop, test_client):
 
     async def handler(request):
