@@ -1,5 +1,6 @@
 """Tests for aiohttp/http_writer.py"""
 
+import asyncio
 import zlib
 from unittest import mock
 
@@ -148,3 +149,20 @@ def test_write_drain(stream, loop):
     msg.write(b'1', drain=True)
     assert msg.drain.called
     assert msg.buffer_size == 0
+
+
+async def test_multiple_drains(stream, loop):
+    stream.available = False
+    msg = http.PayloadWriter(stream, loop, acquire=False)
+    fut1 = loop.create_task(msg.drain())
+    fut2 = loop.create_task(msg.drain())
+
+    await asyncio.sleep(0)
+    assert not fut1.done()
+    assert not fut2.done()
+
+    msg.set_transport(stream.transport)
+
+    await asyncio.sleep(0)
+    assert fut1.done()
+    assert fut2.done()
