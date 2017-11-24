@@ -284,8 +284,6 @@ This is mostly useful for :ref:`aiohttp-web-middlewares` and
 :ref:`aiohttp-web-signals` handlers to store data for further processing by the
 next handlers in the chain.
 
-.. versionadded:: 3.0
-
 :class:`aiohttp.web.StreamResponse` and :class:`aiohttp.web.Response` objects
 also support :class:`collections.abc.MutableMapping` interface. This is useful
 when you want to share data with signals and middlewares once all the work in
