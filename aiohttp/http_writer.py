@@ -154,8 +154,7 @@ class PayloadWriter(AbstractPayloadWriter):
 
         if self._drain_waiter is not None:
             waiter, self._drain_waiter = self._drain_waiter, None
-            if not waiter.done():
-                waiter.set_result(None)
+            waiter.set_result(None)
 
     async def get_transport(self):
         if self._transport is None:
