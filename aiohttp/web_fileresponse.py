@@ -3,6 +3,7 @@ import os
 import pathlib
 
 from . import hdrs
+from .helpers import set_exception, set_result
 from .http_writer import PayloadWriter
 from .log import server_logger
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
@@ -43,14 +44,14 @@ class SendfilePayloadWriter(PayloadWriter):
         except (BlockingIOError, InterruptedError):
             n = 0
         except Exception as exc:
-            fut.set_exception(exc)
+            set_exception(fut, exc)
             return
 
         if n < count:
             loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
                             offset + n, count - n, loop, True)
         else:
-            fut.set_result(None)
+            set_result(fut, None)
 
     async def sendfile(self, fobj, count):
         transport = await self.get_transport()

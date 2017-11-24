@@ -508,3 +508,37 @@ def test_proxies_from_env_http_with_auth(mocker):
     assert proxy_auth.login == 'user'
     assert proxy_auth.password == 'pass'
     assert proxy_auth.encoding == 'latin1'
+
+
+# ------------- set_result / set_exception ----------------------
+
+
+async def test_set_result(loop):
+    fut = loop.create_future()
+    helpers.set_result(fut, 123)
+    assert 123 == await fut
+
+
+async def test_set_result_cancelled(loop):
+    fut = loop.create_future()
+    fut.cancel()
+    helpers.set_result(fut, 123)
+
+    with pytest.raises(asyncio.CancelledError):
+        await fut
+
+
+async def test_set_exception(loop):
+    fut = loop.create_future()
+    helpers.set_exception(fut, RuntimeError())
+    with pytest.raises(RuntimeError):
+        await fut
+
+
+async def test_set_exception_cancelled(loop):
+    fut = loop.create_future()
+    fut.cancel()
+    helpers.set_exception(fut, RuntimeError())
+
+    with pytest.raises(asyncio.CancelledError):
+        await fut
