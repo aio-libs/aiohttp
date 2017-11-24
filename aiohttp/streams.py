@@ -6,9 +6,8 @@ from .log import internal_logger
 
 
 __all__ = (
-    'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue', 'ChunksQueue',
-    'FlowControlStreamReader',
-    'FlowControlDataQueue', 'FlowControlChunksQueue')
+    'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue',
+    'FlowControlStreamReader', 'FlowControlDataQueue')
 
 DEFAULT_LIMIT = 2 ** 16
 
@@ -539,18 +538,6 @@ class DataQueue:
         return AsyncStreamIterator(self.read)
 
 
-class ChunksQueue(DataQueue):
-    """Like a :class:`DataQueue`, but for binary chunked data transfer."""
-
-    async def read(self):
-        try:
-            return (await super().read())
-        except EofStream:
-            return b''
-
-    readany = read
-
-
 class FlowControlStreamReader(StreamReader):
 
     def __init__(self, protocol, buffer_limit=DEFAULT_LIMIT, *args, **kwargs):
@@ -631,14 +618,3 @@ class FlowControlDataQueue(DataQueue):
         finally:
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
-
-
-class FlowControlChunksQueue(FlowControlDataQueue):
-
-    async def read(self):
-        try:
-            return await super().read()
-        except EofStream:
-            return b''
-
-    readany = read

@@ -922,42 +922,6 @@ class TestDataQueue(unittest.TestCase, DataQueueMixin):
         self.loop.close()
 
 
-class TestChunksQueue(unittest.TestCase, DataQueueMixin):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.buffer = streams.ChunksQueue(loop=self.loop)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_read_eof(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-
-        def cb():
-            self.buffer.feed_eof()
-        self.loop.call_soon(cb)
-
-        self.loop.run_until_complete(read_task)
-        self.assertTrue(self.buffer.at_eof())
-
-    def test_read_until_eof(self):
-        item = object()
-        self.buffer.feed_data(item, 1)
-        self.buffer.feed_eof()
-
-        data = self.loop.run_until_complete(self.buffer.read())
-        self.assertIs(data, item)
-
-        thing = self.loop.run_until_complete(self.buffer.read())
-        self.assertEqual(thing, b'')
-        self.assertTrue(self.buffer.at_eof())
-
-    def test_readany(self):
-        self.assertIs(self.buffer.read.__func__, self.buffer.readany.__func__)
-
-
 def test_feed_data_waiters(loop):
     reader = streams.StreamReader(loop=loop)
     waiter = reader._waiter = loop.create_future()
