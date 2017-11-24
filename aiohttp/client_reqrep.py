@@ -20,7 +20,7 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL)
 from .formdata import FormData
-from .helpers import HeadersMixin, TimerNoop, noop, reify
+from .helpers import HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import FlowControlStreamReader
@@ -641,8 +641,8 @@ class ClientResponse(HeadersMixin):
                         message.code > 199 or message.code == 101):
                     break
 
-                if self._continue is not None and not self._continue.done():
-                    self._continue.set_result(True)
+                if self._continue is not None:
+                    set_result(self._continue, True)
                     self._continue = None
 
         # payload eof handler

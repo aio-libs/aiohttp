@@ -6,7 +6,7 @@ import json
 import async_timeout
 
 from .client_exceptions import ClientError
-from .helpers import call_later
+from .helpers import call_later, set_result
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
 
@@ -196,7 +196,7 @@ class ClientWebSocketResponse:
                 finally:
                     waiter = self._waiting
                     self._waiting = None
-                    waiter.set_result(True)
+                    set_result(waiter, True)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
