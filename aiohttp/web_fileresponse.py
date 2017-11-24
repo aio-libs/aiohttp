@@ -3,6 +3,7 @@ import os
 import pathlib
 
 from . import hdrs
+from .helpers import set_result
 from .http_writer import PayloadWriter
 from .log import server_logger
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
@@ -23,8 +24,7 @@ class SendfilePayloadWriter(PayloadWriter):
 
         if self._drain_waiter is not None:
             waiter, self._drain_maiter = self._drain_maiter, None
-            if not waiter.done():
-                waiter.set_result(None)
+            set_result(waiter, None)
 
     def _write(self, chunk):
         self.output_size += len(chunk)
@@ -51,7 +51,7 @@ class SendfilePayloadWriter(PayloadWriter):
             loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
                             offset + n, count - n, loop, True)
         else:
-            fut.set_result(None)
+            set_result(fut, None)
 
     async def sendfile(self, fobj, count):
         if self._transport is None:

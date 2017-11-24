@@ -1,6 +1,7 @@
 import asyncio
 import collections
 
+from .helpers import set_result
 from .log import internal_logger
 
 
@@ -153,14 +154,12 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_result(True)
+            set_result(waiter, True)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            if not waiter.done():
-                waiter.set_result(True)
+            set_result(waiter, True)
 
         for cb in self._eof_callbacks:
             try:
@@ -216,8 +215,7 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_result(False)
+            set_result(waiter, False)
 
     def begin_http_chunk_receiving(self):
         if self._http_chunk_splits is None:
@@ -510,8 +508,7 @@ class DataQueue:
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
+            set_result(waiter, True)
 
     def feed_eof(self):
         self._eof = True
@@ -519,8 +516,7 @@ class DataQueue:
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
+            set_result(waiter, False)
 
     async def read(self):
         if not self._buffer and not self._eof:

@@ -6,7 +6,7 @@ import zlib
 from contextlib import suppress
 
 from .abc import AbstractPayloadWriter
-from .helpers import noop
+from .helpers import noop, set_result
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -153,8 +153,7 @@ class PayloadWriter(AbstractPayloadWriter):
 
         if self._drain_waiter is not None:
             waiter, self._drain_waiter = self._drain_waiter, None
-            if not waiter.done():
-                waiter.set_result(None)
+            set_result(waiter, None)
 
     @property
     def tcp_nodelay(self):
