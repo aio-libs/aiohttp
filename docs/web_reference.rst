@@ -508,8 +508,13 @@ The common case for sending an answer from
 Response classes are :obj:`dict` like objects,
 allowing them to be used for :ref:`sharing
 data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
-and :ref:`aiohttp-web-signals` handlers.
+and :ref:`aiohttp-web-signals` handlers::
 
+   resp['key'] = value
+
+.. versionadded:: 3.0
+
+   Dict-like interface support.
 
 StreamResponse
 ^^^^^^^^^^^^^^
