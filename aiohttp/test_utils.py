@@ -8,7 +8,6 @@ import socket
 import sys
 import unittest
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from unittest import mock
 
 from multidict import CIMultiDict
@@ -540,10 +539,6 @@ def make_mocked_request(method, path, headers=None, *,
 
     if payload is sentinel:
         payload = mock.Mock()
-
-    @contextmanager
-    def timeout(*args, **kw):
-        yield
 
     req = Request(message, payload,
                   protocol, payload_writer, task, loop,

@@ -267,7 +267,7 @@ class BaseConnector(object):
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.close()
-                            if (key[-1] and not self._cleanup_closed_disabled):
+                            if key[-1] and not self._cleanup_closed_disabled:
                                 self._cleanup_closed_transports.append(
                                     transport)
                         else:
@@ -569,9 +569,7 @@ class _DNSCacheTable:
         if self._ttl is None:
             return False
 
-        return (
-            self._timestamps[host] + self._ttl
-        ) < monotonic()
+        return self._timestamps[host] + self._ttl < monotonic()
 
 
 class TCPConnector(BaseConnector):
@@ -878,14 +876,9 @@ class TCPConnector(BaseConnector):
 
             has_cert = transp.get_extra_info('sslcontext')
             if has_cert and fingerprint:
-                sock = transp.get_extra_info('socket')
-                if not hasattr(sock, 'getpeercert'):
-                    # Workaround for asyncio 3.5.0
-                    # Starting from 3.5.1 version
-                    # there is 'ssl_object' extra info in transport
-                    sock = transp._ssl_protocol._sslpipe.ssl_object
+                sslobj = transp.get_extra_info('ssl_object')
                 # gives DER-encoded cert as a sequence of bytes (or None)
-                cert = sock.getpeercert(binary_form=True)
+                cert = sslobj.getpeercert(binary_form=True)
                 assert cert
                 got = hashfunc(cert).digest()
                 expected = fingerprint

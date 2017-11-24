@@ -21,7 +21,8 @@ def connector(loop):
     conn = BaseConnector(loop=loop)
     proto = mock.Mock()
     conn._conns['a'] = [(proto, 123)]
-    return conn
+    yield conn
+    conn.close()
 
 
 @pytest.yield_fixture

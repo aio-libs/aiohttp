@@ -19,7 +19,7 @@ from .tracing import *  # noqa
 try:
     from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
     workers = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
-except ImportError:
+except ImportError:  # pragma: no cover
     workers = ()
 
 
