@@ -91,8 +91,8 @@ class StreamReader(AsyncStreamReaderMixin):
     def __init__(self, protocol,
                  *, limit=DEFAULT_LIMIT, timer=None, loop=None):
         self._protocol = protocol
-        self._limit = limit
-        self._b_limit = limit * 2
+        self._low_water = limit
+        self._high_water = limit * 2
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -114,8 +114,10 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append('%d bytes' % self._size)
         if self._eof:
             info.append('eof')
-        if self._limit != DEFAULT_LIMIT:
-            info.append('l=%d' % self._limit)
+        if self._low_water != DEFAULT_LIMIT:
+            info.append('low=%d' % self._low_water)
+        if self._high_water != DEFAULT_LIMIT * 2:
+            info.append('high=%d' % self._high_water)
         if self._waiter:
             info.append('w=%r' % self._waiter)
         if self._exception:
@@ -218,7 +220,8 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
             set_result(waiter, False)
 
-        if self._size > self._b_limit and not self._protocol._reading_paused:
+        if (self._size > self._high_water and
+                not self._protocol._reading_paused):
             self._protocol.pause_reading()
 
     def begin_http_chunk_receiving(self):
@@ -271,7 +274,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if ichar:
                     not_enough = False
 
-                if line_size > self._b_limit:
+                if line_size > self._high_water:
                     raise ValueError('Line is too long')
 
             if self._eof:
@@ -406,7 +409,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._size -= len(data)
         self._cursor += len(data)
 
-        if self._size < self._b_limit and self._protocol._reading_paused:
+        if self._size < self._low_water and self._protocol._reading_paused:
             self._protocol.resume_reading()
         return data
 

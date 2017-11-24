@@ -268,7 +268,7 @@ class TestStreamReader(unittest.TestCase):
         # Read one line. The data is in StreamReader's buffer
         # before the event loop is run.
 
-        stream = self._make_one(limit=3)
+        stream = self._make_one(limit=2)
         stream.feed_data(b'li')
         stream.feed_data(b'ne1\nline2\n')
 
@@ -282,20 +282,7 @@ class TestStreamReader(unittest.TestCase):
     def test_readline_limit(self):
         # Read one line. StreamReaders are fed with data after
         # their 'readline' methods are called.
-
-        stream = self._make_one(limit=7)
-
-        def cb():
-            stream.feed_data(b'chunk1')
-            stream.feed_data(b'chunk2')
-            stream.feed_data(b'chunk3\n')
-            stream.feed_eof()
-        self.loop.call_soon(cb)
-
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readline())
-
-        stream = self._make_one(limit=7)
+        stream = self._make_one(limit=4)
 
         def cb():
             stream.feed_data(b'chunk1')
@@ -717,7 +704,7 @@ class TestStreamReader(unittest.TestCase):
 
     def test___repr__nondefault_limit(self):
         stream = self._make_one(limit=123)
-        self.assertEqual("<StreamReader l=123>", repr(stream))
+        self.assertEqual("<StreamReader low=123 high=246>", repr(stream))
 
     def test___repr__eof(self):
         stream = self._make_one()
