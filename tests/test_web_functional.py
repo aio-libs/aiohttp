@@ -1641,3 +1641,16 @@ async def test_return_http_exception_deprecated(loop, test_client):
 
     with pytest.warns(DeprecationWarning):
         await client.get('/')
+
+
+async def test_stream_reader(test_client):
+    DATA = b'1234567890' * (2**16)
+    async def handler(request):
+        return web.Response(body=request.content)
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+
+    client = await test_client(app)
+    resp = await client.post('/', data=DATA)
+    assert await resp.read() == DATA
