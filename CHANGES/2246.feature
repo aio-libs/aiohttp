@@ -1,1 +1,1 @@
-StreamResponse and Response are now MutableMappings
+StreamResponse and Response are now MutableMappings.
