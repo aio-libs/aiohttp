@@ -130,6 +130,20 @@ def test__notify_waiter_done(worker):
     waiter.set_result.assert_called_with(True)
 
 
+def test__notify_waiter_done_explicit_waiter(worker):
+    worker._notify_waiter = None
+    assert worker._notify_waiter is None
+
+    waiter = worker._notify_waiter = mock.Mock()
+    waiter.done.return_value = False
+    waiter2 = worker._notify_waiter = mock.Mock()
+    worker._notify_waiter_done(waiter)
+
+    assert worker._notify_waiter is waiter2
+    waiter.set_result.assert_called_with(True)
+    assert not waiter2.set_result.called
+
+
 def test_init_signals(worker):
     worker.loop = mock.Mock()
     worker.init_signals()
@@ -151,7 +165,7 @@ def test__get_valid_log_format_exc(worker):
     assert '%(name)s' in str(exc)
 
 
-async def test__run_ok_tcp(worker, loop, unused_port):
+async def test__run_ok(worker, loop, unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = 1
@@ -179,10 +193,10 @@ async def test__run_ok_tcp(worker, loop, unused_port):
     assert worker._runner.handler is None
 
 
-async def test__run_ok_no_max_requests(worker, loop, unused_port):
+async def test__run_ok_parent_changed(worker, loop, unused_port):
     skip_if_no_dict(loop)
 
-    worker.ppid = 1
+    worker.ppid = 0
     worker.alive = True
     sock = socket.socket()
     addr = ('localhost', unused_port())
@@ -200,9 +214,38 @@ async def test__run_ok_no_max_requests(worker, loop, unused_port):
     await worker._run()
 
     worker.notify.assert_called_with()
-    if os.getppid() != 1:  # not Docker
-        worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                           worker)
+    worker.log.info.assert_called_with("Parent changed, shutting down: %s",
+                                       worker)
+    assert worker._runner.handler is None
+
+
+async def test__run_exc(worker, loop, unused_port):
+    skip_if_no_dict(loop)
+
+    worker.ppid = os.getppid()
+    worker.alive = True
+    sock = socket.socket()
+    addr = ('localhost', unused_port())
+    sock.bind(addr)
+    worker.sockets = [sock]
+    worker.log = mock.Mock()
+    worker.loop = loop
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    worker.cfg.max_requests = 0
+    worker.cfg.is_ssl = False
+
+    worker._runner = web.AppRunner(worker.wsgi)
+    await worker._runner.setup()
+
+    def raiser():
+        waiter = worker._notify_waiter
+        worker.alive = False
+        waiter.set_exception(KeyboardInterrupt())
+
+    loop.call_later(0.1, raiser)
+    await worker._run()
+
+    worker.notify.assert_called_with()
     assert worker._runner.handler is None
 
 
