@@ -1694,6 +1694,27 @@ async def test_encoding_gzip(loop, test_client):
     resp.close()
 
 
+async def test_encoding_gzip_write_by_chunks(loop, test_client):
+
+    async def handler(request):
+        resp = web.StreamResponse()
+        resp.enable_compression(web.ContentCoding.gzip)
+        await resp.prepare(request)
+        await resp.write(b'0')
+        await resp.write(b'0')
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    txt = await resp.text()
+    assert txt == '00'
+    resp.close()
+
+
 async def test_encoding_gzip_nochunk(loop, test_client):
 
     async def handler(request):
@@ -1775,6 +1796,26 @@ async def test_bad_payload_content_length(loop, test_client):
     with pytest.raises(aiohttp.ClientPayloadError):
         await resp.read()
 
+    resp.close()
+
+
+async def test_payload_content_length_by_chunks(loop, test_client):
+
+    async def handler(request):
+        resp = web.StreamResponse(headers={'content-length': '3'})
+        await resp.prepare(request)
+        await resp.write(b'answer')
+        await resp.write(b'two')
+        request.transport.close()
+        return resp
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/')
+    data = await resp.read()
+    assert data == b'ans'
     resp.close()
 
 
@@ -2462,7 +2503,7 @@ async def test_handle_keepalive_on_closed_connection(loop):
     await r.read()
     assert 1 == len(connector._conns)
 
-    with pytest.raises(aiohttp.ServerDisconnectedError):
+    with pytest.raises(aiohttp.ClientConnectionError):
         await session.request('GET', url)
     assert 0 == len(connector._conns)
 

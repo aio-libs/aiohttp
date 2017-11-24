@@ -80,8 +80,9 @@ async def test_raw_server_cancelled_in_write_eof(raw_test_server, test_client):
     server = await raw_test_server(handler, logger=logger)
     cli = await test_client(server)
 
-    with pytest.raises(client.ServerDisconnectedError):
-        await cli.get('/path/to')
+    resp = await cli.get('/path/to')
+    with pytest.raises(client.ClientPayloadError):
+        await resp.read()
 
     logger.debug.assert_called_with('Ignored premature client disconnection ')
 
