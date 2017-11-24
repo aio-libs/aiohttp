@@ -153,10 +153,11 @@ def test_write_drain(stream, loop):
 
 async def test_multiple_drains(stream, loop):
     stream.available = False
-    msg = http.PayloadWriter(stream, loop)
+    msg = http.PayloadWriter(stream, loop, acquire=False)
     fut1 = loop.create_task(msg.drain())
     fut2 = loop.create_task(msg.drain())
 
+    await asyncio.sleep(0)
     assert not fut1.done()
     assert not fut2.done()
 
