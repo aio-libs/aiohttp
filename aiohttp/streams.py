@@ -1,7 +1,7 @@
 import asyncio
 import collections
 
-from .helpers import set_result
+from .helpers import set_exception, set_result
 from .log import internal_logger
 
 
@@ -130,14 +130,12 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
+            set_exception(waiter, exc)
 
         waiter = self._eof_waiter
         if waiter is not None:
+            set_exception(waiter, exc)
             self._eof_waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
 
     def on_eof(self, callback):
         if self._eof:
@@ -497,9 +495,8 @@ class DataQueue:
 
         waiter = self._waiter
         if waiter is not None:
+            set_exception(waiter, exc)
             self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
 
     def feed_data(self, data, size=0):
         self._size += size
