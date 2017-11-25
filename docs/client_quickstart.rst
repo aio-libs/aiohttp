@@ -114,20 +114,22 @@ is not encoded by library. Note that ``+`` is not encoded::
 
    Passing *params* overrides ``encoded=True``, never use both options.
 
-Response Content
-----------------
+Response Content and Status Code
+--------------------------------
 
-We can read the content of the server's response. Consider the GitHub time-line
-again::
+We can read the content of the server's response and it's status
+code. Consider the GitHub time-line again::
 
     async with session.get('https://api.github.com/events') as resp:
+        print(resp.status)
         print(await resp.text())
 
-will printout something like::
+prints out something like::
 
+    200
     '[{"created_at":"2015-06-12T14:06:22Z","public":true,"actor":{...
 
-``aiohttp`` will automatically decode the content from the server. You can
+``aiohttp`` automatically decodes the content from the server. You can
 specify custom encoding for the :meth:`~ClientResponse.text` method::
 
     await resp.text(encoding='windows-1251')

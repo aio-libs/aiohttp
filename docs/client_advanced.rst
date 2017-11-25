@@ -413,15 +413,6 @@ insensitive)::
        async with session.get("http://python.org", trust_env=True) as resp:
            print(resp.status)
 
-Response Status Codes
----------------------
-
-We can check the response status code::
-
-   async with session.get('http://httpbin.org/get') as resp:
-       assert resp.status == 200
-
-
 Response Headers
 ----------------
 
