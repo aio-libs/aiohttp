@@ -86,7 +86,7 @@ Server example::
 
 
 For more information please visit :ref:`aiohttp-client` and
-:ref:`aiohttp-sever` pages.
+:ref:`aiohttp-web` pages.
 
 
 Tutorial
