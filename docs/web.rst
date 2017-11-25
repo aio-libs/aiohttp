@@ -11,12 +11,11 @@ The page contains all information about aiohttp Server API:
 .. toctree::
    :name: server
 
-   tutorial
-   web_quickstart
-   web_advanced
-   web_reference
-   web_lowlevel
-   web_reference
-   logging
-   testing
-   deployment
+   Tutorial <tutorial>
+   Quickstart <web_quickstart>
+   Advanced Usage <web_advanced>
+   Low Level <web_lowlevel>
+   Reference <web_reference>
+   Logging <logging>
+   Testing <testing>
+   Deployment <deployment>

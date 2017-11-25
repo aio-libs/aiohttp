@@ -11,7 +11,7 @@ The page contains all information about aiohttp Client API:
 .. toctree::
    :name: client
 
-   client_quickstart
-   client_advanced
-   client_reference
-   tracing_reference
+   Quickstart <client_quickstart>
+   Advanced Usage <client_advanced>
+   Reference <client_reference>
+   Tracing Reference <tracing_reference>

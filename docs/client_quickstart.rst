@@ -1,7 +1,7 @@
 .. _aiohttp-client-quickstart:
 
-Quickstart
-==========
+Client Quickstart
+=================
 
 .. currentmodule:: aiohttp
 
