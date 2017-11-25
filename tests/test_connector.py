@@ -595,7 +595,6 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
 async def test_tcp_connector_dns_tracing(loop, dns_response):
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    trace_request_ctx = mock.Mock()
     on_dns_resolvehost_start = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock())
     )
@@ -619,9 +618,9 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
     trace_config.freeze()
     traces = [
         Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx()
         )
     ]
 
@@ -642,17 +641,14 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
         on_dns_resolvehost_start.assert_called_once_with(
             session,
             trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
         )
         on_dns_resolvehost_start.assert_called_once_with(
             session,
             trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
         )
         on_dns_cache_miss.assert_called_once_with(
             session,
             trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
         )
         assert not on_dns_cache_hit.called
 
@@ -664,14 +660,12 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
         on_dns_cache_hit.assert_called_once_with(
             session,
             trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
         )
 
 
 async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    trace_request_ctx = mock.Mock()
     on_dns_resolvehost_start = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock())
     )
@@ -687,9 +681,9 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
     trace_config.freeze()
     traces = [
         Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx()
         )
     ]
 
@@ -719,25 +713,21 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
         on_dns_resolvehost_start.assert_has_calls([
             mock.call(
                 session,
-                trace_config_ctx,
-                trace_request_ctx=trace_request_ctx
+                trace_config_ctx
             ),
             mock.call(
                 session,
-                trace_config_ctx,
-                trace_request_ctx=trace_request_ctx
+                trace_config_ctx
             )
         ])
         on_dns_resolvehost_end.assert_has_calls([
             mock.call(
                 session,
-                trace_config_ctx,
-                trace_request_ctx=trace_request_ctx
+                trace_config_ctx
             ),
             mock.call(
                 session,
-                trace_config_ctx,
-                trace_request_ctx=trace_request_ctx
+                trace_config_ctx
             )
         ])
 
@@ -745,7 +735,6 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
 async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    trace_request_ctx = mock.Mock()
     on_dns_cache_hit = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock())
     )
@@ -761,9 +750,9 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
     trace_config.freeze()
     traces = [
         Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx()
         )
     ]
 
@@ -779,13 +768,11 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
         await asyncio.sleep(0, loop=loop)
         on_dns_cache_hit.assert_called_once_with(
             session,
-            trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
+            trace_config_ctx
         )
         on_dns_cache_miss.assert_called_once_with(
             session,
-            trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
+            trace_config_ctx
         )
 
 
@@ -887,7 +874,6 @@ async def test_connect(loop):
 async def test_connect_tracing(loop):
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    trace_request_ctx = mock.Mock()
     on_connection_create_start = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock())
     )
@@ -903,9 +889,9 @@ async def test_connect_tracing(loop):
     trace_config.freeze()
     traces = [
         Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx()
         )
     ]
 
@@ -922,13 +908,11 @@ async def test_connect_tracing(loop):
     await conn.connect(req, traces=traces)
     on_connection_create_start.assert_called_with(
         session,
-        trace_config_ctx,
-        trace_request_ctx=trace_request_ctx
+        trace_config_ctx
     )
     on_connection_create_end.assert_called_with(
         session,
-        trace_config_ctx,
-        trace_request_ctx=trace_request_ctx
+        trace_config_ctx
     )
 
 
@@ -1236,7 +1220,6 @@ async def test_connect_with_limit(loop, key):
 async def test_connect_queued_operation_tracing(loop, key):
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    trace_request_ctx = mock.Mock()
     on_connection_queued_start = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock())
     )
@@ -1252,9 +1235,9 @@ async def test_connect_queued_operation_tracing(loop, key):
     trace_config.freeze()
     traces = [
         Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx()
         )
     ]
 
@@ -1280,13 +1263,11 @@ async def test_connect_queued_operation_tracing(loop, key):
         )
         on_connection_queued_start.assert_called_with(
             session,
-            trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
+            trace_config_ctx
         )
         on_connection_queued_end.assert_called_with(
             session,
-            trace_config_ctx,
-            trace_request_ctx=trace_request_ctx
+            trace_config_ctx
         )
         connection2.release()
 
@@ -1300,7 +1281,6 @@ async def test_connect_queued_operation_tracing(loop, key):
 async def test_connect_reuseconn_tracing(loop, key):
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
-    trace_request_ctx = mock.Mock()
     on_connection_reuseconn = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock())
     )
@@ -1312,9 +1292,9 @@ async def test_connect_reuseconn_tracing(loop, key):
     trace_config.freeze()
     traces = [
         Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx()
         )
     ]
 
@@ -1331,8 +1311,7 @@ async def test_connect_reuseconn_tracing(loop, key):
 
     on_connection_reuseconn.assert_called_with(
         session,
-        trace_config_ctx,
-        trace_request_ctx=trace_request_ctx
+        trace_config_ctx
     )
     conn.close()
 

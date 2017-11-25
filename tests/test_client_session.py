@@ -480,8 +480,7 @@ async def test_request_tracing(loop):
         trace_config_ctx,
         hdrs.METH_GET,
         URL("http://example.com"),
-        CIMultiDict(),
-        trace_request_ctx=trace_request_ctx
+        CIMultiDict()
     )
 
     on_request_end.assert_called_once_with(
@@ -490,8 +489,7 @@ async def test_request_tracing(loop):
         hdrs.METH_GET,
         URL("http://example.com"),
         CIMultiDict(),
-        resp,
-        trace_request_ctx=trace_request_ctx
+        resp
     )
     assert not on_request_redirect.called
 
@@ -528,8 +526,7 @@ async def test_request_tracing_exception(loop):
             hdrs.METH_GET,
             URL("http://example.com"),
             CIMultiDict(),
-            error,
-            trace_request_ctx=mock.ANY
+            error
         )
         assert not on_request_end.called
 

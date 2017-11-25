@@ -19,7 +19,10 @@ the request flow.
    :param trace_config_ctx_class: factory used to create trace contexts,
       default class used :class:`SimpleNamespace`
 
-   .. method:: trace_config_ctx()
+   .. method:: trace_config_ctx(trace_request_ctx=None)
+
+      :param trace_request_ctx: Will be used to pass as a kw for the
+        ``trace_config_ctx_class``.
 
       Return a new trace context.
 
