@@ -121,7 +121,7 @@ def parse_pair(pair):
 def parse_key_value_list(header):
     return {
         key: value for key, value in
-        map(parse_pair, header.split(' '))
+        [parse_pair(header_pair) for header_pair in header.split(' ')]
     }
 
 
@@ -129,10 +129,6 @@ class DigestAuth():
     """HTTP digest authentication helper.
     The work here is based off of
     https://github.com/requests/requests/blob/v2.18.4/requests/auth.py.
-
-    :param str username: Username or login
-    :param str password: Password
-    :param ClientSession session: Session to use digest auth
     """
 
     def __init__(self, username, password, session, previous=None):
