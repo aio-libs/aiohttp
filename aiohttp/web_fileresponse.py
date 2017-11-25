@@ -3,6 +3,7 @@ import os
 import pathlib
 
 from . import hdrs
+from .helpers import set_exception, set_result
 from .http_writer import PayloadWriter
 from .log import server_logger
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
@@ -18,17 +19,16 @@ NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 class SendfilePayloadWriter(PayloadWriter):
 
-    def set_transport(self, transport):
-        self._transport = transport
-
-        if self._drain_waiter is not None:
-            waiter, self._drain_maiter = self._drain_maiter, None
-            if not waiter.done():
-                waiter.set_result(None)
+    def __init__(self, *args, **kwargs):
+        self._sendfile_buffer = []
+        super().__init__(*args, **kwargs)
 
     def _write(self, chunk):
+        # we overwrite PayloadWriter._write, so nothing can be appended to
+        # _buffer, and nothing is written to the transport directly by the
+        # parent class
         self.output_size += len(chunk)
-        self._buffer.append(chunk)
+        self._sendfile_buffer.append(chunk)
 
     def _sendfile_cb(self, fut, out_fd, in_fd,
                      offset, count, loop, registered):
@@ -44,43 +44,39 @@ class SendfilePayloadWriter(PayloadWriter):
         except (BlockingIOError, InterruptedError):
             n = 0
         except Exception as exc:
-            fut.set_exception(exc)
+            set_exception(fut, exc)
             return
 
         if n < count:
             loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
                             offset + n, count - n, loop, True)
         else:
-            fut.set_result(None)
+            set_result(fut, None)
 
     async def sendfile(self, fobj, count):
-        if self._transport is None:
-            if self._drain_waiter is None:
-                self._drain_waiter = self.loop.create_future()
+        transport = await self.get_transport()
 
-            await self._drain_waiter
-
-        out_socket = self._transport.get_extra_info("socket").dup()
+        out_socket = transport.get_extra_info('socket').dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
         offset = fobj.tell()
 
         loop = self.loop
+        data = b''.join(self._sendfile_buffer)
         try:
-            await loop.sock_sendall(out_socket, b''.join(self._buffer))
+            await loop.sock_sendall(out_socket, data)
             fut = loop.create_future()
             self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
             await fut
         except Exception:
             server_logger.debug('Socket error')
-            self._transport.close()
+            transport.close()
         finally:
             out_socket.close()
 
         self.output_size += count
-        self._transport = None
-        self._stream.release()
+        await super().write_eof()
 
     async def write_eof(self, chunk=b''):
         pass

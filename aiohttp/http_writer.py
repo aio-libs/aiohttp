@@ -6,7 +6,7 @@ import zlib
 from contextlib import suppress
 
 from .abc import AbstractPayloadWriter
-from .helpers import noop
+from .helpers import noop, set_result
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -125,6 +125,7 @@ class PayloadWriter(AbstractPayloadWriter):
     def __init__(self, stream, loop, acquire=True):
         self._stream = stream
         self._transport = None
+        self._buffer = []
 
         self.loop = loop
         self.length = None
@@ -133,12 +134,12 @@ class PayloadWriter(AbstractPayloadWriter):
         self.output_size = 0
 
         self._eof = False
-        self._buffer = []
         self._compress = None
         self._drain_waiter = None
 
         if self._stream.available:
             self._transport = self._stream.transport
+            self._buffer = None
             self._stream.available = False
         elif acquire:
             self._stream.acquire(self)
@@ -146,15 +147,22 @@ class PayloadWriter(AbstractPayloadWriter):
     def set_transport(self, transport):
         self._transport = transport
 
-        chunk = b''.join(self._buffer)
-        if chunk:
-            transport.write(chunk)
-            self._buffer.clear()
+        if self._buffer is not None:
+            for chunk in self._buffer:
+                transport.write(chunk)
+            self._buffer = None
 
         if self._drain_waiter is not None:
             waiter, self._drain_waiter = self._drain_waiter, None
-            if not waiter.done():
-                waiter.set_result(None)
+            set_result(waiter, None)
+
+    async def get_transport(self):
+        if self._transport is None:
+            if self._drain_waiter is None:
+                self._drain_waiter = self.loop.create_future()
+            await self._drain_waiter
+
+        return self._transport
 
     @property
     def tcp_nodelay(self):
@@ -178,25 +186,14 @@ class PayloadWriter(AbstractPayloadWriter):
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
         self._compress = zlib.compressobj(wbits=zlib_mode)
 
-    def buffer_data(self, chunk):
-        if chunk:
-            size = len(chunk)
-            self.buffer_size += size
-            self.output_size += size
-            self._buffer.append(chunk)
-
     def _write(self, chunk):
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
 
+        # see set_transport: exactly one of _buffer or _transport is None
         if self._transport is not None:
-            if self._buffer:
-                self._buffer.append(chunk)
-                self._transport.write(b''.join(self._buffer))
-                self._buffer.clear()
-            else:
-                self._transport.write(chunk)
+            self._transport.write(chunk)
         else:
             self._buffer.append(chunk)
 
@@ -241,11 +238,7 @@ class PayloadWriter(AbstractPayloadWriter):
         headers = status_line + ''.join(
             [k + SEP + v + END for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
-
-        size = len(headers)
-        self.buffer_size += size
-        self.output_size += size
-        self._buffer.append(headers)
+        self._write(headers)
 
     async def write_eof(self, chunk=b''):
         if self._eof:
@@ -268,24 +261,17 @@ class PayloadWriter(AbstractPayloadWriter):
                     chunk = b'0\r\n\r\n'
 
         if chunk:
-            self.buffer_data(chunk)
+            self._write(chunk)
 
-        await self.drain(True)
+        await self.drain()
 
         self._eof = True
         self._transport = None
         self._stream.release()
 
-    async def drain(self, last=False):
+    async def drain(self):
         if self._transport is not None:
-            if self._buffer:
-                self._transport.write(b''.join(self._buffer))
-                if not last:
-                    self._buffer.clear()
             await self._stream.drain()
         else:
             # wait for transport
-            if self._drain_waiter is None:
-                self._drain_waiter = self.loop.create_future()
-
-            await self._drain_waiter
+            await self.get_transport()

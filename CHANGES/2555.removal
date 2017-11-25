@@ -1,0 +1,4 @@
+Simplify stream classes: drop `ChunksQueue` and
+`FlowControlChunksQueue`, merge `FlowControlStreamReader`
+functionality into `StreamReader`, drop `FlowControlStreamReader`
+name.

@@ -1,4 +1,3 @@
-import asyncio
 import io
 import json
 import mimetypes
@@ -11,11 +10,11 @@ from multidict import CIMultiDict
 from . import hdrs
 from .helpers import (content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
-from .streams import DEFAULT_LIMIT, DataQueue, EofStream, StreamReader
+from .streams import DEFAULT_LIMIT
 
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
-           'BytesPayload', 'StringPayload', 'StreamReaderPayload',
+           'BytesPayload', 'StringPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',
            'TextIOPayload', 'StringIOPayload', 'JsonPayload')
 
@@ -263,28 +262,6 @@ class BufferedReaderPayload(IOBasePayload):
             return None
 
 
-class StreamReaderPayload(Payload):
-
-    async def write(self, writer):
-        chunk = await self._value.read(DEFAULT_LIMIT)
-        while chunk:
-            await writer.write(chunk)
-            chunk = await self._value.read(DEFAULT_LIMIT)
-
-
-class DataQueuePayload(Payload):
-
-    async def write(self, writer):
-        while True:
-            try:
-                chunk = await self._value.read()
-                if not chunk:
-                    break
-                await writer.write(chunk)
-            except EofStream:
-                break
-
-
 class JsonPayload(BytesPayload):
 
     def __init__(self, value,
@@ -305,6 +282,3 @@ PAYLOAD_REGISTRY.register(BytesIOPayload, io.BytesIO)
 PAYLOAD_REGISTRY.register(
     BufferedReaderPayload, (io.BufferedReader, io.BufferedRandom))
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
-PAYLOAD_REGISTRY.register(
-    StreamReaderPayload, (asyncio.StreamReader, StreamReader))
-PAYLOAD_REGISTRY.register(DataQueuePayload, DataQueue)

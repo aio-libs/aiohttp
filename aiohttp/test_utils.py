@@ -459,6 +459,7 @@ def _create_app_mock():
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = Signal(app)
+    app.on_response_prepare.freeze()
     return app
 
 

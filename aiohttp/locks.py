@@ -35,5 +35,4 @@ class EventResultOrError:
     def cancel(self):
         """ Cancel all waiters """
         for waiter in self._waiters:
-            if not waiter.done():
-                waiter.cancel()
+            waiter.cancel()

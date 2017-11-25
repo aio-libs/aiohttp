@@ -11,7 +11,7 @@ from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
 from aiohttp import web
-from aiohttp.helpers import AccessLogger
+from .helpers import AccessLogger, set_result
 
 
 try:
@@ -108,8 +108,8 @@ class GunicornWebWorker(base.Worker):
     def _notify_waiter_done(self, waiter=None):
         if waiter is None:
             waiter = self._notify_waiter
-        if waiter is not None and not waiter.done():
-            waiter.set_result(True)
+        if waiter is not None:
+            set_result(waiter, True)
 
         if waiter is self._notify_waiter:
             self._notify_waiter = None
