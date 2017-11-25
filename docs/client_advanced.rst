@@ -6,15 +6,6 @@ Advanced Client Usage
 .. currentmodule:: aiohttp
 
 
-
-RequestInfo
------------
-
-`ClientResponse` object contains :attr:`~ClientResponse.request_info` property,
-which contains request fields: `url` and `headers`.
-On `raise_for_status` structure is copied to `ClientResponseError` instance.
-
-
 Custom Headers
 --------------
 
@@ -130,21 +121,26 @@ session::
    jar = aiohttp.DummyCookieJar()
    session = aiohttp.ClientSession(cookie_jar=jar)
 
-Client tracing 
+Client tracing
 --------------
 
-The execution flow of a specific request can be followed attaching listeners coroutines
-to the signals provided by the :class:`TraceConfig` instance, this instance will be used
-as a parameter for the :class:`ClientSession` constructor having as a result a client that
-triggers the different signals supported by the :class:`TraceConfig`. By default any instance
-of :class:`ClientSession` class comes with the signals ability disabled. The following
-snippet shows how the start and the end signals of a request flow can be followed::
+The execution flow of a specific request can be followed attaching
+listeners coroutines to the signals provided by the
+:class:`TraceConfig` instance, this instance will be used as a
+parameter for the :class:`ClientSession` constructor having as a
+result a client that triggers the different signals supported by the
+:class:`TraceConfig`. By default any instance of
+:class:`ClientSession` class comes with the signals ability
+disabled. The following snippet shows how the start and the end
+signals of a request flow can be followed::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers, request_trace_config_ctx=None):
+            session, trace_config_ctx, method,
+            host, port, headers, request_trace_config_ctx=None):
         print("Starting request")
 
-    async def on_request_end(session, trace_config_ctx, resp, request_trace_config_ctx=None):
+    async def on_request_end(session, trace_config_ctx, resp,
+                             request_trace_config_ctx=None):
         print("Ending request")
 
     trace_config = aiohttp.TraceConfig()
@@ -153,26 +149,30 @@ snippet shows how the start and the end signals of a request flow can be followe
     async with aiohttp.ClientSession(trace_configs=[trace_config]) as client:
         client.get('http://example.com/some/redirect/')
 
-The `trace_configs` is a list that can contain instances of :class:`TraceConfig` class
-that allow run the signals handlers coming from different :class:`TraceConfig` instances.
-The following example shows how two different :class:`TraceConfig` that have a different
+The ``trace_configs`` is a list that can contain instances of
+:class:`TraceConfig` class that allow run the signals handlers coming
+from different :class:`TraceConfig` instances.  The following example
+shows how two different :class:`TraceConfig` that have a different
 nature are installed to perform their job in each signal handle::
 
-    from .traceconfig import AuditRequest
-    from .traceconfig import XRay
+    from mylib.traceconfig import AuditRequest
+    from mylib.traceconfig import XRay
 
-    async with aiohttp.ClientSession(trace_configs=[AuditRequest(), XRay()]) as client:
+    async with aiohttp.ClientSession(trace_configs=[AuditRequest(),
+                                                    XRay()]) as client:
         client.get('http://example.com/some/redirect/')
 
 
-All signals take as a parameters first, the :class:`ClientSession` instance used by
-the specific request related to that signals and second, a :class:`SimpleNamespace`
-instance called ``trace_config_ctx``. The ``trace_config_ctx`` object can be used to share
-the state through to the different signals that belong to the same request and to
-the same :class:`TraceConfig` class, perhaps::
+All signals take as a parameters first, the :class:`ClientSession`
+instance used by the specific request related to that signals and
+second, a :class:`SimpleNamespace` instance called
+``trace_config_ctx``. The ``trace_config_ctx`` object can be used to
+share the state through to the different signals that belong to the
+same request and to the same :class:`TraceConfig` class, perhaps::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers, trace_request_ctx=None):
+            session, trace_config_ctx, method, host, port, headers,
+            trace_request_ctx=None):
         trace_config_ctx.start = session.loop.time()
 
     async def on_request_end(
@@ -181,15 +181,18 @@ the same :class:`TraceConfig` class, perhaps::
         print("Request took {}".format(elapsed))
 
 
-The ``trace_config_ctx`` param is by default a :class:`SimpleNampespace` that is initialized at
-the beginning of the request flow. However, the factory used to create this object can be
-overwritten using the ``trace_config_ctx_class`` constructor param of the 
-:class:`TraceConfig` class.
+The ``trace_config_ctx`` param is by default a
+:class:`SimpleNampespace` that is initialized at the beginning of the
+request flow. However, the factory used to create this object can be
+overwritten using the ``trace_config_ctx_class`` constructor param of
+the :class:`TraceConfig` class.
 
-The ``trace_request_ctx`` param can given at the beginning of the request execution and
-will be passed as a keyword argument for all of the signals, as the following snippet shows::
+The ``trace_request_ctx`` param can given at the beginning of the
+request execution and will be passed as a keyword argument for all of
+the signals, as the following snippet shows::
 
-    session.get('http://example.com/some/redirect/', trace_request_ctx={'foo': 'bar'})
+    session.get('http://example.com/some/redirect/',
+                trace_request_ctx={'foo': 'bar'})
 
 
 .. seealso:: :ref:`aiohttp-tracing-reference` section for
@@ -413,17 +416,8 @@ insensitive)::
        async with session.get("http://python.org", trust_env=True) as resp:
            print(resp.status)
 
-Response Status Codes
----------------------
-
-We can check the response status code::
-
-   async with session.get('http://httpbin.org/get') as resp:
-       assert resp.status == 200
-
-
-Response Headers
-----------------
+Response Headers and Cookies
+----------------------------
 
 We can view the server's response :attr:`ClientResponse.headers` using
 a :class:`~multidict.CIMultiDictProxy`::
@@ -465,10 +459,7 @@ perspective they are may be retrieved by using
      (b'CONNECTION', b'keep-alive'))
 
 
-Response Cookies
-----------------
-
-If a response contains some Cookies, you can quickly access them::
+If a response contains some *HTTP Cookies*, you can quickly access them::
 
     url = 'http://example.com/some/cookie/setting/url'
     async with session.get(url) as resp:
@@ -482,8 +473,8 @@ If a response contains some Cookies, you can quickly access them::
    <aiohttp-client-session>` object.
 
 
-Response History
-----------------
+Redirection History
+-------------------
 
 If a request was redirected, it is possible to view previous responses using
 the :attr:`~ClientResponse.history` attribute::
