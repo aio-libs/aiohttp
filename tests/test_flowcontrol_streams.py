@@ -17,8 +17,8 @@ class TestFlowControlStreamReader(unittest.TestCase):
         self.loop.close()
 
     def _make_one(self, allow_pause=True, *args, **kwargs):
-        out = streams.FlowControlStreamReader(
-            self.protocol, buffer_limit=1, loop=self.loop, *args, **kwargs)
+        out = streams.StreamReader(
+            self.protocol, limit=1, loop=self.loop, *args, **kwargs)
         out._allow_pause = allow_pause
         return out
 
@@ -40,17 +40,17 @@ class TestFlowControlStreamReader(unittest.TestCase):
 
     def test_readline(self):
         r = self._make_one()
-        r.feed_data(b'data\n', 5)
+        r.feed_data(b'd\n', 5)
         res = self.loop.run_until_complete(r.readline())
-        self.assertEqual(res, b'data\n')
+        self.assertEqual(res, b'd\n')
         self.assertFalse(r._protocol.resume_reading.called)
 
     def test_readline_resume_paused(self):
         r = self._make_one()
         r._protocol._reading_paused = True
-        r.feed_data(b'data\n', 5)
+        r.feed_data(b'd\n', 5)
         res = self.loop.run_until_complete(r.readline())
-        self.assertEqual(res, b'data\n')
+        self.assertEqual(res, b'd\n')
         self.assertTrue(r._protocol.resume_reading.called)
 
     def test_readany(self):
@@ -91,14 +91,6 @@ class TestFlowControlStreamReader(unittest.TestCase):
         res = self.loop.run_until_complete(r.readexactly(3))
         self.assertEqual(res, b'dat')
         self.assertFalse(r._protocol.resume_reading.called)
-
-    def test_readexactly_resume_paused(self):
-        r = self._make_one()
-        r._protocol._reading_paused = True
-        r.feed_data(b'data', 4)
-        res = self.loop.run_until_complete(r.readexactly(3))
-        self.assertEqual(res, b'dat')
-        self.assertTrue(r._protocol.resume_reading.called)
 
     def test_feed_data(self):
         r = self._make_one()
@@ -163,49 +155,3 @@ class TestFlowControlDataQueue(unittest.TestCase, FlowControlMixin):
             self.protocol, limit=1, loop=self.loop, *args, **kwargs)
         out._allow_pause = True
         return out
-
-
-class TestFlowControlChunksQueue(unittest.TestCase, FlowControlMixin):
-
-    def setUp(self):
-        self.protocol = mock.Mock()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def _make_one(self, *args, **kwargs):
-        out = streams.FlowControlChunksQueue(
-            self.protocol, limit=1, loop=self.loop, *args, **kwargs)
-        out._allow_pause = True
-        return out
-
-    def test_read_eof(self):
-        out = self._make_one()
-        read_task = asyncio.Task(out.read(), loop=self.loop)
-
-        def cb():
-            out.feed_eof()
-        self.loop.call_soon(cb)
-
-        self.loop.run_until_complete(read_task)
-        self.assertTrue(out.at_eof())
-
-    def test_read_until_eof(self):
-        item = object()
-
-        out = self._make_one()
-        out.feed_data(item, 1)
-        out.feed_eof()
-
-        data = self.loop.run_until_complete(out.read())
-        self.assertIs(data, item)
-
-        thing = self.loop.run_until_complete(out.read())
-        self.assertEqual(thing, b'')
-        self.assertTrue(out.at_eof())
-
-    def test_readany(self):
-        out = self._make_one()
-        self.assertIs(out.read.__func__, out.readany.__func__)

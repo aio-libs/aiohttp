@@ -16,7 +16,7 @@ from .http_exceptions import (
     PayloadEncodingError, ContentLengthError, TransferEncodingError)
 from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
 from .http_parser import RawRequestMessage, RawResponseMessage, DeflateBuffer
-from .streams import EMPTY_PAYLOAD, FlowControlStreamReader
+from .streams import EMPTY_PAYLOAD, StreamReader
 
 cimport cython
 from . cimport _cparser as cparser
@@ -201,7 +201,7 @@ cdef class HttpParser:
 
         if (self._cparser.content_length > 0 or chunked or
                 self._cparser.method == 5):  # CONNECT: 5
-            payload = FlowControlStreamReader(
+            payload = StreamReader(
                 self._protocol, timer=self._timer, loop=self._loop)
         else:
             payload = EMPTY_PAYLOAD

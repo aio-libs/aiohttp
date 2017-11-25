@@ -538,7 +538,8 @@ class PartReaderTestCase(TestCase):
 
     async def test_reading_long_part(self):
         size = 2 * stream_reader_default_limit
-        stream = StreamReader()
+        protocol = mock.Mock(_reading_paused=False)
+        stream = StreamReader(protocol)
         stream.feed_data(b'0' * size + b'\r\n--:--')
         stream.feed_eof()
         obj = aiohttp.multipart.BodyPartReader(
