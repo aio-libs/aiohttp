@@ -23,7 +23,7 @@ from .formdata import FormData
 from .helpers import HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
-from .streams import FlowControlStreamReader
+from .streams import StreamReader
 
 
 try:
@@ -501,7 +501,7 @@ class ClientResponse(HeadersMixin):
     raw_headers = None  # Response raw headers, a sequence of pairs
 
     _connection = None  # current connection
-    flow_control_class = FlowControlStreamReader  # reader flow control
+    flow_control_class = StreamReader  # reader flow control
     _reader = None     # input stream
     _source_traceback = None
     # setted up by ClientRequest after ClientResponse object creation
@@ -727,7 +727,7 @@ class ClientResponse(HeadersMixin):
                 headers=self.headers)
 
     def _cleanup_writer(self):
-        if self._writer is not None and not self._writer.done():
+        if self._writer is not None:
             self._writer.cancel()
         self._writer = None
         self._session = None

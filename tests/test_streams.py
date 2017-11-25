@@ -18,10 +18,16 @@ def chunkify(seq, n):
 
 
 def create_stream(loop):
-    stream = streams.StreamReader(loop=loop)
+    protocol = mock.Mock(_reading_paused=False)
+    stream = streams.StreamReader(protocol, loop=loop)
     stream.feed_data(DATA)
     stream.feed_eof()
     return stream
+
+
+@pytest.fixture
+def protocol():
+    return mock.Mock(_reading_paused=False)
 
 
 class TestStreamReader(unittest.TestCase):
@@ -29,6 +35,7 @@ class TestStreamReader(unittest.TestCase):
     DATA = b'line1\nline2\nline3\n'
 
     def setUp(self):
+        self.protocol = mock.Mock(_reading_paused=False)
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(None)
 
@@ -36,7 +43,8 @@ class TestStreamReader(unittest.TestCase):
         self.loop.close()
 
     def _make_one(self, *args, **kwargs):
-        return streams.StreamReader(loop=self.loop, *args, **kwargs)
+        return streams.StreamReader(self.protocol,
+                                    loop=self.loop, *args, **kwargs)
 
     def test_create_waiter(self):
         stream = self._make_one()
@@ -46,7 +54,7 @@ class TestStreamReader(unittest.TestCase):
 
     @mock.patch('aiohttp.streams.asyncio')
     def test_ctor_global_loop(self, m_asyncio):
-        stream = streams.StreamReader()
+        stream = streams.StreamReader(self.protocol)
         self.assertIs(stream._loop, m_asyncio.get_event_loop.return_value)
 
     def test_at_eof(self):
@@ -260,7 +268,7 @@ class TestStreamReader(unittest.TestCase):
         # Read one line. The data is in StreamReader's buffer
         # before the event loop is run.
 
-        stream = self._make_one(limit=3)
+        stream = self._make_one(limit=2)
         stream.feed_data(b'li')
         stream.feed_data(b'ne1\nline2\n')
 
@@ -274,20 +282,7 @@ class TestStreamReader(unittest.TestCase):
     def test_readline_limit(self):
         # Read one line. StreamReaders are fed with data after
         # their 'readline' methods are called.
-
-        stream = self._make_one(limit=7)
-
-        def cb():
-            stream.feed_data(b'chunk1')
-            stream.feed_data(b'chunk2')
-            stream.feed_data(b'chunk3\n')
-            stream.feed_eof()
-        self.loop.call_soon(cb)
-
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readline())
-
-        stream = self._make_one(limit=7)
+        stream = self._make_one(limit=4)
 
         def cb():
             stream.feed_data(b'chunk1')
@@ -709,7 +704,7 @@ class TestStreamReader(unittest.TestCase):
 
     def test___repr__nondefault_limit(self):
         stream = self._make_one(limit=123)
-        self.assertEqual("<StreamReader l=123>", repr(stream))
+        self.assertEqual("<StreamReader low=123 high=246>", repr(stream))
 
     def test___repr__eof(self):
         stream = self._make_one()
@@ -922,44 +917,8 @@ class TestDataQueue(unittest.TestCase, DataQueueMixin):
         self.loop.close()
 
 
-class TestChunksQueue(unittest.TestCase, DataQueueMixin):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.buffer = streams.ChunksQueue(loop=self.loop)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_read_eof(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-
-        def cb():
-            self.buffer.feed_eof()
-        self.loop.call_soon(cb)
-
-        self.loop.run_until_complete(read_task)
-        self.assertTrue(self.buffer.at_eof())
-
-    def test_read_until_eof(self):
-        item = object()
-        self.buffer.feed_data(item, 1)
-        self.buffer.feed_eof()
-
-        data = self.loop.run_until_complete(self.buffer.read())
-        self.assertIs(data, item)
-
-        thing = self.loop.run_until_complete(self.buffer.read())
-        self.assertEqual(thing, b'')
-        self.assertTrue(self.buffer.at_eof())
-
-    def test_readany(self):
-        self.assertIs(self.buffer.read.__func__, self.buffer.readany.__func__)
-
-
-def test_feed_data_waiters(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_feed_data_waiters(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     waiter = reader._waiter = loop.create_future()
     eof_waiter = reader._eof_waiter = loop.create_future()
 
@@ -974,8 +933,8 @@ def test_feed_data_waiters(loop):
     assert reader._eof_waiter is eof_waiter
 
 
-def test_feed_data_completed_waiters(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_feed_data_completed_waiters(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     waiter = reader._waiter = loop.create_future()
 
     waiter.set_result(1)
@@ -984,8 +943,8 @@ def test_feed_data_completed_waiters(loop):
     assert reader._waiter is None
 
 
-def test_feed_eof_waiters(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_feed_eof_waiters(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     waiter = reader._waiter = loop.create_future()
     eof_waiter = reader._eof_waiter = loop.create_future()
 
@@ -998,8 +957,8 @@ def test_feed_eof_waiters(loop):
     assert reader._eof_waiter is None
 
 
-def test_feed_eof_cancelled(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_feed_eof_cancelled(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     waiter = reader._waiter = loop.create_future()
     eof_waiter = reader._eof_waiter = loop.create_future()
 
@@ -1014,8 +973,8 @@ def test_feed_eof_cancelled(loop):
     assert reader._eof_waiter is None
 
 
-def test_on_eof(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_on_eof(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
 
     on_eof = mock.Mock()
     reader.on_eof(on_eof)
@@ -1034,8 +993,8 @@ def test_on_eof_empty_reader(loop):
     assert on_eof.called
 
 
-def test_on_eof_exc_in_callback(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_on_eof_exc_in_callback(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
 
     on_eof = mock.Mock()
     on_eof.side_effect = ValueError
@@ -1057,8 +1016,8 @@ def test_on_eof_exc_in_callback_empty_stream_reader(loop):
     assert on_eof.called
 
 
-def test_on_eof_eof_is_set(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_on_eof_eof_is_set(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     reader.feed_eof()
 
     on_eof = mock.Mock()
@@ -1067,8 +1026,8 @@ def test_on_eof_eof_is_set(loop):
     assert not reader._eof_callbacks
 
 
-def test_on_eof_eof_is_set_exception(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_on_eof_eof_is_set_exception(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     reader.feed_eof()
 
     on_eof = mock.Mock()
@@ -1079,8 +1038,8 @@ def test_on_eof_eof_is_set_exception(loop):
     assert not reader._eof_callbacks
 
 
-def test_set_exception(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_set_exception(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     waiter = reader._waiter = loop.create_future()
     eof_waiter = reader._eof_waiter = loop.create_future()
 
@@ -1093,8 +1052,8 @@ def test_set_exception(loop):
     assert reader._eof_waiter is None
 
 
-def test_set_exception_cancelled(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_set_exception_cancelled(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
     waiter = reader._waiter = loop.create_future()
     eof_waiter = reader._eof_waiter = loop.create_future()
 
@@ -1110,8 +1069,8 @@ def test_set_exception_cancelled(loop):
     assert reader._eof_waiter is None
 
 
-def test_set_exception_eof_callbacks(loop):
-    reader = streams.StreamReader(loop=loop)
+def test_set_exception_eof_callbacks(loop, protocol):
+    reader = streams.StreamReader(protocol, loop=loop)
 
     on_eof = mock.Mock()
     reader.on_eof(on_eof)
@@ -1193,8 +1152,8 @@ async def test_stream_reader_iter_chunks_no_chunked_encoding(loop):
     pytest.raises(StopIteration, next, it)
 
 
-async def test_stream_reader_iter_chunks_chunked_encoding(loop):
-    stream = streams.StreamReader(loop=loop)
+async def test_stream_reader_iter_chunks_chunked_encoding(loop, protocol):
+    stream = streams.StreamReader(protocol, loop=loop)
     for line in DATA.splitlines(keepends=True):
         stream.begin_http_chunk_receiving()
         stream.feed_data(line)
