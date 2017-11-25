@@ -240,7 +240,7 @@ async def test__run_exc(worker, loop, unused_port):
     def raiser():
         waiter = worker._notify_waiter
         worker.alive = False
-        waiter.set_exception(KeyboardInterrupt())
+        waiter.set_exception(RuntimeError())
 
     loop.call_later(0.1, raiser)
     await worker._run()
