@@ -252,7 +252,7 @@ def test_request_chunked(parser):
     msg, payload = messages[0]
     assert msg.chunked
     assert not upgrade
-    assert isinstance(payload, streams.FlowControlStreamReader)
+    assert isinstance(payload, streams.StreamReader)
 
 
 def test_conn_upgrade(parser):
@@ -313,7 +313,7 @@ def test_headers_connect(parser):
     messages, upgrade, tail = parser.feed_data(text)
     msg, payload = messages[0]
     assert upgrade
-    assert isinstance(payload, streams.FlowControlStreamReader)
+    assert isinstance(payload, streams.StreamReader)
 
 
 def test_headers_old_websocket_key1(parser):
@@ -517,7 +517,7 @@ def test_http_request_chunked_payload(parser):
 
     assert msg.chunked
     assert not payload.is_eof()
-    assert isinstance(payload, streams.FlowControlStreamReader)
+    assert isinstance(payload, streams.StreamReader)
 
     parser.feed_data(b'4\r\ndata\r\n4\r\nline\r\n0\r\n\r\n')
 
