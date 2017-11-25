@@ -10,7 +10,8 @@ import pytest
 from yarl import URL
 
 from aiohttp import http, http_exceptions
-from aiohttp.http import WS_KEY, do_handshake
+from aiohttp.http import WS_KEY
+from aiohttp.http_websocket import do_handshake
 
 
 @pytest.fixture()
