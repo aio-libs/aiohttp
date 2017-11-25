@@ -3,11 +3,13 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-============================
-Welcome to AIOHTTP |release|
-============================
+==================
+Welcome to AIOHTTP
+==================
 
 Asynchronous HTTP Client/Server for :term:`asyncio` and Python.
+
+Current version is |release|.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp
 
