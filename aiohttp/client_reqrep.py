@@ -718,7 +718,7 @@ class ClientResponse(HeadersMixin):
                 headers=self.headers)
 
     def _cleanup_writer(self):
-        if self._writer is not None and not self._writer.done():
+        if self._writer is not None:
             self._writer.cancel()
         self._writer = None
         self._session = None
