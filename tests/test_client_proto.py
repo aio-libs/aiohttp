@@ -81,3 +81,10 @@ async def test_client_protocol_readuntil_eof(loop):
 
     proto.connection_lost(None)
     assert response.content.is_eof()
+
+
+async def test_empty_data(loop):
+    proto = ResponseHandler(loop=loop)
+    proto.data_received(b'')
+
+    # do nothing
