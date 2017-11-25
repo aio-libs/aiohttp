@@ -12,7 +12,7 @@ Helpful pages.
    essays
 
 .. toctree::
-   :titlesonly:
+   :hidden:
 
    changes
    glossary
