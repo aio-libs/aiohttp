@@ -115,9 +115,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._eof:
             info.append('eof')
         if self._low_water != DEFAULT_LIMIT:
-            info.append('low=%d' % self._low_water)
-        if self._high_water != DEFAULT_LIMIT * 2:
-            info.append('high=%d' % self._high_water)
+            info.append('low=%d high=%d' % (self._low_water, self._high_water))
         if self._waiter:
             info.append('w=%r' % self._waiter)
         if self._exception:
