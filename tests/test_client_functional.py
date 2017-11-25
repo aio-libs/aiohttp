@@ -2481,24 +2481,3 @@ async def test_handle_keepalive_on_closed_connection(loop):
     connector.close()
     server.close()
     await server.wait_closed()
-
-
-@pytest.mark.xfail
-async def test_stream_reader(test_client):
-    DATA = b'1234567890' * (2**16)
-
-    async def h1(request):
-        return web.Response(body=DATA)
-
-    async def h2(request):
-        async with aiohttp.ClientSession() as sess:
-            async with sess.get(client.make_url('/h1')) as resp:
-                return web.Response(body=resp.content)
-
-    app = web.Application()
-    app.router.add_get('/h1', h1)
-    app.router.add_get('/h2', h2)
-
-    client = await test_client(app)
-    resp = await client.get('/h2')
-    assert await resp.read() == DATA
