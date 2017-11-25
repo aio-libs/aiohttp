@@ -609,7 +609,7 @@ async def test_supports_connect_method(srv, loop, transport, request_handler):
     assert request_handler.called
     assert isinstance(
         request_handler.call_args[0][0].content,
-        streams.FlowControlStreamReader)
+        streams.StreamReader)
 
 
 async def test_content_length_0(srv, loop, request_handler):
