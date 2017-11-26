@@ -693,8 +693,9 @@ class MultipartWriter(Payload):
         if re.match(self._invalid_qdtext_char_regex, value):
             raise ValueError("parameter value contains invalid characters")
 
-        quoted_value_content = value.replace(b'\\', b'\\\\')  # %x5C
-        quoted_value_content = quoted_value_content.replace(b'"', b'\\"')  # %x22
+        # escape %x5C and %x22
+        quoted_value_content = value.replace(b'\\', b'\\\\')
+        quoted_value_content = quoted_value_content.replace(b'"', b'\\"')
 
         return '"' + quoted_value_content.decode('ascii') + '"'
 
