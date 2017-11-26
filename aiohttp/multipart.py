@@ -644,7 +644,7 @@ class MultipartWriter(Payload):
             raise ValueError('boundary should contain ASCII only chars') \
                 from None
         ctype = ('multipart/{}; boundary={}'
-                 .format(subtype, self.boundary_value))
+                 .format(subtype, self._boundary_value))
 
         super().__init__(None, content_type=ctype)
 
@@ -668,7 +668,7 @@ class MultipartWriter(Payload):
     _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
 
     @property
-    def boundary_value(self):
+    def _boundary_value(self):
         """Wrap boundary parameter value in quotes, if necessary.
 
         Reads self.boundary and returns a unicode sting.

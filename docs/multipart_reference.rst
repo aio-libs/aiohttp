@@ -161,8 +161,7 @@ Multipart reference
 
    Multipart body writer.
 
-   ``boundary`` may be an ASCII-only string or byte-string.
-   Defaults to a random value.
+   ``boundary`` may be an ASCII-only string.
 
    .. attribute:: boundary
 
