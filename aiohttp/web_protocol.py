@@ -170,8 +170,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         # cancel waiters
         for waiter in self._waiters:
-            if not waiter.done():
-                waiter.cancel()
+            waiter.cancel()
 
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
@@ -192,8 +191,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         # force-close non-idle handlers
         for handler in self._request_handlers:
-            if not handler.done():
-                handler.cancel()
+            handler.cancel()
 
         if self.transport is not None:
             self.transport.close()
@@ -230,12 +228,10 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             self._keepalive_handle.cancel()
 
         for handler in self._request_handlers:
-            if not handler.done():
-                handler.cancel()
+            handler.cancel()
 
         if self._error_handler is not None:
-            if not self._error_handler.done():
-                self._error_handler.cancel()
+            self._error_handler.cancel()
 
         self._request_handlers = ()
 
@@ -320,15 +316,13 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         connection when handlers done processing messages"""
         self._close = True
         for waiter in self._waiters:
-            if not waiter.done():
-                waiter.cancel()
+            waiter.cancel()
 
     def force_close(self, send_last_heartbeat=False):
         """Force close connection"""
         self._force_close = True
         for waiter in self._waiters:
-            if not waiter.done():
-                waiter.cancel()
+            waiter.cancel()
         if self.transport is not None:
             if send_last_heartbeat:
                 self.transport.write(b"\r\n")
@@ -449,7 +443,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                         with suppress(
                                 asyncio.TimeoutError, asyncio.CancelledError):
-                            while (not payload.is_eof() and now < end_t):
+                            while not payload.is_eof() and now < end_t:
                                 timeout = min(end_t - now, lingering_time)
                                 with CeilTimeout(timeout, loop=loop):
                                     # read and ignore

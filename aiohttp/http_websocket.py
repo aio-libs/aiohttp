@@ -1,9 +1,6 @@
 """WebSocket protocol versions 13 and 8."""
 
-import base64
-import binascii
 import collections
-import hashlib
 import json
 import random
 import re
@@ -12,15 +9,13 @@ import zlib
 from enum import IntEnum
 from struct import Struct
 
-from . import hdrs
 from .helpers import NO_EXTENSIONS, noop
-from .http_exceptions import HttpBadRequest, HttpProcessingError
 from .log import ws_logger
 
 
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
-           'WebSocketReader', 'WebSocketWriter', 'do_handshake',
-           'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode')
+           'WebSocketReader', 'WebSocketWriter', 'WSMessage',
+           'WebSocketError', 'WSMsgType', 'WSCloseCode')
 
 
 class WSCloseCode(IntEnum):
@@ -411,7 +406,7 @@ class WebSocketReader:
                             'Received fragmented control frame')
 
                     has_mask = (second_byte >> 7) & 1
-                    length = (second_byte) & 0x7f
+                    length = second_byte & 0x7f
 
                     # Control frames MUST have a payload
                     # length of 125 bytes or less
@@ -619,99 +614,3 @@ class WebSocketWriter:
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
         finally:
             self._closing = True
-
-
-def do_handshake(method, headers, stream, protocols=(),
-                 write_buffer_size=DEFAULT_LIMIT, compress=True):
-    """Prepare WebSocket handshake.
-
-    It return HTTP response code, response headers, websocket parser,
-    websocket writer. It does not perform any IO.
-
-    `protocols` is a sequence of known protocols. On successful handshake,
-    the returned response headers contain the first protocol in this list
-    which the server also knows.
-
-    `write_buffer_size` max size of write buffer before `drain()` get called.
-
-    `compress` enable or disable server side deflate extension support.
-    """
-    # WebSocket accepts only GET
-    if method.upper() != hdrs.METH_GET:
-        raise HttpProcessingError(
-            code=405, headers=((hdrs.ALLOW, hdrs.METH_GET),))
-
-    if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
-        raise HttpBadRequest(
-            message='No WebSocket UPGRADE hdr: {}\n Can '
-            '"Upgrade" only to "WebSocket".'.format(headers.get(hdrs.UPGRADE)))
-
-    if 'upgrade' not in headers.get(hdrs.CONNECTION, '').lower():
-        raise HttpBadRequest(
-            message='No CONNECTION upgrade hdr: {}'.format(
-                headers.get(hdrs.CONNECTION)))
-
-    # find common sub-protocol between client and server
-    protocol = None
-    if hdrs.SEC_WEBSOCKET_PROTOCOL in headers:
-        req_protocols = [str(proto.strip()) for proto in
-                         headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
-
-        for proto in req_protocols:
-            if proto in protocols:
-                protocol = proto
-                break
-        else:
-            # No overlap found: Return no protocol as per spec
-            ws_logger.warning(
-                'Client protocols %r don’t overlap server-known ones %r',
-                req_protocols, protocols)
-
-    # check supported version
-    version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')
-    if version not in ('13', '8', '7'):
-        raise HttpBadRequest(
-            message='Unsupported version: {}'.format(version),
-            headers=((hdrs.SEC_WEBSOCKET_VERSION, '13'),))
-
-    # check client handshake for validity
-    key = headers.get(hdrs.SEC_WEBSOCKET_KEY)
-    try:
-        if not key or len(base64.b64decode(key)) != 16:
-            raise HttpBadRequest(
-                message='Handshake error: {!r}'.format(key))
-    except binascii.Error:
-        raise HttpBadRequest(
-            message='Handshake error: {!r}'.format(key)) from None
-
-    response_headers = [
-        (hdrs.UPGRADE, 'websocket'),
-        (hdrs.CONNECTION, 'upgrade'),
-        (hdrs.TRANSFER_ENCODING, 'chunked'),
-        (hdrs.SEC_WEBSOCKET_ACCEPT, base64.b64encode(
-            hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
-
-    notakeover = False
-    if compress:
-        extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
-        # Server side always get return with no exception.
-        # If something happened, just drop compress extension
-        compress, notakeover = ws_ext_parse(extensions, isserver=True)
-        if compress:
-            enabledext = ws_ext_gen(compress=compress, isserver=True,
-                                    server_notakeover=notakeover)
-            response_headers.append((hdrs.SEC_WEBSOCKET_EXTENSIONS,
-                                     enabledext))
-
-    if protocol:
-        response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))
-
-    # response code, headers, None, writer, protocol
-    return (101,
-            response_headers,
-            None,
-            WebSocketWriter(
-                stream, limit=write_buffer_size,
-                compress=compress, notakeover=notakeover),
-            protocol,
-            compress)

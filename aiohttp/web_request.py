@@ -357,13 +357,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.query
 
     @property
-    def GET(self):
-        """A multidict with all the variables in the query string."""
-        warnings.warn("GET property is deprecated, use .query instead",
-                      DeprecationWarning)
-        return self._rel_url.query
-
-    @property
     def query_string(self):
         """The query string in the URL.
 
@@ -543,7 +536,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         chunk = field.decode(chunk)
                         tmp.write(chunk)
                         size += len(chunk)
-                        if max_size > 0 and size > max_size:
+                        if 0 < max_size < size:
                             raise ValueError(
                                 'Maximum request body size exceeded')
                         chunk = await field.read_chunk(size=2**16)
@@ -560,7 +553,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         value = value.decode(charset)
                     out.add(field.name, value)
                     size += len(value)
-                    if max_size > 0 and size > max_size:
+                    if 0 < max_size < size:
                         raise ValueError(
                             'Maximum request body size exceeded')
 

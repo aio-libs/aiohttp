@@ -1,13 +1,13 @@
 import asyncio
 import collections
 
+from .helpers import set_exception, set_result
 from .log import internal_logger
 
 
 __all__ = (
-    'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue', 'ChunksQueue',
-    'FlowControlStreamReader',
-    'FlowControlDataQueue', 'FlowControlChunksQueue')
+    'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue',
+    'FlowControlDataQueue')
 
 DEFAULT_LIMIT = 2 ** 16
 
@@ -88,8 +88,11 @@ class StreamReader(AsyncStreamReaderMixin):
 
     total_bytes = 0
 
-    def __init__(self, limit=DEFAULT_LIMIT, timer=None, loop=None):
-        self._limit = limit
+    def __init__(self, protocol,
+                 *, limit=DEFAULT_LIMIT, timer=None, loop=None):
+        self._protocol = protocol
+        self._low_water = limit
+        self._high_water = limit * 2
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
@@ -111,8 +114,8 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append('%d bytes' % self._size)
         if self._eof:
             info.append('eof')
-        if self._limit != DEFAULT_LIMIT:
-            info.append('l=%d' % self._limit)
+        if self._low_water != DEFAULT_LIMIT:
+            info.append('low=%d high=%d' % (self._low_water, self._high_water))
         if self._waiter:
             info.append('w=%r' % self._waiter)
         if self._exception:
@@ -129,14 +132,12 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
+            set_exception(waiter, exc)
 
         waiter = self._eof_waiter
         if waiter is not None:
+            set_exception(waiter, exc)
             self._eof_waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
 
     def on_eof(self, callback):
         if self._eof:
@@ -153,14 +154,12 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_result(True)
+            set_result(waiter, True)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            if not waiter.done():
-                waiter.set_result(True)
+            set_result(waiter, True)
 
         for cb in self._eof_callbacks:
             try:
@@ -203,7 +202,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer.appendleft(data)
         self._eof_counter = 0
 
-    def feed_data(self, data):
+    # TODO: size is ignored, remove the param later
+    def feed_data(self, data, size=0):
         assert not self._eof, 'feed_data after feed_eof'
 
         if not data:
@@ -216,8 +216,11 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.done():
-                waiter.set_result(False)
+            set_result(waiter, False)
+
+        if (self._size > self._high_water and
+                not self._protocol._reading_paused):
+            self._protocol.pause_reading()
 
     def begin_http_chunk_receiving(self):
         if self._http_chunk_splits is None:
@@ -269,7 +272,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 if ichar:
                     not_enough = False
 
-                if line_size > self._limit:
+                if line_size > self._high_water:
                     raise ValueError('Line is too long')
 
             if self._eof:
@@ -403,6 +406,9 @@ class StreamReader(AsyncStreamReaderMixin):
 
         self._size -= len(data)
         self._cursor += len(data)
+
+        if self._size < self._low_water and self._protocol._reading_paused:
+            self._protocol.resume_reading()
         return data
 
     def _read_nowait(self, n):
@@ -499,9 +505,8 @@ class DataQueue:
 
         waiter = self._waiter
         if waiter is not None:
+            set_exception(waiter, exc)
             self._waiter = None
-            if not waiter.done():
-                waiter.set_exception(exc)
 
     def feed_data(self, data, size=0):
         self._size += size
@@ -510,8 +515,7 @@ class DataQueue:
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
+            set_result(waiter, True)
 
     def feed_eof(self):
         self._eof = True
@@ -519,8 +523,7 @@ class DataQueue:
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
+            set_result(waiter, False)
 
     async def read(self):
         if not self._buffer and not self._eof:
@@ -546,75 +549,6 @@ class DataQueue:
         return AsyncStreamIterator(self.read)
 
 
-class ChunksQueue(DataQueue):
-    """Like a :class:`DataQueue`, but for binary chunked data transfer."""
-
-    async def read(self):
-        try:
-            return (await super().read())
-        except EofStream:
-            return b''
-
-    readany = read
-
-
-class FlowControlStreamReader(StreamReader):
-
-    def __init__(self, protocol, buffer_limit=DEFAULT_LIMIT, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._protocol = protocol
-        self._b_limit = buffer_limit * 2
-
-    def feed_data(self, data, size=0):
-        super().feed_data(data)
-
-        if self._size > self._b_limit and not self._protocol._reading_paused:
-            self._protocol.pause_reading()
-
-    async def read(self, n=-1):
-        try:
-            return (await super().read(n))
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readline(self):
-        try:
-            return (await super().readline())
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readany(self):
-        try:
-            return await super().readany()
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readchunk(self):
-        try:
-            return await super().readchunk()
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    async def readexactly(self, n):
-        try:
-            return await super().readexactly(n)
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-    def read_nowait(self, n=-1):
-        try:
-            return super().read_nowait(n)
-        finally:
-            if self._size < self._b_limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
-
-
 class FlowControlDataQueue(DataQueue):
     """FlowControlDataQueue resumes and pauses an underlying stream.
 
@@ -638,14 +572,3 @@ class FlowControlDataQueue(DataQueue):
         finally:
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
-
-
-class FlowControlChunksQueue(FlowControlDataQueue):
-
-    async def read(self):
-        try:
-            return await super().read()
-        except EofStream:
-            return b''
-
-    readany = read

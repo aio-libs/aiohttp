@@ -8,7 +8,6 @@ import socket
 import sys
 import unittest
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from unittest import mock
 
 from multidict import CIMultiDict
@@ -460,6 +459,7 @@ def _create_app_mock():
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = Signal(app)
+    app.on_response_prepare.freeze()
     return app
 
 
@@ -540,10 +540,6 @@ def make_mocked_request(method, path, headers=None, *,
 
     if payload is sentinel:
         payload = mock.Mock()
-
-    @contextmanager
-    def timeout(*args, **kw):
-        yield
 
     req = Request(message, payload,
                   protocol, payload_writer, task, loop,
