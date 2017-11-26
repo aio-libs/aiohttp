@@ -208,7 +208,7 @@ How to make request from a specific IP address?
 If your system has several IP interfaces you may choose one which will
 be used used to bind socket locally::
 
-    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1, 0), loop=loop)
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0), loop=loop)
     async with aiohttp.ClientSession(connector=conn) as session:
         ...
 
