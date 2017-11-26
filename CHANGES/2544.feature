@@ -1,1 +1,1 @@
-Only quote multipart boundary when necessary and accept byte-strings
+Only quote multipart boundary when necessary and sanitize input

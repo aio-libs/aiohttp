@@ -654,35 +654,3 @@ class HeadersMixin:
 
         if content_length:
             return int(content_length)
-
-
-def format_parameter_value(value):
-    """Wrap a parameter value in quotes, if necessary.
-
-    Expects and returns a byte-string.
-    """
-    # Refer to RFCs 7231, 7230, 5234.
-    #
-    # parameter      = token "=" ( token / quoted-string )
-    # token          = 1*tchar
-    # quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
-    # qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
-    # obs-text       = %x80-FF
-    # quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
-    # tchar          = "!" / "#" / "$" / "%" / "&" / "'" / "*"
-    #                  / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
-    #                  / DIGIT / ALPHA
-    #                  ; any VCHAR, except delimiters
-    # VCHAR           = %x21-7E
-    valid_tchar_regex = br"^[!#$%&'*+\-.^_`|~\w]+$"
-    if re.match(valid_tchar_regex, value):
-        return value
-
-    invalid_qdtext_char_regex = br"[\x00-\x08\x0A-\x1F\x7F]"
-    if re.match(invalid_qdtext_char_regex, value):
-        raise ValueError("parameter value contains invalid characters")
-
-    quoted_value_content = value.replace(b'\\', b'\\\\')  # %x5C
-    quoted_value_content = value.replace(b'"', b'\\"')  # %x22
-
-    return b'"' + quoted_value_content + b'"'

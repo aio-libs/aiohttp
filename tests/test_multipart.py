@@ -950,23 +950,15 @@ class MultipartWriterTestCase(TestCase):
                          writer.headers)
 
     def test_quoted_boundary(self):
-        writer = aiohttp.multipart.MultipartWriter(boundary='"')
-        self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary="\\""'},
+        writer = aiohttp.multipart.MultipartWriter(boundary=R'\"')
+        self.assertEqual({CONTENT_TYPE: R'multipart/mixed; boundary="\\\""'},
                          writer.headers)
 
     def test_bad_boundary(self):
         with self.assertRaises(ValueError):
             aiohttp.multipart.MultipartWriter(boundary='тест')
-
-    def test_byte_boundary(self):
-        writer = aiohttp.multipart.MultipartWriter(boundary=b'bytestr')
-        self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=bytestr'},
-                         writer.headers)
-
-    def test_bad_byte_boundary(self):
-        # Architectural limitation, allowed by spec
         with self.assertRaises(ValueError):
-            aiohttp.multipart.MultipartWriter(boundary=b'\x80')
+            aiohttp.multipart.MultipartWriter(boundary='\n')
 
     def test_default_headers(self):
         self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=":"'},

@@ -12,7 +12,7 @@ from multidict import CIMultiDict
 
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
-from .helpers import CHAR, TOKEN, format_parameter_value, parse_mimetype, reify
+from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HttpParser
 from .payload import (BytesPayload, LookupError, Payload, StringPayload,
                       get_payload, payload_type)
@@ -637,17 +637,14 @@ class MultipartWriter(Payload):
         # so we need to ensure we don't lose anything during conversion.
         # As a result, require the boundary to be ASCII only.
         # In both situations.
+
         try:
-            if isinstance(boundary, bytes):
-                boundary.decode('ascii')
-                self._boundary = boundary
-            else:
-                self._boundary = boundary.encode('ascii')
-        except (UnicodeEncodeError, UnicodeDecodeError):
+            self._boundary = boundary.encode('ascii')
+        except UnicodeEncodeError:
             raise ValueError('boundary should contain ASCII only chars') \
                 from None
-        boundary_value = format_parameter_value(self._boundary).decode('ascii')
-        ctype = 'multipart/{}; boundary={}'.format(subtype, boundary_value)
+        ctype = ('multipart/{}; boundary={}'
+                 .format(subtype, self.boundary_value))
 
         super().__init__(None, content_type=ctype)
 
@@ -666,6 +663,40 @@ class MultipartWriter(Payload):
 
     def __len__(self):
         return len(self._parts)
+
+    _valid_tchar_regex = re.compile(br"^[!#$%&'*+\-.^_`|~\w]+$")
+    _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
+
+    @property
+    def boundary_value(self):
+        """Wrap boundary parameter value in quotes, if necessary.
+
+        Reads self.boundary and returns a unicode sting.
+        """
+        # Refer to RFCs 7231, 7230, 5234.
+        #
+        # parameter      = token "=" ( token / quoted-string )
+        # token          = 1*tchar
+        # quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+        # qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+        # obs-text       = %x80-FF
+        # quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+        # tchar          = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+        #                  / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+        #                  / DIGIT / ALPHA
+        #                  ; any VCHAR, except delimiters
+        # VCHAR           = %x21-7E
+        value = self.boundary
+        if re.match(self._valid_tchar_regex, value):
+            return value.decode('ascii')  # cannot fail
+
+        if re.match(self._invalid_qdtext_char_regex, value):
+            raise ValueError("parameter value contains invalid characters")
+
+        quoted_value_content = value.replace(b'\\', b'\\\\')  # %x5C
+        quoted_value_content = quoted_value_content.replace(b'"', b'\\"')  # %x22
+
+        return '"' + quoted_value_content.decode('ascii') + '"'
 
     @property
     def boundary(self):
