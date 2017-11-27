@@ -54,7 +54,7 @@ def normalize_path_middleware(
 
     @asyncio.coroutine
     @middleware
-    def normalize_path_middleware(request, handler):
+    def impl(request, handler):
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
             if '?' in request.raw_path:
@@ -81,4 +81,13 @@ def normalize_path_middleware(
 
         return (yield from handler(request))
 
-    return normalize_path_middleware
+    return impl
+
+
+def _fix_request_current_app(app):
+
+    @middleware
+    async def impl(request, handler):
+        with request.match_info.set_current_app(app):
+            return await handler(request)
+    return impl
