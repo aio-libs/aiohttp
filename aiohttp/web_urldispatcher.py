@@ -10,6 +10,7 @@ import re
 import warnings
 from collections import namedtuple
 from collections.abc import Container, Iterable, Sequence, Sized
+from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
@@ -195,6 +196,7 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         super().__init__(match_dict)
         self._route = route
         self._apps = ()
+        self._current_app = None
         self._frozen = False
 
     @property
@@ -223,7 +225,25 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def add_app(self, app):
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
+        if self._current_app is None:
+            self._current_app = app
         self._apps = (app,) + self._apps
+
+    @property
+    def current_app(self):
+        return self._current_app
+
+    @contextmanager
+    def set_current_app(self, app):
+        assert app in self._apps, (
+            "Expected one of the following apps {!r}, got {!r}"
+            .format(self._apps, app))
+        prev = self._current_app
+        self._current_app = app
+        try:
+            yield
+        finally:
+            self._current_app = prev
 
     def freeze(self):
         self._frozen = True

@@ -24,6 +24,7 @@ from .signals import FuncSignal, PostSignal, PreSignal, Signal
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
+from .web_middlewares import _fix_request_current_app
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
@@ -294,6 +295,8 @@ class Application(MutableMapping):
                               'see #2252'.format(m),
                               DeprecationWarning, stacklevel=2)
                 yield m, False
+        if self._middlewares:
+            yield _fix_request_current_app(self), True
 
     @asyncio.coroutine
     def _handle(self, request):
@@ -326,8 +329,9 @@ class Application(MutableMapping):
             ("Handler {!r} should return response instance, "
              "got {!r} [middlewares {!r}]").format(
                  match_info.handler, type(resp),
-                 [middleware for middleware in app.middlewares
-                  for app in match_info.apps])
+                 [middleware
+                  for app in match_info.apps
+                  for middleware in app.middlewares])
         return resp
 
     def __call__(self):
