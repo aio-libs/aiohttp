@@ -301,8 +301,9 @@ class Application(MutableMapping):
             ("Handler {!r} should return response instance, "
              "got {!r} [middlewares {!r}]").format(
                  match_info.handler, type(resp),
-                 [middleware for middleware in app.middlewares
-                  for app in match_info.apps])
+                 [middleware
+                  for app in match_info.apps
+                  for middleware in app.middlewares])
         return resp
 
     def __call__(self):
