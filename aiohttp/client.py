@@ -108,12 +108,8 @@ class ClientSession:
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
 
-        # Convert to list of tuples
-        if headers:
-            headers = CIMultiDict(headers)
-        else:
-            headers = CIMultiDict()
-        self._default_headers = headers
+        # Convert headers to MultiDict
+        self._default_headers = CIMultiDict(headers or {})
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
@@ -190,7 +186,7 @@ class ClientSession:
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
-        proxy_headers = self._prepare_headers(proxy_headers)
+        proxy_headers = CIMultiDict(proxy_headers or {})
 
         try:
             url = URL(url)
