@@ -609,10 +609,10 @@ class Request(BaseRequest):
         """Result of route resolving."""
         return self._match_info
 
-    @reify
+    @property
     def app(self):
         """Application instance."""
-        return self._match_info.apps[-1]
+        return self._match_info.current_app
 
     async def _prepare_hook(self, response):
         match_info = self._match_info
