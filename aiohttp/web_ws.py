@@ -1,17 +1,21 @@
 import asyncio
+import base64
+import binascii
+import hashlib
 import json
 from collections import namedtuple
 
 import async_timeout
+from multidict import CIMultiDict
 
 from . import hdrs
-from .helpers import call_later
-from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
-                   WebSocketError, WebSocketReader, WSMessage, WSMsgType,
-                   do_handshake)
+from .helpers import call_later, set_result
+from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
+                   WebSocketError, WebSocketReader, WebSocketWriter, WSMessage,
+                   WSMsgType, ws_ext_gen, ws_ext_parse)
+from .log import ws_logger
 from .streams import FlowControlDataQueue
-from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
-                             HTTPMethodNotAllowed)
+from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
 from .web_response import StreamResponse
 
 
@@ -101,30 +105,92 @@ class WebSocketResponse(StreamResponse):
         await payload_writer.drain()
         return payload_writer
 
+    def _handshake(self, request):
+        headers = request.headers
+        if request.method != hdrs.METH_GET:
+            raise HTTPMethodNotAllowed(request.method, [hdrs.METH_GET])
+        if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
+            raise HTTPBadRequest(
+                text=('No WebSocket UPGRADE hdr: {}\n Can '
+                      '"Upgrade" only to "WebSocket".')
+                .format(headers.get(hdrs.UPGRADE)))
+
+        if 'upgrade' not in headers.get(hdrs.CONNECTION, '').lower():
+            raise HTTPBadRequest(
+                text='No CONNECTION upgrade hdr: {}'.format(
+                    headers.get(hdrs.CONNECTION)))
+
+        # find common sub-protocol between client and server
+        protocol = None
+        if hdrs.SEC_WEBSOCKET_PROTOCOL in headers:
+            req_protocols = [str(proto.strip()) for proto in
+                             headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
+
+            for proto in req_protocols:
+                if proto in self._protocols:
+                    protocol = proto
+                    break
+            else:
+                # No overlap found: Return no protocol as per spec
+                ws_logger.warning(
+                    'Client protocols %r don’t overlap server-known ones %r',
+                    req_protocols, self._protocols)
+
+        # check supported version
+        version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')
+        if version not in ('13', '8', '7'):
+            raise HTTPBadRequest(
+                text='Unsupported version: {}'.format(version))
+
+        # check client handshake for validity
+        key = headers.get(hdrs.SEC_WEBSOCKET_KEY)
+        try:
+            if not key or len(base64.b64decode(key)) != 16:
+                raise HTTPBadRequest(
+                    text='Handshake error: {!r}'.format(key))
+        except binascii.Error:
+            raise HTTPBadRequest(
+                text='Handshake error: {!r}'.format(key)) from None
+
+        accept_val = base64.b64encode(
+            hashlib.sha1(key.encode() + WS_KEY).digest()).decode()
+        response_headers = CIMultiDict({hdrs.UPGRADE: 'websocket',
+                                        hdrs.CONNECTION: 'upgrade',
+                                        hdrs.TRANSFER_ENCODING: 'chunked',
+                                        hdrs.SEC_WEBSOCKET_ACCEPT: accept_val})
+
+        notakeover = False
+        compress = self._compress
+        if compress:
+            extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
+            # Server side always get return with no exception.
+            # If something happened, just drop compress extension
+            compress, notakeover = ws_ext_parse(extensions, isserver=True)
+            if compress:
+                enabledext = ws_ext_gen(compress=compress, isserver=True,
+                                        server_notakeover=notakeover)
+                response_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = enabledext
+
+        if protocol:
+            response_headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = protocol
+        return (response_headers, protocol, compress, notakeover)
+
     def _pre_start(self, request):
         self._loop = request.loop
 
-        try:
-            status, headers, _, writer, protocol, compress = do_handshake(
-                request.method, request.headers, request._protocol.writer,
-                self._protocols, compress=self._compress)
-        except HttpProcessingError as err:
-            if err.code == 405:
-                raise HTTPMethodNotAllowed(
-                    request.method, [hdrs.METH_GET], body=b'')
-            elif err.code == 400:
-                raise HTTPBadRequest(text=err.message, headers=err.headers)
-            else:  # pragma: no cover
-                raise HTTPInternalServerError() from err
+        headers, protocol, compress, notakeover = self._handshake(
+            request)
 
         self._reset_heartbeat()
 
-        if self.status != status:
-            self.set_status(status)
-        for k, v in headers:
-            self.headers[k] = v
+        self.set_status(101)
+        self.headers.update(headers)
         self.force_close()
         self._compress = compress
+        writer = WebSocketWriter(request._protocol.writer,
+                                 compress=compress,
+                                 notakeover=notakeover)
+
         return protocol, writer
 
     def _post_start(self, request, protocol, writer):
@@ -139,10 +205,8 @@ class WebSocketResponse(StreamResponse):
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
-            _, _, _, _, protocol, _ = do_handshake(
-                request.method, request.headers, request._protocol.writer,
-                self._protocols)
-        except HttpProcessingError:
+            _, protocol, _, _ = self._handshake(request)
+        except HTTPException:
             return WebSocketReady(False, None)
         else:
             return WebSocketReady(True, protocol)
@@ -279,8 +343,8 @@ class WebSocketResponse(StreamResponse):
                     self._reset_heartbeat()
                 finally:
                     waiter = self._waiting
+                    set_result(waiter, True)
                     self._waiting = None
-                    waiter.set_result(True)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise

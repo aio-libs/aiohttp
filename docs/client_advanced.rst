@@ -5,18 +5,23 @@ Advanced Client Usage
 
 .. currentmodule:: aiohttp
 
+.. _aiohttp-client-session:
 
-
-RequestInfo
------------
-
-`ClientResponse` object contains :attr:`~ClientResponse.request_info` property,
-which contains request fields: `url` and `headers`.
-On `raise_for_status` structure is copied to `ClientResponseError` instance.
-
-
-Custom Headers
+Client Session
 --------------
+
+:class:`ClientSession` is the heart and the main entry point for all
+client API operations.
+
+Create the session first, use the instance for performing HTTP
+requests and initiating WebSocket connections.
+
+The session contains a cookie storage and connection pool, thus
+cookies and connections are shared between HTTP requests sent by the
+same session.
+
+Custom Request Headers
+----------------------
 
 If you need to add HTTP headers to a request, pass them in a
 :class:`dict` to the *headers* parameter.
@@ -32,6 +37,15 @@ example::
     await session.post(url,
                        data=json.dumps(payload),
                        headers=headers)
+
+You also can set default headers for all session requests::
+
+    async with aiohttp.ClientSession(
+        headers={"Authorization": "Basic bG9naW46cGFzcw=="}) as session:
+        async with session.get("http://httpbin.org/headers") as r:
+            json_body = await r.json()
+            assert json_body['headers']['Authorization'] == \
+                'Basic bG9naW46cGFzcw=='
 
 
 Custom Cookies
@@ -52,29 +66,6 @@ parameter of :class:`ClientSession` constructor::
    in JSON-encoded body.
    To access session cookies see :attr:`ClientSession.cookie_jar`.
 
-
-Uploading pre-compressed data
------------------------------
-
-To upload data that is already compressed before passing it to
-aiohttp, call the request function with the used compression algorithm
-name (usually ``deflate`` or ``gzip``) as the value of the
-``Content-Encoding`` header::
-
-    async def my_coroutine(session, headers, my_data):
-        data = zlib.compress(my_data)
-        headers = {'Content-Encoding': 'deflate'}
-        async with session.post('http://httpbin.org/post',
-                                data=data,
-                                headers=headers)
-            pass
-
-
-.. _aiohttp-client-session:
-
-Keep-Alive, connection pooling and cookie sharing
--------------------------------------------------
-
 :class:`~aiohttp.ClientSession` may be used for sharing cookies
 between multiple requests::
 
@@ -87,22 +78,86 @@ between multiple requests::
             json_body = await r.json()
             assert json_body['cookies']['my_cookie'] == 'my_value'
 
-You also can set default headers for all session requests::
+Response Headers and Cookies
+----------------------------
 
-    async with aiohttp.ClientSession(
-        headers={"Authorization": "Basic bG9naW46cGFzcw=="}) as session:
-        async with session.get("http://httpbin.org/headers") as r:
-            json_body = await r.json()
-            assert json_body['headers']['Authorization'] == \
-                'Basic bG9naW46cGFzcw=='
+We can view the server's response :attr:`ClientResponse.headers` using
+a :class:`~multidict.CIMultiDictProxy`::
 
-:class:`~aiohttp.ClientSession` supports keep-alive requests
-and connection pooling out-of-the-box.
+    >>> resp.headers
+    {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
+     'CONTENT-TYPE': 'application/json',
+     'DATE': 'Tue, 15 Jul 2014 16:49:51 GMT',
+     'SERVER': 'gunicorn/18.0',
+     'CONTENT-LENGTH': '331',
+     'CONNECTION': 'keep-alive'}
+
+The dictionary is special, though: it's made just for HTTP
+headers. According to `RFC 7230
+<http://tools.ietf.org/html/rfc7230#section-3.2>`_, HTTP Header names
+are case-insensitive. It also supports multiple values for the same
+key as HTTP protocol does.
+
+So, we can access the headers using any capitalization we want::
+
+    >>> resp.headers['Content-Type']
+    'application/json'
+
+    >>> resp.headers.get('content-type')
+    'application/json'
+
+All headers converted from binary data using UTF-8 with
+``surrogateescape`` option. That works fine on most cases but
+sometimes unconverted data is needed if a server uses nonstandard
+encoding. While these headers are malformed from :rfc:`7230`
+perspective they are may be retrieved by using
+:attr:`ClientResponse.raw_headers` property::
+
+    >>> resp.raw_headers
+    ((b'SERVER', b'nginx'),
+     (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
+     (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
+     (b'CONTENT-LENGTH', b'12150'),
+     (b'CONNECTION', b'keep-alive'))
+
+
+If a response contains some *HTTP Cookies*, you can quickly access them::
+
+    url = 'http://example.com/some/cookie/setting/url'
+    async with session.get(url) as resp:
+        print(resp.cookies['example_cookie_name'])
+
+.. note::
+
+   Response cookies contain only values, that were in ``Set-Cookie`` headers
+   of the **last** request in redirection chain. To gather cookies between all
+   redirection requests please use :ref:`aiohttp.ClientSession
+   <aiohttp-client-session>` object.
+
+
+Redirection History
+-------------------
+
+If a request was redirected, it is possible to view previous responses using
+the :attr:`~ClientResponse.history` attribute::
+
+    >>> resp = await session.get('http://example.com/some/redirect/')
+    >>> resp
+    <ClientResponse(http://example.com/some/other/url/) [200]>
+    >>> resp.history
+    (<ClientResponse(http://example.com/some/redirect/) [301]>,)
+
+If no redirects occurred or ``allow_redirects`` is set to ``False``,
+history will be an empty sequence.
+
+
+Cookie Jar
+----------
 
 .. _aiohttp-client-cookie-safety:
 
-Cookie safety
--------------
+Cookie Safety
+^^^^^^^^^^^^^
 
 By default :class:`~aiohttp.ClientSession` uses strict version of
 :class:`aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
@@ -121,7 +176,7 @@ cookies. It should be done by passing `unsafe=True` to
 .. _aiohttp-client-dummy-cookie-jar:
 
 Dummy Cookie Jar
-----------------
+^^^^^^^^^^^^^^^^
 
 Sometimes cookie processing is not desirable. For this purpose it's
 possible to pass :class:`aiohttp.DummyCookieJar` instance into client
@@ -130,21 +185,44 @@ session::
    jar = aiohttp.DummyCookieJar()
    session = aiohttp.ClientSession(cookie_jar=jar)
 
-Client tracing 
+
+Uploading pre-compressed data
+-----------------------------
+
+To upload data that is already compressed before passing it to
+aiohttp, call the request function with the used compression algorithm
+name (usually ``deflate`` or ``gzip``) as the value of the
+``Content-Encoding`` header::
+
+    async def my_coroutine(session, headers, my_data):
+        data = zlib.compress(my_data)
+        headers = {'Content-Encoding': 'deflate'}
+        async with session.post('http://httpbin.org/post',
+                                data=data,
+                                headers=headers)
+            pass
+
+
+Client tracing
 --------------
 
-The execution flow of a specific request can be followed attaching listeners coroutines
-to the signals provided by the :class:`TraceConfig` instance, this instance will be used
-as a parameter for the :class:`ClientSession` constructor having as a result a client that
-triggers the different signals supported by the :class:`TraceConfig`. By default any instance
-of :class:`ClientSession` class comes with the signals ability disabled. The following
-snippet shows how the start and the end signals of a request flow can be followed::
+The execution flow of a specific request can be followed attaching
+listeners coroutines to the signals provided by the
+:class:`TraceConfig` instance, this instance will be used as a
+parameter for the :class:`ClientSession` constructor having as a
+result a client that triggers the different signals supported by the
+:class:`TraceConfig`. By default any instance of
+:class:`ClientSession` class comes with the signals ability
+disabled. The following snippet shows how the start and the end
+signals of a request flow can be followed::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers, request_trace_config_ctx=None):
+            session, trace_config_ctx, method,
+            host, port, headers, request_trace_config_ctx=None):
         print("Starting request")
 
-    async def on_request_end(session, trace_config_ctx, resp, request_trace_config_ctx=None):
+    async def on_request_end(session, trace_config_ctx, resp,
+                             request_trace_config_ctx=None):
         print("Ending request")
 
     trace_config = aiohttp.TraceConfig()
@@ -153,26 +231,30 @@ snippet shows how the start and the end signals of a request flow can be followe
     async with aiohttp.ClientSession(trace_configs=[trace_config]) as client:
         client.get('http://example.com/some/redirect/')
 
-The `trace_configs` is a list that can contain instances of :class:`TraceConfig` class
-that allow run the signals handlers coming from different :class:`TraceConfig` instances.
-The following example shows how two different :class:`TraceConfig` that have a different
+The ``trace_configs`` is a list that can contain instances of
+:class:`TraceConfig` class that allow run the signals handlers coming
+from different :class:`TraceConfig` instances.  The following example
+shows how two different :class:`TraceConfig` that have a different
 nature are installed to perform their job in each signal handle::
 
-    from .traceconfig import AuditRequest
-    from .traceconfig import XRay
+    from mylib.traceconfig import AuditRequest
+    from mylib.traceconfig import XRay
 
-    async with aiohttp.ClientSession(trace_configs=[AuditRequest(), XRay()]) as client:
+    async with aiohttp.ClientSession(trace_configs=[AuditRequest(),
+                                                    XRay()]) as client:
         client.get('http://example.com/some/redirect/')
 
 
-All signals take as a parameters first, the :class:`ClientSession` instance used by
-the specific request related to that signals and second, a :class:`SimpleNamespace`
-instance called ``trace_config_ctx``. The ``trace_config_ctx`` object can be used to share
-the state through to the different signals that belong to the same request and to
-the same :class:`TraceConfig` class, perhaps::
+All signals take as a parameters first, the :class:`ClientSession`
+instance used by the specific request related to that signals and
+second, a :class:`SimpleNamespace` instance called
+``trace_config_ctx``. The ``trace_config_ctx`` object can be used to
+share the state through to the different signals that belong to the
+same request and to the same :class:`TraceConfig` class, perhaps::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers, trace_request_ctx=None):
+            session, trace_config_ctx, method, host, port, headers,
+            trace_request_ctx=None):
         trace_config_ctx.start = session.loop.time()
 
     async def on_request_end(
@@ -181,15 +263,18 @@ the same :class:`TraceConfig` class, perhaps::
         print("Request took {}".format(elapsed))
 
 
-The ``trace_config_ctx`` param is by default a :class:`SimpleNampespace` that is initialized at
-the beginning of the request flow. However, the factory used to create this object can be
-overwritten using the ``trace_config_ctx_class`` constructor param of the 
-:class:`TraceConfig` class.
+The ``trace_config_ctx`` param is by default a
+:class:`SimpleNampespace` that is initialized at the beginning of the
+request flow. However, the factory used to create this object can be
+overwritten using the ``trace_config_ctx_class`` constructor param of
+the :class:`TraceConfig` class.
 
-The ``trace_request_ctx`` param can given at the beginning of the request execution and
-will be passed as a keyword argument for all of the signals, as the following snippet shows::
+The ``trace_request_ctx`` param can given at the beginning of the
+request execution and will be passed as a keyword argument for all of
+the signals, as the following snippet shows::
 
-    session.get('http://example.com/some/redirect/', trace_request_ctx={'foo': 'bar'})
+    session.get('http://example.com/some/redirect/',
+                trace_request_ctx={'foo': 'bar'})
 
 
 .. seealso:: :ref:`aiohttp-tracing-reference` section for
@@ -218,7 +303,7 @@ To tweak or change *transport* layer of requests you can pass a custom
 
 
 Limiting connection pool size
------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To limit amount of simultaneously opened connections you can pass *limit*
 parameter to *connector*::
@@ -244,7 +329,8 @@ The example limits amount of parallel connections to the same to `30`.
 The default is `0` (no limit on per host bases).
 
 Tuning the DNS cache
---------------------
+^^^^^^^^^^^^^^^^^^^^
+
 By default :class:`~aiohttp.TCPConnector` comes with the DNS cache
 table enabled, and resolutions will be cached by default for `10` seconds.
 This behavior can be changed either to change of the TTL for a resolution,
@@ -259,7 +345,8 @@ end up making a DNS resolution, as the following example shows::
 
 
 Resolving using custom nameservers
-----------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 In order to specify the nameservers to when resolving the hostnames,
 :term:`aiodns` is required::
 
@@ -267,6 +354,16 @@ In order to specify the nameservers to when resolving the hostnames,
 
     resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
     conn = aiohttp.TCPConnector(resolver=resolver)
+
+
+Unix domain sockets
+^^^^^^^^^^^^^^^^^^^
+
+If your HTTP server uses UNIX domain sockets you can use
+:class:`~aiohttp.UnixConnector`::
+
+  conn = aiohttp.UnixConnector(path='/path/to/socket')
+  session = aiohttp.ClientSession(connector=conn)
 
 
 SSL control for TCP sockets
@@ -367,16 +464,6 @@ DER with e.g::
 
 
 
-Unix domain sockets
--------------------
-
-If your HTTP server uses UNIX domain sockets you can use
-:class:`~aiohttp.UnixConnector`::
-
-  conn = aiohttp.UnixConnector(path='/path/to/socket')
-  session = aiohttp.ClientSession(connector=conn)
-
-
 Proxy support
 -------------
 
@@ -412,91 +499,6 @@ insensitive)::
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org", trust_env=True) as resp:
            print(resp.status)
-
-Response Status Codes
----------------------
-
-We can check the response status code::
-
-   async with session.get('http://httpbin.org/get') as resp:
-       assert resp.status == 200
-
-
-Response Headers
-----------------
-
-We can view the server's response :attr:`ClientResponse.headers` using
-a :class:`~multidict.CIMultiDictProxy`::
-
-    >>> resp.headers
-    {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
-     'CONTENT-TYPE': 'application/json',
-     'DATE': 'Tue, 15 Jul 2014 16:49:51 GMT',
-     'SERVER': 'gunicorn/18.0',
-     'CONTENT-LENGTH': '331',
-     'CONNECTION': 'keep-alive'}
-
-The dictionary is special, though: it's made just for HTTP
-headers. According to `RFC 7230
-<http://tools.ietf.org/html/rfc7230#section-3.2>`_, HTTP Header names
-are case-insensitive. It also supports multiple values for the same
-key as HTTP protocol does.
-
-So, we can access the headers using any capitalization we want::
-
-    >>> resp.headers['Content-Type']
-    'application/json'
-
-    >>> resp.headers.get('content-type')
-    'application/json'
-
-All headers converted from binary data using UTF-8 with
-``surrogateescape`` option. That works fine on most cases but
-sometimes unconverted data is needed if a server uses nonstandard
-encoding. While these headers are malformed from :rfc:`7230`
-perspective they are may be retrieved by using
-:attr:`ClientResponse.raw_headers` property::
-
-    >>> resp.raw_headers
-    ((b'SERVER', b'nginx'),
-     (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
-     (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
-     (b'CONTENT-LENGTH', b'12150'),
-     (b'CONNECTION', b'keep-alive'))
-
-
-Response Cookies
-----------------
-
-If a response contains some Cookies, you can quickly access them::
-
-    url = 'http://example.com/some/cookie/setting/url'
-    async with session.get(url) as resp:
-        print(resp.cookies['example_cookie_name'])
-
-.. note::
-
-   Response cookies contain only values, that were in ``Set-Cookie`` headers
-   of the **last** request in redirection chain. To gather cookies between all
-   redirection requests please use :ref:`aiohttp.ClientSession
-   <aiohttp-client-session>` object.
-
-
-Response History
-----------------
-
-If a request was redirected, it is possible to view previous responses using
-the :attr:`~ClientResponse.history` attribute::
-
-    >>> resp = await session.get('http://example.com/some/redirect/')
-    >>> resp
-    <ClientResponse(http://example.com/some/other/url/) [200]>
-    >>> resp.history
-    (<ClientResponse(http://example.com/some/redirect/) [301]>,)
-
-If no redirects occurred or ``allow_redirects`` is set to ``False``,
-history will be an empty sequence.
-
 
 Graceful Shutdown
 -----------------

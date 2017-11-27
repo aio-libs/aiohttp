@@ -1,0 +1,1 @@
+Change base class of ClientConnectorSSLError to ClientSSLError from ClientConnectorError.

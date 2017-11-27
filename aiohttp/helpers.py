@@ -654,3 +654,13 @@ class HeadersMixin:
 
         if content_length:
             return int(content_length)
+
+
+def set_result(fut, result):
+    if not fut.done():
+        fut.set_result(result)
+
+
+def set_exception(fut, exc):
+    if not fut.done():
+        fut.set_exception(exc)
