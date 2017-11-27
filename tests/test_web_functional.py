@@ -1290,6 +1290,41 @@ async def test_subapp_on_cleanup(loop, test_server):
     assert [app, subapp1, subapp2] == order
 
 
+@pytest.mark.parametrize('route,expected', [
+    ('/sub/', ['app see root', 'subapp see sub']),
+    ('/', ['app see root']),
+])
+async def test_subapp_middleware_context(loop, test_client, route, expected):
+    values = []
+
+    def show_app_context(appname):
+        @web.middleware
+        async def middleware(request, handler):
+            values.append('{} see {}'.format(appname, request.app['my_value']))
+            return await handler(request)
+        return middleware
+
+    async def handler(request):
+        return web.Response(text='Ok')
+
+    app = web.Application()
+    app['my_value'] = 'root'
+    app.middlewares.append(show_app_context('app'))
+    app.router.add_get('/', handler)
+
+    subapp = web.Application()
+    subapp['my_value'] = 'sub'
+    subapp.middlewares.append(show_app_context('subapp'))
+    subapp.router.add_get('/', handler)
+    app.add_subapp('/sub/', subapp)
+
+    client = await test_client(app)
+    resp = await client.get(route)
+    assert 200 == resp.status
+    assert 'Ok' == await resp.text()
+    assert expected == values
+
+
 async def test_custom_date_header(loop, test_client):
 
     async def handler(request):
