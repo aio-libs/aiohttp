@@ -175,13 +175,13 @@ if ssl is not None:
     certificate_errors_bases = (ClientSSLError, ssl.CertificateError,)
 
     ssl_errors = (ssl.SSLError,)
-    ssl_error_bases = (ClientConnectorError, ssl.SSLError)
+    ssl_error_bases = (ClientSSLError, ssl.SSLError)
 else:  # pragma: no cover
     certificate_errors = tuple()
     certificate_errors_bases = (ClientSSLError, ValueError,)
 
     ssl_errors = tuple()
-    ssl_error_bases = (ClientConnectorError,)
+    ssl_error_bases = (ClientSSLError,)
 
 
 class ClientConnectorSSLError(*ssl_error_bases):
