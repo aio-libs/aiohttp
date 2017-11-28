@@ -106,7 +106,7 @@ So, we can access the headers using any capitalization we want::
     >>> resp.headers.get('content-type')
     'application/json'
 
-All headers converted from binary data using UTF-8 with
+All headers are converted from binary data using UTF-8 with
 ``surrogateescape`` option. That works fine on most cases but
 sometimes unconverted data is needed if a server uses nonstandard
 encoding. While these headers are malformed from :rfc:`7230`
