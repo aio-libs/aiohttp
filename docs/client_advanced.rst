@@ -110,7 +110,7 @@ All headers converted from binary data using UTF-8 with
 ``surrogateescape`` option. That works fine on most cases but
 sometimes unconverted data is needed if a server uses nonstandard
 encoding. While these headers are malformed from :rfc:`7230`
-perspective they are may be retrieved by using
+perspective they may be retrieved by using
 :attr:`ClientResponse.raw_headers` property::
 
     >>> resp.raw_headers
