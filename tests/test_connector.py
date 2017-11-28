@@ -1795,7 +1795,7 @@ class TestHttpClientConnector(unittest.TestCase):
             self.loop.run_until_complete(session.request('get', url))
 
         self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
-        self.assertTrue(ctx.value, aiohttp.ClientSSLError)
+        self.assertIsInstance(ctx.value, aiohttp.ClientSSLError)
 
         self.loop.run_until_complete(session.close())
         conn.close()
