@@ -83,8 +83,7 @@ def normalize_path_middleware(
 def _fix_request_current_app(app):
 
     @middleware
-    @asyncio.coroutine
-    def impl(request, handler):
+    async def impl(request, handler):
         with request.match_info.set_current_app(app):
             return await handler(request)
     return impl
