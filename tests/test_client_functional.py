@@ -2288,3 +2288,26 @@ def test_drop_auth_on_redirect_to_other_host(test_server, loop):
         assert resp.status == 200
     finally:
         yield from client.close()
+
+
+@asyncio.coroutine
+def test_error_in_performing_request(loop, ssl_ctx,
+                                     test_client, test_server):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    server = yield from test_server(app, ssl=ssl_ctx)
+
+    conn = aiohttp.TCPConnector(limit=1, loop=loop)
+    client = yield from test_client(server, connector=conn)
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        yield from client.get('/')
+
+    # second try should not hang
+    with pytest.raises(aiohttp.ClientConnectionError):
+        yield from client.get('/')

@@ -283,6 +283,15 @@ class BaseConnector(object):
             self._cleanup_handle = helpers.weakref_handle(
                 self, '_cleanup', timeout, self._loop)
 
+    def _drop_acquired_per_host(self, key, val):
+        acquired_per_host = self._acquired_per_host
+        if key not in acquired_per_host:
+            return
+        conns = acquired_per_host[key]
+        conns.remove(val)
+        if not conns:
+            del self._acquired_per_host[key]
+
     def _cleanup_closed(self):
         """Double confirmation for transport close.
         Some broken ssl servers may leave socket open without proper close.
@@ -396,15 +405,16 @@ class BaseConnector(object):
                     raise ClientConnectionError("Connector is closed.")
             except:
                 # signal to waiter
-                for waiter in self._waiters[key]:
-                    if not waiter.done():
-                        waiter.set_result(None)
-                        break
+                if key in self._waiters:
+                    for waiter in self._waiters[key]:
+                        if not waiter.done():
+                            waiter.set_result(None)
+                            break
                 raise
             finally:
                 if not self._closed:
                     self._acquired.remove(placeholder)
-                    self._acquired_per_host[key].remove(placeholder)
+                    self._drop_acquired_per_host(key, placeholder)
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
@@ -463,9 +473,7 @@ class BaseConnector(object):
 
         try:
             self._acquired.remove(proto)
-            self._acquired_per_host[key].remove(proto)
-            if not self._acquired_per_host[key]:
-                del self._acquired_per_host[key]
+            self._drop_acquired_per_host(key, proto)
         except KeyError:  # pragma: no cover
             # this may be result of undetermenistic order of objects
             # finalization due garbage collection.
