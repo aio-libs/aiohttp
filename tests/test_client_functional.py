@@ -2481,3 +2481,57 @@ async def test_handle_keepalive_on_closed_connection(loop):
     connector.close()
     server.close()
     await server.wait_closed()
+
+
+async def test_error_in_performing_request(loop, ssl_ctx,
+                                           test_client, test_server):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    server = await test_server(app, ssl=ssl_ctx)
+
+    conn = aiohttp.TCPConnector(limit=1, loop=loop)
+    client = await test_client(server, connector=conn)
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await client.get('/')
+
+    # second try should not hang
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await client.get('/')
+
+
+async def test_await_after_cancelling(loop, test_client):
+
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    client = await test_client(app)
+
+    fut1 = loop.create_future()
+    fut2 = loop.create_future()
+
+    async def fetch1():
+        resp = await client.get('/')
+        assert resp.status == 200
+        fut1.set_result(None)
+        with pytest.raises(asyncio.CancelledError):
+            await fut2
+        resp.release()
+
+    async def fetch2():
+        await fut1
+        resp = await client.get('/')
+        assert resp.status == 200
+
+    async def canceller():
+        await fut1
+        fut2.cancel()
+
+    await asyncio.gather(fetch1(), fetch2(), canceller(), loop=loop)

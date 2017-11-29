@@ -14,6 +14,17 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.4 (2017-11-29)
+==================
+
+- Make `request.app` point to proper application instance when using nested
+  applications (with middlewares). (#2550)
+- Change base class of ClientConnectorSSLError to ClientSSLError from
+  ClientConnectorError. (#2563)
+- Return client connection back to free pool on error in `connector.connect()`.
+  (#2567)
+
+
 2.3.3 (2017-11-17)
 ==================
 
