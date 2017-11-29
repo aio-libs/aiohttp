@@ -14,6 +14,12 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.5 (2017-11-30)
+==================
+
+- Fix compatibility with `pytest` 3.3+ (#2565)
+
+
 2.3.4 (2017-11-29)
 ==================
 
