@@ -9,7 +9,8 @@ from .http_parser import (HttpParser, HttpRequestParser, HttpResponseParser,
                           RawRequestMessage, RawResponseMessage)
 from .http_websocket import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
                              WebSocketError, WebSocketReader, WebSocketWriter,
-                             WSCloseCode, WSMessage, WSMsgType, do_handshake)
+                             WSCloseCode, WSMessage, WSMsgType, ws_ext_gen,
+                             ws_ext_parse)
 from .http_writer import (HttpVersion, HttpVersion10, HttpVersion11,
                           PayloadWriter, StreamWriter)
 
@@ -27,7 +28,7 @@ __all__ = (
 
     # .http_websocket
     'WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
-    'WebSocketReader', 'WebSocketWriter', 'do_handshake',
+    'WebSocketReader', 'WebSocketWriter', 'ws_ext_gen', 'ws_ext_parse',
     'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode',
 )
 

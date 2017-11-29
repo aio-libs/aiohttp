@@ -10,6 +10,10 @@ Helpful pages.
 
    faq
    essays
+
+.. toctree::
+   :hidden:
+
    changes
    glossary
 

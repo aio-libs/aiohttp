@@ -78,3 +78,12 @@ def normalize_path_middleware(
         return await handler(request)
 
     return impl
+
+
+def _fix_request_current_app(app):
+
+    @middleware
+    async def impl(request, handler):
+        with request.match_info.set_current_app(app):
+            return await handler(request)
+    return impl

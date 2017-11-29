@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+from contextlib import suppress
 
 from .client_exceptions import (ClientOSError, ClientPayloadError,
                                 ServerDisconnectedError)
@@ -63,10 +64,8 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
     def connection_lost(self, exc):
         if self._payload_parser is not None:
-            try:
+            with suppress(Exception):
                 self._payload_parser.feed_eof()
-            except Exception:
-                pass
 
         try:
             uncompleted = self._parser.feed_eof()
