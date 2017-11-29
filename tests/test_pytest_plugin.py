@@ -152,7 +152,7 @@ def test_client_failed_to_create(test_client):
 
 """)
     testdir.makeconftest(CONFTEST)
-    result = testdir.runpytest_subprocess('-p', 'no:sugar', '--loop=pyloop')
+    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
     result.assert_outcomes(passed=11, failed=1)
 
 
@@ -237,7 +237,7 @@ def test_bar(loop, bar):
     assert bar is test_bar
 """)
     testdir.makeconftest(CONFTEST)
-    result = testdir.runpytest_subprocess('-p', 'no:sugar', '--loop=pyloop')
+    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
     result.assert_outcomes(passed=3, error=1)
     result.stdout.fnmatch_lines(
         "*Asynchronous fixtures must depend on the 'loop' fixture "
@@ -283,5 +283,5 @@ def test_finalized():
     assert canary.called is True
 """)
     testdir.makeconftest(CONFTEST)
-    result = testdir.runpytest_subprocess('-p', 'no:sugar', '--loop=pyloop')
+    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
     result.assert_outcomes(passed=2)
