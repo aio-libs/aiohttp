@@ -1,1 +1,0 @@
-Return client connection back to free pool on error in `connector.connect()`.
