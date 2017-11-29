@@ -96,13 +96,13 @@ def pytest_fixture_setup(fixturedef, request):
 
 @pytest.fixture
 def fast(request):
-    """ --fast config option """
+    """--fast config option"""
     return request.config.getoption('--fast')
 
 
 @pytest.fixture
 def loop_debug(request):
-    """ --enable-loop-debug config option """
+    """--enable-loop-debug config option"""
     return request.config.getoption('--enable-loop-debug')
 
 
