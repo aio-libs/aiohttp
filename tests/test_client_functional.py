@@ -2311,3 +2311,40 @@ def test_error_in_performing_request(loop, ssl_ctx,
     # second try should not hang
     with pytest.raises(aiohttp.ClientConnectionError):
         yield from client.get('/')
+
+
+@asyncio.coroutine
+def test_await_after_cancelling(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    client = yield from test_client(app)
+
+    fut1 = create_future(loop)
+    fut2 = create_future(loop)
+
+    @asyncio.coroutine
+    def fetch1():
+        resp = yield from client.get('/')
+        assert resp.status == 200
+        fut1.set_result(None)
+        with pytest.raises(asyncio.CancelledError):
+            yield from fut2
+        resp.release()
+
+    @asyncio.coroutine
+    def fetch2():
+        yield from fut1
+        resp = yield from client.get('/')
+        assert resp.status == 200
+
+    @asyncio.coroutine
+    def canceller():
+        yield from fut1
+        fut2.cancel()
+
+    yield from asyncio.gather(fetch1(), fetch2(), canceller(), loop=loop)
