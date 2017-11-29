@@ -363,7 +363,7 @@ class BaseConnector(object):
 
         if self._limit:
             # total calc available connections
-            available = self._limit - len(self._waiters) - len(self._acquired)
+            available = self._limit - len(self._acquired)
 
             # check limit per host
             if (self._limit_per_host and available > 0 and
