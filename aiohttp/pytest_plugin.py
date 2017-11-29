@@ -188,7 +188,7 @@ def pytest_generate_tests(metafunc):
     for name in loops.split(','):
         required = not name.endswith('?')
         name = name.strip(' ?')
-        if name not in avail_factories:
+        if name not in avail_factories:  # pragma: no cover
             if required:
                 raise ValueError(
                     "Unknown loop '%s', available loops: %s" % (
