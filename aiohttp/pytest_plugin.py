@@ -96,8 +96,14 @@ def pytest_fixture_setup(fixturedef, request):
 
 @pytest.fixture
 def fast(request):
-    """ --fast config option """
-    return request.config.getoption('--fast')  # pragma: no cover
+    """--fast config option"""
+    return request.config.getoption('--fast')
+
+
+@pytest.fixture
+def loop_debug(request):
+    """--enable-loop-debug config option"""
+    return request.config.getoption('--enable-loop-debug')
 
 
 @contextlib.contextmanager
@@ -162,50 +168,47 @@ def pytest_pyfunc_call(pyfuncitem):
         return True
 
 
-def pytest_configure(config):
-    loops = config.getoption('--loop')
+def pytest_generate_tests(metafunc):
+    if 'loop_factory' not in metafunc.fixturenames:
+        return
 
-    factories = {'pyloop': asyncio.new_event_loop}
+    loops = metafunc.config.option.loop
+    avail_factories = {'pyloop': asyncio.new_event_loop}
 
     if uvloop is not None:  # pragma: no cover
-        factories['uvloop'] = uvloop.new_event_loop
+        avail_factories['uvloop'] = uvloop.new_event_loop
 
     if tokio is not None:  # pragma: no cover
-        factories['tokio'] = tokio.new_event_loop
-
-    LOOP_FACTORIES.clear()
-    LOOP_FACTORY_IDS.clear()
+        avail_factories['tokio'] = tokio.new_event_loop
 
     if loops == 'all':
         loops = 'pyloop,uvloop?,tokio?'
 
+    factories = {}
     for name in loops.split(','):
         required = not name.endswith('?')
         name = name.strip(' ?')
-        if name in factories:
-            LOOP_FACTORIES.append(factories[name])
-            LOOP_FACTORY_IDS.append(name)
-        elif required:
-            raise ValueError(
-                "Unknown loop '%s', available loops: %s" % (
-                    name, list(factories.keys())))
-    asyncio.set_event_loop(None)
+        if name not in avail_factories:  # pragma: no cover
+            if required:
+                raise ValueError(
+                    "Unknown loop '%s', available loops: %s" % (
+                        name, list(factories.keys())))
+            else:
+                continue
+        factories[name] = avail_factories[name]
+    metafunc.parametrize("loop_factory",
+                         list(factories.values()),
+                         ids=list(factories.keys()))
 
 
-LOOP_FACTORIES = []
-LOOP_FACTORY_IDS = []
-
-
-@pytest.fixture(params=LOOP_FACTORIES, ids=LOOP_FACTORY_IDS)
-def loop(request):
+@pytest.fixture
+def loop(loop_factory, fast, loop_debug):
     """Return an instance of the event loop."""
-    fast = request.config.getoption('--fast')
-    debug = request.config.getoption('--enable-loop-debug')
-
-    with loop_context(request.param, fast=fast) as _loop:
-        if debug:
+    with loop_context(loop_factory, fast=fast) as _loop:
+        if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
         yield _loop
+    asyncio.set_event_loop(None)
 
 
 @pytest.fixture
