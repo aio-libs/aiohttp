@@ -294,8 +294,8 @@ class Resource(AbstractResource):
 
             if (route_method == request.method or
                     route_method == hdrs.METH_ANY):
-                return UrlMappingMatchInfo(match_dict, route_obj), \
-                       allowed_methods
+                return (UrlMappingMatchInfo(match_dict, route_obj),
+                        allowed_methods)
         else:
             return None, allowed_methods
 
