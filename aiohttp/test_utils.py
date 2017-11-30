@@ -8,25 +8,23 @@ import socket
 import sys
 import unittest
 from abc import ABC, abstractmethod
-from contextlib import contextmanager
 from unittest import mock
 
 from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import _RequestContextManager
+from aiohttp.client import _RequestContextManager, _WSRequestContextManager
 
 from . import ClientSession, hdrs
-from .helpers import PY_35, noop, sentinel
+from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
 from .web import Request, Server, UrlMappingMatchInfo
 
 
 def run_briefly(loop):
-    @asyncio.coroutine
-    def once():
+    async def once():
         pass
     t = asyncio.Task(once(), loop=loop)
     loop.run_until_complete(t)
@@ -52,8 +50,7 @@ class BaseTestServer(ABC):
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
 
-    @asyncio.coroutine
-    def start_server(self, loop=None, **kwargs):
+    async def start_server(self, loop=None, **kwargs):
         if self.server:
             return
         self._loop = loop
@@ -71,13 +68,12 @@ class BaseTestServer(ABC):
                                              self.host,
                                              self.port))
 
-        handler = yield from self._make_factory(**kwargs)
-        self.server = yield from self._loop.create_server(
+        handler = await self._make_factory(**kwargs)
+        self.server = await self._loop.create_server(
             handler, ssl=self._ssl, sock=self._socket)
 
     @abstractmethod  # pragma: no cover
-    @asyncio.coroutine
-    def _make_factory(self, **kwargs):
+    async def _make_factory(self, **kwargs):
         pass
 
     def make_url(self, path):
@@ -96,8 +92,7 @@ class BaseTestServer(ABC):
     def closed(self):
         return self._closed
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         """Close all fixtures created by the test client.
 
         After that point, the TestClient is no longer usable.
@@ -111,33 +106,29 @@ class BaseTestServer(ABC):
         """
         if self.started and not self.closed:
             self.server.close()
-            yield from self.server.wait_closed()
+            await self.server.wait_closed()
             self._root = None
             self.port = None
-            yield from self._close_hook()
+            await self._close_hook()
             self._closed = True
 
     @abstractmethod
-    @asyncio.coroutine
-    def _close_hook(self):
+    async def _close_hook(self):
         pass  # pragma: no cover
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server(loop=self._loop))
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            yield from self.start_server(loop=self._loop)
-            return self
+    async def __aenter__(self):
+        await self.start_server(loop=self._loop)
+        return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_value, traceback):
-            yield from self.close()
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.close()
 
 
 class TestServer(BaseTestServer):
@@ -147,17 +138,17 @@ class TestServer(BaseTestServer):
         self.app = app
         super().__init__(scheme=scheme, host=host, **kwargs)
 
-    @asyncio.coroutine
-    def _make_factory(self, **kwargs):
-        yield from self.app.startup()
+    async def _make_factory(self, **kwargs):
+        self.app._set_loop(self._loop)
+        self.app.freeze()
+        await self.app.startup()
         self.handler = self.app.make_handler(loop=self._loop, **kwargs)
         return self.handler
 
-    @asyncio.coroutine
-    def _close_hook(self):
-        yield from self.app.shutdown()
-        yield from self.handler.shutdown()
-        yield from self.app.cleanup()
+    async def _close_hook(self):
+        await self.app.shutdown()
+        await self.handler.shutdown()
+        await self.app.cleanup()
 
 
 class RawTestServer(BaseTestServer):
@@ -167,14 +158,12 @@ class RawTestServer(BaseTestServer):
         self._handler = handler
         super().__init__(scheme=scheme, host=host, **kwargs)
 
-    @asyncio.coroutine
-    def _make_factory(self, debug=True, **kwargs):
+    async def _make_factory(self, debug=True, **kwargs):
         self.handler = Server(
             self._handler, loop=self._loop, debug=True, **kwargs)
         return self.handler
 
-    @asyncio.coroutine
-    def _close_hook(self):
+    async def _close_hook(self):
         return
 
 
@@ -201,9 +190,8 @@ class TestClient:
         self._responses = []
         self._websockets = []
 
-    @asyncio.coroutine
-    def start_server(self):
-        yield from self._server.start_server(loop=self._loop)
+    async def start_server(self):
+        await self._server.start_server(loop=self._loop)
 
     @property
     def host(self):
@@ -231,8 +219,7 @@ class TestClient:
     def make_url(self, path):
         return self._server.make_url(path)
 
-    @asyncio.coroutine
-    def request(self, method, path, *args, **kwargs):
+    async def request(self, method, path, *args, **kwargs):
         """Routes a request to tested http server.
 
         The interface is identical to asyncio.ClientSession.request,
@@ -240,7 +227,7 @@ class TestClient:
         test server.
 
         """
-        resp = yield from self._session.request(
+        resp = await self._session.request(
             method, self.make_url(path), *args, **kwargs
         )
         # save it to close later
@@ -289,20 +276,23 @@ class TestClient:
             self.request(hdrs.METH_DELETE, path, *args, **kwargs)
         )
 
-    @asyncio.coroutine
     def ws_connect(self, path, *args, **kwargs):
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
 
         """
-        ws = yield from self._session.ws_connect(
+        return _WSRequestContextManager(
+            self._ws_connect(path, *args, **kwargs)
+        )
+
+    async def _ws_connect(self, path, *args, **kwargs):
+        ws = await self._session.ws_connect(
             self.make_url(path), *args, **kwargs)
         self._websockets.append(ws)
         return ws
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         """Close all fixtures created by the test client.
 
         After that point, the TestClient is no longer usable.
@@ -318,27 +308,24 @@ class TestClient:
             for resp in self._responses:
                 resp.close()
             for ws in self._websockets:
-                yield from ws.close()
-            yield from self._session.close()
-            yield from self._server.close()
+                await ws.close()
+            await self._session.close()
+            await self._server.close()
             self._closed = True
 
     def __enter__(self):
-        self._loop.run_until_complete(self.start_server())
-        return self
+        raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self._loop.run_until_complete(self.close())
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
-    if PY_35:
-        @asyncio.coroutine
-        def __aenter__(self):
-            yield from self.start_server()
-            return self
+    async def __aenter__(self):
+        await self.start_server()
+        return self
 
-        @asyncio.coroutine
-        def __aexit__(self, exc_type, exc_value, traceback):
-            yield from self.close()
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.close()
 
 
 class AioHTTPTestCase(unittest.TestCase):
@@ -357,8 +344,7 @@ class AioHTTPTestCase(unittest.TestCase):
     execute function on the test client using asynchronous methods.
     """
 
-    @asyncio.coroutine
-    def get_application(self):
+    async def get_application(self):
         """
         This method should be overridden
         to return the aiohttp.web.Application
@@ -387,8 +373,7 @@ class AioHTTPTestCase(unittest.TestCase):
 
         self.loop.run_until_complete(self.setUpAsync())
 
-    @asyncio.coroutine
-    def setUpAsync(self):
+    async def setUpAsync(self):
         pass
 
     def tearDown(self):
@@ -396,17 +381,14 @@ class AioHTTPTestCase(unittest.TestCase):
         self.loop.run_until_complete(self.client.close())
         teardown_test_loop(self.loop)
 
-    @asyncio.coroutine
-    def tearDownAsync(self):
+    async def tearDownAsync(self):
         pass
 
-    @asyncio.coroutine
-    def get_server(self, app):
+    async def get_server(self, app):
         """Return a TestServer instance."""
         return TestServer(app, loop=self.loop)
 
-    @asyncio.coroutine
-    def get_client(self, server):
+    async def get_client(self, server):
         """Return a TestClient instance."""
         return TestClient(server, loop=self.loop)
 
@@ -451,7 +433,8 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
         policy = asyncio.get_event_loop_policy()
         watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
-        policy.set_child_watcher(watcher)
+        with contextlib.suppress(NotImplementedError):
+            policy.set_child_watcher(watcher)
     return loop
 
 
@@ -476,6 +459,7 @@ def _create_app_mock():
     app = mock.Mock()
     app._debug = False
     app.on_response_prepare = Signal(app)
+    app.on_response_prepare.freeze()
     return app
 
 
@@ -493,6 +477,7 @@ def _create_transport(sslcontext=None):
 
 
 def make_mocked_request(method, path, headers=None, *,
+                        match_info=sentinel,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
                         writer=sentinel,
@@ -501,7 +486,6 @@ def make_mocked_request(method, path, headers=None, *,
                         transport=sentinel,
                         payload=sentinel,
                         sslcontext=None,
-                        secure_proxy_ssl_header=None,
                         client_max_size=1024**2,
                         loop=...):
     """Creates mocked web.Request testing purposes.
@@ -547,8 +531,9 @@ def make_mocked_request(method, path, headers=None, *,
 
     if payload_writer is sentinel:
         payload_writer = mock.Mock()
-        payload_writer.write_eof.side_effect = noop
-        payload_writer.drain.side_effect = noop
+        payload_writer.write = make_mocked_coro(None)
+        payload_writer.write_eof = make_mocked_coro(None)
+        payload_writer.drain = make_mocked_coro(None)
 
     protocol.transport = transport
     protocol.writer = writer
@@ -556,23 +541,12 @@ def make_mocked_request(method, path, headers=None, *,
     if payload is sentinel:
         payload = mock.Mock()
 
-    time_service = mock.Mock()
-    time_service.time.return_value = 12345
-    time_service.strtime.return_value = "Tue, 15 Nov 1994 08:12:31 GMT"
-
-    @contextmanager
-    def timeout(*args, **kw):
-        yield
-
-    time_service.timeout = mock.Mock()
-    time_service.timeout.side_effect = timeout
-
     req = Request(message, payload,
-                  protocol, payload_writer, time_service, task, loop,
-                  secure_proxy_ssl_header=secure_proxy_ssl_header,
+                  protocol, payload_writer, task, loop,
                   client_max_size=client_max_size)
 
-    match_info = UrlMappingMatchInfo({}, mock.Mock())
+    match_info = UrlMappingMatchInfo(
+        {} if match_info is sentinel else match_info, mock.Mock())
     match_info.add_app(app)
     req._match_info = match_info
 

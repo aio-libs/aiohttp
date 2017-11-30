@@ -1,15 +1,21 @@
 import asyncio
+import base64
+import binascii
+import hashlib
 import json
 from collections import namedtuple
 
+import async_timeout
+from multidict import CIMultiDict
+
 from . import hdrs
-from .helpers import PY_35, PY_352, Timeout, call_later, create_future
-from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, HttpProcessingError,
-                   WebSocketError, WebSocketReader, WSMessage, WSMsgType,
-                   do_handshake)
+from .helpers import call_later, set_result
+from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
+                   WebSocketError, WebSocketReader, WebSocketWriter, WSMessage,
+                   WSMsgType, ws_ext_gen, ws_ext_parse)
+from .log import ws_logger
 from .streams import FlowControlDataQueue
-from .web_exceptions import (HTTPBadRequest, HTTPInternalServerError,
-                             HTTPMethodNotAllowed)
+from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
 from .web_response import StreamResponse
 
 
@@ -32,7 +38,7 @@ class WebSocketResponse(StreamResponse):
     def __init__(self, *,
                  timeout=10.0, receive_timeout=None,
                  autoclose=True, autoping=True, heartbeat=None,
-                 protocols=()):
+                 protocols=(), compress=True):
         super().__init__(status=101)
         self._protocols = protocols
         self._ws_protocol = None
@@ -54,6 +60,7 @@ class WebSocketResponse(StreamResponse):
         if heartbeat is not None:
             self._pong_heartbeat = heartbeat/2.0
         self._pong_response_cb = None
+        self._compress = compress
 
     def _cancel_heartbeat(self):
         if self._pong_response_cb is not None:
@@ -73,7 +80,7 @@ class WebSocketResponse(StreamResponse):
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            self.ping()
+            self._writer.ping()
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -87,41 +94,103 @@ class WebSocketResponse(StreamResponse):
             self._exception = asyncio.TimeoutError()
             self._req.transport.close()
 
-    @asyncio.coroutine
-    def prepare(self, request):
+    async def prepare(self, request):
         # make pre-check to don't hide it by do_handshake() exceptions
         if self._payload_writer is not None:
             return self._payload_writer
 
         protocol, writer = self._pre_start(request)
-        payload_writer = yield from super().prepare(request)
+        payload_writer = await super().prepare(request)
         self._post_start(request, protocol, writer)
-        yield from payload_writer.drain()
+        await payload_writer.drain()
         return payload_writer
+
+    def _handshake(self, request):
+        headers = request.headers
+        if request.method != hdrs.METH_GET:
+            raise HTTPMethodNotAllowed(request.method, [hdrs.METH_GET])
+        if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
+            raise HTTPBadRequest(
+                text=('No WebSocket UPGRADE hdr: {}\n Can '
+                      '"Upgrade" only to "WebSocket".')
+                .format(headers.get(hdrs.UPGRADE)))
+
+        if 'upgrade' not in headers.get(hdrs.CONNECTION, '').lower():
+            raise HTTPBadRequest(
+                text='No CONNECTION upgrade hdr: {}'.format(
+                    headers.get(hdrs.CONNECTION)))
+
+        # find common sub-protocol between client and server
+        protocol = None
+        if hdrs.SEC_WEBSOCKET_PROTOCOL in headers:
+            req_protocols = [str(proto.strip()) for proto in
+                             headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
+
+            for proto in req_protocols:
+                if proto in self._protocols:
+                    protocol = proto
+                    break
+            else:
+                # No overlap found: Return no protocol as per spec
+                ws_logger.warning(
+                    'Client protocols %r don’t overlap server-known ones %r',
+                    req_protocols, self._protocols)
+
+        # check supported version
+        version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')
+        if version not in ('13', '8', '7'):
+            raise HTTPBadRequest(
+                text='Unsupported version: {}'.format(version))
+
+        # check client handshake for validity
+        key = headers.get(hdrs.SEC_WEBSOCKET_KEY)
+        try:
+            if not key or len(base64.b64decode(key)) != 16:
+                raise HTTPBadRequest(
+                    text='Handshake error: {!r}'.format(key))
+        except binascii.Error:
+            raise HTTPBadRequest(
+                text='Handshake error: {!r}'.format(key)) from None
+
+        accept_val = base64.b64encode(
+            hashlib.sha1(key.encode() + WS_KEY).digest()).decode()
+        response_headers = CIMultiDict({hdrs.UPGRADE: 'websocket',
+                                        hdrs.CONNECTION: 'upgrade',
+                                        hdrs.TRANSFER_ENCODING: 'chunked',
+                                        hdrs.SEC_WEBSOCKET_ACCEPT: accept_val})
+
+        notakeover = False
+        compress = self._compress
+        if compress:
+            extensions = headers.get(hdrs.SEC_WEBSOCKET_EXTENSIONS)
+            # Server side always get return with no exception.
+            # If something happened, just drop compress extension
+            compress, notakeover = ws_ext_parse(extensions, isserver=True)
+            if compress:
+                enabledext = ws_ext_gen(compress=compress, isserver=True,
+                                        server_notakeover=notakeover)
+                response_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = enabledext
+
+        if protocol:
+            response_headers[hdrs.SEC_WEBSOCKET_PROTOCOL] = protocol
+        return (response_headers, protocol, compress, notakeover)
 
     def _pre_start(self, request):
         self._loop = request.loop
 
-        try:
-            status, headers, _, writer, protocol = do_handshake(
-                request.method, request.headers, request._protocol.writer,
-                self._protocols)
-        except HttpProcessingError as err:
-            if err.code == 405:
-                raise HTTPMethodNotAllowed(
-                    request.method, [hdrs.METH_GET], body=b'')
-            elif err.code == 400:
-                raise HTTPBadRequest(text=err.message, headers=err.headers)
-            else:  # pragma: no cover
-                raise HTTPInternalServerError() from err
+        headers, protocol, compress, notakeover = self._handshake(
+            request)
 
         self._reset_heartbeat()
 
-        if self.status != status:
-            self.set_status(status)
-        for k, v in headers:
-            self.headers[k] = v
+        self.set_status(101)
+        self.headers.update(headers)
         self.force_close()
+        self._compress = compress
+        writer = WebSocketWriter(request._protocol.writer,
+                                 compress=compress,
+                                 notakeover=notakeover)
+
         return protocol, writer
 
     def _post_start(self, request, protocol, writer):
@@ -129,16 +198,15 @@ class WebSocketResponse(StreamResponse):
         self._writer = writer
         self._reader = FlowControlDataQueue(
             request._protocol, limit=2 ** 16, loop=self._loop)
-        request.protocol.set_parser(WebSocketReader(self._reader))
+        request.protocol.set_parser(WebSocketReader(
+            self._reader, compress=self._compress))
 
     def can_prepare(self, request):
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
-            _, _, _, _, protocol = do_handshake(
-                request.method, request.headers, request._protocol.writer,
-                self._protocols)
-        except HttpProcessingError:
+            _, protocol, _, _ = self._handshake(request)
+        except HTTPException:
             return WebSocketReady(False, None)
         else:
             return WebSocketReady(True, protocol)
@@ -155,50 +223,52 @@ class WebSocketResponse(StreamResponse):
     def ws_protocol(self):
         return self._ws_protocol
 
+    @property
+    def compress(self):
+        return self._compress
+
     def exception(self):
         return self._exception
 
-    def ping(self, message='b'):
+    async def ping(self, message='b'):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        self._writer.ping(message)
+        await self._writer.ping(message)
 
-    def pong(self, message='b'):
+    async def pong(self, message='b'):
         # unsolicited pong
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
-        self._writer.pong(message)
+        await self._writer.pong(message)
 
-    def send_str(self, data):
+    async def send_str(self, data):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
-        return self._writer.send(data, binary=False)
+        await self._writer.send(data, binary=False)
 
-    def send_bytes(self, data):
+    async def send_bytes(self, data):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
-        return self._writer.send(data, binary=True)
+        await self._writer.send(data, binary=True)
 
-    def send_json(self, data, *, dumps=json.dumps):
-        return self.send_str(dumps(data))
+    async def send_json(self, data, *, dumps=json.dumps):
+        await self.send_str(dumps(data))
 
-    @asyncio.coroutine
-    def write_eof(self):
+    async def write_eof(self):
         if self._eof_sent:
             return
         if self._payload_writer is None:
             raise RuntimeError("Response has not been started")
 
-        yield from self.close()
+        await self.close()
         self._eof_sent = True
 
-    @asyncio.coroutine
-    def close(self, *, code=1000, message=b''):
+    async def close(self, *, code=1000, message=b''):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
 
@@ -208,13 +278,13 @@ class WebSocketResponse(StreamResponse):
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
             self._reader.feed_data(WS_CLOSING_MESSAGE, 0)
-            yield from self._waiting
+            await self._waiting
 
         if not self._closed:
             self._closed = True
             try:
                 self._writer.close(code, message)
-                yield from self.drain()
+                await self._payload_writer.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
@@ -227,8 +297,8 @@ class WebSocketResponse(StreamResponse):
                 return True
 
             try:
-                with Timeout(self._timeout, loop=self._loop):
-                    msg = yield from self._reader.read()
+                with async_timeout.timeout(self._timeout, loop=self._loop):
+                    msg = await self._reader.read()
             except asyncio.CancelledError:
                 self._close_code = 1006
                 raise
@@ -247,8 +317,7 @@ class WebSocketResponse(StreamResponse):
         else:
             return False
 
-    @asyncio.coroutine
-    def receive(self, timeout=None):
+    async def receive(self, timeout=None):
         if self._reader is None:
             raise RuntimeError('Call .prepare() first')
 
@@ -266,83 +335,75 @@ class WebSocketResponse(StreamResponse):
                 return WS_CLOSING_MESSAGE
 
             try:
-                self._waiting = create_future(self._loop)
+                self._waiting = self._loop.create_future()
                 try:
-                    with Timeout(
+                    with async_timeout.timeout(
                             timeout or self._receive_timeout, loop=self._loop):
-                        msg = yield from self._reader.read()
+                        msg = await self._reader.read()
                     self._reset_heartbeat()
                 finally:
                     waiter = self._waiting
+                    set_result(waiter, True)
                     self._waiting = None
-                    waiter.set_result(True)
-            except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
+            except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
             except WebSocketError as exc:
                 self._close_code = exc.code
-                yield from self.close(code=exc.code)
+                await self.close(code=exc.code)
                 return WSMessage(WSMsgType.ERROR, exc, None)
             except Exception as exc:
                 self._exception = exc
                 self._closing = True
                 self._close_code = 1006
-                yield from self.close()
+                await self.close()
                 return WSMessage(WSMsgType.ERROR, exc, None)
 
             if msg.type == WSMsgType.CLOSE:
                 self._closing = True
                 self._close_code = msg.data
                 if not self._closed and self._autoclose:
-                    yield from self.close()
+                    await self.close()
             elif msg.type == WSMsgType.CLOSING:
                 self._closing = True
             elif msg.type == WSMsgType.PING and self._autoping:
-                self.pong(msg.data)
+                await self.pong(msg.data)
                 continue
             elif msg.type == WSMsgType.PONG and self._autoping:
                 continue
 
             return msg
 
-    @asyncio.coroutine
-    def receive_str(self, *, timeout=None):
-        msg = yield from self.receive(timeout)
+    async def receive_str(self, *, timeout=None):
+        msg = await self.receive(timeout)
         if msg.type != WSMsgType.TEXT:
             raise TypeError(
                 "Received message {}:{!r} is not WSMsgType.TEXT".format(
                     msg.type, msg.data))
         return msg.data
 
-    @asyncio.coroutine
-    def receive_bytes(self, *, timeout=None):
-        msg = yield from self.receive(timeout)
+    async def receive_bytes(self, *, timeout=None):
+        msg = await self.receive(timeout)
         if msg.type != WSMsgType.BINARY:
             raise TypeError(
                 "Received message {}:{!r} is not bytes".format(msg.type,
                                                                msg.data))
         return msg.data
 
-    @asyncio.coroutine
-    def receive_json(self, *, loads=json.loads, timeout=None):
-        data = yield from self.receive_str(timeout=timeout)
+    async def receive_json(self, *, loads=json.loads, timeout=None):
+        data = await self.receive_str(timeout=timeout)
         return loads(data)
 
-    def write(self, data):
+    async def write(self, data):
         raise RuntimeError("Cannot call .write() for websocket")
 
-    if PY_35:
-        def __aiter__(self):
-            return self
+    def __aiter__(self):
+        return self
 
-        if not PY_352:  # pragma: no cover
-            __aiter__ = asyncio.coroutine(__aiter__)
-
-        @asyncio.coroutine
-        def __anext__(self):
-            msg = yield from self.receive()
-            if msg.type in (WSMsgType.CLOSE,
-                            WSMsgType.CLOSING,
-                            WSMsgType.CLOSED):
-                raise StopAsyncIteration  # NOQA
-            return msg
+    async def __anext__(self):
+        msg = await self.receive()
+        if msg.type in (WSMsgType.CLOSE,
+                        WSMsgType.CLOSING,
+                        WSMsgType.CLOSED):
+            raise StopAsyncIteration  # NOQA
+        return msg

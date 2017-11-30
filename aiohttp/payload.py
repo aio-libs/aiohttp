@@ -1,4 +1,3 @@
-import asyncio
 import io
 import json
 import mimetypes
@@ -11,11 +10,11 @@ from multidict import CIMultiDict
 from . import hdrs
 from .helpers import (content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
-from .streams import DEFAULT_LIMIT, DataQueue, EofStream, StreamReader
+from .streams import DEFAULT_LIMIT
 
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
-           'BytesPayload', 'StringPayload', 'StreamReaderPayload',
+           'BytesPayload', 'StringPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',
            'TextIOPayload', 'StringIOPayload', 'JsonPayload')
 
@@ -119,24 +118,18 @@ class Payload(ABC):
             return Payload._content_type
 
     def set_content_disposition(self, disptype, quote_fields=True, **params):
-        """Sets ``Content-Disposition`` header.
-
-        :param str disptype: Disposition type: inline, attachment, form-data.
-                            Should be valid extension token (see RFC 2183)
-        :param dict params: Disposition params
-        """
+        """Sets ``Content-Disposition`` header."""
         if self._headers is None:
             self._headers = CIMultiDict()
 
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
             disptype, quote_fields=quote_fields, **params)
 
-    @asyncio.coroutine  # pragma: no branch
     @abstractmethod
-    def write(self, writer):
-        """Write payload
+    async def write(self, writer):
+        """Write payload.
 
-        :param AbstractPayloadWriter writer:
+        writer is an AbstractPayloadWriter instance:
         """
 
 
@@ -158,9 +151,8 @@ class BytesPayload(Payload):
                           " lock the event loop. You should probably pass an "
                           "io.BytesIO object instead", ResourceWarning)
 
-    @asyncio.coroutine
-    def write(self, writer):
-        yield from writer.write(self._value)
+    async def write(self, writer):
+        await writer.write(self._value)
 
 
 class StringPayload(BytesPayload):
@@ -173,8 +165,8 @@ class StringPayload(BytesPayload):
                 encoding = 'utf-8'
                 content_type = 'text/plain; charset=utf-8'
             else:
-                *_, params = parse_mimetype(content_type)
-                encoding = params.get('charset', 'utf-8')
+                mimetype = parse_mimetype(content_type)
+                encoding = mimetype.parameters.get('charset', 'utf-8')
         else:
             if content_type is None:
                 content_type = 'text/plain; charset=%s' % encoding
@@ -201,12 +193,11 @@ class IOBasePayload(Payload):
         if self._filename is not None and disposition is not None:
             self.set_content_disposition(disposition, filename=self._filename)
 
-    @asyncio.coroutine
-    def write(self, writer):
+    async def write(self, writer):
         try:
             chunk = self._value.read(DEFAULT_LIMIT)
             while chunk:
-                yield from writer.write(chunk)
+                await writer.write(chunk)
                 chunk = self._value.read(DEFAULT_LIMIT)
         finally:
             self._value.close()
@@ -222,8 +213,8 @@ class TextIOPayload(IOBasePayload):
                 encoding = 'utf-8'
                 content_type = 'text/plain; charset=utf-8'
             else:
-                *_, params = parse_mimetype(content_type)
-                encoding = params.get('charset', 'utf-8')
+                mimetype = parse_mimetype(content_type)
+                encoding = mimetype.parameters.get('charset', 'utf-8')
         else:
             if content_type is None:
                 content_type = 'text/plain; charset=%s' % encoding
@@ -239,12 +230,11 @@ class TextIOPayload(IOBasePayload):
         except OSError:
             return None
 
-    @asyncio.coroutine
-    def write(self, writer):
+    async def write(self, writer):
         try:
             chunk = self._value.read(DEFAULT_LIMIT)
             while chunk:
-                yield from writer.write(chunk.encode(self._encoding))
+                await writer.write(chunk.encode(self._encoding))
                 chunk = self._value.read(DEFAULT_LIMIT)
         finally:
             self._value.close()
@@ -254,10 +244,10 @@ class BytesIOPayload(IOBasePayload):
 
     @property
     def size(self):
-        p = self._value.tell()
-        l = self._value.seek(0, os.SEEK_END)
-        self._value.seek(p)
-        return l - p
+        position = self._value.tell()
+        end = self._value.seek(0, os.SEEK_END)
+        self._value.seek(position)
+        return end - position
 
 
 class BufferedReaderPayload(IOBasePayload):
@@ -270,30 +260,6 @@ class BufferedReaderPayload(IOBasePayload):
             # data.fileno() is not supported, e.g.
             # io.BufferedReader(io.BytesIO(b'data'))
             return None
-
-
-class StreamReaderPayload(Payload):
-
-    @asyncio.coroutine
-    def write(self, writer):
-        chunk = yield from self._value.read(DEFAULT_LIMIT)
-        while chunk:
-            yield from writer.write(chunk)
-            chunk = yield from self._value.read(DEFAULT_LIMIT)
-
-
-class DataQueuePayload(Payload):
-
-    @asyncio.coroutine
-    def write(self, writer):
-        while True:
-            try:
-                chunk = yield from self._value.read()
-                if not chunk:
-                    break
-                yield from writer.write(chunk)
-            except EofStream:
-                break
 
 
 class JsonPayload(BytesPayload):
@@ -316,6 +282,3 @@ PAYLOAD_REGISTRY.register(BytesIOPayload, io.BytesIO)
 PAYLOAD_REGISTRY.register(
     BufferedReaderPayload, (io.BufferedReader, io.BufferedRandom))
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
-PAYLOAD_REGISTRY.register(
-    StreamReaderPayload, (asyncio.StreamReader, StreamReader))
-PAYLOAD_REGISTRY.register(DataQueuePayload, DataQueue)

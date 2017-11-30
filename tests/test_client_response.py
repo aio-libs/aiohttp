@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for aiohttp/client.py"""
 
-import asyncio
 import gc
 from unittest import mock
 
@@ -9,7 +8,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import helpers, http
+from aiohttp import http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 
 
@@ -18,8 +17,7 @@ def session():
     return mock.Mock()
 
 
-@asyncio.coroutine
-def test_http_processing_error(session):
+async def test_http_processing_error(session):
     loop = mock.Mock()
     request_info = mock.Mock()
     response = ClientResponse(
@@ -34,7 +32,7 @@ def test_http_processing_error(session):
     connection.protocol.set_exception(http.HttpProcessingError())
 
     with pytest.raises(aiohttp.ClientResponseError) as info:
-        yield from response.start(connection)
+        await response.start(connection)
 
     assert info.value.request_info is request_info
 
@@ -113,41 +111,38 @@ def test_url_obj_deprecated():
         response.url_obj
 
 
-@asyncio.coroutine
-def test_read_and_release_connection(loop, session):
+async def test_read_and_release_connection(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result(b'payload')
         return fut
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
-    res = yield from response.read()
+    res = await response.read()
     assert res == b'payload'
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_read_and_release_connection_with_error(loop, session):
+async def test_read_and_release_connection_with_error(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     content = response.content = mock.Mock()
-    content.read.return_value = helpers.create_future(loop)
+    content.read.return_value = loop.create_future()
     content.read.return_value.set_exception(ValueError)
 
     with pytest.raises(ValueError):
-        yield from response.read()
+        await response.read()
     assert response._closed
 
 
-@asyncio.coroutine
-def test_release(loop, session):
+async def test_release(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
-    fut = helpers.create_future(loop)
+    fut = loop.create_future()
     fut.set_result(b'')
     content = response.content = mock.Mock()
     content.readany.return_value = fut
@@ -156,8 +151,7 @@ def test_release(loop, session):
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_release_on_del(loop, session):
+async def test_release_on_del(loop, session):
     connection = mock.Mock()
     connection.protocol.upgraded = False
 
@@ -172,8 +166,7 @@ def test_release_on_del(loop, session):
     assert connection.release.called
 
 
-@asyncio.coroutine
-def test_response_eof(loop, session):
+async def test_response_eof(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     response._closed = False
@@ -185,8 +178,7 @@ def test_response_eof(loop, session):
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_response_eof_upgraded(loop, session):
+async def test_response_eof_upgraded(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
@@ -198,8 +190,7 @@ def test_response_eof_upgraded(loop, session):
     assert response._connection is conn
 
 
-@asyncio.coroutine
-def test_response_eof_after_connection_detach(loop, session):
+async def test_response_eof_after_connection_detach(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     response._closed = False
@@ -211,13 +202,12 @@ def test_response_eof_after_connection_detach(loop, session):
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_text(loop, session):
+async def test_text(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -226,18 +216,17 @@ def test_text(loop, session):
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
-    res = yield from response.text()
+    res = await response.text()
     assert res == '{"тест": "пройден"}'
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_text_bad_encoding(loop, session):
+async def test_text_bad_encoding(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тестkey": "пройденvalue"}'.encode('cp1251'))
         return fut
 
@@ -247,20 +236,19 @@ def test_text_bad_encoding(loop, session):
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
     with pytest.raises(UnicodeDecodeError):
-        yield from response.text()
+        await response.text()
     # only the valid utf-8 characters will be returned
-    res = yield from response.text(errors='ignore')
+    res = await response.text(errors='ignore')
     assert res == '{"key": "value"}'
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_text_custom_encoding(loop, session):
+async def test_text_custom_encoding(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -268,21 +256,20 @@ def test_text_custom_encoding(loop, session):
         'Content-Type': 'application/json'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
-    response._get_encoding = mock.Mock()
+    response.get_encoding = mock.Mock()
 
-    res = yield from response.text(encoding='cp1251')
+    res = await response.text(encoding='cp1251')
     assert res == '{"тест": "пройден"}'
     assert response._connection is None
-    assert not response._get_encoding.called
+    assert not response.get_encoding.called
 
 
-@asyncio.coroutine
-def test_text_detect_encoding(loop, session):
+async def test_text_detect_encoding(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -290,19 +277,38 @@ def test_text_detect_encoding(loop, session):
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
-    yield from response.read()
-    res = yield from response.text()
+    await response.read()
+    res = await response.text()
     assert res == '{"тест": "пройден"}'
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_text_after_read(loop, session):
+async def test_text_detect_encoding_if_invalid_charset(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {'Content-Type': 'text/plain;charset=invalid'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    await response.read()
+    res = await response.text()
+    assert res == '{"тест": "пройден"}'
+    assert response._connection is None
+    assert response.get_encoding().lower() == 'windows-1251'
+
+
+async def test_text_after_read(loop, session):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop, session)
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -311,18 +317,17 @@ def test_text_after_read(loop, session):
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
-    res = yield from response.text()
+    res = await response.text()
     assert res == '{"тест": "пройден"}'
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_json(loop, session):
+async def test_json(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -331,13 +336,12 @@ def test_json(loop, session):
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
-    res = yield from response.json()
+    res = await response.json()
     assert res == {'тест': 'пройден'}
     assert response._connection is None
 
 
-@asyncio.coroutine
-def test_json_custom_loader(loop, session):
+async def test_json_custom_loader(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     response.headers = {
@@ -347,12 +351,11 @@ def test_json_custom_loader(loop, session):
     def custom(content):
         return content + '-custom'
 
-    res = yield from response.json(loads=custom)
+    res = await response.json(loads=custom)
     assert res == 'data-custom'
 
 
-@asyncio.coroutine
-def test_json_invalid_content_type(loop, session):
+async def test_json_invalid_content_type(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     response.headers = {
@@ -360,30 +363,28 @@ def test_json_invalid_content_type(loop, session):
     response._content = b''
 
     with pytest.raises(aiohttp.ContentTypeError) as info:
-        yield from response.json()
+        await response.json()
 
     assert info.value.request_info == response.request_info
 
 
-@asyncio.coroutine
-def test_json_no_content(loop, session):
+async def test_json_no_content(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
     response.headers = {
         'Content-Type': 'data/octet-stream'}
     response._content = b''
 
-    res = yield from response.json(content_type=None)
+    res = await response.json(content_type=None)
     assert res is None
 
 
-@asyncio.coroutine
-def test_json_override_encoding(loop, session):
+async def test_json_override_encoding(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
 
     def side_effect(*args, **kwargs):
-        fut = helpers.create_future(loop)
+        fut = loop.create_future()
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
@@ -391,12 +392,12 @@ def test_json_override_encoding(loop, session):
         'Content-Type': 'application/json;charset=utf8'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
-    response._get_encoding = mock.Mock()
+    response.get_encoding = mock.Mock()
 
-    res = yield from response.json(encoding='cp1251')
+    res = await response.json(encoding='cp1251')
     assert res == {'тест': 'пройден'}
     assert response._connection is None
-    assert not response._get_encoding.called
+    assert not response.get_encoding.called
 
 
 @pytest.mark.xfail
@@ -417,7 +418,7 @@ def test_get_encoding_unknown(loop, session):
     response.headers = {'Content-Type': 'application/json'}
     with mock.patch('aiohttp.client_reqrep.chardet') as m_chardet:
         m_chardet.detect.return_value = {'encoding': None}
-        assert response._get_encoding() == 'utf-8'
+        assert response.get_encoding() == 'utf-8'
 
 
 def test_raise_for_status_2xx():
@@ -475,6 +476,42 @@ def test_charset_no_charset():
     response.headers = {'Content-Type': 'application/json'}
 
     assert response.charset is None
+
+
+def test_content_disposition_full():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Disposition':
+                        'attachment; filename="archive.tar.gz"; foo=bar'}
+
+    assert 'attachment' == response.content_disposition.type
+    assert 'bar' == response.content_disposition.parameters["foo"]
+    assert 'archive.tar.gz' == response.content_disposition.filename
+    with pytest.raises(TypeError):
+        response.content_disposition.parameters["foo"] = "baz"
+
+
+def test_content_disposition_no_parameters():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Disposition': 'attachment'}
+
+    assert 'attachment' == response.content_disposition.type
+    assert response.content_disposition.filename is None
+    assert {} == response.content_disposition.parameters
+
+
+def test_content_disposition_no_header():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {}
+
+    assert response.content_disposition is None
+
+
+def test_content_disposition_cache():
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response.headers = {'Content-Disposition': 'attachment'}
+    cd = response.content_disposition
+    ClientResponse.headers = {'Content-Disposition': 'spam'}
+    assert cd is response.content_disposition
 
 
 def test_response_request_info():

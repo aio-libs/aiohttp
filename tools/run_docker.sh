@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+
 package_name="$1"
 if [ -z "$package_name" ]
 then
@@ -17,14 +19,14 @@ do
 done
 
 echo Creating dist folder with privileges of host-machine user
-mkdir dist  # This is required to be created with host-machine user privileges
+mkdir -p dist  # This is required to be created with host-machine user privileges
 
 for arch in x86_64 i686
 do
     echo
     echo
     arch_pull_pid=${docker_pull_pids[$arch]}
-    echo waiting for docker pull pid $arch_pull_pid to complete downloading container for $arch arch...
+    echo Waiting for docker pull PID $arch_pull_pid to complete downloading container for $arch arch...
     wait $arch_pull_pid  # await for docker image for current arch to be pulled from hub
     [ $arch == "i686" ] && dock_ext_args="linux32"
 

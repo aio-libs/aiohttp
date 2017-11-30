@@ -1,4 +1,3 @@
-import asyncio
 from unittest import mock
 
 from yarl import URL
@@ -9,8 +8,7 @@ from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 
 
-@asyncio.coroutine
-def test_oserror(loop):
+async def test_oserror(loop):
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -20,8 +18,7 @@ def test_oserror(loop):
     assert isinstance(proto.exception(), ClientOSError)
 
 
-@asyncio.coroutine
-def test_pause_resume_on_error(loop):
+async def test_pause_resume_on_error(loop):
     proto = ResponseHandler(loop=loop)
 
     proto.pause_reading()
@@ -31,8 +28,7 @@ def test_pause_resume_on_error(loop):
     assert not proto._reading_paused
 
 
-@asyncio.coroutine
-def test_client_proto_bad_message(loop):
+async def test_client_proto_bad_message(loop):
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -44,8 +40,7 @@ def test_client_proto_bad_message(loop):
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-@asyncio.coroutine
-def test_uncompleted_message(loop):
+async def test_uncompleted_message(loop):
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -61,8 +56,7 @@ def test_uncompleted_message(loop):
     assert dict(exc.message.headers) == {'Location': 'http://python.org/'}
 
 
-@asyncio.coroutine
-def test_client_protocol_readuntil_eof(loop):
+async def test_client_protocol_readuntil_eof(loop):
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -73,17 +67,24 @@ def test_client_protocol_readuntil_eof(loop):
 
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, mock.Mock())
-    yield from response.start(conn, read_until_eof=True)
+    await response.start(conn, read_until_eof=True)
 
     assert not response.content.is_eof()
 
     proto.data_received(b'0000')
-    data = yield from response.content.readany()
+    data = await response.content.readany()
     assert data == b'0000'
 
     proto.data_received(b'1111')
-    data = yield from response.content.readany()
+    data = await response.content.readany()
     assert data == b'1111'
 
     proto.connection_lost(None)
     assert response.content.is_eof()
+
+
+async def test_empty_data(loop):
+    proto = ResponseHandler(loop=loop)
+    proto.data_received(b'')
+
+    # do nothing

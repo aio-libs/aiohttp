@@ -1,12 +1,11 @@
 import asyncio
-import os
 import signal
 import socket
-import stat
 import sys
 import warnings
 from argparse import ArgumentParser
 from collections import Iterable, MutableMapping
+from functools import partial
 from importlib import import_module
 
 from yarl import URL
@@ -14,14 +13,16 @@ from yarl import URL
 from . import (hdrs, web_exceptions, web_fileresponse, web_middlewares,
                web_protocol, web_request, web_response, web_server,
                web_urldispatcher, web_ws)
-from .abc import AbstractMatchInfo, AbstractRouter
+from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
+from .helpers import AccessLogger
 from .http import HttpVersion  # noqa
 from .log import access_logger, web_logger
-from .signals import FuncSignal, PostSignal, PreSignal, Signal
+from .signals import Signal
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
+from .web_middlewares import _fix_request_current_app
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
@@ -50,7 +51,6 @@ class Application(MutableMapping):
                  middlewares=(),
                  handler_args=None,
                  client_max_size=1024**2,
-                 secure_proxy_ssl_header=None,
                  loop=None,
                  debug=...):
         if router is None:
@@ -60,13 +60,8 @@ class Application(MutableMapping):
         if loop is not None:
             warnings.warn("loop argument is deprecated", ResourceWarning)
 
-        if secure_proxy_ssl_header is not None:
-            warnings.warn(
-                "secure_proxy_ssl_header is deprecated", DeprecationWarning)
-
         self._debug = debug
         self._router = router
-        self._secure_proxy_ssl_header = secure_proxy_ssl_header
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
@@ -76,9 +71,6 @@ class Application(MutableMapping):
         self._frozen = False
         self._subapps = []
 
-        self._on_pre_signal = PreSignal()
-        self._on_post_signal = PostSignal()
-        self._on_loop_available = FuncSignal(self)
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
@@ -127,7 +119,6 @@ class Application(MutableMapping):
                 "web.Application instance initialized with different loop")
 
         self._loop = loop
-        self._on_loop_available.send(self)
 
         # set loop debug
         if self._debug is ...:
@@ -146,11 +137,8 @@ class Application(MutableMapping):
             return
 
         self._frozen = True
-        self._middlewares = tuple(reversed(self._middlewares))
+        self._middlewares = tuple(self._prepare_middleware())
         self._router.freeze()
-        self._on_loop_available.freeze()
-        self._on_pre_signal.freeze()
-        self._on_post_signal.freeze()
         self._on_response_prepare.freeze()
         self._on_startup.freeze()
         self._on_shutdown.freeze()
@@ -168,9 +156,8 @@ class Application(MutableMapping):
         def reg_handler(signame):
             subsig = getattr(subapp, signame)
 
-            @asyncio.coroutine
-            def handler(app):
-                yield from subsig.send(subapp)
+            async def handler(app):
+                await subsig.send(subapp)
             appsig = getattr(self, signame)
             appsig.append(handler)
 
@@ -198,22 +185,8 @@ class Application(MutableMapping):
         return resource
 
     @property
-    def on_loop_available(self):
-        warnings.warn("on_loop_available is deprecated and will be removed",
-                      DeprecationWarning, stacklevel=2)
-        return self._on_loop_available
-
-    @property
     def on_response_prepare(self):
         return self._on_response_prepare
-
-    @property
-    def on_pre_signal(self):
-        return self._on_pre_signal
-
-    @property
-    def on_post_signal(self):
-        return self._on_post_signal
 
     @property
     def on_startup(self):
@@ -235,8 +208,17 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, *, loop=None,
-                     secure_proxy_ssl_header=None, **kwargs):
+    def make_handler(self, *,
+                     loop=None,
+                     access_log_class=AccessLogger,
+                     **kwargs):
+
+        if not issubclass(access_log_class, AbstractAccessLogger):
+            raise TypeError(
+                'access_log_class must be subclass of '
+                'aiohttp.abc.AbstractAccessLogger, got {}'.format(
+                    access_log_class))
+
         self._set_loop(loop)
         self.freeze()
 
@@ -245,46 +227,52 @@ class Application(MutableMapping):
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
-        if secure_proxy_ssl_header:
-            self._secure_proxy_ssl_header = secure_proxy_ssl_header
         return Server(self._handle, request_factory=self._make_request,
+                      access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
 
-    @asyncio.coroutine
-    def startup(self):
+    async def startup(self):
         """Causes on_startup signal
 
         Should be called in the event loop along with the request handler.
         """
-        yield from self.on_startup.send(self)
+        await self.on_startup.send(self)
 
-    @asyncio.coroutine
-    def shutdown(self):
+    async def shutdown(self):
         """Causes on_shutdown signal
 
         Should be called before cleanup()
         """
-        yield from self.on_shutdown.send(self)
+        await self.on_shutdown.send(self)
 
-    @asyncio.coroutine
-    def cleanup(self):
+    async def cleanup(self):
         """Causes on_cleanup signal
 
         Should be called after shutdown()
         """
-        yield from self.on_cleanup.send(self)
+        await self.on_cleanup.send(self)
 
     def _make_request(self, message, payload, protocol, writer, task,
                       _cls=web_request.Request):
         return _cls(
-            message, payload, protocol, writer, protocol._time_service, task,
+            message, payload, protocol, writer, task,
             self._loop,
-            secure_proxy_ssl_header=self._secure_proxy_ssl_header,
             client_max_size=self._client_max_size)
 
-    @asyncio.coroutine
-    def _handle(self, request):
-        match_info = yield from self._router.resolve(request)
+    def _prepare_middleware(self):
+        for m in reversed(self._middlewares):
+            if getattr(m, '__middleware_version__', None) == 1:
+                yield m, True
+            else:
+                warnings.warn('old-style middleware "{!r}" deprecated, '
+                              'see #2252'.format(m),
+                              DeprecationWarning, stacklevel=2)
+                yield m, False
+        if self._middlewares:
+            yield _fix_request_current_app(self), True
+
+    async def _handle(self, request):
+        match_info = await self._router.resolve(request)
         assert isinstance(match_info, AbstractMatchInfo), match_info
         match_info.add_app(self)
 
@@ -295,23 +283,27 @@ class Application(MutableMapping):
         request._match_info = match_info
         expect = request.headers.get(hdrs.EXPECT)
         if expect:
-            resp = yield from match_info.expect_handler(request)
-            yield from request.writer.drain()
+            resp = await match_info.expect_handler(request)
+            await request.writer.drain()
 
         if resp is None:
             handler = match_info.handler
             for app in match_info.apps[::-1]:
-                for factory in app._middlewares:
-                    handler = yield from factory(app, handler)
+                for m, new_style in app._middlewares:
+                    if new_style:
+                        handler = partial(m, handler=handler)
+                    else:
+                        handler = await m(app, handler)
 
-            resp = yield from handler(request)
+            resp = await handler(request)
 
         assert isinstance(resp, web_response.StreamResponse), \
             ("Handler {!r} should return response instance, "
              "got {!r} [middlewares {!r}]").format(
                  match_info.handler, type(resp),
-                 [middleware for middleware in app.middlewares
-                  for app in match_info.apps])
+                 [middleware
+                  for app in match_info.apps
+                  for middleware in app.middlewares])
         return resp
 
     def __call__(self):
@@ -334,7 +326,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
                           host, port, path, sock, backlog):
 
     scheme = 'https' if ssl_context else 'http'
-    base_url = URL('{}://localhost'.format(scheme)).with_port(port)
+    base_url = URL.build(scheme=scheme, host='localhost', port=port)
 
     if path is None:
         paths = ()
@@ -366,7 +358,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
         port = 8443 if ssl_context else 8080
 
     server_creations = []
-    uris = [str(base_url.with_host(host)) for host in hosts]
+    uris = [str(base_url.with_host(host).with_port(port)) for host in hosts]
     if hosts:
         # Multiple hosts bound to same server is available in most loop
         # implementations, but only send multiple if we have multiple.
@@ -386,15 +378,6 @@ def _make_server_creators(handler, *, loop, ssl_context,
         )
         uris.append('{}://unix:{}:'.format(scheme, path))
 
-        # Clean up prior socket path if stale and not abstract.
-        # CPython 3.5.3+'s event loop already does this. See
-        # https://github.com/python/asyncio/issues/425
-        if path[0] not in (0, '\x00'):  # pragma: no branch
-            try:
-                if stat.S_ISSOCK(os.stat(path).st_mode):
-                    os.remove(path)
-            except FileNotFoundError:
-                pass
     for sock in socks:
         server_creations.append(
             loop.create_server(
@@ -405,7 +388,7 @@ def _make_server_creators(handler, *, loop, ssl_context,
         if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
             uris.append('{}://unix:{}:'.format(scheme, sock.getsockname()))
         else:
-            host, port = sock.getsockname()
+            host, port = sock.getsockname()[:2]
             uris.append(str(base_url.with_host(host).with_port(port)))
     return server_creations, uris
 
@@ -413,13 +396,12 @@ def _make_server_creators(handler, *, loop, ssl_context,
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_format=None,
-            access_log=access_logger, handle_signals=True, loop=None):
+            access_log=access_logger, handle_signals=True):
     """Run an app locally"""
-    user_supplied_loop = loop is not None
-    if loop is None:
-        loop = asyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
 
     app._set_loop(loop)
+    app.freeze()
     loop.run_until_complete(app.startup())
 
     try:
@@ -447,8 +429,9 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
                 pass
 
         try:
-            print("======== Running on {} ========\n"
-                  "(Press CTRL+C to quit)".format(', '.join(uris)))
+            if print:
+                print("======== Running on {} ========\n"
+                      "(Press CTRL+C to quit)".format(', '.join(uris)))
             loop.run_forever()
         except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
             pass
@@ -463,8 +446,9 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
             loop.run_until_complete(handler.shutdown(shutdown_timeout))
     finally:
         loop.run_until_complete(app.cleanup())
-    if not user_supplied_loop:
-        loop.close()
+    if hasattr(loop, 'shutdown_asyncgens'):
+        loop.run_until_complete(loop.shutdown_asyncgens())
+    loop.close()
 
 
 def main(argv):

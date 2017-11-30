@@ -1,24 +1,21 @@
 """WebSocket protocol versions 13 and 8."""
 
-import base64
-import binascii
 import collections
-import hashlib
 import json
 import random
+import re
 import sys
+import zlib
 from enum import IntEnum
 from struct import Struct
 
-from . import hdrs
 from .helpers import NO_EXTENSIONS, noop
-from .http_exceptions import HttpBadRequest, HttpProcessingError
 from .log import ws_logger
 
 
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
-           'WebSocketReader', 'WebSocketWriter', 'do_handshake',
-           'WSMessage', 'WebSocketError', 'WSMsgType', 'WSCloseCode')
+           'WebSocketReader', 'WebSocketWriter', 'WSMessage',
+           'WebSocketError', 'WSMsgType', 'WSCloseCode')
 
 
 class WSCloseCode(IntEnum):
@@ -89,10 +86,6 @@ class WSMessage(_WSMessageBase):
         """
         return loads(self.data)
 
-    @property
-    def tp(self):
-        return self.type
-
 
 WS_CLOSED_MESSAGE = WSMessage(WSMsgType.CLOSED, None, None)
 WS_CLOSING_MESSAGE = WSMessage(WSMsgType.CLOSING, None, None)
@@ -104,6 +97,10 @@ class WebSocketError(Exception):
     def __init__(self, code, message):
         self.code = code
         super().__init__(message)
+
+
+class WSHandshakeError(Exception):
+    """WebSocket protocol handshake error."""
 
 
 native_byteorder = sys.byteorder
@@ -146,6 +143,89 @@ else:
     except ImportError:  # pragma: no cover
         _websocket_mask = _websocket_mask_python
 
+_WS_DEFLATE_TRAILING = bytes([0x00, 0x00, 0xff, 0xff])
+
+
+_WS_EXT_RE = re.compile(r'^(?:;\s*(?:'
+                        r'(server_no_context_takeover)|'
+                        r'(client_no_context_takeover)|'
+                        r'(server_max_window_bits(?:=(\d+))?)|'
+                        r'(client_max_window_bits(?:=(\d+))?)))*$')
+
+_WS_EXT_RE_SPLIT = re.compile(r'permessage-deflate([^,]+)?')
+
+
+def ws_ext_parse(extstr, isserver=False):
+    if not extstr:
+        return 0, False
+
+    compress = 0
+    notakeover = False
+    for ext in _WS_EXT_RE_SPLIT.finditer(extstr):
+        defext = ext.group(1)
+        # Return compress = 15 when get `permessage-deflate`
+        if not defext:
+            compress = 15
+            break
+        match = _WS_EXT_RE.match(defext)
+        if match:
+            compress = 15
+            if isserver:
+                # Server never fail to detect compress handshake.
+                # Server does not need to send max wbit to client
+                if match.group(4):
+                    compress = int(match.group(4))
+                    # Group3 must match if group4 matches
+                    # Compress wbit 8 does not support in zlib
+                    # If compress level not support,
+                    # CONTINUE to next extension
+                    if compress > 15 or compress < 9:
+                        compress = 0
+                        continue
+                if match.group(1):
+                    notakeover = True
+                # Ignore regex group 5 & 6 for client_max_window_bits
+                break
+            else:
+                if match.group(6):
+                    compress = int(match.group(6))
+                    # Group5 must match if group6 matches
+                    # Compress wbit 8 does not support in zlib
+                    # If compress level not support,
+                    # FAIL the parse progress
+                    if compress > 15 or compress < 9:
+                        raise WSHandshakeError('Invalid window size')
+                if match.group(2):
+                    notakeover = True
+                # Ignore regex group 5 & 6 for client_max_window_bits
+                break
+        # Return Fail if client side and not match
+        elif not isserver:
+            raise WSHandshakeError('Extension for deflate not supported' +
+                                   ext.group(1))
+
+    return compress, notakeover
+
+
+def ws_ext_gen(compress=15, isserver=False,
+               server_notakeover=False):
+    # client_notakeover=False not used for server
+    # compress wbit 8 does not support in zlib
+    if compress < 9 or compress > 15:
+        raise ValueError('Compress wbits must between 9 and 15, '
+                         'zlib does not support wbits=8')
+    enabledext = ['permessage-deflate']
+    if not isserver:
+        enabledext.append('client_max_window_bits')
+
+    if compress < 15:
+        enabledext.append('server_max_window_bits=' + str(compress))
+    if server_notakeover:
+        enabledext.append('server_no_context_takeover')
+    # if client_notakeover:
+    #     enabledext.append('client_no_context_takeover')
+    return '; '.join(enabledext)
+
 
 class WSParserState(IntEnum):
     READ_HEADER = 1
@@ -156,7 +236,7 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
 
-    def __init__(self, queue):
+    def __init__(self, queue, compress=True):
         self.queue = queue
 
         self._exc = None
@@ -173,6 +253,9 @@ class WebSocketReader:
         self._frame_mask = None
         self._payload_length = 0
         self._payload_length_flag = 0
+        self._compressed = None
+        self._decompressobj = None
+        self._compress = compress
 
     def feed_eof(self):
         self.queue.feed_eof()
@@ -189,7 +272,9 @@ class WebSocketReader:
             return True, b''
 
     def _feed_data(self, data):
-        for fin, opcode, payload in self.parse_frame(data):
+        for fin, opcode, payload, compressed in self.parse_frame(data):
+            if compressed and not self._decompressobj:
+                self._decompressobj = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
             if opcode == WSMsgType.CLOSE:
                 if len(payload) >= 2:
                     close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
@@ -234,7 +319,6 @@ class WebSocketReader:
                     # got partial frame payload
                     if opcode != WSMsgType.CONTINUATION:
                         self._opcode = opcode
-
                     self._partial.append(payload)
                 else:
                     # previous frame was non finished
@@ -250,7 +334,16 @@ class WebSocketReader:
                         opcode = self._opcode
                         self._opcode = None
 
-                    payload_merged = b''.join(self._partial) + payload
+                    self._partial.append(payload)
+
+                    payload_merged = b''.join(self._partial)
+
+                    # Decompress process must to be done after all packets
+                    # received.
+                    if compressed:
+                        payload_merged = self._decompressobj.decompress(
+                            payload_merged + _WS_DEFLATE_TRAILING)
+
                     self._partial.clear()
 
                     if opcode == WSMsgType.TEXT:
@@ -300,7 +393,9 @@ class WebSocketReader:
                     #    1 bit, MUST be 0 unless negotiated otherwise
                     # frame-rsv3 = %x0 ;
                     #    1 bit, MUST be 0 unless negotiated otherwise
-                    if rsv1 or rsv2 or rsv3:
+                    #
+                    # Remove rsv1 from this test for deflate development
+                    if rsv2 or rsv3 or (rsv1 and not self._compress):
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
                             'Received frame with non-zero reserved bits')
@@ -311,7 +406,7 @@ class WebSocketReader:
                             'Received fragmented control frame')
 
                     has_mask = (second_byte >> 7) & 1
-                    length = (second_byte) & 0x7f
+                    length = second_byte & 0x7f
 
                     # Control frames MUST have a payload
                     # length of 125 bytes or less
@@ -320,6 +415,16 @@ class WebSocketReader:
                             WSCloseCode.PROTOCOL_ERROR,
                             'Control frame payload cannot be '
                             'larger than 125 bytes')
+
+                    # Set compress status if last package is FIN
+                    # OR set compress status if this is first fragment
+                    # Raise error if not first fragment with rsv1 = 0x1
+                    if self._frame_fin or self._compressed is None:
+                        self._compressed = True if rsv1 else False
+                    elif rsv1:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            'Received frame with non-zero reserved bits')
 
                     self._frame_fin = fin
                     self._frame_opcode = opcode
@@ -390,8 +495,11 @@ class WebSocketReader:
                     if self._has_mask:
                         _websocket_mask(self._frame_mask, payload)
 
-                    frames.append(
-                        (self._frame_fin, self._frame_opcode, payload))
+                    frames.append((
+                        self._frame_fin,
+                        self._frame_opcode,
+                        payload,
+                        self._compressed))
 
                     self._frame_payload = bytearray()
                     self._state = WSParserState.READ_HEADER
@@ -406,19 +514,39 @@ class WebSocketReader:
 class WebSocketWriter:
 
     def __init__(self, stream, *,
-                 use_mask=False, limit=DEFAULT_LIMIT, random=random.Random()):
+                 use_mask=False, limit=DEFAULT_LIMIT, random=random.Random(),
+                 compress=0, notakeover=False):
         self.stream = stream
         self.writer = stream.transport
         self.use_mask = use_mask
         self.randrange = random.randrange
+        self.compress = compress
+        self.notakeover = notakeover
         self._closing = False
         self._limit = limit
         self._output_size = 0
+        self._compressobj = None
 
     def _send_frame(self, message, opcode):
         """Send a frame over the websocket with message as its payload."""
         if self._closing:
             ws_logger.warning('websocket connection is closing.')
+
+        rsv = 0
+
+        # Only compress larger packets (disabled)
+        # Does small packet needs to be compressed?
+        # if self.compress and opcode < 8 and len(message) > 124:
+        if self.compress and opcode < 8:
+            if not self._compressobj:
+                self._compressobj = zlib.compressobj(wbits=-self.compress)
+
+            message = self._compressobj.compress(message)
+            message = message + self._compressobj.flush(
+                zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH)
+            if message.endswith(_WS_DEFLATE_TRAILING):
+                message = message[:-4]
+            rsv = rsv | 0x40
 
         msg_length = len(message)
 
@@ -429,11 +557,11 @@ class WebSocketWriter:
             mask_bit = 0
 
         if msg_length < 126:
-            header = PACK_LEN1(0x80 | opcode, msg_length | mask_bit)
+            header = PACK_LEN1(0x80 | rsv | opcode, msg_length | mask_bit)
         elif msg_length < (1 << 16):
-            header = PACK_LEN2(0x80 | opcode, 126 | mask_bit, msg_length)
+            header = PACK_LEN2(0x80 | rsv | opcode, 126 | mask_bit, msg_length)
         else:
-            header = PACK_LEN3(0x80 | opcode, 127 | mask_bit, msg_length)
+            header = PACK_LEN3(0x80 | rsv | opcode, 127 | mask_bit, msg_length)
         if use_mask:
             mask = self.randrange(0, 0xffffffff)
             mask = mask.to_bytes(4, 'big')
@@ -486,82 +614,3 @@ class WebSocketWriter:
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
         finally:
             self._closing = True
-
-
-def do_handshake(method, headers, stream,
-                 protocols=(), write_buffer_size=DEFAULT_LIMIT):
-    """Prepare WebSocket handshake.
-
-    It return HTTP response code, response headers, websocket parser,
-    websocket writer. It does not perform any IO.
-
-    `protocols` is a sequence of known protocols. On successful handshake,
-    the returned response headers contain the first protocol in this list
-    which the server also knows.
-
-    `write_buffer_size` max size of write buffer before `drain()` get called.
-    """
-    # WebSocket accepts only GET
-    if method.upper() != hdrs.METH_GET:
-        raise HttpProcessingError(
-            code=405, headers=((hdrs.ALLOW, hdrs.METH_GET),))
-
-    if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
-        raise HttpBadRequest(
-            message='No WebSocket UPGRADE hdr: {}\n Can '
-            '"Upgrade" only to "WebSocket".'.format(headers.get(hdrs.UPGRADE)))
-
-    if 'upgrade' not in headers.get(hdrs.CONNECTION, '').lower():
-        raise HttpBadRequest(
-            message='No CONNECTION upgrade hdr: {}'.format(
-                headers.get(hdrs.CONNECTION)))
-
-    # find common sub-protocol between client and server
-    protocol = None
-    if hdrs.SEC_WEBSOCKET_PROTOCOL in headers:
-        req_protocols = [str(proto.strip()) for proto in
-                         headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(',')]
-
-        for proto in req_protocols:
-            if proto in protocols:
-                protocol = proto
-                break
-        else:
-            # No overlap found: Return no protocol as per spec
-            ws_logger.warning(
-                'Client protocols %r don’t overlap server-known ones %r',
-                req_protocols, protocols)
-
-    # check supported version
-    version = headers.get(hdrs.SEC_WEBSOCKET_VERSION, '')
-    if version not in ('13', '8', '7'):
-        raise HttpBadRequest(
-            message='Unsupported version: {}'.format(version),
-            headers=((hdrs.SEC_WEBSOCKET_VERSION, '13'),))
-
-    # check client handshake for validity
-    key = headers.get(hdrs.SEC_WEBSOCKET_KEY)
-    try:
-        if not key or len(base64.b64decode(key)) != 16:
-            raise HttpBadRequest(
-                message='Handshake error: {!r}'.format(key))
-    except binascii.Error:
-        raise HttpBadRequest(
-            message='Handshake error: {!r}'.format(key)) from None
-
-    response_headers = [
-        (hdrs.UPGRADE, 'websocket'),
-        (hdrs.CONNECTION, 'upgrade'),
-        (hdrs.TRANSFER_ENCODING, 'chunked'),
-        (hdrs.SEC_WEBSOCKET_ACCEPT, base64.b64encode(
-            hashlib.sha1(key.encode() + WS_KEY).digest()).decode())]
-
-    if protocol:
-        response_headers.append((hdrs.SEC_WEBSOCKET_PROTOCOL, protocol))
-
-    # response code, headers, None, writer, protocol
-    return (101,
-            response_headers,
-            None,
-            WebSocketWriter(stream, limit=write_buffer_size),
-            protocol)

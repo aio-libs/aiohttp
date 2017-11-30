@@ -1,6 +1,8 @@
-=========================
-aiohttp server deployment
-=========================
+.. _aiohttp-deployment:
+
+=================
+Server Deployment
+=================
 
 There are several options for aiohttp server deployment:
 
@@ -145,7 +147,7 @@ Here we'll use `Supervisord <http://supervisord.org/>`_ for example:
    process_name = example_%(process_num)s
 
    ; Unix socket paths are specified by command line.
-   commmand=/path/to/aiohttp_example.py --path=/tmp/example_%(process_num)s.sock
+   command=/path/to/aiohttp_example.py --path=/tmp/example_%(process_num)s.sock
 
    ; We can just as easily pass TCP port numbers:
    ; command=/path/to/aiohttp_example.py --port=808%(process_num)s

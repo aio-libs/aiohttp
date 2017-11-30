@@ -1,1 +1,0 @@
-Fix issue with synchronous session closing when using ClientSession as an asynchronous context manager.

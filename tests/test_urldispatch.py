@@ -1,4 +1,3 @@
-import asyncio
 import os
 import pathlib
 import re
@@ -23,8 +22,7 @@ def make_request(method, path):
 
 def make_handler():
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         return Response(request)  # pragma: no cover
 
     return handler
@@ -71,131 +69,120 @@ def test_register_uncommon_http_methods(router):
         router.add_route(method, '/handler/to/path', make_handler())
 
 
-@asyncio.coroutine
-def test_add_route_root(router):
+async def test_add_route_root(router):
     handler = make_handler()
     router.add_route('GET', '/', handler)
     req = make_request('GET', '/')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_route_simple(router):
+async def test_add_route_simple(router):
     handler = make_handler()
     router.add_route('GET', '/handler/to/path', handler)
     req = make_request('GET', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_with_matchdict(router):
+async def test_add_with_matchdict(router):
     handler = make_handler()
     router.add_route('GET', '/handler/{to}', handler)
     req = make_request('GET', '/handler/tail')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert {'to': 'tail'} == info
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_route_with_add_get_shortcut(router):
+async def test_add_route_with_add_get_shortcut(router):
     handler = make_handler()
     router.add_get('/handler/to/path', handler)
     req = make_request('GET', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_route_with_add_post_shortcut(router):
+async def test_add_route_with_add_post_shortcut(router):
     handler = make_handler()
     router.add_post('/handler/to/path', handler)
     req = make_request('POST', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_route_with_add_put_shortcut(router):
+async def test_add_route_with_add_put_shortcut(router):
     handler = make_handler()
     router.add_put('/handler/to/path', handler)
     req = make_request('PUT', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_route_with_add_patch_shortcut(router):
+async def test_add_route_with_add_patch_shortcut(router):
     handler = make_handler()
     router.add_patch('/handler/to/path', handler)
     req = make_request('PATCH', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_route_with_add_delete_shortcut(router):
+async def test_add_route_with_add_delete_shortcut(router):
     handler = make_handler()
     router.add_delete('/handler/to/path', handler)
     req = make_request('DELETE', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_route_with_add_head_shortcut(router):
+async def test_add_route_with_add_head_shortcut(router):
     handler = make_handler()
     router.add_head('/handler/to/path', handler)
     req = make_request('HEAD', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
     assert handler is info.handler
     assert info.route.name is None
 
 
-@asyncio.coroutine
-def test_add_with_name(router):
+async def test_add_with_name(router):
     handler = make_handler()
     router.add_route('GET', '/handler/to/path', handler,
                      name='name')
     req = make_request('GET', '/handler/to/path')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert 'name' == info.route.name
 
 
-@asyncio.coroutine
-def test_add_with_tailing_slash(router):
+async def test_add_with_tailing_slash(router):
     handler = make_handler()
     router.add_route('GET', '/handler/to/path/', handler)
     req = make_request('GET', '/handler/to/path/')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert {} == info
     assert handler is info.handler
@@ -231,61 +218,57 @@ def test_add_url_invalid4(router):
         router.add_route('post', '/post/{id"}', handler)
 
 
-@asyncio.coroutine
-def test_add_url_escaping(router):
+async def test_add_url_escaping(router):
     handler = make_handler()
     router.add_route('GET', '/+$', handler)
 
     req = make_request('GET', '/+$')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert handler is info.handler
 
 
-@asyncio.coroutine
-def test_any_method(router):
+async def test_any_method(router):
     handler = make_handler()
     route = router.add_route(hdrs.METH_ANY, '/', handler)
 
     req = make_request('GET', '/')
-    info1 = yield from router.resolve(req)
+    info1 = await router.resolve(req)
     assert info1 is not None
     assert route is info1.route
 
     req = make_request('POST', '/')
-    info2 = yield from router.resolve(req)
+    info2 = await router.resolve(req)
     assert info2 is not None
 
     assert info1.route is info2.route
 
 
-@asyncio.coroutine
-def test_match_second_result_in_table(router):
+async def test_match_second_result_in_table(router):
     handler1 = make_handler()
     handler2 = make_handler()
     router.add_route('GET', '/h1', handler1)
     router.add_route('POST', '/h2', handler2)
     req = make_request('POST', '/h2')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert {} == info
     assert handler2 is info.handler
 
 
-@asyncio.coroutine
-def test_raise_method_not_allowed(router):
+async def test_raise_method_not_allowed(router):
     handler1 = make_handler()
     handler2 = make_handler()
     router.add_route('GET', '/', handler1)
     router.add_route('POST', '/', handler2)
     req = make_request('PUT', '/')
 
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert isinstance(match_info.route, SystemRoute)
     assert {} == match_info
 
     with pytest.raises(HTTPMethodNotAllowed) as ctx:
-        yield from match_info.handler(req)
+        await match_info.handler(req)
 
     exc = ctx.value
     assert 'PUT' == exc.method
@@ -293,18 +276,17 @@ def test_raise_method_not_allowed(router):
     assert {'POST', 'GET'} == exc.allowed_methods
 
 
-@asyncio.coroutine
-def test_raise_method_not_found(router):
+async def test_raise_method_not_found(router):
     handler = make_handler()
     router.add_route('GET', '/a', handler)
     req = make_request('GET', '/b')
 
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert isinstance(match_info.route, SystemRoute)
     assert {} == match_info
 
     with pytest.raises(HTTPNotFound) as ctx:
-        yield from match_info.handler(req)
+        await match_info.handler(req)
 
     exc = ctx.value
     assert 404 == exc.status
@@ -341,30 +323,9 @@ def test_route_dynamic(router):
                              name='name')
 
     route2 = next(iter(router['name']))
-    with pytest.warns(DeprecationWarning):
-        url = route2.url(parts={'name': 'John'})
-    assert '/get/John' == url
-    assert route is route2
-
-
-def test_route_dynamic2(router):
-    handler = make_handler()
-    route = router.add_route('GET', '/get/{name}', handler,
-                             name='name')
-
-    route2 = next(iter(router['name']))
     url = route2.url_for(name='John')
     assert '/get/John' == str(url)
     assert route is route2
-
-
-def test_route_with_qs(router):
-    handler = make_handler()
-    router.add_route('GET', '/get', handler, name='name')
-
-    with pytest.warns(DeprecationWarning):
-        url = router['name'].url(query=[('a', 'b'), ('c', '1')])
-    assert '/get?a=b&c=1' == url
 
 
 def test_add_static(router):
@@ -372,9 +333,108 @@ def test_add_static(router):
                                  os.path.dirname(aiohttp.__file__),
                                  name='static')
     assert router['static'] is resource
-    url = resource.url(filename='/dir/a.txt')
-    assert '/st/dir/a.txt' == url
+    url = resource.url_for(filename='/dir/a.txt')
+    assert '/st/dir/a.txt' == str(url)
     assert len(resource) == 2
+
+
+def test_add_static_append_version(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url_for(filename='/data.unknown_mime_type',
+                           append_version=True)
+    expect_url = '/st/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
+    assert expect_url == str(url)
+
+
+def test_add_static_append_version_set_from_constructor(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 append_version=True,
+                                 name='static')
+    url = resource.url_for(filename='/data.unknown_mime_type')
+    expect_url = '/st/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
+    assert expect_url == str(url)
+
+
+def test_add_static_append_version_override_constructor(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 append_version=True,
+                                 name='static')
+    url = resource.url_for(filename='/data.unknown_mime_type',
+                           append_version=False)
+    expect_url = '/st/data.unknown_mime_type'
+    assert expect_url == str(url)
+
+
+def test_add_static_append_version_filename_without_slash(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url_for(filename='data.unknown_mime_type',
+                           append_version=True)
+    expect_url = '/st/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
+    assert expect_url == str(url)
+
+
+def test_add_static_append_version_non_exists_file(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url_for(filename='/non_exists_file', append_version=True)
+    assert '/st/non_exists_file' == str(url)
+
+
+def test_add_static_append_version_non_exists_file_without_slash(router):
+    resource = router.add_static('/st',
+                                 os.path.dirname(__file__),
+                                 name='static')
+    url = resource.url_for(filename='non_exists_file', append_version=True)
+    assert '/st/non_exists_file' == str(url)
+
+
+def test_add_static_append_version_follow_symlink(router, tmpdir):
+    """
+    Tests the access to a symlink, in static folder with apeend_version
+    """
+    tmp_dir_path = str(tmpdir)
+    symlink_path = os.path.join(tmp_dir_path, 'append_version_symlink')
+    symlink_target_path = os.path.dirname(__file__)
+    os.symlink(symlink_target_path, symlink_path, True)
+
+    # Register global static route:
+    resource = router.add_static('/st', tmp_dir_path, follow_symlinks=True,
+                                 append_version=True)
+
+    url = resource.url_for(
+        filename='/append_version_symlink/data.unknown_mime_type')
+
+    expect_url = '/st/append_version_symlink/data.unknown_mime_type?' \
+                 'v=aUsn8CHEhhszc81d28QmlcBW0KQpfS2F4trgQKhOYd8%3D'
+    assert expect_url == str(url)
+
+
+def test_add_static_append_version_not_follow_symlink(router, tmpdir):
+    """
+    Tests the access to a symlink, in static folder with apeend_version
+    """
+    tmp_dir_path = str(tmpdir)
+    symlink_path = os.path.join(tmp_dir_path, 'append_version_symlink')
+    symlink_target_path = os.path.dirname(__file__)
+    os.symlink(symlink_target_path, symlink_path, True)
+
+    # Register global static route:
+    resource = router.add_static('/st', tmp_dir_path, follow_symlinks=False,
+                                 append_version=True)
+
+    filename = '/append_version_symlink/data.unknown_mime_type'
+    url = resource.url_for(filename=filename)
+    assert '/st/append_version_symlink/data.unknown_mime_type' == str(url)
 
 
 def test_plain_not_match(router):
@@ -391,12 +451,11 @@ def test_dynamic_not_match(router):
     assert route._match('/another/path') is None
 
 
-@asyncio.coroutine
-def test_static_not_match(router):
+async def test_static_not_match(router):
     router.add_static('/pre', os.path.dirname(aiohttp.__file__),
                       name='name')
     resource = router['name']
-    ret = yield from resource.resolve(
+    ret = await resource.resolve(
         make_mocked_request('GET', '/another/path'))
     assert (None, set()) == ret
 
@@ -448,57 +507,53 @@ def test_static_remove_trailing_slash(router):
     assert '/prefix' == route._prefix
 
 
-@asyncio.coroutine
-def test_add_route_with_re(router):
+async def test_add_route_with_re(router):
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:\d+}', handler)
 
     req = make_request('GET', '/handler/1234')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert {'to': '1234'} == info
 
     router.add_route('GET', r'/handler/{name}.html', handler)
     req = make_request('GET', '/handler/test.html')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert {'name': 'test'} == info
 
 
-@asyncio.coroutine
-def test_add_route_with_re_and_slashes(router):
+async def test_add_route_with_re_and_slashes(router):
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:[^/]+/?}', handler)
     req = make_request('GET', '/handler/1234/')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert {'to': '1234/'} == info
 
     router.add_route('GET', r'/handler/{to:.+}', handler)
     req = make_request('GET', '/handler/1234/5/6/7')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert {'to': '1234/5/6/7'} == info
 
 
-@asyncio.coroutine
-def test_add_route_with_re_not_match(router):
+async def test_add_route_with_re_not_match(router):
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:\d+}', handler)
 
     req = make_request('GET', '/handler/tail')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert isinstance(match_info.route, SystemRoute)
     assert {} == match_info
     with pytest.raises(HTTPNotFound):
-        yield from match_info.handler(req)
+        await match_info.handler(req)
 
 
-@asyncio.coroutine
-def test_add_route_with_re_including_slashes(router):
+async def test_add_route_with_re_including_slashes(router):
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:.+}/tail', handler)
     req = make_request('GET', '/handler/re/with/slashes/tail')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info is not None
     assert {'to': 're/with/slashes'} == info
 
@@ -542,37 +597,33 @@ def test_route_dynamic_with_regex(router):
     assert '/1/2' == str(url)
 
 
-@asyncio.coroutine
-def test_regular_match_info(router):
+async def test_regular_match_info(router):
     handler = make_handler()
     router.add_route('GET', '/get/{name}', handler)
 
     req = make_request('GET', '/get/john')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert {'name': 'john'} == match_info
     assert re.match("<MatchInfo {'name': 'john'}: .+<Dynamic.+>>",
                     repr(match_info))
 
 
-@asyncio.coroutine
-def test_match_info_with_plus(router):
+async def test_match_info_with_plus(router):
     handler = make_handler()
     router.add_route('GET', '/get/{version}', handler)
 
     req = make_request('GET', '/get/1.0+test')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert {'version': '1.0+test'} == match_info
 
 
-@asyncio.coroutine
-def test_not_found_repr(router):
+async def test_not_found_repr(router):
     req = make_request('POST', '/path/to')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert "<MatchInfoError 404: Not Found>" == repr(match_info)
 
 
-@asyncio.coroutine
-def test_not_allowed_repr(router):
+async def test_not_allowed_repr(router):
     handler = make_handler()
     router.add_route('GET', '/path/to', handler)
 
@@ -580,7 +631,7 @@ def test_not_allowed_repr(router):
     router.add_route('POST', '/path/to', handler2)
 
     req = make_request('PUT', '/path/to')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert "<MatchInfoError 405: Method Not Allowed>" == repr(match_info)
 
 
@@ -591,8 +642,7 @@ def test_default_expect_handler(router):
 
 def test_custom_expect_handler_plain(router):
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     route = router.add_route(
@@ -603,8 +653,7 @@ def test_custom_expect_handler_plain(router):
 
 def test_custom_expect_handler_dynamic(router):
 
-    @asyncio.coroutine
-    def handler(request):
+    async def handler(request):
         pass
 
     route = router.add_route(
@@ -623,42 +672,38 @@ def test_expect_handler_non_coroutine(router):
                          expect_handler=handler)
 
 
-@asyncio.coroutine
-def test_dynamic_match_non_ascii(router):
+async def test_dynamic_match_non_ascii(router):
     handler = make_handler()
     router.add_route('GET', '/{var}', handler)
     req = make_request(
         'GET',
         '/%D1%80%D1%83%D1%81%20%D1%82%D0%B5%D0%BA%D1%81%D1%82')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert {'var': 'рус текст'} == match_info
 
 
-@asyncio.coroutine
-def test_dynamic_match_with_static_part(router):
+async def test_dynamic_match_with_static_part(router):
     handler = make_handler()
     router.add_route('GET', '/{name}.html', handler)
     req = make_request('GET', '/file.html')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert {'name': 'file'} == match_info
 
 
-@asyncio.coroutine
-def test_dynamic_match_two_part2(router):
+async def test_dynamic_match_two_part2(router):
     handler = make_handler()
     router.add_route('GET', '/{name}.{ext}', handler)
     req = make_request('GET', '/file.html')
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert {'name': 'file', 'ext': 'html'} == match_info
 
 
-@asyncio.coroutine
-def test_dynamic_match_unquoted_path(router):
+async def test_dynamic_match_unquoted_path(router):
     handler = make_handler()
     router.add_route('GET', '/{path}/{subpath}', handler)
     resource_id = 'my%2Fpath%7Cwith%21some%25strange%24characters'
     req = make_request('GET', '/path/{0}'.format(resource_id))
-    match_info = yield from router.resolve(req)
+    match_info = await router.resolve(req)
     assert match_info == {
         'path': 'path',
         'subpath': unquote(resource_id)
@@ -734,9 +779,11 @@ def test_named_resources(router):
 
 
 def test_resource_iter(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
-    r1 = resource.add_route('GET', lambda req: None)
-    r2 = resource.add_route('POST', lambda req: None)
+    r1 = resource.add_route('GET', handler)
+    r2 = resource.add_route('POST', handler)
     assert 2 == len(resource)
     assert [r1, r2] == list(resource)
 
@@ -759,71 +806,72 @@ def test_view_route(router):
 
 
 def test_resource_route_match(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
-    route = resource.add_route('GET', lambda req: None)
+    route = resource.add_route('GET', handler)
     assert {} == route.resource._match('/path')
 
 
 def test_error_on_double_route_adding(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
 
-    resource.add_route('GET', lambda: None)
+    resource.add_route('GET', handler)
     with pytest.raises(RuntimeError):
-        resource.add_route('GET', lambda: None)
+        resource.add_route('GET', handler)
 
 
 def test_error_on_adding_route_after_wildcard(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
 
-    resource.add_route('*', lambda: None)
+    resource.add_route('*', handler)
     with pytest.raises(RuntimeError):
-        resource.add_route('GET', lambda: None)
+        resource.add_route('GET', handler)
 
 
-@asyncio.coroutine
-def test_http_exception_is_none_when_resolved(router):
+async def test_http_exception_is_none_when_resolved(router):
     handler = make_handler()
     router.add_route('GET', '/', handler)
     req = make_request('GET', '/')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info.http_exception is None
 
 
-@asyncio.coroutine
-def test_http_exception_is_not_none_when_not_resolved(router):
+async def test_http_exception_is_not_none_when_not_resolved(router):
     handler = make_handler()
     router.add_route('GET', '/', handler)
     req = make_request('GET', '/abc')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info.http_exception.status == 404
 
 
-@asyncio.coroutine
-def test_match_info_get_info_plain(router):
+async def test_match_info_get_info_plain(router):
     handler = make_handler()
     router.add_route('GET', '/', handler)
     req = make_request('GET', '/')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info.get_info() == {'path': '/'}
 
 
-@asyncio.coroutine
-def test_match_info_get_info_dynamic(router):
+async def test_match_info_get_info_dynamic(router):
     handler = make_handler()
     router.add_route('GET', '/{a}', handler)
     req = make_request('GET', '/value')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info.get_info() == {
         'pattern': re.compile(PATH_SEP+'(?P<a>[^{}/]+)'),
         'formatter': '/{a}'}
 
 
-@asyncio.coroutine
-def test_match_info_get_info_dynamic2(router):
+async def test_match_info_get_info_dynamic2(router):
     handler = make_handler()
     router.add_route('GET', '/{a}/{b}', handler)
     req = make_request('GET', '/path/to')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info.get_info() == {
         'pattern': re.compile(PATH_SEP +
                               '(?P<a>[^{}/]+)' +
@@ -839,12 +887,11 @@ def test_static_resource_get_info(router):
                                    'prefix': '/st'}
 
 
-@asyncio.coroutine
-def test_system_route_get_info(router):
+async def test_system_route_get_info(router):
     handler = make_handler()
     router.add_route('GET', '/', handler)
     req = make_request('GET', '/abc')
-    info = yield from router.resolve(req)
+    info = await router.resolve(req)
     assert info.get_info()['http_exception'].status == 404
 
 
@@ -891,30 +938,27 @@ def test_static_route_points_to_file(router):
         router.add_static('/st', here)
 
 
-@asyncio.coroutine
-def test_404_for_static_resource(router):
+async def test_404_for_static_resource(router):
     resource = router.add_static('/st',
                                  os.path.dirname(aiohttp.__file__))
-    ret = yield from resource.resolve(
+    ret = await resource.resolve(
         make_mocked_request('GET', '/unknown/path'))
     assert (None, set()) == ret
 
 
-@asyncio.coroutine
-def test_405_for_resource_adapter(router):
+async def test_405_for_resource_adapter(router):
     resource = router.add_static('/st',
                                  os.path.dirname(aiohttp.__file__))
-    ret = yield from resource.resolve(
+    ret = await resource.resolve(
         make_mocked_request('POST', '/st/abc.py'))
     assert (None, {'HEAD', 'GET'}) == ret
 
 
-@asyncio.coroutine
-def test_check_allowed_method_for_found_resource(router):
+async def test_check_allowed_method_for_found_resource(router):
     handler = make_handler()
     resource = router.add_resource('/')
     resource.add_route('GET', handler)
-    ret = yield from resource.resolve(make_mocked_request('GET', '/'))
+    ret = await resource.resolve(make_mocked_request('GET', '/'))
     assert ret[0] is not None
     assert {'GET'} == ret[1]
 
@@ -942,13 +986,6 @@ def test_subapp_get_info(app, loop):
     subapp = web.Application()
     resource = subapp.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
-
-
-def test_subapp_url(app, loop):
-    subapp = web.Application()
-    resource = app.add_subapp('/pre', subapp)
-    with pytest.raises(RuntimeError):
-        resource.url()
 
 
 def test_subapp_url_for(app, loop):
@@ -1041,8 +1078,7 @@ def test_cannot_add_subapp_with_slash_prefix(app, loop):
         app.add_subapp('/', subapp)
 
 
-@asyncio.coroutine
-def test_convert_empty_path_to_slash_on_freezing(router):
+async def test_convert_empty_path_to_slash_on_freezing(router):
     handler = make_handler()
     route = router.add_get('', handler)
     resource = route.resource

@@ -1,81 +1,53 @@
 import asyncio
 import datetime
 import gc
-import sys
+import os
+import tempfile
 from unittest import mock
 
 import pytest
 from yarl import URL
 
 from aiohttp import helpers
-
-
-# -------------------- coro guard --------------------------------
-
-
-@asyncio.coroutine
-def test_warn():
-    with pytest.warns(DeprecationWarning) as ctx:
-        helpers.deprecated_noop('Text')
-
-    w = ctx.list[0]
-
-    assert str(w.message) == 'Text'
-    # Assert the warning points at us and not at _CoroGuard.
-    assert w.filename == __file__
-
-
-@asyncio.coroutine
-def test_no_warn_on_await():
-    with pytest.warns(None) as ctx:
-        yield from helpers.deprecated_noop('Text')
-    assert not ctx.list
+from aiohttp.abc import AbstractAccessLogger
 
 
 # ------------------- parse_mimetype ----------------------------------
 
-def test_parse_mimetype_1():
-    assert helpers.parse_mimetype('') == ('', '', '', {})
+@pytest.mark.parametrize('mimetype, expected', [
+    ('', ('', '', '', {})),
+    ('*', ('*', '*', '', {})),
+    ('application/json', ('application', 'json', '', {})),
+    (
+        'application/json;  charset=utf-8',
+        ('application', 'json', '', {'charset': 'utf-8'})
+    ),
+    (
+        '''application/json; charset=utf-8;''',
+        ('application', 'json', '', {'charset': 'utf-8'})
+    ),
+    (
+        'ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
+        ('application', 'json', '', {'charset': 'UTF-8'})
+    ),
+    ('application/rss+xml', ('application', 'rss', 'xml', {})),
+    ('text/plain;base64', ('text', 'plain', '', {'base64': ''}))
+])
+def test_parse_mimetype(mimetype, expected):
+    result = helpers.parse_mimetype(mimetype)
+
+    assert isinstance(result, helpers.MimeType)
+    assert result == expected
 
 
-def test_parse_mimetype_2():
-    assert helpers.parse_mimetype('*') == ('*', '*', '', {})
+# ------------------- guess_filename ----------------------------------
+
+def test_guess_filename_with_tempfile():
+    with tempfile.TemporaryFile() as fp:
+        assert (helpers.guess_filename(fp, 'no-throw') is not None)
 
 
-def test_parse_mimetype_3():
-    assert (helpers.parse_mimetype('application/json') ==
-            ('application', 'json', '', {}))
-
-
-def test_parse_mimetype_4():
-    assert (
-        helpers.parse_mimetype('application/json;  charset=utf-8') ==
-        ('application', 'json', '', {'charset': 'utf-8'}))
-
-
-def test_parse_mimetype_5():
-    assert (
-        helpers.parse_mimetype('''application/json; charset=utf-8;''') ==
-        ('application', 'json', '', {'charset': 'utf-8'}))
-
-
-def test_parse_mimetype_6():
-    assert(
-        helpers.parse_mimetype('ApPlIcAtIoN/JSON;ChaRseT="UTF-8"') ==
-        ('application', 'json', '', {'charset': 'UTF-8'}))
-
-
-def test_parse_mimetype_7():
-    assert (
-        helpers.parse_mimetype('application/rss+xml') ==
-        ('application', 'rss', 'xml', {}))
-
-
-def test_parse_mimetype_8():
-    assert (
-        helpers.parse_mimetype('text/plain;base64') ==
-        ('text', 'plain', '', {'base64': ''}))
-
+# ------------------- BasicAuth -----------------------------------
 
 def test_basic_auth1():
     # missing password here
@@ -127,6 +99,18 @@ def test_basic_auth_decode_bad_base64():
         helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
 
 
+def test_basic_auth_from_url():
+    url = URL('http://user:pass@example.com')
+    auth = helpers.BasicAuth.from_url(url)
+    assert auth.login == 'user'
+    assert auth.password == 'pass'
+
+
+def test_basic_auth_from_not_url():
+    with pytest.raises(TypeError):
+        helpers.BasicAuth.from_url('http://user:pass@example.com')
+
+
 # ------------- access logger -------------------------
 
 
@@ -144,7 +128,7 @@ def test_access_logger_atoms(mocker):
     utcnow = datetime.datetime(1843, 1, 1, 0, 0)
     mock_datetime.datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
-    log_format = '%a %t %P %l %u %r %s %b %T %Tf %D'
+    log_format = '%a %t %P %r %s %b %T %Tf %D'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={}, method="GET", path_qs="/path",
@@ -153,7 +137,7 @@ def test_access_logger_atoms(mocker):
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
-    expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> - - '
+    expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> '
                 'GET /path HTTP/1.1 200 42 3 3.141593 3141593')
     extra = {
         'first_request_line': 'GET /path HTTP/1.1',
@@ -227,6 +211,31 @@ def test_logger_no_transport():
     mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
 
 
+def test_logger_abc():
+    class Logger(AbstractAccessLogger):
+        def log(self, request, response, time):
+            1 / 0
+
+    mock_logger = mock.Mock()
+    access_logger = Logger(mock_logger, None)
+
+    with pytest.raises(ZeroDivisionError):
+        access_logger.log(None, None, None)
+
+    class Logger(AbstractAccessLogger):
+        def log(self, request, response, time):
+            self.logger.info(self.log_format.format(
+                request=request,
+                response=response,
+                time=time
+            ))
+
+    mock_logger = mock.Mock()
+    access_logger = Logger(mock_logger, '{request} {response} {time}')
+    access_logger.log('request', 'response', 1)
+    mock_logger.info.assert_called_with('request response 1')
+
+
 class TestReify:
 
     def test_reify(self):
@@ -267,31 +276,6 @@ class TestReify:
 
         with pytest.raises(AttributeError):
             a.prop = 123
-
-
-@pytest.mark.skipif(sys.version_info < (3, 5, 2), reason='old python')
-def test_create_future_with_new_loop():
-    # We should use the new create_future() if it's available.
-    mock_loop = mock.Mock()
-    expected = 'hello'
-    mock_loop.create_future.return_value = expected
-    assert expected == helpers.create_future(mock_loop)
-
-
-@pytest.mark.skipif(sys.version_info >= (3, 5, 2), reason='new python')
-def test_create_future_with_old_loop(mocker):
-    MockFuture = mocker.patch('asyncio.Future')
-    # The old loop (without create_future()) should just have a Future object
-    # wrapped around it.
-    mock_loop = mock.Mock()
-    del mock_loop.create_future
-
-    expected = 'hello'
-    MockFuture.return_value = expected
-
-    future = helpers.create_future(mock_loop)
-    MockFuture.assert_called_with(loop=mock_loop)
-    assert expected == future
 
 # ----------------------------------- is_ip_address() ----------------------
 
@@ -369,53 +353,6 @@ def test_is_ip_address_invalid_type():
         helpers.is_ip_address(object())
 
 
-# ----------------------------------- TimeService ----------------------
-
-
-@pytest.fixture
-def time_service(loop):
-    return helpers.TimeService(loop, interval=0.1)
-
-
-class TestTimeService:
-
-    def test_ctor(self, time_service):
-        assert time_service._cb is not None
-        assert time_service._time is not None
-        assert time_service._strtime is None
-
-    def test_stop(self, time_service):
-        time_service.close()
-        assert time_service._cb is None
-        assert time_service._loop is None
-
-    def test_double_stopping(self, time_service):
-        time_service.close()
-        time_service.close()
-        assert time_service._cb is None
-        assert time_service._loop is None
-
-    def test_time(self, time_service):
-        t = time_service._time
-        assert t == time_service.time()
-
-    def test_strtime(self, time_service):
-        time_service._time = 1477797232
-        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
-        # second call should use cached value
-        assert time_service.strtime() == 'Sun, 30 Oct 2016 03:13:52 GMT'
-
-    def test_recalc_time(self, time_service, mocker):
-        time = time_service._loop.time()
-        time_service._time = time
-        time_service._strtime = 'asd'
-        time_service._count = 1000000
-        time_service._on_cb()
-        assert time_service._strtime is None
-        assert time_service._time > time
-        assert time_service._count == 0
-
-
 # ----------------------------------- TimeoutHandle -------------------
 
 def test_timeout_handle(loop):
@@ -460,21 +397,19 @@ def test_timer_context_no_task(loop):
 # -------------------------------- CeilTimeout --------------------------
 
 
-@asyncio.coroutine
-def test_weakref_handle(loop):
+async def test_weakref_handle(loop):
     cb = mock.Mock()
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
-    yield from asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1, loop=loop)
     assert cb.test.called
 
 
-@asyncio.coroutine
-def test_weakref_handle_weak(loop):
+async def test_weakref_handle_weak(loop):
     cb = mock.Mock()
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
     del cb
     gc.collect()
-    yield from asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1, loop=loop)
 
 
 def test_ceil_call_later():
@@ -492,9 +427,8 @@ def test_ceil_call_later_no_timeout():
     assert not loop.call_at.called
 
 
-@asyncio.coroutine
-def test_ceil_timeout(loop):
-    with helpers.CeilTimeout(0, loop=loop) as timeout:
+async def test_ceil_timeout(loop):
+    with helpers.CeilTimeout(None, loop=loop) as timeout:
         assert timeout._timeout is None
         assert timeout._cancel_handler is None
 
@@ -535,13 +469,76 @@ def test_set_content_disposition_bad_param():
                                            **{'foo\x00bar': 'baz'})
 
 
-def test_dummy_cookie_jar(loop):
-    cookie = helpers.SimpleCookie('foo=bar; Domain=example.com;')
-    dummy_jar = helpers.DummyCookieJar(loop=loop)
-    assert len(dummy_jar) == 0
-    dummy_jar.update_cookies(cookie)
-    assert len(dummy_jar) == 0
-    with pytest.raises(StopIteration):
-        next(iter(dummy_jar))
-    assert dummy_jar.filter_cookies(URL("http://example.com/")) is None
-    dummy_jar.clear()
+# --------------------- proxies_from_env ------------------------------
+
+def test_proxies_from_env_http(mocker):
+    url = URL('http://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'http_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'http'}
+    assert ret['http'].proxy == url
+    assert ret['http'].proxy_auth is None
+
+
+def test_proxies_from_env_http_proxy_for_https_proto(mocker):
+    url = URL('http://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'https'}
+    assert ret['https'].proxy == url
+    assert ret['https'].proxy_auth is None
+
+
+def test_proxies_from_env_https_proxy_skipped(mocker):
+    url = URL('https://aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'https_proxy': str(url)})
+    log = mocker.patch('aiohttp.log.client_logger.warning')
+    assert helpers.proxies_from_env() == {}
+    log.assert_called_with('HTTPS proxies %s are not supported, ignoring',
+                           URL('https://aiohttp.io/path'))
+
+
+def test_proxies_from_env_http_with_auth(mocker):
+    url = URL('http://user:pass@aiohttp.io/path')
+    mocker.patch.dict(os.environ, {'http_proxy': str(url)})
+    ret = helpers.proxies_from_env()
+    assert ret.keys() == {'http'}
+    assert ret['http'].proxy == url.with_user(None)
+    proxy_auth = ret['http'].proxy_auth
+    assert proxy_auth.login == 'user'
+    assert proxy_auth.password == 'pass'
+    assert proxy_auth.encoding == 'latin1'
+
+
+# ------------- set_result / set_exception ----------------------
+
+
+async def test_set_result(loop):
+    fut = loop.create_future()
+    helpers.set_result(fut, 123)
+    assert 123 == await fut
+
+
+async def test_set_result_cancelled(loop):
+    fut = loop.create_future()
+    fut.cancel()
+    helpers.set_result(fut, 123)
+
+    with pytest.raises(asyncio.CancelledError):
+        await fut
+
+
+async def test_set_exception(loop):
+    fut = loop.create_future()
+    helpers.set_exception(fut, RuntimeError())
+    with pytest.raises(RuntimeError):
+        await fut
+
+
+async def test_set_exception_cancelled(loop):
+    fut = loop.create_future()
+    fut.cancel()
+    helpers.set_exception(fut, RuntimeError())
+
+    with pytest.raises(asyncio.CancelledError):
+        await fut

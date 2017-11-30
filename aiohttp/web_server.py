@@ -1,7 +1,6 @@
 """Low level HTTP server."""
 import asyncio
 
-from .helpers import TimeService
 from .web_protocol import RequestHandler
 from .web_request import BaseRequest
 
@@ -17,7 +16,6 @@ class Server:
         self._loop = loop
         self._connections = {}
         self._kwargs = kwargs
-        self.time_service = TimeService(self._loop)
         self.requests_count = 0
         self.request_handler = handler
         self.request_factory = request_factory or self._make_request
@@ -35,15 +33,12 @@ class Server:
 
     def _make_request(self, message, payload, protocol, writer, task):
         return BaseRequest(
-            message, payload, protocol, writer,
-            protocol.time_service, task, self._loop)
+            message, payload, protocol, writer, task, self._loop)
 
-    @asyncio.coroutine
-    def shutdown(self, timeout=None):
+    async def shutdown(self, timeout=None):
         coros = [conn.shutdown(timeout) for conn in self._connections]
-        yield from asyncio.gather(*coros, loop=self._loop)
+        await asyncio.gather(*coros, loop=self._loop)
         self._connections.clear()
-        self.time_service.close()
 
     def __call__(self):
         return RequestHandler(self, loop=self._loop, **self._kwargs)

@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 
+
 ALLOWED_SUFFIXES = ['.feature',
                     '.bugfix',
                     '.doc',
@@ -20,10 +21,10 @@ def get_root(script_path):
 
 
 def main(argv):
-    print('Check "changes" folder... ', end='', flush=True)
+    print('Check "CHANGES" folder... ', end='', flush=True)
     here = Path(argv[0])
     root = get_root(here)
-    changes = root / 'changes'
+    changes = root / 'CHANGES'
     failed = False
     for fname in changes.iterdir():
         if fname.name == '.gitignore':

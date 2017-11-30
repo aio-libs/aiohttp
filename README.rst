@@ -3,53 +3,37 @@ Async http client/server framework
 ==================================
 
 .. image:: https://raw.githubusercontent.com/aio-libs/aiohttp/master/docs/_static/aiohttp-icon-128x128.png
-  :height: 64px
-  :width: 64px
-  :alt: aiohttp logo
+   :height: 64px
+   :width: 64px
+   :alt: aiohttp logo
 
 .. image:: https://travis-ci.org/aio-libs/aiohttp.svg?branch=master
-  :target:  https://travis-ci.org/aio-libs/aiohttp
-  :align: right
+   :target:  https://travis-ci.org/aio-libs/aiohttp
+   :align: right
+   :alt: Travis status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/aio-libs/aiohttp
+   :target: https://codecov.io/gh/aio-libs/aiohttp
+   :alt: codecov.io status for master branch
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
-    :target: https://badge.fury.io/py/aiohttp
+   :target: https://badge.fury.io/py/aiohttp
+   :alt: Latest PyPI package version
+
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: http://docs.aiohttp.org/
+   :alt: Latest Read The Docs
+
+.. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
+   :target: http://docs.aiohttp.org/
+   :alt: Latest Read The Docs
 
 .. image:: https://badges.gitter.im/Join%20Chat.svg
     :target: https://gitter.im/aio-libs/Lobby
     :alt: Chat on Gitter
 
-aiohttp 2.0 release!
-====================
-
-For this release we completely refactored low-level implementation of
-http handling.  Finally `uvloop` gives performance
-improvement. Overall performance improvement should be around 70-90%
-compared to 1.x version.
-
-We took opportunity to refactor long standing api design problems
-across whole package.  Client exceptions handling has been cleaned up
-and now much more straight forward. Client payload management
-simplified and allows to extend with any custom type. Client
-connection pool implementation has been redesigned as well, now there
-is no need for actively releasing response objects, aiohttp handles
-connection release automatically.
-
-Another major change, we moved aiohttp development to public
-organization https://github.com/aio-libs
-
-With this amount of api changes we had to make backward incompatible
-changes. Please check this migration document
-http://aiohttp.readthedocs.io/en/latest/migration.html
-
-Please report problems or annoyance with with api to
-https://github.com/aio-libs/aiohttp
-
-
-Features
-========
+Key Features
+============
 
 - Supports both client and server side of HTTP protocol.
 - Supports both client and server Web-Sockets out-of-the-box.
@@ -68,20 +52,21 @@ To retrieve something from the web:
 
   import aiohttp
   import asyncio
+  import async_timeout
 
   async def fetch(session, url):
-      with aiohttp.Timeout(10, loop=session.loop):
+      async with async_timeout.timeout(10):
           async with session.get(url) as response:
               return await response.text()
 
-  async def main(loop):
-      async with aiohttp.ClientSession(loop=loop) as session:
+  async def main():
+      async with aiohttp.ClientSession() as session:
           html = await fetch(session, 'http://python.org')
           print(html)
 
   if __name__ == '__main__':
       loop = asyncio.get_event_loop()
-      loop.run_until_complete(main(loop))
+      loop.run_until_complete(main())
 
 
 Server
@@ -121,19 +106,6 @@ This is simple usage example:
     web.run_app(app)
 
 
-Note: examples are written for Python 3.5+ and utilize PEP-492 aka
-async/await.  If you are using Python 3.4 please replace ``await`` with
-``yield from`` and ``async def`` with ``@coroutine`` e.g.::
-
-    async def coro(...):
-        ret = await f()
-
-should be replaced by::
-
-    @asyncio.coroutine
-    def coro(...):
-        ret = yield from f()
-
 Documentation
 =============
 
@@ -168,7 +140,7 @@ Please add *aiohttp* tag to your question there.
 Requirements
 ============
 
-- Python >= 3.4.2
+- Python >= 3.5.3
 - async-timeout_
 - chardet_
 - multidict_

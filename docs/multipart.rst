@@ -1,4 +1,4 @@
-.. module:: aiohttp.multipart
+.. module:: aiohttp
 
 .. _aiohttp-multipart:
 
@@ -146,8 +146,8 @@ the second argument::
                     {'CONTENT-TYPE': 'image/gif'})
 
 For file objects `Content-Type` will be determined by using Python's
-`mimetypes`_ module and additionally `Content-Disposition` header will include
-the file's basename::
+mod:`mimetypes` module and additionally `Content-Disposition` header
+will include the file's basename::
 
     part = root.append(open(__file__, 'rb'))
 
@@ -175,9 +175,9 @@ and form urlencoded data, so you don't have to encode it every time manually::
     mpwriter.append_form([('key', 'value')])
 
 When it's done, to make a request just pass a root :class:`MultipartWriter`
-instance as :func:`aiohttp.client.request` `data` argument::
+instance as :meth:`aiohttp.ClientSession.request` ``data`` argument::
 
-    await aiohttp.post('http://example.com', data=mpwriter)
+    await session.post('http://example.com', data=mpwriter)
 
 Behind the scenes :meth:`MultipartWriter.serialize` will yield chunks of every
 part and if body part has `Content-Encoding` or `Content-Transfer-Encoding`
@@ -194,8 +194,8 @@ The Internet is full of terror and sometimes you may find a server which
 implements multipart support in strange ways when an oblivious solution
 does not work.
 
-For instance, is server used `cgi.FieldStorage`_ then you have to ensure that
-no body part contains a `Content-Length` header::
+For instance, is server used :class:`cgi.FieldStorage` then you have
+to ensure that no body part contains a `Content-Length` header::
 
     for part in mpwriter:
         part.headers.pop(aiohttp.hdrs.CONTENT_LENGTH, None)
@@ -324,8 +324,4 @@ And this gives us a more cleaner solution::
 
         result.append((doc, files))
 
-.. seealso:: Multipart API in :ref:`aiohttp-api` section.
-
-
-.. _cgi.FieldStorage: https://docs.python.org/3.4/library/cgi.html
-.. _mimetypes: https://docs.python.org/3.4/library/mimetypes.html
+.. seealso:: :ref:`aiohttp-multipart-reference`

@@ -1,8 +1,6 @@
 import asyncio
 import collections
 
-from .helpers import ensure_future
-
 
 class EventResultOrError:
     """
@@ -21,14 +19,13 @@ class EventResultOrError:
         self._exc = exc
         self._event.set()
 
-    @asyncio.coroutine
-    def wait(self):
-        fut = ensure_future(self._event.wait(), loop=self._loop)
-        self._waiters.append(fut)
+    async def wait(self):
+        waiter = self._loop.create_task(self._event.wait())
+        self._waiters.append(waiter)
         try:
-            val = yield from fut
+            val = await waiter
         finally:
-            self._waiters.remove(fut)
+            self._waiters.remove(waiter)
 
         if self._exc is not None:
             raise self._exc
@@ -37,6 +34,5 @@ class EventResultOrError:
 
     def cancel(self):
         """ Cancel all waiters """
-        for fut in self._waiters:
-            if not fut.done():
-                fut.cancel()
+        for waiter in self._waiters:
+            waiter.cancel()
