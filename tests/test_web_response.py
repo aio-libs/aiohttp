@@ -77,6 +77,11 @@ def test_stream_response_ctor():
     assert resp.task is req.task
 
 
+def test_stream_response_hashable():
+    # should not raise exception
+    hash(StreamResponse())
+
+
 def test_stream_response_is_mutable_mapping():
     resp = StreamResponse()
     assert isinstance(resp, collections.MutableMapping)
