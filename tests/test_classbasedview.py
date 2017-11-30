@@ -20,7 +20,7 @@ async def test_render_ok():
             return resp
 
     request = mock.Mock()
-    request._method = 'GET'
+    request.method = 'GET'
     resp2 = await MyView(request)
     assert resp is resp2
 
