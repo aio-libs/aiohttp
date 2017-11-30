@@ -268,8 +268,8 @@ class Resource(AbstractResource):
         for route_obj in self._routes:
             if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
                 raise RuntimeError("Added route will never be executed, "
-                                   "method {route.method} is "
-                                   "already registered".format(route=route_obj))
+                                   "method {route.method} is already "
+                                   "registered".format(route=route_obj))
 
         route_obj = ResourceRoute(method, handler, self,
                                   expect_handler=expect_handler)
@@ -294,7 +294,8 @@ class Resource(AbstractResource):
 
             if (route_method == request.method or
                     route_method == hdrs.METH_ANY):
-                return UrlMappingMatchInfo(match_dict, route_obj), allowed_methods
+                return UrlMappingMatchInfo(match_dict, route_obj), \
+                       allowed_methods
         else:
             return None, allowed_methods
 
