@@ -70,9 +70,11 @@ class Application(MutableMapping):
         self._state = {}
         self._frozen = False
         self._subapps = []
+        self._servers = []
 
         self._on_response_prepare = Signal(self)
         self._on_startup = Signal(self)
+        self._on_pre_serve = Signal(self)
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
         self._client_max_size = client_max_size
@@ -141,6 +143,7 @@ class Application(MutableMapping):
         self._router.freeze()
         self._on_response_prepare.freeze()
         self._on_startup.freeze()
+        self._on_pre_serve.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
 
@@ -162,6 +165,7 @@ class Application(MutableMapping):
             appsig.append(handler)
 
         reg_handler('on_startup')
+        reg_handler('on_pre_serve')
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
@@ -185,12 +189,21 @@ class Application(MutableMapping):
         return resource
 
     @property
+    def servers(self):
+        "List of asyncio servers associated with this application."
+        return self._servers
+
+    @property
     def on_response_prepare(self):
         return self._on_response_prepare
 
     @property
     def on_startup(self):
         return self._on_startup
+
+    @property
+    def on_pre_serve(self):
+        return self._on_pre_serve
 
     @property
     def on_shutdown(self):
@@ -237,6 +250,13 @@ class Application(MutableMapping):
         Should be called in the event loop along with the request handler.
         """
         await self.on_startup.send(self)
+
+    async def pre_serve(self):
+        """Causes on_pre_serve signal
+
+        Should be called just before run_forever().
+        """
+        await self.on_pre_serve.send(self)
 
     async def shutdown(self):
         """Causes on_shutdown signal
@@ -419,6 +439,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         servers = loop.run_until_complete(
             asyncio.gather(*server_creations, loop=loop)
         )
+        app.servers.extend(list(servers))
 
         if handle_signals:
             try:
@@ -428,6 +449,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
                 # add_signal_handler is not implemented on Windows
                 pass
 
+        loop.run_until_complete(app.pre_serve())
         try:
             if print:
                 print("======== Running on {} ========\n"
