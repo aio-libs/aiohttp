@@ -476,3 +476,19 @@ async def test_prepare_twice_idempotent(make_request):
     impl1 = await ws.prepare(req)
     impl2 = await ws.prepare(req)
     assert impl1 is impl2
+
+
+async def test_send_with_per_message_deflate(make_request, mocker):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+    writer_send = ws._writer.send = make_mocked_coro()
+
+    await ws.send_str('string', compress=15)
+    writer_send.assert_called_with('string', binary=False, compress=15)
+
+    await ws.send_bytes(b'bytes', compress=0)
+    writer_send.assert_called_with(b'bytes', binary=True, compress=0)
+
+    await ws.send_json('[{}]', compress=9)
+    writer_send.assert_called_with('"[{}]"', binary=False, compress=9)
