@@ -989,11 +989,14 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_str(data)
+   .. comethod:: send_str(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1003,11 +1006,14 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_bytes(data)
+   .. comethod:: send_bytes(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1018,11 +1024,14 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_json(data, *, dumps=json.dumps)
+   .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string

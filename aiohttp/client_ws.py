@@ -123,7 +123,7 @@ class ClientWebSocketResponse:
                             type(data))
         await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data, *, dumps=json.dumps, compress=None):
+    async def send_json(self, data, compress=None, *, dumps=json.dumps):
         await self.send_str(dumps(data), compress=compress)
 
     async def close(self, *, code=1000, message=b''):
