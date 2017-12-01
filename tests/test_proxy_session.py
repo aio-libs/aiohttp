@@ -1,9 +1,6 @@
-import asyncio
-import os
 from unittest import mock
 
 import pytest
-from yarl import URL
 
 import aiohttp
 from aiohttp import web
