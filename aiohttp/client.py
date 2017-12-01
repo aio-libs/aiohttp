@@ -165,13 +165,13 @@ class ClientSession:
                        chunked=None,
                        expect100=False,
                        read_until_eof=True,
-                       proxy=NotImplemented,
-                       proxy_auth=NotImplemented,
+                       proxy=sentinel,
+                       proxy_auth=sentinel,
                        timeout=sentinel,
                        verify_ssl=None,
                        fingerprint=None,
                        ssl_context=None,
-                       proxy_headers=NotImplemented,
+                       proxy_headers=sentinel,
                        trace_request_ctx=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -203,13 +203,13 @@ class ClientSession:
 
         # Merge with session proxy
         proxy = self._proxy_info['proxy'] \
-            if proxy == NotImplemented else proxy
+            if proxy is sentinel else proxy
 
         proxy_auth = self._proxy_info['auth'] \
-            if proxy_auth == NotImplemented else proxy_auth
+            if proxy_auth is sentinel else proxy_auth
 
         proxy_headers = self._proxy_info['headers'] \
-            if proxy_headers == NotImplemented else proxy_headers
+            if proxy_headers is sentinel else proxy_headers
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
