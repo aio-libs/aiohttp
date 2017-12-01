@@ -1,2 +1,2 @@
-Optional configurable per message deflate for `ClientWebSocketResponse` and
-`WebSocketResponse`
+Add optional configurable per message compression for
+`ClientWebSocketResponse` and `WebSocketResponse`.
