@@ -112,19 +112,19 @@ class ClientWebSocketResponse:
     async def pong(self, message='b'):
         await self._writer.pong(message)
 
-    async def send_str(self, data):
+    async def send_str(self, data, compress=None):
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
-        await self._writer.send(data, binary=False)
+        await self._writer.send(data, binary=False, compress=compress)
 
-    async def send_bytes(self, data):
+    async def send_bytes(self, data, compress=None):
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
-        await self._writer.send(data, binary=True)
+        await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data, *, dumps=json.dumps):
-        await self.send_str(dumps(data))
+    async def send_json(self, data, *, dumps=json.dumps, compress=None):
+        await self.send_str(dumps(data), compress=compress)
 
     async def close(self, *, code=1000, message=b''):
         # we need to break `receive()` cycle first,
