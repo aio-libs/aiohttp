@@ -664,7 +664,7 @@ class MultipartWriter(Payload):
     def __len__(self):
         return len(self._parts)
 
-    _valid_tchar_regex = re.compile(br"^[!#$%&'*+\-.^_`|~\w]+$")
+    _valid_tchar_regex = re.compile(br"\A[!#$%&'*+\-.^_`|~\w]+\Z")
     _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
 
     @property
@@ -690,8 +690,8 @@ class MultipartWriter(Payload):
         if re.match(self._valid_tchar_regex, value):
             return value.decode('ascii')  # cannot fail
 
-        if re.match(self._invalid_qdtext_char_regex, value):
-            raise ValueError("parameter value contains invalid characters")
+        if re.search(self._invalid_qdtext_char_regex, value):
+            raise ValueError("boundary value contains invalid characters")
 
         # escape %x5C and %x22
         quoted_value_content = value.replace(b'\\', b'\\\\')

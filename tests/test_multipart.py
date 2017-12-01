@@ -959,7 +959,7 @@ class MultipartWriterTestCase(TestCase):
         with self.assertRaises(ValueError):
             aiohttp.multipart.MultipartWriter(boundary='тест')
         with self.assertRaises(ValueError):
-            aiohttp.multipart.MultipartWriter(boundary='\n')
+            aiohttp.multipart.MultipartWriter(boundary='test\n')
 
     def test_default_headers(self):
         self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=":"'},
