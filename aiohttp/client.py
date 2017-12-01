@@ -59,7 +59,8 @@ class ClientSession:
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
                  auto_decompress=True, trust_env=False,
-                 trace_configs=None):
+                 trace_configs=None,
+                 proxy=None, proxy_auth=None, proxy_headers=None):
 
         implicit_loop = False
         if loop is None:
@@ -110,6 +111,11 @@ class ClientSession:
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
+        self._proxy_info = {
+            'proxy': proxy,
+            'auth': proxy_auth,
+            'headers': proxy_headers,
+        }
 
         # Convert to list of tuples
         if headers:
@@ -159,13 +165,13 @@ class ClientSession:
                        chunked=None,
                        expect100=False,
                        read_until_eof=True,
-                       proxy=None,
-                       proxy_auth=None,
+                       proxy=NotImplemented,
+                       proxy_auth=NotImplemented,
                        timeout=sentinel,
                        verify_ssl=None,
                        fingerprint=None,
                        ssl_context=None,
-                       proxy_headers=None,
+                       proxy_headers=NotImplemented,
                        trace_request_ctx=None):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
@@ -194,6 +200,16 @@ class ClientSession:
         redirects = 0
         history = []
         version = self._version
+
+        # Merge with session proxy
+        proxy = self._proxy_info['proxy'] \
+            if proxy == NotImplemented else proxy
+
+        proxy_auth = self._proxy_info['auth'] \
+            if proxy_auth == NotImplemented else proxy_auth
+
+        proxy_headers = self._proxy_info['headers'] \
+            if proxy_headers == NotImplemented else proxy_headers
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
