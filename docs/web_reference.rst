@@ -997,7 +997,7 @@ WebSocketResponse
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overridding per-socket setting.                           
+                           ``None`` for not overriding per-socket setting.                           
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1016,7 +1016,7 @@ WebSocketResponse
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overridding per-socket setting.
+                           ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1036,7 +1036,7 @@ WebSocketResponse
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overridding per-socket setting.
+                           ``None`` for not overriding per-socket setting.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
