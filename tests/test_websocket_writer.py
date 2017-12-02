@@ -60,7 +60,7 @@ def test_close(stream, writer):
     stream.transport.write.assert_called_with(b'\x88\x05\x03\xf4msg')
 
 
-def test_send_text_masked(stream, writer):
+def test_send_text_masked(stream):
     writer = WebSocketWriter(stream,
                              use_mask=True,
                              random=random.Random(123))
@@ -68,7 +68,7 @@ def test_send_text_masked(stream, writer):
     stream.transport.write.assert_called_with(b'\x81\x84\rg\xb3fy\x02\xcb\x12')
 
 
-def test_send_compress_text(stream, writer):
+def test_send_compress_text(stream):
     writer = WebSocketWriter(stream, compress=15)
     writer.send(b'text')
     stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')
@@ -76,9 +76,19 @@ def test_send_compress_text(stream, writer):
     stream.transport.write.assert_called_with(b'\xc1\x05*\x01b\x00\x00')
 
 
-def test_send_compress_text_notakeover(stream, writer):
+def test_send_compress_text_notakeover(stream):
     writer = WebSocketWriter(stream, compress=15, notakeover=True)
     writer.send(b'text')
     stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')
     writer.send(b'text')
+    stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')
+
+
+def test_send_compress_text_per_message(stream):
+    writer = WebSocketWriter(stream)
+    writer.send(b'text', compress=15)
+    stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')
+    writer.send(b'text')
+    stream.transport.write.assert_called_with(b'\x81\x04text')
+    writer.send(b'text', compress=15)
     stream.transport.write.assert_called_with(b'\xc1\x06*I\xad(\x01\x00')
