@@ -1235,13 +1235,15 @@ manually.
       :param str data: data to send.
 
       :param int compress: sets specific level of compression for
-                           single message
+                           single message, 
+                           ``None`` for not overridding per-socket setting.
 
       :raise TypeError: if data is not :class:`str`
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: send_bytes(data, compress=None)
 
@@ -1250,14 +1252,16 @@ manually.
       :param data: data to send.
 
       :param int compress: sets specific level of compression for
-                           single message
+                           single message,
+                           ``None`` for not overridding per-socket setting.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
 
@@ -1266,7 +1270,8 @@ manually.
       :param data: data to send.
 
       :param int compress: sets specific level of compression for
-                           single message
+                           single message,
+                           ``None`` for not overridding per-socket setting.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
@@ -1281,7 +1286,8 @@ manually.
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: close(*, code=1000, message=b'')
 
