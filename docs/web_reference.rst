@@ -996,7 +996,8 @@ WebSocketResponse
       :param str data: data to send.
 
       :param int compress: sets specific level of compression for
-                           single message
+                           single message,
+                           ``None`` for not overridding per-socket setting.                           
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1004,7 +1005,8 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: send_bytes(data, compress=None)
 
@@ -1013,7 +1015,8 @@ WebSocketResponse
       :param data: data to send.
 
       :param int compress: sets specific level of compression for
-                           single message
+                           single message,
+                           ``None`` for not overridding per-socket setting.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1022,7 +1025,8 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
 
@@ -1031,7 +1035,8 @@ WebSocketResponse
       :param data: data to send.
 
       :param int compress: sets specific level of compression for
-                           single message
+                           single message,
+                           ``None`` for not overridding per-socket setting.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
@@ -1045,7 +1050,8 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: close(*, code=1000, message=b'')
 
