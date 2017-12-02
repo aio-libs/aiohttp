@@ -1236,7 +1236,7 @@ manually.
 
       :param int compress: sets specific level of compression for
                            single message, 
-                           ``None`` for not overridding per-socket setting.
+                           ``None`` for not overriding per-socket setting.
 
       :raise TypeError: if data is not :class:`str`
 
@@ -1253,7 +1253,7 @@ manually.
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overridding per-socket setting.
+                           ``None`` for not overriding per-socket setting.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
@@ -1271,7 +1271,7 @@ manually.
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overridding per-socket setting.
+                           ``None`` for not overriding per-socket setting.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
