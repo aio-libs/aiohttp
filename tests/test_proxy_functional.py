@@ -1,6 +1,7 @@
 import asyncio
 import os
 from unittest import mock
+import tempfile
 
 import pytest
 from yarl import URL
@@ -501,6 +502,28 @@ async def test_proxy_from_env_http_with_auth(proxy_test_server,
                                    str(proxy.url
                                        .with_user(auth.login)
                                        .with_password(auth.password))})
+
+    await get_request(url=url, trust_env=True)
+
+    assert len(proxy.requests_list) == 1
+    assert proxy.request.method == 'GET'
+    assert proxy.request.host == 'aiohttp.io'
+    assert proxy.request.path_qs == 'http://aiohttp.io/path'
+    assert proxy.request.headers['Proxy-Authorization'] == auth.encode()
+
+
+async def test_proxy_from_env_http_with_auth_from_netrc(
+        proxy_test_server, get_request, tmpdir, mocker):
+    url = 'http://aiohttp.io/path'
+    proxy = await proxy_test_server()
+    auth = aiohttp.BasicAuth('user', 'pass')
+    netrc_file = tempfile.mktemp()
+    netrc_file_data = 'machine 127.0.0.1 login %s password %s' % (
+        auth.login, auth.password)
+    with open(netrc_file, 'w') as f:
+        f.write(netrc_file_data)
+    mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url),
+                                   'netrc': netrc_file})
 
     await get_request(url=url, trust_env=True)
 

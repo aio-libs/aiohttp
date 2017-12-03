@@ -7,6 +7,7 @@ import cgi
 import datetime
 import functools
 import inspect
+import netrc
 import os
 import re
 import time
@@ -115,6 +116,25 @@ ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
 
 
 def proxies_from_env():
+    netrc_obj = None
+    netrc_path = os.environ.get('netrc')
+    if netrc_path is None:
+        home_dir = os.path.expanduser('~')
+        if home_dir == '~':
+            client_logger.warning("Could not find .netrc: $HOME is not set")
+        else:
+            netrc_path = os.path.join(home_dir, '.netrc')
+            if not os.path.exists(netrc_path):  # for win
+                netrc_path = os.path.join(home_dir, '_netrc')
+
+    if netrc_path and os.path.exists(netrc_path):
+        try:
+            netrc_obj = netrc.netrc(netrc_path)
+        except (netrc.NetrcParseError, IOError) as e:
+            client_logger.warning(".netrc file parses fail: %s", e.msg)
+    else:
+        client_logger.warning("Could not find .netrc")
+
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
                   if k in ('http', 'https')}
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
@@ -125,6 +145,11 @@ def proxies_from_env():
             client_logger.warning(
                 "HTTPS proxies %s are not supported, ignoring", proxy)
             continue
+        if netrc_obj and auth is None:
+            if proxy.host in netrc_obj.hosts:
+                *logins, password = netrc_obj.hosts[proxy.host]
+                auth = BasicAuth(logins[0] if logins[0] else logins[1],
+                                 password)
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
