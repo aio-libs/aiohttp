@@ -13,7 +13,7 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
 from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
                                        ResourceRoute, SystemRoute, View,
-                                       _defaultExpectHandler)
+                                       _default_expect_handler)
 
 
 def make_request(method, path):
@@ -637,7 +637,7 @@ async def test_not_allowed_repr(router):
 
 def test_default_expect_handler(router):
     route = router.add_route('GET', '/', make_handler())
-    assert route._expect_handler is _defaultExpectHandler
+    assert route._expect_handler is _default_expect_handler
 
 
 def test_custom_expect_handler_plain(router):
