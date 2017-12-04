@@ -517,13 +517,13 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth('user', 'pass')
-    netrc_file = tempfile.mktemp()
+    netrc_file = tmpdir.join('.netrc')
     netrc_file_data = 'machine 127.0.0.1 login %s password %s' % (
         auth.login, auth.password)
     with open(netrc_file, 'w') as f:
         f.write(netrc_file_data)
     mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url),
-                                   'netrc': netrc_file})
+                                   'NETRC': str(netrc_file)})
 
     await get_request(url=url, trust_env=True)
 
