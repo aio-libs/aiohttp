@@ -1401,35 +1401,49 @@ def test_subapp_on_cleanup(loop, test_server):
     assert [app, subapp1, subapp2] == order
 
 
-@pytest.mark.parametrize('route,expected', [
-    ('/sub/', ['app see root', 'subapp see sub']),
-    ('/', ['app see root']),
+@pytest.mark.parametrize('route,expected,middlewares', [
+    ('/sub/', ['A: root', 'C: sub', 'D: sub'], 'AC'),
+    ('/', ['A: root', 'B: root'], 'AC'),
+    ('/sub/', ['A: root', 'D: sub'], 'A'),
+    ('/', ['A: root', 'B: root'], 'A'),
+    ('/sub/', ['C: sub', 'D: sub'], 'C'),
+    ('/', ['B: root'], 'C'),
+    ('/sub/', ['D: sub'], ''),
+    ('/', ['B: root'], ''),
 ])
 @asyncio.coroutine
-def test_subapp_middleware_context(loop, test_client, route, expected):
+def test_subapp_middleware_context(loop, test_client, route, expected,
+                                   middlewares):
     values = []
 
     def show_app_context(appname):
         @web.middleware
         @asyncio.coroutine
         def middleware(request, handler):
-            values.append('{} see {}'.format(appname, request.app['my_value']))
+            values.append('{}: {}'.format(
+                appname, request.app['my_value']))
             return (yield from handler(request))
         return middleware
 
-    @asyncio.coroutine
-    def handler(request):
-        return web.Response(text='Ok')
+    def make_handler(appname):
+        @asyncio.coroutine
+        def handler(request):
+            values.append('{}: {}'.format(
+                appname, request.app['my_value']))
+            return web.Response(text='Ok')
+        return handler
 
     app = web.Application()
     app['my_value'] = 'root'
-    app.middlewares.append(show_app_context('app'))
-    app.router.add_get('/', handler)
+    if 'A' in middlewares:
+        app.middlewares.append(show_app_context('A'))
+    app.router.add_get('/', make_handler('B'))
 
     subapp = web.Application()
     subapp['my_value'] = 'sub'
-    subapp.middlewares.append(show_app_context('subapp'))
-    subapp.router.add_get('/', handler)
+    if 'C' in middlewares:
+        subapp.middlewares.append(show_app_context('C'))
+    subapp.router.add_get('/', make_handler('D'))
     app.add_subapp('/sub/', subapp)
 
     client = yield from test_client(app)
