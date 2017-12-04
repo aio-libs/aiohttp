@@ -1,1 +1,1 @@
-Support .netrc by trust_env
+Support `.netrc` by `trust_env`
