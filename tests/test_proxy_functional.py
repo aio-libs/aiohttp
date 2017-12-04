@@ -1,7 +1,6 @@
 import asyncio
 import os
 from unittest import mock
-import tempfile
 
 import pytest
 from yarl import URL
