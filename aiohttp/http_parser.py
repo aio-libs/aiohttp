@@ -327,6 +327,12 @@ class HttpParser:
             elif v == 'upgrade':
                 upgrade = True
 
+        # restrict connection upgrade to supported protocols
+        upgrade_to = headers.get(hdrs.UPGRADE)
+        if upgrade_to:
+            v = conn.lower()
+            upgrade = upgrade and v in {'websocket'}
+
         # encoding
         enc = headers.get(hdrs.CONTENT_ENCODING)
         if enc:
