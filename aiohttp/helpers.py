@@ -117,15 +117,15 @@ ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
 
 def proxies_from_env():
     netrc_obj = None
-    netrc_path = os.environ.get('netrc')
+    netrc_path = os.environ.get('NETRC')
     if netrc_path is None:
-        home_dir = os.path.expanduser('~')
-        if home_dir == '~':
-            client_logger.warning("Could not find .netrc: $HOME is not set")
-        else:
+        try:
+            home_dir = Path.home()
             netrc_path = os.path.join(home_dir, '.netrc')
             if not os.path.exists(netrc_path):  # for win
                 netrc_path = os.path.join(home_dir, '_netrc')
+        except RuntimeError as e:
+            client_logger.warning("Could not find .netrc: %s", e.msg)
 
     if netrc_path and os.path.exists(netrc_path):
         try:
