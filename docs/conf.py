@@ -166,14 +166,14 @@ html_theme_options = {
     'github_banner': True,
     'travis_button': True,
     'codecov_button': True,
-    'pre_bg': '#FFF6E5',
+    'pre_bg': '#424750',
     'note_bg': '#E5ECD1',
     'note_border': '#BFCF8C',
     'body_text': '#482C0A',
     'sidebar_text': '#49443E',
     'sidebar_header': '#4B4032',
-    'font_family': "'Roboto', sans-serif",
-    'head_font_family': "'Roboto Slab', serif",
+    'font_family': "'Lato', sans-serif",
+    'head_font_family': "'Lato', sans-serif",
     'code_font_family': "'Roboto Mono', monospace",
 }
 
