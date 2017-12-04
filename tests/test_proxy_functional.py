@@ -519,7 +519,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     netrc_file = tmpdir.join('.netrc')
     netrc_file_data = 'machine 127.0.0.1 login %s password %s' % (
         auth.login, auth.password)
-    with open(netrc_file, 'w') as f:
+    with open(str(netrc_file), 'w') as f:
         f.write(netrc_file_data)
     mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url),
                                    'NETRC': str(netrc_file)})
