@@ -10,7 +10,7 @@ from . import (web_exceptions, web_fileresponse, web_middlewares, web_protocol,
                web_urldispatcher, web_ws)
 from .http import HttpVersion  # noqa
 from .log import access_logger
-from .web_application import Application  # noqa
+from .web_app import Application  # noqa
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
