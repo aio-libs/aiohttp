@@ -527,7 +527,7 @@ class WebSocketWriter:
         self._output_size = 0
         self._compressobj = None
 
-    def _send_frame(self, message, opcode):
+    def _send_frame(self, message, opcode, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if self._closing:
             ws_logger.warning('websocket connection is closing.')
@@ -537,12 +537,17 @@ class WebSocketWriter:
         # Only compress larger packets (disabled)
         # Does small packet needs to be compressed?
         # if self.compress and opcode < 8 and len(message) > 124:
-        if self.compress and opcode < 8:
-            if not self._compressobj:
-                self._compressobj = zlib.compressobj(wbits=-self.compress)
+        if (compress or self.compress) and opcode < 8:
+            if compress:
+                # Do not set self._compress if compressing is for this frame
+                compressobj = zlib.compressobj(wbits=-compress)
+            else:  # self.compress
+                if not self._compressobj:
+                    self._compressobj = zlib.compressobj(wbits=-self.compress)
+                compressobj = self._compressobj
 
-            message = self._compressobj.compress(message)
-            message = message + self._compressobj.flush(
+            message = compressobj.compress(message)
+            message = message + compressobj.flush(
                 zlib.Z_FULL_FLUSH if self.notakeover else zlib.Z_SYNC_FLUSH)
             if message.endswith(_WS_DEFLATE_TRAILING):
                 message = message[:-4]
@@ -596,14 +601,14 @@ class WebSocketWriter:
             message = message.encode('utf-8')
         return self._send_frame(message, WSMsgType.PING)
 
-    def send(self, message, binary=False):
+    def send(self, message, binary=False, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         if binary:
-            return self._send_frame(message, WSMsgType.BINARY)
+            return self._send_frame(message, WSMsgType.BINARY, compress)
         else:
-            return self._send_frame(message, WSMsgType.TEXT)
+            return self._send_frame(message, WSMsgType.TEXT, compress)
 
     def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
