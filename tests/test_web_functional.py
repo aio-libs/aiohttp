@@ -1290,6 +1290,55 @@ async def test_subapp_on_cleanup(loop, test_server):
     assert [app, subapp1, subapp2] == order
 
 
+@pytest.mark.parametrize('route,expected,middlewares', [
+    ('/sub/', ['A: root', 'C: sub', 'D: sub'], 'AC'),
+    ('/', ['A: root', 'B: root'], 'AC'),
+    ('/sub/', ['A: root', 'D: sub'], 'A'),
+    ('/', ['A: root', 'B: root'], 'A'),
+    ('/sub/', ['C: sub', 'D: sub'], 'C'),
+    ('/', ['B: root'], 'C'),
+    ('/sub/', ['D: sub'], ''),
+    ('/', ['B: root'], ''),
+])
+async def test_subapp_middleware_context(
+        loop, test_client, route, expected, middlewares):
+    values = []
+
+    def show_app_context(appname):
+        @web.middleware
+        async def middleware(request, handler):
+            values.append('{}: {}'.format(
+                appname, request.app['my_value']))
+            return await handler(request)
+        return middleware
+
+    def make_handler(appname):
+        async def handler(request):
+            values.append('{}: {}'.format(
+                appname, request.app['my_value']))
+            return web.Response(text='Ok')
+        return handler
+
+    app = web.Application()
+    app['my_value'] = 'root'
+    if 'A' in middlewares:
+        app.middlewares.append(show_app_context('A'))
+    app.router.add_get('/', make_handler('B'))
+
+    subapp = web.Application()
+    subapp['my_value'] = 'sub'
+    if 'C' in middlewares:
+        subapp.middlewares.append(show_app_context('C'))
+    subapp.router.add_get('/', make_handler('D'))
+    app.add_subapp('/sub/', subapp)
+
+    client = await test_client(app)
+    resp = await client.get(route)
+    assert 200 == resp.status
+    assert 'Ok' == await resp.text()
+    assert expected == values
+
+
 async def test_custom_date_header(loop, test_client):
 
     async def handler(request):

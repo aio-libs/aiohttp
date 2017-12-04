@@ -342,6 +342,28 @@ def test_release_close(loop):
     assert proto.close.called
 
 
+def test__drop_acquire_per_host1(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._drop_acquired_per_host(123, 456)
+    assert len(conn._acquired_per_host) == 0
+
+
+def test__drop_acquire_per_host2(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._acquired_per_host[123].add(456)
+    conn._drop_acquired_per_host(123, 456)
+    assert len(conn._acquired_per_host) == 0
+
+
+def test__drop_acquire_per_host3(loop):
+    conn = aiohttp.BaseConnector(loop=loop)
+    conn._acquired_per_host[123].add(456)
+    conn._acquired_per_host[123].add(789)
+    conn._drop_acquired_per_host(123, 456)
+    assert len(conn._acquired_per_host) == 1
+    assert conn._acquired_per_host[123] == {789}
+
+
 async def test_tcp_connector_certificate_error(loop):
     req = ClientRequest('GET', URL('https://127.0.0.1:443'), loop=loop)
 
@@ -1816,7 +1838,7 @@ class TestHttpClientConnector(unittest.TestCase):
             self.loop.run_until_complete(session.request('get', url))
 
         self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
-        self.assertTrue(ctx.value, aiohttp.ClientSSLError)
+        self.assertIsInstance(ctx.value, aiohttp.ClientSSLError)
 
         self.loop.run_until_complete(session.close())
         conn.close()

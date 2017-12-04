@@ -9,6 +9,7 @@ from .frozenlist import FrozenList
 from .helpers import AccessLogger
 from .log import web_logger
 from .signals import Signal
+from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
@@ -239,6 +240,7 @@ class Application(MutableMapping):
                               'see #2252'.format(m),
                               DeprecationWarning, stacklevel=2)
                 yield m, False
+        yield _fix_request_current_app(self), True
 
     async def _handle(self, request):
         match_info = await self._router.resolve(request)
@@ -270,8 +272,9 @@ class Application(MutableMapping):
             ("Handler {!r} should return response instance, "
              "got {!r} [middlewares {!r}]").format(
                  match_info.handler, type(resp),
-                 [middleware for middleware in app.middlewares
-                  for app in match_info.apps])
+                 [middleware
+                  for app in match_info.apps
+                  for middleware in app.middlewares])
         return resp
 
     def __call__(self):
