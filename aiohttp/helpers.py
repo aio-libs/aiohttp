@@ -131,7 +131,7 @@ def proxies_from_env():
 
     if netrc_path and netrc_path.exists():
         try:
-            netrc_obj = netrc.netrc(netrc_path)
+            netrc_obj = netrc.netrc(str(netrc_path))
         except (netrc.NetrcParseError, IOError) as e:
             client_logger.warning(".netrc file parses fail: %s", e.msg)
     else:
