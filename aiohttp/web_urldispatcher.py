@@ -879,14 +879,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         Shortcut for add_route with method GET, if allow_head is true another
         route is added allowing head requests to the same endpoint
         """
+        resource = self.add_resource(path, name=name)
         if allow_head:
-            # it name is not None append -head to avoid it conflicting with
-            # the GET route below
-            head_name = name and '{}-head'.format(name)
-            self.add_route(hdrs.METH_HEAD, path, handler,
-                           name=head_name, **kwargs)
-        return self.add_route(hdrs.METH_GET, path, handler, name=name,
-                              **kwargs)
+            resource.add_route(hdrs.METH_HEAD, handler, **kwargs)
+        return resource.add_route(hdrs.METH_GET, handler, **kwargs)
 
     def add_post(self, path, handler, **kwargs):
         """

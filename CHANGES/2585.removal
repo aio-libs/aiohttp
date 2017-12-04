@@ -1,0 +1,1 @@
+Do not create a new resource on `router.add_get(..., allow_head=True)`
