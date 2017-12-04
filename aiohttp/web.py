@@ -295,8 +295,7 @@ class Application(MutableMapping):
                               'see #2252'.format(m),
                               DeprecationWarning, stacklevel=2)
                 yield m, False
-        if self._middlewares:
-            yield _fix_request_current_app(self), True
+        yield _fix_request_current_app(self), True
 
     @asyncio.coroutine
     def _handle(self, request):
