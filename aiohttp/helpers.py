@@ -121,13 +121,15 @@ def proxies_from_env():
     if netrc_path is None:
         try:
             home_dir = Path.home()
-            netrc_path = os.path.join(home_dir, '.netrc')
-            if not os.path.exists(netrc_path):  # for win
-                netrc_path = os.path.join(home_dir, '_netrc')
+            netrc_path = home_dir.joinpath('.netrc')
+            if not netrc_path.exists():  # for win
+                netrc_path = home_dir.joinpath('_netrc')
         except RuntimeError as e:
             client_logger.warning("Could not find .netrc: %s", e.msg)
+    else:
+        netrc_path = Path(netrc_path)
 
-    if netrc_path and os.path.exists(netrc_path):
+    if netrc_path and netrc_path.exists():
         try:
             netrc_obj = netrc.netrc(netrc_path)
         except (netrc.NetrcParseError, IOError) as e:
