@@ -456,6 +456,9 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
     def __iter__(self):
         return iter(self._state)
 
+    def __hash__(self):
+        return hash(id(self))
+
 
 class Response(StreamResponse):
 
