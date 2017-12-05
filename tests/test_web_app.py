@@ -50,7 +50,7 @@ def test_set_loop_with_different_loops(loop):
 @pytest.mark.parametrize('debug', [True, False])
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(debug=debug)
-    srv = mocker.patch('aiohttp.web.Server')
+    srv = mocker.patch('aiohttp.web_app.Server')
 
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
@@ -62,7 +62,7 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
 
 def test_app_make_handler_args(loop, mocker):
     app = web.Application(handler_args={'test': True})
-    srv = mocker.patch('aiohttp.web.Server')
+    srv = mocker.patch('aiohttp.web_app.Server')
 
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
@@ -85,7 +85,7 @@ def test_app_make_handler_access_log_class(loop, mocker):
         def log(self, request, response, time):
             self.logger.info('msg')
 
-    srv = mocker.patch('aiohttp.web.Server')
+    srv = mocker.patch('aiohttp.web_app.Server')
 
     app.make_handler(access_log_class=Logger, loop=loop)
     srv.assert_called_with(app._handle,
