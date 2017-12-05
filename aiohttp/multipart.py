@@ -686,7 +686,7 @@ class MultipartWriter(Payload):
         #                  / DIGIT / ALPHA
         #                  ; any VCHAR, except delimiters
         # VCHAR           = %x21-7E
-        value = self.boundary
+        value = self._boundary
         if re.match(self._valid_tchar_regex, value):
             return value.decode('ascii')  # cannot fail
 
@@ -701,7 +701,7 @@ class MultipartWriter(Payload):
 
     @property
     def boundary(self):
-        return self._boundary
+        return self._boundary.decode('ascii')
 
     def append(self, obj, headers=None):
         if headers is None:

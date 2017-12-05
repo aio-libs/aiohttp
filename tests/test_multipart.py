@@ -762,7 +762,7 @@ class MultipartReaderTestCase(TestCase):
 
 async def test_writer(writer):
     assert writer.size == 0
-    assert writer.boundary == b':'
+    assert writer.boundary == ':'
 
 
 async def test_writer_serialize_io_chunk(buf, stream, writer):
