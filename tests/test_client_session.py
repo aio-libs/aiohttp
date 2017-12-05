@@ -462,7 +462,7 @@ async def test_request_tracing(loop):
     on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)

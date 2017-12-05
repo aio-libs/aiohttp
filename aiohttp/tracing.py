@@ -10,7 +10,7 @@ class TraceConfig:
     """First-class used to trace requests launched via ClientSession
     objects."""
 
-    def __init__(self, trace_config_ctx_class=SimpleNamespace):
+    def __init__(self, trace_config_ctx_factory=SimpleNamespace):
         self._on_request_start = Signal(self)
         self._on_request_end = Signal(self)
         self._on_request_exception = Signal(self)
@@ -25,11 +25,11 @@ class TraceConfig:
         self._on_dns_cache_hit = Signal(self)
         self._on_dns_cache_miss = Signal(self)
 
-        self._trace_config_ctx_class = trace_config_ctx_class
+        self._trace_config_ctx_factory = trace_config_ctx_factory
 
     def trace_config_ctx(self, trace_request_ctx=None):
         """ Return a new trace_config_ctx instance """
-        return self._trace_config_ctx_class(
+        return self._trace_config_ctx_factory(
             trace_request_ctx=trace_request_ctx)
 
     def freeze(self):

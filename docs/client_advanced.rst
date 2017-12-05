@@ -262,14 +262,14 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 The ``trace_config_ctx`` param is by default a
 :class:`SimpleNampespace` that is initialized at the beginning of the
 request flow. However, the factory used to create this object can be
-overwritten using the ``trace_config_ctx_class`` constructor param of
+overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
 
 The ``trace_request_ctx`` param can given at the beginning of the
-request execution and will be passed as a keyword argument for all of
-the :class:`TraceConfig` class instantiated by each new request, this
-param is useful to pass data that is only available at request time,
-perhaps::
+request execution, accepted by all of the HTTP verbs,  and will be
+passed as a keyword argument for the ``trace_config_ctx_factory``
+factory. This param is useful to pass data that is only available at
+request time, perhaps::
 
     async def on_request_start(
             session, trace_config_ctx, method, host, port, headers):

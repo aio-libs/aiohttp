@@ -13,8 +13,8 @@ class TestTraceConfig:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
 
-    def test_trace_config_ctx_class(self):
-        trace_config = TraceConfig(trace_config_ctx_class=dict)
+    def test_trace_config_ctx_factory(self):
+        trace_config = TraceConfig(trace_config_ctx_factory=dict)
         assert isinstance(trace_config.trace_config_ctx(), dict)
 
     def test_trace_config_ctx_request_ctx(self):

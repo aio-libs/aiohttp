@@ -631,7 +631,7 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
     )
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_dns_resolvehost_start.append(on_dns_resolvehost_start)
     trace_config.on_dns_resolvehost_end.append(on_dns_resolvehost_end)
@@ -696,7 +696,7 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
     )
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_dns_resolvehost_start.append(on_dns_resolvehost_start)
     trace_config.on_dns_resolvehost_end.append(on_dns_resolvehost_end)
@@ -765,7 +765,7 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
     )
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_dns_cache_hit.append(on_dns_cache_hit)
     trace_config.on_dns_cache_miss.append(on_dns_cache_miss)
@@ -904,7 +904,7 @@ async def test_connect_tracing(loop):
     )
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_connection_create_start.append(on_connection_create_start)
     trace_config.on_connection_create_end.append(on_connection_create_end)
@@ -1250,7 +1250,7 @@ async def test_connect_queued_operation_tracing(loop, key):
     )
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_connection_queued_start.append(on_connection_queued_start)
     trace_config.on_connection_queued_end.append(on_connection_queued_end)
@@ -1308,7 +1308,7 @@ async def test_connect_reuseconn_tracing(loop, key):
     )
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_connection_reuseconn.append(on_connection_reuseconn)
     trace_config.freeze()
