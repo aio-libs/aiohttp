@@ -268,8 +268,7 @@ class Application(MutableMapping):
                               'see #2252'.format(m),
                               DeprecationWarning, stacklevel=2)
                 yield m, False
-        if self._middlewares:
-            yield _fix_request_current_app(self), True
+        yield _fix_request_current_app(self), True
 
     async def _handle(self, request):
         match_info = await self._router.resolve(request)

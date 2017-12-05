@@ -161,7 +161,11 @@ Multipart reference
 
    Multipart body writer.
 
+   ``boundary`` may be an ASCII-only string.
+
    .. attribute:: boundary
+
+      The byte-string representation of the boundary.
 
    .. method:: append(obj, headers=None)
 
