@@ -358,6 +358,36 @@ def test_basic_auth_from_url_overriden(make_request):
     assert 'python.org' == req.host
 
 
+def test_custom_auth_register_hook(make_request):
+    auth = mock.MagicMock()
+    req = make_request('get', 'http://0.0.0.0/', auth=auth)
+    auth.assert_called_once_with(req)
+
+
+def test_hook_registration(make_request):
+    async def hook():
+        await asyncio.sleep(0)
+
+    req = make_request('get', 'http://0.0.0.0/')
+    req.register_hook('response', hook)
+    assert hook in req._hooks['response']
+
+    req.deregister_hook('response', hook)
+    assert hook not in req._hooks['response']
+
+
+async def test_response_hook_called(make_request):
+    async def hook(req):
+        return req.response
+
+    response = mock.Mock()
+    req = make_request('get', 'http://0.0.0.0/')
+    req.register_hook('response', hook)
+    req.response = response
+    rsp = await req.dispatch_hooks('response')
+    assert rsp == response
+
+
 def test_path_is_not_double_encoded1(make_request):
     req = make_request('get', "http://0.0.0.0/get/test case")
     assert req.url.raw_path == "/get/test%20case"

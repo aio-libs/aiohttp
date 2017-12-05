@@ -12,7 +12,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.client import ClientSession
-from aiohttp.client_reqrep import ClientRequest
+from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.connector import BaseConnector, TCPConnector
 
 
@@ -560,3 +560,35 @@ async def test_request_tracing_interpose_headers(loop):
 
     await session.get('http://example.com')
     assert MyClientRequest.headers['foo'] == 'bar'
+
+
+async def test_dispatch_response_hooks(loop):
+
+    with mock.patch("aiohttp.client.TCPConnector.connect") as connect_patched:
+        request = mock.Mock(ClientRequest)
+        request_class = mock.MagicMock(return_value=request)
+        request_class.return_value = request
+        response = mock.MagicMock()
+        request.send.return_value = response
+
+        f = loop.create_future()
+        f.set_result(None)
+        response.start.return_value = f
+        response.status = 200
+
+        f = loop.create_future()
+        f.set_result(response)
+        request.dispatch_hooks.return_value = f
+
+        f = loop.create_future()
+        f.set_result(mock.MagicMock())
+        connect_patched.return_value = f
+
+        session = aiohttp.ClientSession(
+            loop=loop,
+            request_class=request_class,
+            cookie_jar=mock.MagicMock()
+        )
+        await session.get('http://test.example.com')
+        await session.close()
+        request.dispatch_hooks.assert_called_with('response')
