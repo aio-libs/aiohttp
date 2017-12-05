@@ -165,7 +165,11 @@ Multipart reference
 
    .. attribute:: boundary
 
-      The byte-string representation of the boundary.
+      The string (:class:`str`) representation of the boundary.
+
+      .. versionchanged:: 3.0
+
+         Property type was changed from :class:`bytes` to :class:`str`.
 
    .. method:: append(obj, headers=None)
 
