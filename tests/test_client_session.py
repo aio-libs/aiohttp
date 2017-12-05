@@ -462,7 +462,7 @@ async def test_request_tracing(loop):
     on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
 
     trace_config = aiohttp.TraceConfig(
-        trace_config_ctx_class=mock.Mock(return_value=trace_config_ctx)
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
@@ -480,8 +480,7 @@ async def test_request_tracing(loop):
         trace_config_ctx,
         hdrs.METH_GET,
         URL("http://example.com"),
-        CIMultiDict(),
-        trace_request_ctx=trace_request_ctx
+        CIMultiDict()
     )
 
     on_request_end.assert_called_once_with(
@@ -490,8 +489,7 @@ async def test_request_tracing(loop):
         hdrs.METH_GET,
         URL("http://example.com"),
         CIMultiDict(),
-        resp,
-        trace_request_ctx=trace_request_ctx
+        resp
     )
     assert not on_request_redirect.called
 
@@ -528,8 +526,7 @@ async def test_request_tracing_exception(loop):
             hdrs.METH_GET,
             URL("http://example.com"),
             CIMultiDict(),
-            error,
-            trace_request_ctx=mock.ANY
+            error
         )
         assert not on_request_end.called
 

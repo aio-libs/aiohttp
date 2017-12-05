@@ -217,12 +217,10 @@ disabled. The following snippet shows how the start and the end
 signals of a request flow can be followed::
 
     async def on_request_start(
-            session, trace_config_ctx, method,
-            host, port, headers, request_trace_config_ctx=None):
+            session, trace_config_ctx, method, host, port, headers):
         print("Starting request")
 
-    async def on_request_end(session, trace_config_ctx, resp,
-                             request_trace_config_ctx=None):
+    async def on_request_end(session, trace_config_ctx, resp):
         print("Ending request")
 
     trace_config = aiohttp.TraceConfig()
@@ -253,12 +251,10 @@ share the state through to the different signals that belong to the
 same request and to the same :class:`TraceConfig` class, perhaps::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers,
-            trace_request_ctx=None):
+            session, trace_config_ctx, method, host, port, headers):
         trace_config_ctx.start = session.loop.time()
 
-    async def on_request_end(
-            session, trace_config_ctx, resp, trace_request_ctx=None):
+    async def on_request_end(session, trace_config_ctx, resp):
         elapsed = session.loop.time() - trace_config_ctx.start
         print("Request took {}".format(elapsed))
 
@@ -266,12 +262,19 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 The ``trace_config_ctx`` param is by default a
 :class:`SimpleNampespace` that is initialized at the beginning of the
 request flow. However, the factory used to create this object can be
-overwritten using the ``trace_config_ctx_class`` constructor param of
+overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
 
 The ``trace_request_ctx`` param can given at the beginning of the
-request execution and will be passed as a keyword argument for all of
-the signals, as the following snippet shows::
+request execution, accepted by all of the HTTP verbs,  and will be
+passed as a keyword argument for the ``trace_config_ctx_factory``
+factory. This param is useful to pass data that is only available at
+request time, perhaps::
+
+    async def on_request_start(
+            session, trace_config_ctx, method, host, port, headers):
+        print(trace_config_ctx.trace_request_ctx)
+
 
     session.get('http://example.com/some/redirect/',
                 trace_request_ctx={'foo': 'bar'})

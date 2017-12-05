@@ -13,9 +13,16 @@ class TestTraceConfig:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
 
-    def test_trace_config_ctx_class(self):
-        trace_config = TraceConfig(trace_config_ctx_class=dict)
+    def test_trace_config_ctx_factory(self):
+        trace_config = TraceConfig(trace_config_ctx_factory=dict)
         assert isinstance(trace_config.trace_config_ctx(), dict)
+
+    def test_trace_config_ctx_request_ctx(self):
+        trace_request_ctx = Mock()
+        trace_config = TraceConfig()
+        trace_config_ctx = trace_config.trace_config_ctx(
+            trace_request_ctx=trace_request_ctx)
+        assert trace_config_ctx.trace_request_ctx is trace_request_ctx
 
     def test_freeze(self):
         trace_config = TraceConfig()
@@ -63,15 +70,14 @@ class TestTrace:
         getattr(trace_config, "on_%s" % signal).append(callback)
         trace_config.freeze()
         trace = Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx)
         )
         await getattr(trace, "send_%s" % signal)(param)
 
         callback.assert_called_once_with(
             session,
-            SimpleNamespace(),
+            SimpleNamespace(trace_request_ctx=trace_request_ctx),
             param,
-            trace_request_ctx=trace_request_ctx
         )

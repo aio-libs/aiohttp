@@ -226,9 +226,11 @@ class ClientSession:
 
         traces = [
             Trace(
-                trace_config,
                 self,
-                trace_request_ctx=trace_request_ctx)
+                trace_config,
+                trace_config.trace_config_ctx(
+                    trace_request_ctx=trace_request_ctx)
+            )
             for trace_config in self._trace_configs
         ]
 
