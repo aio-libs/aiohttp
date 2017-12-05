@@ -312,6 +312,9 @@ class ClientSession:
 
                     self._cookie_jar.update_cookies(resp.cookies, resp.url)
 
+                    # emit event
+                    resp = await req.dispatch_hooks("response")
+
                     # redirects
                     if resp.status in (
                             301, 302, 303, 307, 308) and allow_redirects:

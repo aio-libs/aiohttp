@@ -7,6 +7,7 @@ import ssl
 import sys
 import traceback
 import warnings
+import inspect
 from collections import namedtuple
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
@@ -56,7 +57,32 @@ _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
-class ClientRequest:
+class HooksMixin:
+    def register_hook(self, event, hook):
+        """Register an event hook."""
+        if event not in self._hooks:
+            raise ValueError('Unsupported event specified, with event name {0}'.format(event))
+
+        assert inspect.iscoroutinefunction(hook), "hook {0} must be a coroutine".format(getattr(hook, '__name__', ''))
+
+        self._hooks[event].append(hook)
+
+    def deregister_hook(self, event, hook):
+        """Deregister a previously registered event hook.
+        Returns True if the hook existed, False if not.
+        """
+        try:
+            self._hooks[event].remove(hook)
+            return True
+        except ValueError:
+            return False
+
+    async def dispatch_hooks(self, event, **extras):
+        """implement this method to call hooks"""
+        raise NotImplementedError()
+
+
+class ClientRequest(HooksMixin):
     GET_METHODS = {
         hdrs.METH_GET,
         hdrs.METH_HEAD,
@@ -70,6 +96,7 @@ class ClientRequest:
         hdrs.ACCEPT: '*/*',
         hdrs.ACCEPT_ENCODING: 'gzip, deflate',
     }
+    EVENTS = ['response']
 
     body = b''
     auth = None
@@ -123,6 +150,7 @@ class ClientRequest:
         self._auto_decompress = auto_decompress
         self._verify_ssl = verify_ssl
         self._ssl_context = ssl_context
+        self._hooks = dict((event, []) for event in self.EVENTS)
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -279,7 +307,10 @@ class ClientRequest:
                 self.headers[hdrs.CONTENT_LENGTH] = str(len(self.body))
 
     def update_auth(self, auth):
-        """Set basic auth."""
+        """Set basic auth. or custom if callable"""
+        if callable(auth):
+            auth(self)
+            return
         if auth is None:
             auth = self.auth
         if auth is None:
@@ -487,6 +518,15 @@ class ClientRequest:
             if not self.loop.is_closed():
                 self._writer.cancel()
             self._writer = None
+
+    async def dispatch_hooks(self, event, **extras):
+        """call and hooks associated to an event"""
+        """return results which should be a response or None"""
+        rsp = None
+        for hook in self._hooks[event]:
+            rsp = await hook(self, **extras)
+
+        return rsp or self.response
 
 
 class ClientResponse(HeadersMixin):
@@ -821,3 +861,4 @@ class ClientResponse(HeadersMixin):
         # for exceptions, response object can closes connection
         # is state is broken
         self.release()
+

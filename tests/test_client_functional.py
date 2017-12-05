@@ -2535,3 +2535,25 @@ async def test_await_after_cancelling(loop, test_client):
         fut2.cancel()
 
     await asyncio.gather(fetch1(), fetch2(), canceller(), loop=loop)
+
+
+async def test_custom_auth_using_response_hook(loop, test_client):
+
+    class CustomAuth():
+        async def do_custom_auth(self, req, **extras):
+            return req.response
+
+        def __call__(self, r):
+            r.register_hook('response', self.do_custom_auth)
+
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+
+    client = await test_client(app)
+    resp = await client.get('/', auth=CustomAuth())
+
+    assert resp.status == 200
+    assert resp
