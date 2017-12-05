@@ -14,12 +14,15 @@ Trace config is the configuration object used to trace requests launched by
 a Client session object using different events related to different parts of
 the request flow.
 
-.. class:: TraceConfig(trace_config_ctx_class=SimpleNamespace)
+.. class:: TraceConfig(trace_config_ctx_factory=SimpleNamespace)
 
-   :param trace_config_ctx_class: factory used to create trace contexts,
+   :param trace_config_ctx_factory: factory used to create trace contexts,
       default class used :class:`SimpleNamespace`
 
-   .. method:: trace_config_ctx()
+   .. method:: trace_config_ctx(trace_request_ctx=None)
+
+      :param trace_request_ctx: Will be used to pass as a kw for the
+        ``trace_config_ctx_factory``.
 
       Return a new trace context.
 
