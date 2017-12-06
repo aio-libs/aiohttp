@@ -1,13 +1,13 @@
 import asyncio
 import codecs
 import collections
+import inspect
 import io
 import json
 import ssl
 import sys
 import traceback
 import warnings
-import inspect
 from collections import namedtuple
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
@@ -61,9 +61,13 @@ class HooksMixin:
     def register_hook(self, event, hook):
         """Register an event hook."""
         if event not in self._hooks:
-            raise ValueError('Unsupported event specified, with event name {0}'.format(event))
+            raise ValueError(
+                "Unsupported event specified, "
+                "with event name {0}".format(event))
 
-        assert inspect.iscoroutinefunction(hook), "hook {0} must be a coroutine".format(getattr(hook, '__name__', ''))
+        assert inspect.iscoroutinefunction(hook), \
+            "hook {0} must be a coroutine".format(
+                getattr(hook, '__name__', ''))
 
         self._hooks[event].append(hook)
 
@@ -864,4 +868,3 @@ class ClientResponse(HeadersMixin):
         # for exceptions, response object can closes connection
         # is state is broken
         self.release()
-

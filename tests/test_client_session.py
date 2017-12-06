@@ -12,7 +12,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.client import ClientSession
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
 
 
