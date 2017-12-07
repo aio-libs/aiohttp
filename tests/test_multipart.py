@@ -762,7 +762,7 @@ class MultipartReaderTestCase(TestCase):
 
 async def test_writer(writer):
     assert writer.size == 0
-    assert writer.boundary == b':'
+    assert writer.boundary == ':'
 
 
 async def test_writer_serialize_io_chunk(buf, stream, writer):
@@ -945,9 +945,21 @@ class MultipartWriterTestCase(TestCase):
         self.assertEqual('multipart', mimetype.type)
         self.assertEqual('mixed', mimetype.subtype)
 
+    def test_unquoted_boundary(self):
+        writer = aiohttp.multipart.MultipartWriter(boundary='abc123')
+        self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=abc123'},
+                         writer.headers)
+
+    def test_quoted_boundary(self):
+        writer = aiohttp.multipart.MultipartWriter(boundary=R'\"')
+        self.assertEqual({CONTENT_TYPE: R'multipart/mixed; boundary="\\\""'},
+                         writer.headers)
+
     def test_bad_boundary(self):
         with self.assertRaises(ValueError):
             aiohttp.multipart.MultipartWriter(boundary='тест')
+        with self.assertRaises(ValueError):
+            aiohttp.multipart.MultipartWriter(boundary='test\n')
 
     def test_default_headers(self):
         self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=":"'},

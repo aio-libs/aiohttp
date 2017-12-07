@@ -270,7 +270,7 @@ stages:
 - *doc_stage_name
 - test
 - name: *stage_test_osx_name
-  if: type IN (api, cron) OR tag IS present
+  if: type IN (api, cron)
 - name: *deploy_stage_name
   # This will prevent deploy unless it's a tagged commit:
   if: tag IS present
