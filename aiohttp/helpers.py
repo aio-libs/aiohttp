@@ -118,24 +118,27 @@ ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
 def proxies_from_env():
     netrc_obj = None
     netrc_path = os.environ.get('NETRC')
-    if netrc_path is None:
-        try:
+    try:
+        if netrc_path is not None:
+            netrc_path = Path(netrc_path)
+        else:
             home_dir = Path.home()
-            netrc_path = home_dir.joinpath('.netrc')
-            if not netrc_path.exists():  # for win
+            if os.name == 'nt':  # pragma: no cover
                 netrc_path = home_dir.joinpath('_netrc')
-        except RuntimeError as e:
-            client_logger.warning("Could not find .netrc: %s", e.msg)
-    else:
-        netrc_path = Path(netrc_path)
+            else:
+                netrc_path = home_dir.joinpath('.netrc')
 
-    if netrc_path and netrc_path.exists():
-        try:
-            netrc_obj = netrc.netrc(str(netrc_path))
-        except (netrc.NetrcParseError, IOError) as e:
-            client_logger.warning(".netrc file parses fail: %s", e.msg)
-    else:
-        client_logger.warning("Could not find .netrc")
+        if netrc_path and netrc_path.is_file():
+            try:
+                netrc_obj = netrc.netrc(str(netrc_path))
+            except (netrc.NetrcParseError, IOError) as e:
+                client_logger.warning(".netrc file parses fail: %s", e)
+
+        if netrc_obj is None:
+            client_logger.warning("could't find .netrc file")
+    except RuntimeError as e:  # pragma: no cover
+        """ handle error raised by pathlib """
+        client_logger.warning("could't find .netrc file: %s", e)
 
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
                   if k in ('http', 'https')}

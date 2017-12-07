@@ -478,10 +478,19 @@ def _patch_ssl_transport(monkeypatch):
         _make_ssl_transport_dummy)
 
 
+def mock_is_file(self):
+    """ make real netrc file invisible in home dir """
+    if self.name in ['_netrc', '.netrc']:
+        return False
+    else:
+        return True
+
+
 async def test_proxy_from_env_http(proxy_test_server, get_request, mocker):
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
     mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url)})
+    mocker.patch('pathlib.Path.is_file', mock_is_file)
 
     await get_request(url=url, trust_env=True)
 
@@ -516,7 +525,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth('user', 'pass')
-    netrc_file = tmpdir.join('.netrc')
+    netrc_file = tmpdir.join('test_netrc')
     netrc_file_data = 'machine 127.0.0.1 login %s password %s' % (
         auth.login, auth.password)
     with open(str(netrc_file), 'w') as f:
@@ -533,11 +542,35 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     assert proxy.request.headers['Proxy-Authorization'] == auth.encode()
 
 
+async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
+        proxy_test_server, get_request, tmpdir, mocker):
+    url = 'http://aiohttp.io/path'
+    proxy = await proxy_test_server()
+    auth = aiohttp.BasicAuth('user', 'pass')
+    netrc_file = tmpdir.join('test_netrc')
+    invalid_data = 'machine 127.0.0.1 %s pass %s' % (
+        auth.login, auth.password)
+    with open(str(netrc_file), 'w') as f:
+        f.write(invalid_data)
+
+    mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url),
+                                   'NETRC': str(netrc_file)})
+
+    await get_request(url=url, trust_env=True)
+
+    assert len(proxy.requests_list) == 1
+    assert proxy.request.method == 'GET'
+    assert proxy.request.host == 'aiohttp.io'
+    assert proxy.request.path_qs == 'http://aiohttp.io/path'
+    assert 'Proxy-Authorization' not in proxy.request.headers
+
+
 @pytest.mark.xfail
 async def xtest_proxy_from_env_https(proxy_test_server, get_request, mocker):
     url = 'https://aiohttp.io/path'
     proxy = await proxy_test_server()
     mocker.patch.dict(os.environ, {'https_proxy': str(proxy.url)})
+    mock.patch('pathlib.Path.is_file', mock_is_file)
 
     await get_request(url=url, trust_env=True)
 
