@@ -8,12 +8,6 @@ import sys
 import aiohttp
 
 
-try:
-    import selectors
-except ImportError:
-    from asyncio import selectors
-
-
 async def start_client(loop, url):
     name = input('Please enter your name: ')
 
