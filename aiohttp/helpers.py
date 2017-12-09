@@ -112,10 +112,7 @@ def strip_auth_from_url(url):
         return url.with_user(None), auth
 
 
-ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
-
-
-def proxies_from_env():
+def netrc_from_env():
     netrc_obj = None
     netrc_path = os.environ.get('NETRC')
     try:
@@ -139,9 +136,16 @@ def proxies_from_env():
     except RuntimeError as e:  # pragma: no cover
         """ handle error raised by pathlib """
         client_logger.warning("could't find .netrc file: %s", e)
+    return netrc_obj
 
+
+ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
+
+
+def proxies_from_env():
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
                   if k in ('http', 'https')}
+    netrc_obj = netrc_from_env()
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
@@ -151,8 +155,9 @@ def proxies_from_env():
                 "HTTPS proxies %s are not supported, ignoring", proxy)
             continue
         if netrc_obj and auth is None:
-            if proxy.host in netrc_obj.hosts:
-                *logins, password = netrc_obj.hosts[proxy.host]
+            auth_from_netrc = netrc_obj.authenticators(proxy.host)
+            if auth_from_netrc is not None:
+                *logins, password = auth_from_netrc
                 auth = BasicAuth(logins[0] if logins[0] else logins[1],
                                  password)
         ret[proto] = ProxyInfo(proxy, auth)

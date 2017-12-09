@@ -1,5 +1,6 @@
 import asyncio
 import os
+import pathlib
 from unittest import mock
 
 import pytest
@@ -478,12 +479,15 @@ def _patch_ssl_transport(monkeypatch):
         _make_ssl_transport_dummy)
 
 
+original_is_file = pathlib.Path.is_file
+
+
 def mock_is_file(self):
     """ make real netrc file invisible in home dir """
-    if self.name in ['_netrc', '.netrc']:
+    if self.name in ['_netrc', '.netrc'] and self.parent == self.home():
         return False
     else:
-        return True
+        return original_is_file(self)
 
 
 async def test_proxy_from_env_http(proxy_test_server, get_request, mocker):
