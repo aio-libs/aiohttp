@@ -546,6 +546,28 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     assert proxy.request.headers['Proxy-Authorization'] == auth.encode()
 
 
+async def test_proxy_from_env_http_without_auth_from_netrc(
+        proxy_test_server, get_request, tmpdir, mocker):
+    url = 'http://aiohttp.io/path'
+    proxy = await proxy_test_server()
+    auth = aiohttp.BasicAuth('user', 'pass')
+    netrc_file = tmpdir.join('test_netrc')
+    netrc_file_data = 'machine 127.0.0.2 login %s password %s' % (
+        auth.login, auth.password)
+    with open(str(netrc_file), 'w') as f:
+        f.write(netrc_file_data)
+    mocker.patch.dict(os.environ, {'http_proxy': str(proxy.url),
+                                   'NETRC': str(netrc_file)})
+
+    await get_request(url=url, trust_env=True)
+
+    assert len(proxy.requests_list) == 1
+    assert proxy.request.method == 'GET'
+    assert proxy.request.host == 'aiohttp.io'
+    assert proxy.request.path_qs == 'http://aiohttp.io/path'
+    assert 'Proxy-Authorization' not in proxy.request.headers
+
+
 async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
         proxy_test_server, get_request, tmpdir, mocker):
     url = 'http://aiohttp.io/path'
