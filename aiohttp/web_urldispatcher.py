@@ -7,6 +7,7 @@ import inspect
 import keyword
 import os
 import re
+from urllib.parse import urljoin
 import warnings
 from collections import namedtuple
 from collections.abc import Container, Iterable, Sequence, Sized
@@ -954,8 +955,9 @@ def delete(path, handler, **kwargs):
 
 class RouteTableDef(Sequence):
     """Route definition table"""
-    def __init__(self):
+    def __init__(self, prefix=""):
         self._items = []
+        self.prefix = prefix
 
     def __repr__(self):
         return "<RouteTableDef count={}>".format(len(self._items))
@@ -974,7 +976,8 @@ class RouteTableDef(Sequence):
 
     def route(self, method, path, **kwargs):
         def inner(handler):
-            self._items.append(RouteDef(method, path, handler, kwargs))
+            full_path = urljoin(self.prefix, path)
+            self._items.append(RouteDef(method, full_path, handler, kwargs))
             return handler
         return inner
 
