@@ -218,9 +218,10 @@ def test_route_deco(router):
     assert route.method == 'OTHER'
     assert str(route.url_for()) == '/path'
 
+
 def test_route_prefix_deco(router):
     routes = web.RouteTableDef(prefix="/root/")
- 
+
     @routes.route('OTHER', 'path')
     async def handler(request):
         pass
@@ -232,6 +233,7 @@ def test_route_prefix_deco(router):
     route = list(router.routes())[0]
     assert route.method == 'OTHER'
     assert str(route.url_for()) == '/root/path'
+
 
 def test_routedef_sequence_protocol():
     routes = web.RouteTableDef()
