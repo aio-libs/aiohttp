@@ -219,8 +219,8 @@ def test_route_deco(router):
     assert str(route.url_for()) == '/path'
 
 def test_route_prefix_deco(router):
-    routes = web.RouteTableDef(prefix="/root")
-
+    routes = web.RouteTableDef(prefix="/root/")
+ 
     @routes.route('OTHER', 'path')
     async def handler(request):
         pass
