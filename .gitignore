@@ -46,3 +46,4 @@ virtualenv.py
 .gitconfig
 .flake
 .python-version
+.vscode
