@@ -299,8 +299,10 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
-      :param bool remote_socks_resolve: Resolve destination host on the remote socks server.
-                                        ``True`` by default (optional).
+      :param bool socks_remote_resolve: Resolve destination host on the remote socks server.
+                                        ``True`` for host DNS resolution on socks server.
+                                        ``False`` for DNS resolution on client
+                                        ``True`` by default.
 
       :param trace_request_ctx: Object used to give as a kw param for the all
         signals triggered by the ongoing request and for all :class:`TraceConfig`
@@ -528,8 +530,10 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
-      :param bool remote_socks_resolve: Resolve destination host on the remote socks server.
-                                        ``True`` by default (optional).
+      :param bool socks_remote_resolve: Resolve destination host on the remote socks server.
+                                        ``True`` for host DNS resolution on socks server.
+                                        ``False`` for DNS resolution on client
+                                        ``True`` by default.
 
 
    .. comethod:: close()
