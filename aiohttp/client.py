@@ -473,7 +473,7 @@ class ClientSession:
                           ssl_context=None,
                           proxy_headers=None,
                           compress=0,
-                    socks_remote_resolve=True):
+                          socks_remote_resolve=True):
 
         if headers is None:
             headers = CIMultiDict()
@@ -509,7 +509,7 @@ class ClientSession:
                               fingerprint=fingerprint,
                               ssl_context=ssl_context,
                               proxy_headers=proxy_headers,
-                                   socks_remote_resolve=socks_remote_resolve)
+                              socks_remote_resolve=socks_remote_resolve)
 
         try:
             # check handshake
