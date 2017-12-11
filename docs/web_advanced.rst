@@ -389,25 +389,20 @@ A common use of middlewares is to implement custom error pages.  The following
 example will render 404 errors using a JSON response, as might be appropriate
 a JSON REST service::
 
-    import json
     from aiohttp import web
-
-    def json_error(message):
-        return web.Response(
-            body=json.dumps({'error': message}).encode('utf-8'),
-            content_type='application/json')
 
     @web.middleware
     async def error_middleware(request, handler):
         try:
             response = await handler(request)
-            if response.status == 404:
-                return json_error(response.message)
-            return response
+            if response.status != 404:
+                return response
+            message = response.message
         except web.HTTPException as ex:
-            if ex.status == 404:
-                return json_error(ex.reason)
-            raise
+            if ex.status != 404:
+                raise
+            message = ex.reason
+        return web.json_response({'error': message})
 
     app = web.Application(middlewares=[error_middleware])
 
