@@ -26,27 +26,35 @@ Custom Request Headers
 If you need to add HTTP headers to a request, pass them in a
 :class:`dict` to the *headers* parameter.
 
-For example, if you want to specify the content-type for the previous
-example::
+For example, if you want to specify the content-type directly::
 
-    import json
-    url = 'https://api.github.com/some/endpoint'
-    payload = {'some': 'data'}
-    headers = {'content-type': 'application/json'}
+    url = 'http://example.com/image'
+    payload = b'GIF89a\x01\x00\x01\x00\x00\xff\x00,\x00\x00'
+              b'\x00\x00\x01\x00\x01\x00\x00\x02\x00;'
+    headers = {'content-type': 'image/gif'}
 
     await session.post(url,
-                       data=json.dumps(payload),
+                       data=payload,
                        headers=headers)
 
 You also can set default headers for all session requests::
 
-    async with aiohttp.ClientSession(
-        headers={"Authorization": "Basic bG9naW46cGFzcw=="}) as session:
+    headers={"Authorization": "Basic bG9naW46cGFzcw=="}
+    async with aiohttp.ClientSession(headers) as session:
         async with session.get("http://httpbin.org/headers") as r:
             json_body = await r.json()
             assert json_body['headers']['Authorization'] == \
                 'Basic bG9naW46cGFzcw=='
 
+Typical use case is sending JSON body. You can specify content type
+directly as shown above, but it is more convenient to use special keyword
+``json``::
+
+    await session.post(url, json={'example': 'text'})
+
+The same for *text/plain*::
+
+    await session.post(url, text='Привет, Мир!')
 
 Custom Cookies
 --------------
