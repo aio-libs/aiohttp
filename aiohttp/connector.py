@@ -273,7 +273,7 @@ class BaseConnector(object):
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.close()
-                            if (key[-1] and not self._cleanup_closed_disabled):
+                            if key[-1] and not self._cleanup_closed_disabled:
                                 self._cleanup_closed_transports.append(
                                     transport)
                         else:
@@ -287,6 +287,15 @@ class BaseConnector(object):
         if self._conns:
             self._cleanup_handle = helpers.weakref_handle(
                 self, '_cleanup', timeout, self._loop)
+
+    def _drop_acquired_per_host(self, key, val):
+        acquired_per_host = self._acquired_per_host
+        if key not in acquired_per_host:
+            return
+        conns = acquired_per_host[key]
+        conns.remove(val)
+        if not conns:
+            del self._acquired_per_host[key]
 
     def _cleanup_closed(self):
         """Double confirmation for transport close.
@@ -358,7 +367,7 @@ class BaseConnector(object):
 
         if self._limit:
             # total calc available connections
-            available = self._limit - len(self._waiters) - len(self._acquired)
+            available = self._limit - len(self._acquired)
 
             # check limit per host
             if (self._limit_per_host and available > 0 and
@@ -417,15 +426,16 @@ class BaseConnector(object):
                     raise ClientConnectionError("Connector is closed.")
             except Exception:
                 # signal to waiter
-                for waiter in self._waiters[key]:
-                    if not waiter.done():
-                        waiter.set_result(None)
-                        break
+                if key in self._waiters:
+                    for waiter in self._waiters[key]:
+                        if not waiter.done():
+                            waiter.set_result(None)
+                            break
                 raise
             finally:
                 if not self._closed:
                     self._acquired.remove(placeholder)
-                    self._acquired_per_host[key].remove(placeholder)
+                    self._drop_acquired_per_host(key, placeholder)
 
             if traces:
                 for trace in traces:
@@ -492,9 +502,7 @@ class BaseConnector(object):
 
         try:
             self._acquired.remove(proto)
-            self._acquired_per_host[key].remove(proto)
-            if not self._acquired_per_host[key]:
-                del self._acquired_per_host[key]
+            self._drop_acquired_per_host(key, proto)
         except KeyError:  # pragma: no cover
             # this may be result of undetermenistic order of objects
             # finalization due garbage collection.
@@ -575,9 +583,7 @@ class _DNSCacheTable:
         if self._ttl is None:
             return False
 
-        return (
-            self._timestamps[host] + self._ttl
-        ) < monotonic()
+        return self._timestamps[host] + self._ttl < monotonic()
 
 
 class TCPConnector(BaseConnector):
@@ -864,14 +870,9 @@ class TCPConnector(BaseConnector):
 
         has_cert = transp.get_extra_info('sslcontext')
         if has_cert and fingerprint:
-            sock = transp.get_extra_info('socket')
-            if not hasattr(sock, 'getpeercert'):
-                # Workaround for asyncio 3.5.0
-                # Starting from 3.5.1 version
-                # there is 'ssl_object' extra info in transport
-                sock = transp._ssl_protocol._sslpipe.ssl_object
+            sslobj = transp.get_extra_info('ssl_object')
             # gives DER-encoded cert as a sequence of bytes (or None)
-            cert = sock.getpeercert(binary_form=True)
+            cert = sslobj.getpeercert(binary_form=True)
             assert cert
             got = hashfunc(cert).digest()
             expected = fingerprint

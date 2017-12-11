@@ -4,13 +4,15 @@ import asyncio
 import os
 import re
 import signal
-import socket
 import sys
+from contextlib import suppress
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
 
-from .helpers import AccessLogger
+from aiohttp import web
+
+from .helpers import AccessLogger, set_result
 
 
 try:
@@ -32,7 +34,8 @@ class GunicornWebWorker(base.Worker):
     def __init__(self, *args, **kw):  # pragma: no cover
         super().__init__(*args, **kw)
 
-        self.servers = {}
+        self._runner = None
+        self._task = None
         self.exit_code = 0
         self._notify_waiter = None
 
@@ -46,77 +49,33 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self):
-        if hasattr(self.wsgi, 'startup'):
-            self.wsgi.freeze()
-            self.loop.run_until_complete(self.wsgi.startup())
-        self._runner = self.loop.create_task(self._run())
+        access_log = self.log.access_log if self.cfg.accesslog else None
+        params = dict(
+            logger=self.log,
+            keepalive_timeout=self.cfg.keepalive,
+            access_log=access_log,
+            access_log_format=self._get_valid_log_format(
+                self.cfg.access_log_format))
+        self._runner = web.AppRunner(self.wsgi, **params)
+        self.loop.run_until_complete(self._runner.setup())
+        self._task = self.loop.create_task(self._run())
 
-        try:
-            self.loop.run_until_complete(self._runner)
-        finally:
-            if hasattr(self.loop, 'shutdown_asyncgens'):
-                self.loop.run_until_complete(self.loop.shutdown_asyncgens())
-            self.loop.close()
+        with suppress(Exception):  # ignore all finalization problems
+            self.loop.run_until_complete(self._task)
+        if hasattr(self.loop, 'shutdown_asyncgens'):
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+        self.loop.close()
 
         sys.exit(self.exit_code)
 
-    def make_handler(self, app):
-        if hasattr(self.wsgi, 'make_handler'):
-            access_log = self.log.access_log if self.cfg.accesslog else None
-            return app.make_handler(
-                loop=self.loop,
-                logger=self.log,
-                slow_request_timeout=self.cfg.timeout,
-                keepalive_timeout=self.cfg.keepalive,
-                access_log=access_log,
-                access_log_format=self._get_valid_log_format(
-                    self.cfg.access_log_format))
-        else:
-            raise RuntimeError(
-                "aiohttp.wsgi is not supported anymore, "
-                "consider to switch to aiohttp.web.Application")
-
-    async def close(self):
-        if self.servers:
-            servers = self.servers
-            self.servers = None
-
-            # stop accepting connections
-            for server, handler in servers.items():
-                self.log.info("Stopping server: %s, connections: %s",
-                              self.pid, len(handler.connections))
-                server.close()
-                await server.wait_closed()
-
-            # send on_shutdown event
-            if hasattr(self.wsgi, 'shutdown'):
-                await self.wsgi.shutdown()
-
-            # stop alive connections
-            tasks = [
-                handler.shutdown(
-                    timeout=self.cfg.graceful_timeout / 100 * 95)
-                for handler in servers.values()]
-            await asyncio.gather(*tasks, loop=self.loop)
-
-            # cleanup application
-            if hasattr(self.wsgi, 'cleanup'):
-                await self.wsgi.cleanup()
-
     async def _run(self):
-
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
 
         for sock in self.sockets:
-            handler = self.make_handler(self.wsgi)
-
-            if hasattr(socket, 'AF_UNIX') and sock.family == socket.AF_UNIX:
-                srv = await self.loop.create_unix_server(
-                    handler, sock=sock.sock, ssl=ctx)
-            else:
-                srv = await self.loop.create_server(
-                    handler, sock=sock.sock, ssl=ctx)
-            self.servers[srv] = handler
+            site = web.SockSite(
+                self._runner, sock, ssl_context=ctx,
+                shutdown_timeout=self.cfg.graceful_timeout / 100 * 95)
+            await site.start()
 
         # If our parent changed then we shut down.
         pid = os.getpid()
@@ -124,8 +83,7 @@ class GunicornWebWorker(base.Worker):
             while self.alive:
                 self.notify()
 
-                cnt = sum(handler.requests_count
-                          for handler in self.servers.values())
+                cnt = self._runner.handler.requests_count
                 if self.cfg.max_requests and cnt > self.cfg.max_requests:
                     self.alive = False
                     self.log.info("Max requests, shutting down: %s", self)
@@ -135,26 +93,27 @@ class GunicornWebWorker(base.Worker):
                     self.log.info("Parent changed, shutting down: %s", self)
                 else:
                     await self._wait_next_notify()
-
         except BaseException:
             pass
 
-        await self.close()
+        await self._runner.cleanup()
 
     def _wait_next_notify(self):
         self._notify_waiter_done()
 
         self._notify_waiter = waiter = self.loop.create_future()
-        self.loop.call_later(1.0, self._notify_waiter_done)
+        self.loop.call_later(1.0, self._notify_waiter_done, waiter)
 
         return waiter
 
-    def _notify_waiter_done(self):
-        waiter = self._notify_waiter
-        if waiter is not None and not waiter.done():
-            waiter.set_result(True)
+    def _notify_waiter_done(self, waiter=None):
+        if waiter is None:
+            waiter = self._notify_waiter
+        if waiter is not None:
+            set_result(waiter, True)
 
-        self._notify_waiter = None
+        if waiter is self._notify_waiter:
+            self._notify_waiter = None
 
     def init_signals(self):
         # Set up signals through the event loop API.
@@ -188,11 +147,8 @@ class GunicornWebWorker(base.Worker):
         # worker_int callback
         self.cfg.worker_int(self)
 
-        # init closing process
-        self._closing = self.loop.create_task(self.close())
-
-        # close loop
-        self.loop.call_later(0.1, self._notify_waiter_done)
+        # wakeup closing process
+        self._notify_waiter_done()
 
     def handle_abort(self, sig, frame):
         self.alive = False
@@ -252,7 +208,7 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
 
 class GunicornTokioWebWorker(GunicornWebWorker):
 
-    def init_process(self):
+    def init_process(self):  # pragma: no cover
         import tokio
 
         # Close any existing event loop before setting a

@@ -13,7 +13,7 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
 from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
                                        ResourceRoute, SystemRoute, View,
-                                       _defaultExpectHandler)
+                                       _default_expect_handler)
 
 
 def make_request(method, path):
@@ -637,7 +637,7 @@ async def test_not_allowed_repr(router):
 
 def test_default_expect_handler(router):
     route = router.add_route('GET', '/', make_handler())
-    assert route._expect_handler is _defaultExpectHandler
+    assert route._expect_handler is _default_expect_handler
 
 
 def test_custom_expect_handler_plain(router):
@@ -779,9 +779,11 @@ def test_named_resources(router):
 
 
 def test_resource_iter(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
-    r1 = resource.add_route('GET', lambda req: None)
-    r2 = resource.add_route('POST', lambda req: None)
+    r1 = resource.add_route('GET', handler)
+    r2 = resource.add_route('POST', handler)
     assert 2 == len(resource)
     assert [r1, r2] == list(resource)
 
@@ -804,25 +806,31 @@ def test_view_route(router):
 
 
 def test_resource_route_match(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
-    route = resource.add_route('GET', lambda req: None)
+    route = resource.add_route('GET', handler)
     assert {} == route.resource._match('/path')
 
 
 def test_error_on_double_route_adding(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
 
-    resource.add_route('GET', lambda: None)
+    resource.add_route('GET', handler)
     with pytest.raises(RuntimeError):
-        resource.add_route('GET', lambda: None)
+        resource.add_route('GET', handler)
 
 
 def test_error_on_adding_route_after_wildcard(router):
+    async def handler(request):
+        pass
     resource = router.add_resource('/path')
 
-    resource.add_route('*', lambda: None)
+    resource.add_route('*', handler)
     with pytest.raises(RuntimeError):
-        resource.add_route('GET', lambda: None)
+        resource.add_route('GET', handler)
 
 
 async def test_http_exception_is_none_when_resolved(router):

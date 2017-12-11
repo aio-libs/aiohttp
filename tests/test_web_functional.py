@@ -485,7 +485,7 @@ async def test_100_continue_custom_response(loop, test_client):
     async def expect_handler(request):
         if request.version == HttpVersion11:
             if auth_err:
-                return web.HTTPForbidden()
+                raise web.HTTPForbidden()
 
             request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
@@ -640,7 +640,8 @@ async def test_empty_content_for_query_without_body(loop, test_client):
     async def handler(request):
         assert not request.body_exists
         assert not request.can_read_body
-        assert not request.has_body
+        with pytest.warns(DeprecationWarning):
+            assert not request.has_body
         return web.Response()
 
     app = web.Application()
@@ -656,7 +657,8 @@ async def test_empty_content_for_query_with_body(loop, test_client):
     async def handler(request):
         assert request.body_exists
         assert request.can_read_body
-        assert request.has_body
+        with pytest.warns(DeprecationWarning):
+            assert request.has_body
         body = await request.read()
         return web.Response(body=body)
 
@@ -1020,7 +1022,7 @@ async def test_simple_subapp(loop, test_client):
 async def test_subapp_reverse_url(loop, test_client):
 
     async def handler(request):
-        return web.HTTPMovedPermanently(
+        raise web.HTTPMovedPermanently(
             location=subapp.router['name'].url_for())
 
     async def handler2(request):
@@ -1043,7 +1045,7 @@ async def test_subapp_reverse_url(loop, test_client):
 async def test_subapp_reverse_variable_url(loop, test_client):
 
     async def handler(request):
-        return web.HTTPMovedPermanently(
+        raise web.HTTPMovedPermanently(
             location=subapp.router['name'].url_for(part='final'))
 
     async def handler2(request):
@@ -1067,7 +1069,7 @@ async def test_subapp_reverse_static_url(loop, test_client):
     fname = 'aiohttp.png'
 
     async def handler(request):
-        return web.HTTPMovedPermanently(
+        raise web.HTTPMovedPermanently(
             location=subapp.router['name'].url_for(filename=fname))
 
     app = web.Application()
@@ -1090,7 +1092,7 @@ async def test_subapp_app(loop, test_client):
 
     async def handler(request):
         assert request.app is subapp
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1107,7 +1109,7 @@ async def test_subapp_app(loop, test_client):
 async def test_subapp_not_found(loop, test_client):
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1122,7 +1124,7 @@ async def test_subapp_not_found(loop, test_client):
 async def test_subapp_not_found2(loop, test_client):
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1137,7 +1139,7 @@ async def test_subapp_not_found2(loop, test_client):
 async def test_subapp_not_allowed(loop, test_client):
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1154,7 +1156,7 @@ async def test_subapp_cannot_add_app_in_handler(loop, test_client):
 
     async def handler(request):
         request.match_info.add_app(app)
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     app = web.Application()
     subapp = web.Application()
@@ -1170,7 +1172,7 @@ async def test_subapp_middlewares(loop, test_client):
     order = []
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     async def middleware_factory(app, handler):
 
@@ -1189,7 +1191,8 @@ async def test_subapp_middlewares(loop, test_client):
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
 
-    client = await test_client(app)
+    with pytest.warns(DeprecationWarning):
+        client = await test_client(app)
     resp = await client.get('/a/b/to')
     assert resp.status == 200
     assert [(1, app), (1, subapp1), (1, subapp2),
@@ -1200,7 +1203,7 @@ async def test_subapp_on_response_prepare(loop, test_client):
     order = []
 
     async def handler(request):
-        return web.HTTPOk(text='OK')
+        return web.Response(text='OK')
 
     def make_signal(app):
 
@@ -1287,6 +1290,55 @@ async def test_subapp_on_cleanup(loop, test_server):
     assert [app, subapp1, subapp2] == order
 
 
+@pytest.mark.parametrize('route,expected,middlewares', [
+    ('/sub/', ['A: root', 'C: sub', 'D: sub'], 'AC'),
+    ('/', ['A: root', 'B: root'], 'AC'),
+    ('/sub/', ['A: root', 'D: sub'], 'A'),
+    ('/', ['A: root', 'B: root'], 'A'),
+    ('/sub/', ['C: sub', 'D: sub'], 'C'),
+    ('/', ['B: root'], 'C'),
+    ('/sub/', ['D: sub'], ''),
+    ('/', ['B: root'], ''),
+])
+async def test_subapp_middleware_context(
+        loop, test_client, route, expected, middlewares):
+    values = []
+
+    def show_app_context(appname):
+        @web.middleware
+        async def middleware(request, handler):
+            values.append('{}: {}'.format(
+                appname, request.app['my_value']))
+            return await handler(request)
+        return middleware
+
+    def make_handler(appname):
+        async def handler(request):
+            values.append('{}: {}'.format(
+                appname, request.app['my_value']))
+            return web.Response(text='Ok')
+        return handler
+
+    app = web.Application()
+    app['my_value'] = 'root'
+    if 'A' in middlewares:
+        app.middlewares.append(show_app_context('A'))
+    app.router.add_get('/', make_handler('B'))
+
+    subapp = web.Application()
+    subapp['my_value'] = 'sub'
+    if 'C' in middlewares:
+        subapp.middlewares.append(show_app_context('C'))
+    subapp.router.add_get('/', make_handler('D'))
+    app.add_subapp('/sub/', subapp)
+
+    client = await test_client(app)
+    resp = await client.get(route)
+    assert 200 == resp.status
+    assert 'Ok' == await resp.text()
+    assert expected == values
+
+
 async def test_custom_date_header(loop, test_client):
 
     async def handler(request):
@@ -1328,7 +1380,8 @@ async def test_app_max_client_size(loop, test_client):
     app.router.add_post('/', handler)
     client = await test_client(app)
     data = {"long_string": max_size * 'x' + 'xxx'}
-    resp = await client.post('/', data=data)
+    with pytest.warns(ResourceWarning):
+        resp = await client.post('/', data=data)
     assert 413 == resp.status
     resp_text = await resp.text()
     assert 'Request Entity Too Large' in resp_text
@@ -1346,12 +1399,14 @@ async def test_app_max_client_size_adjusted(loop, test_client):
     app.router.add_post('/', handler)
     client = await test_client(app)
     data = {'long_string': default_max_size * 'x' + 'xxx'}
-    resp = await client.post('/', data=data)
+    with pytest.warns(ResourceWarning):
+        resp = await client.post('/', data=data)
     assert 200 == resp.status
     resp_text = await resp.text()
     assert 'ok' == resp_text
     too_large_data = {'log_string': custom_max_size * 'x' + "xxx"}
-    resp = await client.post('/', data=too_large_data)
+    with pytest.warns(ResourceWarning):
+        resp = await client.post('/', data=too_large_data)
     assert 413 == resp.status
     resp_text = await resp.text()
     assert 'Request Entity Too Large' in resp_text
@@ -1369,12 +1424,14 @@ async def test_app_max_client_size_none(loop, test_client):
     app.router.add_post('/', handler)
     client = await test_client(app)
     data = {'long_string': default_max_size * 'x' + 'xxx'}
-    resp = await client.post('/', data=data)
+    with pytest.warns(ResourceWarning):
+        resp = await client.post('/', data=data)
     assert 200 == resp.status
     resp_text = await resp.text()
     assert 'ok' == resp_text
     too_large_data = {'log_string': default_max_size * 2 * 'x'}
-    resp = await client.post('/', data=too_large_data)
+    with pytest.warns(ResourceWarning):
+        resp = await client.post('/', data=too_large_data)
     assert 200 == resp.status
     resp_text = await resp.text()
     assert resp_text == 'ok'
@@ -1386,8 +1443,8 @@ async def test_post_max_client_size(loop, test_client):
         try:
             await request.post()
         except ValueError:
-            return web.HTTPOk()
-        return web.HTTPBadRequest()
+            return web.Response()
+        raise web.HTTPBadRequest()
 
     app = web.Application(client_max_size=10)
     app.router.add_post('/', handler)
@@ -1405,8 +1462,8 @@ async def test_post_max_client_size_for_file(loop, test_client):
         try:
             await request.post()
         except ValueError:
-            return web.HTTPOk()
-        return web.HTTPBadRequest()
+            return web.Response()
+        raise web.HTTPBadRequest()
 
     app = web.Application(client_max_size=2)
     app.router.add_post('/', handler)
@@ -1463,7 +1520,8 @@ async def test_await(test_server, loop):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': str(4)})
         await resp.prepare(request)
-        await resp.drain()
+        with pytest.warns(DeprecationWarning):
+            await resp.drain()
         await asyncio.sleep(0.01, loop=loop)
         await resp.write(b'test')
         await asyncio.sleep(0.01, loop=loop)
@@ -1486,7 +1544,7 @@ async def test_await(test_server, loop):
 async def test_response_context_manager(test_server, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -1501,7 +1559,7 @@ async def test_response_context_manager(test_server, loop):
 async def test_response_context_manager_error(test_server, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response(text='some text')
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -1514,7 +1572,7 @@ async def test_response_context_manager_error(test_server, loop):
             assert resp.status == 200
             resp.content.set_exception(RuntimeError())
             await resp.read()
-            assert resp.closed
+    assert resp.closed
 
     assert len(session._connector._conns) == 1
 
@@ -1522,7 +1580,7 @@ async def test_response_context_manager_error(test_server, loop):
 async def test_client_api_context_manager(test_server, loop):
 
     async def handler(request):
-        return web.HTTPOk()
+        return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -1540,7 +1598,8 @@ async def test_context_manager_close_on_release(test_server, loop, mocker):
     async def handler(request):
         resp = web.StreamResponse()
         await resp.prepare(request)
-        await resp.drain()
+        with pytest.warns(DeprecationWarning):
+            await resp.drain()
         await asyncio.sleep(10, loop=loop)
         return resp
 

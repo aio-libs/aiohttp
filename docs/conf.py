@@ -157,7 +157,7 @@ html_theme = 'alabaster'
 # documentation.
 html_theme_options = {
     'logo': 'aiohttp-icon-128x128.png',
-    'description': 'http client/server for asyncio',
+    'description': 'Async HTTP client/server for asyncio and Python',
     'canonical_url': 'http://docs.aiohttp.org/en/stable/',
     'github_user': 'aio-libs',
     'github_repo': 'aiohttp',

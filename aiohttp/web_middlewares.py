@@ -51,13 +51,12 @@ def normalize_path_middleware(
     """
 
     @middleware
-    async def normalize_path_middleware(request, handler):
+    async def impl(request, handler):
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
             if '?' in request.raw_path:
                 path, query = request.raw_path.split('?', 1)
-                if query:
-                    query = '?' + query
+                query = '?' + query
             else:
                 query = ''
                 path = request.raw_path
@@ -74,8 +73,17 @@ def normalize_path_middleware(
                 resolves, request = await _check_request_resolves(
                     request, path)
                 if resolves:
-                    return redirect_class(request.path + query)
+                    raise redirect_class(request.path + query)
 
-        return (await handler(request))
+        return await handler(request)
 
-    return normalize_path_middleware
+    return impl
+
+
+def _fix_request_current_app(app):
+
+    @middleware
+    async def impl(request, handler):
+        with request.match_info.set_current_app(app):
+            return await handler(request)
+    return impl

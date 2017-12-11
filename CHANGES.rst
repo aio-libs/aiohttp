@@ -14,6 +14,29 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.6 (2017-12-04)
+==================
+
+- Correct `request.app` context (for handlers not just middlewares). (#2577)
+
+
+2.3.5 (2017-11-30)
+==================
+
+- Fix compatibility with `pytest` 3.3+ (#2565)
+
+
+2.3.4 (2017-11-29)
+==================
+
+- Make `request.app` point to proper application instance when using nested
+  applications (with middlewares). (#2550)
+- Change base class of ClientConnectorSSLError to ClientSSLError from
+  ClientConnectorError. (#2563)
+- Return client connection back to free pool on error in `connector.connect()`.
+  (#2567)
+
+
 2.3.3 (2017-11-17)
 ==================
 

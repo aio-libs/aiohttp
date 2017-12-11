@@ -505,6 +505,16 @@ The common case for sending an answer from
    def handler(request):
        return Response("All right!")
 
+Response classes are :obj:`dict` like objects,
+allowing them to be used for :ref:`sharing
+data<aiohttp-web-data-sharing>` among :ref:`aiohttp-web-middlewares`
+and :ref:`aiohttp-web-signals` handlers::
+
+   resp['key'] = value
+
+.. versionadded:: 3.0
+
+   Dict-like interface support.
 
 StreamResponse
 ^^^^^^^^^^^^^^
@@ -979,11 +989,15 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_str(data)
+   .. comethod:: send_str(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.                           
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -991,13 +1005,18 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
-   .. comethod:: send_bytes(data)
+   .. comethod:: send_bytes(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1006,13 +1025,18 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
-   .. comethod:: send_json(data, *, dumps=json.dumps)
+   .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
@@ -1026,7 +1050,8 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: close(*, code=1000, message=b'')
 

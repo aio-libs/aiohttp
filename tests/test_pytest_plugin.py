@@ -1,12 +1,13 @@
-import re
 import sys
 
 import pytest
 
-from aiohttp.pytest_plugin import LOOP_FACTORIES
-
 
 pytest_plugins = 'pytester'
+
+CONFTEST = '''
+pytest_plugins = 'aiohttp.pytest_plugin'
+'''
 
 
 def test_aiohttp_plugin(testdir):
@@ -15,9 +16,6 @@ import pytest
 from unittest import mock
 
 from aiohttp import web
-
-
-pytest_plugins = 'aiohttp.pytest_plugin'
 
 
 async def hello(request):
@@ -56,20 +54,6 @@ async def test_hello_with_loop(test_client, loop):
     assert 'Hello, world' in text
 
 
-async def test_hello_fails(test_client):
-    client = await test_client(create_app)
-    resp = await client.get('/')
-    assert resp.status == 200
-    text = await resp.text()
-    assert 'Hello, wield' in text
-
-
-async def test_hello_with_fake_loop(test_client):
-    with pytest.raises(AssertionError):
-        fake_loop = mock.Mock()
-        await test_client(web.Application(loop=fake_loop))
-
-
 async def test_set_args(test_client, loop):
     with pytest.raises(AssertionError):
         app = web.Application()
@@ -88,7 +72,8 @@ async def test_noop():
 
 async def previous(request):
     if request.method == 'POST':
-        request.app['value'] = (await request.post())['value']
+        with pytest.warns(DeprecationWarning):
+            request.app['value'] = (await request.post())['value']
         return web.Response(body=b'thanks for the data')
     else:
         v = request.app.get('value', 'unknown')
@@ -96,7 +81,7 @@ async def previous(request):
 
 
 def create_stateful_app(loop):
-    app = web.Application(loop=loop)
+    app = web.Application()
     app.router.add_route('*', '/', previous)
     return app
 
@@ -119,7 +104,8 @@ async def test_get_value(cli):
     assert resp.status == 200
     text = await resp.text()
     assert text == 'value: unknown'
-    cli.server.app['value'] = 'bar'
+    with pytest.warns(DeprecationWarning):
+        cli.server.app['value'] = 'bar'
     resp = await cli.get('/')
     assert resp.status == 200
     text = await resp.text()
@@ -139,18 +125,13 @@ async def test_client_failed_to_create(test_client):
         await test_client(make_app)
 
 """)
-    testdir.runpytest('-p', 'no:sugar')
-
-    # i dont know how to fix this
-    # result = testdir.runpytest('-p', 'no:sugar')
-    # result.assert_outcomes(passed=11, failed=1)
+    testdir.makeconftest(CONFTEST)
+    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
+    result.assert_outcomes(passed=10)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 5), reason='old python')
-def test_warning_checks(testdir, capsys):
+def test_warning_checks(testdir):
     testdir.makepyfile("""\
-
-pytest_plugins = 'aiohttp.pytest_plugin'
 
 async def foobar():
     return 123
@@ -162,11 +143,10 @@ async def test_good():
 async def test_bad():
     foobar()
 """)
-    result = testdir.runpytest('-p', 'no:sugar', '-s')
+    testdir.makeconftest(CONFTEST)
+    result = testdir.runpytest('-p', 'no:sugar', '-s', '-W',
+                               'default', '--loop=pyloop')
     result.assert_outcomes(passed=1, failed=1)
-    stdout, _ = capsys.readouterr()
-    assert ("test_warning_checks.py:__LINE__:coroutine 'foobar' was "
-            "never awaited" in re.sub('\d{2,}', '__LINE__', stdout))
 
 
 def test_aiohttp_plugin_async_fixture(testdir, capsys):
@@ -174,9 +154,6 @@ def test_aiohttp_plugin_async_fixture(testdir, capsys):
 import pytest
 
 from aiohttp import web
-
-
-pytest_plugins = 'aiohttp.pytest_plugin'
 
 
 async def hello(request):
@@ -223,9 +200,9 @@ def test_foo_without_loop(foo):
 def test_bar(loop, bar):
     assert bar is test_bar
 """)
-    nb_loops = len(LOOP_FACTORIES)
-    result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=3 * nb_loops, error=1)
+    testdir.makeconftest(CONFTEST)
+    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
+    result.assert_outcomes(passed=3, error=1)
     result.stdout.fnmatch_lines(
         "*Asynchronous fixtures must depend on the 'loop' fixture "
         "or be used in tests depending from it."
@@ -240,8 +217,6 @@ from unittest import mock
 
 from aiohttp import web
 
-
-pytest_plugins = 'aiohttp.pytest_plugin'
 
 canary = mock.Mock()
 
@@ -270,6 +245,6 @@ async def test_hello(cli):
 def test_finalized():
     assert canary.called is True
 """)
-    nb_loops = len(LOOP_FACTORIES)
-    result = testdir.runpytest('-p', 'no:sugar')
-    result.assert_outcomes(passed=1 * nb_loops + 1)
+    testdir.makeconftest(CONFTEST)
+    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
+    result.assert_outcomes(passed=2)

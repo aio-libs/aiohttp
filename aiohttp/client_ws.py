@@ -6,7 +6,7 @@ import json
 import async_timeout
 
 from .client_exceptions import ClientError
-from .helpers import call_later
+from .helpers import call_later, set_result
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
 
@@ -112,19 +112,19 @@ class ClientWebSocketResponse:
     async def pong(self, message='b'):
         await self._writer.pong(message)
 
-    async def send_str(self, data):
+    async def send_str(self, data, compress=None):
         if not isinstance(data, str):
             raise TypeError('data argument must be str (%r)' % type(data))
-        await self._writer.send(data, binary=False)
+        await self._writer.send(data, binary=False, compress=compress)
 
-    async def send_bytes(self, data):
+    async def send_bytes(self, data, compress=None):
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError('data argument must be byte-ish (%r)' %
                             type(data))
-        await self._writer.send(data, binary=True)
+        await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data, *, dumps=json.dumps):
-        await self.send_str(dumps(data))
+    async def send_json(self, data, compress=None, *, dumps=json.dumps):
+        await self.send_str(dumps(data), compress=compress)
 
     async def close(self, *, code=1000, message=b''):
         # we need to break `receive()` cycle first,
@@ -196,7 +196,7 @@ class ClientWebSocketResponse:
                 finally:
                     waiter = self._waiting
                     self._waiting = None
-                    waiter.set_result(True)
+                    set_result(waiter, True)
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise

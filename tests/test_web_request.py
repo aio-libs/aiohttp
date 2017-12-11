@@ -12,6 +12,11 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPRequestEntityTooLarge
 
 
+@pytest.fixture
+def protocol():
+    return mock.Mock(_reading_paused=False)
+
+
 def test_ctor():
     req = make_mocked_request('GET', '/path/to?a=1&b=2')
 
@@ -46,9 +51,6 @@ def test_ctor():
     assert req.headers == headers
     assert req.raw_headers == ((b'FOO', b'bar'),)
     assert req.task is req._task
-
-    with pytest.warns(DeprecationWarning):
-        assert req.GET is req.query
 
 
 def test_doubleslashes():
@@ -436,8 +438,8 @@ def test_clone_headers_dict():
     assert req2.raw_headers == ((b'B', b'C'),)
 
 
-async def test_cannot_clone_after_read(loop):
-    payload = StreamReader(loop=loop)
+async def test_cannot_clone_after_read(loop, protocol):
+    payload = StreamReader(protocol, loop=loop)
     payload.feed_data(b'data')
     payload.feed_eof()
     req = make_mocked_request('GET', '/path', payload=payload)
@@ -446,8 +448,8 @@ async def test_cannot_clone_after_read(loop):
         req.clone()
 
 
-async def test_make_too_big_request(loop):
-    payload = StreamReader(loop=loop)
+async def test_make_too_big_request(loop, protocol):
+    payload = StreamReader(protocol, loop=loop)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -459,8 +461,8 @@ async def test_make_too_big_request(loop):
     assert err.value.status_code == 413
 
 
-async def test_make_too_big_request_adjust_limit(loop):
-    payload = StreamReader(loop=loop)
+async def test_make_too_big_request_adjust_limit(loop, protocol):
+    payload = StreamReader(protocol, loop=loop)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -472,8 +474,8 @@ async def test_make_too_big_request_adjust_limit(loop):
     assert len(txt) == 1024**2 + 1
 
 
-async def test_multipart_formdata(loop):
-    payload = StreamReader(loop=loop)
+async def test_multipart_formdata(loop, protocol):
+    payload = StreamReader(protocol, loop=loop)
     payload.feed_data(b"""-----------------------------326931944431359\r
 Content-Disposition: form-data; name="a"\r
 \r
@@ -493,8 +495,8 @@ d\r
     assert dict(result) == {'a': 'b', 'c': 'd'}
 
 
-async def test_make_too_big_request_limit_None(loop):
-    payload = StreamReader(loop=loop)
+async def test_make_too_big_request_limit_None(loop, protocol):
+    payload = StreamReader(protocol, loop=loop)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)

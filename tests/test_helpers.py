@@ -12,31 +12,6 @@ from aiohttp import helpers
 from aiohttp.abc import AbstractAccessLogger
 
 
-# -------------------- coro guard --------------------------------
-
-async def test_warn():
-    with pytest.warns(DeprecationWarning) as ctx:
-        helpers.deprecated_noop('Text')
-
-    w = ctx.list[0]
-
-    assert str(w.message) == 'Text'
-    # Assert the warning points at us and not at _CoroGuard.
-    assert w.filename == __file__
-
-
-async def test_no_warn_on_await():
-    with pytest.warns(None) as ctx:
-        await helpers.deprecated_noop('Text')
-    assert not ctx.list
-
-
-def test_coro_guard_close():
-    guard = helpers.deprecated_noop('Text')
-    guard.close()
-    assert not guard.gi_running
-
-
 # ------------------- parse_mimetype ----------------------------------
 
 @pytest.mark.parametrize('mimetype, expected', [
@@ -533,3 +508,37 @@ def test_proxies_from_env_http_with_auth(mocker):
     assert proxy_auth.login == 'user'
     assert proxy_auth.password == 'pass'
     assert proxy_auth.encoding == 'latin1'
+
+
+# ------------- set_result / set_exception ----------------------
+
+
+async def test_set_result(loop):
+    fut = loop.create_future()
+    helpers.set_result(fut, 123)
+    assert 123 == await fut
+
+
+async def test_set_result_cancelled(loop):
+    fut = loop.create_future()
+    fut.cancel()
+    helpers.set_result(fut, 123)
+
+    with pytest.raises(asyncio.CancelledError):
+        await fut
+
+
+async def test_set_exception(loop):
+    fut = loop.create_future()
+    helpers.set_exception(fut, RuntimeError())
+    with pytest.raises(RuntimeError):
+        await fut
+
+
+async def test_set_exception_cancelled(loop):
+    fut = loop.create_future()
+    fut.cancel()
+    helpers.set_exception(fut, RuntimeError())
+
+    with pytest.raises(asyncio.CancelledError):
+        await fut

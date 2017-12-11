@@ -304,9 +304,9 @@ The client session supports the context manager protocol for self closing.
                                         ``False`` for DNS resolution on client
                                         ``True`` by default.
 
-      :param trace_request_ctx: Object used to give as a kw param for the all
-        signals triggered by the ongoing request and for all :class:`TraceConfig`
-        configured. Default passes a None value.
+      :param trace_request_ctx: Object used to give as a kw param for each new
+        :class:`TraceConfig` object instantiated, used to give information to the
+        tracers that is only available at request time.
 
          .. versionadded:: 3.0
 
@@ -320,7 +320,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``GET`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -338,7 +338,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``POST`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -357,7 +357,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``PUT`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -376,7 +376,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``DELETE`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -391,7 +391,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``HEAD`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -409,7 +409,7 @@ The client session supports the context manager protocol for self closing.
       Perform an ``OPTIONS`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
 
@@ -428,7 +428,7 @@ The client session supports the context manager protocol for self closing.
       Perform a ``PATCH`` request.
 
       In order to modify inner
-      :meth:`request<aiohttp.client.ClientSession.request>`
+      :meth:`request<aiohttp.ClientSession.request>`
       parameters, provide `kwargs`.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
@@ -561,18 +561,20 @@ keepaliving, cookies and complex connection stuff like properly configured SSL
 certification chaining.
 
 
-.. coroutinefunction:: request(method, url, *, params=None, data=None, \
-                               json=None,\
-                               headers=None, cookies=None, auth=None, \
-                               allow_redirects=True, max_redirects=10, \
-                               encoding='utf-8', \
-                               version=HttpVersion(major=1, minor=1), \
-                               compress=None, chunked=None, expect100=False, \
-                               connector=None, loop=None,\
-                               read_until_eof=True)
+.. cofunction:: request(method, url, *, params=None, data=None, \
+                        json=None,\
+                        headers=None, cookies=None, auth=None, \
+                        allow_redirects=True, max_redirects=10, \
+                        encoding='utf-8', \
+                        version=HttpVersion(major=1, minor=1), \
+                        compress=None, chunked=None, expect100=False, \
+                        connector=None, loop=None,\
+                        read_until_eof=True)
 
-   Perform an asynchronous HTTP request. Return a response object
-   (:class:`ClientResponse` or derived from).
+   :async-with:
+
+   Asynchronous context manager for performing an asynchronous HTTP
+   request. Returns a :class:`ClientResponse` response object.
 
    :param str method: HTTP method
 
@@ -735,7 +737,7 @@ BaseConnector
       The call may be paused if :attr:`limit` is exhausted until used
       connections returns to pool.
 
-      :param aiohttp.client.ClientRequest request: request object
+      :param aiohttp.ClientRequest request: request object
                                                    which is connection
                                                    initiator.
 
@@ -1180,6 +1182,14 @@ Response object
        A namedtuple with request URL and headers from :class:`ClientRequest`
        object, :class:`aiohttp.RequestInfo` instance.
 
+   .. method:: get_encoding()
+
+      Automatically detect content encoding using ``charset`` info in
+      ``Content-Type`` HTTP header. If this info is not exists or there
+      are no appropriate codecs for encoding then :term:`cchardet` /
+      :term:`chardet` is used.
+
+      .. versionadded:: 3.0
 
 
 ClientWebSocketResponse
@@ -1238,36 +1248,50 @@ manually.
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_str(data)
+   .. comethod:: send_str(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
 
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
+
       :raise TypeError: if data is not :class:`str`
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
-   .. comethod:: send_bytes(data)
+   .. comethod:: send_bytes(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
 
       :raise TypeError: if data is not :class:`bytes`,
                         :class:`bytearray` or :class:`memoryview`.
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
-   .. comethod:: send_json(data, *, dumps=json.dumps)
+   .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
@@ -1282,7 +1306,8 @@ manually.
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: close(*, code=1000, message=b'')
 
@@ -1553,11 +1578,13 @@ All exceptions are available as members of *aiohttp* module.
 
     .. attribute:: value
 
-    A :class:`str` instance. Value of Content-Disposition header itself, e.g. ``attachment``.
+    A :class:`str` instance. Value of Content-Disposition header
+    itself, e.g. ``attachment``.
 
     .. attribute:: filename
 
-    A :class:`str` instance. Content filename extracted from parameters. May be ``None``.
+    A :class:`str` instance. Content filename extracted from
+    parameters. May be ``None``.
 
     .. attribute:: parameters
 

@@ -1162,7 +1162,7 @@ async def test_custom_req_rep(loop):
     assert isinstance(resp, CustomResponse)
     assert called
     resp.close()
-    session.close()
+    await session.close()
     conn.close()
 
 

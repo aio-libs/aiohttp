@@ -161,7 +161,15 @@ Multipart reference
 
    Multipart body writer.
 
+   ``boundary`` may be an ASCII-only string.
+
    .. attribute:: boundary
+
+      The string (:class:`str`) representation of the boundary.
+
+      .. versionchanged:: 3.0
+
+         Property type was changed from :class:`bytes` to :class:`str`.
 
    .. method:: append(obj, headers=None)
 

@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+from contextlib import suppress
 
 from .client_exceptions import (ClientOSError, ClientPayloadError,
                                 ServerDisconnectedError)
@@ -10,7 +11,7 @@ from .streams import EMPTY_PAYLOAD, DataQueue
 class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, *, loop=None, **kwargs):
+    def __init__(self, *, loop=None):
         asyncio.streams.FlowControlMixin.__init__(self, loop=loop)
         DataQueue.__init__(self, loop=loop)
 
@@ -63,14 +64,12 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
     def connection_lost(self, exc):
         if self._payload_parser is not None:
-            try:
+            with suppress(Exception):
                 self._payload_parser.feed_eof()
-            except Exception:
-                pass
 
         try:
             uncompleted = self._parser.feed_eof()
-        except Exception as e:
+        except Exception:
             uncompleted = None
             if self._payload is not None:
                 self._payload.set_exception(

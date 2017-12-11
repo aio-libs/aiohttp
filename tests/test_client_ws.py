@@ -10,6 +10,7 @@ import aiohttp
 from aiohttp import client, hdrs
 from aiohttp.http import WS_KEY
 from aiohttp.log import ws_logger
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -262,7 +263,7 @@ async def test_close(loop, ws_key, key_data):
                 assert not res
                 assert writer.close.call_count == 1
 
-                session.close()
+                await session.close()
 
 
 async def test_close_exc(loop, ws_key, key_data):
@@ -292,7 +293,7 @@ async def test_close_exc(loop, ws_key, key_data):
                 assert resp.closed
                 assert resp.exception() is exc
 
-                session.close()
+                await session.close()
 
 
 async def test_close_exc2(loop, ws_key, key_data):
@@ -411,7 +412,7 @@ async def test_reader_read_exception(ws_key, key_data, loop):
                 assert msg.type == aiohttp.WSMsgType.ERROR
                 assert resp.exception() is exc
 
-                session.close()
+                await session.close()
 
 
 async def test_receive_runtime_err(loop):
@@ -512,6 +513,39 @@ async def test_ws_connect_deflate(loop, ws_key, key_data):
 
     assert res.compress == 15
     assert res.client_notakeover is False
+
+
+async def test_ws_connect_deflate_per_message(loop, ws_key, key_data):
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: hdrs.WEBSOCKET,
+        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        hdrs.SEC_WEBSOCKET_EXTENSIONS: 'permessage-deflate',
+    }
+    with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
+        with mock.patch('aiohttp.client.os') as m_os:
+            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+                m_os.urandom.return_value = key_data
+                m_req.return_value = loop.create_future()
+                m_req.return_value.set_result(resp)
+                writer = WebSocketWriter.return_value = mock.Mock()
+                send = writer.send = make_mocked_coro()
+
+                session = aiohttp.ClientSession(loop=loop)
+                resp = await session.ws_connect('http://test.org')
+
+                await resp.send_str('string', compress=-1)
+                send.assert_called_with('string', binary=False, compress=-1)
+
+                await resp.send_bytes(b'bytes', compress=15)
+                send.assert_called_with(b'bytes', binary=True, compress=15)
+
+                await resp.send_json([{}], compress=-9)
+                send.assert_called_with('[{}]', binary=False, compress=-9)
+
+                await session.close()
 
 
 async def test_ws_connect_deflate_server_not_support(loop, ws_key, key_data):
