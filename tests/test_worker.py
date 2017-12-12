@@ -85,7 +85,7 @@ def test_run(worker, loop):
     with pytest.raises(SystemExit):
         worker.run()
     assert worker._run.called
-    worker._runner.handler is None
+    worker._runner.server is None
     assert loop.is_closed()
 
 

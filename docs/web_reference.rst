@@ -2239,6 +2239,51 @@ View
 .. seealso:: :ref:`aiohttp-web-class-based-views`
 
 
+.. _aiohttp-web-app-runners:
+
+Running Applications
+--------------------
+
+To start web application there is ``AppRunner`` and site classes.
+
+Runner is a storage for running application, sites are for running
+application on specific TCP or Unix socket, e.g.::
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 8080)
+    await site.start()
+    # wait for finish signal
+    await runner.cleanup()
+
+
+.. versionadded:: 3.0
+
+   :class:`AppRunner` and :class:`TCPSite` / :class:`UnixSite` /
+   :class:`SockSite` are added in aiohttp 3.0
+
+.. class:: AppRunner(app, *, handle_signals=False, **kwargs)
+
+   A runner for :class:`Application`. Used with conjuction with sites
+   to serve on specific port.
+
+   :param Application app: web application instance to serve.
+
+   :param bool handle_signals: add signal handlers for
+                               :data:`signal.SIGINT` and
+                               :data:`signal.SIGTERM` (``False`` by
+                               default).
+
+   :param **kwargs: named parameters to pass into
+                    :meth:`Application.make_handler`.
+
+   .. attribute:: app
+
+      Read-only attribute for accessing to :class:`Application` served
+      instance.
+
+
+
 Utilities
 ---------
 
