@@ -1,0 +1,1 @@
+Allow Custom Authentication handlers to be passed into ClientSession

@@ -86,8 +86,9 @@ The client session supports the context manager protocol for self closing.
 
       Iterable of :class:`str` or :class:`~aiohttp.istr` (optional)
 
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional)
+   :param auth: a callable that represents an authentication scheme.
+        the object will be called passing in the current request object
+        during the initialization of a request (optional)
 
    :param version: supported HTTP version, ``HTTP 1.1`` by default.
 
@@ -1403,6 +1404,10 @@ BasicAuth
       header etc.
 
       :return: encoded authentication data, :class:`str`.
+
+    .. method:: __call__()
+
+      Used to attach the ``Authorization`` header on the request
 
 
 CookieJar

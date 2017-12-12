@@ -102,6 +102,9 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
+    def __call__(self, r):
+        r.headers[hdrs.AUTHORIZATION] = self.encode()
+
 
 def strip_auth_from_url(url):
     auth = BasicAuth.from_url(url)

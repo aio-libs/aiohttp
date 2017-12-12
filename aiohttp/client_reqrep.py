@@ -312,18 +312,14 @@ class ClientRequest(HooksMixin):
 
     def update_auth(self, auth):
         """Set basic auth. or custom if callable"""
-        if callable(auth):
-            auth(self)
-            return
         if auth is None:
             auth = self.auth
         if auth is None:
             return
 
-        if not isinstance(auth, helpers.BasicAuth):
-            raise TypeError('BasicAuth() tuple is required instead')
-
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
+        if not callable(auth):
+            raise TypeError('Auth must be a callable')
+        auth(self)
 
     def update_body_from_data(self, body):
         if not body:
