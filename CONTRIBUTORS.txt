@@ -33,6 +33,7 @@ Andrew Svetlov
 Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
+Anton Zhdan-Pushkin
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
@@ -74,6 +75,7 @@ Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
 Evert Lammerts
+FichteFoll
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
@@ -157,6 +159,7 @@ Robert Lu
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt
+Sebastien Geffroy
 Sebastian Hanula
 Sebastian Hüther
 SeongSoo Cho

@@ -8,17 +8,8 @@ import sys
 import aiohttp
 
 
-try:
-    import selectors
-except ImportError:
-    from asyncio import selectors
-
-
-def start_client(loop, url):
+async def start_client(loop, url):
     name = input('Please enter your name: ')
-
-    # send request
-    ws = yield from aiohttp.ws_connect(url, autoclose=False, autoping=False)
 
     # input reader
     def stdin_callback():
@@ -51,7 +42,9 @@ def start_client(loop, url):
 
                 break
 
-    yield from dispatch()
+    # send request
+    async with aiohttp.ws_connect(url, autoclose=False, autoping=False) as ws:
+        await dispatch()
 
 
 ARGS = argparse.ArgumentParser(
@@ -71,9 +64,8 @@ if __name__ == '__main__':
 
     url = 'http://{}:{}'.format(args.host, args.port)
 
-    loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
-    asyncio.set_event_loop(loop)
+    loop = asyncio.get_event_loop()
 
     loop.add_signal_handler(signal.SIGINT, loop.stop)
-    asyncio.Task(start_client(loop, url))
+    loop.create_task(start_client(loop, url))
     loop.run_forever()
