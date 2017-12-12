@@ -73,14 +73,14 @@ class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
         return fut
 
 
-class Response(object):
+class Response:
 
     def __init__(self, headers, content):
         self.headers = headers
         self.content = content
 
 
-class Stream(object):
+class Stream:
 
     def __init__(self, content):
         self.content = io.BytesIO(content)
