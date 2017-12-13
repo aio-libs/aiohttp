@@ -128,7 +128,7 @@ def netrc_from_env():
         if netrc_path and netrc_path.is_file():
             try:
                 netrc_obj = netrc.netrc(str(netrc_path))
-            except (netrc.NetrcParseError, IOError) as e:
+            except (netrc.NetrcParseError, OSError) as e:
                 client_logger.warning(".netrc file parses fail: %s", e)
 
         if netrc_obj is None:
