@@ -138,7 +138,7 @@ class _TransportPlaceholder:
         pass
 
 
-class BaseConnector(object):
+class BaseConnector:
     """Base connector class.
 
     keepalive_timeout - (optional) Keep-alive timeout.

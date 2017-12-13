@@ -160,7 +160,7 @@ def content_disposition_filename(params, name='filename'):
         return value
 
 
-class MultipartResponseWrapper(object):
+class MultipartResponseWrapper:
     """Wrapper around the MultipartBodyReader.
 
     It takes care about
@@ -197,7 +197,7 @@ class MultipartResponseWrapper(object):
         await self.resp.release()
 
 
-class BodyPartReader(object):
+class BodyPartReader:
     """Multipart reader for single body part."""
 
     chunk_size = 8192
@@ -457,7 +457,7 @@ class BodyPartReaderPayload(Payload):
             chunk = await field.read_chunk(size=2**16)
 
 
-class MultipartReader(object):
+class MultipartReader:
     """Multipart body reader."""
 
     #: Response wrapper, used when multipart readers constructs from response.
