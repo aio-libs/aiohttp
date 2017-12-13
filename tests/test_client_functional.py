@@ -2004,19 +2004,6 @@ async def test_redirect_without_location_header(loop, test_client):
     assert data == body
 
 
-async def test_encoding_deprecated(loop, test_client):
-
-    async def handler_redirect(request):
-        return web.Response(status=301)
-
-    app = web.Application()
-    app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await test_client(app)
-
-    with pytest.warns(DeprecationWarning):
-        await client.get('/', encoding='utf-8')
-
-
 async def test_chunked_deprecated(loop, test_client):
 
     async def handler_redirect(request):
