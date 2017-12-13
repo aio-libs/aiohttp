@@ -364,6 +364,24 @@ def test_custom_auth_register_hook(make_request):
     auth.assert_called_once_with(req)
 
 
+def test_unsupportd_hook_raises(make_request):
+    with pytest.raises(ValueError):
+        req = make_request('get', 'http://0.0.0.0/')
+        req.register_hook('request', mock.MagicMock())
+
+
+def test_deregister_non_existing_hook(make_request):
+    req = make_request('get', 'http://0.0.0.0/')
+    result = req.deregister_hook('response', mock.MagicMock())
+    assert result is False
+
+
+def test_custom_auth_non_callable_raises(make_request):
+    with pytest.raises(TypeError):
+        auth = 'no call'
+        req = make_request('get', 'http://0.0.0.0/', auth=auth)
+
+
 def test_hook_registration(make_request):
     async def hook():
         await asyncio.sleep(0)
