@@ -12,13 +12,13 @@ pip==9.0.1
 pyflakes==1.6.0
 pytest-cov==2.5.1
 pytest-mock==1.6.3
-pytest==3.3.0
+pytest==3.3.1
 towncrier==17.8.0
 tox==2.9.1
 twine==1.9.1
-yarl==0.15.0
+yarl==0.16.0
 
 # Using PEP 508 env markers to control dependency on runtimes:
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
-codecov==2.0.9; platform_system!="Windows"  # We only use it in Travis CI
+codecov==2.0.10; platform_system!="Windows"  # We only use it in Travis CI
 uvloop==0.9.1; python_version>="3.5" and platform_system!="Windows"  # MagicStack/uvloop#14
