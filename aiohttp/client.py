@@ -154,7 +154,6 @@ class ClientSession:
                        auth=None,
                        allow_redirects=True,
                        max_redirects=10,
-                       encoding=None,
                        compress=None,
                        chunked=None,
                        expect100=False,
@@ -171,12 +170,6 @@ class ClientSession:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
         # to use the existing timeouts by setting timeout to None.
-
-        if encoding is not None:
-            warnings.warn(
-                "encoding parameter is not supported, "
-                "please use FormData(charset='utf-8') instead",
-                DeprecationWarning)
 
         if self.closed:
             raise RuntimeError('Session is closed')
@@ -793,7 +786,6 @@ def request(method, url, *,
             auth=None,
             allow_redirects=True,
             max_redirects=10,
-            encoding=None,
             version=http.HttpVersion11,
             compress=None,
             chunked=None,
@@ -854,7 +846,6 @@ def request(method, url, *,
                          auth=auth,
                          allow_redirects=allow_redirects,
                          max_redirects=max_redirects,
-                         encoding=encoding,
                          compress=compress,
                          chunked=chunked,
                          expect100=expect100,
