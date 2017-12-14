@@ -503,6 +503,9 @@ insensitive)::
        async with session.get("http://python.org", trust_env=True) as resp:
            print(resp.status)
 
+Proxy credentials are given from ``~/.netrc`` file if present (see
+:class:`aiohttp.ClientSession` for more details).
+
 Graceful Shutdown
 -----------------
 
