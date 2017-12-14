@@ -439,7 +439,7 @@ class PrefixResource(AbstractResource):
         self._prefix = prefix + self._prefix
 
     def raw_match(self, prefix):
-        return self._prefix == prefix
+        return False
 
     # TODO: impl missing abstract methods
 

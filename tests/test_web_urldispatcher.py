@@ -377,4 +377,4 @@ def test_resource_raw_match():
     assert route.resource.raw_match("/{b}")
 
     resource = app.router.add_static("/static", ".")
-    assert resource.raw_match("/static")
+    assert not resource.raw_match("/static")
