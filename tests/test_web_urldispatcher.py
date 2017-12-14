@@ -362,3 +362,19 @@ def test_reuse_last_added_resource(path):
     app.router.add_post(path, handler, name="a")
 
     assert len(app.router.resources()) == 1
+
+
+def test_resource_raw_match():
+    app = web.Application()
+
+    async def handler(request):
+        return web.Response()
+
+    route = app.router.add_get("/a", handler, name="a")
+    assert route.resource.raw_match("/a")
+
+    route = app.router.add_get("/{b}", handler, name="b")
+    assert route.resource.raw_match("/{b}")
+
+    resource = app.router.add_static("/static", ".")
+    assert resource.raw_match("/static")
