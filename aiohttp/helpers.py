@@ -157,8 +157,11 @@ def proxies_from_env():
         if netrc_obj and auth is None:
             auth_from_netrc = netrc_obj.authenticators(proxy.host)
             if auth_from_netrc is not None:
+                # auth_from_netrc is a (`user`, `account`, `password`) tuple,
+                # `user` and `account` both can be username,
+                # if `user` is None, use `account`
                 *logins, password = auth_from_netrc
-                auth = BasicAuth(logins[0] if logins[0] else logins[1],
+                auth = BasicAuth(logins[0] if logins[0] else logins[-1],
                                  password)
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
