@@ -255,6 +255,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def scheme(self):
         """A string representing the scheme of the request.
 
+        Hostname is resolved in this order:
+
+        - overridden value by .clone(scheme=new_scheme) call.
+        - type of connection to peer: HTTPS if socket is SSL, HTTP otherwise.
+
         'http' or 'https'.
         """
         scheme = self._scheme
@@ -285,13 +290,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def host(self):
         """Hostname of the request.
 
-        Hostname is resolved through the following headers, in this order:
+        Hostname is resolved in this order:
 
-        - Forwarded
-        - X-Forwarded-Host
-        - Host
-
-        Returns str, or None if no hostname is found in the headers.
+        - overridden value by .clone(host=new_host) call.
+        - HOST HTTP header
+        - socket.getfqdn() value
         """
         host = self._host
         if host is not None:
@@ -306,10 +309,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def remote(self):
         """Remote IP of client initiated HTTP request.
 
-        The IP is resolved through the following headers, in this order:
+        The IP is resolved in this order:
 
-        - Forwarded
-        - X-Forwarded-For
+        - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
         remote = self._remote
