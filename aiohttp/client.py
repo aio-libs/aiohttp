@@ -165,7 +165,8 @@ class ClientSession:
                        fingerprint=None,
                        ssl_context=None,
                        proxy_headers=None,
-                       trace_request_ctx=None):
+                       trace_request_ctx=None,
+                       socks_remote_resolve=True):
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -277,7 +278,8 @@ class ClientSession:
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
                         verify_ssl=verify_ssl, fingerprint=fingerprint,
-                        ssl_context=ssl_context, proxy_headers=proxy_headers)
+                        ssl_context=ssl_context, proxy_headers=proxy_headers,
+                        socks_remote_resolve=socks_remote_resolve)
 
                     # connection timeout
                     try:
@@ -424,7 +426,8 @@ class ClientSession:
                    fingerprint=None,
                    ssl_context=None,
                    proxy_headers=None,
-                   compress=0):
+                   compress=0,
+                   socks_remote_resolve=True):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -443,7 +446,8 @@ class ClientSession:
                              fingerprint=fingerprint,
                              ssl_context=ssl_context,
                              proxy_headers=proxy_headers,
-                             compress=compress))
+                             compress=compress,
+                             socks_remote_resolve=socks_remote_resolve))
 
     async def _ws_connect(self, url, *,
                           protocols=(),
@@ -461,7 +465,8 @@ class ClientSession:
                           fingerprint=None,
                           ssl_context=None,
                           proxy_headers=None,
-                          compress=0):
+                          compress=0,
+                          socks_remote_resolve=True):
 
         if headers is None:
             headers = CIMultiDict()
@@ -496,7 +501,8 @@ class ClientSession:
                               verify_ssl=verify_ssl,
                               fingerprint=fingerprint,
                               ssl_context=ssl_context,
-                              proxy_headers=proxy_headers)
+                              proxy_headers=proxy_headers,
+                              socks_remote_resolve=socks_remote_resolve)
 
         try:
             # check handshake
@@ -794,7 +800,8 @@ def request(method, url, *,
             loop=None,
             read_until_eof=True,
             proxy=None,
-            proxy_auth=None):
+            proxy_auth=None,
+            socks_remote_resolve=True):
     """Constructs and sends a request. Returns response object.
     method - HTTP method
     url - request url
@@ -851,5 +858,6 @@ def request(method, url, *,
                          expect100=expect100,
                          read_until_eof=read_until_eof,
                          proxy=proxy,
-                         proxy_auth=proxy_auth,),
+                         proxy_auth=proxy_auth,
+                         socks_remote_resolve=socks_remote_resolve),
         session)

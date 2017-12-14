@@ -18,6 +18,12 @@ from aiohttp import BaseConnector, hdrs, payload
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 
 
+try:
+    import aiosocks
+except ImportError:
+    aiosocks = None
+
+
 @pytest.yield_fixture
 def make_request(loop):
     request = None
@@ -111,6 +117,71 @@ def test_https_proxy(make_request):
     with pytest.raises(ValueError):
         make_request(
             'get', 'http://python.org/', proxy=URL('https://proxy.org'))
+
+
+def test_socks_aiosocks_not_present(make_request, monkeypatch):
+    monkeypatch.setattr("aiohttp.client_reqrep.aiosocks", None)
+
+    with pytest.raises(RuntimeError):
+        make_request(
+            'get', 'http://python.org/', proxy=URL('socks4://proxy.org'),
+            proxy_auth=aiohttp.BasicAuth('', ''))
+
+
+@pytest.mark.skipif(aiosocks is None, reason="aiosocks library required")
+def test_invalid_socks_version(make_request):
+    with pytest.raises(ValueError) as cm:
+        make_request(
+            'get', 'http://python.org/', proxy=URL('socks6://proxy.org'))
+    assert 'Only http, socks4 and socks5 proxies are supported' in str(cm)
+
+
+@pytest.mark.skipif(aiosocks is None, reason="aiosocks library required")
+def test_socks4_invalid_auth(make_request):
+    with pytest.raises(ValueError) as cm:
+        make_request(
+            'get', 'http://python.org/', proxy=URL('socks4://proxy.org'),
+            proxy_auth=aiohttp.BasicAuth('', ''))
+    assert 'proxy_auth must be None or Socks4Auth() ' \
+           'tuple for socks4 proxy' in str(cm)
+
+
+@pytest.mark.skipif(aiosocks is None, reason="aiosocks library required")
+def test_socks5_invalid_auth(make_request):
+    with pytest.raises(ValueError) as cm:
+        make_request(
+            'get', 'http://python.org/', proxy=URL('socks5://proxy.org'),
+            proxy_auth=aiohttp.BasicAuth('', ''))
+    assert 'proxy_auth must be None or Socks5Auth() ' \
+           'tuple for socks5 proxy' in str(cm)
+
+
+@pytest.mark.skipif(aiosocks is None, reason="aiosocks library required")
+def test_socks4_proxy(make_request):
+    proxy = URL('socks4://proxy.org')
+    auth = aiosocks.Socks4Auth('login')
+    req = make_request(
+        'get', 'http://python.org/', proxy=proxy)
+    assert req.proxy is proxy
+
+    req = make_request(
+        'get', 'http://python.org/', proxy=proxy, proxy_auth=auth)
+    assert req.proxy is proxy
+    assert req.proxy_auth is auth
+
+
+@pytest.mark.skipif(aiosocks is None, reason="aiosocks library required")
+def test_socks5_proxy(make_request):
+    proxy = URL('socks5://proxy.org')
+    auth = aiosocks.Socks5Auth('login', '')
+    req = make_request(
+        'get', 'http://python.org/', proxy=proxy)
+    assert req.proxy is proxy
+
+    req = make_request(
+        'get', 'http://python.org/', proxy=proxy, proxy_auth=auth)
+    assert req.proxy is proxy
+    assert req.proxy_auth is auth
 
 
 def test_keep_alive(make_request):

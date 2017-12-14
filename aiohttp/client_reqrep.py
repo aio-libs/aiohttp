@@ -31,6 +31,11 @@ try:
 except ImportError:  # pragma: no cover
     import chardet
 
+try:
+    import aiosocks
+except ImportError:  # pragma: no cover
+    aiosocks = None
+
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo')
 
@@ -93,7 +98,7 @@ class ClientRequest:
                  proxy=None, proxy_auth=None,
                  timer=None, session=None, auto_decompress=True,
                  verify_ssl=None, fingerprint=None, ssl_context=None,
-                 proxy_headers=None):
+                 proxy_headers=None, socks_remote_resolve=True):
 
         if verify_ssl is False and ssl_context is not None:
             raise ValueError(
@@ -134,7 +139,8 @@ class ClientRequest:
         self.update_cookies(cookies)
         self.update_content_encoding(data)
         self.update_auth(auth)
-        self.update_proxy(proxy, proxy_auth, proxy_headers)
+        self.update_proxy(
+            proxy, proxy_auth, proxy_headers, socks_remote_resolve)
         self.update_fingerprint(fingerprint)
 
         self.update_body_from_data(data)
@@ -335,14 +341,32 @@ class ClientRequest:
         if expect:
             self._continue = self.loop.create_future()
 
-    def update_proxy(self, proxy, proxy_auth, proxy_headers):
-        if proxy and not proxy.scheme == 'http':
-            raise ValueError("Only http proxies are supported")
-        if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
-            raise ValueError("proxy_auth must be None or BasicAuth() tuple")
+    def update_proxy(self, proxy, proxy_auth, proxy_headers,
+                     socks_remote_resolve=True):
+        if proxy and proxy.scheme not in ['http', 'socks4', 'socks5']:
+            raise ValueError(
+                "Only http, socks4 and socks5 proxies are supported")
+        if proxy and proxy.scheme in ['socks4', 'socks5'] and aiosocks is None:
+            raise RuntimeError(
+                "{} requires aiosocks library".format(proxy.scheme))
+
+        if proxy and proxy_auth:
+            if proxy.scheme == 'http' and \
+                    not isinstance(proxy_auth, helpers.BasicAuth):
+                raise ValueError("proxy_auth must be None or "
+                                 "BasicAuth() tuple for http proxy")
+            if proxy.scheme == 'socks4' and \
+                    not isinstance(proxy_auth, aiosocks.Socks4Auth):
+                raise ValueError("proxy_auth must be None or Socks4Auth() "
+                                 "tuple for socks4 proxy")
+            if proxy.scheme == 'socks5' and \
+                    not isinstance(proxy_auth, aiosocks.Socks5Auth):
+                raise ValueError("proxy_auth must be None or Socks5Auth() "
+                                 "tuple for socks5 proxy")
         self.proxy = proxy
         self.proxy_auth = proxy_auth
         self.proxy_headers = proxy_headers
+        self.socks_remote_resolve = socks_remote_resolve
 
     def update_fingerprint(self, fingerprint):
         if fingerprint:

@@ -21,7 +21,7 @@ __all__ = (
     'ServerConnectionError', 'ServerTimeoutError', 'ServerDisconnectedError',
     'ServerFingerprintMismatch',
 
-    'ClientResponseError', 'ClientHttpProxyError',
+    'ClientResponseError', 'ClientHttpProxyError', 'ClientSocksProxyError',
     'WSServerHandshakeError', 'ContentTypeError',
 
     'ClientPayloadError', 'InvalidURL')
@@ -62,6 +62,14 @@ class ClientHttpProxyError(ClientResponseError):
     Raised in :class:`aiohttp.connector.TCPConnector` if
     proxy responds with status other than ``200 OK``
     on ``CONNECT`` request.
+    """
+
+
+class ClientSocksProxyError(ClientError):
+    """SOCKS proxy error.
+
+    Raised in :class:`aiohttp.connector.TCPConnector` if
+    socks proxy server return error.
     """
 
 
