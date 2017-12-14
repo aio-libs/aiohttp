@@ -206,7 +206,7 @@ class ClientSession:
             try:
                 proxy = URL(proxy)
             except ValueError:
-                raise InvalidURL(url)
+                raise InvalidURL(proxy)
 
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
@@ -214,8 +214,6 @@ class ClientSession:
             self._loop,
             timeout if timeout is not sentinel else self._read_timeout)
         handle = tm.start()
-
-        url = URL(url)
 
         traces = [
             Trace(
