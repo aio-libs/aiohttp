@@ -141,7 +141,18 @@ The client session supports the context manager protocol for self closing.
                          *HTTPS_PROXY* environment variables if the
                          parameter is ``True`` (``False`` by default).
 
+                         Get proxy credentials from ``~/.netrc`` file if
+                         present.
+
+      .. seealso::
+
+         ``.netrc`` documentation: https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html
+
       .. versionadded:: 2.3
+
+      .. versionchanged:: 3.0
+
+         Added support for ``~/.netrc`` file.
 
    .. attribute:: closed
 
