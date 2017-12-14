@@ -92,6 +92,10 @@ class AbstractResource(Sized, Iterable):
     def freeze(self):
         pass
 
+    @abc.abstractmethod
+    def raw_match(self, path):
+        """Perform a raw match against path"""
+
 
 class AbstractRoute(abc.ABC):
 
@@ -332,6 +336,9 @@ class PlainResource(Resource):
         else:
             return None
 
+    def raw_match(self, path):
+        return self._path == path
+
     def get_info(self):
         return {'path': self._path}
 
@@ -400,6 +407,9 @@ class DynamicResource(Resource):
             return {key: unquote(value, unsafe='+') for key, value in
                     match.groupdict().items()}
 
+    def raw_match(self, path):
+        return self._formatter == path
+
     def get_info(self):
         return {'formatter': self._formatter,
                 'pattern': self._pattern}
@@ -427,6 +437,9 @@ class PrefixResource(AbstractResource):
         assert not prefix.endswith('/')
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix
+
+    def raw_match(self, prefix):
+        return False
 
     # TODO: impl missing abstract methods
 
@@ -830,6 +843,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_resource(self, path, *, name=None):
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
+        # Reuse last added resource if path and name are the same
+        if self._resources:
+            resource = self._resources[-1]
+            if resource.name == name and resource.raw_match(path):
+                return resource
         if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
             url = URL(path)
             resource = PlainResource(url.raw_path, name=name)

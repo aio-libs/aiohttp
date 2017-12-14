@@ -342,3 +342,39 @@ async def test_allow_head(loop, test_client):
     r = await client.head('/b')
     assert r.status == 405
     await r.release()
+
+
+@pytest.mark.parametrize("path", [
+    '/a',
+    '/{a}',
+])
+def test_reuse_last_added_resource(path):
+    """
+    Test that adding a route with the same name and path of the last added
+    resource doesn't create a new resource.
+    """
+    app = web.Application()
+
+    async def handler(request):
+        return web.Response()
+
+    app.router.add_get(path, handler, name="a")
+    app.router.add_post(path, handler, name="a")
+
+    assert len(app.router.resources()) == 1
+
+
+def test_resource_raw_match():
+    app = web.Application()
+
+    async def handler(request):
+        return web.Response()
+
+    route = app.router.add_get("/a", handler, name="a")
+    assert route.resource.raw_match("/a")
+
+    route = app.router.add_get("/{b}", handler, name="b")
+    assert route.resource.raw_match("/{b}")
+
+    resource = app.router.add_static("/static", ".")
+    assert not resource.raw_match("/static")
