@@ -40,7 +40,7 @@ For example, if you want to specify the content-type directly::
 You also can set default headers for all session requests::
 
     headers={"Authorization": "Basic bG9naW46cGFzcw=="}
-    async with aiohttp.ClientSession(headers)=headers as session:
+    async with aiohttp.ClientSession(headers=headers) as session:
         async with session.get("http://httpbin.org/headers") as r:
             json_body = await r.json()
             assert json_body['headers']['Authorization'] == \
