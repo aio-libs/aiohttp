@@ -140,6 +140,7 @@ Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
 Nicolas Braem
+Nikolay Kim
 Nikolay Novik
 Olaf Conradi
 Pahaz Blinov
@@ -200,6 +201,7 @@ W. Trevor King
 Will McGugan
 Willem de Groot
 Wilson Ong
+Wei Lin
 Yannick Koechlin
 Yannick Péroux
 Yegor Roganov

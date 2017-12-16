@@ -282,7 +282,7 @@ retrieved by :attr:`View.request` property.
 After implementing the view (``MyView`` from example above) should be
 registered in application's router::
 
-   app.router.add_route('*', '/path/to', MyView)
+   app.router.add_view('/path/to', MyView)
 
 Example will process GET and POST requests for */path/to* but raise
 *405 Method not allowed* exception for unimplemented HTTP methods.
@@ -345,6 +345,20 @@ Route decorators are closer to Flask approach::
    @routes.post('/post')
    async def handle_post(request):
        ...
+
+   app.router.add_routes(routes)
+
+It is also possible to use decorators with class-based views::
+
+   routes = web.RouteTableDef()
+
+   @routes.view("/view")
+   class MyView(web.View):
+       async def get(self):
+           ...
+
+       async def post(self):
+           ...
 
    app.router.add_routes(routes)
 
