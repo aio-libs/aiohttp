@@ -33,7 +33,7 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
            'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
-           'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
+           'head', 'get', 'post', 'patch', 'put', 'delete', 'route', 'view')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
@@ -926,6 +926,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
+    def add_view(self, path, handler, **kwargs):
+        """
+        Shortcut for add_route with ANY methods for a class-based view
+        """
+        return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)
+
     def freeze(self):
         super().freeze()
         for resource in self._resources:
@@ -968,6 +974,10 @@ def patch(path, handler, **kwargs):
 
 def delete(path, handler, **kwargs):
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
+
+
+def view(path, handler, **kwargs):
+    return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 
 class RouteTableDef(Sequence):
@@ -1013,3 +1023,6 @@ class RouteTableDef(Sequence):
 
     def delete(self, path, **kwargs):
         return self.route(hdrs.METH_DELETE, path, **kwargs)
+
+    def view(self, path, **kwargs):
+        return self.route(hdrs.METH_ANY, path, **kwargs)

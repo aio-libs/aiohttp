@@ -1583,6 +1583,13 @@ Router is any object that implements :class:`AbstractRouter` interface.
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
 
+   .. method:: add_view(path, handler, **kwargs)
+
+      Shortcut for adding a class-based view handler. Calls the \
+      :meth:`add_routre` with ``method`` equals to ``'*'``.
+
+      .. versionadded:: 3.0
+
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
@@ -2081,6 +2088,13 @@ The definition is created by functions like :func:`get` or
 
    .. versionadded:: 2.3
 
+.. function:: view(path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``ANY`` requests. See
+   :meth:`UrlDispatcher.add_view` for information about parameters.
+
+   .. versionadded:: 3.0
+
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
    Return :class:`RouteDef` for processing ``POST`` requests. See
@@ -2110,6 +2124,15 @@ A routes table definition used for describing routes by decorators
        ...
 
    app.router.add_routes(routes)
+
+
+   @routes.view("/view")
+   class MyView(web.View):
+       async def get(self):
+           ...
+
+       async def post(self):
+           ...
 
 .. class:: RouteTableDef()
 
@@ -2156,6 +2179,15 @@ A routes table definition used for describing routes by decorators
       Add a new :class:`RouteDef` item for registering ``DELETE`` web-handler.
 
       See :meth:`UrlDispatcher.add_delete` for information about parameters.
+
+   .. decoratormethod:: view(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``ANY`` methods
+      against a class-based view.
+
+      See :meth:`UrlDispatcher.add_view` for information about parameters.
+
+      .. versionadded:: 3.0
 
    .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
 
@@ -2217,7 +2249,7 @@ View
                resp = await post_response(self.request)
                return resp
 
-       app.router.add_route('*', '/view', MyView)
+       app.router.add_view('/view', MyView)
 
    The view raises *405 Method Not allowed*
    (:class:`HTTPMethodNowAllowed`) if requested web verb is not

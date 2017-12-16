@@ -378,3 +378,88 @@ def test_resource_raw_match():
 
     resource = app.router.add_static("/static", ".")
     assert not resource.raw_match("/static")
+
+
+async def test_add_view(loop, test_client):
+    app = web.Application()
+
+    class MyView(web.View):
+        async def get(self):
+            return web.Response()
+
+        async def post(self):
+            return web.Response()
+
+    app.router.add_view("/a", MyView)
+
+    client = await test_client(app)
+
+    r = await client.get("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.post("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.put("/a")
+    assert r.status == 405
+    await r.release()
+
+
+async def test_decorate_view(loop, test_client):
+    routes = web.RouteTableDef()
+
+    @routes.view("/a")
+    class MyView(web.View):
+        async def get(self):
+            return web.Response()
+
+        async def post(self):
+            return web.Response()
+
+    app = web.Application()
+    app.router.add_routes(routes)
+
+    client = await test_client(app)
+
+    r = await client.get("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.post("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.put("/a")
+    assert r.status == 405
+    await r.release()
+
+
+async def test_web_view(loop, test_client):
+    app = web.Application()
+
+    class MyView(web.View):
+        async def get(self):
+            return web.Response()
+
+        async def post(self):
+            return web.Response()
+
+    app.router.add_routes([
+        web.view("/a", MyView)
+    ])
+
+    client = await test_client(app)
+
+    r = await client.get("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.post("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.put("/a")
+    assert r.status == 405
+    await r.release()
