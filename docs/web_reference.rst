@@ -1588,6 +1588,8 @@ Router is any object that implements :class:`AbstractRouter` interface.
       Shortcut for adding a class-based view handler. Calls the \
       :meth:`add_routre` with ``method`` equals to ``'*'``.
 
+      .. versionadded:: 3.0
+
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
@@ -2091,6 +2093,8 @@ The definition is created by functions like :func:`get` or
    Return :class:`RouteDef` for processing ``ANY`` requests. See
    :meth:`UrlDispatcher.add_view` for information about parameters.
 
+   .. versionadded:: 3.0
+
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
    Return :class:`RouteDef` for processing ``POST`` requests. See
@@ -2182,6 +2186,8 @@ A routes table definition used for describing routes by decorators
       against a class-based view.
 
       See :meth:`UrlDispatcher.add_view` for information about parameters.
+
+      .. versionadded:: 3.0
 
    .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
 
