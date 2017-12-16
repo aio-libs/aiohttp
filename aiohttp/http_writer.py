@@ -164,20 +164,6 @@ class PayloadWriter(AbstractPayloadWriter):
 
         return self._transport
 
-    @property
-    def tcp_nodelay(self):
-        return self._stream.tcp_nodelay
-
-    def set_tcp_nodelay(self, value):
-        self._stream.set_tcp_nodelay(value)
-
-    @property
-    def tcp_cork(self):
-        return self._stream.tcp_cork
-
-    def set_tcp_cork(self, value):
-        self._stream.set_tcp_cork(value)
-
     def enable_chunking(self):
         self.chunked = True
 
