@@ -128,7 +128,7 @@ app test client::
 
 Pytest tooling has the following fixtures:
 
-.. data:: test_server(app, **kwargs)
+.. data:: test_server(app, *, port=None, **kwargs)
 
    A fixture factory that creates
    :class:`~aiohttp.test_utils.TestServer`::
@@ -144,11 +144,14 @@ Pytest tooling has the following fixtures:
    *app* is the :class:`aiohttp.web.Application` used
                            to start server.
 
+   *port* optional, port the server is run at, if
+   not provided a random unused port is used.
+
    *kwargs* are parameters passed to
                   :meth:`aiohttp.web.Application.make_handler`
 
 
-.. data:: test_client(app, **kwargs)
+.. data:: test_client(app, server_kwargs=None, **kwargs)
           test_client(server, **kwargs)
           test_client(raw_server, **kwargs)
 
@@ -168,17 +171,23 @@ Pytest tooling has the following fixtures:
    :class:`aiohttp.test_utils.TestServer` or
    :class:`aiohttp.test_utils.RawTestServer` instance.
 
+   *server_kwargs* are parameters passed to the test server if an app
+   is passed, else ignored.
+
    *kwargs* are parameters passed to
    :class:`aiohttp.test_utils.TestClient` constructor.
 
-.. data:: raw_test_server(handler, **kwargs)
+.. data:: raw_test_server(handler, *, port=None, **kwargs)
 
    A fixture factory that creates
    :class:`~aiohttp.test_utils.RawTestServer` instance from given web
    handler.
 
    *handler* should be a coroutine which accepts a request and returns
-   response, e.g.::
+   response, e.g.
+
+   *port* optional, port the server is run at, if
+   not provided a random unused port is used.::
 
       async def test_f(raw_test_server, test_client):
 
@@ -563,7 +572,7 @@ Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1')
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None)
 
    Base class for test servers.
 
@@ -572,6 +581,8 @@ for accessing to the server.
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
 
+   :param int port: optional port for TCP socket, if not provided a
+       random unused port is used.
 
    .. attribute:: scheme
 
