@@ -21,7 +21,7 @@
   * The format is &lt;Name&gt; &lt;Surname&gt;.
   * Please keep alphabetical order, the file is sorted by names. 
 - [ ] Add a new news fragment into the `CHANGES` folder
-  * name it `<issue_id>.<type>` for example (588.bug)
+  * name it `<issue_id>.<type>` for example (588.bugfix)
   * if you don't have an `issue_id` change it to the pr id after creating the pr
   * ensure type is one of the following:
     * `.feature`: Signifying a new feature.
