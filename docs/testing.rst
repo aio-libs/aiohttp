@@ -147,6 +147,8 @@ Pytest tooling has the following fixtures:
    *port* optional, port the server is run at, if
    not provided a random unused port is used.
 
+   .. versionadded:: 3.0
+
    *kwargs* are parameters passed to
                   :meth:`aiohttp.web.Application.make_handler`
 
@@ -181,13 +183,7 @@ Pytest tooling has the following fixtures:
 
    A fixture factory that creates
    :class:`~aiohttp.test_utils.RawTestServer` instance from given web
-   handler.
-
-   *handler* should be a coroutine which accepts a request and returns
-   response, e.g.
-
-   *port* optional, port the server is run at, if
-   not provided a random unused port is used.::
+   handler.::
 
       async def test_f(raw_test_server, test_client):
 
@@ -197,6 +193,14 @@ Pytest tooling has the following fixtures:
           raw_server = await raw_test_server(handler)
           client = await test_client(raw_server)
           resp = await client.get('/')
+
+   *handler* should be a coroutine which accepts a request and returns
+   response, e.g.
+
+   *port* optional, port the server is run at, if
+   not provided a random unused port is used.
+
+   .. versionadded:: 3.0
 
 .. data:: unused_port()
 
@@ -595,7 +599,9 @@ for accessing to the server.
       (``'127.0.0.1'``) by default.
 
    :param int port: optional port for TCP socket, if not provided a
-       random unused port is used.
+      random unused port is used.
+
+      .. versionadded:: 3.0
 
    .. attribute:: scheme
 
@@ -608,7 +614,7 @@ for accessing to the server.
 
    .. attribute:: port
 
-      A random *port* used to start a server.
+      *port* used to start the test server.
 
    .. attribute:: handler
 
@@ -654,6 +660,11 @@ for accessing to the server.
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
 
+   :param int port: optional port for TCP socket, if not provided a
+      random unused port is used.
+
+      .. versionadded:: 3.0
+
 
 .. class:: TestServer(app, *, scheme="http", host='127.0.0.1')
 
@@ -667,6 +678,10 @@ for accessing to the server.
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
 
+   :param int port: optional port for TCP socket, if not provided a
+      random unused port is used.
+
+      .. versionadded:: 3.0
 
    .. attribute:: app
 
@@ -712,7 +727,7 @@ Test Client
 
    .. attribute:: port
 
-      A random *port* used to start a server.
+      *port* used to start the server
 
    .. attribute:: server
 
