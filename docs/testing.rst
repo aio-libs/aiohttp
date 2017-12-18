@@ -198,6 +198,19 @@ Pytest tooling has the following fixtures:
           client = await test_client(raw_server)
           resp = await client.get('/')
 
+.. data:: unused_port()
+
+   Function to return an unused port number for IPv4 TCP protocol::
+
+      async def test_f(test_client, unused_port):
+          port = unused_port()
+          app = web.Application()
+          # fill route table
+
+          client = await test_client(app, server_kwargs={'port': port})
+          ...
+
+
 .. _aiohttp-testing-unittest-example:
 
 .. _aiohttp-testing-unittest-style:
