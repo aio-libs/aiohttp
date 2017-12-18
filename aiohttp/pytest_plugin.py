@@ -225,8 +225,8 @@ def test_server(loop):
     """
     servers = []
 
-    async def go(app, **kwargs):
-        server = TestServer(app)
+    async def go(app, *, port=None, **kwargs):
+        server = TestServer(app, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server
@@ -248,8 +248,8 @@ def raw_test_server(loop):
     """
     servers = []
 
-    async def go(handler, **kwargs):
-        server = RawTestServer(handler)
+    async def go(handler, *, port=None, **kwargs):
+        server = RawTestServer(handler, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server

@@ -22,7 +22,7 @@ async def hello(request):
     return web.Response(body=b'Hello, world')
 
 
-def create_app(loop):
+def create_app(loop=None):
     app = web.Application()
     app.router.add_route('GET', '/', hello)
     return app
@@ -124,10 +124,27 @@ async def test_client_failed_to_create(test_client):
     with pytest.raises(RuntimeError):
         await test_client(make_app)
 
+
+async def test_custom_port_test_client(test_client, unused_port):
+    port = unused_port()
+    client = await test_client(create_app, server_kwargs={'port': port})
+    assert client.port == port
+    resp = await client.get('/')
+    assert resp.status == 200
+    text = await resp.text()
+    assert 'Hello, world' in text
+
+
+async def test_custom_port_test_server(test_server, unused_port):
+    app = create_app()
+    port = unused_port()
+    server = await test_server(app, port=port)
+    assert server.port == port
+
 """)
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
-    result.assert_outcomes(passed=10)
+    result.assert_outcomes(passed=12)
 
 
 def test_warning_checks(testdir):
