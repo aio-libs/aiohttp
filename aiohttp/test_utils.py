@@ -39,7 +39,8 @@ def unused_port():
 
 class BaseTestServer(ABC):
     def __init__(self, *, scheme=sentinel, loop=None,
-                 host='127.0.0.1', skip_url_asserts=False, **kwargs):
+                 host='127.0.0.1', port=None, skip_url_asserts=False,
+                 **kwargs):
         self._loop = loop
         self.port = None
         self.server = None
@@ -49,14 +50,18 @@ class BaseTestServer(ABC):
         self._closed = False
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
+        self.port = port
 
     async def start_server(self, loop=None, **kwargs):
         if self.server:
             return
         self._loop = loop
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.bind((self.host, 0))
-        self.port = self._socket.getsockname()[1]
+        if self.port:
+            self._socket.bind((self.host, self.port))
+        else:
+            self._socket.bind((self.host, 0))
+            self.port = self._socket.getsockname()[1]
         self._ssl = kwargs.pop('ssl', None)
         if self.scheme is sentinel:
             if self._ssl:
@@ -134,9 +139,9 @@ class BaseTestServer(ABC):
 class TestServer(BaseTestServer):
 
     def __init__(self, app, *,
-                 scheme=sentinel, host='127.0.0.1', **kwargs):
+                 scheme=sentinel, host='127.0.0.1', port=None, **kwargs):
         self.app = app
-        super().__init__(scheme=scheme, host=host, **kwargs)
+        super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_factory(self, **kwargs):
         self.app._set_loop(self._loop)
@@ -154,9 +159,9 @@ class TestServer(BaseTestServer):
 class RawTestServer(BaseTestServer):
 
     def __init__(self, handler, *,
-                 scheme=sentinel, host='127.0.0.1', **kwargs):
+                 scheme=sentinel, host='127.0.0.1', port=None, **kwargs):
         self._handler = handler
-        super().__init__(scheme=scheme, host=host, **kwargs)
+        super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_factory(self, debug=True, **kwargs):
         self.handler = Server(
@@ -175,7 +180,8 @@ class TestClient:
 
     """
 
-    def __init__(self, server, *, cookie_jar=None, loop=None, **kwargs):
+    def __init__(self, server, *, cookie_jar=None, loop=None,
+                 **kwargs):
         if not isinstance(server, BaseTestServer):
             raise TypeError("server must be web.Application TestServer "
                             "instance, found type: %r" % type(server))
