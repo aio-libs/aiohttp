@@ -728,37 +728,6 @@ StreamResponse
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
-   .. attribute:: tcp_cork
-
-      :const:`~socket.TCP_CORK` (linux) or :const:`~socket.TCP_NOPUSH`
-      (FreeBSD and MacOSX) is applied to underlying transport if the
-      property is ``True``.
-
-      Use :meth:`set_tcp_cork` to assign new value to the property.
-
-      Default value is ``False``.
-
-   .. method:: set_tcp_cork(value)
-
-      Set :attr:`tcp_cork` property to *value*.
-
-      Clear :attr:`tcp_nodelay` if *value* is ``True``.
-
-   .. attribute:: tcp_nodelay
-
-      :const:`~socket.TCP_NODELAY` is applied to underlying transport
-      if the property is ``True``.
-
-      Use :meth:`set_tcp_nodelay` to assign new value to the property.
-
-      Default value is ``True``.
-
-   .. method:: set_tcp_nodelay(value)
-
-      Set :attr:`tcp_nodelay` property to *value*.
-
-      Clear :attr:`tcp_cork` if *value* is ``True``.
-
    .. comethod:: prepare(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the
