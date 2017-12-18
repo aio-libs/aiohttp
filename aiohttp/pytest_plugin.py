@@ -248,7 +248,7 @@ def raw_test_server(loop):
     """
     servers = []
 
-    async def go(handler, port=None, **kwargs):
+    async def go(handler, *, port=None, **kwargs):
         server = RawTestServer(handler, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
