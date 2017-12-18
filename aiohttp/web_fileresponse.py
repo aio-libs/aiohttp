@@ -130,19 +130,15 @@ class FileResponse(StreamResponse):
 
         writer = (await super().prepare(request))
 
-        self.set_tcp_cork(True)
-        try:
-            chunk_size = self._chunk_size
+        chunk_size = self._chunk_size
 
-            chunk = fobj.read(chunk_size)
-            while True:
-                await writer.write(chunk)
-                count = count - chunk_size
-                if count <= 0:
-                    break
-                chunk = fobj.read(min(chunk_size, count))
-        finally:
-            self.set_tcp_nodelay(True)
+        chunk = fobj.read(chunk_size)
+        while True:
+            await writer.write(chunk)
+            count = count - chunk_size
+            if count <= 0:
+                break
+            chunk = fobj.read(min(chunk_size, count))
 
         await writer.drain()
         return writer

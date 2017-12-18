@@ -209,6 +209,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         if self._tcp_keepalive:
             tcp_keepalive(self, transport)
 
+        self.writer.set_tcp_cork(False)
         self.writer.set_tcp_nodelay(True)
         self._manager.connection_made(self, transport)
 
@@ -421,11 +422,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # notify server about keep-alive
                 self._keepalive = resp.keep_alive
 
-                # Restore default state.
-                # Should be no-op if server code didn't touch these attributes.
-                writer.set_tcp_cork(False)
-                writer.set_tcp_nodelay(True)
-
                 # log access
                 if self.access_log:
                     self.log_access(request, resp, loop.time() - now)
@@ -541,8 +537,3 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         resp = self.handle_error(request, status, exc, message)
         await resp.prepare(request)
         await resp.write_eof()
-
-        # Restore default state.
-        # Should be no-op if server code didn't touch these attributes.
-        self.writer.set_tcp_cork(False)
-        self.writer.set_tcp_nodelay(True)
