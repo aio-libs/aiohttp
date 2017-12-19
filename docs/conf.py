@@ -73,6 +73,8 @@ intersphinx_mapping = {
         ('https://yarl.readthedocs.io/en/stable/', None),
     'aiohttpjinja2':
         ('https://aiohttp-jinja2.readthedocs.io/en/stable/', None),
+    'aiohttpremotes':
+        ('https://aiohttp-remotes.readthedocs.io/en/stable/', None),
     'aiohttpsession':
         ('https://aiohttp-session.readthedocs.io/en/stable/', None)}
 

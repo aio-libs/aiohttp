@@ -1552,8 +1552,11 @@ For changing :attr:`~BaseRequest.scheme` :attr:`~BaseRequest.host` and
 :attr:`~BaseRequest.remote` the middleware might use
 :meth:`~BaseRequest.clone`.
 
-TBD: add a link to third-party project with proper middleware
-implementation.
+.. seealso::
+
+   https://github.com/aio-libs/aiohttp-remotes provides secure helpers
+   for modifiying *scheme*, *host* and *remote* attributes according
+   to ``Forwarded`` and ``X-Forwarded-*`` HTTP headers.
 
 Swagger support
 ---------------
