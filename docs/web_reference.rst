@@ -2270,6 +2270,7 @@ Utilities
 .. function:: run_app(app, *, host=None, port=None, path=None, \
                       sock=None, shutdown_timeout=60.0, \
                       ssl_context=None, print=print, backlog=128, \
+                      access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=None, \
                       access_log=aiohttp.log.access_logger, \
                       handle_signals=True)
@@ -2329,6 +2330,10 @@ Utilities
    :param int backlog: the number of unaccepted connections that the
                        system will allow before refusing new
                        connections (``128`` by default).
+
+   :param access_log_class: class for `access_logger`. Default:
+                            :data:`aiohttp.helpers.AccessLogger`.
+                            Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
 
    :param access_log: :class:`logging.Logger` instance used for saving
                       access logs. Use ``None`` for disabling logs for
