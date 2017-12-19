@@ -1555,7 +1555,7 @@ For changing :attr:`~BaseRequest.scheme` :attr:`~BaseRequest.host` and
 .. seealso::
 
    https://github.com/aio-libs/aiohttp-remotes provides secure helpers
-   for modifiying *scheme*, *host* and *remote* attributes according
+   for modifying *scheme*, *host* and *remote* attributes according
    to ``Forwarded`` and ``X-Forwarded-*`` HTTP headers.
 
 Swagger support
