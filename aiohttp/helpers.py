@@ -10,6 +10,7 @@ import inspect
 import netrc
 import os
 import re
+import sys
 import time
 import weakref
 from collections import namedtuple
@@ -29,6 +30,7 @@ from .log import client_logger
 
 __all__ = ('BasicAuth',)
 
+PY_36 = sys.version_info > (3, 6)
 
 sentinel = object()
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
