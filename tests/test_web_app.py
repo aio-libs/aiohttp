@@ -9,7 +9,7 @@ from aiohttp.test_utils import make_mocked_coro
 
 
 def test_app_ctor(loop):
-    with pytest.warns(ResourceWarning):
+    with pytest.warns(DeprecationWarning):
         app = web.Application(loop=loop)
     assert loop is app.loop
     assert app.logger is log.web_logger

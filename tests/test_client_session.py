@@ -445,7 +445,7 @@ def test_client_session_implicit_loop_warn():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    with pytest.warns(ResourceWarning):
+    with pytest.warns(UserWarning):
         session = aiohttp.ClientSession()
         assert session._loop is loop
         loop.run_until_complete(session.close())
