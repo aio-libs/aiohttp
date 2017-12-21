@@ -2346,6 +2346,9 @@ Utilities
    :param bool handle_signals: override signal TERM handling to gracefully
                                exit the application.
 
+   .. versionadded:: 3.0
+
+      Support *access_log_class* parameter.
 
 Constants
 ---------
