@@ -149,7 +149,8 @@ class BytesPayload(Payload):
         if self._size > TOO_LARGE_BYTES_BODY:
             warnings.warn("Sending a large body directly with raw bytes might"
                           " lock the event loop. You should probably pass an "
-                          "io.BytesIO object instead", ResourceWarning)
+                          "io.BytesIO object instead", ResourceWarning,
+                          source=self)
 
     async def write(self, writer):
         await writer.write(self._value)

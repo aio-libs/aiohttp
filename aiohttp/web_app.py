@@ -30,7 +30,8 @@ class Application(MutableMapping):
         assert isinstance(router, AbstractRouter), router
 
         if loop is not None:
-            warnings.warn("loop argument is deprecated", ResourceWarning)
+            warnings.warn("loop argument is deprecated", DeprecationWarning,
+                          stacklevel=2)
 
         self._debug = debug
         self._router = router
