@@ -582,7 +582,8 @@ class ClientResponse(HeadersMixin):
             if __debug__:
                 if self._loop.get_debug():
                     _warnings.warn("Unclosed response {!r}".format(self),
-                                   ResourceWarning)
+                                   ResourceWarning,
+                                   source=self)
                     context = {'client_response': self,
                                'message': 'Unclosed response'}
                     if self._source_traceback:

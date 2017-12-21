@@ -83,7 +83,7 @@ class ClientSession:
 
         if implicit_loop and not loop.is_running():
             warnings.warn("Creating a client session outside of coroutine is "
-                          "a very dangerous idea", ResourceWarning,
+                          "a very dangerous idea",
                           stacklevel=2)
             context = {'client_session': self,
                        'message': 'Creating a client session outside '
@@ -134,7 +134,8 @@ class ClientSession:
     def __del__(self, _warnings=warnings):
         if not self.closed:
             _warnings.warn("Unclosed client session {!r}".format(self),
-                           ResourceWarning)
+                           ResourceWarning,
+                           source=self)
             context = {'client_session': self,
                        'message': 'Unclosed client session'}
             if self._source_traceback is not None:
