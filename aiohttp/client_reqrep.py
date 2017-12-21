@@ -20,7 +20,7 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL)
 from .formdata import FormData
-from .helpers import HeadersMixin, TimerNoop, noop, reify, set_result
+from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import StreamReader
@@ -578,17 +578,19 @@ class ClientResponse(HeadersMixin):
             self._connection.release()
             self._cleanup_writer()
 
-            # warn
-            if __debug__:
-                if self._loop.get_debug():
-                    _warnings.warn("Unclosed response {!r}".format(self),
-                                   ResourceWarning,
-                                   source=self)
-                    context = {'client_response': self,
-                               'message': 'Unclosed response'}
-                    if self._source_traceback:
-                        context['source_traceback'] = self._source_traceback
-                    self._loop.call_exception_handler(context)
+            if self._loop.get_debug():
+                if PY_36:
+                    kwargs = {'source': self}
+                else:
+                    kwargs = {}
+                _warnings.warn("Unclosed response {!r}".format(self),
+                               ResourceWarning,
+                               **kwargs)
+                context = {'client_response': self,
+                           'message': 'Unclosed response'}
+                if self._source_traceback:
+                    context['source_traceback'] = self._source_traceback
+                self._loop.call_exception_handler(context)
 
     def __repr__(self):
         out = io.StringIO()

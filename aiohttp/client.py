@@ -24,8 +24,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (CeilTimeout, TimeoutHandle, proxies_from_env, sentinel,
-                      strip_auth_from_url)
+from .helpers import (PY_36, CeilTimeout, TimeoutHandle, proxies_from_env,
+                      sentinel, strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -133,9 +133,13 @@ class ClientSession:
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
+            if PY_36:
+                kwargs = {'source': self}
+            else:
+                kwargs = {}
             _warnings.warn("Unclosed client session {!r}".format(self),
                            ResourceWarning,
-                           source=self)
+                           **kwargs)
             context = {'client_session': self,
                        'message': 'Unclosed client session'}
             if self._source_traceback is not None:
