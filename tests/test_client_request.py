@@ -379,7 +379,7 @@ def test_deregister_non_existing_hook(make_request):
 def test_custom_auth_non_callable_raises(make_request):
     with pytest.raises(TypeError):
         auth = 'no call'
-        req = make_request('get', 'http://0.0.0.0/', auth=auth)
+        make_request('get', 'http://0.0.0.0/', auth=auth)
 
 
 def test_hook_registration(make_request):
