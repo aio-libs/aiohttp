@@ -34,7 +34,7 @@ Usage example::
              print(html)
 
      loop = asyncio.get_event_loop()
-     loop.run_until_complete(main(loop))
+     loop.run_until_complete(main())
 
 
 The client session supports the context manager protocol for self closing.
