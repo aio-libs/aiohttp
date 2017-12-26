@@ -34,7 +34,7 @@ Usage example::
              print(html)
 
      loop = asyncio.get_event_loop()
-     loop.run_until_complete(main(loop))
+     loop.run_until_complete(main())
 
 
 The client session supports the context manager protocol for self closing.
@@ -101,7 +101,7 @@ The client session supports the context manager protocol for self closing.
       proxy mode.
 
       If no cookie processing is needed, a
-      :class:`aiohttp.helpers.DummyCookieJar` instance can be
+      :class:`aiohttp.DummyCookieJar` instance can be
       provided.
 
    :param callable json_serialize: Json *serializer* callable.

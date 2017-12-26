@@ -21,7 +21,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
-from .helpers import is_ip_address, noop, sentinel
+from .helpers import PY_36, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -61,8 +61,13 @@ class Connection:
 
     def __del__(self, _warnings=warnings):
         if self._protocol is not None:
+            if PY_36:
+                kwargs = {'source': self}
+            else:
+                kwargs = {}
             _warnings.warn('Unclosed connection {!r}'.format(self),
-                           ResourceWarning)
+                           ResourceWarning,
+                           **kwargs)
             if self._loop.is_closed():
                 return
 
@@ -210,8 +215,13 @@ class BaseConnector:
 
         self.close()
 
+        if PY_36:
+            kwargs = {'source': self}
+        else:
+            kwargs = {}
         _warnings.warn("Unclosed connector {!r}".format(self),
-                       ResourceWarning)
+                       ResourceWarning,
+                       **kwargs)
         context = {'connector': self,
                    'connections': conns,
                    'message': 'Unclosed connector'}
