@@ -15,6 +15,7 @@ import time
 import weakref
 from collections import namedtuple
 from contextlib import suppress
+from hashlib import md5, sha1, sha256
 from math import ceil
 from pathlib import Path
 from urllib.parse import quote
@@ -694,6 +695,32 @@ class HeadersMixin:
 
         if content_length:
             return int(content_length)
+
+
+class FingerprintMixin:
+
+    HASHFUNC_BY_DIGESTLEN = {
+        16: md5,
+        20: sha1,
+        32: sha256,
+    }
+
+    @property
+    def fingerprint(self):
+        """Expected ssl certificate fingerprint."""
+        return self._fingerprint
+
+    def update_fingerprint(self, fingerprint):
+        if fingerprint:
+            digestlen = len(fingerprint)
+            hashfunc = self.HASHFUNC_BY_DIGESTLEN.get(digestlen)
+            if not hashfunc:
+                raise ValueError('fingerprint has invalid length')
+            elif hashfunc is md5 or hashfunc is sha1:
+                raise ValueError('md5 and sha1 are insecure and '
+                                 'not supported. Use sha256.')
+            self._hashfunc = hashfunc
+        self._fingerprint = fingerprint
 
 
 def set_result(fut, result):
