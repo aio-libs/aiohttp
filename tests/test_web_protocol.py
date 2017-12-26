@@ -225,7 +225,8 @@ async def test_bad_method(srv, loop, buf):
     assert buf.startswith(b'HTTP/1.0 400 Bad Request\r\n')
 
 
-async def test_internal_error(srv, loop, buf):
+async def test_data_received_error(srv, loop, buf):
+    srv.transport = mock.Mock()
     srv._request_parser = mock.Mock()
     srv._request_parser.feed_data.side_effect = TypeError
 
@@ -235,6 +236,8 @@ async def test_internal_error(srv, loop, buf):
 
     await asyncio.sleep(0, loop=loop)
     assert buf.startswith(b'HTTP/1.0 500 Internal Server Error\r\n')
+    assert srv.transport.close.called
+    assert srv._error_handler is None
 
 
 async def test_line_too_long(srv, loop, buf):
@@ -713,3 +716,23 @@ async def test_pipeline_response_order(
 
     await asyncio.sleep(0.1, loop=loop)
     assert processed == [1, 2]
+
+
+def test_data_received_close(srv):
+    srv.close()
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: 0\r\n\r\n')
+
+    assert not srv._messages
+
+
+def test_data_received_force_close(srv):
+    srv.force_close()
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n'
+        b'Host: example.com\r\n'
+        b'Content-Length: 0\r\n\r\n')
+
+    assert not srv._messages

@@ -140,17 +140,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._force_close = False
 
     def __repr__(self):
-        self._request = None
-        if self._request is None:
-            meth = 'none'
-            path = 'none'
-        else:
-            meth = 'none'
-            path = 'none'
-            # meth = self._request.method
-            # path = self._request.rel_url.raw_path
-        return "<{} {}:{} {}>".format(
-            self.__class__.__name__, meth, path,
+        return "<{} {}>".format(
+            self.__class__.__name__,
             'connected' if self.transport is not None else 'disconnected')
 
     @property
@@ -175,8 +166,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 if self._error_handler and not self._error_handler.done():
                     await self._error_handler
 
-                    if not self._task_handler.done():
-                        await self._task_handler
+                if self._task_handler and not self._task_handler.done():
+                    await self._task_handler
 
         # force-close non-idle handler
         if self._task_handler:
