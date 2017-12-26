@@ -5,7 +5,6 @@ import traceback
 import warnings
 from collections import defaultdict
 from contextlib import suppress
-from hashlib import md5, sha1, sha256
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
@@ -21,7 +20,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest
-from .helpers import PY_36, is_ip_address, noop, sentinel
+from .helpers import PY_36, FingerprintMixin, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -33,12 +32,6 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
-
-HASHFUNC_BY_DIGESTLEN = {
-    16: md5,
-    20: sha1,
-    32: sha256,
-}
 
 
 class Connection:
@@ -590,7 +583,7 @@ class _DNSCacheTable:
         return self._timestamps[host] + self._ttl < monotonic()
 
 
-class TCPConnector(BaseConnector):
+class TCPConnector(BaseConnector, FingerprintMixin):
     """TCP connector.
 
     verify_ssl - Set to True to check ssl certifications.
@@ -634,21 +627,11 @@ class TCPConnector(BaseConnector):
 
         self._verify_ssl = verify_ssl
 
-        if fingerprint:
-            digestlen = len(fingerprint)
-            hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
-            if not hashfunc:
-                raise ValueError('fingerprint has invalid length')
-            elif hashfunc is md5 or hashfunc is sha1:
-                raise ValueError('md5 and sha1 are insecure and '
-                                 'not supported. Use sha256.')
-            self._hashfunc = hashfunc
-        self._fingerprint = fingerprint
-
         if resolver is None:
             resolver = DefaultResolver(loop=self._loop)
         self._resolver = resolver
 
+        self.update_fingerprint(fingerprint)
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
         self._throttle_dns_events = {}
@@ -667,11 +650,6 @@ class TCPConnector(BaseConnector):
     def verify_ssl(self):
         """Do check for ssl certifications?"""
         return self._verify_ssl
-
-    @property
-    def fingerprint(self):
-        """Expected ssl certificate fingerprint."""
-        return self._fingerprint
 
     @property
     def ssl_context(self):

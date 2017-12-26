@@ -8,7 +8,6 @@ import sys
 import traceback
 import warnings
 from collections import namedtuple
-from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType
 
@@ -20,7 +19,8 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL)
 from .formdata import FormData
-from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
+from .helpers import (PY_36, FingerprintMixin, HeadersMixin, TimerNoop, noop,
+                      reify, set_result)
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import StreamReader
@@ -43,20 +43,13 @@ RequestInfo = collections.namedtuple(
     'RequestInfo', ('url', 'method', 'headers'))
 
 
-HASHFUNC_BY_DIGESTLEN = {
-    16: md5,
-    20: sha1,
-    32: sha256,
-}
-
-
 _SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
 
 
 ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
-class ClientRequest:
+class ClientRequest(FingerprintMixin):
     GET_METHODS = {
         hdrs.METH_GET,
         hdrs.METH_HEAD,
@@ -344,27 +337,10 @@ class ClientRequest:
         self.proxy_auth = proxy_auth
         self.proxy_headers = proxy_headers
 
-    def update_fingerprint(self, fingerprint):
-        if fingerprint:
-            digestlen = len(fingerprint)
-            hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
-            if not hashfunc:
-                raise ValueError('fingerprint has invalid length')
-            elif hashfunc is md5 or hashfunc is sha1:
-                raise ValueError('md5 and sha1 are insecure and '
-                                 'not supported. Use sha256.')
-            self._hashfunc = hashfunc
-        self._fingerprint = fingerprint
-
     @property
     def verify_ssl(self):
         """Do check for ssl certifications?"""
         return self._verify_ssl
-
-    @property
-    def fingerprint(self):
-        """Expected ssl certificate fingerprint."""
-        return self._fingerprint
 
     @property
     def ssl_context(self):
