@@ -111,9 +111,12 @@ class FileResponse(StreamResponse):
                 transport.get_extra_info("socket") is None):
             writer = await self._sendfile_fallback(request, fobj, count)
         else:
-            writer = request._protocol.writer.replace(
-                request._payload_writer, SendfilePayloadWriter)
+            writer = SendfilePayloadWriter(
+                request._protocol.writer,
+                request.loop
+            )
             request._payload_writer = writer
+
             await super().prepare(request)
             await writer.sendfile(fobj, count)
 

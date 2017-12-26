@@ -6,7 +6,7 @@ import zlib
 from contextlib import suppress
 
 from .abc import AbstractPayloadWriter
-from .helpers import noop, set_result
+from .helpers import noop
 
 
 __all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
@@ -34,33 +34,7 @@ class StreamWriter:
         self._tcp_cork = False
         self._socket = transport.get_extra_info('socket')
         self._waiters = []
-        self.available = True
         self.transport = transport
-
-    def acquire(self, writer):
-        if self.available:
-            self.available = False
-            writer.set_transport(self.transport)
-        else:
-            self._waiters.append(writer)
-
-    def release(self):
-        if self._waiters:
-            self.available = False
-            writer = self._waiters.pop(0)
-            writer.set_transport(self.transport)
-        else:
-            self.available = True
-
-    def replace(self, writer, factory):
-        try:
-            idx = self._waiters.index(writer)
-            writer = factory(self, self._loop, False)
-            self._waiters[idx] = writer
-            return writer
-        except ValueError:
-            self.available = True
-            return factory(self, self._loop)
 
     @property
     def tcp_nodelay(self):
@@ -122,10 +96,9 @@ class StreamWriter:
 
 class PayloadWriter(AbstractPayloadWriter):
 
-    def __init__(self, stream, loop, acquire=True):
+    def __init__(self, stream, loop):
         self._stream = stream
         self._transport = None
-        self._buffer = []
 
         self.loop = loop
         self.length = None
@@ -136,32 +109,9 @@ class PayloadWriter(AbstractPayloadWriter):
         self._eof = False
         self._compress = None
         self._drain_waiter = None
-
-        if self._stream.available:
-            self._transport = self._stream.transport
-            self._buffer = None
-            self._stream.available = False
-        elif acquire:
-            self._stream.acquire(self)
-
-    def set_transport(self, transport):
-        self._transport = transport
-
-        if self._buffer is not None:
-            for chunk in self._buffer:
-                transport.write(chunk)
-            self._buffer = None
-
-        if self._drain_waiter is not None:
-            waiter, self._drain_waiter = self._drain_waiter, None
-            set_result(waiter, None)
+        self._transport = self._stream.transport
 
     async def get_transport(self):
-        if self._transport is None:
-            if self._drain_waiter is None:
-                self._drain_waiter = self.loop.create_future()
-            await self._drain_waiter
-
         return self._transport
 
     def enable_chunking(self):
@@ -176,12 +126,7 @@ class PayloadWriter(AbstractPayloadWriter):
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
-
-        # see set_transport: exactly one of _buffer or _transport is None
-        if self._transport is not None:
-            self._transport.write(chunk)
-        else:
-            self._buffer.append(chunk)
+        self._transport.write(chunk)
 
     def write(self, chunk, *, drain=True, LIMIT=64*1024):
         """Writes chunk of data to a stream.
@@ -253,11 +198,6 @@ class PayloadWriter(AbstractPayloadWriter):
 
         self._eof = True
         self._transport = None
-        self._stream.release()
 
     async def drain(self):
-        if self._transport is not None:
-            await self._stream.drain()
-        else:
-            # wait for transport
-            await self.get_transport()
+        await self._stream.drain()
