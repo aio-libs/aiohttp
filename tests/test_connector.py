@@ -1959,15 +1959,27 @@ class TestDNSCacheTable:
         assert dns_cache_table.expired('localhost')
 
     def test_next_addrs(self, dns_cache_table):
-        dns_cache_table.add('foo', ['127.0.0.1', '127.0.0.2'])
+        dns_cache_table.add('foo', ['127.0.0.1', '127.0.0.2', '127.0.0.3'])
 
-        # max elements returned are the full list of addrs
-        addrs = list(dns_cache_table.next_addrs('foo'))
-        assert addrs == ['127.0.0.1', '127.0.0.2']
-
-        # different calls to next_addrs return the hosts using
+        # Each calls to next_addrs return the hosts using
         # a round robin strategy.
         addrs = dns_cache_table.next_addrs('foo')
-        assert next(addrs) == '127.0.0.1'
+        assert addrs == ['127.0.0.1', '127.0.0.2', '127.0.0.3']
+
         addrs = dns_cache_table.next_addrs('foo')
-        assert next(addrs) == '127.0.0.2'
+        assert addrs == ['127.0.0.2', '127.0.0.3', '127.0.0.1']
+
+        addrs = dns_cache_table.next_addrs('foo')
+        assert addrs == ['127.0.0.3', '127.0.0.1', '127.0.0.2']
+
+        addrs = dns_cache_table.next_addrs('foo')
+        assert addrs == ['127.0.0.1', '127.0.0.2', '127.0.0.3']
+
+    def test_next_addrs_single(self, dns_cache_table):
+        dns_cache_table.add('foo', ['127.0.0.1'])
+
+        addrs = dns_cache_table.next_addrs('foo')
+        assert addrs == ['127.0.0.1']
+
+        addrs = dns_cache_table.next_addrs('foo')
+        assert addrs == ['127.0.0.1']
