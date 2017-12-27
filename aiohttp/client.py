@@ -19,7 +19,7 @@ from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
-from .client_reqrep import ClientRequest, ClientResponse
+from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
 from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
@@ -169,6 +169,7 @@ class ClientSession:
                        verify_ssl=None,
                        fingerprint=None,
                        ssl_context=None,
+                       ssl=None,
                        proxy_headers=None,
                        trace_request_ctx=None):
 
@@ -178,6 +179,8 @@ class ClientSession:
 
         if self.closed:
             raise RuntimeError('Session is closed')
+
+        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         if data is not None and json is not None:
             raise ValueError(
@@ -279,8 +282,7 @@ class ClientSession:
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
-                        verify_ssl=verify_ssl, fingerprint=fingerprint,
-                        ssl_context=ssl_context, proxy_headers=proxy_headers)
+                        ssl=ssl, proxy_headers=proxy_headers)
 
                     # connection timeout
                     try:

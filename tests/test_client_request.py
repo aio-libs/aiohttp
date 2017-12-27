@@ -15,7 +15,8 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.client_reqrep import (ClientRequest, ClientResponse,
+                                   Fingerprint, _merge_ssl_params)
 
 
 @pytest.yield_fixture
@@ -143,49 +144,49 @@ def test_host_port_default_https(make_request):
     req = make_request('get', 'https://python.org/')
     assert req.host == 'python.org'
     assert req.port == 443
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_nondefault_http(make_request):
     req = make_request('get', 'http://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_nondefault_https(make_request):
     req = make_request('get', 'https://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_default_ws(make_request):
     req = make_request('get', 'ws://python.org/')
     assert req.host == 'python.org'
     assert req.port == 80
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_default_wss(make_request):
     req = make_request('get', 'wss://python.org/')
     assert req.host == 'python.org'
     assert req.port == 443
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_nondefault_ws(make_request):
     req = make_request('get', 'ws://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_nondefault_wss(make_request):
     req = make_request('get', 'wss://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_err(make_request):
@@ -306,21 +307,21 @@ def test_ipv6_default_https_port(make_request):
     req = make_request('get', 'https://[2001:db8::1]/')
     assert req.host == '2001:db8::1'
     assert req.port == 443
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_ipv6_nondefault_http_port(make_request):
     req = make_request('get', 'http://[2001:db8::1]:960/')
     assert req.host == '2001:db8::1'
     assert req.port == 960
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_ipv6_nondefault_https_port(make_request):
     req = make_request('get', 'https://[2001:db8::1]:960/')
     assert req.host == '2001:db8::1'
     assert req.port == 960
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_basic_auth(make_request):
@@ -1096,26 +1097,22 @@ async def test_custom_req_rep(loop):
 
 
 def test_verify_ssl_false_with_ssl_context(loop):
-    with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'), verify_ssl=False,
-                      ssl_context=mock.Mock(), loop=loop)
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(ValueError):
+            _merge_ssl_params(None, verify_ssl=False,
+                              ssl_context=mock.Mock(), fingerprint=None)
 
 
 def test_bad_fingerprint(loop):
     with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'),
-                      fingerprint=b'invalid', loop=loop)
+        Fingerprint(b'invalid')
 
 
 def test_insecure_fingerprint_md5(loop):
     with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'),
-                      fingerprint=hashlib.md5(b"foo").digest(),
-                      loop=loop)
+        Fingerprint(hashlib.md5(b"foo").digest())
 
 
 def test_insecure_fingerprint_sha1(loop):
     with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'),
-                      fingerprint=hashlib.sha1(b"foo").digest(),
-                      loop=loop)
+        Fingerprint(hashlib.sha1(b"foo").digest())

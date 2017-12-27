@@ -397,7 +397,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
     fingerprint = hashlib.sha256(b'foo').digest()
 
     req = ClientRequest('GET', URL('https://mocked.host'),
-                        fingerprint=fingerprint,
+                        ssl=aiohttp.Fingerprint(fingerprint),
                         loop=loop)
 
     async def _resolve_host(host, port, traces=None):
@@ -1074,8 +1074,7 @@ def test_cleanup_closed_disabled(loop, mocker):
 
 def test_tcp_connector_ctor(loop):
     conn = aiohttp.TCPConnector(loop=loop)
-    assert conn.verify_ssl
-    assert conn.fingerprint is None
+    assert conn._ssl is None
 
     assert conn.use_dns_cache
     assert conn.family == 0
@@ -1083,27 +1082,23 @@ def test_tcp_connector_ctor(loop):
 
 
 def test_tcp_connector_ctor_fingerprint_valid(loop):
-    valid = hashlib.sha256(b"foo").digest()
-    conn = aiohttp.TCPConnector(fingerprint=valid, loop=loop)
-    assert conn.fingerprint == valid
+    valid = aiohttp.Fingerprint(hashlib.sha256(b"foo").digest())
+    conn = aiohttp.TCPConnector(ssl=valid, loop=loop)
+    assert conn._ssl is valid
 
 
 def test_insecure_fingerprint_md5(loop):
     with pytest.raises(ValueError):
-        aiohttp.TCPConnector(fingerprint=hashlib.md5(b"foo").digest(),
-                             loop=loop)
+        aiohttp.TCPConnector(
+            ssl=aiohttp.Fingerprint(hashlib.md5(b"foo").digest()),
+            loop=loop)
 
 
 def test_insecure_fingerprint_sha1(loop):
     with pytest.raises(ValueError):
-        aiohttp.TCPConnector(fingerprint=hashlib.sha1(b"foo").digest(),
-                             loop=loop)
-
-
-def test_tcp_connector_fingerprint_invalid(loop):
-    invalid = b'\x00'
-    with pytest.raises(ValueError):
-        aiohttp.TCPConnector(loop=loop, fingerprint=invalid)
+        aiohttp.TCPConnector(
+            ssl=aiohttp.Fingerprint(hashlib.sha1(b"foo").digest()),
+            loop=loop)
 
 
 def test_tcp_connector_clear_dns_cache(loop):
@@ -1125,24 +1120,16 @@ def test_tcp_connector_clear_dns_cache_bad_args(loop):
         conn.clear_dns_cache('localhost')
 
 
-def test_ambigous_verify_ssl_and_ssl_context(loop):
-    with pytest.raises(ValueError):
-        aiohttp.TCPConnector(
-            verify_ssl=False,
-            ssl_context=ssl.SSLContext(ssl.PROTOCOL_SSLv23),
-            loop=loop)
-
-
 def test_dont_recreate_ssl_context(loop):
     conn = aiohttp.TCPConnector(loop=loop)
-    ctx = conn.ssl_context
-    assert ctx is conn.ssl_context
+    ctx = conn._make_ssl_context(True)
+    assert ctx is conn._make_ssl_context(True)
 
 
-def test_respect_precreated_ssl_context(loop):
-    ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    conn = aiohttp.TCPConnector(loop=loop, ssl_context=ctx)
-    assert ctx is conn.ssl_context
+def test_dont_recreate_ssl_context2(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    ctx = conn._make_ssl_context(False)
+    assert ctx is conn._make_ssl_context(False)
 
 
 def test_close_twice(loop):
