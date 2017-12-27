@@ -2474,6 +2474,12 @@ async def test_error_in_performing_request(loop, ssl_ctx,
     async def handler(request):
         return web.Response()
 
+    def exception_handler(loop, context):
+        # skip log messages about destroyed but pending tasks
+        pass
+
+    loop.set_exception_handler(exception_handler)
+
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 

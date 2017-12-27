@@ -448,7 +448,10 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
                     s.getpeercert.return_value = b'not foo'
                     return s
 
-                assert False
+                if param == 'peername':
+                    return ('192.168.1.5', 12345)
+
+                assert False, param
 
             tr.get_extra_info = get_extra_info
             return tr, pr
@@ -1830,7 +1833,7 @@ class TestHttpClientConnector(unittest.TestCase):
         session = aiohttp.ClientSession(connector=conn)
 
         r = self.loop.run_until_complete(
-            session.request('get', url, ssl_context=sslcontext))
+            session.request('get', url, ssl=sslcontext))
 
         r.release()
         first_conn = next(iter(conn._conns.values()))[0][0]

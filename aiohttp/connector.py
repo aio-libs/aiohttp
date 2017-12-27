@@ -887,7 +887,7 @@ class TCPConnector(BaseConnector):
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
-            if not req.ssl:
+            if not req.is_ssl():
                 req.headers[hdrs.PROXY_AUTHORIZATION] = auth
             else:
                 proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth

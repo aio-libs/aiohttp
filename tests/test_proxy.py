@@ -103,7 +103,7 @@ class TestProxy(unittest.TestCase):
             'GET', URL('https://www.python.org'),
             proxy=URL('http://proxy.example.com'),
             loop=self.loop,
-            verify_ssl=True,
+            ssl=True,
         )
 
         proto = mock.Mock()
@@ -130,7 +130,7 @@ class TestProxy(unittest.TestCase):
             'GET', URL('https://www.python.org'),
             proxy=URL('http://proxy.example.com'),
             loop=self.loop,
-            verify_ssl=False,
+            ssl=False,
         )
 
         proto = mock.Mock()
@@ -150,43 +150,6 @@ class TestProxy(unittest.TestCase):
             traces=None)
         ((proxy_req,), _) = connector._create_direct_connection.call_args
         proxy_req.send.assert_called_with(mock.ANY)
-
-    @mock.patch('aiohttp.connector.ClientRequest', **clientrequest_mock_attrs)
-    def test_connect_req_fingerprint_ssl_context(self, ClientRequestMock):
-        ssl_context = mock.Mock()
-        attrs = {
-            'return_value.ssl_context': ssl_context,
-        }
-        ClientRequestMock.configure_mock(**attrs)
-        req = ClientRequest(
-            'GET', URL('https://www.python.org'),
-            proxy=URL('http://proxy.example.com'),
-            loop=self.loop,
-            ssl=self.fingerprint)
-
-        proto = mock.Mock()
-        connector = aiohttp.TCPConnector(loop=self.loop)
-        connector._create_proxy_connection = mock.MagicMock(
-            side_effect=connector._create_proxy_connection)
-        connector._create_direct_connection = mock.MagicMock(
-            side_effect=connector._create_direct_connection)
-        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
-
-        transport_attrs = {
-            'get_extra_info.return_value.getpeercert.return_value': b"foo"
-        }
-        transport = mock.Mock(**transport_attrs)
-        self.loop.create_connection = make_mocked_coro(
-            (transport, proto))
-        self.loop.run_until_complete(connector.connect(req))
-
-        connector._create_proxy_connection.assert_called_with(
-            req,
-            traces=None)
-        ((proxy_req,), _) = connector._create_direct_connection.call_args
-        self.assertTrue(proxy_req.verify_ssl)
-        self.assertEqual(proxy_req.fingerprint, req.fingerprint)
-        self.assertIs(proxy_req.ssl_context, req.ssl_context)
 
     def test_proxy_auth(self):
         with self.assertRaises(ValueError) as ctx:
