@@ -9,7 +9,6 @@ from hashlib import md5, sha1, sha256
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
-from types import MappingProxyType
 
 from . import hdrs, helpers
 from .client_exceptions import (ClientConnectionError,
@@ -546,40 +545,32 @@ class BaseConnector:
 class _DNSCacheTable:
 
     def __init__(self, ttl=None):
-        self._addrs = {}
         self._addrs_rr = {}
         self._timestamps = {}
         self._ttl = ttl
 
     def __contains__(self, host):
-        return host in self._addrs
-
-    @property
-    def addrs(self):
-        return self._addrs
+        return host in self._addrs_rr
 
     def add(self, host, addrs):
-        self._addrs[host] = addrs
-        self._addrs_rr[host] = cycle(addrs)
+        self._addrs_rr[host] = (cycle(addrs), len(addrs))
 
         if self._ttl:
             self._timestamps[host] = monotonic()
 
     def remove(self, host):
-        self._addrs.pop(host, None)
         self._addrs_rr.pop(host, None)
 
         if self._ttl:
             self._timestamps.pop(host, None)
 
     def clear(self):
-        self._addrs.clear()
         self._addrs_rr.clear()
         self._timestamps.clear()
 
     def next_addrs(self, host):
-        loop = self._addrs_rr[host]
-        addrs = list(islice(loop, len(self._addrs[host])))
+        loop, length = self._addrs_rr[host]
+        addrs = list(islice(loop, length))
         # Consume one more element to shift internal state of `cycle`
         next(loop)
         return addrs
@@ -704,11 +695,6 @@ class TCPConnector(BaseConnector):
     def use_dns_cache(self):
         """True if local DNS caching is enabled."""
         return self._use_dns_cache
-
-    @property
-    def cached_hosts(self):
-        """Read-only dict of cached DNS record."""
-        return MappingProxyType(self._cached_hosts.addrs)
 
     def clear_dns_cache(self, host=None, port=None):
         """Remove specified host/port or clear all dns local cache."""
