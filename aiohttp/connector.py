@@ -549,10 +549,11 @@ class _DNSCacheTable:
         self._timestamps.clear()
 
     def next_addrs(self, host):
-        # Return an iterator that will get at maximum as many addrs
-        # there are for the specific host starting from the last
-        # not itereated addr.
-        return islice(self._addrs_rr[host], len(self._addrs[host]))
+        loop = self._addrs_rr[host]
+        addrs = list(islice(loop, len(self._addrs[host])))
+        # Consume one more element to shift internal state of `cycle`
+        next(loop)
+        return addrs
 
     def expired(self, host):
         if self._ttl is None:
