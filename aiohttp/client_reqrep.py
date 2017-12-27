@@ -3,7 +3,6 @@ import codecs
 import collections
 import io
 import json
-import ssl
 import sys
 import traceback
 import warnings
