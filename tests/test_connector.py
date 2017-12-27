@@ -1081,7 +1081,6 @@ def test_tcp_connector_ctor(loop):
 
     assert conn.use_dns_cache
     assert conn.family == 0
-    assert conn.cached_hosts == {}
 
 
 def test_tcp_connector_ctor_fingerprint_valid(loop):
@@ -1110,11 +1109,19 @@ def test_tcp_connector_clear_dns_cache(loop):
     conn._cached_hosts.add(('localhost', 123), hosts)
     conn._cached_hosts.add(('localhost', 124), hosts)
     conn.clear_dns_cache('localhost', 123)
-    assert ('localhost', 123) not in conn.cached_hosts
+    with pytest.raises(KeyError):
+        conn._cached_hosts.next_addrs(('localhost', 123))
+
+    assert conn._cached_hosts.next_addrs(('localhost', 124)) == hosts
+
+    # Remove removed element is OK
     conn.clear_dns_cache('localhost', 123)
-    assert ('localhost', 123) not in conn.cached_hosts
+    with pytest.raises(KeyError):
+        conn._cached_hosts.next_addrs(('localhost', 123))
+
     conn.clear_dns_cache()
-    assert conn.cached_hosts == {}
+    with pytest.raises(KeyError):
+        conn._cached_hosts.next_addrs(('localhost', 124))
 
 
 def test_tcp_connector_clear_dns_cache_bad_args(loop):
@@ -1915,23 +1922,28 @@ class TestDNSCacheTable:
     def dns_cache_table(self):
         return _DNSCacheTable()
 
-    def test_addrs(self, dns_cache_table):
+    def test_next_addrs_basic(self, dns_cache_table):
         dns_cache_table.add('localhost', ['127.0.0.1'])
         dns_cache_table.add('foo', ['127.0.0.2'])
-        assert dns_cache_table.addrs == {
-            'localhost': ['127.0.0.1'],
-            'foo': ['127.0.0.2']
-        }
+
+        addrs = dns_cache_table.next_addrs('localhost')
+        assert addrs == ['127.0.0.1']
+        addrs = dns_cache_table.next_addrs('foo')
+        assert addrs == ['127.0.0.2']
+        with pytest.raises(KeyError):
+            dns_cache_table.next_addrs('no-such-host')
 
     def test_remove(self, dns_cache_table):
         dns_cache_table.add('localhost', ['127.0.0.1'])
         dns_cache_table.remove('localhost')
-        assert dns_cache_table.addrs == {}
+        with pytest.raises(KeyError):
+            dns_cache_table.next_addrs('localhost')
 
     def test_clear(self, dns_cache_table):
         dns_cache_table.add('localhost', ['127.0.0.1'])
         dns_cache_table.clear()
-        assert dns_cache_table.addrs == {}
+        with pytest.raises(KeyError):
+            dns_cache_table.next_addrs('localhost')
 
     def test_not_expired_ttl_None(self, dns_cache_table):
         dns_cache_table.add('localhost', ['127.0.0.1'])
