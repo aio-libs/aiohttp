@@ -27,7 +27,7 @@ from .streams import StreamReader
 
 try:
     import ssl
-except ImportError:
+except ImportError:  # pragma: no cover
     ssl = None
 
 try:
