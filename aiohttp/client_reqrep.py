@@ -50,9 +50,6 @@ HASHFUNC_BY_DIGESTLEN = {
 }
 
 
-_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
-
-
 ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 
 
