@@ -5,7 +5,6 @@ import traceback
 import warnings
 from collections import defaultdict
 from contextlib import suppress
-from hashlib import md5, sha1, sha256
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
@@ -19,7 +18,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ServerFingerprintMismatch, certificate_errors,
                                 ssl_errors)
 from .client_proto import ResponseHandler
-from .client_reqrep import ClientRequest
+from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
 from .helpers import PY_36, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
@@ -32,12 +31,6 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
-
-HASHFUNC_BY_DIGESTLEN = {
-    16: md5,
-    20: sha1,
-    32: sha256,
-}
 
 
 class Connection:
@@ -609,7 +602,7 @@ class TCPConnector(BaseConnector):
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  use_dns_cache=True, ttl_dns_cache=10,
-                 family=0, ssl_context=None, local_addr=None,
+                 family=0, ssl_context=None, ssl=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
                  enable_cleanup_closed=False, loop=None):
@@ -619,24 +612,8 @@ class TCPConnector(BaseConnector):
                          enable_cleanup_closed=enable_cleanup_closed,
                          loop=loop)
 
-        if not verify_ssl and ssl_context is not None:
-            raise ValueError(
-                "Either disable ssl certificate validation by "
-                "verify_ssl=False or specify ssl_context, not both.")
-
-        self._verify_ssl = verify_ssl
-
-        if fingerprint:
-            digestlen = len(fingerprint)
-            hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
-            if not hashfunc:
-                raise ValueError('fingerprint has invalid length')
-            elif hashfunc is md5 or hashfunc is sha1:
-                raise ValueError('md5 and sha1 are insecure and '
-                                 'not supported. Use sha256.')
-            self._hashfunc = hashfunc
-        self._fingerprint = fingerprint
-
+        self._ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context,
+                                      fingerprint)
         if resolver is None:
             resolver = DefaultResolver(loop=self._loop)
         self._resolver = resolver
@@ -644,7 +621,6 @@ class TCPConnector(BaseConnector):
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
         self._throttle_dns_events = {}
-        self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
 
@@ -654,37 +630,6 @@ class TCPConnector(BaseConnector):
             ev.cancel()
 
         super().close()
-
-    @property
-    def verify_ssl(self):
-        """Do check for ssl certifications?"""
-        return self._verify_ssl
-
-    @property
-    def fingerprint(self):
-        """Expected ssl certificate fingerprint."""
-        return self._fingerprint
-
-    @property
-    def ssl_context(self):
-        """SSLContext instance for https requests.
-
-        Lazy property, creates context on demand.
-        """
-        if ssl is None:  # pragma: no cover
-            raise RuntimeError('SSL is not supported.')
-
-        if self._ssl_context is None:
-            if not self._verify_ssl:
-                sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-                sslcontext.options |= ssl.OP_NO_SSLv2
-                sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= ssl.OP_NO_COMPRESSION
-                sslcontext.set_default_verify_paths()
-            else:
-                sslcontext = ssl.create_default_context()
-            self._ssl_context = sslcontext
-        return self._ssl_context
 
     @property
     def family(self):
@@ -793,6 +738,19 @@ class TCPConnector(BaseConnector):
 
         return proto
 
+    @staticmethod
+    @functools.lru_cache(None)
+    def _make_ssl_context(verified):
+        if verified:
+            return ssl.create_default_context()
+        else:
+            sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            sslcontext.options |= ssl.OP_NO_SSLv2
+            sslcontext.options |= ssl.OP_NO_SSLv3
+            sslcontext.options |= ssl.OP_NO_COMPRESSION
+            sslcontext.set_default_verify_paths()
+            return sslcontext
+
     def _get_ssl_context(self, req):
         """Logic to get the correct SSL context
 
@@ -807,30 +765,33 @@ class TCPConnector(BaseConnector):
             3. if verify_ssl is False in req, generate a SSL context that
                won't verify
         """
-        if req.ssl:
-            sslcontext = req.ssl_context or self._ssl_context
-            if not sslcontext:
-                if req.verify_ssl is None:
-                    sslcontext = self.ssl_context
-                elif req.verify_ssl:
-                    sslcontext = ssl.create_default_context()
-                else:
-                    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-                    sslcontext.options |= ssl.OP_NO_SSLv2
-                    sslcontext.options |= ssl.OP_NO_SSLv3
-                    sslcontext.options |= ssl.OP_NO_COMPRESSION
-                    sslcontext.set_default_verify_paths()
+        if req.is_ssl():
+            if ssl is None:  # pragma: no cover
+                raise RuntimeError('SSL is not supported.')
+            sslcontext = req.ssl
+            if isinstance(sslcontext, ssl.SSLContext):
+                return sslcontext
+            if sslcontext is not None:
+                # not verified or fingerprinted
+                return self._make_ssl_context(False)
+            sslcontext = self._ssl
+            if isinstance(sslcontext, ssl.SSLContext):
+                return sslcontext
+            if sslcontext is not None:
+                # not verified or fingerprinted
+                return self._make_ssl_context(False)
+            return self._make_ssl_context(True)
         else:
-            sslcontext = None
-        return sslcontext
+            return None
 
-    def _get_fingerprint_and_hashfunc(self, req):
-        if req.fingerprint:
-            return (req.fingerprint, req._hashfunc)
-        elif self.fingerprint:
-            return (self.fingerprint, self._hashfunc)
-        else:
-            return (None, None)
+    def _get_fingerprint(self, req):
+        ret = req.ssl
+        if isinstance(ret, Fingerprint):
+            return ret
+        ret = self._ssl
+        if isinstance(ret, Fingerprint):
+            return ret
+        return None
 
     async def _wrap_create_connection(self, *args,
                                       req, client_error=ClientConnectorError,
@@ -849,7 +810,7 @@ class TCPConnector(BaseConnector):
                                         *, client_error=ClientConnectorError,
                                         traces=None):
         sslcontext = self._get_ssl_context(req)
-        fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
+        fingerprint = self._get_fingerprint(req)
 
         try:
             hosts = await self._resolve_host(
@@ -879,20 +840,14 @@ class TCPConnector(BaseConnector):
                 last_exc = exc
                 continue
 
-            has_cert = transp.get_extra_info('sslcontext')
-            if has_cert and fingerprint:
-                sslobj = transp.get_extra_info('ssl_object')
-                # gives DER-encoded cert as a sequence of bytes (or None)
-                cert = sslobj.getpeercert(binary_form=True)
-                assert cert
-                got = hashfunc(cert).digest()
-                expected = fingerprint
-                if got != expected:
+            if req.is_ssl() and fingerprint:
+                try:
+                    fingerprint.check(transp)
+                except ServerFingerprintMismatch as exc:
                     transp.close()
                     if not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transp)
-                    last_exc = ServerFingerprintMismatch(
-                        expected, got, host, port)
+                    last_exc = exc
                     continue
 
             return transp, proto
@@ -910,9 +865,7 @@ class TCPConnector(BaseConnector):
             headers=headers,
             auth=req.proxy_auth,
             loop=self._loop,
-            verify_ssl=req.verify_ssl,
-            fingerprint=req.fingerprint,
-            ssl_context=req.ssl_context)
+            ssl=req.ssl)
 
         # create connection to proxy server
         transport, proto = await self._create_direct_connection(
@@ -920,12 +873,12 @@ class TCPConnector(BaseConnector):
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
-            if not req.ssl:
+            if not req.is_ssl():
                 req.headers[hdrs.PROXY_AUTHORIZATION] = auth
             else:
                 proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
-        if req.ssl:
+        if req.is_ssl():
             sslcontext = self._get_ssl_context(req)
             # For HTTPS requests over HTTP proxy
             # we must notify proxy to tunnel connection
