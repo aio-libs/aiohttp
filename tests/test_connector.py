@@ -1142,6 +1142,57 @@ def test_dont_recreate_ssl_context2(loop):
     assert ctx is conn._make_ssl_context(False)
 
 
+def test___get_ssl_context1(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    req = mock.Mock()
+    req.is_ssl.return_value = False
+    assert conn._get_ssl_context(req) is None
+
+
+def test___get_ssl_context2(loop):
+    ctx = ssl.SSLContext()
+    conn = aiohttp.TCPConnector(loop=loop)
+    req = mock.Mock()
+    req.is_ssl.return_value = True
+    req.ssl = ctx
+    assert conn._get_ssl_context(req) is ctx
+
+
+def test___get_ssl_context3(loop):
+    ctx = ssl.SSLContext()
+    conn = aiohttp.TCPConnector(loop=loop, ssl=ctx)
+    req = mock.Mock()
+    req.is_ssl.return_value = True
+    req.ssl = None
+    assert conn._get_ssl_context(req) is ctx
+
+
+def test___get_ssl_context4(loop):
+    ctx = ssl.SSLContext()
+    conn = aiohttp.TCPConnector(loop=loop, ssl=ctx)
+    req = mock.Mock()
+    req.is_ssl.return_value = True
+    req.ssl = False
+    assert conn._get_ssl_context(req) is conn._make_ssl_context(False)
+
+
+def test___get_ssl_context5(loop):
+    ctx = ssl.SSLContext()
+    conn = aiohttp.TCPConnector(loop=loop, ssl=ctx)
+    req = mock.Mock()
+    req.is_ssl.return_value = True
+    req.ssl = aiohttp.Fingerprint(hashlib.sha256(b'1').digest())
+    assert conn._get_ssl_context(req) is conn._make_ssl_context(False)
+
+
+def test___get_ssl_context6(loop):
+    conn = aiohttp.TCPConnector(loop=loop)
+    req = mock.Mock()
+    req.is_ssl.return_value = True
+    req.ssl = None
+    assert conn._get_ssl_context(req) is conn._make_ssl_context(True)
+
+
 def test_close_twice(loop):
     proto = mock.Mock()
 

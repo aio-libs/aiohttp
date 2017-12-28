@@ -54,7 +54,7 @@ def test__merge_ssl_params_ssl_context():
         assert _merge_ssl_params(None, None, ctx, None) is ctx
 
 
-def test__merge_ssl_params_verify_ssl_conflict():
+def test__merge_ssl_params_ssl_context_conflict():
     ctx1 = ssl.SSLContext()
     ctx2 = ssl.SSLContext()
     with pytest.warns(DeprecationWarning):
@@ -69,7 +69,7 @@ def test__merge_ssl_params_fingerprint():
         assert ret.fingerprint == digest
 
 
-def test__merge_ssl_params_fingerprint():
+def test__merge_ssl_params_fingerprint_conflict():
     fingerprint = aiohttp.Fingerprint(hashlib.sha256(b'123').digest())
     ctx = ssl.SSLContext()
     with pytest.warns(DeprecationWarning):
