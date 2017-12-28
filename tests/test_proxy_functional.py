@@ -63,7 +63,7 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
 @pytest.fixture()
 def get_request(loop):
     async def _request(method='GET', *, url, trust_env=False, **kwargs):
-        connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
+        connector = aiohttp.TCPConnector(ssl=False, loop=loop)
         client = aiohttp.ClientSession(connector=connector,
                                        trust_env=trust_env)
         try:

@@ -282,7 +282,7 @@ async def test_static_file_ssl(loop, test_server, test_client):
     app = web.Application()
     app.router.add_static('/static', dirname)
     server = await test_server(app, ssl=ssl_ctx)
-    conn = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
+    conn = aiohttp.TCPConnector(ssl=False, loop=loop)
     client = await test_client(server, connector=conn)
 
     resp = await client.get('/static/'+filename)

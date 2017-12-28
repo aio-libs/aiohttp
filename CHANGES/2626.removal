@@ -1,0 +1,1 @@
+Deprecate ``verify_ssl``, ``ssl_context`` and ``fingerprint`` parameters in client API
