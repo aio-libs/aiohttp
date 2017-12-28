@@ -80,3 +80,8 @@ def test__merge_ssl_params_fingerprint_conflict():
 def test__merge_ssl_params_ssl():
     ctx = ssl.SSLContext()
     assert ctx is _merge_ssl_params(ctx, None, None, None)
+
+
+def test__merge_ssl_params_invlid():
+    with pytest.raises(TypeError):
+        _merge_ssl_params(object(), None, None, None)
