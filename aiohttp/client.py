@@ -425,6 +425,7 @@ class ClientSession:
                    headers=None,
                    proxy=None,
                    proxy_auth=None,
+                   ssl=None,
                    verify_ssl=None,
                    fingerprint=None,
                    ssl_context=None,
@@ -444,6 +445,7 @@ class ClientSession:
                              headers=headers,
                              proxy=proxy,
                              proxy_auth=proxy_auth,
+                             ssl=ssl,
                              verify_ssl=verify_ssl,
                              fingerprint=fingerprint,
                              ssl_context=ssl_context,
@@ -462,6 +464,7 @@ class ClientSession:
                           headers=None,
                           proxy=None,
                           proxy_auth=None,
+                          ssl=None,
                           verify_ssl=None,
                           fingerprint=None,
                           ssl_context=None,
@@ -492,15 +495,15 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
+        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
+
         # send request
         resp = await self.get(url, headers=headers,
                               read_until_eof=False,
                               auth=auth,
                               proxy=proxy,
                               proxy_auth=proxy_auth,
-                              verify_ssl=verify_ssl,
-                              fingerprint=fingerprint,
-                              ssl_context=ssl_context,
+                              ssl=ssl,
                               proxy_headers=proxy_headers)
 
         try:
