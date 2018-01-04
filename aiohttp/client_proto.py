@@ -4,7 +4,7 @@ from contextlib import suppress
 
 from .client_exceptions import (ClientOSError, ClientPayloadError,
                                 ServerDisconnectedError)
-from .http import HttpResponseParser, StreamWriter
+from .http import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue
 
 
@@ -17,7 +17,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
         self.paused = False
         self.transport = None
-        self.writer = None
         self._should_close = False
 
         self._message = None
@@ -60,7 +59,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
     def connection_made(self, transport):
         self.transport = transport
-        self.writer = StreamWriter(self, transport, self._loop)
 
     def connection_lost(self, exc):
         if self._payload_parser is not None:
@@ -82,7 +80,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 exc = ServerDisconnectedError(uncompleted)
             DataQueue.set_exception(self, exc)
 
-        self.transport = self.writer = None
+        self.transport = None
         self._should_close = True
         self._parser = None
         self._message = None

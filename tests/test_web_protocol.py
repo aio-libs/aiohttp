@@ -38,6 +38,8 @@ def srv(make_srv, transport):
     srv = make_srv()
     srv.connection_made(transport)
     transport.close.side_effect = partial(srv.connection_lost, None)
+    srv._drain_helper = mock.Mock()
+    srv._drain_helper.side_effect = helpers.noop
     return srv
 
 
@@ -72,7 +74,7 @@ def handle_with_error():
 
 @pytest.yield_fixture
 def writer(srv):
-    return http.PayloadWriter(srv.writer, srv._loop)
+    return http.PayloadWriter(srv, srv.transport, srv._loop)
 
 
 @pytest.yield_fixture
@@ -83,7 +85,6 @@ def transport(buf):
         buf.extend(chunk)
 
     transport.write.side_effect = write
-    transport.drain.side_effect = helpers.noop
 
     return transport
 
@@ -226,7 +227,7 @@ async def test_bad_method(srv, loop, buf):
 
 
 async def test_data_received_error(srv, loop, buf):
-    srv.transport = mock.Mock()
+    transport = srv.transport
     srv._request_parser = mock.Mock()
     srv._request_parser.feed_data.side_effect = TypeError
 
@@ -236,7 +237,7 @@ async def test_data_received_error(srv, loop, buf):
 
     await asyncio.sleep(0, loop=loop)
     assert buf.startswith(b'HTTP/1.0 500 Internal Server Error\r\n')
-    assert srv.transport.close.called
+    assert transport.close.called
     assert srv._error_handler is None
 
 

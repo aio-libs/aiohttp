@@ -24,21 +24,16 @@ def transport(buf):
 
 
 @pytest.fixture
-def stream(transport, loop):
-    stream = mock.Mock(transport=transport)
-
-    def acquire(writer):
-        writer.set_transport(transport)
-
-    stream.acquire = acquire
-    stream.drain.return_value = loop.create_future()
-    stream.drain.return_value.set_result(None)
-    return stream
+def protocol(loop, transport):
+    protocol = mock.Mock(transport=transport)
+    protocol._drain_helper.return_value = loop.create_future()
+    protocol._drain_helper.return_value.set_result(None)
+    return protocol
 
 
-async def test_write_payload_eof(stream, loop):
-    write = stream.transport.write = mock.Mock()
-    msg = http.PayloadWriter(stream, loop)
+async def test_write_payload_eof(transport, protocol, loop):
+    write = transport.write = mock.Mock()
+    msg = http.PayloadWriter(protocol, transport, loop)
 
     msg.write(b'data1')
     msg.write(b'data2')
@@ -48,8 +43,8 @@ async def test_write_payload_eof(stream, loop):
     assert b'data1data2' == content.split(b'\r\n\r\n', 1)[-1]
 
 
-async def test_write_payload_chunked(buf, stream, loop):
-    msg = http.PayloadWriter(stream, loop)
+async def test_write_payload_chunked(buf, protocol, transport, loop):
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.enable_chunking()
     msg.write(b'data')
     await msg.write_eof()
@@ -57,8 +52,8 @@ async def test_write_payload_chunked(buf, stream, loop):
     assert b'4\r\ndata\r\n0\r\n\r\n' == buf
 
 
-async def test_write_payload_chunked_multiple(buf, stream, loop):
-    msg = http.PayloadWriter(stream, loop)
+async def test_write_payload_chunked_multiple(buf, protocol, transport, loop):
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.enable_chunking()
     msg.write(b'data1')
     msg.write(b'data2')
@@ -67,10 +62,10 @@ async def test_write_payload_chunked_multiple(buf, stream, loop):
     assert b'5\r\ndata1\r\n5\r\ndata2\r\n0\r\n\r\n' == buf
 
 
-async def test_write_payload_length(stream, loop):
-    write = stream.transport.write = mock.Mock()
+async def test_write_payload_length(protocol, transport, loop):
+    write = transport.write = mock.Mock()
 
-    msg = http.PayloadWriter(stream, loop)
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.length = 2
     msg.write(b'd')
     msg.write(b'ata')
@@ -80,10 +75,10 @@ async def test_write_payload_length(stream, loop):
     assert b'da' == content.split(b'\r\n\r\n', 1)[-1]
 
 
-async def test_write_payload_chunked_filter(stream, loop):
-    write = stream.transport.write = mock.Mock()
+async def test_write_payload_chunked_filter(protocol, transport, loop):
+    write = transport.write = mock.Mock()
 
-    msg = http.PayloadWriter(stream, loop)
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.enable_chunking()
     msg.write(b'da')
     msg.write(b'ta')
@@ -93,9 +88,12 @@ async def test_write_payload_chunked_filter(stream, loop):
     assert content.endswith(b'2\r\nda\r\n2\r\nta\r\n0\r\n\r\n')
 
 
-async def test_write_payload_chunked_filter_mutiple_chunks(stream, loop):
-    write = stream.transport.write = mock.Mock()
-    msg = http.PayloadWriter(stream, loop)
+async def test_write_payload_chunked_filter_mutiple_chunks(
+        protocol,
+        transport,
+        loop):
+    write = transport.write = mock.Mock()
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.enable_chunking()
     msg.write(b'da')
     msg.write(b'ta')
@@ -113,9 +111,9 @@ compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
 COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
 
 
-async def test_write_payload_deflate_compression(stream, loop):
-    write = stream.transport.write = mock.Mock()
-    msg = http.PayloadWriter(stream, loop)
+async def test_write_payload_deflate_compression(protocol, transport, loop):
+    write = transport.write = mock.Mock()
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.enable_compression('deflate')
     msg.write(b'data')
     await msg.write_eof()
@@ -126,8 +124,12 @@ async def test_write_payload_deflate_compression(stream, loop):
     assert COMPRESSED == content.split(b'\r\n\r\n', 1)[-1]
 
 
-async def test_write_payload_deflate_and_chunked(buf, stream, loop):
-    msg = http.PayloadWriter(stream, loop)
+async def test_write_payload_deflate_and_chunked(
+        buf,
+        protocol,
+        transport,
+        loop):
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.enable_compression('deflate')
     msg.enable_chunking()
 
@@ -138,8 +140,8 @@ async def test_write_payload_deflate_and_chunked(buf, stream, loop):
     assert b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' == buf
 
 
-def test_write_drain(stream, loop):
-    msg = http.PayloadWriter(stream, loop)
+def test_write_drain(protocol, transport, loop):
+    msg = http.PayloadWriter(protocol, transport, loop)
     msg.drain = mock.Mock()
     msg.write(b'1' * (64 * 1024 * 2), drain=False)
     assert not msg.drain.called

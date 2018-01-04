@@ -38,6 +38,14 @@ def buf():
     return bytearray()
 
 
+@pytest.fixture
+def protocol(loop):
+    protocol = mock.Mock()
+    protocol._drain_helper.return_value = loop.create_future()
+    protocol._drain_helper.return_value.set_result(None)
+    return protocol
+
+
 @pytest.yield_fixture
 def transport(buf):
     transport = mock.Mock()
@@ -55,22 +63,11 @@ def transport(buf):
 
 
 @pytest.fixture
-def conn(stream):
-    return mock.Mock(writer=stream)
-
-
-@pytest.fixture
-def stream(buf, transport, loop):
-    stream = mock.Mock()
-    stream.transport = transport
-
-    def acquire(writer):
-        writer.set_transport(transport)
-
-    stream.acquire.side_effect = acquire
-    stream.drain.return_value = loop.create_future()
-    stream.drain.return_value.set_result(None)
-    return stream
+def conn(transport, protocol):
+    return mock.Mock(
+        transport=transport,
+        protocol=protocol
+    )
 
 
 def test_method1(make_request):
@@ -844,7 +841,6 @@ async def test_data_stream(loop, buf, conn):
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
-
     assert buf.split(b'\r\n\r\n', 1)[1] == \
         b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
     await req.close()
