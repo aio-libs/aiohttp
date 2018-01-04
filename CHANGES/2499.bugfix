@@ -1,0 +1,1 @@
+Fix writing to closed transport by raising `asyncio.CancelledError`
