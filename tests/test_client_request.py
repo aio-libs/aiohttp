@@ -50,6 +50,7 @@ def transport(buf):
 
     transport.write.side_effect = write
     transport.write_eof.side_effect = write_eof
+    transport.is_closing.return_value = False
 
     return transport
 

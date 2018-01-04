@@ -84,6 +84,7 @@ def transport(buf):
 
     transport.write.side_effect = write
     transport.drain.side_effect = helpers.noop
+    transport.is_closing.return_value = False
 
     return transport
 
