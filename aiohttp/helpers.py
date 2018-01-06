@@ -402,10 +402,10 @@ class AccessLogger(AbstractAccessLogger):
         """
         super().__init__(logger, log_format=log_format)
 
-        _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
+        _compiled_format = self._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
-            AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+            self._FORMAT_CACHE[log_format] = _compiled_format
 
         self._log_format, self._methods = _compiled_format
 
@@ -441,10 +441,10 @@ class AccessLogger(AbstractAccessLogger):
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
                 format_key = self.LOG_FORMAT_MAP[atom[0]]
-                m = getattr(AccessLogger, '_format_%s' % atom[0])
+                m = getattr(self, '_format_%s' % atom[0])
             else:
                 format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
-                m = getattr(AccessLogger, '_format_%s' % atom[2])
+                m = getattr(self, '_format_%s' % atom[2])
                 m = functools.partial(m, atom[1])
 
             methods.append(self.KeyMethod(format_key, m))
@@ -476,7 +476,8 @@ class AccessLogger(AbstractAccessLogger):
     @staticmethod
     def _format_t(request, response, elapsed_time, start_time=None):
         if not start_time:
-            start_time = datetime.datetime.utcnow()
+            # This is an approximation of an approximation
+            start_time = datetime.datetime.utcnow() - datetime.timedelta(seconds=elapsed_time)
         return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
