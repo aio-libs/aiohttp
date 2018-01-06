@@ -3,7 +3,6 @@ import codecs
 import collections
 import io
 import json
-import ssl
 import sys
 import traceback
 import warnings
@@ -18,13 +17,18 @@ from yarl import URL
 from . import hdrs, helpers, http, multipart, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
-                                InvalidURL)
+                                InvalidURL, ServerFingerprintMismatch)
 from .formdata import FormData
-from .helpers import HeadersMixin, TimerNoop, noop, reify, set_result
+from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
 from .log import client_logger
 from .streams import StreamReader
 
+
+try:
+    import ssl
+except ImportError:  # pragma: no cover
+    ssl = None
 
 try:
     import cchardet as chardet
@@ -32,7 +36,7 @@ except ImportError:  # pragma: no cover
     import chardet
 
 
-__all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo')
+__all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
 
 
 ContentDisposition = collections.namedtuple(
@@ -43,14 +47,79 @@ RequestInfo = collections.namedtuple(
     'RequestInfo', ('url', 'method', 'headers'))
 
 
-HASHFUNC_BY_DIGESTLEN = {
-    16: md5,
-    20: sha1,
-    32: sha256,
-}
+class Fingerprint:
+    HASHFUNC_BY_DIGESTLEN = {
+        16: md5,
+        20: sha1,
+        32: sha256,
+    }
+
+    def __init__(self, fingerprint):
+        digestlen = len(fingerprint)
+        hashfunc = self.HASHFUNC_BY_DIGESTLEN.get(digestlen)
+        if not hashfunc:
+            raise ValueError('fingerprint has invalid length')
+        elif hashfunc is md5 or hashfunc is sha1:
+            raise ValueError('md5 and sha1 are insecure and '
+                             'not supported. Use sha256.')
+        self._hashfunc = hashfunc
+        self._fingerprint = fingerprint
+
+    @property
+    def fingerprint(self):
+        return self._fingerprint
+
+    def check(self, transport):
+        if not transport.get_extra_info('sslcontext'):
+            return
+        sslobj = transport.get_extra_info('ssl_object')
+        cert = sslobj.getpeercert(binary_form=True)
+        got = self._hashfunc(cert).digest()
+        if got != self._fingerprint:
+            host, port, *_ = transport.get_extra_info('peername')
+            raise ServerFingerprintMismatch(self._fingerprint,
+                                            got, host, port)
 
 
-_SSL_OP_NO_COMPRESSION = getattr(ssl, "OP_NO_COMPRESSION", 0)
+if ssl is not None:
+    SSL_ALLOWED_TYPES = (ssl.SSLContext, bool, Fingerprint, type(None))
+else:  # pragma: no cover
+    SSL_ALLOWED_TYPES = type(None)
+
+
+def _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint):
+    if verify_ssl is not None and not verify_ssl:
+        warnings.warn("verify_ssl is deprecated, use ssl=False instead",
+                      DeprecationWarning,
+                      stacklevel=3)
+        if ssl is not None:
+            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
+                             "parameters are mutually exclusive")
+        else:
+            ssl = False
+    if ssl_context is not None:
+        warnings.warn("ssl_context is deprecated, use ssl=context instead",
+                      DeprecationWarning,
+                      stacklevel=3)
+        if ssl is not None:
+            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
+                             "parameters are mutually exclusive")
+        else:
+            ssl = ssl_context
+    if fingerprint is not None:
+        warnings.warn("fingerprint is deprecated, "
+                      "use ssl=Fingerprint(fingerprint) instead",
+                      DeprecationWarning,
+                      stacklevel=3)
+        if ssl is not None:
+            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
+                             "parameters are mutually exclusive")
+        else:
+            ssl = Fingerprint(fingerprint)
+    if not isinstance(ssl, SSL_ALLOWED_TYPES):
+        raise TypeError("ssl should be SSLContext, bool, Fingerprint or None, "
+                        "got {!r} instead.".format(ssl))
+    return ssl
 
 
 ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
@@ -92,13 +161,8 @@ class ClientRequest:
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None,
                  timer=None, session=None, auto_decompress=True,
-                 verify_ssl=None, fingerprint=None, ssl_context=None,
+                 ssl=None,
                  proxy_headers=None):
-
-        if verify_ssl is False and ssl_context is not None:
-            raise ValueError(
-                "Either disable ssl certificate validation by "
-                "verify_ssl=False or specify ssl_context, not both.")
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -121,8 +185,7 @@ class ClientRequest:
         self.response_class = response_class or ClientResponse
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
-        self._verify_ssl = verify_ssl
-        self._ssl_context = ssl_context
+        self._ssl = ssl
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
@@ -135,16 +198,22 @@ class ClientRequest:
         self.update_content_encoding(data)
         self.update_auth(auth)
         self.update_proxy(proxy, proxy_auth, proxy_headers)
-        self.update_fingerprint(fingerprint)
 
         self.update_body_from_data(data)
         if data or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
 
+    def is_ssl(self):
+        return self.url.scheme in ('https', 'wss')
+
+    @property
+    def ssl(self):
+        return self._ssl
+
     @property
     def connection_key(self):
-        return ConnectionKey(self.host, self.port, self.ssl)
+        return ConnectionKey(self.host, self.port, self.is_ssl())
 
     @property
     def host(self):
@@ -168,11 +237,6 @@ class ClientRequest:
         username, password = url.user, url.password
         if username:
             self.auth = helpers.BasicAuth(username, password or '')
-
-        # Record entire netloc for usage in host header
-
-        scheme = url.scheme
-        self.ssl = scheme in ('https', 'wss')
 
     def update_version(self, version):
         """Convert request version to two elements tuple.
@@ -343,33 +407,6 @@ class ClientRequest:
         self.proxy = proxy
         self.proxy_auth = proxy_auth
         self.proxy_headers = proxy_headers
-
-    def update_fingerprint(self, fingerprint):
-        if fingerprint:
-            digestlen = len(fingerprint)
-            hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
-            if not hashfunc:
-                raise ValueError('fingerprint has invalid length')
-            elif hashfunc is md5 or hashfunc is sha1:
-                raise ValueError('md5 and sha1 are insecure and '
-                                 'not supported. Use sha256.')
-            self._hashfunc = hashfunc
-        self._fingerprint = fingerprint
-
-    @property
-    def verify_ssl(self):
-        """Do check for ssl certifications?"""
-        return self._verify_ssl
-
-    @property
-    def fingerprint(self):
-        """Expected ssl certificate fingerprint."""
-        return self._fingerprint
-
-    @property
-    def ssl_context(self):
-        """SSLContext instance for https requests."""
-        return self._ssl_context
 
     def keep_alive(self):
         if self.version < HttpVersion10:
@@ -578,16 +615,19 @@ class ClientResponse(HeadersMixin):
             self._connection.release()
             self._cleanup_writer()
 
-            # warn
-            if __debug__:
-                if self._loop.get_debug():
-                    _warnings.warn("Unclosed response {!r}".format(self),
-                                   ResourceWarning)
-                    context = {'client_response': self,
-                               'message': 'Unclosed response'}
-                    if self._source_traceback:
-                        context['source_traceback'] = self._source_traceback
-                    self._loop.call_exception_handler(context)
+            if self._loop.get_debug():
+                if PY_36:
+                    kwargs = {'source': self}
+                else:
+                    kwargs = {}
+                _warnings.warn("Unclosed response {!r}".format(self),
+                               ResourceWarning,
+                               **kwargs)
+                context = {'client_response': self,
+                           'message': 'Unclosed response'}
+                if self._source_traceback:
+                    context['source_traceback'] = self._source_traceback
+                self._loop.call_exception_handler(context)
 
     def __repr__(self):
         out = io.StringIO()

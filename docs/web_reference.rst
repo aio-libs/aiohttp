@@ -728,37 +728,6 @@ StreamResponse
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
-   .. attribute:: tcp_cork
-
-      :const:`~socket.TCP_CORK` (linux) or :const:`~socket.TCP_NOPUSH`
-      (FreeBSD and MacOSX) is applied to underlying transport if the
-      property is ``True``.
-
-      Use :meth:`set_tcp_cork` to assign new value to the property.
-
-      Default value is ``False``.
-
-   .. method:: set_tcp_cork(value)
-
-      Set :attr:`tcp_cork` property to *value*.
-
-      Clear :attr:`tcp_nodelay` if *value* is ``True``.
-
-   .. attribute:: tcp_nodelay
-
-      :const:`~socket.TCP_NODELAY` is applied to underlying transport
-      if the property is ``True``.
-
-      Use :meth:`set_tcp_nodelay` to assign new value to the property.
-
-      Default value is ``True``.
-
-   .. method:: set_tcp_nodelay(value)
-
-      Set :attr:`tcp_nodelay` property to *value*.
-
-      Clear :attr:`tcp_cork` if *value* is ``True``.
-
    .. comethod:: prepare(request)
 
       :param aiohttp.web.Request request: HTTP request object, that the
@@ -989,11 +958,15 @@ WebSocketResponse
 
          The method is converted into :term:`coroutine`
 
-   .. comethod:: send_str(data)
+   .. comethod:: send_str(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.TEXT` message.
 
       :param str data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.                           
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1001,13 +974,18 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
-   .. comethod:: send_bytes(data)
+   .. comethod:: send_bytes(data, compress=None)
 
       Send *data* to peer as :const:`~aiohttp.WSMsgType.BINARY` message.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1016,13 +994,18 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
-   .. comethod:: send_json(data, *, dumps=json.dumps)
+   .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
 
       Send *data* to peer as JSON string.
 
       :param data: data to send.
+
+      :param int compress: sets specific level of compression for
+                           single message,
+                           ``None`` for not overriding per-socket setting.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
@@ -1036,7 +1019,8 @@ WebSocketResponse
 
       .. versionchanged:: 3.0
 
-         The method is converted into :term:`coroutine`
+         The method is converted into :term:`coroutine`,
+         *compress* parameter added.
 
    .. comethod:: close(*, code=1000, message=b'')
 
@@ -1568,6 +1552,13 @@ Router is any object that implements :class:`AbstractRouter` interface.
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
 
+   .. method:: add_view(path, handler, **kwargs)
+
+      Shortcut for adding a class-based view handler. Calls the \
+      :meth:`add_routre` with ``method`` equals to ``'*'``.
+
+      .. versionadded:: 3.0
+
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
@@ -2066,6 +2057,13 @@ The definition is created by functions like :func:`get` or
 
    .. versionadded:: 2.3
 
+.. function:: view(path, handler, *, name=None, expect_handler=None)
+
+   Return :class:`RouteDef` for processing ``ANY`` requests. See
+   :meth:`UrlDispatcher.add_view` for information about parameters.
+
+   .. versionadded:: 3.0
+
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
    Return :class:`RouteDef` for processing ``POST`` requests. See
@@ -2095,6 +2093,15 @@ A routes table definition used for describing routes by decorators
        ...
 
    app.router.add_routes(routes)
+
+
+   @routes.view("/view")
+   class MyView(web.View):
+       async def get(self):
+           ...
+
+       async def post(self):
+           ...
 
 .. class:: RouteTableDef()
 
@@ -2141,6 +2148,15 @@ A routes table definition used for describing routes by decorators
       Add a new :class:`RouteDef` item for registering ``DELETE`` web-handler.
 
       See :meth:`UrlDispatcher.add_delete` for information about parameters.
+
+   .. decoratormethod:: view(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``ANY`` methods
+      against a class-based view.
+
+      See :meth:`UrlDispatcher.add_view` for information about parameters.
+
+      .. versionadded:: 3.0
 
    .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
 
@@ -2202,7 +2218,7 @@ View
                resp = await post_response(self.request)
                return resp
 
-       app.router.add_route('*', '/view', MyView)
+       app.router.add_view('/view', MyView)
 
    The view raises *405 Method Not allowed*
    (:class:`HTTPMethodNowAllowed`) if requested web verb is not
@@ -2254,6 +2270,7 @@ Utilities
 .. function:: run_app(app, *, host=None, port=None, path=None, \
                       sock=None, shutdown_timeout=60.0, \
                       ssl_context=None, print=print, backlog=128, \
+                      access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=None, \
                       access_log=aiohttp.log.access_logger, \
                       handle_signals=True)
@@ -2314,6 +2331,10 @@ Utilities
                        system will allow before refusing new
                        connections (``128`` by default).
 
+   :param access_log_class: class for `access_logger`. Default:
+                            :data:`aiohttp.helpers.AccessLogger`.
+                            Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
+
    :param access_log: :class:`logging.Logger` instance used for saving
                       access logs. Use ``None`` for disabling logs for
                       sake of speedup.
@@ -2325,6 +2346,9 @@ Utilities
    :param bool handle_signals: override signal TERM handling to gracefully
                                exit the application.
 
+   .. versionadded:: 3.0
+
+      Support *access_log_class* parameter.
 
 Constants
 ---------

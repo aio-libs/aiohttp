@@ -160,7 +160,7 @@ def content_disposition_filename(params, name='filename'):
         return value
 
 
-class MultipartResponseWrapper(object):
+class MultipartResponseWrapper:
     """Wrapper around the MultipartBodyReader.
 
     It takes care about
@@ -197,7 +197,7 @@ class MultipartResponseWrapper(object):
         await self.resp.release()
 
 
-class BodyPartReader(object):
+class BodyPartReader:
     """Multipart reader for single body part."""
 
     chunk_size = 8192
@@ -457,7 +457,7 @@ class BodyPartReaderPayload(Payload):
             chunk = await field.read_chunk(size=2**16)
 
 
-class MultipartReader(object):
+class MultipartReader:
     """Multipart body reader."""
 
     #: Response wrapper, used when multipart readers constructs from response.
@@ -633,11 +633,18 @@ class MultipartWriter(Payload):
 
     def __init__(self, subtype='mixed', boundary=None):
         boundary = boundary if boundary is not None else uuid.uuid4().hex
+        # The underlying Payload API demands a str (utf-8), not bytes,
+        # so we need to ensure we don't lose anything during conversion.
+        # As a result, require the boundary to be ASCII only.
+        # In both situations.
+
         try:
-            self._boundary = boundary.encode('us-ascii')
+            self._boundary = boundary.encode('ascii')
         except UnicodeEncodeError:
-            raise ValueError('boundary should contains ASCII only chars')
-        ctype = 'multipart/{}; boundary="{}"'.format(subtype, boundary)
+            raise ValueError('boundary should contain ASCII only chars') \
+                from None
+        ctype = ('multipart/{}; boundary={}'
+                 .format(subtype, self._boundary_value))
 
         super().__init__(None, content_type=ctype)
 
@@ -657,9 +664,44 @@ class MultipartWriter(Payload):
     def __len__(self):
         return len(self._parts)
 
+    _valid_tchar_regex = re.compile(br"\A[!#$%&'*+\-.^_`|~\w]+\Z")
+    _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
+
+    @property
+    def _boundary_value(self):
+        """Wrap boundary parameter value in quotes, if necessary.
+
+        Reads self.boundary and returns a unicode sting.
+        """
+        # Refer to RFCs 7231, 7230, 5234.
+        #
+        # parameter      = token "=" ( token / quoted-string )
+        # token          = 1*tchar
+        # quoted-string  = DQUOTE *( qdtext / quoted-pair ) DQUOTE
+        # qdtext         = HTAB / SP / %x21 / %x23-5B / %x5D-7E / obs-text
+        # obs-text       = %x80-FF
+        # quoted-pair    = "\" ( HTAB / SP / VCHAR / obs-text )
+        # tchar          = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+        #                  / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+        #                  / DIGIT / ALPHA
+        #                  ; any VCHAR, except delimiters
+        # VCHAR           = %x21-7E
+        value = self._boundary
+        if re.match(self._valid_tchar_regex, value):
+            return value.decode('ascii')  # cannot fail
+
+        if re.search(self._invalid_qdtext_char_regex, value):
+            raise ValueError("boundary value contains invalid characters")
+
+        # escape %x5C and %x22
+        quoted_value_content = value.replace(b'\\', b'\\\\')
+        quoted_value_content = quoted_value_content.replace(b'"', b'\\"')
+
+        return '"' + quoted_value_content.decode('ascii') + '"'
+
     @property
     def boundary(self):
-        return self._boundary
+        return self._boundary.decode('ascii')
 
     def append(self, obj, headers=None):
         if headers is None:

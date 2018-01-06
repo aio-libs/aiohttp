@@ -33,7 +33,7 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
            'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
-           'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
+           'head', 'get', 'post', 'patch', 'put', 'delete', 'route', 'view')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
@@ -92,6 +92,10 @@ class AbstractResource(Sized, Iterable):
     def freeze(self):
         pass
 
+    @abc.abstractmethod
+    def raw_match(self, path):
+        """Perform a raw match against path"""
+
 
 class AbstractRoute(abc.ABC):
 
@@ -100,7 +104,7 @@ class AbstractRoute(abc.ABC):
                  resource=None):
 
         if expect_handler is None:
-            expect_handler = _defaultExpectHandler
+            expect_handler = _default_expect_handler
 
         assert asyncio.iscoroutinefunction(expect_handler), \
             'Coroutine is expected, got {!r}'.format(expect_handler)
@@ -242,7 +246,7 @@ class MatchInfoError(UrlMappingMatchInfo):
                                                 self._exception.reason)
 
 
-async def _defaultExpectHandler(request):
+async def _default_expect_handler(request):
     """Default handler for Expect header.
 
     Just send "100 Continue" to client.
@@ -265,16 +269,16 @@ class Resource(AbstractResource):
     def add_route(self, method, handler, *,
                   expect_handler=None):
 
-        for route in self._routes:
-            if route.method == method or route.method == hdrs.METH_ANY:
+        for route_obj in self._routes:
+            if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
                 raise RuntimeError("Added route will never be executed, "
-                                   "method {route.method} is "
-                                   "already registered".format(route=route))
+                                   "method {route.method} is already "
+                                   "registered".format(route=route_obj))
 
-        route = ResourceRoute(method, handler, self,
-                              expect_handler=expect_handler)
-        self.register_route(route)
-        return route
+        route_obj = ResourceRoute(method, handler, self,
+                                  expect_handler=expect_handler)
+        self.register_route(route_obj)
+        return route_obj
 
     def register_route(self, route):
         assert isinstance(route, ResourceRoute), \
@@ -288,13 +292,14 @@ class Resource(AbstractResource):
         if match_dict is None:
             return None, allowed_methods
 
-        for route in self._routes:
-            route_method = route.method
+        for route_obj in self._routes:
+            route_method = route_obj.method
             allowed_methods.add(route_method)
 
-            if (route_method == request._method or
+            if (route_method == request.method or
                     route_method == hdrs.METH_ANY):
-                return UrlMappingMatchInfo(match_dict, route), allowed_methods
+                return (UrlMappingMatchInfo(match_dict, route_obj),
+                        allowed_methods)
         else:
             return None, allowed_methods
 
@@ -303,6 +308,8 @@ class Resource(AbstractResource):
 
     def __iter__(self):
         return iter(self._routes)
+
+    # TODO: implement all abstract methods
 
 
 class PlainResource(Resource):
@@ -328,6 +335,9 @@ class PlainResource(Resource):
             return {}
         else:
             return None
+
+    def raw_match(self, path):
+        return self._path == path
 
     def get_info(self):
         return {'path': self._path}
@@ -397,6 +407,9 @@ class DynamicResource(Resource):
             return {key: unquote(value, unsafe='+') for key, value in
                     match.groupdict().items()}
 
+    def raw_match(self, path):
+        return self._formatter == path
+
     def get_info(self):
         return {'formatter': self._formatter,
                 'pattern': self._pattern}
@@ -424,6 +437,11 @@ class PrefixResource(AbstractResource):
         assert not prefix.endswith('/')
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix
+
+    def raw_match(self, prefix):
+        return False
+
+    # TODO: impl missing abstract methods
 
 
 class StaticResource(PrefixResource):
@@ -488,7 +506,8 @@ class StaticResource(PrefixResource):
                 return url
         return url
 
-    def _get_file_hash(self, byte_array):
+    @staticmethod
+    def _get_file_hash(byte_array):
         m = hashlib.sha256()  # todo sha256 can be configurable param
         m.update(byte_array)
         b64 = base64.urlsafe_b64encode(m.digest())
@@ -507,7 +526,7 @@ class StaticResource(PrefixResource):
 
     async def resolve(self, request):
         path = request.rel_url.raw_path
-        method = request._method
+        method = request.method
         allowed_methods = set(self._routes)
         if not path.startswith(self._prefix):
             return None, set()
@@ -564,7 +583,6 @@ class StaticResource(PrefixResource):
 
         relative_path_to_dir = filepath.relative_to(self._directory).as_posix()
         index_of = "Index of /{}".format(relative_path_to_dir)
-        head = "<head>\n<title>{}</title>\n</head>".format(index_of)
         h1 = "<h1>{}</h1>".format(index_of)
 
         index_list = []
@@ -587,7 +605,8 @@ class StaticResource(PrefixResource):
         ul = "<ul>\n{}\n</ul>".format('\n'.join(index_list))
         body = "<body>\n{}\n{}\n</body>".format(h1, ul)
 
-        html = "<html>\n{}\n{}\n</html>".format(head, body)
+        head_str = "<head>\n<title>{}</title>\n</head>".format(index_of)
+        html = "<html>\n{}\n{}\n</html>".format(head_str, body)
 
         return html
 
@@ -627,7 +646,7 @@ class PrefixedSubAppResource(PrefixResource):
             methods = match_info.http_exception.allowed_methods
         else:
             methods = set()
-        return (match_info, methods)
+        return match_info, methods
 
     def __len__(self):
         return len(self._app.router.routes())
@@ -699,9 +718,9 @@ class SystemRoute(AbstractRoute):
 class View(AbstractView):
 
     async def _iter(self):
-        if self.request._method not in hdrs.METH_ALL:
+        if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
-        method = getattr(self, self.request._method.lower(), None)
+        method = getattr(self, self.request.method.lower(), None)
         if method is None:
             self._raise_allowed_methods()
         resp = await method()
@@ -736,8 +755,8 @@ class RoutesView(Sized, Iterable, Container):
     def __init__(self, resources):
         self._routes = []
         for resource in resources:
-            for route in resource:
-                self._routes.append(route)
+            for route_obj in resource:
+                self._routes.append(route_obj)
 
     def __len__(self):
         return len(self._routes)
@@ -745,8 +764,8 @@ class RoutesView(Sized, Iterable, Container):
     def __iter__(self):
         yield from self._routes
 
-    def __contains__(self, route):
-        return route in self._routes
+    def __contains__(self, route_obj):
+        return route_obj in self._routes
 
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
@@ -759,7 +778,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self._named_resources = {}
 
     async def resolve(self, request):
-        method = request._method
+        method = request.method
         allowed_methods = set()
 
         for resource in self._resources:
@@ -824,6 +843,11 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_resource(self, path, *, name=None):
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
+        # Reuse last added resource if path and name are the same
+        if self._resources:
+            resource = self._resources[-1]
+            if resource.name == name and resource.raw_match(path):
+                return resource
         if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
             url = URL(path)
             resource = PlainResource(url.raw_path, name=name)
@@ -873,14 +897,10 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         Shortcut for add_route with method GET, if allow_head is true another
         route is added allowing head requests to the same endpoint
         """
+        resource = self.add_resource(path, name=name)
         if allow_head:
-            # it name is not None append -head to avoid it conflicting with
-            # the GET route below
-            head_name = name and '{}-head'.format(name)
-            self.add_route(hdrs.METH_HEAD, path, handler,
-                           name=head_name, **kwargs)
-        return self.add_route(hdrs.METH_GET, path, handler, name=name,
-                              **kwargs)
+            resource.add_route(hdrs.METH_HEAD, handler, **kwargs)
+        return resource.add_route(hdrs.METH_GET, handler, **kwargs)
 
     def add_post(self, path, handler, **kwargs):
         """
@@ -906,6 +926,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
+    def add_view(self, path, handler, **kwargs):
+        """
+        Shortcut for add_route with ANY methods for a class-based view
+        """
+        return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)
+
     def freeze(self):
         super().freeze()
         for resource in self._resources:
@@ -917,8 +943,8 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         Parameter should be a sequence of RouteDef objects.
         """
         # TODO: add_table maybe?
-        for route in routes:
-            route.register(self)
+        for route_obj in routes:
+            route_obj.register(self)
 
 
 def route(method, path, handler, **kwargs):
@@ -948,6 +974,10 @@ def patch(path, handler, **kwargs):
 
 def delete(path, handler, **kwargs):
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
+
+
+def view(path, handler, **kwargs):
+    return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 
 class RouteTableDef(Sequence):
@@ -993,3 +1023,6 @@ class RouteTableDef(Sequence):
 
     def delete(self, path, **kwargs):
         return self.route(hdrs.METH_DELETE, path, **kwargs)
+
+    def view(self, path, **kwargs):
+        return self.route(hdrs.METH_ANY, path, **kwargs)

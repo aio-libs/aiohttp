@@ -263,33 +263,6 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         elif isinstance(value, str):
             self.headers[hdrs.LAST_MODIFIED] = value
 
-    @property
-    def tcp_nodelay(self):
-        payload_writer = self._payload_writer
-        assert payload_writer is not None, \
-            "Cannot get tcp_nodelay for not prepared response"
-        return payload_writer.tcp_nodelay
-
-    def set_tcp_nodelay(self, value):
-        payload_writer = self._payload_writer
-        assert payload_writer is not None, \
-            "Cannot set tcp_nodelay for not prepared response"
-        payload_writer.set_tcp_nodelay(value)
-
-    @property
-    def tcp_cork(self):
-        payload_writer = self._payload_writer
-        assert payload_writer is not None, \
-            "Cannot get tcp_cork for not prepared response"
-        return payload_writer.tcp_cork
-
-    def set_tcp_cork(self, value):
-        payload_writer = self._payload_writer
-        assert payload_writer is not None, \
-            "Cannot set tcp_cork for not prepared response"
-
-        payload_writer.set_tcp_cork(value)
-
     def _generate_content_type_header(self, CONTENT_TYPE=hdrs.CONTENT_TYPE):
         params = '; '.join("%s=%s" % i for i in self._content_dict.items())
         if params:
@@ -455,6 +428,9 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
 
     def __iter__(self):
         return iter(self._state)
+
+    def __hash__(self):
+        return hash(id(self))
 
 
 class Response(StreamResponse):

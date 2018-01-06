@@ -389,25 +389,20 @@ A common use of middlewares is to implement custom error pages.  The following
 example will render 404 errors using a JSON response, as might be appropriate
 a JSON REST service::
 
-    import json
     from aiohttp import web
-
-    def json_error(message):
-        return web.Response(
-            body=json.dumps({'error': message}).encode('utf-8'),
-            content_type='application/json')
 
     @web.middleware
     async def error_middleware(request, handler):
         try:
             response = await handler(request)
-            if response.status == 404:
-                return json_error(response.message)
-            return response
+            if response.status != 404:
+                return response
+            message = response.message
         except web.HTTPException as ex:
-            if ex.status == 404:
-                return json_error(ex.reason)
-            raise
+            if ex.status != 404:
+                raise
+            message = ex.reason
+        return web.json_response({'error': message})
 
     app = web.Application(middlewares=[error_middleware])
 
@@ -581,52 +576,6 @@ use the following explicit technique::
    async def handler(request):  # main application's handler
        admin = request.app['admin']
        url = admin.router['name'].url_for()
-
-.. _aiohttp-web-flow-control:
-
-Flow control
-------------
-
-:mod:`aiohttp.web` has sophisticated flow control for underlying TCP
-sockets write buffer.
-
-The problem is: by default TCP sockets use `Nagle's algorithm
-<https://en.wikipedia.org/wiki/Nagle%27s_algorithm>`_ for output
-buffer which is not optimal for streaming data protocols like HTTP.
-
-Web server response may have one of the following states:
-
-1. **CORK** (:attr:`~StreamResponse.tcp_cork` is ``True``).
-   Don't send out partial TCP/IP frames.  All queued partial frames
-   are sent when the option is cleared again. Optimal for sending big
-   portion of data since data will be sent using minimum
-   frames count.
-
-   If OS does not support **CORK** mode (neither ``socket.TCP_CORK``
-   nor ``socket.TCP_NOPUSH`` exists) the mode is equal to *Nagle's
-   enabled* one. The most widespread OS without **CORK** support is
-   *Windows*.
-
-2. **NODELAY** (:attr:`~StreamResponse.tcp_nodelay` is
-   ``True``).  Disable the Nagle algorithm.  This means that small
-   data pieces are always sent as soon as possible, even if there is
-   only a small amount of data. Optimal for transmitting short messages.
-
-3. Nagle's algorithm enabled (both
-   :attr:`~StreamResponse.tcp_cork` and
-   :attr:`~StreamResponse.tcp_nodelay` are ``False``).
-   Data is buffered until there is a sufficient amount to send out.
-   Avoid using this mode for sending HTTP data until you have no doubts.
-
-By default streaming data (:class:`StreamResponse`), regular responses
-(:class:`Response` and http exceptions derived from it) and websockets
-(:class:`WebSocketResponse`) use **NODELAY** mode, static file
-handlers work in **CORK** mode.
-
-To manual mode switch :meth:`~StreamResponse.set_tcp_cork` and
-:meth:`~StreamResponse.set_tcp_nodelay` methods can be used.  It may
-be helpful for better streaming control for example.
-
 
 .. _aiohttp-web-expect-header:
 
@@ -869,8 +818,11 @@ For changing :attr:`~BaseRequest.scheme` :attr:`~BaseRequest.host` and
 :attr:`~BaseRequest.remote` the middleware might use
 :meth:`~BaseRequest.clone`.
 
-TBD: add a link to third-party project with proper middleware
-implementation.
+.. seealso::
+
+   https://github.com/aio-libs/aiohttp-remotes provides secure helpers
+   for modifying *scheme*, *host* and *remote* attributes according
+   to ``Forwarded`` and ``X-Forwarded-*`` HTTP headers.
 
 Swagger support
 ---------------

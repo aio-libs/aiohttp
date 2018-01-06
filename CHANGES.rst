@@ -14,6 +14,26 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.7 (2017-12-27)
+==================
+
+- Fixed race-condition for iterating addresses from the DNSCache. (#2620)
+- Fix docstring for request.host (#2591)
+- Fix docstring for request.remote (#2592)
+
+
+2.3.6 (2017-12-04)
+==================
+
+- Correct `request.app` context (for handlers not just middlewares). (#2577)
+
+
+2.3.5 (2017-11-30)
+==================
+
+- Fix compatibility with `pytest` 3.3+ (#2565)
+
+
 2.3.4 (2017-11-29)
 ==================
 
