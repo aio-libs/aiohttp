@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+import datetime
 import http.server
 import socket
 import traceback
@@ -340,9 +341,17 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             self.transport.close()
             self.transport = None
 
-    def log_access(self, request, response, time):
+    def log_access(self, request, response, time, start_time=None):
+        """
+        Log access
+
+        :param request: request to log
+        :param response: response to log
+        :param time: elapsed time of request
+        :param start_time: UTC start time of request
+        """
         if self.access_logger is not None:
-            self.access_logger.log(request, response, time)
+            self.access_logger.log(request, response, time, start_time)
 
     def log_debug(self, *args, **kw):
         if self.debug:
@@ -399,7 +408,10 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         while not self._force_close:
             if self.access_log:
+                # pseudo start time of request, note this isn't really the
+                # start as we already have a parsed message
                 now = loop.time()
+                start_time = datetime.datetime.utcnow()
 
             manager.requests_count += 1
             writer = PayloadWriter(self.writer, loop)
@@ -432,7 +444,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                 # log access
                 if self.access_log:
-                    self.log_access(request, resp, loop.time() - now)
+                    elapsed_time = loop.time() - now
+                    self.log_access(request, resp, elapsed_time, start_time)
 
                 # check payload
                 if not payload.is_eof():
@@ -447,7 +460,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
                         with suppress(
                                 asyncio.TimeoutError, asyncio.CancelledError):
-                            while (not payload.is_eof() and now < end_t):
+                            while not payload.is_eof() and now < end_t:
                                 timeout = min(end_t - now, lingering_time)
                                 with CeilTimeout(timeout, loop=loop):
                                     # read and ignore
