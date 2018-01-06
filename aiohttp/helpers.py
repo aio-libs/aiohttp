@@ -527,7 +527,9 @@ class AccessLogger(AbstractAccessLogger):
                 if key.__class__ is str:
                     extra[key] = value
                 else:
-                    extra[key[0]] = {key[1]: value}
+                    if key[0] not in extra:
+                        extra[key[0]] = dict()
+                    extra[key[0]][key[1]] = value
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
