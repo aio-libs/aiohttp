@@ -161,9 +161,7 @@ def pytest_pyfunc_call(pyfuncitem):
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {arg: pyfuncitem.funcargs[arg]
                             for arg in pyfuncitem._fixtureinfo.argnames}
-
-                task = _loop.create_task(pyfuncitem.obj(**testargs))
-                _loop.run_until_complete(task)
+                _loop.run_until_complete(pyfuncitem.obj(**testargs))
 
         return True
 
