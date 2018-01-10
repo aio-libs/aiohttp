@@ -73,7 +73,7 @@ async def test_site_stop_not_started(make_runner):
 async def test_custom_log_format(make_runner):
     runner = make_runner(access_log_format='abc')
     await runner.setup()
-    assert runner._handler._kwargs['access_log_format'] == 'abc'
+    assert runner.server._kwargs['access_log_format'] == 'abc'
 
 
 async def test_unreg_site(make_runner):
