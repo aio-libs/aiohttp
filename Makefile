@@ -36,29 +36,29 @@ check_changes:
 	@touch .develop
 
 test: .develop
-	@py.test -q ./tests
+	@pytest -q ./tests
 
 vtest: .develop
-	@py.test -s -v ./tests
+	@pytest -s -v ./tests
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
-	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
+	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 py.test --cov=aiohttp tests
+	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
 cov-ci-aio-debug: .develop
 	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 py.test --cov=aiohttp --cov-append tests
+	@PYTHONASYNCIODEBUG=1 pytest --cov=aiohttp --cov-append tests
 cov-ci-run: .develop
 	@echo "Regular run"
-	@py.test --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
 
 cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"

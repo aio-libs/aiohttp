@@ -85,6 +85,7 @@ def transport(buf):
         buf.extend(chunk)
 
     transport.write.side_effect = write
+    transport.is_closing.return_value = False
 
     return transport
 

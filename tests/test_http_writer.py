@@ -1,4 +1,5 @@
 """Tests for aiohttp/http_writer.py"""
+import asyncio
 import zlib
 from unittest import mock
 
@@ -20,6 +21,7 @@ def transport(buf):
         buf.extend(chunk)
 
     transport.write.side_effect = write
+    transport.is_closing.return_value = False
     return transport
 
 
@@ -149,3 +151,13 @@ def test_write_drain(protocol, transport, loop):
     msg.write(b'1', drain=True)
     assert msg.drain.called
     assert msg.buffer_size == 0
+
+
+def test_write_to_closing_transport(stream, loop):
+    msg = http.PayloadWriter(stream, loop)
+
+    msg.write(b'Before closing')
+    stream.transport.is_closing.return_value = True
+
+    with pytest.raises(asyncio.CancelledError):
+        msg.write(b'After closing')
