@@ -1,0 +1,1 @@
+Fix default value of `access_log_format` argument in `web.run_app`
