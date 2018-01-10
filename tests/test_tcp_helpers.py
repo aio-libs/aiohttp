@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp.tcp_helpers import tcp_nodelay, tcp_cork, CORK
+from aiohttp.tcp_helpers import CORK, tcp_cork, tcp_nodelay
 
 
 has_ipv6 = socket.has_ipv6

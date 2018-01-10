@@ -12,10 +12,10 @@ from .helpers import CeilTimeout
 from .http import HttpProcessingError, HttpRequestParser, PayloadWriter
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD
+from .tcp_helpers import tcp_cork, tcp_keepalive, tcp_nodelay
 from .web_exceptions import HTTPException
 from .web_request import BaseRequest
 from .web_response import Response
-from .tcp_helpers import tcp_keepalive, tcp_cork, tcp_nodelay
 
 
 __all__ = ('RequestHandler', 'RequestPayloadError')

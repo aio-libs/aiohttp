@@ -29,8 +29,8 @@ from .helpers import (PY_36, CeilTimeout, TimeoutHandle, proxies_from_env,
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
+from .tcp_helpers import tcp_cork, tcp_nodelay
 from .tracing import Trace
-from .tcp_helpers import tcp_nodelay, tcp_cork
 
 
 __all__ = (client_exceptions.__all__ +  # noqa
