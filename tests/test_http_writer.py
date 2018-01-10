@@ -153,11 +153,11 @@ def test_write_drain(protocol, transport, loop):
     assert msg.buffer_size == 0
 
 
-def test_write_to_closing_transport(stream, loop):
-    msg = http.PayloadWriter(stream, loop)
+def test_write_to_closing_transport(protocol, transport, loop):
+    msg = http.PayloadWriter(protocol, transport, loop)
 
     msg.write(b'Before closing')
-    stream.transport.is_closing.return_value = True
+    transport.is_closing.return_value = True
 
     with pytest.raises(asyncio.CancelledError):
         msg.write(b'After closing')
