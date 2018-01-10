@@ -115,7 +115,7 @@ def test_set_cork_enable_unix(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_cork(transport, True) is True
+    assert tcp_cork(transport, True) is None
 
 
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")

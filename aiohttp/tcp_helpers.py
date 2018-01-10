@@ -49,16 +49,19 @@ def tcp_cork(transport, value):
     sock = transport.get_extra_info('socket')
 
     if CORK is None:
-        return
+        return None
 
     if sock is None:
-        return
+        return None
 
     if sock.family not in (socket.AF_INET, socket.AF_INET6):
-        return
+        return None
 
     value = bool(value)
 
     with suppress(OSError):
         sock.setsockopt(
-            socket.IPPROTO_TCP, socket.TCP_NODELAY, False)
+            socket.IPPROTO_TCP, CORK, value)
+        return value
+
+    return None
