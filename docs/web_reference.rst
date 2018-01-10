@@ -2265,7 +2265,7 @@ application on specific TCP or Unix socket, e.g.::
 
 .. class:: AppRunner(app, *, handle_signals=False, **kwargs)
 
-   A runner for :class:`Application`. Used with conjuction with sites
+   A runner for :class:`Application`. Used with conjunction with sites
    to serve on specific port.
 
    :param Application app: web application instance to serve.
@@ -2301,7 +2301,7 @@ application on specific TCP or Unix socket, e.g.::
 
    .. comethod:: cleanup()
 
-      Stop hanling all registered sites and cleanup used resources.
+      Stop handling all registered sites and cleanup used resources.
 
       :attr:`Application.on_shutdown` and
       :attr:`Application.on_cleanup` signals are called internally.
