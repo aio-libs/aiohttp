@@ -33,6 +33,12 @@ def protocol(loop, transport):
     return protocol
 
 
+def test_payloadwriter_properties(transport, protocol, loop):
+    writer = http.PayloadWriter(protocol, transport, loop)
+    assert writer.protocol == protocol
+    assert writer.transport == transport
+
+
 async def test_write_payload_eof(transport, protocol, loop):
     write = transport.write = mock.Mock()
     msg = http.PayloadWriter(protocol, transport, loop)
