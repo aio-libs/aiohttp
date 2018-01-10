@@ -676,6 +676,9 @@ certification chaining.
               assert resp.status == 200
               print(await resp.text())
 
+   .. note:: 
+      This usage may raise warning ```Unclosed client session``` under 
+      version 2.x and will be fixed in version 3.0.
 
 .. _aiohttp-client-reference-connectors:
 
