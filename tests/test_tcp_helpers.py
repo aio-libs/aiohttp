@@ -26,7 +26,7 @@ def test_tcp_nodelay_exception(loop):
     s.family = socket.AF_INET
     s.setsockopt.side_effect = OSError
     transport.get_extra_info.return_value = s
-    assert tcp_nodelay(transport, True) is None
+    tcp_nodelay(transport, True)
     s.setsockopt.assert_called_with(
         socket.IPPROTO_TCP,
         socket.TCP_NODELAY,
@@ -38,7 +38,7 @@ def test_tcp_nodelay_enable(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_nodelay(transport, True) is True
+    tcp_nodelay(transport, True)
     assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
@@ -46,8 +46,9 @@ def test_tcp_nodelay_enable_and_disable(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_nodelay(transport, True) is True
-    assert tcp_nodelay(transport, False) is False
+    tcp_nodelay(transport, True)
+    assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
+    tcp_nodelay(transport, False)
     assert not s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
@@ -56,7 +57,7 @@ def test_tcp_nodelay_enable_ipv6(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_nodelay(transport, True) is True
+    tcp_nodelay(transport, True)
     assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
@@ -65,15 +66,16 @@ def test_tcp_nodelay_enable_ipv6(loop):
 def test_tcp_nodelay_enable_unix(loop):
     # do not set nodelay for unix socket
     transport = mock.Mock()
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s = mock.Mock(family=socket.AF_UNIX, type=socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_nodelay(transport, True) is None
+    tcp_nodelay(transport, True)
+    assert not s.setsockopt.called
 
 
 def test_tcp_nodelay_enable_no_socket(loop):
     transport = mock.Mock()
     transport.get_extra_info.return_value = None
-    assert tcp_nodelay(transport, True) is None
+    tcp_nodelay(transport, True)
 
 
 # cork
@@ -84,7 +86,7 @@ def test_tcp_cork_enable(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_cork(transport, True) is True
+    tcp_cork(transport, True)
     assert s.getsockopt(socket.IPPROTO_TCP, CORK)
 
 
@@ -93,8 +95,9 @@ def test_set_cork_enable_and_disable(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_cork(transport, True) is True
-    assert tcp_cork(transport, False) is False
+    tcp_cork(transport, True)
+    assert s.getsockopt(socket.IPPROTO_TCP, CORK)
+    tcp_cork(transport, False)
     assert not s.getsockopt(socket.IPPROTO_TCP, CORK)
 
 
@@ -104,7 +107,7 @@ def test_set_cork_enable_ipv6(loop):
     transport = mock.Mock()
     s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_cork(transport, True) is True
+    tcp_cork(transport, True)
     assert s.getsockopt(socket.IPPROTO_TCP, CORK)
 
 
@@ -113,22 +116,30 @@ def test_set_cork_enable_ipv6(loop):
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
 def test_set_cork_enable_unix(loop):
     transport = mock.Mock()
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    s = mock.Mock(family=socket.AF_UNIX, type=socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
-    assert tcp_cork(transport, True) is None
+    tcp_cork(transport, True)
+    assert not s.setsockopt.called
 
 
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
 def test_set_cork_enable_no_socket(loop):
     transport = mock.Mock()
     transport.get_extra_info.return_value = None
-    assert tcp_cork(transport, True) is None
+    tcp_cork(transport, True)
 
 
+@pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
 def test_set_cork_exception(loop):
     transport = mock.Mock()
     s = mock.Mock()
     s.setsockopt = mock.Mock()
     s.family = socket.AF_INET
     s.setsockopt.side_effect = OSError
-    assert tcp_cork(transport, True) is None
+    transport.get_extra_info.return_value = s
+    tcp_cork(transport, True)
+    s.setsockopt.assert_called_with(
+        socket.IPPROTO_TCP,
+        CORK,
+        True
+    )
