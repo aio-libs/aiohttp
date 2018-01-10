@@ -5,8 +5,8 @@ from argparse import ArgumentParser
 from collections import Iterable
 from importlib import import_module
 
-from . import (web_exceptions, web_fileresponse, web_middlewares, web_protocol,
-               web_request, web_response, web_server, web_site,
+from . import (helpers, web_exceptions, web_fileresponse, web_middlewares,
+               web_protocol, web_request, web_response, web_runner, web_server,
                web_urldispatcher, web_ws)
 from .http import HttpVersion  # noqa
 from .log import access_logger
@@ -17,8 +17,8 @@ from .web_middlewares import *  # noqa
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
+from .web_runner import AppRunner, GracefulExit, SockSite, TCPSite, UnixSite
 from .web_server import *  # noqa
-from .web_site import AppRunner, GracefulExit, SockSite, TCPSite, UnixSite
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
 
@@ -31,19 +31,21 @@ __all__ = (web_protocol.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
            web_server.__all__ +
-           web_site.__all__ +
+           web_runner.__all__ +
            web_middlewares.__all__ +
            ('Application', 'HttpVersion', 'MsgType'))
 
 
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128, access_log_format=None,
+            print=print, backlog=128, access_log_class=helpers.AccessLogger,
+            access_log_format=helpers.AccessLogger.LOG_FORMAT,
             access_log=access_logger, handle_signals=True):
     """Run an app locally"""
     loop = asyncio.get_event_loop()
 
     runner = AppRunner(app, handle_signals=handle_signals,
+                       access_log_class=access_log_class,
                        access_log_format=access_log_format,
                        access_log=access_log)
 

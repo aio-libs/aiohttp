@@ -28,20 +28,23 @@ def tmp_dir_path(request):
     return tmp_dir
 
 
-@pytest.mark.parametrize("show_index,status,prefix,data",
-                         [(False, 403, '/', None),
-                          (True, 200, '/',
-                           b'<html>\n<head>\n<title>Index of /.</title>\n'
-                           b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
-                           b'<li><a href="/my_dir">my_dir/</a></li>\n'
-                           b'<li><a href="/my_file">my_file</a></li>\n'
-                           b'</ul>\n</body>\n</html>'),
-                          (True, 200, '/static',
-                           b'<html>\n<head>\n<title>Index of /.</title>\n'
-                           b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
-                           b'<li><a href="/static/my_dir">my_dir/</a></li>\n'
-                           b'<li><a href="/static/my_file">my_file</a></li>\n'
-                           b'</ul>\n</body>\n</html>')])
+@pytest.mark.parametrize(
+    "show_index,status,prefix,data",
+    [pytest.param(False, 403, '/', None, id="index_forbidden"),
+     pytest.param(True, 200, '/',
+                  b'<html>\n<head>\n<title>Index of /.</title>\n'
+                  b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
+                  b'<li><a href="/my_dir">my_dir/</a></li>\n'
+                  b'<li><a href="/my_file">my_file</a></li>\n'
+                  b'</ul>\n</body>\n</html>',
+                  id="index_root"),
+     pytest.param(True, 200, '/static',
+                  b'<html>\n<head>\n<title>Index of /.</title>\n'
+                  b'</head>\n<body>\n<h1>Index of /.</h1>\n<ul>\n'
+                  b'<li><a href="/static/my_dir">my_dir/</a></li>\n'
+                  b'<li><a href="/static/my_file">my_file</a></li>\n'
+                  b'</ul>\n</body>\n</html>',
+                  id="index_static")])
 async def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
                                              show_index, status, prefix, data):
     """
@@ -78,11 +81,12 @@ async def test_access_root_of_static_handler(tmp_dir_path, loop, test_client,
         assert read_ == data
 
 
-@pytest.mark.parametrize('data', ['hello world'])
-async def test_follow_symlink(tmp_dir_path, loop, test_client, data):
+async def test_follow_symlink(tmp_dir_path, loop, test_client):
     """
     Tests the access to a symlink, in static folder
     """
+    data = 'hello world'
+
     my_dir_path = os.path.join(tmp_dir_path, 'my_dir')
     os.mkdir(my_dir_path)
 
@@ -340,5 +344,126 @@ async def test_allow_head(loop, test_client):
     await r.release()
 
     r = await client.head('/b')
+    assert r.status == 405
+    await r.release()
+
+
+@pytest.mark.parametrize("path", [
+    '/a',
+    '/{a}',
+])
+def test_reuse_last_added_resource(path):
+    """
+    Test that adding a route with the same name and path of the last added
+    resource doesn't create a new resource.
+    """
+    app = web.Application()
+
+    async def handler(request):
+        return web.Response()
+
+    app.router.add_get(path, handler, name="a")
+    app.router.add_post(path, handler, name="a")
+
+    assert len(app.router.resources()) == 1
+
+
+def test_resource_raw_match():
+    app = web.Application()
+
+    async def handler(request):
+        return web.Response()
+
+    route = app.router.add_get("/a", handler, name="a")
+    assert route.resource.raw_match("/a")
+
+    route = app.router.add_get("/{b}", handler, name="b")
+    assert route.resource.raw_match("/{b}")
+
+    resource = app.router.add_static("/static", ".")
+    assert not resource.raw_match("/static")
+
+
+async def test_add_view(loop, test_client):
+    app = web.Application()
+
+    class MyView(web.View):
+        async def get(self):
+            return web.Response()
+
+        async def post(self):
+            return web.Response()
+
+    app.router.add_view("/a", MyView)
+
+    client = await test_client(app)
+
+    r = await client.get("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.post("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.put("/a")
+    assert r.status == 405
+    await r.release()
+
+
+async def test_decorate_view(loop, test_client):
+    routes = web.RouteTableDef()
+
+    @routes.view("/a")
+    class MyView(web.View):
+        async def get(self):
+            return web.Response()
+
+        async def post(self):
+            return web.Response()
+
+    app = web.Application()
+    app.router.add_routes(routes)
+
+    client = await test_client(app)
+
+    r = await client.get("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.post("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.put("/a")
+    assert r.status == 405
+    await r.release()
+
+
+async def test_web_view(loop, test_client):
+    app = web.Application()
+
+    class MyView(web.View):
+        async def get(self):
+            return web.Response()
+
+        async def post(self):
+            return web.Response()
+
+    app.router.add_routes([
+        web.view("/a", MyView)
+    ])
+
+    client = await test_client(app)
+
+    r = await client.get("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.post("/a")
+    assert r.status == 200
+    await r.release()
+
+    r = await client.put("/a")
     assert r.status == 405
     await r.release()

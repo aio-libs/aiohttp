@@ -30,7 +30,8 @@ class Application(MutableMapping):
         assert isinstance(router, AbstractRouter), router
 
         if loop is not None:
-            warnings.warn("loop argument is deprecated", ResourceWarning)
+            warnings.warn("loop argument is deprecated", DeprecationWarning,
+                          stacklevel=2)
 
         self._debug = debug
         self._router = router
@@ -109,15 +110,25 @@ class Application(MutableMapping):
             return
 
         self._frozen = True
-        self._middlewares = tuple(self._prepare_middleware())
+        self._middlewares.freeze()
         self._router.freeze()
         self._on_response_prepare.freeze()
         self._on_startup.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
+        self._middlewares_handlers = tuple(self._prepare_middleware())
+
+        # If current app and any subapp do not have middlewares avoid run all
+        # of the code footprint that it implies, which have a middleware
+        # hardcoded per app that sets up the current_app attribute. If no
+        # middlewares are configured the handler will receive the proper
+        # current_app without needing all of this code.
+        self._run_middlewares = True if self.middlewares else False
 
         for subapp in self._subapps:
             subapp.freeze()
+            self._run_middlewares =\
+                self._run_middlewares or subapp._run_middlewares
 
     @property
     def debug(self):
@@ -240,6 +251,7 @@ class Application(MutableMapping):
                               'see #2252'.format(m),
                               DeprecationWarning, stacklevel=2)
                 yield m, False
+
         yield _fix_request_current_app(self), True
 
     async def _handle(self, request):
@@ -259,12 +271,14 @@ class Application(MutableMapping):
 
         if resp is None:
             handler = match_info.handler
-            for app in match_info.apps[::-1]:
-                for m, new_style in app._middlewares:
-                    if new_style:
-                        handler = partial(m, handler=handler)
-                    else:
-                        handler = await m(app, handler)
+
+            if self._run_middlewares:
+                for app in match_info.apps[::-1]:
+                    for m, new_style in app._middlewares_handlers:
+                        if new_style:
+                            handler = partial(m, handler=handler)
+                        else:
+                            handler = await m(app, handler)
 
             resp = await handler(request)
 

@@ -74,10 +74,10 @@ intersphinx_mapping = {
         ('https://yarl.readthedocs.io/en/stable/', None),
     'aiohttpjinja2':
         ('https://aiohttp-jinja2.readthedocs.io/en/stable/', None),
+    'aiohttpremotes':
+        ('https://aiohttp-remotes.readthedocs.io/en/stable/', None),
     'aiohttpsession':
-        ('https://aiohttp-session.readthedocs.io/en/stable/', None),
-    'pytest':
-        ('https://docs.pytest.org/en/latest/', None)}
+        ('https://aiohttp-session.readthedocs.io/en/stable/', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -93,7 +93,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'aiohttp'
-copyright = '2013-2017, Aiohttp contributors'
+copyright = '2013-2018, Aiohttp contributors'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

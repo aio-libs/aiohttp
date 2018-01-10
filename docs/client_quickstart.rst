@@ -251,18 +251,22 @@ dictionary of data will automatically be form-encoded when the request is made::
     }
 
 If you want to send data that is not form-encoded you can do it by
-passing a :class:`str` instead of a :class:`dict`. This data will be
-posted directly.
+passing a :class:`bytes` instead of a :class:`dict`. This data will be
+posted directly and content-type set to 'application/octet-stream' by
+default::
 
-For example, the GitHub API v3 accepts JSON-Encoded POST/PATCH data::
-
-    import json
-    url = 'https://api.github.com/some/endpoint'
-    payload = {'some': 'data'}
-
-    async with session.post(url, data=json.dumps(payload)) as resp:
+    async with session.post(url, data=b'\x00Binary-data\x00') as resp:
         ...
 
+If you want to send JSON data::
+
+    async with session.post(url, json={'example': 'test'}) as resp:
+        ...
+
+To send text with appropriate content-type just use ``text`` attribute ::
+
+    async with session.post(url, text='Тест') as resp:
+        ...
 
 POST a Multipart-Encoded File
 -----------------------------

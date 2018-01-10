@@ -26,27 +26,35 @@ Custom Request Headers
 If you need to add HTTP headers to a request, pass them in a
 :class:`dict` to the *headers* parameter.
 
-For example, if you want to specify the content-type for the previous
-example::
+For example, if you want to specify the content-type directly::
 
-    import json
-    url = 'https://api.github.com/some/endpoint'
-    payload = {'some': 'data'}
-    headers = {'content-type': 'application/json'}
+    url = 'http://example.com/image'
+    payload = b'GIF89a\x01\x00\x01\x00\x00\xff\x00,\x00\x00'
+              b'\x00\x00\x01\x00\x01\x00\x00\x02\x00;'
+    headers = {'content-type': 'image/gif'}
 
     await session.post(url,
-                       data=json.dumps(payload),
+                       data=payload,
                        headers=headers)
 
 You also can set default headers for all session requests::
 
-    async with aiohttp.ClientSession(
-        headers={"Authorization": "Basic bG9naW46cGFzcw=="}) as session:
+    headers={"Authorization": "Basic bG9naW46cGFzcw=="}
+    async with aiohttp.ClientSession(headers=headers) as session:
         async with session.get("http://httpbin.org/headers") as r:
             json_body = await r.json()
             assert json_body['headers']['Authorization'] == \
                 'Basic bG9naW46cGFzcw=='
 
+Typical use case is sending JSON body. You can specify content type
+directly as shown above, but it is more convenient to use special keyword
+``json``::
+
+    await session.post(url, json={'example': 'text'})
+
+The same for *text/plain*::
+
+    await session.post(url, text='Привет, Мир!')
 
 Custom Cookies
 --------------
@@ -373,9 +381,9 @@ SSL control for TCP sockets
 ---------------------------
 
 By default *aiohttp* uses strict checks for HTTPS protocol. Certification
-checks can be relaxed by setting *verify_ssl* to ``False``::
+checks can be relaxed by setting *ssl* to ``False``::
 
-  r = await session.get('https://example.com', verify_ssl=False)
+  r = await session.get('https://example.com', ssl=False)
 
 
 If you need to setup custom ssl parameters (use own certification
@@ -384,7 +392,7 @@ pass it into the proper :class:`ClientSession` method::
 
   sslcontext = ssl.create_default_context(
      cafile='/path/to/ca-bundle.crt')
-  r = await session.get('https://example.com', ssl_context=sslcontext)
+  r = await session.get('https://example.com', ssl=sslcontext)
 
 If you need to verify *self-signed* certificates, you can do the
 same thing as the previous example, but add another call to
@@ -394,7 +402,7 @@ same thing as the previous example, but add another call to
      cafile='/path/to/ca-bundle.crt')
   sslcontext.load_cert_chain('/path/to/client/public/device.pem',
                              '/path/to/client/private/device.jey')
-  r = await session.get('https://example.com', ssl_context=sslcontext)
+  r = await session.get('https://example.com', ssl=sslcontext)
 
 There is explicit errors when ssl verification fails
 
@@ -434,7 +442,7 @@ You may also verify certificates via *SHA256* fingerprint::
   exc = None
   try:
       r = await session.get('https://www.python.org',
-                            fingerprint=bad_fingerprint)
+                            ssl=aiohttp.Fingerprint(bad_fingerprint))
   except aiohttp.FingerprintMismatch as e:
       exc = e
   assert exc is not None
@@ -454,18 +462,9 @@ DER with e.g::
    Tip: to convert from a hexadecimal digest to a binary byte-string,
    you can use :func:`binascii.unhexlify`.
 
-   All *verify_ssl*, *fingerprint* and *ssl_context* could be passed
-   to :class:`TCPConnector` as defaults, params from
-   :meth:`ClientSession.get` and others override these defaults.
-
-.. warning::
-
-   *verify_ssl* and *ssl_context* params are *mutually exclusive*.
-
-   *MD5* and *SHA1* fingerprints are deprecated but still supported -- they
-   are famous as very insecure hash functions.
-
-
+   *ssl* parameter could be passed
+   to :class:`TCPConnector` as default, the value from
+   :meth:`ClientSession.get` and others override default.
 
 Proxy support
 -------------
@@ -502,6 +501,9 @@ insensitive)::
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org", trust_env=True) as resp:
            print(resp.status)
+
+Proxy credentials are given from ``~/.netrc`` file if present (see
+:class:`aiohttp.ClientSession` for more details).
 
 Graceful Shutdown
 -----------------

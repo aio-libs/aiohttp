@@ -9,7 +9,7 @@ from aiohttp.test_utils import make_mocked_coro
 
 
 def test_app_ctor(loop):
-    with pytest.warns(ResourceWarning):
+    with pytest.warns(DeprecationWarning):
         app = web.Application(loop=loop)
     assert loop is app.loop
     assert app.logger is log.web_logger
@@ -195,6 +195,7 @@ def test_app_delitem():
 def test_app_freeze():
     app = web.Application()
     subapp = mock.Mock()
+    subapp._middlewares = ()
     app._subapps.append(subapp)
 
     app.freeze()
@@ -210,3 +211,28 @@ def test_equality():
 
     assert app1 == app1
     assert app1 != app2
+
+
+def test_app_run_middlewares():
+
+    root = web.Application()
+    sub = web.Application()
+    root.add_subapp('/sub', sub)
+    root.freeze()
+    assert root._run_middlewares is False
+
+    @web.middleware
+    async def middleware(request, handler):
+        return await handler(request)
+
+    root = web.Application(middlewares=[middleware])
+    sub = web.Application()
+    root.add_subapp('/sub', sub)
+    root.freeze()
+    assert root._run_middlewares is True
+
+    root = web.Application()
+    sub = web.Application(middlewares=[middleware])
+    root.add_subapp('/sub', sub)
+    root.freeze()
+    assert root._run_middlewares is True

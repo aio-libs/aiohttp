@@ -13,7 +13,7 @@ import pytest
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.test_utils import unused_port
 
@@ -272,7 +272,7 @@ async def test_post_data_textio_encoding(loop, test_client):
 
 
 async def test_client_ssl(loop, ssl_ctx, test_server, test_client):
-    connector = aiohttp.TCPConnector(verify_ssl=False, loop=loop)
+    connector = aiohttp.TCPConnector(ssl=False, loop=loop)
 
     async def handler(request):
         return web.Response(text='Test message')
@@ -298,8 +298,7 @@ async def test_tcp_connector_fingerprint_ok(test_server, test_client,
     async def handler(request):
         return web.Response(text='Test message')
 
-    connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
-                                     fingerprint=fingerprint)
+    connector = aiohttp.TCPConnector(loop=loop, ssl=Fingerprint(fingerprint))
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = await test_server(app, ssl=ssl_ctx)
@@ -322,8 +321,8 @@ async def test_tcp_connector_fingerprint_fail(test_server, test_client,
 
     bad_fingerprint = b'\x00' * len(fingerprint)
 
-    connector = aiohttp.TCPConnector(loop=loop, verify_ssl=False,
-                                     fingerprint=bad_fingerprint)
+    connector = aiohttp.TCPConnector(loop=loop,
+                                     ssl=Fingerprint(bad_fingerprint))
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
@@ -2004,19 +2003,6 @@ async def test_redirect_without_location_header(loop, test_client):
     assert data == body
 
 
-async def test_encoding_deprecated(loop, test_client):
-
-    async def handler_redirect(request):
-        return web.Response(status=301)
-
-    app = web.Application()
-    app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await test_client(app)
-
-    with pytest.warns(DeprecationWarning):
-        await client.get('/', encoding='utf-8')
-
-
 async def test_chunked_deprecated(loop, test_client):
 
     async def handler_redirect(request):
@@ -2487,6 +2473,12 @@ async def test_error_in_performing_request(loop, ssl_ctx,
                                            test_client, test_server):
     async def handler(request):
         return web.Response()
+
+    def exception_handler(loop, context):
+        # skip log messages about destroyed but pending tasks
+        pass
+
+    loop.set_exception_handler(exception_handler)
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)

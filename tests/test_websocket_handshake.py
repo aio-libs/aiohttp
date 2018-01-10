@@ -143,17 +143,16 @@ async def test_handshake_protocol_agreement():
     assert ws.ws_protocol == best_proto
 
 
-async def test_handshake_protocol_unsupported(log):
+async def test_handshake_protocol_unsupported(caplog):
     # Tests if a protocol mismatch handshake warns and returns None
     proto = 'chat'
     req = make_mocked_request('GET', '/',
                               headers=gen_ws_headers('test')[0])
 
     ws = web.WebSocketResponse(protocols=[proto])
-    with log('aiohttp.websocket') as ctx:
-        await ws.prepare(req)
+    await ws.prepare(req)
 
-    assert (ctx.records[-1].msg ==
+    assert (caplog.records[-1].msg ==
             'Client protocols %r don’t overlap server-known ones %r')
     assert ws.ws_protocol is None
 

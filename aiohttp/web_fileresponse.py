@@ -111,9 +111,12 @@ class FileResponse(StreamResponse):
                 transport.get_extra_info("socket") is None):
             writer = await self._sendfile_fallback(request, fobj, count)
         else:
-            writer = request._protocol.writer.replace(
-                request._payload_writer, SendfilePayloadWriter)
+            writer = SendfilePayloadWriter(
+                request._protocol.writer,
+                request.loop
+            )
             request._payload_writer = writer
+
             await super().prepare(request)
             await writer.sendfile(fobj, count)
 
@@ -130,19 +133,15 @@ class FileResponse(StreamResponse):
 
         writer = (await super().prepare(request))
 
-        self.set_tcp_cork(True)
-        try:
-            chunk_size = self._chunk_size
+        chunk_size = self._chunk_size
 
-            chunk = fobj.read(chunk_size)
-            while True:
-                await writer.write(chunk)
-                count = count - chunk_size
-                if count <= 0:
-                    break
-                chunk = fobj.read(min(chunk_size, count))
-        finally:
-            self.set_tcp_nodelay(True)
+        chunk = fobj.read(chunk_size)
+        while True:
+            await writer.write(chunk)
+            count = count - chunk_size
+            if count <= 0:
+                break
+            chunk = fobj.read(min(chunk_size, count))
 
         await writer.drain()
         return writer
