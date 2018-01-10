@@ -2240,6 +2240,164 @@ View
 .. seealso:: :ref:`aiohttp-web-class-based-views`
 
 
+.. _aiohttp-web-app-runners-reference:
+
+Running Applications
+--------------------
+
+To start web application there is ``AppRunner`` and site classes.
+
+Runner is a storage for running application, sites are for running
+application on specific TCP or Unix socket, e.g.::
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 8080)
+    await site.start()
+    # wait for finish signal
+    await runner.cleanup()
+
+
+.. versionadded:: 3.0
+
+   :class:`AppRunner` and :class:`TCPSite` / :class:`UnixSite` /
+   :class:`SockSite` are added in aiohttp 3.0
+
+.. class:: AppRunner(app, *, handle_signals=False, **kwargs)
+
+   A runner for :class:`Application`. Used with conjunction with sites
+   to serve on specific port.
+
+   :param Application app: web application instance to serve.
+
+   :param bool handle_signals: add signal handlers for
+                               :data:`signal.SIGINT` and
+                               :data:`signal.SIGTERM` (``False`` by
+                               default).
+
+   :param kwargs: named parameters to pass into
+                    :meth:`Application.make_handler`.
+
+   .. attribute:: app
+
+      Read-only attribute for accessing to :class:`Application` served
+      instance.
+
+   .. attribute:: server
+
+      Low-level web :class:`Server` for handling HTTP requests,
+      read-only attribute.
+
+   .. attribute:: sites
+
+      A read-only :class:`set` of served sites (:class:`TCPSite` /
+      :class:`UnixSite` / :class:`SockSite` instances).
+
+   .. comethod:: setup()
+
+      Initialize application. Should be called before adding sites.
+
+      The method calls :attr:`Application.on_startup` registered signals.
+
+   .. comethod:: cleanup()
+
+      Stop handling all registered sites and cleanup used resources.
+
+      :attr:`Application.on_shutdown` and
+      :attr:`Application.on_cleanup` signals are called internally.
+
+.. class:: BaseSite
+
+   An abstract class for handled sites.
+
+   .. attribute:: name
+
+      An identifier for site, read-only :class:`str` property. Could
+      be an handled URL or UNIX socket path.
+
+   .. comethod:: start()
+
+      Start handling a site.
+
+   .. comethod:: stop()
+
+      Stop handling a site.
+
+
+.. class:: TCPSite(app, host=None, port=None, *, \
+                   shutdown_timeout=60.0, ssl_context=None, \
+                   backlog=128)
+
+   Serve an application on TCP socket.
+
+   :param app: :class:`Application` to serve.
+
+   :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
+
+   :param int port: PORT to listed on, ``8080`` if ``None`` (default).
+
+   :param float shutdown_timeout: a timeout for closing opened
+                                  connections on :meth:`BaseSite.stop`
+                                  call.
+
+   :param ssl_context: a :class:`ssl.SSLContext` instance for serving
+                       SSL/TLS secure server, ``None`` for plain HTTP
+                       server (default).
+
+   :param int backlog: a number of unaccepted connections that the
+                       system will allow before refusing new
+                       connections, see :meth:`socket.listen` for details.
+
+                       ``128`` by default.
+
+.. class:: UnixSite(app, path, *, \
+                   shutdown_timeout=60.0, ssl_context=None, \
+                   backlog=128)
+
+   Serve an application on UNIX socket.
+
+   :param app: :class:`Application` to serve.
+
+   :param str path: PATH to UNIX socket to listen.
+
+   :param float shutdown_timeout: a timeout for closing opened
+                                  connections on :meth:`BaseSite.stop`
+                                  call.
+
+   :param ssl_context: a :class:`ssl.SSLContext` instance for serving
+                       SSL/TLS secure server, ``None`` for plain HTTP
+                       server (default).
+
+   :param int backlog: a number of unaccepted connections that the
+                       system will allow before refusing new
+                       connections, see :meth:`socket.listen` for details.
+
+                       ``128`` by default.
+
+.. class:: SockSite(app, sock, *, \
+                   shutdown_timeout=60.0, ssl_context=None, \
+                   backlog=128)
+
+   Serve an application on pre-existing :class:`socket.socket` object .
+
+   :param app: :class:`Application` to serve.
+
+   :param sock: :class:`socket.socket` to listen.
+
+   :param float shutdown_timeout: a timeout for closing opened
+                                  connections on :meth:`BaseSite.stop`
+                                  call.
+
+   :param ssl_context: a :class:`ssl.SSLContext` instance for serving
+                       SSL/TLS secure server, ``None`` for plain HTTP
+                       server (default).
+
+   :param int backlog: a number of unaccepted connections that the
+                       system will allow before refusing new
+                       connections, see :meth:`socket.listen` for details.
+
+                       ``128`` by default.
+
 Utilities
 ---------
 

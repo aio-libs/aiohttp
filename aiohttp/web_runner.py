@@ -18,10 +18,13 @@ def _raise_graceful_exit():
 
 
 class BaseSite(ABC):
+    __slots__ = ('_runner', '_shutdown_timeout', '_ssl_context', '_backlog',
+                 '_server')
+
     def __init__(self, runner, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
-        if runner.handler is None:
+        if runner.server is None:
             raise RuntimeError("Call runner.setup() before making a site")
         self._runner = runner
         self._shutdown_timeout = shutdown_timeout
@@ -46,11 +49,13 @@ class BaseSite(ABC):
         self._server.close()
         await self._server.wait_closed()
         await self._runner.app.shutdown()
-        await self._runner.handler.shutdown(self._shutdown_timeout)
+        await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
 
 
 class TCPSite(BaseSite):
+    __slots__ = ('_host', '_port')
+
     def __init__(self, app, host=None, port=None, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
@@ -72,11 +77,13 @@ class TCPSite(BaseSite):
         await super().start()
         loop = asyncio.get_event_loop()
         self._server = await loop.create_server(
-            self._runner.handler, self._host, self._port,
+            self._runner.server, self._host, self._port,
             ssl=self._ssl_context, backlog=self._backlog)
 
 
 class UnixSite(BaseSite):
+    __slots__ = ('_path', )
+
     def __init__(self, app, path, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
@@ -93,11 +100,13 @@ class UnixSite(BaseSite):
         await super().start()
         loop = asyncio.get_event_loop()
         self._server = await loop.create_unix_server(
-            self._runner.handler, self._path,
+            self._runner.server, self._path,
             ssl=self._ssl_context, backlog=self._backlog)
 
 
 class SockSite(BaseSite):
+    __slots__ = ('_sock', '_name')
+
     def __init__(self, app, sock, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
@@ -120,16 +129,18 @@ class SockSite(BaseSite):
         await super().start()
         loop = asyncio.get_event_loop()
         self._server = await loop.create_server(
-            self._runner.handler, sock=self._sock,
+            self._runner.server, sock=self._sock,
             ssl=self._ssl_context, backlog=self._backlog)
 
 
 class AppRunner:
+    __slots__ = ('_app', '_handle_signals', '_kwargs', '_server', '_sites')
+
     def __init__(self, app, *, handle_signals=False, **kwargs):
         self._app = app
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._handler = None
+        self._server = None
         self._sites = set()
 
     @property
@@ -137,8 +148,8 @@ class AppRunner:
         return self._app
 
     @property
-    def handler(self):
-        return self._handler
+    def server(self):
+        return self._server
 
     @property
     def sites(self):
@@ -160,13 +171,13 @@ class AppRunner:
         await self._app.startup()
         self._app.freeze()
 
-        handler = self._app.make_handler(loop=loop, **self._kwargs)
-        self._handler = handler
+        server = self._app.make_handler(loop=loop, **self._kwargs)
+        self._server = server
 
     async def cleanup(self):
         loop = asyncio.get_event_loop()
 
-        if self._handler is None:
+        if self._server is None:
             # no started yet, do nothing
             return
 
@@ -177,7 +188,7 @@ class AppRunner:
         for site in list(self._sites):
             await site.stop()
         await self._app.cleanup()
-        self._handler = None
+        self._server = None
         if self._handle_signals:
             try:
                 loop.remove_signal_handler(signal.SIGINT)

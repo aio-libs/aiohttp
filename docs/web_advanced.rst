@@ -637,7 +637,6 @@ Custom resource implementation
 To register custom resource use :meth:`UrlDispatcher.register_resource`.
 Resource instance must implement `AbstractResource` interface.
 
-
 .. _aiohttp-web-graceful-shutdown:
 
 Graceful shutdown
@@ -782,6 +781,30 @@ The task :func:`listen_to_redis` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
 
+.. _aiohttp-web-app-runners:
+
+Application runners
+-------------------
+
+:func:`run_app` provides a simple *blocking* API for running an
+:class:`Application`.
+
+For starting the application *asynchronously* on serving on multiple
+HOST/PORT :class:`AppRunner` exists.
+
+The simple startup code for serving HTTP site on ``'localhost'``, port
+``8080`` looks like::
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 8080)
+    await site.start()
+
+To stop serving call :meth:`AppRunner.cleanup`::
+
+    await runner.cleanup()
+
+.. versionadded:: 3.0
 
 Handling error pages
 --------------------
@@ -843,8 +866,9 @@ there is an aiohttp plugin for it:
 Debug Toolbar
 -------------
 
-aiohttp_debugtoolbar_ is a very useful library that provides a debugging toolbar
-while you're developing an :mod:`aiohttp.web` application.
+`aiohttp-debugtoolbar`_ is a very useful library that provides a
+debugging toolbar while you're developing an :mod:`aiohttp.web`
+application.
 
 Install it via ``pip``:
 
@@ -864,13 +888,13 @@ After that attach the :mod:`aiohttp_debugtoolbar` middleware to your
 
 The toolbar is ready to use. Enjoy!!!
 
-.. _aiohttp_debugtoolbar: https://github.com/aio-libs/aiohttp_debugtoolbar
+.. _aiohttp-debugtoolbar: https://github.com/aio-libs/aiohttp_debugtoolbar
 
 
 Dev Tools
 ---------
 
-aiohttp-devtools_ provides a couple of tools to simplify development of
+`aiohttp-devtools`_ provides a couple of tools to simplify development of
 :mod:`aiohttp.web` applications.
 
 
@@ -887,6 +911,6 @@ Install via ``pip``:
   of creating new :mod:`aiohttp.web` Applications.
 
 Documentation and a complete tutorial of creating and running an app
-locally are available at aiohttp-devtools_.
+locally are available at `aiohttp-devtools`_.
 
 .. _aiohttp-devtools: https://github.com/aio-libs/aiohttp-devtools
