@@ -2271,7 +2271,7 @@ Utilities
                       sock=None, shutdown_timeout=60.0, \
                       ssl_context=None, print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
-                      access_log_format=None, \
+                      access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
                       access_log=aiohttp.log.access_logger, \
                       handle_signals=True)
 
