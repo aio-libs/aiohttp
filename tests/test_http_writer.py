@@ -167,3 +167,16 @@ def test_write_to_closing_transport(protocol, transport, loop):
 
     with pytest.raises(asyncio.CancelledError):
         msg.write(b'After closing')
+
+
+async def test_drain(protocol, transport, loop):
+    msg = http.PayloadWriter(protocol, transport, loop)
+    await msg.drain()
+    assert protocol._drain_helper.called
+
+
+async def test_drain_no_transport(protocol, transport, loop):
+    msg = http.PayloadWriter(protocol, transport, loop)
+    msg._protocol.transport = None
+    await msg.drain()
+    assert not protocol._drain_helper.called
