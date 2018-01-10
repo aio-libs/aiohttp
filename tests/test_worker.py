@@ -190,7 +190,7 @@ async def test__run_ok(worker, loop, unused_port):
         worker.log.info.assert_called_with("Parent changed, shutting down: %s",
                                            worker)
 
-    assert worker._runner.handler is None
+    assert worker._runner.server is None
 
 
 async def test__run_ok_parent_changed(worker, loop, unused_port):
@@ -216,7 +216,7 @@ async def test__run_ok_parent_changed(worker, loop, unused_port):
     worker.notify.assert_called_with()
     worker.log.info.assert_called_with("Parent changed, shutting down: %s",
                                        worker)
-    assert worker._runner.handler is None
+    assert worker._runner.server is None
 
 
 async def test__run_exc(worker, loop, unused_port):
@@ -246,7 +246,7 @@ async def test__run_exc(worker, loop, unused_port):
     await worker._run()
 
     worker.notify.assert_called_with()
-    assert worker._runner.handler is None
+    assert worker._runner.server is None
 
 
 async def test__run_ok_max_requests_exceeded(worker, loop, unused_port):
@@ -267,7 +267,7 @@ async def test__run_ok_max_requests_exceeded(worker, loop, unused_port):
 
     worker._runner = web.AppRunner(worker.wsgi)
     await worker._runner.setup()
-    worker._runner.handler.requests_count = 30
+    worker._runner.server.requests_count = 30
 
     await worker._run()
 
@@ -275,7 +275,7 @@ async def test__run_ok_max_requests_exceeded(worker, loop, unused_port):
     worker.log.info.assert_called_with("Max requests, shutting down: %s",
                                        worker)
 
-    assert worker._runner.handler is None
+    assert worker._runner.server is None
 
 
 def test__create_ssl_context_without_certs_and_ciphers(worker):

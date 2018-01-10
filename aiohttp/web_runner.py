@@ -18,6 +18,9 @@ def _raise_graceful_exit():
 
 
 class BaseSite(ABC):
+    __slots__ = ('_runner', '_shutdown_timeout', '_ssl_context', '_backlog',
+                 '_server')
+
     def __init__(self, runner, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
@@ -51,6 +54,8 @@ class BaseSite(ABC):
 
 
 class TCPSite(BaseSite):
+    __slots__ = ('_host', '_port')
+
     def __init__(self, app, host=None, port=None, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
@@ -77,6 +82,8 @@ class TCPSite(BaseSite):
 
 
 class UnixSite(BaseSite):
+    __slots__ = ('_path', )
+
     def __init__(self, app, path, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
@@ -98,6 +105,8 @@ class UnixSite(BaseSite):
 
 
 class SockSite(BaseSite):
+    __slots__ = ('_sock', '_name')
+
     def __init__(self, app, sock, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
@@ -125,11 +134,13 @@ class SockSite(BaseSite):
 
 
 class AppRunner:
+    __slots__ = ('_app', '_handle_signals', '_kwargs', '_server', '_sites')
+
     def __init__(self, app, *, handle_signals=False, **kwargs):
         self._app = app
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._handler = None
+        self._server = None
         self._sites = set()
 
     @property
