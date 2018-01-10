@@ -83,7 +83,7 @@ class GunicornWebWorker(base.Worker):
             while self.alive:
                 self.notify()
 
-                cnt = self._runner.handler.requests_count
+                cnt = self._runner.server.requests_count
                 if self.cfg.max_requests and cnt > self.cfg.max_requests:
                     self.alive = False
                     self.log.info("Max requests, shutting down: %s", self)
