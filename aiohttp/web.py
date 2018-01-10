@@ -40,8 +40,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_class=helpers.AccessLogger,
             access_log_format=helpers.AccessLogger.LOG_FORMAT,
-            access_log=access_logger,
-            handle_signals=True):
+            access_log=access_logger, handle_signals=True):
     """Run an app locally"""
     loop = asyncio.get_event_loop()
 
