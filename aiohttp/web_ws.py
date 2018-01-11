@@ -187,7 +187,8 @@ class WebSocketResponse(StreamResponse):
         self.headers.update(headers)
         self.force_close()
         self._compress = compress
-        writer = WebSocketWriter(request._protocol.writer,
+        writer = WebSocketWriter(request._protocol,
+                                 request._protocol.transport,
                                  compress=compress,
                                  notakeover=notakeover)
 

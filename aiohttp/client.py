@@ -29,6 +29,7 @@ from .helpers import (PY_36, CeilTimeout, TimeoutHandle, proxies_from_env,
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
+from .tcp_helpers import tcp_cork, tcp_nodelay
 from .tracing import Trace
 
 
@@ -296,7 +297,8 @@ class ClientSession:
                             'Connection timeout '
                             'to host {0}'.format(url)) from exc
 
-                    conn.writer.set_tcp_nodelay(True)
+                    tcp_nodelay(conn.transport, True)
+                    tcp_cork(conn.transport, False)
                     try:
                         resp = req.send(conn)
                         try:
@@ -575,12 +577,13 @@ class ClientSession:
                     notakeover = False
 
             proto = resp.connection.protocol
+            transport = resp.connection.transport
             reader = FlowControlDataQueue(
                 proto, limit=2 ** 16, loop=self._loop)
             proto.set_parser(WebSocketReader(reader), reader)
-            resp.connection.writer.set_tcp_nodelay(True)
+            tcp_nodelay(transport, True)
             writer = WebSocketWriter(
-                resp.connection.writer, use_mask=True,
+                proto, transport, use_mask=True,
                 compress=compress, notakeover=notakeover)
         except Exception:
             resp.close()

@@ -440,7 +440,7 @@ async def test_recv_protocol_error(loop, test_client):
         await ws.prepare(request)
 
         await ws.receive_str()
-        ws._writer.writer.write(b'01234' * 100)
+        ws._writer.transport.write(b'01234' * 100)
         await ws.close()
         return ws
 

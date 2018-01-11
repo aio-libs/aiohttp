@@ -469,7 +469,7 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
-        writer = PayloadWriter(conn.writer, self.loop)
+        writer = PayloadWriter(conn.protocol, conn.transport, self.loop)
 
         if self.compress:
             writer.enable_compression(self.compress)

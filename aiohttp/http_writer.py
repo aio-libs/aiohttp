@@ -2,104 +2,24 @@
 
 import asyncio
 import collections
-import socket
 import zlib
-from contextlib import suppress
 
 from .abc import AbstractPayloadWriter
 from .helpers import noop
 
 
-__all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
-           'StreamWriter')
+__all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
 
 HttpVersion = collections.namedtuple('HttpVersion', ['major', 'minor'])
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
-if hasattr(socket, 'TCP_CORK'):  # pragma: no cover
-    CORK = socket.TCP_CORK
-elif hasattr(socket, 'TCP_NOPUSH'):  # pragma: no cover
-    CORK = socket.TCP_NOPUSH
-else:  # pragma: no cover
-    CORK = None
-
-
-class StreamWriter:
+class PayloadWriter(AbstractPayloadWriter):
 
     def __init__(self, protocol, transport, loop):
         self._protocol = protocol
-        self._loop = loop
-        self._tcp_nodelay = False
-        self._tcp_cork = False
-        self._socket = transport.get_extra_info('socket')
-        self._waiters = []
-        self.transport = transport
-
-    @property
-    def tcp_nodelay(self):
-        return self._tcp_nodelay
-
-    def set_tcp_nodelay(self, value):
-        value = bool(value)
-        if self._tcp_nodelay == value:
-            return
-        if self._socket is None:
-            return
-        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
-            return
-
-        # socket may be closed already, on windows OSError get raised
-        with suppress(OSError):
-            if self._tcp_cork:
-                if CORK is not None:  # pragma: no branch
-                    self._socket.setsockopt(socket.IPPROTO_TCP, CORK, False)
-                    self._tcp_cork = False
-
-            self._socket.setsockopt(
-                socket.IPPROTO_TCP, socket.TCP_NODELAY, value)
-            self._tcp_nodelay = value
-
-    @property
-    def tcp_cork(self):
-        return self._tcp_cork
-
-    def set_tcp_cork(self, value):
-        value = bool(value)
-        if self._tcp_cork == value:
-            return
-        if self._socket is None:
-            return
-        if self._socket.family not in (socket.AF_INET, socket.AF_INET6):
-            return
-
-        with suppress(OSError):
-            if self._tcp_nodelay:
-                self._socket.setsockopt(
-                    socket.IPPROTO_TCP, socket.TCP_NODELAY, False)
-                self._tcp_nodelay = False
-            if CORK is not None:  # pragma: no branch
-                self._socket.setsockopt(socket.IPPROTO_TCP, CORK, value)
-                self._tcp_cork = value
-
-    async def drain(self):
-        """Flush the write buffer.
-
-        The intended use is to write
-
-          await w.write(data)
-          await w.drain()
-        """
-        if self._protocol.transport is not None:
-            await self._protocol._drain_helper()
-
-
-class PayloadWriter(AbstractPayloadWriter):
-
-    def __init__(self, stream, loop):
-        self._stream = stream
-        self._transport = None
+        self._transport = transport
 
         self.loop = loop
         self.length = None
@@ -110,10 +30,14 @@ class PayloadWriter(AbstractPayloadWriter):
         self._eof = False
         self._compress = None
         self._drain_waiter = None
-        self._transport = self._stream.transport
 
-    async def get_transport(self):
+    @property
+    def transport(self):
         return self._transport
+
+    @property
+    def protocol(self):
+        return self._protocol
 
     def enable_chunking(self):
         self.chunked = True
@@ -204,4 +128,12 @@ class PayloadWriter(AbstractPayloadWriter):
         self._transport = None
 
     async def drain(self):
-        await self._stream.drain()
+        """Flush the write buffer.
+
+        The intended use is to write
+
+          await w.write(data)
+          await w.drain()
+        """
+        if self._protocol.transport is not None:
+            await self._protocol._drain_helper()

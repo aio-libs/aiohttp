@@ -12,7 +12,7 @@ from .http_websocket import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
                              WSCloseCode, WSMessage, WSMsgType, ws_ext_gen,
                              ws_ext_parse)
 from .http_writer import (HttpVersion, HttpVersion10, HttpVersion11,
-                          PayloadWriter, StreamWriter)
+                          PayloadWriter)
 
 
 __all__ = (
@@ -20,7 +20,6 @@ __all__ = (
 
     # .http_writer
     'PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
-    'StreamWriter',
 
     # .http_parser
     'HttpParser', 'HttpRequestParser', 'HttpResponseParser',

@@ -54,9 +54,7 @@ class SendfilePayloadWriter(PayloadWriter):
             set_result(fut, None)
 
     async def sendfile(self, fobj, count):
-        transport = await self.get_transport()
-
-        out_socket = transport.get_extra_info('socket').dup()
+        out_socket = self.transport.get_extra_info('socket').dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
@@ -71,7 +69,7 @@ class SendfilePayloadWriter(PayloadWriter):
             await fut
         except Exception:
             server_logger.debug('Socket error')
-            transport.close()
+            self.transport.close()
         finally:
             out_socket.close()
 
@@ -112,7 +110,8 @@ class FileResponse(StreamResponse):
             writer = await self._sendfile_fallback(request, fobj, count)
         else:
             writer = SendfilePayloadWriter(
-                request._protocol.writer,
+                request.protocol,
+                transport,
                 request.loop
             )
             request._payload_writer = writer
