@@ -513,11 +513,11 @@ class WebSocketReader:
 
 class WebSocketWriter:
 
-    def __init__(self, stream, *,
+    def __init__(self, protocol, transport, *,
                  use_mask=False, limit=DEFAULT_LIMIT, random=random.Random(),
                  compress=0, notakeover=False):
-        self.stream = stream
-        self.writer = stream.transport
+        self.protocol = protocol
+        self.transport = transport
         self.use_mask = use_mask
         self.randrange = random.randrange
         self.compress = compress
@@ -572,20 +572,20 @@ class WebSocketWriter:
             mask = mask.to_bytes(4, 'big')
             message = bytearray(message)
             _websocket_mask(mask, message)
-            self.writer.write(header + mask + message)
+            self.transport.write(header + mask + message)
             self._output_size += len(header) + len(mask) + len(message)
         else:
             if len(message) > MSG_SIZE:
-                self.writer.write(header)
-                self.writer.write(message)
+                self.transport.write(header)
+                self.transport.write(message)
             else:
-                self.writer.write(header + message)
+                self.transport.write(header + message)
 
             self._output_size += len(header) + len(message)
 
         if self._output_size > self._limit:
             self._output_size = 0
-            return self.stream.drain()
+            return self.protocol._drain_helper()
 
         return noop()
 

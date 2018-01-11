@@ -38,6 +38,8 @@ def srv(make_srv, transport):
     srv = make_srv()
     srv.connection_made(transport)
     transport.close.side_effect = partial(srv.connection_lost, None)
+    srv._drain_helper = mock.Mock()
+    srv._drain_helper.side_effect = helpers.noop
     return srv
 
 
@@ -72,7 +74,7 @@ def handle_with_error():
 
 @pytest.yield_fixture
 def writer(srv):
-    return http.PayloadWriter(srv.writer, srv._loop)
+    return http.PayloadWriter(srv, srv.transport, srv._loop)
 
 
 @pytest.yield_fixture
@@ -83,7 +85,6 @@ def transport(buf):
         buf.extend(chunk)
 
     transport.write.side_effect = write
-    transport.drain.side_effect = helpers.noop
     transport.is_closing.return_value = False
 
     return transport
@@ -129,6 +130,16 @@ async def test_double_shutdown(srv, transport):
     await srv.shutdown()
     assert not transport.close.called
     assert srv.transport is None
+
+
+async def test_shutdown_wait_error_handler(loop, srv, transport):
+
+    async def _error_handle():
+        pass
+
+    srv._error_handler = loop.create_task(_error_handle())
+    await srv.shutdown()
+    assert srv._error_handler.done()
 
 
 async def test_close_after_response(srv, loop, transport):
@@ -227,7 +238,7 @@ async def test_bad_method(srv, loop, buf):
 
 
 async def test_data_received_error(srv, loop, buf):
-    srv.transport = mock.Mock()
+    transport = srv.transport
     srv._request_parser = mock.Mock()
     srv._request_parser.feed_data.side_effect = TypeError
 
@@ -237,7 +248,7 @@ async def test_data_received_error(srv, loop, buf):
 
     await asyncio.sleep(0, loop=loop)
     assert buf.startswith(b'HTTP/1.0 500 Internal Server Error\r\n')
-    assert srv.transport.close.called
+    assert transport.close.called
     assert srv._error_handler is None
 
 
@@ -737,3 +748,38 @@ def test_data_received_force_close(srv):
         b'Content-Length: 0\r\n\r\n')
 
     assert not srv._messages
+
+
+async def test__process_keepalive(loop, srv):
+    # wait till the waiter is waiting
+    await asyncio.sleep(0)
+
+    srv._keepalive_time = 1
+    srv._keepalive_timeout = 1
+    expired_time = srv._keepalive_time + srv._keepalive_timeout + 1
+    with mock.patch.object(loop, "time", return_value=expired_time):
+        srv._process_keepalive()
+        assert srv._force_close
+
+
+async def test__process_keepalive_schedule_next(loop, srv):
+    # wait till the waiter is waiting
+    await asyncio.sleep(0)
+
+    srv._keepalive_time = 1
+    srv._keepalive_timeout = 1
+    expire_time = srv._keepalive_time + srv._keepalive_timeout
+    with mock.patch.object(loop, "time", return_value=expire_time):
+        with mock.patch.object(loop, "call_at") as call_at_patched:
+            srv._process_keepalive()
+            call_at_patched.assert_called_with(
+                expire_time,
+                srv._process_keepalive
+            )
+
+
+def test__process_keepalive_force_close(loop, srv):
+    srv._force_close = True
+    with mock.patch.object(loop, "call_at") as call_at_patched:
+        srv._process_keepalive()
+        assert not call_at_patched.called
