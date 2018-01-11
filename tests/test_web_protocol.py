@@ -132,6 +132,16 @@ async def test_double_shutdown(srv, transport):
     assert srv.transport is None
 
 
+async def test_shutdown_wait_error_handler(loop, srv, transport):
+
+    async def _error_handle():
+        pass
+
+    srv._error_handler = loop.create_task(_error_handle())
+    await srv.shutdown()
+    assert srv._error_handler.done()
+
+
 async def test_close_after_response(srv, loop, transport):
     srv.data_received(
         b'GET / HTTP/1.0\r\n'
@@ -738,3 +748,38 @@ def test_data_received_force_close(srv):
         b'Content-Length: 0\r\n\r\n')
 
     assert not srv._messages
+
+
+async def test__process_keepalive(loop, srv):
+    # wait till the waiter is waiting
+    await asyncio.sleep(0)
+
+    srv._keepalive_time = 1
+    srv._keepalive_timeout = 1
+    expired_time = srv._keepalive_time + srv._keepalive_timeout + 1
+    with mock.patch.object(loop, "time", return_value=expired_time):
+        srv._process_keepalive()
+        assert srv._force_close
+
+
+async def test__process_keepalive_schedule_next(loop, srv):
+    # wait till the waiter is waiting
+    await asyncio.sleep(0)
+
+    srv._keepalive_time = 1
+    srv._keepalive_timeout = 1
+    expire_time = srv._keepalive_time + srv._keepalive_timeout
+    with mock.patch.object(loop, "time", return_value=expire_time):
+        with mock.patch.object(loop, "call_at") as call_at_patched:
+            srv._process_keepalive()
+            call_at_patched.assert_called_with(
+                expire_time,
+                srv._process_keepalive
+            )
+
+
+def test__process_keepalive_force_close(loop, srv):
+    srv._force_close = True
+    with mock.patch.object(loop, "call_at") as call_at_patched:
+        srv._process_keepalive()
+        assert not call_at_patched.called
