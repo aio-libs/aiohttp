@@ -2221,7 +2221,7 @@ View
        app.router.add_view('/view', MyView)
 
    The view raises *405 Method Not allowed*
-   (:class:`HTTPMethodNowAllowed`) if requested web verb is not
+   (:class:`HTTPMethodNotAllowed`) if requested web verb is not
    supported.
 
    :param request: instance of :class:`Request` that has initiated a view
