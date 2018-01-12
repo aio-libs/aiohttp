@@ -129,7 +129,7 @@ class Payload(ABC):
     async def write(self, writer):
         """Write payload.
 
-        writer is an AbstractPayloadWriter instance:
+        writer is an AbstractStreamWriter instance:
         """
 
 

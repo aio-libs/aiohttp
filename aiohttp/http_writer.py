@@ -4,18 +4,18 @@ import asyncio
 import collections
 import zlib
 
-from .abc import AbstractPayloadWriter
+from .abc import AbstractStreamWriter
 from .helpers import noop
 
 
-__all__ = ('PayloadWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
+__all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
 
 HttpVersion = collections.namedtuple('HttpVersion', ['major', 'minor'])
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
-class PayloadWriter(AbstractPayloadWriter):
+class StreamWriter(AbstractStreamWriter):
 
     def __init__(self, protocol, transport, loop):
         self._protocol = protocol
