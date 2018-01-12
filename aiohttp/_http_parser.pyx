@@ -558,6 +558,8 @@ def _parse_url(char* buf_data, size_t length):
 
     parsed = <cparser.http_parser_url*> \
                         PyMem_Malloc(sizeof(cparser.http_parser_url))
+    if parsed is NULL:
+        raise MemoryError()
     cparser.http_parser_url_init(parsed)
     try:
         res = cparser.http_parser_parse_url(buf_data, length, 0, parsed)
