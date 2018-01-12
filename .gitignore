@@ -24,6 +24,7 @@ aiohttp/_frozenlist.html
 aiohttp/_websocket.c
 aiohttp/_websocket.html
 aiohttp/_http_parser.c
+aiohttp/_http_parser.html
 bin
 build
 htmlcov
