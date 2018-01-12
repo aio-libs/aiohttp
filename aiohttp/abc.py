@@ -119,8 +119,8 @@ class AbstractCookieJar(Sized, Iterable):
         """Return the jar's cookies filtered by their attributes."""
 
 
-class AbstractPayloadWriter(ABC):
-    """Abstract payload writer."""
+class AbstractStreamWriter(ABC):
+    """Abstract stream writer."""
 
     @abstractmethod
     async def write(self, chunk):

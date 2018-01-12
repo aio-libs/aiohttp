@@ -9,7 +9,7 @@ from html import escape as html_escape
 
 from . import helpers, http
 from .helpers import CeilTimeout
-from .http import HttpProcessingError, HttpRequestParser, PayloadWriter
+from .http import HttpProcessingError, HttpRequestParser, StreamWriter
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD
 from .tcp_helpers import tcp_cork, tcp_keepalive, tcp_nodelay
@@ -230,14 +230,14 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # something happened during parsing
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        PayloadWriter(self, self.transport, self._loop),
+                        StreamWriter(self, self.transport, self._loop),
                         400, exc, exc.message))
                 self.close()
             except Exception as exc:
                 # 500: internal error
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        PayloadWriter(self, self.transport, self._loop),
+                        StreamWriter(self, self.transport, self._loop),
                         500, exc))
                 self.close()
             else:
@@ -360,7 +360,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 now = loop.time()
 
             manager.requests_count += 1
-            writer = PayloadWriter(self, self.transport, loop)
+            writer = StreamWriter(self, self.transport, loop)
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:

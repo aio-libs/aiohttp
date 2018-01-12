@@ -2,7 +2,7 @@ from unittest import mock
 
 from aiohttp import hdrs
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web_fileresponse import FileResponse, SendfilePayloadWriter
+from aiohttp.web_fileresponse import FileResponse, SendfileStreamWriter
 
 
 def test_static_handle_eof(loop):
@@ -12,7 +12,7 @@ def test_static_handle_eof(loop):
         in_fd = 31
         fut = loop.create_future()
         m_os.sendfile.return_value = 0
-        writer = SendfilePayloadWriter(mock.Mock(), mock.Mock(), fake_loop)
+        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
         writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
         m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
         assert fut.done()
@@ -28,7 +28,7 @@ def test_static_handle_again(loop):
         in_fd = 31
         fut = loop.create_future()
         m_os.sendfile.side_effect = BlockingIOError()
-        writer = SendfilePayloadWriter(mock.Mock(), mock.Mock(), fake_loop)
+        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
         writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
         m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
         assert not fut.done()
@@ -47,7 +47,7 @@ def test_static_handle_exception(loop):
         fut = loop.create_future()
         exc = OSError()
         m_os.sendfile.side_effect = exc
-        writer = SendfilePayloadWriter(mock.Mock(), mock.Mock(), fake_loop)
+        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
         writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
         m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
         assert fut.done()
@@ -63,7 +63,7 @@ def test__sendfile_cb_return_on_cancelling(loop):
         in_fd = 31
         fut = loop.create_future()
         fut.cancel()
-        writer = SendfilePayloadWriter(mock.Mock(), mock.Mock(), fake_loop)
+        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
         writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
         assert fut.done()
         assert not fake_loop.add_writer.called

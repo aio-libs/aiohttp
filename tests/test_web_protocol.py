@@ -74,7 +74,7 @@ def handle_with_error():
 
 @pytest.yield_fixture
 def writer(srv):
-    return http.PayloadWriter(srv, srv.transport, srv._loop)
+    return http.StreamWriter(srv, srv.transport, srv._loop)
 
 
 @pytest.yield_fixture
