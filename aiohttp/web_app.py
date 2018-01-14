@@ -163,6 +163,7 @@ class Application(MutableMapping):
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
+        subapp.freeze()
         if self._loop is not None:
             subapp._set_loop(self._loop)
         return resource
