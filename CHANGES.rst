@@ -20,6 +20,8 @@ Changelog
 - Do not use `yarl.unquote` internal function in aiohttp.  Fix
   incorrectly unquoted path part in URL dispatcher (#2662)
 
+- Fix compatibility with `yarl==1.0.0` (#2662)
+
 2.3.7 (2017-12-27)
 ==================
 
