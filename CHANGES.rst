@@ -14,6 +14,12 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.8 (2018-01-15)
+==================
+
+- Do not use `yarl.unquote` internal function in aiohttp.  Fix
+  incorrectly unquoted path part in URL dispatcher (#2662)
+
 2.3.7 (2017-12-27)
 ==================
 
