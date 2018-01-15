@@ -63,8 +63,8 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
         raise RuntimeError('Unable to determine version.')
 
 
-install_requires = ['chardet', 'multidict>=3.0.0',
-                    'async_timeout>=1.2.0', 'yarl>=0.11']
+install_requires = ['chardet', 'multidict>=4.0.0',
+                    'async_timeout>=1.2.0', 'yarl>=1.0.0']
 
 
 def read(f):
