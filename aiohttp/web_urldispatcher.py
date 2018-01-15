@@ -15,10 +15,10 @@ from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 
-# do not use yarl.quote directly,
+# do not use yarl.quote/unquote directly,
 # use `URL(path).raw_path` instead of `quote(path)`
 # Escaping of the URLs need to be consitent with the escaping done by yarl
-from yarl import URL, unquote
+from yarl import URL
 
 from . import hdrs, helpers
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -427,7 +427,7 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return {key: unquote(value, unsafe='+') for key, value in
+            return {key: URL(value).path for key, value in
                     match.groupdict().items()}
 
     def get_info(self):
@@ -559,7 +559,7 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {'filename': unquote(path[len(self._prefix)+1:])}
+        match_dict = {'filename': URL(path[len(self._prefix)+1:]).path}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
         yield  # pragma: no cover
@@ -572,7 +572,7 @@ class StaticResource(PrefixResource):
 
     @asyncio.coroutine
     def _handle(self, request):
-        filename = unquote(request.match_info['filename'])
+        filename = request.match_info['filename']
         try:
             filepath = self._directory.joinpath(filename).resolve()
             if not self._follow_symlinks:
