@@ -104,7 +104,7 @@ _helpers:
   after_success: []
   env:
   - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
-  - *env_py36
+  - &env_py36 PYTHON_VERSION=3.6.3
   - *env_pyenv
   - *env_path
   deploy:
@@ -170,7 +170,7 @@ jobs:
   - <<: *osx_python_base
     python: *mainstream_python
     env:
-    - &env_py36 PYTHON_VERSION=3.6.3
+    - *env_py36
     - *env_pyenv
     - *env_path
   - <<: *osx_python_base
