@@ -1218,7 +1218,7 @@ duplicated like one using :meth:`Application.copy`.
    :param handler_args: dict-like object that overrides keyword arguments of
                         :meth:`Application.make_handler`
 
-   :param client_max_size: client's maximum size in a request. If a POST
+   :param client_max_size: client's maximum size in a request, in bytes. If a POST
                            request exceeds this value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
 
