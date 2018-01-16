@@ -593,7 +593,7 @@ def test_route_dynamic_with_regex(router):
     handler = make_handler()
     route = router.add_route('GET', r'/{one}/{two:.+}', handler)
 
-    url = route.url_for(one=1, two=2)
+    url = route.url_for(one='1', two='2')
     assert '/1/2' == str(url)
 
 
