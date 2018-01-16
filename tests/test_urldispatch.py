@@ -597,6 +597,14 @@ def test_route_dynamic_with_regex(router):
     assert '/1/2' == str(url)
 
 
+def test_route_dynamic_quoting(router):
+    handler = make_handler()
+    route = router.add_route('GET', r'/{arg}', handler)
+
+    url = route.url_for(arg='1 2/текст')
+    assert '/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82' == str(url)
+
+
 async def test_regular_match_info(router):
     handler = make_handler()
     router.add_route('GET', '/get/{name}', handler)
