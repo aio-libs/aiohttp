@@ -349,7 +349,7 @@ def test_run_app_preexisting_inet6_socket(patched_loop):
         patched_loop.create_server.assert_called_with(
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert "http://:::{}".format(port) in printer.call_args[0][0]
+        assert "http://[::]:{}".format(port) in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
