@@ -14,6 +14,11 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.9 (2018-01-16)
+==================
+
+- Fix colon handing in path for dynamic resources (#2670)
+
 2.3.8 (2018-01-15)
 ==================
 

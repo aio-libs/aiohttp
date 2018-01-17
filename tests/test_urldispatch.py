@@ -108,6 +108,18 @@ def test_add_with_matchdict(router):
 
 
 @asyncio.coroutine
+def test_add_with_matchdict_with_colon(router):
+    handler = make_handler()
+    router.add_route('GET', '/handler/{to}', handler)
+    req = make_request('GET', '/handler/1:2:3')
+    info = yield from router.resolve(req)
+    assert info is not None
+    assert {'to': '1:2:3'} == info
+    assert handler is info.handler
+    assert info.route.name is None
+
+
+@asyncio.coroutine
 def test_add_route_with_add_get_shortcut(router):
     handler = make_handler()
     router.add_get('/handler/to/path', handler)
