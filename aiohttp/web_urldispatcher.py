@@ -343,7 +343,7 @@ class PlainResource(Resource):
         return {'path': self._path}
 
     def url_for(self):
-        return URL(self._path, encoded=True)
+        return URL.build(path=self._path, encoded=True)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -417,7 +417,7 @@ class DynamicResource(Resource):
     def url_for(self, **parts):
         url = self._formatter.format_map({k: URL.build(path=v).raw_path
                                           for k, v in parts.items()})
-        return URL(url)
+        return URL.build(path=url)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -484,8 +484,10 @@ class StaticResource(PrefixResource):
         while filename.startswith('/'):
             filename = filename[1:]
         filename = '/' + filename
-        url = self._prefix + URL.build(path=filename).raw_path
-        url = URL(url)
+
+        # filename is not encoded
+        url = URL.build(path=self._prefix + filename)
+
         if append_version is True:
             try:
                 if filename.startswith('/'):
