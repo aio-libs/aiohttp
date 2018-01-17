@@ -405,8 +405,7 @@ class DynamicResource(Resource):
             return None
         else:
             return {key: URL.build(path=value, encoded=True).path
-                    for key, value in
-                    match.groupdict().items()}
+                    for key, value in match.groupdict().items()}
 
     def raw_match(self, path):
         return self._formatter == path
@@ -416,7 +415,8 @@ class DynamicResource(Resource):
                 'pattern': self._pattern}
 
     def url_for(self, **parts):
-        url = self._formatter.format_map(parts)
+        url = self._formatter.format_map({k: URL.build(path=v).raw_path
+                                          for k, v in parts.items()})
         return URL.build(path=url)
 
     def __repr__(self):
