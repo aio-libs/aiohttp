@@ -404,7 +404,8 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return {key: URL(value, encoded=True).path for key, value in
+            return {key: URL.build(path=value, encoded=True).path
+                    for key, value in
                     match.groupdict().items()}
 
     def raw_match(self, path):
