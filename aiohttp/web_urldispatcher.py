@@ -343,7 +343,7 @@ class PlainResource(Resource):
         return {'path': self._path}
 
     def url_for(self):
-        return URL(self._path)
+        return URL.build(path=self._path, encoded=True)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -378,7 +378,7 @@ class DynamicResource(Resource):
             if '{' in part or '}' in part:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
 
-            path = URL(part).raw_path
+            path = URL.build(path=part).raw_path
             formatter += path
             pattern += re.escape(path)
 
@@ -417,7 +417,7 @@ class DynamicResource(Resource):
 
     def url_for(self, **parts):
         url = self._formatter.format_map(parts)
-        return URL(url)
+        return URL.build(path=url)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -431,7 +431,7 @@ class PrefixResource(AbstractResource):
         assert not prefix or prefix.startswith('/'), prefix
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
-        self._prefix = URL(prefix).raw_path
+        self._prefix = URL.build(path=prefix).raw_path
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
@@ -484,8 +484,10 @@ class StaticResource(PrefixResource):
         while filename.startswith('/'):
             filename = filename[1:]
         filename = '/' + filename
-        url = self._prefix + URL(filename).raw_path
-        url = URL(url)
+
+        # filename is not encoded
+        url = URL.build(path=self._prefix + filename)
+
         if append_version is True:
             try:
                 if filename.startswith('/'):
@@ -535,8 +537,8 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {'filename': URL(path[len(self._prefix)+1:],
-                                      encoded=True).path}
+        match_dict = {'filename': URL.build(path=path[len(self._prefix)+1:],
+                                            encoded=True).path}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
 
@@ -851,7 +853,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             if resource.name == name and resource.raw_match(path):
                 return resource
         if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
-            url = URL(path)
+            url = URL.build(path=path)
             resource = PlainResource(url.raw_path, name=name)
             self.register_resource(resource)
             return resource
