@@ -946,7 +946,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
         Parameter should be a sequence of RouteDef objects.
         """
-        # TODO: add_table maybe?
         for route_obj in routes:
             route_obj.register(self)
 
