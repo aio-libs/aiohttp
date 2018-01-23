@@ -468,30 +468,30 @@ async def test_request_tracing(loop):
     trace_config.on_request_end.append(on_request_end)
     trace_config.on_request_redirect.append(on_request_redirect)
 
-    session = aiohttp.ClientSession(loop=loop, trace_configs=[trace_config])
+    async with aiohttp.ClientSession(loop=loop,
+                                     trace_configs=[trace_config]) as session:
 
-    resp = await session.get(
-        'http://example.com',
-        trace_request_ctx=trace_request_ctx
-    )
+        async with await session.get(
+                'http://example.com',
+                trace_request_ctx=trace_request_ctx) as resp:
 
-    on_request_start.assert_called_once_with(
-        session,
-        trace_config_ctx,
-        hdrs.METH_GET,
-        URL("http://example.com"),
-        CIMultiDict()
-    )
+            on_request_start.assert_called_once_with(
+                session,
+                trace_config_ctx,
+                hdrs.METH_GET,
+                URL("http://example.com"),
+                CIMultiDict()
+            )
 
-    on_request_end.assert_called_once_with(
-        session,
-        trace_config_ctx,
-        hdrs.METH_GET,
-        URL("http://example.com"),
-        CIMultiDict(),
-        resp
-    )
-    assert not on_request_redirect.called
+            on_request_end.assert_called_once_with(
+                session,
+                trace_config_ctx,
+                hdrs.METH_GET,
+                URL("http://example.com"),
+                CIMultiDict(),
+                resp
+            )
+            assert not on_request_redirect.called
 
 
 async def test_request_tracing_exception(loop):

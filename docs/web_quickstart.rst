@@ -40,6 +40,9 @@ That's it. Now, head over to ``http://localhost:8080/`` to see the results.
    does and how to implement complex server initialization/finalization
    from scratch.
 
+   :ref:`aiohttp-web-app-runners` for more handling more complex cases
+   like *asynchronous* web application serving and multiple hosts
+   support.
 
 .. _aiohttp-web-cli:
 

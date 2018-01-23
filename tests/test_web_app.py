@@ -236,3 +236,11 @@ def test_app_run_middlewares():
     root.add_subapp('/sub', sub)
     root.freeze()
     assert root._run_middlewares is True
+
+
+def test_subapp_frozen_after_adding():
+    app = web.Application()
+    subapp = web.Application()
+
+    app.add_subapp('/prefix', subapp)
+    assert subapp.frozen

@@ -4,7 +4,7 @@ import pathlib
 
 from . import hdrs
 from .helpers import set_exception, set_result
-from .http_writer import PayloadWriter
+from .http_writer import StreamWriter
 from .log import server_logger
 from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
                              HTTPRequestRangeNotSatisfiable)
@@ -17,14 +17,14 @@ __all__ = ('FileResponse',)
 NOSENDFILE = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
 
 
-class SendfilePayloadWriter(PayloadWriter):
+class SendfileStreamWriter(StreamWriter):
 
     def __init__(self, *args, **kwargs):
         self._sendfile_buffer = []
         super().__init__(*args, **kwargs)
 
     def _write(self, chunk):
-        # we overwrite PayloadWriter._write, so nothing can be appended to
+        # we overwrite StreamWriter._write, so nothing can be appended to
         # _buffer, and nothing is written to the transport directly by the
         # parent class
         self.output_size += len(chunk)
@@ -54,9 +54,7 @@ class SendfilePayloadWriter(PayloadWriter):
             set_result(fut, None)
 
     async def sendfile(self, fobj, count):
-        transport = await self.get_transport()
-
-        out_socket = transport.get_extra_info('socket').dup()
+        out_socket = self.transport.get_extra_info('socket').dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
         in_fd = fobj.fileno()
@@ -71,7 +69,7 @@ class SendfilePayloadWriter(PayloadWriter):
             await fut
         except Exception:
             server_logger.debug('Socket error')
-            transport.close()
+            self.transport.close()
         finally:
             out_socket.close()
 
@@ -111,8 +109,9 @@ class FileResponse(StreamResponse):
                 transport.get_extra_info("socket") is None):
             writer = await self._sendfile_fallback(request, fobj, count)
         else:
-            writer = SendfilePayloadWriter(
-                request._protocol.writer,
+            writer = SendfileStreamWriter(
+                request.protocol,
+                transport,
                 request.loop
             )
             request._payload_writer = writer

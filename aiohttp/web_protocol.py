@@ -1,7 +1,6 @@
 import asyncio
 import asyncio.streams
 import http.server
-import socket
 import traceback
 import warnings
 from collections import deque
@@ -10,10 +9,10 @@ from html import escape as html_escape
 
 from . import helpers, http
 from .helpers import CeilTimeout
-from .http import (HttpProcessingError, HttpRequestParser, PayloadWriter,
-                   StreamWriter)
+from .http import HttpProcessingError, HttpRequestParser, StreamWriter
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD
+from .tcp_helpers import tcp_cork, tcp_keepalive, tcp_nodelay
 from .web_exceptions import HTTPException
 from .web_request import BaseRequest
 from .web_response import Response
@@ -24,15 +23,6 @@ __all__ = ('RequestHandler', 'RequestPayloadError')
 ERROR = http.RawRequestMessage(
     'UNKNOWN', '/', http.HttpVersion10, {},
     {}, True, False, False, False, http.URL('/'))
-
-if hasattr(socket, 'SO_KEEPALIVE'):
-    def tcp_keepalive(server, transport):
-        sock = transport.get_extra_info('socket')
-        if sock is not None:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-else:
-    def tcp_keepalive(server, transport):  # pragma: no cover
-        pass
 
 
 class RequestPayloadError(Exception):
@@ -181,13 +171,12 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         super().connection_made(transport)
 
         self.transport = transport
-        self.writer = StreamWriter(self, transport, self._loop)
 
         if self._tcp_keepalive:
-            tcp_keepalive(self, transport)
+            tcp_keepalive(transport)
 
-        self.writer.set_tcp_cork(False)
-        self.writer.set_tcp_nodelay(True)
+        tcp_cork(transport, False)
+        tcp_nodelay(transport, True)
         self._manager.connection_made(self, transport)
 
     def connection_lost(self, exc):
@@ -200,7 +189,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._request_factory = None
         self._request_handler = None
         self._request_parser = None
-        self.transport = self.writer = None
+        self.transport = None
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
@@ -241,14 +230,14 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # something happened during parsing
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        PayloadWriter(self.writer, self._loop),
+                        StreamWriter(self, self.transport, self._loop),
                         400, exc, exc.message))
                 self.close()
             except Exception as exc:
                 # 500: internal error
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        PayloadWriter(self.writer, self._loop),
+                        StreamWriter(self, self.transport, self._loop),
                         500, exc))
                 self.close()
             else:
@@ -371,7 +360,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 now = loop.time()
 
             manager.requests_count += 1
-            writer = PayloadWriter(self.writer, loop)
+            writer = StreamWriter(self, self.transport, loop)
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:

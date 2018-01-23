@@ -20,7 +20,7 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 InvalidURL, ServerFingerprintMismatch)
 from .formdata import FormData
 from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
-from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, PayloadWriter
+from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
 from .streams import StreamReader
 
@@ -469,7 +469,7 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
-        writer = PayloadWriter(conn.writer, self.loop)
+        writer = StreamWriter(conn.protocol, conn.transport, self.loop)
 
         if self.compress:
             writer.enable_compression(self.compress)

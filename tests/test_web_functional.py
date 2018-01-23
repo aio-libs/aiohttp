@@ -1188,11 +1188,11 @@ async def test_subapp_middlewares(loop, test_client):
     subapp1 = web.Application(middlewares=[middleware_factory])
     subapp2 = web.Application(middlewares=[middleware_factory])
     subapp2.router.add_get('/to', handler)
-    subapp1.add_subapp('/b/', subapp2)
-    app.add_subapp('/a/', subapp1)
-
     with pytest.warns(DeprecationWarning):
+        subapp1.add_subapp('/b/', subapp2)
+        app.add_subapp('/a/', subapp1)
         client = await test_client(app)
+
     resp = await client.get('/a/b/to')
     assert resp.status == 200
     assert [(1, app), (1, subapp1), (1, subapp2),
