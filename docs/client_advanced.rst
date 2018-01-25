@@ -498,8 +498,8 @@ constructor for extracting proxy configuration from
 *HTTP_PROXY* or *HTTPS_PROXY* *environment variables* (both are case
 insensitive)::
 
-   async with aiohttp.ClientSession() as session:
-       async with session.get("http://python.org", trust_env=True) as resp:
+   async with aiohttp.ClientSession(trust_env=True) as session:
+       async with session.get("http://python.org") as resp:
            print(resp.status)
 
 Proxy credentials are given from ``~/.netrc`` file if present (see

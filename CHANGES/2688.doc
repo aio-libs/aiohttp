@@ -1,0 +1,1 @@
+﻿Fixed mistype in `Proxy Support` section where `trust_env` parameter was used in `session.get("http://python.org", trust_env=True)` method instead of aiohttp.ClientSession constructor as follows: `aiohttp.ClientSession(trust_env=True)`.
