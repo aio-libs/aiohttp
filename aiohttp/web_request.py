@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import datetime
+import io
 import json
 import re
 import socket
@@ -13,7 +14,8 @@ from http.cookies import SimpleCookie
 from types import MappingProxyType
 from urllib.parse import parse_qsl
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy
+import attr
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
@@ -24,8 +26,15 @@ from .web_exceptions import HTTPRequestEntityTooLarge
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
 
-FileField = collections.namedtuple(
-    'Field', 'name filename file content_type headers')
+
+@attr.s(frozen=True, slots=True)
+class FileField:
+    name = attr.ib(type=str)
+    filename = attr.ib(type=str)
+    file = attr.ib(type=io.BufferedReader)
+    content_type = attr.ib(type=str)
+    headers = attr.ib(type=CIMultiDictProxy)
+
 
 _TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class

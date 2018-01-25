@@ -1,3 +1,4 @@
+attrs==17.4.0
 async-timeout==2.0.0
 brotlipy==0.7.0
 cchardet==2.1.1
@@ -16,7 +17,7 @@ pytest-mock==1.6.3
 towncrier==17.8.0
 tox==2.9.1
 twine==1.9.1
-yarl==1.0.0
+yarl==1.1.0
 
 # Using PEP 508 env markers to control dependency on runtimes:
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
