@@ -203,26 +203,26 @@ def test_bool_websocket_not_ready():
 def test_can_prepare_ok(make_request):
     req = make_request('GET', '/', protocols=True)
     ws = WebSocketResponse(protocols=('chat',))
-    assert(True, 'chat') == ws.can_prepare(req)
+    assert WebSocketReady(True, 'chat') == ws.can_prepare(req)
 
 
 def test_can_prepare_unknown_protocol(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
-    assert (True, None) == ws.can_prepare(req)
+    assert WebSocketReady(True, None) == ws.can_prepare(req)
 
 
 def test_can_prepare_invalid_method(make_request):
     req = make_request('POST', '/')
     ws = WebSocketResponse()
-    assert (False, None) == ws.can_prepare(req)
+    assert WebSocketReady(False, None) == ws.can_prepare(req)
 
 
 def test_can_prepare_without_upgrade(make_request):
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
     ws = WebSocketResponse()
-    assert (False, None) == ws.can_prepare(req)
+    assert WebSocketReady(False, None) == ws.can_prepare(req)
 
 
 async def test_can_prepare_started(make_request):
