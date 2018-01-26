@@ -3,9 +3,9 @@ import base64
 import binascii
 import hashlib
 import json
-from collections import namedtuple
 
 import async_timeout
+import attr
 from multidict import CIMultiDict
 
 from . import hdrs
@@ -28,7 +28,11 @@ THRESHOLD_CONNLOST_ACCESS = 5
 MsgType = WSMsgType
 
 
-class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
+@attr.s(frozen=True)
+class WebSocketReady:
+    ok = attr.ib(type=bool)
+    protocol = attr.ib(type=str)
+
     def __bool__(self):
         return self.ok
 

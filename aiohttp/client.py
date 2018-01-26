@@ -271,7 +271,8 @@ class ClientSession:
                     elif self._trust_env:
                         for scheme, proxy_info in proxies_from_env().items():
                             if scheme == url.scheme:
-                                proxy, proxy_auth = proxy_info
+                                proxy = proxy_info.proxy
+                                proxy_auth = proxy_info.proxy_auth
                                 break
 
                     req = self._request_class(

@@ -98,7 +98,9 @@ def test_version_default(make_request):
 
 def test_request_info(make_request):
     req = make_request('get', 'http://python.org/')
-    assert req.request_info == (URL('http://python.org/'), 'GET', req.headers)
+    assert req.request_info == aiohttp.RequestInfo(URL('http://python.org/'),
+                                                   'GET',
+                                                   req.headers)
 
 
 def test_version_err(make_request):

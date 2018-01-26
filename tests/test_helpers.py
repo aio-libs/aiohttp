@@ -15,23 +15,25 @@ from aiohttp.abc import AbstractAccessLogger
 # ------------------- parse_mimetype ----------------------------------
 
 @pytest.mark.parametrize('mimetype, expected', [
-    ('', ('', '', '', {})),
-    ('*', ('*', '*', '', {})),
-    ('application/json', ('application', 'json', '', {})),
+    ('', helpers.MimeType('', '', '', {})),
+    ('*', helpers.MimeType('*', '*', '', {})),
+    ('application/json', helpers.MimeType('application', 'json', '', {})),
     (
         'application/json;  charset=utf-8',
-        ('application', 'json', '', {'charset': 'utf-8'})
+        helpers.MimeType('application', 'json', '', {'charset': 'utf-8'})
     ),
     (
         '''application/json; charset=utf-8;''',
-        ('application', 'json', '', {'charset': 'utf-8'})
+        helpers.MimeType('application', 'json', '', {'charset': 'utf-8'})
     ),
     (
         'ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
-        ('application', 'json', '', {'charset': 'UTF-8'})
+        helpers.MimeType('application', 'json', '', {'charset': 'UTF-8'})
     ),
-    ('application/rss+xml', ('application', 'rss', 'xml', {})),
-    ('text/plain;base64', ('text', 'plain', '', {'base64': ''}))
+    ('application/rss+xml',
+     helpers.MimeType('application', 'rss', 'xml', {})),
+    ('text/plain;base64',
+     helpers.MimeType('text', 'plain', '', {'base64': ''}))
 ])
 def test_parse_mimetype(mimetype, expected):
     result = helpers.parse_mimetype(mimetype)

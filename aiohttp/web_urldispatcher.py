@@ -8,16 +8,13 @@ import keyword
 import os
 import re
 import warnings
-from collections import namedtuple
 from collections.abc import Container, Iterable, Sequence, Sized
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 
-# do not use yarl.quote/unquote directly,
-# use `URL(path).raw_path` instead of `quote(path)`
-# Escaping of the URLs need to be consitent with the escaping done by yarl
+import attr
 from yarl import URL
 
 from . import hdrs
@@ -40,7 +37,13 @@ ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
 
 
-class RouteDef(namedtuple('_RouteDef', 'method, path, handler, kwargs')):
+@attr.s(frozen=True, repr=False)
+class RouteDef:
+    method = attr.ib(type=str)
+    path = attr.ib(type=str)
+    handler = attr.ib()
+    kwargs = attr.ib()
+
     def __repr__(self):
         info = []
         for name, value in sorted(self.kwargs.items()):

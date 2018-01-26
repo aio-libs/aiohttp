@@ -21,6 +21,8 @@ from urllib.parse import quote
 from urllib.request import getproxies
 
 import async_timeout
+import attr
+from multidict import MultiDict
 from yarl import URL
 
 from . import hdrs
@@ -141,7 +143,10 @@ def netrc_from_env():
     return netrc_obj
 
 
-ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
+@attr.s(frozen=True)
+class ProxyInfo:
+    proxy = attr.ib(type=str)
+    proxy_auth = attr.ib(type=BasicAuth)
 
 
 def proxies_from_env():
@@ -187,7 +192,12 @@ def isasyncgenfunction(obj):
     return False
 
 
-MimeType = namedtuple('MimeType', 'type subtype suffix parameters')
+@attr.s(frozen=True)
+class MimeType:
+    type = attr.ib(type=str)
+    subtype = attr.ib(type=str)
+    suffix = attr.ib(type=str)
+    parameters = attr.ib(type=MultiDict)
 
 
 def parse_mimetype(mimetype):
@@ -214,7 +224,7 @@ def parse_mimetype(mimetype):
             continue
         key, value = item.split('=', 1) if '=' in item else (item, '')
         params.append((key.lower().strip(), value.strip(' "')))
-    params = dict(params)
+    params = MultiDict(params)
 
     fulltype = parts[0].strip().lower()
     if fulltype == '*':

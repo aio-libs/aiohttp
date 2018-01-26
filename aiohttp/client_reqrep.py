@@ -1,6 +1,5 @@
 import asyncio
 import codecs
-import collections
 import io
 import json
 import sys
@@ -11,6 +10,7 @@ from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType
 
+import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
@@ -39,12 +39,18 @@ except ImportError:  # pragma: no cover
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
 
 
-ContentDisposition = collections.namedtuple(
-    'ContentDisposition', ('type', 'parameters', 'filename'))
+@attr.s(frozen=True)
+class ContentDisposition:
+    type = attr.ib(type=str)
+    parameters = attr.ib(type=MappingProxyType)
+    filename = attr.ib(type=str)
 
 
-RequestInfo = collections.namedtuple(
-    'RequestInfo', ('url', 'method', 'headers'))
+@attr.s(frozen=True)
+class RequestInfo:
+    url = attr.ib(type=URL)
+    method = attr.ib(type=str)
+    headers = attr.ib(type=CIMultiDictProxy)
 
 
 class Fingerprint:
