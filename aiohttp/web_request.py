@@ -27,7 +27,7 @@ from .web_exceptions import HTTPRequestEntityTooLarge
 __all__ = ('BaseRequest', 'FileField', 'Request')
 
 
-@attr.s(frozen=True, slots=True)
+@attr.s(frozen=True)
 class FileField:
     name = attr.ib(type=str)
     filename = attr.ib(type=str)
