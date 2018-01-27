@@ -143,7 +143,7 @@ def netrc_from_env():
     return netrc_obj
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class ProxyInfo:
     proxy = attr.ib(type=str)
     proxy_auth = attr.ib(type=BasicAuth)
@@ -192,7 +192,7 @@ def isasyncgenfunction(obj):
     return False
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class MimeType:
     type = attr.ib(type=str)
     subtype = attr.ib(type=str)

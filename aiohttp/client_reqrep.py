@@ -39,14 +39,14 @@ except ImportError:  # pragma: no cover
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class ContentDisposition:
     type = attr.ib(type=str)
     parameters = attr.ib(type=MappingProxyType)
     filename = attr.ib(type=str)
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class RequestInfo:
     url = attr.ib(type=URL)
     method = attr.ib(type=str)

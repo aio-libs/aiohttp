@@ -37,7 +37,7 @@ ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
 
 
-@attr.s(frozen=True, repr=False)
+@attr.s(frozen=True, repr=False, slots=True)
 class RouteDef:
     method = attr.ib(type=str)
     path = attr.ib(type=str)
