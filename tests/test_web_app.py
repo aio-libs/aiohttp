@@ -244,3 +244,9 @@ def test_subapp_frozen_after_adding():
 
     app.add_subapp('/prefix', subapp)
     assert subapp.frozen
+
+
+def test_app_inheritance():
+    with pytest.warns(DeprecationWarning):
+        class A(web.Application):
+            pass

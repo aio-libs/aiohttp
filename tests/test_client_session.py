@@ -560,3 +560,9 @@ async def test_request_tracing_interpose_headers(loop):
 
     await session.get('http://example.com')
     assert MyClientRequest.headers['foo'] == 'bar'
+
+
+def test_client_session_inheritance():
+    with pytest.warns(DeprecationWarning):
+        class A(ClientSession):
+            pass

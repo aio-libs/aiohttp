@@ -50,6 +50,11 @@ class Application(MutableMapping):
         self._on_cleanup = Signal(self)
         self._client_max_size = client_max_size
 
+    def __init_subclass__(cls):
+        warnings.warn("Inheritance from web.Application is discouraged",
+                      DeprecationWarning,
+                      stacklevel=2)
+
     # MutableMapping API
 
     def __eq__(self, other):

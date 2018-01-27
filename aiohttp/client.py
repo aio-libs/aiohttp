@@ -132,6 +132,11 @@ class ClientSession:
         for trace_config in self._trace_configs:
             trace_config.freeze()
 
+    def __init_subclass__(cls):
+        warnings.warn("Inheritance from ClientSession is discouraged",
+                      DeprecationWarning,
+                      stacklevel=2)
+
     def __del__(self, _warnings=warnings):
         if not self.closed:
             if PY_36:
