@@ -28,7 +28,7 @@ THRESHOLD_CONNLOST_ACCESS = 5
 MsgType = WSMsgType
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, slots=True)
 class WebSocketReady:
     ok = attr.ib(type=bool)
     protocol = attr.ib(type=str)
