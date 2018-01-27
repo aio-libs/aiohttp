@@ -14,6 +14,7 @@ from aiohttp import hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
+from aiohttp.helpers import PY_36
 
 
 @pytest.fixture
@@ -562,7 +563,15 @@ async def test_request_tracing_interpose_headers(loop):
     assert MyClientRequest.headers['foo'] == 'bar'
 
 
+@pytest.mark.skipif(not PY_36,
+                    reason="Python 3.6+ required")
 def test_client_session_inheritance():
     with pytest.warns(DeprecationWarning):
         class A(ClientSession):
             pass
+
+
+def test_client_session_custom_attr(loop):
+    session = ClientSession(loop=loop)
+    with pytest.warns(DeprecationWarning):
+        session.custom = None

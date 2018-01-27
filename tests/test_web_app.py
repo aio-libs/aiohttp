@@ -5,6 +5,7 @@ import pytest
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
+from aiohttp.helpers import PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -246,7 +247,15 @@ def test_subapp_frozen_after_adding():
     assert subapp.frozen
 
 
+@pytest.mark.skipif(not PY_36,
+                    reason="Python 3.6+ required")
 def test_app_inheritance():
     with pytest.warns(DeprecationWarning):
         class A(web.Application):
             pass
+
+
+def test_app_custom_attr():
+    app = web.Application()
+    with pytest.warns(DeprecationWarning):
+        app.custom = None

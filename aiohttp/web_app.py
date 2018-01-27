@@ -17,6 +17,13 @@ from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
 
 
 class Application(MutableMapping):
+    ATTRS = frozenset([
+        'logger', '_debug', '_router', '_loop', '_handler_args',
+        '_middlewares', '_middlewares_handlers', '_run_middlewares',
+        '_state', '_frozen', '_subapps',
+        '_on_response_prepare', '_on_startup', '_on_shutdown',
+        '_on_cleanup', '_client_max_size'])
+
     def __init__(self, *,
                  logger=web_logger,
                  router=None,
@@ -40,6 +47,8 @@ class Application(MutableMapping):
         self.logger = logger
 
         self._middlewares = FrozenList(middlewares)
+        self._middlewares_handlers = None  # initialized on freezing
+        self._run_middlewares = None  # initialized on freezing
         self._state = {}
         self._frozen = False
         self._subapps = []
@@ -51,9 +60,18 @@ class Application(MutableMapping):
         self._client_max_size = client_max_size
 
     def __init_subclass__(cls):
-        warnings.warn("Inheritance from web.Application is discouraged",
+        warnings.warn("Inheritance class {} from web.Application "
+                      "is discouraged".format(cls.__name__),
                       DeprecationWarning,
                       stacklevel=2)
+
+    def __setattr__(self, name, val):
+        if name not in self.ATTRS:
+            warnings.warn("Setting custom web.Application.{} attribute "
+                          "is discouraged".format(name),
+                          DeprecationWarning,
+                          stacklevel=2)
+        super().__setattr__(name, val)
 
     # MutableMapping API
 

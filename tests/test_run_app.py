@@ -86,17 +86,19 @@ def stopper(loop):
     return f
 
 
-def test_run_app_http(patched_loop, mocker):
+def test_run_app_http(patched_loop):
     app = web.Application()
-    mocker.spy(app, 'startup')
-    mocker.spy(app, 'cleanup')
+    startup_handler = make_mocked_coro()
+    app.on_startup.append(startup_handler)
+    cleanup_handler = make_mocked_coro()
+    app.on_cleanup.append(cleanup_handler)
 
     web.run_app(app, print=stopper(patched_loop))
 
     patched_loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
                                                   ssl=None, backlog=128)
-    app.startup.assert_called_once_with()
-    app.cleanup.assert_called_once_with()
+    startup_handler.assert_called_once_with(app)
+    cleanup_handler.assert_called_once_with(app)
 
 
 def test_run_app_close_loop(patched_loop):
@@ -425,15 +427,17 @@ def test_sigterm():
     assert proc.wait() == 0
 
 
-def test_startup_cleanup_signals_even_on_failure(patched_loop, mocker):
+def test_startup_cleanup_signals_even_on_failure(patched_loop):
     patched_loop.create_server = mock.Mock(side_effect=RuntimeError())
 
     app = web.Application()
-    mocker.spy(app, 'startup')
-    mocker.spy(app, 'cleanup')
+    startup_handler = make_mocked_coro()
+    app.on_startup.append(startup_handler)
+    cleanup_handler = make_mocked_coro()
+    app.on_cleanup.append(cleanup_handler)
 
     with pytest.raises(RuntimeError):
         web.run_app(app, print=stopper(patched_loop))
 
-    app.startup.assert_called_once_with()
-    app.cleanup.assert_called_once_with()
+    startup_handler.assert_called_once_with(app)
+    cleanup_handler.assert_called_once_with(app)

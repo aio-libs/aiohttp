@@ -46,6 +46,16 @@ DEFAULT_TIMEOUT = 5 * 60
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
+    ATTRS = frozenset([
+        '_source_traceback', '_connector',
+        'requote_redirect_url', '_loop', '_cookie_jar',
+        '_connector_owner', '_default_auth',
+        '_version', '_json_serialize', '_read_timeout',
+        '_conn_timeout', '_raise_for_status', '_auto_decompress',
+        '_trust_env', '_default_headers', '_skip_auto_headers',
+        '_request_class', '_response_class',
+        '_ws_response_class', '_trace_configs'])
+
     _source_traceback = None
     _connector = None
 
@@ -133,9 +143,18 @@ class ClientSession:
             trace_config.freeze()
 
     def __init_subclass__(cls):
-        warnings.warn("Inheritance from ClientSession is discouraged",
+        warnings.warn("Inheritance class {} from ClientSession "
+                      "is discouraged".format(cls.__name__),
                       DeprecationWarning,
                       stacklevel=2)
+
+    def __setattr__(self, name, val):
+        if name not in self.ATTRS:
+            warnings.warn("Setting custom ClientSession.{} attribute "
+                          "is discouraged".format(name),
+                          DeprecationWarning,
+                          stacklevel=2)
+        super().__setattr__(name, val)
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
