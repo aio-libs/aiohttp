@@ -16,6 +16,9 @@ from .web_server import Server
 from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
 
 
+__all__ = ('Application',)
+
+
 class Application(MutableMapping):
     ATTRS = frozenset([
         'logger', '_debug', '_router', '_loop', '_handler_args',

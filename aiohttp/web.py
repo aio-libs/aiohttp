@@ -5,9 +5,9 @@ from argparse import ArgumentParser
 from collections import Iterable
 from importlib import import_module
 
-from . import (helpers, web_exceptions, web_fileresponse, web_middlewares,
-               web_protocol, web_request, web_response, web_runner, web_server,
-               web_urldispatcher, web_ws)
+from . import (helpers, web_app, web_exceptions, web_fileresponse,
+               web_middlewares, web_protocol, web_request, web_response,
+               web_runner, web_server, web_urldispatcher, web_ws)
 from .http import HttpVersion  # noqa
 from .log import access_logger
 from .web_app import Application  # noqa
@@ -24,6 +24,7 @@ from .web_ws import *  # noqa
 
 
 __all__ = (web_protocol.__all__ +
+           web_app.__all__ +
            web_fileresponse.__all__ +
            web_request.__all__ +
            web_response.__all__ +
@@ -33,7 +34,7 @@ __all__ = (web_protocol.__all__ +
            web_server.__all__ +
            web_runner.__all__ +
            web_middlewares.__all__ +
-           ('Application', 'HttpVersion'))
+           ('run_app',))
 
 
 def run_app(app, *, host=None, port=None, path=None, sock=None,
