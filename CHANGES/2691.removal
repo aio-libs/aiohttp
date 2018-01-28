@@ -1,0 +1,3 @@
+Deprecate inheritance from ``ClientSession`` and ``web.Application``
+and custom user attributes for ``ClientSession``, ``web.Request`` and
+``web.Application``

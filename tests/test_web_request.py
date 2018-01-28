@@ -547,3 +547,9 @@ def test_clone_remote():
     req = make_mocked_request('GET', '/')
     req2 = req.clone(remote='11.11.11.11')
     assert req2.remote == '11.11.11.11'
+
+
+def test_request_custom_attr():
+    req = make_mocked_request('GET', '/')
+    with pytest.warns(DeprecationWarning):
+        req.custom = None
