@@ -32,7 +32,7 @@ from .log import client_logger
 
 __all__ = ('BasicAuth',)
 
-PY_36 = sys.version_info > (3, 6)
+PY_36 = sys.version_info >= (3, 6)
 
 sentinel = object()
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
@@ -667,6 +667,9 @@ class CeilTimeout(async_timeout.timeout):
 
 
 class HeadersMixin:
+
+    ATTRS = frozenset([
+        '_content_type', '_content_dict', '_stored_content_type'])
 
     _content_type = None
     _content_dict = None

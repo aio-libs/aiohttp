@@ -71,6 +71,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
+    ATTRS = HeadersMixin.ATTRS | frozenset([
+        '_message', '_protocol', '_payload_writer', '_payload', '_headers',
+        '_method', '_version', '_rel_url', '_post', '_read_bytes',
+        '_state', '_cache', '_task', '_client_max_size', '_loop',
+        '_scheme', '_host', '_remote'])
+
     def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
                  *, client_max_size=1024**2,
@@ -596,12 +602,23 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
 class Request(BaseRequest):
 
+    ATTRS = BaseRequest.ATTRS | frozenset(['_match_info'])
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # matchdict, route_name, handler
         # or information about traversal lookup
         self._match_info = None  # initialized after route resolving
+
+    def __setattr__(self, name, val):
+        if name not in self.ATTRS:
+            warnings.warn("Setting custom {}.{} attribute "
+                          "is discouraged".format(self.__class__.__name__,
+                                                  name),
+                          DeprecationWarning,
+                          stacklevel=2)
+        super().__setattr__(name, val)
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel, scheme=sentinel, host=sentinel,
