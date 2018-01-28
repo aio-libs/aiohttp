@@ -19,13 +19,9 @@ from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
 from .web_response import StreamResponse
 
 
-__all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
+__all__ = ('WebSocketResponse', 'WebSocketReady', 'WSMsgType',)
 
 THRESHOLD_CONNLOST_ACCESS = 5
-
-
-# deprecated since 1.0
-MsgType = WSMsgType
 
 
 @attr.s(frozen=True, slots=True)

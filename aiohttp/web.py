@@ -33,7 +33,7 @@ __all__ = (web_protocol.__all__ +
            web_server.__all__ +
            web_runner.__all__ +
            web_middlewares.__all__ +
-           ('Application', 'HttpVersion', 'MsgType'))
+           ('Application', 'HttpVersion'))
 
 
 def run_app(app, *, host=None, port=None, path=None, sock=None,
