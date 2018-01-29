@@ -41,7 +41,8 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_class=helpers.AccessLogger,
             access_log_format=helpers.AccessLogger.LOG_FORMAT,
-            access_log=access_logger, handle_signals=True):
+            access_log=access_logger, handle_signals=True,
+            reuse_address=None, reuse_port=None):
     """Run an app locally"""
     loop = asyncio.get_event_loop()
 
@@ -60,17 +61,23 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
                 sites.append(TCPSite(runner, host, port,
                                      shutdown_timeout=shutdown_timeout,
                                      ssl_context=ssl_context,
-                                     backlog=backlog))
+                                     backlog=backlog,
+                                     reuse_address=reuse_address,
+                                     reuse_port=reuse_port))
             else:
                 for h in host:
                     sites.append(TCPSite(runner, h, port,
                                          shutdown_timeout=shutdown_timeout,
                                          ssl_context=ssl_context,
-                                         backlog=backlog))
+                                         backlog=backlog,
+                                         reuse_address=reuse_address,
+                                         reuse_port=reuse_port))
         elif path is None and sock is None or port is not None:
             sites.append(TCPSite(runner, port=port,
                                  shutdown_timeout=shutdown_timeout,
-                                 ssl_context=ssl_context, backlog=backlog))
+                                 ssl_context=ssl_context, backlog=backlog,
+                                 reuse_address=reuse_address,
+                                 reuse_port=reuse_port))
 
         if path is not None:
             if isinstance(path, (str, bytes, bytearray, memoryview)):
