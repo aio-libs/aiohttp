@@ -2326,7 +2326,8 @@ application on specific TCP or Unix socket, e.g.::
 
 .. class:: TCPSite(app, host=None, port=None, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
-                   backlog=128)
+                   backlog=128, reuse_address=None,
+                   reuse_port=None)
 
    Serve an application on TCP socket.
 
@@ -2349,6 +2350,17 @@ application on specific TCP or Unix socket, e.g.::
                        connections, see :meth:`socket.listen` for details.
 
                        ``128`` by default.
+
+   :param bool reuse_address: tells the kernel to reuse a local socket in
+                              TIME_WAIT state, without waiting for its
+                              natural timeout to expire. If not specified
+                              will automatically be set to True on UNIX.
+
+   :param bool reuse_port: tells the kernel to allow this endpoint to be
+                           bound to the same port as other existing
+                           endpoints are bound to, so long as they all set
+                           this flag when being created. This option is not
+                           supported on Windows.
 
 .. class:: UnixSite(app, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
@@ -2431,7 +2443,9 @@ Utilities
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
                       access_log=aiohttp.log.access_logger, \
-                      handle_signals=True)
+                      handle_signals=True, \
+                      reuse_address=None, \
+                      reuse_port=None)
 
    A utility function for running an application, serving it until
    keyboard interrupt and performing a
@@ -2504,9 +2518,23 @@ Utilities
    :param bool handle_signals: override signal TERM handling to gracefully
                                exit the application.
 
+   :param bool reuse_address: tells the kernel to reuse a local socket in
+                              TIME_WAIT state, without waiting for its
+                              natural timeout to expire. If not specified
+                              will automatically be set to True on UNIX.
+
+   :param bool reuse_port: tells the kernel to allow this endpoint to be
+                           bound to the same port as other existing
+                           endpoints are bound to, so long as they all set
+                           this flag when being created. This option is not
+                           supported on Windows.
+
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
+      
+      Support *reuse_address*, *reuse_port* parameter.
+
 
 Constants
 ---------
