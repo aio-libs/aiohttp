@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 from yarl import URL
 
 
-__all__ = ('TCPSite', 'UnixSite', 'SockSite', 'AppRunner', 'GracefulExit')
+__all__ = ('TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
+           'AppRunner', 'ServerRunner', 'GracefulExit')
 
 
 class GracefulExit(SystemExit):
@@ -48,7 +49,7 @@ class BaseSite(ABC):
             return  # not started yet
         self._server.close()
         await self._server.wait_closed()
-        await self._runner.app.shutdown()
+        await self._runner.shutdown()
         await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
 
@@ -56,11 +57,11 @@ class BaseSite(ABC):
 class TCPSite(BaseSite):
     __slots__ = ('_host', '_port')
 
-    def __init__(self, app, host=None, port=None, *,
+    def __init__(self, runner, host=None, port=None, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128, reuse_address=None,
                  reuse_port=None):
-        super().__init__(app, shutdown_timeout=shutdown_timeout,
+        super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
         if host is None:
             host = "0.0.0.0"
@@ -89,10 +90,10 @@ class TCPSite(BaseSite):
 class UnixSite(BaseSite):
     __slots__ = ('_path', )
 
-    def __init__(self, app, path, *,
+    def __init__(self, runner, path, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
-        super().__init__(app, shutdown_timeout=shutdown_timeout,
+        super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
         self._path = path
 
@@ -112,10 +113,10 @@ class UnixSite(BaseSite):
 class SockSite(BaseSite):
     __slots__ = ('_sock', '_name')
 
-    def __init__(self, app, sock, *,
+    def __init__(self, runner, sock, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128):
-        super().__init__(app, shutdown_timeout=shutdown_timeout,
+        super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
         self._sock = sock
         scheme = 'https' if self._ssl_context else 'http'
@@ -138,19 +139,14 @@ class SockSite(BaseSite):
             ssl=self._ssl_context, backlog=self._backlog)
 
 
-class AppRunner:
-    __slots__ = ('_app', '_handle_signals', '_kwargs', '_server', '_sites')
+class BaseRunner(ABC):
+    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
 
-    def __init__(self, app, *, handle_signals=False, **kwargs):
-        self._app = app
+    def __init__(self, *, handle_signals=False, **kwargs):
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None
         self._sites = set()
-
-    @property
-    def app(self):
-        return self._app
 
     @property
     def server(self):
@@ -171,13 +167,11 @@ class AppRunner:
                 # add_signal_handler is not implemented on Windows
                 pass
 
-        self._app._set_loop(loop)
-        self._app.on_startup.freeze()
-        await self._app.startup()
-        self._app.freeze()
+        self._server = await self._make_server()
 
-        server = self._app.make_handler(loop=loop, **self._kwargs)
-        self._server = server
+    @abstractmethod
+    async def shutdown(self):
+        pass  # pragma: no cover
 
     async def cleanup(self):
         loop = asyncio.get_event_loop()
@@ -192,7 +186,7 @@ class AppRunner:
         # still present on failure
         for site in list(self._sites):
             await site.stop()
-        await self._app.cleanup()
+        await self._cleanup_server()
         self._server = None
         if self._handle_signals:
             try:
@@ -201,6 +195,14 @@ class AppRunner:
             except NotImplementedError:  # pragma: no cover
                 # remove_signal_handler is not implemented on Windows
                 pass
+
+    @abstractmethod
+    async def _make_server(self):
+        pass  # pragma: no cover
+
+    @abstractmethod
+    async def _cleanup_server(self):
+        pass  # pragma: no cover
 
     def _reg_site(self, site):
         if site in self._sites:
@@ -218,3 +220,51 @@ class AppRunner:
             raise RuntimeError("Site {} is not registered in runner {}"
                                .format(site, self))
         self._sites.remove(site)
+
+
+class ServerRunner(BaseRunner):
+    """Low-level web server runner"""
+
+    __slots__ = ('_web_server',)
+
+    def __init__(self, web_server, *, handle_signals=False, **kwargs):
+        super().__init__(handle_signals=handle_signals, **kwargs)
+        self._web_server = web_server
+
+    async def shutdown(self):
+        pass
+
+    async def _make_server(self):
+        return self._web_server
+
+    async def _cleanup_server(self):
+        pass
+
+
+class AppRunner(BaseRunner):
+    """Web Application runner"""
+
+    __slots__ = ('_app',)
+
+    def __init__(self, app, *, handle_signals=False, **kwargs):
+        super().__init__(handle_signals=handle_signals, **kwargs)
+        self._app = app
+
+    @property
+    def app(self):
+        return self._app
+
+    async def shutdown(self):
+        await self._app.shutdown()
+
+    async def _make_server(self):
+        loop = asyncio.get_event_loop()
+        self._app._set_loop(loop)
+        self._app.on_startup.freeze()
+        await self._app.startup()
+        self._app.freeze()
+
+        return self._app.make_handler(loop=loop, **self._kwargs)
+
+    async def _cleanup_server(self):
+        await self._app.cleanup()

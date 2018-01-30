@@ -2324,14 +2324,14 @@ application on specific TCP or Unix socket, e.g.::
       Stop handling a site.
 
 
-.. class:: TCPSite(app, host=None, port=None, *, \
+.. class:: TCPSite(runner, host=None, port=None, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
                    backlog=128, reuse_address=None,
                    reuse_port=None)
 
-   Serve an application on TCP socket.
+   Serve a runner on TCP socket.
 
-   :param app: :class:`Application` to serve.
+   :param runner: a runner to serve.
 
    :param str host: HOST to listen on, ``'0.0.0.0'`` if ``None`` (default).
 
@@ -2362,13 +2362,13 @@ application on specific TCP or Unix socket, e.g.::
                            this flag when being created. This option is not
                            supported on Windows.
 
-.. class:: UnixSite(app, path, *, \
+.. class:: UnixSite(runner, path, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
                    backlog=128)
 
-   Serve an application on UNIX socket.
+   Serve a runner on UNIX socket.
 
-   :param app: :class:`Application` to serve.
+   :param runner: a runner to serve.
 
    :param str path: PATH to UNIX socket to listen.
 
@@ -2386,13 +2386,13 @@ application on specific TCP or Unix socket, e.g.::
 
                        ``128`` by default.
 
-.. class:: SockSite(app, sock, *, \
+.. class:: SockSite(runner, sock, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
                    backlog=128)
 
-   Serve an application on pre-existing :class:`socket.socket` object .
+   Serve a runner on UNIX socket.
 
-   :param app: :class:`Application` to serve.
+   :param runner: a runner to serve.
 
    :param sock: :class:`socket.socket` to listen.
 

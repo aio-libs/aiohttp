@@ -38,8 +38,7 @@ class FakeFacebook:
         self.app.router.add_routes(
             [web.get('/v2.7/me', self.on_me),
              web.get('/v2.7/me/friends', self.on_my_friends)])
-        self.handler = None
-        self.server = None
+        self.runner = None
         here = pathlib.Path(__file__)
         ssl_cert = here.parent / 'server.crt'
         ssl_key = here.parent / 'server.key'
@@ -48,18 +47,15 @@ class FakeFacebook:
 
     async def start(self):
         port = unused_port()
-        self.handler = self.app.make_handler()
-        self.server = await self.loop.create_server(self.handler,
-                                                    '127.0.0.1', port,
-                                                    ssl=self.ssl_context)
+        self.runner = web.AppRunner(self.app)
+        await self.runner.setup()
+        site = web.TCPSite(self.runner, '127.0.0.1', port,
+                           ssl_context=self.ssl_context)
+        await site.start()
         return {'graph.facebook.com': port}
 
     async def stop(self):
-        self.server.close()
-        await self.server.wait_closed()
-        await self.app.shutdown()
-        await self.handler.shutdown()
-        await self.app.cleanup()
+        await self.runner.cleanup()
 
     async def on_me(self, request):
         return web.json_response({
