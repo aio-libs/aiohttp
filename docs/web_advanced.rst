@@ -637,6 +637,31 @@ Custom resource implementation
 To register custom resource use :meth:`UrlDispatcher.register_resource`.
 Resource instance must implement `AbstractResource` interface.
 
+.. _aiohttp-web-app-runners:
+
+Application runners
+-------------------
+
+:func:`run_app` provides a simple *blocking* API for running an
+:class:`Application`.
+
+For starting the application *asynchronously* on serving on multiple
+HOST/PORT :class:`AppRunner` exists.
+
+The simple startup code for serving HTTP site on ``'localhost'``, port
+``8080`` looks like::
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 8080)
+    await site.start()
+
+To stop serving call :meth:`AppRunner.cleanup`::
+
+    await runner.cleanup()
+
+.. versionadded:: 3.0
+
 .. _aiohttp-web-graceful-shutdown:
 
 Graceful shutdown
@@ -684,39 +709,8 @@ Signal handler may look like::
 
     app.on_shutdown.append(on_shutdown)
 
-Proper finalization procedure has three steps:
-
-  1. Stop accepting new client connections by
-     :meth:`asyncio.Server.close` and
-     :meth:`asyncio.Server.wait_closed` calls.
-
-  2. Fire :meth:`Application.shutdown` event.
-
-  3. Close accepted connections from clients by
-     :meth:`Server.shutdown` call with
-     reasonable small delay.
-
-  4. Call registered application finalizers by :meth:`Application.cleanup`.
-
-The following code snippet performs proper application start, run and
-finalizing.  It's pretty close to :func:`run_app` utility function::
-
-   loop = asyncio.get_event_loop()
-   handler = app.make_handler()
-   f = loop.create_server(handler, '0.0.0.0', 8080)
-   srv = loop.run_until_complete(f)
-   print('serving on', srv.sockets[0].getsockname())
-   try:
-       loop.run_forever()
-   except KeyboardInterrupt:
-       pass
-   finally:
-       srv.close()
-       loop.run_until_complete(srv.wait_closed())
-       loop.run_until_complete(app.shutdown())
-       loop.run_until_complete(handler.shutdown(60.0))
-       loop.run_until_complete(app.cleanup())
-   loop.close()
+Both :func:`run_app` and :meth:`AppRunner.cleanup` call shutdown
+signal handlers.
 
 .. _aiohttp-web-background-tasks:
 
@@ -780,31 +774,6 @@ signal handlers as shown in the example below::
 The task :func:`listen_to_redis` will run forever.
 To shut it down correctly :attr:`Application.on_cleanup` signal handler
 may be used to send a cancellation to it.
-
-.. _aiohttp-web-app-runners:
-
-Application runners
--------------------
-
-:func:`run_app` provides a simple *blocking* API for running an
-:class:`Application`.
-
-For starting the application *asynchronously* on serving on multiple
-HOST/PORT :class:`AppRunner` exists.
-
-The simple startup code for serving HTTP site on ``'localhost'``, port
-``8080`` looks like::
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 8080)
-    await site.start()
-
-To stop serving call :meth:`AppRunner.cleanup`::
-
-    await runner.cleanup()
-
-.. versionadded:: 3.0
 
 Handling error pages
 --------------------
