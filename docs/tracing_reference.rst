@@ -29,10 +29,10 @@ the request flow.
    .. attribute:: on_request_start
 
       Property that gives access to the signals that will be executed when a
-      request starts, based on the :class:`~signals.Signal` implementation.
+      request starts, based on the :class:`aiohttp.signals.Signal` implementation.
 
       The coroutines listening will receive as a param the ``session``,
-      ``trace_config_ctx``, ``method``, ``url`` and ``headers``.
+      ``trace_config_ctx`` and :class:`aiohttp.TraceRequestStartParams` params.
 
       .. versionadded:: 3.0
 
@@ -42,7 +42,7 @@ the request flow.
       redirect happens during a request flow.
 
       The coroutines that are listening will receive the ``session``,
-      ``trace_config_ctx``, ``method``, ``url``, ``headers`` and ``resp`` params.
+      ``trace_config_ctx`` and :class:`aiohttp.TraceRequestRedirectParams` params.
 
       .. versionadded:: 3.0
 
@@ -52,7 +52,7 @@ the request flow.
       request ends.
 
       The coroutines that are listening will receive the ``session``,
-      ``trace_config_ctx``, ``method``, ``url``, ``headers`` and ``resp`` params
+      ``trace_config_ctx`` and :class:`aiohttp.TraceRequestEndParams` params.
 
       .. versionadded:: 3.0
 
@@ -62,7 +62,7 @@ the request flow.
       request finishes with an exception.
 
       The coroutines listening will receive the ``session``,
-      ``trace_config_ctx``, ``method``, ``url``, ``headers`` and ``exception`` params.
+      ``trace_config_ctx`` and :class:`aiohttp.TraceRequestExceptionParams` params.
 
       .. versionadded:: 3.0
 
@@ -71,8 +71,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request has been queued waiting for an available connection.
 
-      The coroutines that are listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines that are listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceConnectionQueuedStartParams` params.
 
       .. versionadded:: 3.0
 
@@ -81,8 +81,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request that was queued already has an available connection.
 
-      The coroutines that are listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines that are listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceConnectionQueuedEndParams` params.
 
       .. versionadded:: 3.0
 
@@ -91,8 +91,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request creates a new connection.
 
-      The coroutines listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceConnectionCreateStartParams` params.
 
       .. versionadded:: 3.0
 
@@ -101,8 +101,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request that created a new connection finishes its creation.
 
-      The coroutines listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceConnectionCreateEndParams` params.
 
       .. versionadded:: 3.0
 
@@ -111,8 +111,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request reuses a connection.
 
-      The coroutines listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceConnectionReuseconnParams` params.
 
       .. versionadded:: 3.0
 
@@ -121,8 +121,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request starts to resolve the domain related with the request.
 
-      The coroutines listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceDnsResolveHostStartParams` params.
 
       .. versionadded:: 3.0
 
@@ -131,8 +131,8 @@ the request flow.
       Property that gives access to the signals that will be executed when a
       request finishes to resolve the domain related with the request.
 
-      The coroutines listening will receive the ``session`` and ``trace_config_ctx``
-      params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceDnsResolveHostEndParams` params.
 
       .. versionadded:: 3.0
 
@@ -142,8 +142,8 @@ the request flow.
       request was able to use a cached DNS resolution for the domain related
       with the request.
 
-      The coroutines listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceDnsCacheHitParams` params.
 
       .. versionadded:: 3.0
 
@@ -153,7 +153,120 @@ the request flow.
       request was not able to use a cached DNS resolution for the domain related
       with the request.
 
-      The coroutines listening will receive the ``session`` and
-      ``trace_config_ctx`` params.
+      The coroutines listening will receive the ``session``,
+      ``trace_config_ctx`` and :class:`aiohttp.TraceDnsCacheMissParams` params.
 
       .. versionadded:: 3.0
+
+.. class:: TraceRequestStartParams
+
+   .. attribute:: method 
+
+       Method that will be used  to make the request.
+
+   .. attribute:: url
+
+       URL that will be used  for the request.
+
+   .. attribute:: headers
+
+       Headers that will be used for the request, can be mutated.
+
+.. class:: TraceRequestEndParams
+
+   .. attribute:: method 
+
+       Method used to make the request.
+
+   .. attribute:: url
+
+       URL used for the request.
+
+   .. attribute:: headers
+
+       Headers used for the request.
+
+   .. attribute:: resp
+
+       Response :class:`ClientReponse`.
+
+
+.. class:: TraceRequestExceptionParams
+
+   .. attribute:: method 
+
+       Method used to make the request.
+
+   .. attribute:: url
+
+       URL used for the request.
+
+   .. attribute:: headers
+
+       Headers used for the request.
+
+   .. attribute:: exception
+
+       Exception raised during the request.
+
+.. class:: TraceRequestRedirectParams
+
+   .. attribute:: method 
+
+       Method used to get this redirect request.
+
+   .. attribute:: url
+
+       URL used for this redirect request.
+
+   .. attribute:: headers
+
+       Headers used for this redirect.
+
+   .. attribute:: resp
+
+       Response :class:`ClientReponse` got from the redirect.
+
+.. class:: TraceConnectionQueuedStartParams
+
+       There are no attributes right now.
+
+.. class:: TraceConnectionQueuedEndParams
+
+       There are no attributes right now.
+
+.. class:: TraceConnectionCreateStartParams
+
+       There are no attributes right now.
+
+.. class:: TraceConnectionCreateEndParams
+
+       There are no attributes right now.
+
+.. class:: TraceConnectionReuseconnParams
+
+       There are no attributes right now.
+
+.. class:: TraceDnsResolveHostStartParams
+
+   .. attribute:: Host
+
+       Host that will be resolved.
+
+.. class:: TraceDnsResolveHostEndParams
+
+   .. attribute:: Host
+
+       Host that has been resolved.
+
+.. class:: TraceDnsCacheHitParams
+
+   .. attribute:: Host
+
+       Host found in the cache.
+
+.. class:: TraceDnsCacheMissParams
+
+   .. attribute:: Host
+
+       Host didn't find the cache.

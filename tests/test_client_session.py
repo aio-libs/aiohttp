@@ -479,18 +479,22 @@ async def test_request_tracing(loop):
             on_request_start.assert_called_once_with(
                 session,
                 trace_config_ctx,
-                hdrs.METH_GET,
-                URL("http://example.com"),
-                CIMultiDict()
+                aiohttp.TraceRequestStartParams(
+                    hdrs.METH_GET,
+                    URL("http://example.com"),
+                    CIMultiDict()
+                )
             )
 
             on_request_end.assert_called_once_with(
                 session,
                 trace_config_ctx,
-                hdrs.METH_GET,
-                URL("http://example.com"),
-                CIMultiDict(),
-                resp
+                aiohttp.TraceRequestEndParams(
+                    hdrs.METH_GET,
+                    URL("http://example.com"),
+                    CIMultiDict(),
+                    resp
+                )
             )
             assert not on_request_redirect.called
 
@@ -524,10 +528,12 @@ async def test_request_tracing_exception(loop):
         on_request_exception.assert_called_once_with(
             session,
             mock.ANY,
-            hdrs.METH_GET,
-            URL("http://example.com"),
-            CIMultiDict(),
-            error
+            aiohttp.TraceRequestExceptionParams(
+                hdrs.METH_GET,
+                URL("http://example.com"),
+                CIMultiDict(),
+                error
+            )
         )
         assert not on_request_end.called
 
@@ -544,11 +550,8 @@ async def test_request_tracing_interpose_headers(loop):
     async def new_headers(
             session,
             trace_config_ctx,
-            method,
-            url,
-            headers,
-            trace_request_ctx=None):
-        headers['foo'] = 'bar'
+            data):
+        data.headers['foo'] = 'bar'
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(new_headers)
