@@ -6,10 +6,17 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import streams, test_utils
+from aiohttp import streams
 
 
 DATA = b'line1\nline2\nline3\n'
+
+
+def run_briefly(loop):
+    async def once():
+        pass
+    t = loop.create_task(once())
+    loop.run_until_complete(t)
 
 
 def chunkify(seq, n):
@@ -490,12 +497,12 @@ class TestStreamReader(unittest.TestCase):
             await stream.readline()
 
         t = asyncio.Task(read_a_line(), loop=self.loop)
-        test_utils.run_briefly(self.loop)
+        run_briefly(self.loop)
         t.cancel()
-        test_utils.run_briefly(self.loop)
+        run_briefly(self.loop)
         # The following line fails if set_exception() isn't careful.
         stream.set_exception(RuntimeError('message'))
-        test_utils.run_briefly(self.loop)
+        run_briefly(self.loop)
         self.assertIs(stream._waiter, None)
 
     def test_readany_eof(self):
@@ -822,7 +829,7 @@ class DataQueueMixin:
 
     def test_read_cancelled(self):
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-        test_utils.run_briefly(self.loop)
+        run_briefly(self.loop)
         waiter = self.buffer._waiter
         self.assertTrue(asyncio.isfuture(waiter))
 
@@ -877,7 +884,7 @@ class DataQueueMixin:
 
     def test_read_exception_on_wait(self):
         read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-        test_utils.run_briefly(self.loop)
+        run_briefly(self.loop)
         self.assertTrue(asyncio.isfuture(self.buffer._waiter))
 
         self.buffer.feed_eof()
