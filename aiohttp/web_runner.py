@@ -138,19 +138,14 @@ class SockSite(BaseSite):
             ssl=self._ssl_context, backlog=self._backlog)
 
 
-class AppRunner:
-    __slots__ = ('_app', '_handle_signals', '_kwargs', '_server', '_sites')
+class BaseRunner(ABC):
+    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
 
-    def __init__(self, app, *, handle_signals=False, **kwargs):
-        self._app = app
+    def __init__(self, *, handle_signals=False, **kwargs):
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None
         self._sites = set()
-
-    @property
-    def app(self):
-        return self._app
 
     @property
     def server(self):
@@ -171,13 +166,7 @@ class AppRunner:
                 # add_signal_handler is not implemented on Windows
                 pass
 
-        self._app._set_loop(loop)
-        self._app.on_startup.freeze()
-        await self._app.startup()
-        self._app.freeze()
-
-        server = self._app.make_handler(loop=loop, **self._kwargs)
-        self._server = server
+        self._server = await self._make_server()
 
     async def cleanup(self):
         loop = asyncio.get_event_loop()
@@ -192,7 +181,7 @@ class AppRunner:
         # still present on failure
         for site in list(self._sites):
             await site.stop()
-        await self._app.cleanup()
+        await self._cleanup_server()
         self._server = None
         if self._handle_signals:
             try:
@@ -201,6 +190,14 @@ class AppRunner:
             except NotImplementedError:  # pragma: no cover
                 # remove_signal_handler is not implemented on Windows
                 pass
+
+    @abstractmethod
+    async def _make_server(self):
+        pass
+
+    @abstractmethod
+    async def _cleanup_server(self):
+        pass
 
     def _reg_site(self, site):
         if site in self._sites:
@@ -218,3 +215,27 @@ class AppRunner:
             raise RuntimeError("Site {} is not registered in runner {}"
                                .format(site, self))
         self._sites.remove(site)
+
+
+class AppRunner(BaseRunner):
+    __slots__ = ('_app',)
+
+    def __init__(self, app, *, handle_signals=False, **kwargs):
+        super().__init__(handle_signals=handle_signals, **kwargs)
+        self._app = app
+
+    @property
+    def app(self):
+        return self._app
+
+    async def _make_server(self):
+        loop = asyncio.get_event_loop()
+        self._app._set_loop(loop)
+        self._app.on_startup.freeze()
+        await self._app.startup()
+        self._app.freeze()
+
+        return self._app.make_handler(loop=loop, **self._kwargs)
+
+    async def _cleanup_server(self):
+        await self._app.cleanup()
