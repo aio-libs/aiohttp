@@ -74,8 +74,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ATTRS = HeadersMixin.ATTRS | frozenset([
         '_message', '_protocol', '_payload_writer', '_payload', '_headers',
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
-        '_state', '_cache', '_task', '_client_max_size', '_loop',
-        '_scheme', '_host', '_remote'])
+        '_state', '_cache', '_task', '_client_max_size', '_loop'])
 
     def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
@@ -102,9 +101,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._client_max_size = client_max_size
         self._loop = loop
 
-        self._scheme = scheme
-        self._host = host
-        self._remote = remote
+        if scheme is not None:
+            self._cache['scheme'] = scheme
+        if host is not None:
+            self._cache['host'] = host
+        if remote is not None:
+            self._cache['remote'] = remote
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel, scheme=sentinel, host=sentinel,
@@ -277,9 +279,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         'http' or 'https'.
         """
-        scheme = self._scheme
-        if scheme is not None:
-            return scheme
         if self.transport.get_extra_info('sslcontext'):
             return 'https'
         else:
@@ -311,9 +310,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - HOST HTTP header
         - socket.getfqdn() value
         """
-        host = self._host
-        if host is not None:
-            return host
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
             return host
@@ -329,9 +325,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
-        remote = self._remote
-        if remote is not None:
-            return remote
         peername = self.transport.get_extra_info('peername')
         if isinstance(peername, (list, tuple)):
             return peername[0]
