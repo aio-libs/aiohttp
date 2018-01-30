@@ -8,12 +8,17 @@ from aiohttp import web
 
 
 @pytest.fixture
-def make_runner(loop):
+def make_app():
+    return web.Application()
+
+
+@pytest.fixture
+def make_runner(loop, make_app):
     asyncio.set_event_loop(loop)
     runners = []
 
     def go(**kwargs):
-        app = web.Application()
+        app = make_app()
         runner = web.AppRunner(app, **kwargs)
         runners.append(runner)
         return runner

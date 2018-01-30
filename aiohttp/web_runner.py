@@ -171,7 +171,7 @@ class BaseRunner(ABC):
 
     @abstractmethod
     async def shutdown(self):
-        pass
+        pass  # pragma: no cover
 
     async def cleanup(self):
         loop = asyncio.get_event_loop()
@@ -198,11 +198,11 @@ class BaseRunner(ABC):
 
     @abstractmethod
     async def _make_server(self):
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     async def _cleanup_server(self):
-        pass
+        pass  # pragma: no cover
 
     def _reg_site(self, site):
         if site in self._sites:
