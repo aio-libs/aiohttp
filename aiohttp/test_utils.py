@@ -24,13 +24,6 @@ from .web import (AppRunner, Request, Server, ServerRunner, TCPSite,
                   UrlMappingMatchInfo)
 
 
-def run_briefly(loop):
-    async def once():
-        pass
-    t = asyncio.Task(once(), loop=loop)
-    loop.run_until_complete(t)
-
-
 def unused_port():
     """Return a port that is unused on the current host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
