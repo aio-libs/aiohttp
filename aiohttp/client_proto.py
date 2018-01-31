@@ -20,6 +20,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
         self._message = None
         self._payload = None
+        self._skip_payload = False
         self._payload_parser = None
         self._reading_paused = False
 
@@ -76,7 +77,9 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 exc = ClientOSError(*exc.args)
             if exc is None:
                 exc = ServerDisconnectedError(uncompleted)
-            DataQueue.set_exception(self, exc)
+            # assigns self._should_close to True as side effect,
+            # we do it anyway below
+            self.set_exception(exc)
 
         self.transport = None
         self._should_close = True
@@ -109,7 +112,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
     def set_exception(self, exc):
         self._should_close = True
-
         super().set_exception(exc)
 
     def set_parser(self, parser, payload):
@@ -125,7 +127,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                             read_until_eof=False,
                             auto_decompress=True):
         self._skip_payload = skip_payload
-        self._read_until_eof = read_until_eof
         self._parser = HttpResponseParser(
             self, self._loop, timer=timer,
             payload_exception=ClientPayloadError,
