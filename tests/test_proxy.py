@@ -1,6 +1,5 @@
 import asyncio
 import gc
-import hashlib
 import socket
 import ssl
 import unittest
@@ -14,14 +13,11 @@ from aiohttp.test_utils import make_mocked_coro
 
 
 class TestProxy(unittest.TestCase):
-    fingerprint = aiohttp.Fingerprint(hashlib.sha256(b"foo").digest())
     response_mock_attrs = {
         'status': 200,
     }
     mocked_response = mock.Mock(**response_mock_attrs)
     clientrequest_mock_attrs = {
-        'return_value._hashfunc.return_value.digest.return_value': fingerprint,
-        'return_value.fingerprint': fingerprint,
         'return_value.send.return_value.start':
             make_mocked_coro(mocked_response),
     }
