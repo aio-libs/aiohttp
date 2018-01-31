@@ -14,7 +14,8 @@ __all__ = (
     'TraceConnectionQueuedEndParams', 'TraceConnectionCreateStartParams',
     'TraceConnectionCreateEndParams', 'TraceConnectionReuseconnParams',
     'TraceDnsResolveHostStartParams', 'TraceDnsResolveHostEndParams',
-    'TraceDnsCacheHitParams', 'TraceDnsCacheMissParams'
+    'TraceDnsCacheHitParams', 'TraceDnsCacheMissParams',
+    'TraceRequestRedirectParams'
 )
 
 
