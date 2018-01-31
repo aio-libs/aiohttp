@@ -1640,3 +1640,23 @@ def test_request_clone(loop, test_client):
 
     resp = yield from client.get('/')
     assert 200 == resp.status
+
+
+@asyncio.coroutine
+def test_request_path(loop, test_client):
+
+    @asyncio.coroutine
+    def handler(request):
+        assert request.path_qs == '/path%20to?a=1'
+        assert request.path == '/path to'
+        assert request.raw_path == '/path%20to?a=1'
+        return web.Response(body=b'OK')
+
+    app = web.Application()
+    app.router.add_get('/path to', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/path to', params={'a': '1'})
+    assert 200 == resp.status
+    txt = yield from resp.text()
+    assert 'OK' == txt
