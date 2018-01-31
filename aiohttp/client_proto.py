@@ -24,7 +24,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         self._reading_paused = False
 
         self._timer = None
-        self._skip_status = ()
 
         self._tail = b''
         self._upgraded = False
@@ -123,11 +122,9 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
     def set_response_params(self, *, timer=None,
                             skip_payload=False,
-                            skip_status_codes=(),
                             read_until_eof=False,
                             auto_decompress=True):
         self._skip_payload = skip_payload
-        self._skip_status_codes = skip_status_codes
         self._read_until_eof = read_until_eof
         self._parser = HttpResponseParser(
             self, self._loop, timer=timer,
@@ -176,8 +173,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                     self._message = message
                     self._payload = payload
 
-                    if (self._skip_payload or
-                            message.code in self._skip_status_codes):
+                    if self._skip_payload or message.code in (204, 304):
                         self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
                         self.feed_data((message, payload), 0)
