@@ -159,21 +159,6 @@ class TestProxy(unittest.TestCase):
             "proxy_auth must be None or BasicAuth() tuple",
         )
 
-    @mock.patch('aiohttp.client_reqrep.StreamWriter')
-    def _test_connect_request_with_unicode_host(self, Request_mock):
-        loop = mock.Mock()
-        request = ClientRequest("CONNECT", URL("http://éé.com/"),
-                                loop=loop)
-
-        request.response_class = mock.Mock()
-        request.write_bytes = mock.Mock()
-        request.write_bytes.return_value = asyncio.Future(loop=loop)
-        request.write_bytes.return_value.set_result(None)
-        request.send(mock.Mock())
-
-        Request_mock.assert_called_with(mock.ANY, mock.ANY, "xn--9caa.com:80",
-                                        mock.ANY, loop=loop)
-
     def test_proxy_dns_error(self):
         connector = aiohttp.TCPConnector(loop=self.loop)
         connector._resolve_host = make_mocked_coro(
@@ -207,87 +192,6 @@ class TestProxy(unittest.TestCase):
         )
         with self.assertRaises(aiohttp.ClientProxyConnectionError):
             self.loop.run_until_complete(connector.connect(req))
-
-    @mock.patch('aiohttp.connector.ClientRequest')
-    def test_auth(self, ClientRequestMock):
-        proxy_req = ClientRequest(
-            'GET', URL('http://proxy.example.com'),
-            auth=aiohttp.helpers.BasicAuth('user', 'pass'),
-            loop=self.loop
-        )
-        ClientRequestMock.return_value = proxy_req
-        self.assertIn('AUTHORIZATION', proxy_req.headers)
-        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
-
-        connector = aiohttp.TCPConnector(loop=self.loop)
-        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
-
-        tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = make_mocked_coro((tr, proto))
-
-        req = ClientRequest(
-            'GET', URL('http://www.python.org'),
-            proxy=URL('http://proxy.example.com'),
-            proxy_auth=aiohttp.helpers.BasicAuth('user', 'pass'),
-            loop=self.loop,
-        )
-        self.assertNotIn('AUTHORIZATION', req.headers)
-        self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
-        conn = self.loop.run_until_complete(connector.connect(req))
-
-        self.assertEqual(req.url, URL('http://www.python.org'))
-        self.assertNotIn('AUTHORIZATION', req.headers)
-        self.assertIn('PROXY-AUTHORIZATION', req.headers)
-        self.assertNotIn('AUTHORIZATION', proxy_req.headers)
-        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
-
-        ClientRequestMock.assert_called_with(
-            'GET', URL('http://proxy.example.com'),
-            auth=aiohttp.helpers.BasicAuth('user', 'pass'),
-            loop=mock.ANY, headers=mock.ANY, ssl=None)
-        conn.close()
-
-    def test_auth_utf8(self):
-        proxy_req = ClientRequest(
-            'GET', URL('http://proxy.example.com'),
-            auth=aiohttp.helpers.BasicAuth('юзер', 'пасс', 'utf-8'),
-            loop=self.loop)
-        self.assertIn('AUTHORIZATION', proxy_req.headers)
-
-    @mock.patch('aiohttp.connector.ClientRequest')
-    def test_auth_from_url(self, ClientRequestMock):
-        proxy_req = ClientRequest('GET',
-                                  URL('http://user:pass@proxy.example.com'),
-                                  loop=self.loop)
-        ClientRequestMock.return_value = proxy_req
-        self.assertIn('AUTHORIZATION', proxy_req.headers)
-        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
-
-        connector = aiohttp.TCPConnector(loop=self.loop)
-        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
-
-        tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = make_mocked_coro((tr, proto))
-
-        req = ClientRequest(
-            'GET', URL('http://www.python.org'),
-            proxy=URL('http://user:pass@proxy.example.com'),
-            loop=self.loop,
-        )
-        self.assertNotIn('AUTHORIZATION', req.headers)
-        self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
-        conn = self.loop.run_until_complete(connector.connect(req))
-
-        self.assertEqual(req.url, URL('http://www.python.org'))
-        self.assertNotIn('AUTHORIZATION', req.headers)
-        self.assertIn('PROXY-AUTHORIZATION', req.headers)
-        self.assertNotIn('AUTHORIZATION', proxy_req.headers)
-        self.assertNotIn('PROXY-AUTHORIZATION', proxy_req.headers)
-
-        ClientRequestMock.assert_called_with(
-            'GET', URL('http://user:pass@proxy.example.com'),
-            auth=None, loop=mock.ANY, headers=mock.ANY, ssl=None)
-        conn.close()
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect(self, ClientRequestMock):
