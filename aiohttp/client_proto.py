@@ -15,7 +15,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
         asyncio.streams.FlowControlMixin.__init__(self, loop=loop)
         DataQueue.__init__(self, loop=loop)
 
-        self.paused = False
         self.transport = None
         self._should_close = False
 
