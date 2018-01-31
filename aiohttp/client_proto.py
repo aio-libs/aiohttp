@@ -160,8 +160,8 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
                 except BaseException as exc:
-                    self._should_close = True
                     self.transport.close()
+                    # should_close is True after the call
                     self.set_exception(exc)
                     return
 
