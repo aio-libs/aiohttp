@@ -632,3 +632,13 @@ async def xtest_proxy_from_env_https_with_auth(proxy_test_server,
     assert r2.host == 'aiohttp.io'
     assert r2.path_qs == '/path'
     assert r2.headers['Proxy-Authorization'] == auth.encode()
+
+
+async def test_proxy_auth():
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(
+                ValueError,
+                message="proxy_auth must be None or BasicAuth() tuple"):
+            await session.get('http://python.org',
+                              proxy='http://proxy.example.com',
+                              proxy_auth=('user', 'pass'))

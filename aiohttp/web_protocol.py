@@ -7,6 +7,8 @@ from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
 
+import yarl
+
 from . import helpers, http
 from .helpers import CeilTimeout
 from .http import HttpProcessingError, HttpRequestParser, StreamWriter
@@ -22,7 +24,7 @@ __all__ = ('RequestHandler', 'RequestPayloadError')
 
 ERROR = http.RawRequestMessage(
     'UNKNOWN', '/', http.HttpVersion10, {},
-    {}, True, False, False, False, http.URL('/'))
+    {}, True, False, False, False, yarl.URL('/'))
 
 
 class RequestPayloadError(Exception):
