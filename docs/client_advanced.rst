@@ -225,10 +225,10 @@ disabled. The following snippet shows how the start and the end
 signals of a request flow can be followed::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers):
+            session, trace_config_ctx, params):
         print("Starting request")
 
-    async def on_request_end(session, trace_config_ctx, resp):
+    async def on_request_end(session, trace_config_ctx, params):
         print("Ending request")
 
     trace_config = aiohttp.TraceConfig()
@@ -259,10 +259,10 @@ share the state through to the different signals that belong to the
 same request and to the same :class:`TraceConfig` class, perhaps::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers):
+            session, trace_config_ctx, params):
         trace_config_ctx.start = session.loop.time()
 
-    async def on_request_end(session, trace_config_ctx, resp):
+    async def on_request_end(session, trace_config_ctx, params):
         elapsed = session.loop.time() - trace_config_ctx.start
         print("Request took {}".format(elapsed))
 
@@ -280,7 +280,7 @@ factory. This param is useful to pass data that is only available at
 request time, perhaps::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers):
+            session, trace_config_ctx, params):
         print(trace_config_ctx.trace_request_ctx)
 
 
