@@ -11,7 +11,7 @@ import pytest
 from aiohttp import helpers, http, streams, web
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def make_srv(loop, manager):
     srv = None
 
@@ -72,12 +72,12 @@ def handle_with_error():
     return wrapper
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def writer(srv):
     return http.PayloadWriter(srv.writer, srv._loop)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def transport(buf):
     transport = mock.Mock()
 
