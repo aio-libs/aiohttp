@@ -1,5 +1,4 @@
 """Tests for aiohttp/http_writer.py"""
-import asyncio
 import zlib
 from unittest import mock
 
@@ -165,7 +164,7 @@ def test_write_to_closing_transport(protocol, transport, loop):
     msg.write(b'Before closing')
     transport.is_closing.return_value = True
 
-    with pytest.raises(asyncio.CancelledError):
+    with pytest.raises(ConnectionError):
         msg.write(b'After closing')
 
 

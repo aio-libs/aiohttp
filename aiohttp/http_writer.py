@@ -1,6 +1,5 @@
 """Http related parsers and protocol."""
 
-import asyncio
 import collections
 import zlib
 
@@ -53,7 +52,7 @@ class StreamWriter(AbstractStreamWriter):
         self.output_size += size
 
         if self._transport.is_closing():
-            raise asyncio.CancelledError('Cannot write to closing transport')
+            raise ConnectionError('Cannot write to closing transport')
         self._transport.write(chunk)
 
     def write(self, chunk, *, drain=True, LIMIT=64*1024):
