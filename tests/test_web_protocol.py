@@ -204,7 +204,7 @@ def test_connection_made(make_srv):
     assert not srv._force_close
 
 
-def test_connection_made_with_keepaplive(make_srv, transport):
+def test_connection_made_with_tcp_keepaplive(make_srv, transport):
     srv = make_srv()
 
     sock = mock.Mock()
@@ -214,7 +214,7 @@ def test_connection_made_with_keepaplive(make_srv, transport):
                                        socket.SO_KEEPALIVE, 1)
 
 
-def test_connection_made_without_keepaplive(make_srv):
+def test_connection_made_without_tcp_keepaplive(make_srv):
     srv = make_srv(tcp_keepalive=False)
 
     sock = mock.Mock()
@@ -583,6 +583,7 @@ def test_handle_500(srv, loop, buf, transport, request_handler):
 @asyncio.coroutine
 def test_keep_alive(make_srv, loop, transport, ceil):
     srv = make_srv(keepalive_timeout=0.05)
+    srv.KEEPALIVE_RESCHEDULE_DELAY = 0.1
     srv.connection_made(transport)
 
     srv.keep_alive(True)
@@ -600,7 +601,7 @@ def test_keep_alive(make_srv, loop, transport, ceil):
     assert srv._keepalive_handle is not None
     assert not transport.close.called
 
-    yield from asyncio.sleep(0.1, loop=loop)
+    yield from asyncio.sleep(0.2, loop=loop)
     assert transport.close.called
     assert srv._waiters[0].cancelled
 

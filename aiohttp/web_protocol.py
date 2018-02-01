@@ -80,6 +80,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """
     _request_count = 0
     _keepalive = False  # keep transport open
+    KEEPALIVE_RESCHEDULE_DELAY = 1
 
     def __init__(self, manager, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
@@ -363,8 +364,10 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 self.force_close(send_last_heartbeat=True)
                 return
 
-        self._keepalive_handle = self._loop.call_at(
-            next, self._process_keepalive)
+        # not all request handlers are done,
+        # reschedule itself to next second
+        self._keepalive_handle = self._loop.call_later(
+            self.KEEPALIVE_RESCHEDULE_DELAY, self._process_keepalive)
 
     def pause_reading(self):
         if not self._reading_paused:
