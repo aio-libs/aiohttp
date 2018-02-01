@@ -322,6 +322,9 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         :param bool val: new state.
         """
         self._keepalive = val
+        if self._keepalive_handle:
+            self._keepalive_handle.cancel()
+            self._keepalive_handle = None
 
     def close(self):
         """Stop accepting new pipelinig messages and close
@@ -353,7 +356,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self.logger.exception(*args, **kw)
 
     def _process_keepalive(self):
-        if self._force_close:
+        if self._force_close or not self._keepalive:
             return
 
         next = self._keepalive_time + self._keepalive_timeout

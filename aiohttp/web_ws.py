@@ -133,6 +133,8 @@ class WebSocketResponse(StreamResponse):
             request._protocol, limit=2 ** 16, loop=self._loop)
         request.protocol.set_parser(WebSocketReader(
             self._reader, compress=self._compress))
+        # disable HTTP keepalive for WebSocket
+        request.protocol.keep_alive(False)
 
     def can_prepare(self, request):
         if self._writer is not None:

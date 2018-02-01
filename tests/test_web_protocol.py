@@ -260,6 +260,15 @@ def test_srv_keep_alive(srv):
     assert not srv._keepalive
 
 
+def test_srv_keep_alive_disable(srv):
+    handle = srv._keepalive_handle = mock.Mock()
+
+    srv.keep_alive(False)
+    assert not srv._keepalive
+    assert srv._keepalive_handle is None
+    handle.cancel.assert_called_with()
+
+
 def test_slow_request(make_srv):
     with pytest.warns(DeprecationWarning):
         make_srv(slow_request_timeout=0.01)
