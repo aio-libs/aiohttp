@@ -1,8 +1,6 @@
 import http.server
 import sys
 
-from yarl import URL  # noqa
-
 from . import __version__
 from .http_exceptions import HttpProcessingError
 from .http_parser import (HttpParser, HttpRequestParser, HttpResponseParser,

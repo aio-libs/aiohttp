@@ -668,7 +668,6 @@ class ClientResponse(HeadersMixin):
         connection.protocol.set_response_params(
             timer=self._timer,
             skip_payload=self.method.lower() == 'head',
-            skip_status_codes=(204, 304),
             read_until_eof=read_until_eof,
             auto_decompress=self._auto_decompress)
 
