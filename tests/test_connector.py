@@ -666,14 +666,17 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
         on_dns_resolvehost_start.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsResolveHostStartParams('localhost')
         )
-        on_dns_resolvehost_start.assert_called_once_with(
+        on_dns_resolvehost_end.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsResolveHostEndParams('localhost')
         )
         on_dns_cache_miss.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsCacheMissParams('localhost')
         )
         assert not on_dns_cache_hit.called
 
@@ -685,6 +688,7 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
         on_dns_cache_hit.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsCacheHitParams('localhost')
         )
 
 
@@ -738,21 +742,25 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
         on_dns_resolvehost_start.assert_has_calls([
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostStartParams('localhost')
             ),
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostStartParams('localhost')
             )
         ])
         on_dns_resolvehost_end.assert_has_calls([
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostEndParams('localhost')
             ),
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostEndParams('localhost')
             )
         ])
 
@@ -793,11 +801,13 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
         await asyncio.sleep(0, loop=loop)
         on_dns_cache_hit.assert_called_once_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceDnsCacheHitParams('localhost')
         )
         on_dns_cache_miss.assert_called_once_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceDnsCacheMissParams('localhost')
         )
 
 
@@ -933,11 +943,13 @@ async def test_connect_tracing(loop):
     await conn.connect(req, traces=traces)
     on_connection_create_start.assert_called_with(
         session,
-        trace_config_ctx
+        trace_config_ctx,
+        aiohttp.TraceConnectionCreateStartParams()
     )
     on_connection_create_end.assert_called_with(
         session,
-        trace_config_ctx
+        trace_config_ctx,
+        aiohttp.TraceConnectionCreateEndParams()
     )
 
 
@@ -1333,11 +1345,13 @@ async def test_connect_queued_operation_tracing(loop, key):
         )
         on_connection_queued_start.assert_called_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceConnectionQueuedStartParams()
         )
         on_connection_queued_end.assert_called_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceConnectionQueuedEndParams()
         )
         connection2.release()
 
@@ -1381,7 +1395,8 @@ async def test_connect_reuseconn_tracing(loop, key):
 
     on_connection_reuseconn.assert_called_with(
         session,
-        trace_config_ctx
+        trace_config_ctx,
+        aiohttp.TraceConnectionReuseconnParams()
     )
     conn.close()
 

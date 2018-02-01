@@ -660,14 +660,14 @@ class TCPConnector(BaseConnector):
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_resolvehost_start()
+                    await trace.send_dns_resolvehost_start(host)
 
             res = (await self._resolver.resolve(
                 host, port, family=self._family))
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_resolvehost_end()
+                    await trace.send_dns_resolvehost_end(host)
 
             return res
 
@@ -678,26 +678,26 @@ class TCPConnector(BaseConnector):
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_hit()
+                    await trace.send_dns_cache_hit(host)
 
             return self._cached_hosts.next_addrs(key)
 
         if key in self._throttle_dns_events:
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_hit()
+                    await trace.send_dns_cache_hit(host)
             await self._throttle_dns_events[key].wait()
         else:
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_miss()
+                    await trace.send_dns_cache_miss(host)
             self._throttle_dns_events[key] = \
                 EventResultOrError(self._loop)
             try:
 
                 if traces:
                     for trace in traces:
-                        await trace.send_dns_resolvehost_start()
+                        await trace.send_dns_resolvehost_start(host)
 
                 addrs = await \
                     asyncio.shield(self._resolver.resolve(host,
@@ -706,7 +706,7 @@ class TCPConnector(BaseConnector):
                                    loop=self._loop)
                 if traces:
                     for trace in traces:
-                        await trace.send_dns_resolvehost_end()
+                        await trace.send_dns_resolvehost_end(host)
 
                 self._cached_hosts.add(key, addrs)
                 self._throttle_dns_events[key].set()
