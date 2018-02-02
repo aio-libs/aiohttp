@@ -45,6 +45,11 @@ else:
 __all__ = ('BasicAuth', 'Timeout')
 
 
+if sys.version_info < (3, 7):
+    import idna_ssl
+    idna_ssl.patch_match_hostname()
+
+
 sentinel = object()
 Timeout = timeout
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
