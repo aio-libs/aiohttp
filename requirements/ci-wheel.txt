@@ -5,6 +5,7 @@ coverage==4.4.1
 cchardet==2.1.1
 cython==0.27.1
 chardet==3.0.4
+idna-ssl==1.0.0
 isort==4.2.15
 tox==2.9.1
 multidict==4.0.0
