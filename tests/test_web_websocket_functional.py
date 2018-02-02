@@ -758,3 +758,32 @@ def test_heartbeat_no_pong(loop, test_client, ceil):
     yield from ws.receive()
 
     assert cancelled
+
+
+@asyncio.coroutine
+def test_websocket_disable_keepalive(loop, test_client):
+    @asyncio.coroutine
+    def handler(request):
+        ws = web.WebSocketResponse()
+        if not ws.can_prepare(request):
+            return web.Response(text='OK')
+        assert request.protocol._keepalive
+        yield from ws.prepare(request)
+        assert not request.protocol._keepalive
+        assert not request.protocol._keepalive_handle
+
+        yield from ws.send_str('OK')
+        yield from ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = yield from test_client(app)
+
+    resp = yield from client.get('/')
+    txt = yield from resp.text()
+    assert txt == 'OK'
+
+    ws = yield from client.ws_connect('/')
+    data = yield from ws.receive_str()
+    assert data == 'OK'
