@@ -5,7 +5,6 @@ coverage==4.4.1
 cchardet==2.1.1
 cython==0.27.1
 chardet==3.0.4
-idna-ssl==1.0.0
 isort==4.2.15
 tox==2.9.1
 multidict==4.0.0
@@ -22,3 +21,4 @@ brotlipy==0.7.0
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
 codecov==2.0.9; platform_system!="Windows"  # We only use it in Travis CI
 uvloop==0.8.1; python_version>="3.5" and platform_system!="Windows"  # MagicStack/uvloop#14
+idna-ssl==1.0.0; python_version<"3.7"
