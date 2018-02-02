@@ -15,10 +15,12 @@ Changelog
 .. towncrier release notes start
 
 
-2.3.10 (XXXX-XX-XX)
+2.3.10 (2018-02-02)
 ===================
 
 - Fix 100% CPU usage on HTTP GET and websocket connection just after it (#1955)
+
+- Patch broken `ssl.match_hostname()` on Python<3.7 (#2674)
 
 2.3.9 (2018-01-16)
 ==================
