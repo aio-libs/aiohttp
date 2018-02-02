@@ -25,7 +25,7 @@ class Application(MutableMapping):
         '_middlewares', '_middlewares_handlers', '_run_middlewares',
         '_state', '_frozen', '_subapps',
         '_on_response_prepare', '_on_startup', '_on_shutdown',
-        '_on_cleanup', '_client_max_size'])
+        '_on_cleanup', '_client_max_size', '_cleanup_ctx'])
 
     def __init__(self, *,
                  logger=web_logger,
@@ -60,6 +60,9 @@ class Application(MutableMapping):
         self._on_startup = Signal(self)
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
+        self._cleanup_ctx = CleanupContext()
+        self._on_startup.append(self._cleanup_ctx.on_startup)
+        self._on_cleanup.append(self._cleanup_ctx.on_cleanup)
         self._client_max_size = client_max_size
 
     def __init_subclass__(cls):
@@ -139,6 +142,7 @@ class Application(MutableMapping):
         self._middlewares.freeze()
         self._router.freeze()
         self._on_response_prepare.freeze()
+        self._on_cleanup_ctx.freeze()
         self._on_startup.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
@@ -324,3 +328,43 @@ class Application(MutableMapping):
 
     def __repr__(self):
         return "<Application 0x{:x}>".format(id(self))
+
+
+
+class CleanupError(RuntimeError):
+    @property
+    def exceptions(self):
+        return self.args[1]
+
+
+class CleanupContext(FrozenList):
+
+    def __init__(self):
+        super().__init__()
+        self._exits = []
+
+    async def on_startup(self, app):
+        assert self.frozen
+        for cb in self:
+            it = cb(app).__aiter__()
+            await it.__anext__()
+            self._exits.append(it)
+
+    async def on_cleanup(self, app):
+        assert self.frozen
+        errors = []
+        for it in reversed(self._exits):
+            try:
+                await it.__anext__()
+            except AsyncStopIteration:
+                pass
+            except Exception as exc:
+                errors.append(exc)
+            else:
+                errors.append(RuntimeError("{!r} has more than one 'yield'"
+                                           .format(it)))
+        if errors:
+            if len(errors) == 1:
+                raise errors[0]
+            else:
+                raise CleanupError("Multiple errors on cleanup stage", errors)
