@@ -11,7 +11,7 @@ import pytest
 from aiohttp import helpers, http, streams, web
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def make_srv(loop, manager):
     srv = None
 
@@ -72,12 +72,12 @@ def handle_with_error():
     return wrapper
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def writer(srv):
     return http.StreamWriter(srv, srv.transport, srv._loop)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def transport(buf):
     transport = mock.Mock()
 
@@ -165,7 +165,7 @@ def test_connection_made(make_srv):
     assert not srv._force_close
 
 
-def test_connection_made_with_keepaplive(make_srv, transport):
+def test_connection_made_with_tcp_keepaplive(make_srv, transport):
     srv = make_srv()
 
     sock = mock.Mock()
@@ -175,7 +175,7 @@ def test_connection_made_with_keepaplive(make_srv, transport):
                                        socket.SO_KEEPALIVE, 1)
 
 
-def test_connection_made_without_keepaplive(make_srv):
+def test_connection_made_without_tcp_keepaplive(make_srv):
     srv = make_srv(tcp_keepalive=False)
 
     sock = mock.Mock()
@@ -218,6 +218,15 @@ def test_srv_keep_alive(srv):
 
     srv.keep_alive(False)
     assert not srv._keepalive
+
+
+def test_srv_keep_alive_disable(srv):
+    handle = srv._keepalive_handle = mock.Mock()
+
+    srv.keep_alive(False)
+    assert not srv._keepalive
+    assert srv._keepalive_handle is None
+    handle.cancel.assert_called_with()
 
 
 async def test_simple(srv, loop, buf):
@@ -527,6 +536,7 @@ def test_handle_500(srv, loop, buf, transport, request_handler):
 
 async def test_keep_alive(make_srv, loop, transport, ceil):
     srv = make_srv(keepalive_timeout=0.05)
+    srv.KEEPALIVE_RESCHEDULE_DELAY = 0.1
     srv.connection_made(transport)
 
     srv.keep_alive(True)
@@ -545,7 +555,7 @@ async def test_keep_alive(make_srv, loop, transport, ceil):
     assert srv._keepalive_handle is not None
     assert not transport.close.called
 
-    await asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.2, loop=loop)
     assert transport.close.called
     assert waiter.cancelled
 
@@ -754,7 +764,10 @@ async def test__process_keepalive(loop, srv):
     # wait till the waiter is waiting
     await asyncio.sleep(0)
 
+    assert srv._waiter is not None
+
     srv._keepalive_time = 1
+    srv._keepalive = True
     srv._keepalive_timeout = 1
     expired_time = srv._keepalive_time + srv._keepalive_timeout + 1
     with mock.patch.object(loop, "time", return_value=expired_time):
@@ -766,14 +779,15 @@ async def test__process_keepalive_schedule_next(loop, srv):
     # wait till the waiter is waiting
     await asyncio.sleep(0)
 
+    srv._keepalive = True
     srv._keepalive_time = 1
     srv._keepalive_timeout = 1
     expire_time = srv._keepalive_time + srv._keepalive_timeout
     with mock.patch.object(loop, "time", return_value=expire_time):
-        with mock.patch.object(loop, "call_at") as call_at_patched:
+        with mock.patch.object(loop, "call_later") as call_later_patched:
             srv._process_keepalive()
-            call_at_patched.assert_called_with(
-                expire_time,
+            call_later_patched.assert_called_with(
+                1,
                 srv._process_keepalive
             )
 

@@ -64,7 +64,8 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 
 install_requires = ['attrs>=17.4.0', 'chardet', 'multidict>=4.0.0',
-                    'async_timeout>=1.2.0', 'yarl>=1.0.0']
+                    'async_timeout>=1.2.0', 'yarl>=1.0.0',
+                    'idna-ssl>=1.0.0']
 
 
 def read(f):

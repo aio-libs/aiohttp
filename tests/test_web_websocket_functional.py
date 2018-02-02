@@ -758,3 +758,30 @@ async def test_closed_async_for(loop, test_client):
 
     await ws.close()
     await closed
+
+
+async def test_websocket_disable_keepalive(loop, test_client):
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        if not ws.can_prepare(request):
+            return web.Response(text='OK')
+        assert request.protocol._keepalive
+        await ws.prepare(request)
+        assert not request.protocol._keepalive
+        assert not request.protocol._keepalive_handle
+
+        await ws.send_str('OK')
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/')
+    txt = await resp.text()
+    assert txt == 'OK'
+
+    ws = await client.ws_connect('/')
+    data = await ws.receive_str()
+    assert data == 'OK'
