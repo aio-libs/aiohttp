@@ -7,7 +7,6 @@ coverage==4.4.2
 cython==0.27.3
 flake8==3.5.0
 gunicorn==19.7.1
-idna-ssl==1.0.0
 isort==4.2.15
 pip==9.0.1
 pyflakes==1.6.0
@@ -24,3 +23,4 @@ yarl==1.1.0
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
 codecov==2.0.14; platform_system!="Windows"  # We only use it in Travis CI
 uvloop==0.9.1; python_version>="3.5" and platform_system!="Windows"  # MagicStack/uvloop#14
+idna-ssl==1.0.0; python_version<"3.7"
