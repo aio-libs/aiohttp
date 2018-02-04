@@ -61,8 +61,8 @@ class Application(MutableMapping):
         self._on_shutdown = Signal(self)
         self._on_cleanup = Signal(self)
         self._cleanup_ctx = CleanupContext()
-        self._on_startup.append(self._cleanup_ctx.on_startup)
-        self._on_cleanup.append(self._cleanup_ctx.on_cleanup)
+        self._on_startup.append(self._cleanup_ctx._on_startup)
+        self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
     def __init_subclass__(cls):
@@ -142,7 +142,7 @@ class Application(MutableMapping):
         self._middlewares.freeze()
         self._router.freeze()
         self._on_response_prepare.freeze()
-        self._on_cleanup_ctx.freeze()
+        self._cleanup_ctx.freeze()
         self._on_startup.freeze()
         self._on_shutdown.freeze()
         self._on_cleanup.freeze()
@@ -213,6 +213,10 @@ class Application(MutableMapping):
     @property
     def on_cleanup(self):
         return self._on_cleanup
+
+    @property
+    def cleanup_ctx(self):
+        return self._cleanup_ctx
 
     @property
     def router(self):
@@ -343,20 +347,20 @@ class CleanupContext(FrozenList):
         super().__init__()
         self._exits = []
 
-    async def on_startup(self, app):
+    async def _on_startup(self, app):
         assert self.frozen
         for cb in self:
             it = cb(app).__aiter__()
             await it.__anext__()
             self._exits.append(it)
 
-    async def on_cleanup(self, app):
+    async def _on_cleanup(self, app):
         assert self.frozen
         errors = []
         for it in reversed(self._exits):
             try:
                 await it.__anext__()
-            except AsyncStopIteration:
+            except StopAsyncIteration:
                 pass
             except Exception as exc:
                 errors.append(exc)

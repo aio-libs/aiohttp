@@ -2,6 +2,7 @@ import asyncio
 from unittest import mock
 
 import pytest
+from async_generator import async_generator, yield_
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
@@ -259,3 +260,21 @@ def test_app_custom_attr():
     app = web.Application()
     with pytest.warns(DeprecationWarning):
         app.custom = None
+
+
+async def test_cleanup_ctx():
+    app = web.Application()
+    out = []
+
+    @async_generator
+    async def f(app):
+        out.append('1')
+        await yield_(None)
+        out.append('2')
+
+    app.cleanup_ctx.append(f)
+    app.freeze()
+    await app.startup()
+    assert out == ['1']
+    await app.cleanup()
+    assert out == ['1', '2']
