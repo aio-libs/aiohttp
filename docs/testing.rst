@@ -8,7 +8,7 @@ Testing
 Testing aiohttp web servers
 ---------------------------
 
-aiohttp provides plugin for :mod:`pytest` making writing web server tests
+aiohttp provides plugin for *pytest* making writing web server tests
 extremely easy, it also provides :ref:`test framework agnostic
 utilities <aiohttp-testing-framework-agnostic-utilities>` for testing
 with other frameworks such as :ref:`unittest
@@ -128,7 +128,7 @@ app test client::
 
 Pytest tooling has the following fixtures:
 
-.. data:: test_server(app, **kwargs)
+.. data:: test_server(app, *, port=None, **kwargs)
 
    A fixture factory that creates
    :class:`~aiohttp.test_utils.TestServer`::
@@ -144,11 +144,16 @@ Pytest tooling has the following fixtures:
    *app* is the :class:`aiohttp.web.Application` used
                            to start server.
 
+   *port* optional, port the server is run at, if
+   not provided a random unused port is used.
+
+   .. versionadded:: 3.0
+
    *kwargs* are parameters passed to
                   :meth:`aiohttp.web.Application.make_handler`
 
 
-.. data:: test_client(app, **kwargs)
+.. data:: test_client(app, server_kwargs=None, **kwargs)
           test_client(server, **kwargs)
           test_client(raw_server, **kwargs)
 
@@ -168,17 +173,17 @@ Pytest tooling has the following fixtures:
    :class:`aiohttp.test_utils.TestServer` or
    :class:`aiohttp.test_utils.RawTestServer` instance.
 
+   *server_kwargs* are parameters passed to the test server if an app
+   is passed, else ignored.
+
    *kwargs* are parameters passed to
    :class:`aiohttp.test_utils.TestClient` constructor.
 
-.. data:: raw_test_server(handler, **kwargs)
+.. data:: raw_test_server(handler, *, port=None, **kwargs)
 
    A fixture factory that creates
    :class:`~aiohttp.test_utils.RawTestServer` instance from given web
-   handler.
-
-   *handler* should be a coroutine which accepts a request and returns
-   response, e.g.::
+   handler.::
 
       async def test_f(raw_test_server, test_client):
 
@@ -188,6 +193,27 @@ Pytest tooling has the following fixtures:
           raw_server = await raw_test_server(handler)
           client = await test_client(raw_server)
           resp = await client.get('/')
+
+   *handler* should be a coroutine which accepts a request and returns
+   response, e.g.
+
+   *port* optional, port the server is run at, if
+   not provided a random unused port is used.
+
+   .. versionadded:: 3.0
+
+.. data:: unused_port()
+
+   Function to return an unused port number for IPv4 TCP protocol::
+
+      async def test_f(test_client, unused_port):
+          port = unused_port()
+          app = web.Application()
+          # fill route table
+
+          client = await test_client(app, server_kwargs={'port': port})
+          ...
+
 
 .. _aiohttp-testing-unittest-example:
 
@@ -563,7 +589,7 @@ Test server usually works in conjunction with
 :class:`aiohttp.test_utils.TestClient` which provides handy client methods
 for accessing to the server.
 
-.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1')
+.. class:: BaseTestServer(*, scheme='http', host='127.0.0.1', port=None)
 
    Base class for test servers.
 
@@ -572,6 +598,10 @@ for accessing to the server.
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
 
+   :param int port: optional port for TCP socket, if not provided a
+      random unused port is used.
+
+      .. versionadded:: 3.0
 
    .. attribute:: scheme
 
@@ -584,7 +614,7 @@ for accessing to the server.
 
    .. attribute:: port
 
-      A random *port* used to start a server.
+      *port* used to start the test server.
 
    .. attribute:: handler
 
@@ -630,6 +660,11 @@ for accessing to the server.
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
 
+   :param int port: optional port for TCP socket, if not provided a
+      random unused port is used.
+
+      .. versionadded:: 3.0
+
 
 .. class:: TestServer(app, *, scheme="http", host='127.0.0.1')
 
@@ -643,6 +678,10 @@ for accessing to the server.
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.
 
+   :param int port: optional port for TCP socket, if not provided a
+      random unused port is used.
+
+      .. versionadded:: 3.0
 
    .. attribute:: app
 
@@ -688,7 +727,7 @@ Test Client
 
    .. attribute:: port
 
-      A random *port* used to start a server.
+      *port* used to start the server
 
    .. attribute:: server
 

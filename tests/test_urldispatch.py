@@ -102,6 +102,17 @@ async def test_add_with_matchdict(router):
     assert info.route.name is None
 
 
+async def test_add_with_matchdict_with_colon(router):
+    handler = make_handler()
+    router.add_route('GET', '/handler/{to}', handler)
+    req = make_request('GET', '/handler/1:2:3')
+    info = await router.resolve(req)
+    assert info is not None
+    assert {'to': '1:2:3'} == info
+    assert handler is info.handler
+    assert info.route.name is None
+
+
 async def test_add_route_with_add_get_shortcut(router):
     handler = make_handler()
     router.add_get('/handler/to/path', handler)
@@ -593,8 +604,16 @@ def test_route_dynamic_with_regex(router):
     handler = make_handler()
     route = router.add_route('GET', r'/{one}/{two:.+}', handler)
 
-    url = route.url_for(one=1, two=2)
+    url = route.url_for(one='1', two='2')
     assert '/1/2' == str(url)
+
+
+def test_route_dynamic_quoting(router):
+    handler = make_handler()
+    route = router.add_route('GET', r'/{arg}', handler)
+
+    url = route.url_for(arg='1 2/текст')
+    assert '/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82' == str(url)
 
 
 async def test_regular_match_info(router):

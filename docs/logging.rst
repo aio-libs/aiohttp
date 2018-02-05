@@ -85,7 +85,7 @@ request and response:
 
 Default access log format is::
 
-   '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+   '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
 
 .. versionadded:: 2.3.0
 

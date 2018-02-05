@@ -1,0 +1,1 @@
+Added support to Flask-style decorators with class-based Views.

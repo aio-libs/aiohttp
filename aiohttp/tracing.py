@@ -1,16 +1,29 @@
 from types import SimpleNamespace
 
+import attr
+from multidict import CIMultiDict
+from yarl import URL
+
+from .client_reqrep import ClientResponse
 from .signals import Signal
 
 
-__all__ = ('TraceConfig',)
+__all__ = (
+    'TraceConfig', 'TraceRequestStartParams', 'TraceRequestEndParams',
+    'TraceRequestExceptionParams', 'TraceConnectionQueuedStartParams',
+    'TraceConnectionQueuedEndParams', 'TraceConnectionCreateStartParams',
+    'TraceConnectionCreateEndParams', 'TraceConnectionReuseconnParams',
+    'TraceDnsResolveHostStartParams', 'TraceDnsResolveHostEndParams',
+    'TraceDnsCacheHitParams', 'TraceDnsCacheMissParams',
+    'TraceRequestRedirectParams'
+)
 
 
 class TraceConfig:
     """First-class used to trace requests launched via ClientSession
     objects."""
 
-    def __init__(self, trace_config_ctx_class=SimpleNamespace):
+    def __init__(self, trace_config_ctx_factory=SimpleNamespace):
         self._on_request_start = Signal(self)
         self._on_request_end = Signal(self)
         self._on_request_exception = Signal(self)
@@ -25,11 +38,12 @@ class TraceConfig:
         self._on_dns_cache_hit = Signal(self)
         self._on_dns_cache_miss = Signal(self)
 
-        self._trace_config_ctx_class = trace_config_ctx_class
+        self._trace_config_ctx_factory = trace_config_ctx_factory
 
-    def trace_config_ctx(self):
+    def trace_config_ctx(self, trace_request_ctx=None):
         """ Return a new trace_config_ctx instance """
-        return self._trace_config_ctx_class()
+        return self._trace_config_ctx_factory(
+            trace_request_ctx=trace_request_ctx)
 
     def freeze(self):
         self._on_request_start.freeze()
@@ -99,129 +113,186 @@ class TraceConfig:
         return self._on_dns_cache_miss
 
 
+@attr.s(frozen=True, slots=True)
+class TraceRequestStartParams:
+    """ Parameters sent by the `on_request_start` signal"""
+    method = attr.ib(type=str)
+    url = attr.ib(type=URL)
+    headers = attr.ib(type=CIMultiDict)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceRequestEndParams:
+    """ Parameters sent by the `on_request_end` signal"""
+    method = attr.ib(type=str)
+    url = attr.ib(type=URL)
+    headers = attr.ib(type=CIMultiDict)
+    resp = attr.ib(type=ClientResponse)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceRequestExceptionParams:
+    """ Parameters sent by the `on_request_exception` signal"""
+    method = attr.ib(type=str)
+    url = attr.ib(type=URL)
+    headers = attr.ib(type=CIMultiDict)
+    exception = attr.ib(type=Exception)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceRequestRedirectParams:
+    """ Parameters sent by the `on_request_redirect` signal"""
+    method = attr.ib(type=str)
+    url = attr.ib(type=URL)
+    headers = attr.ib(type=CIMultiDict)
+    resp = attr.ib(type=ClientResponse)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceConnectionQueuedStartParams:
+    """ Parameters sent by the `on_connection_queued_start` signal"""
+
+
+@attr.s(frozen=True, slots=True)
+class TraceConnectionQueuedEndParams:
+    """ Parameters sent by the `on_connection_queued_end` signal"""
+
+
+@attr.s(frozen=True, slots=True)
+class TraceConnectionCreateStartParams:
+    """ Parameters sent by the `on_connection_create_start` signal"""
+
+
+@attr.s(frozen=True, slots=True)
+class TraceConnectionCreateEndParams:
+    """ Parameters sent by the `on_connection_create_end` signal"""
+
+
+@attr.s(frozen=True, slots=True)
+class TraceConnectionReuseconnParams:
+    """ Parameters sent by the `on_connection_reuseconn` signal"""
+
+
+@attr.s(frozen=True, slots=True)
+class TraceDnsResolveHostStartParams:
+    """ Parameters sent by the `on_dns_resolvehost_start` signal"""
+    host = attr.ib(type=str)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceDnsResolveHostEndParams:
+    """ Parameters sent by the `on_dns_resolvehost_end` signal"""
+    host = attr.ib(type=str)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceDnsCacheHitParams:
+    """ Parameters sent by the `on_dns_cache_hit` signal"""
+    host = attr.ib(type=str)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceDnsCacheMissParams:
+    """ Parameters sent by the `on_dns_cache_miss` signal"""
+    host = attr.ib(type=str)
+
+
 class Trace:
     """ Internal class used to keep together the main dependencies used
     at the moment of send a signal."""
 
-    def __init__(self, trace_config, session, trace_request_ctx=None):
+    def __init__(self, session, trace_config, trace_config_ctx):
         self._trace_config = trace_config
-        self._trace_config_ctx = self._trace_config.trace_config_ctx()
-        self._trace_request_ctx = trace_request_ctx
+        self._trace_config_ctx = trace_config_ctx
         self._session = session
 
-    async def send_request_start(self, *args, **kwargs):
+    async def send_request_start(self, method, url, headers):
         return await self._trace_config.on_request_start.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceRequestStartParams(method, url, headers)
         )
 
-    async def send_request_end(self, *args, **kwargs):
+    async def send_request_end(self, method, url, headers, response):
         return await self._trace_config.on_request_end.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceRequestEndParams(method, url, headers, response)
         )
 
-    async def send_request_exception(self, *args, **kwargs):
+    async def send_request_exception(self, method, url, headers, exception):
         return await self._trace_config.on_request_exception.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceRequestExceptionParams(method, url, headers, exception)
         )
 
-    async def send_request_redirect(self, *args, **kwargs):
+    async def send_request_redirect(self, method, url, headers, response):
         return await self._trace_config._on_request_redirect.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceRequestRedirectParams(method, url, headers, response)
         )
 
-    async def send_connection_queued_start(self, *args, **kwargs):
+    async def send_connection_queued_start(self):
         return await self._trace_config.on_connection_queued_start.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceConnectionQueuedStartParams()
         )
 
-    async def send_connection_queued_end(self, *args, **kwargs):
+    async def send_connection_queued_end(self):
         return await self._trace_config.on_connection_queued_end.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceConnectionQueuedEndParams()
         )
 
-    async def send_connection_create_start(self, *args, **kwargs):
+    async def send_connection_create_start(self):
         return await self._trace_config.on_connection_create_start.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceConnectionCreateStartParams()
         )
 
-    async def send_connection_create_end(self, *args, **kwargs):
+    async def send_connection_create_end(self):
         return await self._trace_config.on_connection_create_end.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceConnectionCreateEndParams()
         )
 
-    async def send_connection_reuseconn(self, *args, **kwargs):
+    async def send_connection_reuseconn(self):
         return await self._trace_config.on_connection_reuseconn.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceConnectionReuseconnParams()
         )
 
-    async def send_dns_resolvehost_start(self, *args, **kwargs):
+    async def send_dns_resolvehost_start(self, host):
         return await self._trace_config.on_dns_resolvehost_start.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceDnsResolveHostStartParams(host)
         )
 
-    async def send_dns_resolvehost_end(self, *args, **kwargs):
+    async def send_dns_resolvehost_end(self, host):
         return await self._trace_config.on_dns_resolvehost_end.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceDnsResolveHostEndParams(host)
         )
 
-    async def send_dns_cache_hit(self, *args, **kwargs):
+    async def send_dns_cache_hit(self, host):
         return await self._trace_config.on_dns_cache_hit.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceDnsCacheHitParams(host)
         )
 
-    async def send_dns_cache_miss(self, *args, **kwargs):
+    async def send_dns_cache_miss(self, host):
         return await self._trace_config.on_dns_cache_miss.send(
             self._session,
             self._trace_config_ctx,
-            *args,
-            trace_request_ctx=self._trace_request_ctx,
-            **kwargs
+            TraceDnsCacheMissParams(host)
         )

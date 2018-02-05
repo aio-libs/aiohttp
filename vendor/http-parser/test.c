@@ -78,6 +78,7 @@ struct message {
   int message_begin_cb_called;
   int headers_complete_cb_called;
   int message_complete_cb_called;
+  int status_cb_called;
   int message_complete_on_eof;
   int body_is_final;
 };
@@ -1131,7 +1132,7 @@ const struct message requests[] =
   }
 
 #define UNLINK_REQUEST 41
-, {.name = "link request"
+, {.name = "unlink request"
   ,.type= HTTP_REQUEST
   ,.raw= "UNLINK /images/my_dog.jpg HTTP/1.1\r\n"
          "Host: example.com\r\n"
@@ -1771,6 +1772,167 @@ const struct message responses[] =
   ,.chunk_lengths= { 2 }
   }
 
+#define HTTP_101_RESPONSE_WITH_UPGRADE_HEADER 22
+, {.name= "HTTP 101 response with Upgrade header"
+  ,.type= HTTP_RESPONSE
+  ,.raw= "HTTP/1.1 101 Switching Protocols\r\n"
+         "Connection: upgrade\r\n"
+         "Upgrade: h2c\r\n"
+         "\r\n"
+         "proto"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.status_code= 101
+  ,.response_status= "Switching Protocols"
+  ,.upgrade= "proto"
+  ,.num_headers= 2
+  ,.headers=
+    { { "Connection", "upgrade" }
+    , { "Upgrade", "h2c" }
+    }
+  }
+
+#define HTTP_101_RESPONSE_WITH_UPGRADE_HEADER_AND_CONTENT_LENGTH 23
+, {.name= "HTTP 101 response with Upgrade and Content-Length header"
+  ,.type= HTTP_RESPONSE
+  ,.raw= "HTTP/1.1 101 Switching Protocols\r\n"
+         "Connection: upgrade\r\n"
+         "Upgrade: h2c\r\n"
+         "Content-Length: 4\r\n"
+         "\r\n"
+         "body"
+         "proto"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.status_code= 101
+  ,.response_status= "Switching Protocols"
+  ,.body= "body"
+  ,.upgrade= "proto"
+  ,.num_headers= 3
+  ,.headers=
+    { { "Connection", "upgrade" }
+    , { "Upgrade", "h2c" }
+    , { "Content-Length", "4" }
+    }
+  }
+
+#define HTTP_101_RESPONSE_WITH_UPGRADE_HEADER_AND_TRANSFER_ENCODING 24
+, {.name= "HTTP 101 response with Upgrade and Transfer-Encoding header"
+  ,.type= HTTP_RESPONSE
+  ,.raw= "HTTP/1.1 101 Switching Protocols\r\n"
+         "Connection: upgrade\r\n"
+         "Upgrade: h2c\r\n"
+         "Transfer-Encoding: chunked\r\n"
+         "\r\n"
+         "2\r\n"
+         "bo\r\n"
+         "2\r\n"
+         "dy\r\n"
+         "0\r\n"
+         "\r\n"
+         "proto"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.status_code= 101
+  ,.response_status= "Switching Protocols"
+  ,.body= "body"
+  ,.upgrade= "proto"
+  ,.num_headers= 3
+  ,.headers=
+    { { "Connection", "upgrade" }
+    , { "Upgrade", "h2c" }
+    , { "Transfer-Encoding", "chunked" }
+    }
+  ,.num_chunks_complete= 3
+  ,.chunk_lengths= { 2, 2 }
+  }
+
+#define HTTP_200_RESPONSE_WITH_UPGRADE_HEADER 25
+, {.name= "HTTP 200 response with Upgrade header"
+  ,.type= HTTP_RESPONSE
+  ,.raw= "HTTP/1.1 200 OK\r\n"
+         "Connection: upgrade\r\n"
+         "Upgrade: h2c\r\n"
+         "\r\n"
+         "body"
+  ,.should_keep_alive= FALSE
+  ,.message_complete_on_eof= TRUE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.status_code= 200
+  ,.response_status= "OK"
+  ,.body= "body"
+  ,.upgrade= NULL
+  ,.num_headers= 2
+  ,.headers=
+    { { "Connection", "upgrade" }
+    , { "Upgrade", "h2c" }
+    }
+  }
+
+#define HTTP_200_RESPONSE_WITH_UPGRADE_HEADER_AND_CONTENT_LENGTH 26
+, {.name= "HTTP 200 response with Upgrade and Content-Length header"
+  ,.type= HTTP_RESPONSE
+  ,.raw= "HTTP/1.1 200 OK\r\n"
+         "Connection: upgrade\r\n"
+         "Upgrade: h2c\r\n"
+         "Content-Length: 4\r\n"
+         "\r\n"
+         "body"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.status_code= 200
+  ,.response_status= "OK"
+  ,.num_headers= 3
+  ,.body= "body"
+  ,.upgrade= NULL
+  ,.headers=
+    { { "Connection", "upgrade" }
+    , { "Upgrade", "h2c" }
+    , { "Content-Length", "4" }
+    }
+  }
+
+#define HTTP_200_RESPONSE_WITH_UPGRADE_HEADER_AND_TRANSFER_ENCODING 27
+, {.name= "HTTP 200 response with Upgrade and Transfer-Encoding header"
+  ,.type= HTTP_RESPONSE
+  ,.raw= "HTTP/1.1 200 OK\r\n"
+         "Connection: upgrade\r\n"
+         "Upgrade: h2c\r\n"
+         "Transfer-Encoding: chunked\r\n"
+         "\r\n"
+         "2\r\n"
+         "bo\r\n"
+         "2\r\n"
+         "dy\r\n"
+         "0\r\n"
+         "\r\n"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.status_code= 200
+  ,.response_status= "OK"
+  ,.num_headers= 3
+  ,.body= "body"
+  ,.upgrade= NULL
+  ,.headers=
+    { { "Connection", "upgrade" }
+    , { "Upgrade", "h2c" }
+    , { "Transfer-Encoding", "chunked" }
+    }
+  ,.num_chunks_complete= 3
+  ,.chunk_lengths= { 2, 2 }
+  }
+
 , {.name= NULL } /* sentinel */
 };
 
@@ -1981,6 +2143,9 @@ int
 response_status_cb (http_parser *p, const char *buf, size_t len)
 {
   assert(p == parser);
+
+  messages[num_messages].status_cb_called = TRUE;
+
   strlncat(messages[num_messages].response_status,
            sizeof(messages[num_messages].response_status),
            buf,
@@ -2405,6 +2570,7 @@ message_eq (int index, int connect, const struct message *expected)
   } else {
     MESSAGE_CHECK_NUM_EQ(expected, m, status_code);
     MESSAGE_CHECK_STR_EQ(expected, m, response_status);
+    assert(m->status_cb_called);
   }
 
   if (!connect) {
@@ -2476,7 +2642,9 @@ message_eq (int index, int connect, const struct message *expected)
     if (!r) return 0;
   }
 
-  MESSAGE_CHECK_STR_EQ(expected, m, upgrade);
+  if (!connect) {
+    MESSAGE_CHECK_STR_EQ(expected, m, upgrade);
+  }
 
   return 1;
 }
@@ -3313,9 +3481,11 @@ test_message_count_body (const struct message *message)
 }
 
 void
-test_simple (const char *buf, enum http_errno err_expected)
+test_simple_type (const char *buf,
+                  enum http_errno err_expected,
+                  enum http_parser_type type)
 {
-  parser_init(HTTP_REQUEST);
+  parser_init(type);
 
   enum http_errno err;
 
@@ -3337,6 +3507,12 @@ test_simple (const char *buf, enum http_errno err_expected)
         http_errno_name(err_expected), http_errno_name(err), buf);
     abort();
   }
+}
+
+void
+test_simple (const char *buf, enum http_errno err_expected)
+{
+  test_simple_type(buf, err_expected, HTTP_REQUEST);
 }
 
 void
@@ -3949,6 +4125,12 @@ main (void)
 
   //// RESPONSES
 
+  test_simple_type("HTP/1.1 200 OK\r\n\r\n", HPE_INVALID_VERSION, HTTP_RESPONSE);
+  test_simple_type("HTTP/01.1 200 OK\r\n\r\n", HPE_INVALID_VERSION, HTTP_RESPONSE);
+  test_simple_type("HTTP/11.1 200 OK\r\n\r\n", HPE_INVALID_VERSION, HTTP_RESPONSE);
+  test_simple_type("HTTP/1.01 200 OK\r\n\r\n", HPE_INVALID_VERSION, HTTP_RESPONSE);
+  test_simple_type("HTTP/1.1\t200 OK\r\n\r\n", HPE_INVALID_VERSION, HTTP_RESPONSE);
+
   for (i = 0; i < response_count; i++) {
     test_message(&responses[i]);
   }
@@ -4026,6 +4208,9 @@ main (void)
   /// REQUESTS
 
   test_simple("GET / HTP/1.1\r\n\r\n", HPE_INVALID_VERSION);
+  test_simple("GET / HTTP/01.1\r\n\r\n", HPE_INVALID_VERSION);
+  test_simple("GET / HTTP/11.1\r\n\r\n", HPE_INVALID_VERSION);
+  test_simple("GET / HTTP/1.01\r\n\r\n", HPE_INVALID_VERSION);
 
   // Extended characters - see nodejs/test/parallel/test-http-headers-obstext.js
   test_simple("GET / HTTP/1.1\r\n"

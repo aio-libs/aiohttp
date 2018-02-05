@@ -49,6 +49,7 @@ committers
 config
 Config
 configs
+conjunction
 contextmanager
 CookieJar
 coroutine
@@ -73,6 +74,7 @@ django
 Django
 dns
 DNSResolver
+docstring
 Dup
 elasticsearch
 encodings

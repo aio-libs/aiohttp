@@ -19,16 +19,17 @@ from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
-from .client_reqrep import ClientRequest, ClientResponse
+from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
 from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (CeilTimeout, TimeoutHandle, proxies_from_env, sentinel,
-                      strip_auth_from_url)
+from .helpers import (PY_36, CeilTimeout, TimeoutHandle, proxies_from_env,
+                      sentinel, strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
+from .tcp_helpers import tcp_cork, tcp_nodelay
 from .tracing import Trace
 
 
@@ -44,6 +45,16 @@ DEFAULT_TIMEOUT = 5 * 60
 
 class ClientSession:
     """First-class interface for making HTTP requests."""
+
+    ATTRS = frozenset([
+        '_source_traceback', '_connector',
+        'requote_redirect_url', '_loop', '_cookie_jar',
+        '_connector_owner', '_default_auth',
+        '_version', '_json_serialize', '_read_timeout',
+        '_conn_timeout', '_raise_for_status', '_auto_decompress',
+        '_trust_env', '_default_headers', '_skip_auto_headers',
+        '_request_class', '_response_class',
+        '_ws_response_class', '_trace_configs'])
 
     _source_traceback = None
     _connector = None
@@ -83,7 +94,7 @@ class ClientSession:
 
         if implicit_loop and not loop.is_running():
             warnings.warn("Creating a client session outside of coroutine is "
-                          "a very dangerous idea", ResourceWarning,
+                          "a very dangerous idea",
                           stacklevel=2)
             context = {'client_session': self,
                        'message': 'Creating a client session outside '
@@ -131,10 +142,29 @@ class ClientSession:
         for trace_config in self._trace_configs:
             trace_config.freeze()
 
+    def __init_subclass__(cls):
+        warnings.warn("Inheritance class {} from ClientSession "
+                      "is discouraged".format(cls.__name__),
+                      DeprecationWarning,
+                      stacklevel=2)
+
+    def __setattr__(self, name, val):
+        if name not in self.ATTRS:
+            warnings.warn("Setting custom ClientSession.{} attribute "
+                          "is discouraged".format(name),
+                          DeprecationWarning,
+                          stacklevel=2)
+        super().__setattr__(name, val)
+
     def __del__(self, _warnings=warnings):
         if not self.closed:
+            if PY_36:
+                kwargs = {'source': self}
+            else:
+                kwargs = {}
             _warnings.warn("Unclosed client session {!r}".format(self),
-                           ResourceWarning)
+                           ResourceWarning,
+                           **kwargs)
             context = {'client_session': self,
                        'message': 'Unclosed client session'}
             if self._source_traceback is not None:
@@ -154,7 +184,6 @@ class ClientSession:
                        auth=None,
                        allow_redirects=True,
                        max_redirects=10,
-                       encoding=None,
                        compress=None,
                        chunked=None,
                        expect100=False,
@@ -165,6 +194,7 @@ class ClientSession:
                        verify_ssl=None,
                        fingerprint=None,
                        ssl_context=None,
+                       ssl=None,
                        proxy_headers=None,
                        trace_request_ctx=None):
 
@@ -172,14 +202,10 @@ class ClientSession:
         # set the default to None because we need to detect if the user wants
         # to use the existing timeouts by setting timeout to None.
 
-        if encoding is not None:
-            warnings.warn(
-                "encoding parameter is not supported, "
-                "please use FormData(charset='utf-8') instead",
-                DeprecationWarning)
-
         if self.closed:
             raise RuntimeError('Session is closed')
+
+        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         if data is not None and json is not None:
             raise ValueError(
@@ -213,7 +239,7 @@ class ClientSession:
             try:
                 proxy = URL(proxy)
             except ValueError:
-                raise InvalidURL(url)
+                raise InvalidURL(proxy)
 
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
@@ -222,13 +248,13 @@ class ClientSession:
             timeout if timeout is not sentinel else self._read_timeout)
         handle = tm.start()
 
-        url = URL(url)
-
         traces = [
             Trace(
-                trace_config,
                 self,
-                trace_request_ctx=trace_request_ctx)
+                trace_config,
+                trace_config.trace_config_ctx(
+                    trace_request_ctx=trace_request_ctx)
+            )
             for trace_config in self._trace_configs
         ]
 
@@ -269,7 +295,8 @@ class ClientSession:
                     elif self._trust_env:
                         for scheme, proxy_info in proxies_from_env().items():
                             if scheme == url.scheme:
-                                proxy, proxy_auth = proxy_info
+                                proxy = proxy_info.proxy
+                                proxy_auth = proxy_info.proxy_auth
                                 break
 
                     req = self._request_class(
@@ -281,8 +308,7 @@ class ClientSession:
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
-                        verify_ssl=verify_ssl, fingerprint=fingerprint,
-                        ssl_context=ssl_context, proxy_headers=proxy_headers)
+                        ssl=ssl, proxy_headers=proxy_headers)
 
                     # connection timeout
                     try:
@@ -296,7 +322,8 @@ class ClientSession:
                             'Connection timeout '
                             'to host {0}'.format(url)) from exc
 
-                    conn.writer.set_tcp_nodelay(True)
+                    tcp_nodelay(conn.transport, True)
+                    tcp_cork(conn.transport, False)
                     try:
                         resp = req.send(conn)
                         try:
@@ -425,6 +452,7 @@ class ClientSession:
                    headers=None,
                    proxy=None,
                    proxy_auth=None,
+                   ssl=None,
                    verify_ssl=None,
                    fingerprint=None,
                    ssl_context=None,
@@ -444,6 +472,7 @@ class ClientSession:
                              headers=headers,
                              proxy=proxy,
                              proxy_auth=proxy_auth,
+                             ssl=ssl,
                              verify_ssl=verify_ssl,
                              fingerprint=fingerprint,
                              ssl_context=ssl_context,
@@ -462,6 +491,7 @@ class ClientSession:
                           headers=None,
                           proxy=None,
                           proxy_auth=None,
+                          ssl=None,
                           verify_ssl=None,
                           fingerprint=None,
                           ssl_context=None,
@@ -492,15 +522,15 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
+        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
+
         # send request
         resp = await self.get(url, headers=headers,
                               read_until_eof=False,
                               auth=auth,
                               proxy=proxy,
                               proxy_auth=proxy_auth,
-                              verify_ssl=verify_ssl,
-                              fingerprint=fingerprint,
-                              ssl_context=ssl_context,
+                              ssl=ssl,
                               proxy_headers=proxy_headers)
 
         try:
@@ -572,12 +602,13 @@ class ClientSession:
                     notakeover = False
 
             proto = resp.connection.protocol
+            transport = resp.connection.transport
             reader = FlowControlDataQueue(
                 proto, limit=2 ** 16, loop=self._loop)
             proto.set_parser(WebSocketReader(reader), reader)
-            resp.connection.writer.set_tcp_nodelay(True)
+            tcp_nodelay(transport, True)
             writer = WebSocketWriter(
-                resp.connection.writer, use_mask=True,
+                proto, transport, use_mask=True,
                 compress=compress, notakeover=notakeover)
         except Exception:
             resp.close()
@@ -791,7 +822,6 @@ def request(method, url, *,
             auth=None,
             allow_redirects=True,
             max_redirects=10,
-            encoding=None,
             version=http.HttpVersion11,
             compress=None,
             chunked=None,
@@ -852,7 +882,6 @@ def request(method, url, *,
                          auth=auth,
                          allow_redirects=allow_redirects,
                          max_redirects=max_redirects,
-                         encoding=encoding,
                          compress=compress,
                          chunked=chunked,
                          expect100=expect100,

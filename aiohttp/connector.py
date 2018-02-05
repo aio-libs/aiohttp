@@ -5,11 +5,9 @@ import traceback
 import warnings
 from collections import defaultdict
 from contextlib import suppress
-from hashlib import md5, sha1, sha256
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
-from types import MappingProxyType
 
 from . import hdrs, helpers
 from .client_exceptions import (ClientConnectionError,
@@ -20,8 +18,8 @@ from .client_exceptions import (ClientConnectionError,
                                 ServerFingerprintMismatch, certificate_errors,
                                 ssl_errors)
 from .client_proto import ResponseHandler
-from .client_reqrep import ClientRequest
-from .helpers import is_ip_address, noop, sentinel
+from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
+from .helpers import PY_36, is_ip_address, noop, sentinel
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -33,12 +31,6 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
-
-HASHFUNC_BY_DIGESTLEN = {
-    16: md5,
-    20: sha1,
-    32: sha256,
-}
 
 
 class Connection:
@@ -61,8 +53,13 @@ class Connection:
 
     def __del__(self, _warnings=warnings):
         if self._protocol is not None:
+            if PY_36:
+                kwargs = {'source': self}
+            else:
+                kwargs = {}
             _warnings.warn('Unclosed connection {!r}'.format(self),
-                           ResourceWarning)
+                           ResourceWarning,
+                           **kwargs)
             if self._loop.is_closed():
                 return
 
@@ -138,7 +135,7 @@ class _TransportPlaceholder:
         pass
 
 
-class BaseConnector(object):
+class BaseConnector:
     """Base connector class.
 
     keepalive_timeout - (optional) Keep-alive timeout.
@@ -210,8 +207,13 @@ class BaseConnector(object):
 
         self.close()
 
+        if PY_36:
+            kwargs = {'source': self}
+        else:
+            kwargs = {}
         _warnings.warn("Unclosed connector {!r}".format(self),
-                       ResourceWarning)
+                       ResourceWarning,
+                       **kwargs)
         context = {'connector': self,
                    'connections': conns,
                    'message': 'Unclosed connector'}
@@ -536,42 +538,35 @@ class BaseConnector(object):
 class _DNSCacheTable:
 
     def __init__(self, ttl=None):
-        self._addrs = {}
         self._addrs_rr = {}
         self._timestamps = {}
         self._ttl = ttl
 
     def __contains__(self, host):
-        return host in self._addrs
-
-    @property
-    def addrs(self):
-        return self._addrs
+        return host in self._addrs_rr
 
     def add(self, host, addrs):
-        self._addrs[host] = addrs
-        self._addrs_rr[host] = cycle(addrs)
+        self._addrs_rr[host] = (cycle(addrs), len(addrs))
 
         if self._ttl:
             self._timestamps[host] = monotonic()
 
     def remove(self, host):
-        self._addrs.pop(host, None)
         self._addrs_rr.pop(host, None)
 
         if self._ttl:
             self._timestamps.pop(host, None)
 
     def clear(self):
-        self._addrs.clear()
         self._addrs_rr.clear()
         self._timestamps.clear()
 
     def next_addrs(self, host):
-        # Return an iterator that will get at maximum as many addrs
-        # there are for the specific host starting from the last
-        # not itereated addr.
-        return islice(self._addrs_rr[host], len(self._addrs[host]))
+        loop, length = self._addrs_rr[host]
+        addrs = list(islice(loop, length))
+        # Consume one more element to shift internal state of `cycle`
+        next(loop)
+        return addrs
 
     def expired(self, host):
         if self._ttl is None:
@@ -607,7 +602,7 @@ class TCPConnector(BaseConnector):
 
     def __init__(self, *, verify_ssl=True, fingerprint=None,
                  use_dns_cache=True, ttl_dns_cache=10,
-                 family=0, ssl_context=None, local_addr=None,
+                 family=0, ssl_context=None, ssl=None, local_addr=None,
                  resolver=None, keepalive_timeout=sentinel,
                  force_close=False, limit=100, limit_per_host=0,
                  enable_cleanup_closed=False, loop=None):
@@ -617,24 +612,8 @@ class TCPConnector(BaseConnector):
                          enable_cleanup_closed=enable_cleanup_closed,
                          loop=loop)
 
-        if not verify_ssl and ssl_context is not None:
-            raise ValueError(
-                "Either disable ssl certificate validation by "
-                "verify_ssl=False or specify ssl_context, not both.")
-
-        self._verify_ssl = verify_ssl
-
-        if fingerprint:
-            digestlen = len(fingerprint)
-            hashfunc = HASHFUNC_BY_DIGESTLEN.get(digestlen)
-            if not hashfunc:
-                raise ValueError('fingerprint has invalid length')
-            elif hashfunc is md5 or hashfunc is sha1:
-                raise ValueError('md5 and sha1 are insecure and '
-                                 'not supported. Use sha256.')
-            self._hashfunc = hashfunc
-        self._fingerprint = fingerprint
-
+        self._ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context,
+                                      fingerprint)
         if resolver is None:
             resolver = DefaultResolver(loop=self._loop)
         self._resolver = resolver
@@ -642,7 +621,6 @@ class TCPConnector(BaseConnector):
         self._use_dns_cache = use_dns_cache
         self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
         self._throttle_dns_events = {}
-        self._ssl_context = ssl_context
         self._family = family
         self._local_addr = local_addr
 
@@ -654,37 +632,6 @@ class TCPConnector(BaseConnector):
         super().close()
 
     @property
-    def verify_ssl(self):
-        """Do check for ssl certifications?"""
-        return self._verify_ssl
-
-    @property
-    def fingerprint(self):
-        """Expected ssl certificate fingerprint."""
-        return self._fingerprint
-
-    @property
-    def ssl_context(self):
-        """SSLContext instance for https requests.
-
-        Lazy property, creates context on demand.
-        """
-        if ssl is None:  # pragma: no cover
-            raise RuntimeError('SSL is not supported.')
-
-        if self._ssl_context is None:
-            if not self._verify_ssl:
-                sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-                sslcontext.options |= ssl.OP_NO_SSLv2
-                sslcontext.options |= ssl.OP_NO_SSLv3
-                sslcontext.options |= ssl.OP_NO_COMPRESSION
-                sslcontext.set_default_verify_paths()
-            else:
-                sslcontext = ssl.create_default_context()
-            self._ssl_context = sslcontext
-        return self._ssl_context
-
-    @property
     def family(self):
         """Socket family like AF_INET."""
         return self._family
@@ -693,11 +640,6 @@ class TCPConnector(BaseConnector):
     def use_dns_cache(self):
         """True if local DNS caching is enabled."""
         return self._use_dns_cache
-
-    @property
-    def cached_hosts(self):
-        """Read-only dict of cached DNS record."""
-        return MappingProxyType(self._cached_hosts.addrs)
 
     def clear_dns_cache(self, host=None, port=None):
         """Remove specified host/port or clear all dns local cache."""
@@ -718,14 +660,14 @@ class TCPConnector(BaseConnector):
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_resolvehost_start()
+                    await trace.send_dns_resolvehost_start(host)
 
             res = (await self._resolver.resolve(
                 host, port, family=self._family))
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_resolvehost_end()
+                    await trace.send_dns_resolvehost_end(host)
 
             return res
 
@@ -736,26 +678,26 @@ class TCPConnector(BaseConnector):
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_hit()
+                    await trace.send_dns_cache_hit(host)
 
             return self._cached_hosts.next_addrs(key)
 
         if key in self._throttle_dns_events:
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_hit()
+                    await trace.send_dns_cache_hit(host)
             await self._throttle_dns_events[key].wait()
         else:
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_miss()
+                    await trace.send_dns_cache_miss(host)
             self._throttle_dns_events[key] = \
                 EventResultOrError(self._loop)
             try:
 
                 if traces:
                     for trace in traces:
-                        await trace.send_dns_resolvehost_start()
+                        await trace.send_dns_resolvehost_start(host)
 
                 addrs = await \
                     asyncio.shield(self._resolver.resolve(host,
@@ -764,7 +706,7 @@ class TCPConnector(BaseConnector):
                                    loop=self._loop)
                 if traces:
                     for trace in traces:
-                        await trace.send_dns_resolvehost_end()
+                        await trace.send_dns_resolvehost_end(host)
 
                 self._cached_hosts.add(key, addrs)
                 self._throttle_dns_events[key].set()
@@ -796,6 +738,19 @@ class TCPConnector(BaseConnector):
 
         return proto
 
+    @staticmethod
+    @functools.lru_cache(None)
+    def _make_ssl_context(verified):
+        if verified:
+            return ssl.create_default_context()
+        else:
+            sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+            sslcontext.options |= ssl.OP_NO_SSLv2
+            sslcontext.options |= ssl.OP_NO_SSLv3
+            sslcontext.options |= ssl.OP_NO_COMPRESSION
+            sslcontext.set_default_verify_paths()
+            return sslcontext
+
     def _get_ssl_context(self, req):
         """Logic to get the correct SSL context
 
@@ -810,30 +765,33 @@ class TCPConnector(BaseConnector):
             3. if verify_ssl is False in req, generate a SSL context that
                won't verify
         """
-        if req.ssl:
-            sslcontext = req.ssl_context or self._ssl_context
-            if not sslcontext:
-                if req.verify_ssl is None:
-                    sslcontext = self.ssl_context
-                elif req.verify_ssl:
-                    sslcontext = ssl.create_default_context()
-                else:
-                    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-                    sslcontext.options |= ssl.OP_NO_SSLv2
-                    sslcontext.options |= ssl.OP_NO_SSLv3
-                    sslcontext.options |= ssl.OP_NO_COMPRESSION
-                    sslcontext.set_default_verify_paths()
+        if req.is_ssl():
+            if ssl is None:  # pragma: no cover
+                raise RuntimeError('SSL is not supported.')
+            sslcontext = req.ssl
+            if isinstance(sslcontext, ssl.SSLContext):
+                return sslcontext
+            if sslcontext is not None:
+                # not verified or fingerprinted
+                return self._make_ssl_context(False)
+            sslcontext = self._ssl
+            if isinstance(sslcontext, ssl.SSLContext):
+                return sslcontext
+            if sslcontext is not None:
+                # not verified or fingerprinted
+                return self._make_ssl_context(False)
+            return self._make_ssl_context(True)
         else:
-            sslcontext = None
-        return sslcontext
+            return None
 
-    def _get_fingerprint_and_hashfunc(self, req):
-        if req.fingerprint:
-            return (req.fingerprint, req._hashfunc)
-        elif self.fingerprint:
-            return (self.fingerprint, self._hashfunc)
-        else:
-            return (None, None)
+    def _get_fingerprint(self, req):
+        ret = req.ssl
+        if isinstance(ret, Fingerprint):
+            return ret
+        ret = self._ssl
+        if isinstance(ret, Fingerprint):
+            return ret
+        return None
 
     async def _wrap_create_connection(self, *args,
                                       req, client_error=ClientConnectorError,
@@ -852,7 +810,7 @@ class TCPConnector(BaseConnector):
                                         *, client_error=ClientConnectorError,
                                         traces=None):
         sslcontext = self._get_ssl_context(req)
-        fingerprint, hashfunc = self._get_fingerprint_and_hashfunc(req)
+        fingerprint = self._get_fingerprint(req)
 
         try:
             hosts = await self._resolve_host(
@@ -882,20 +840,14 @@ class TCPConnector(BaseConnector):
                 last_exc = exc
                 continue
 
-            has_cert = transp.get_extra_info('sslcontext')
-            if has_cert and fingerprint:
-                sslobj = transp.get_extra_info('ssl_object')
-                # gives DER-encoded cert as a sequence of bytes (or None)
-                cert = sslobj.getpeercert(binary_form=True)
-                assert cert
-                got = hashfunc(cert).digest()
-                expected = fingerprint
-                if got != expected:
+            if req.is_ssl() and fingerprint:
+                try:
+                    fingerprint.check(transp)
+                except ServerFingerprintMismatch as exc:
                     transp.close()
                     if not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transp)
-                    last_exc = ServerFingerprintMismatch(
-                        expected, got, host, port)
+                    last_exc = exc
                     continue
 
             return transp, proto
@@ -913,9 +865,7 @@ class TCPConnector(BaseConnector):
             headers=headers,
             auth=req.proxy_auth,
             loop=self._loop,
-            verify_ssl=req.verify_ssl,
-            fingerprint=req.fingerprint,
-            ssl_context=req.ssl_context)
+            ssl=req.ssl)
 
         # create connection to proxy server
         transport, proto = await self._create_direct_connection(
@@ -923,12 +873,12 @@ class TCPConnector(BaseConnector):
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
-            if not req.ssl:
+            if not req.is_ssl():
                 req.headers[hdrs.PROXY_AUTHORIZATION] = auth
             else:
                 proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
-        if req.ssl:
+        if req.is_ssl():
             sslcontext = self._get_ssl_context(req)
             # For HTTPS requests over HTTP proxy
             # we must notify proxy to tunnel connection

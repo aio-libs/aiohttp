@@ -15,7 +15,8 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
-from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
+                                   _merge_ssl_params)
 
 
 @pytest.yield_fixture
@@ -37,6 +38,14 @@ def buf():
     return bytearray()
 
 
+@pytest.fixture
+def protocol(loop):
+    protocol = mock.Mock()
+    protocol._drain_helper.return_value = loop.create_future()
+    protocol._drain_helper.return_value.set_result(None)
+    return protocol
+
+
 @pytest.yield_fixture
 def transport(buf):
     transport = mock.Mock()
@@ -49,27 +58,17 @@ def transport(buf):
 
     transport.write.side_effect = write
     transport.write_eof.side_effect = write_eof
+    transport.is_closing.return_value = False
 
     return transport
 
 
 @pytest.fixture
-def conn(stream):
-    return mock.Mock(writer=stream)
-
-
-@pytest.fixture
-def stream(buf, transport, loop):
-    stream = mock.Mock()
-    stream.transport = transport
-
-    def acquire(writer):
-        writer.set_transport(transport)
-
-    stream.acquire.side_effect = acquire
-    stream.drain.return_value = loop.create_future()
-    stream.drain.return_value.set_result(None)
-    return stream
+def conn(transport, protocol):
+    return mock.Mock(
+        transport=transport,
+        protocol=protocol
+    )
 
 
 def test_method1(make_request):
@@ -99,7 +98,9 @@ def test_version_default(make_request):
 
 def test_request_info(make_request):
     req = make_request('get', 'http://python.org/')
-    assert req.request_info == (URL('http://python.org/'), 'GET', req.headers)
+    assert req.request_info == aiohttp.RequestInfo(URL('http://python.org/'),
+                                                   'GET',
+                                                   req.headers)
 
 
 def test_version_err(make_request):
@@ -143,49 +144,49 @@ def test_host_port_default_https(make_request):
     req = make_request('get', 'https://python.org/')
     assert req.host == 'python.org'
     assert req.port == 443
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_nondefault_http(make_request):
     req = make_request('get', 'http://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_nondefault_https(make_request):
     req = make_request('get', 'https://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_default_ws(make_request):
     req = make_request('get', 'ws://python.org/')
     assert req.host == 'python.org'
     assert req.port == 80
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_default_wss(make_request):
     req = make_request('get', 'wss://python.org/')
     assert req.host == 'python.org'
     assert req.port == 443
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_nondefault_ws(make_request):
     req = make_request('get', 'ws://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_host_port_nondefault_wss(make_request):
     req = make_request('get', 'wss://python.org:960/')
     assert req.host == 'python.org'
     assert req.port == 960
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_host_port_err(make_request):
@@ -306,21 +307,21 @@ def test_ipv6_default_https_port(make_request):
     req = make_request('get', 'https://[2001:db8::1]/')
     assert req.host == '2001:db8::1'
     assert req.port == 443
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_ipv6_nondefault_http_port(make_request):
     req = make_request('get', 'http://[2001:db8::1]:960/')
     assert req.host == '2001:db8::1'
     assert req.port == 960
-    assert not req.ssl
+    assert not req.is_ssl()
 
 
 def test_ipv6_nondefault_https_port(make_request):
     req = make_request('get', 'https://[2001:db8::1]:960/')
     assert req.host == '2001:db8::1'
     assert req.port == 960
-    assert req.ssl
+    assert req.is_ssl()
 
 
 def test_basic_auth(make_request):
@@ -666,7 +667,7 @@ async def test_bytes_data(loop, conn):
 async def test_content_encoding(loop, conn):
     req = ClientRequest('post', URL('http://python.org/'), data='foo',
                         compress='deflate', loop=loop)
-    with mock.patch('aiohttp.client_reqrep.PayloadWriter') as m_writer:
+    with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
         resp = req.send(conn)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
@@ -691,7 +692,7 @@ async def test_content_encoding_header(loop, conn):
     req = ClientRequest(
         'post', URL('http://python.org/'), data='foo',
         headers={'Content-Encoding': 'deflate'}, loop=loop)
-    with mock.patch('aiohttp.client_reqrep.PayloadWriter') as m_writer:
+    with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
         resp = req.send(conn)
 
     assert not m_writer.return_value.enable_compression.called
@@ -730,7 +731,7 @@ async def test_chunked2(loop, conn):
 async def test_chunked_explicit(loop, conn):
     req = ClientRequest(
         'post', URL('http://python.org/'), chunked=True, loop=loop)
-    with mock.patch('aiohttp.client_reqrep.PayloadWriter') as m_writer:
+    with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
         resp = req.send(conn)
 
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
@@ -843,7 +844,6 @@ async def test_data_stream(loop, buf, conn):
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
-
     assert buf.split(b'\r\n\r\n', 1)[1] == \
         b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
     await req.close()
@@ -1096,26 +1096,22 @@ async def test_custom_req_rep(loop):
 
 
 def test_verify_ssl_false_with_ssl_context(loop):
-    with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'), verify_ssl=False,
-                      ssl_context=mock.Mock(), loop=loop)
+    with pytest.warns(DeprecationWarning):
+        with pytest.raises(ValueError):
+            _merge_ssl_params(None, verify_ssl=False,
+                              ssl_context=mock.Mock(), fingerprint=None)
 
 
 def test_bad_fingerprint(loop):
     with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'),
-                      fingerprint=b'invalid', loop=loop)
+        Fingerprint(b'invalid')
 
 
 def test_insecure_fingerprint_md5(loop):
     with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'),
-                      fingerprint=hashlib.md5(b"foo").digest(),
-                      loop=loop)
+        Fingerprint(hashlib.md5(b"foo").digest())
 
 
 def test_insecure_fingerprint_sha1(loop):
     with pytest.raises(ValueError):
-        ClientRequest('get', URL('http://python.org'),
-                      fingerprint=hashlib.sha1(b"foo").digest(),
-                      loop=loop)
+        Fingerprint(hashlib.sha1(b"foo").digest())

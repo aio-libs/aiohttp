@@ -1,4 +1,4 @@
 -e .
 docker-py==1.10.6
-pytest-aiohttp==0.1.3
+pytest-aiohttp==0.3.0
 trafaret_config==1.0.1

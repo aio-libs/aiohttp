@@ -4,7 +4,19 @@ from unittest.mock import Mock
 
 import pytest
 
-from aiohttp.tracing import Trace, TraceConfig
+from aiohttp.tracing import (Trace, TraceConfig,
+                             TraceConnectionCreateEndParams,
+                             TraceConnectionCreateStartParams,
+                             TraceConnectionQueuedEndParams,
+                             TraceConnectionQueuedStartParams,
+                             TraceConnectionReuseconnParams,
+                             TraceDnsCacheHitParams, TraceDnsCacheMissParams,
+                             TraceDnsResolveHostEndParams,
+                             TraceDnsResolveHostStartParams,
+                             TraceRequestEndParams,
+                             TraceRequestExceptionParams,
+                             TraceRequestRedirectParams,
+                             TraceRequestStartParams)
 
 
 class TestTraceConfig:
@@ -13,9 +25,16 @@ class TestTraceConfig:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
 
-    def test_trace_config_ctx_class(self):
-        trace_config = TraceConfig(trace_config_ctx_class=dict)
+    def test_trace_config_ctx_factory(self):
+        trace_config = TraceConfig(trace_config_ctx_factory=dict)
         assert isinstance(trace_config.trace_config_ctx(), dict)
+
+    def test_trace_config_ctx_request_ctx(self):
+        trace_request_ctx = Mock()
+        trace_config = TraceConfig()
+        trace_config_ctx = trace_config.trace_config_ctx(
+            trace_request_ctx=trace_request_ctx)
+        assert trace_config_ctx.trace_request_ctx is trace_request_ctx
 
     def test_freeze(self):
         trace_config = TraceConfig()
@@ -38,23 +57,74 @@ class TestTraceConfig:
 
 class TestTrace:
 
-    @pytest.mark.parametrize('signal', [
-        'request_start',
-        'request_end',
-        'request_exception',
-        'request_redirect',
-        'connection_queued_start',
-        'connection_queued_end',
-        'connection_create_start',
-        'connection_create_end',
-        'connection_reuseconn',
-        'dns_resolvehost_start',
-        'dns_resolvehost_end',
-        'dns_cache_hit',
-        'dns_cache_miss'
+    @pytest.mark.parametrize('signal,params,param_obj', [
+        (
+            'request_start',
+            (Mock(), Mock(), Mock()),
+            TraceRequestStartParams
+        ),
+        (
+            'request_end',
+            (Mock(), Mock(), Mock(), Mock()),
+            TraceRequestEndParams
+        ),
+        (
+            'request_exception',
+            (Mock(), Mock(), Mock(), Mock()),
+            TraceRequestExceptionParams
+        ),
+        (
+            'request_redirect',
+            (Mock(), Mock(), Mock(), Mock()),
+            TraceRequestRedirectParams
+        ),
+        (
+            'connection_queued_start',
+            (),
+            TraceConnectionQueuedStartParams
+        ),
+        (
+            'connection_queued_end',
+            (),
+            TraceConnectionQueuedEndParams
+        ),
+        (
+            'connection_create_start',
+            (),
+            TraceConnectionCreateStartParams
+        ),
+        (
+            'connection_create_end',
+            (),
+            TraceConnectionCreateEndParams
+        ),
+        (
+            'connection_reuseconn',
+            (),
+            TraceConnectionReuseconnParams
+        ),
+        (
+            'dns_resolvehost_start',
+            (Mock(),),
+            TraceDnsResolveHostStartParams
+        ),
+        (
+            'dns_resolvehost_end',
+            (Mock(),),
+            TraceDnsResolveHostEndParams
+        ),
+        (
+            'dns_cache_hit',
+            (Mock(),),
+            TraceDnsCacheHitParams
+        ),
+        (
+            'dns_cache_miss',
+            (Mock(),),
+            TraceDnsCacheMissParams
+        )
     ])
-    async def test_send(self, loop, signal):
-        param = Mock()
+    async def test_send(self, loop, signal, params, param_obj):
         session = Mock()
         trace_request_ctx = Mock()
         callback = Mock(side_effect=asyncio.coroutine(Mock()))
@@ -63,15 +133,14 @@ class TestTrace:
         getattr(trace_config, "on_%s" % signal).append(callback)
         trace_config.freeze()
         trace = Trace(
-            trace_config,
             session,
-            trace_request_ctx=trace_request_ctx
+            trace_config,
+            trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx)
         )
-        await getattr(trace, "send_%s" % signal)(param)
+        await getattr(trace, "send_%s" % signal)(*params)
 
         callback.assert_called_once_with(
             session,
-            SimpleNamespace(),
-            param,
-            trace_request_ctx=trace_request_ctx
+            SimpleNamespace(trace_request_ctx=trace_request_ctx),
+            param_obj(*params)
         )

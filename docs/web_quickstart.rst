@@ -40,6 +40,9 @@ That's it. Now, head over to ``http://localhost:8080/`` to see the results.
    does and how to implement complex server initialization/finalization
    from scratch.
 
+   :ref:`aiohttp-web-app-runners` for more handling more complex cases
+   like *asynchronous* web application serving and multiple hosts
+   support.
 
 .. _aiohttp-web-cli:
 
@@ -282,7 +285,7 @@ retrieved by :attr:`View.request` property.
 After implementing the view (``MyView`` from example above) should be
 registered in application's router::
 
-   app.router.add_route('*', '/path/to', MyView)
+   app.router.add_view('/path/to', MyView)
 
 Example will process GET and POST requests for */path/to* but raise
 *405 Method not allowed* exception for unimplemented HTTP methods.
@@ -345,6 +348,20 @@ Route decorators are closer to Flask approach::
    @routes.post('/post')
    async def handle_post(request):
        ...
+
+   app.router.add_routes(routes)
+
+It is also possible to use decorators with class-based views::
+
+   routes = web.RouteTableDef()
+
+   @routes.view("/view")
+   class MyView(web.View):
+       async def get(self):
+           ...
+
+       async def post(self):
+           ...
 
    app.router.add_routes(routes)
 

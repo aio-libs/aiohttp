@@ -75,6 +75,7 @@ Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
 Evert Lammerts
+FichteFoll
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
@@ -139,6 +140,7 @@ Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
 Nicolas Braem
+Nikolay Kim
 Nikolay Novik
 Olaf Conradi
 Pahaz Blinov
@@ -158,6 +160,7 @@ Robert Lu
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt
+Sebastien Geffroy
 Sebastian Hanula
 Sebastian Hüther
 SeongSoo Cho
@@ -198,6 +201,8 @@ W. Trevor King
 Will McGugan
 Willem de Groot
 Wilson Ong
+Wei Lin
+Weiwei Wang
 Yannick Koechlin
 Yannick Péroux
 Yegor Roganov

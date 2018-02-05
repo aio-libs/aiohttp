@@ -3,9 +3,9 @@ import base64
 import binascii
 import hashlib
 import json
-from collections import namedtuple
 
 import async_timeout
+import attr
 from multidict import CIMultiDict
 
 from . import hdrs
@@ -19,16 +19,16 @@ from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
 from .web_response import StreamResponse
 
 
-__all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
+__all__ = ('WebSocketResponse', 'WebSocketReady', 'WSMsgType',)
 
 THRESHOLD_CONNLOST_ACCESS = 5
 
 
-# deprecated since 1.0
-MsgType = WSMsgType
+@attr.s(frozen=True, slots=True)
+class WebSocketReady:
+    ok = attr.ib(type=bool)
+    protocol = attr.ib(type=str)
 
-
-class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
     def __bool__(self):
         return self.ok
 
@@ -187,7 +187,8 @@ class WebSocketResponse(StreamResponse):
         self.headers.update(headers)
         self.force_close()
         self._compress = compress
-        writer = WebSocketWriter(request._protocol.writer,
+        writer = WebSocketWriter(request._protocol,
+                                 request._protocol.transport,
                                  compress=compress,
                                  notakeover=notakeover)
 
@@ -200,6 +201,8 @@ class WebSocketResponse(StreamResponse):
             request._protocol, limit=2 ** 16, loop=self._loop)
         request.protocol.set_parser(WebSocketReader(
             self._reader, compress=self._compress))
+        # disable HTTP keepalive for WebSocket
+        request.protocol.keep_alive(False)
 
     def can_prepare(self, request):
         if self._writer is not None:

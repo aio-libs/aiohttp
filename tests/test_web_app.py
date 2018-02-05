@@ -5,11 +5,12 @@ import pytest
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
+from aiohttp.helpers import PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
 def test_app_ctor(loop):
-    with pytest.warns(ResourceWarning):
+    with pytest.warns(DeprecationWarning):
         app = web.Application(loop=loop)
     assert loop is app.loop
     assert app.logger is log.web_logger
@@ -50,7 +51,7 @@ def test_set_loop_with_different_loops(loop):
 @pytest.mark.parametrize('debug', [True, False])
 def test_app_make_handler_debug_exc(loop, mocker, debug):
     app = web.Application(debug=debug)
-    srv = mocker.patch('aiohttp.web.Server')
+    srv = mocker.patch('aiohttp.web_app.Server')
 
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
@@ -62,7 +63,7 @@ def test_app_make_handler_debug_exc(loop, mocker, debug):
 
 def test_app_make_handler_args(loop, mocker):
     app = web.Application(handler_args={'test': True})
-    srv = mocker.patch('aiohttp.web.Server')
+    srv = mocker.patch('aiohttp.web_app.Server')
 
     app.make_handler(loop=loop)
     srv.assert_called_with(app._handle,
@@ -85,7 +86,7 @@ def test_app_make_handler_access_log_class(loop, mocker):
         def log(self, request, response, time):
             self.logger.info('msg')
 
-    srv = mocker.patch('aiohttp.web.Server')
+    srv = mocker.patch('aiohttp.web_app.Server')
 
     app.make_handler(access_log_class=Logger, loop=loop)
     srv.assert_called_with(app._handle,
@@ -195,6 +196,7 @@ def test_app_delitem():
 def test_app_freeze():
     app = web.Application()
     subapp = mock.Mock()
+    subapp._middlewares = ()
     app._subapps.append(subapp)
 
     app.freeze()
@@ -210,3 +212,50 @@ def test_equality():
 
     assert app1 == app1
     assert app1 != app2
+
+
+def test_app_run_middlewares():
+
+    root = web.Application()
+    sub = web.Application()
+    root.add_subapp('/sub', sub)
+    root.freeze()
+    assert root._run_middlewares is False
+
+    @web.middleware
+    async def middleware(request, handler):
+        return await handler(request)
+
+    root = web.Application(middlewares=[middleware])
+    sub = web.Application()
+    root.add_subapp('/sub', sub)
+    root.freeze()
+    assert root._run_middlewares is True
+
+    root = web.Application()
+    sub = web.Application(middlewares=[middleware])
+    root.add_subapp('/sub', sub)
+    root.freeze()
+    assert root._run_middlewares is True
+
+
+def test_subapp_frozen_after_adding():
+    app = web.Application()
+    subapp = web.Application()
+
+    app.add_subapp('/prefix', subapp)
+    assert subapp.frozen
+
+
+@pytest.mark.skipif(not PY_36,
+                    reason="Python 3.6+ required")
+def test_app_inheritance():
+    with pytest.warns(DeprecationWarning):
+        class A(web.Application):
+            pass
+
+
+def test_app_custom_attr():
+    app = web.Application()
+    with pytest.warns(DeprecationWarning):
+        app.custom = None

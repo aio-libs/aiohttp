@@ -1188,11 +1188,11 @@ async def test_subapp_middlewares(loop, test_client):
     subapp1 = web.Application(middlewares=[middleware_factory])
     subapp2 = web.Application(middlewares=[middleware_factory])
     subapp2.router.add_get('/to', handler)
-    subapp1.add_subapp('/b/', subapp2)
-    app.add_subapp('/a/', subapp1)
-
     with pytest.warns(DeprecationWarning):
+        subapp1.add_subapp('/b/', subapp2)
+        app.add_subapp('/a/', subapp1)
         client = await test_client(app)
+
     resp = await client.get('/a/b/to')
     assert resp.status == 200
     assert [(1, app), (1, subapp1), (1, subapp2),
@@ -1690,3 +1690,21 @@ async def test_return_http_exception_deprecated(loop, test_client):
 
     with pytest.warns(DeprecationWarning):
         await client.get('/')
+
+
+async def test_request_path(loop, test_client):
+
+    async def handler(request):
+        assert request.path_qs == '/path%20to?a=1'
+        assert request.path == '/path to'
+        assert request.raw_path == '/path%20to?a=1'
+        return web.Response(body=b'OK')
+
+    app = web.Application()
+    app.router.add_get('/path to', handler)
+    client = await test_client(app)
+
+    resp = await client.get('/path to', params={'a': '1'})
+    assert 200 == resp.status
+    txt = await resp.text()
+    assert 'OK' == txt

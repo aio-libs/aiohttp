@@ -161,9 +161,7 @@ def pytest_pyfunc_call(pyfuncitem):
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {arg: pyfuncitem.funcargs[arg]
                             for arg in pyfuncitem._fixtureinfo.argnames}
-
-                task = _loop.create_task(pyfuncitem.obj(**testargs))
-                _loop.run_until_complete(task)
+                _loop.run_until_complete(pyfuncitem.obj(**testargs))
 
         return True
 
@@ -225,8 +223,8 @@ def test_server(loop):
     """
     servers = []
 
-    async def go(app, **kwargs):
-        server = TestServer(app)
+    async def go(app, *, port=None, **kwargs):
+        server = TestServer(app, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server
@@ -248,8 +246,8 @@ def raw_test_server(loop):
     """
     servers = []
 
-    async def go(handler, **kwargs):
-        server = RawTestServer(handler)
+    async def go(handler, *, port=None, **kwargs):
+        server = RawTestServer(handler, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
         return server

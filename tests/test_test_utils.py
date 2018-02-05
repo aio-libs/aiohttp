@@ -273,3 +273,18 @@ async def test_client_context_manager_response(method, app, loop):
             if method != 'head':
                 text = await resp.text()
                 assert "Hello, world" in text
+
+
+async def test_custom_port(loop, app, unused_port):
+    port = unused_port()
+    client = _TestClient(_TestServer(app, loop=loop, port=port), loop=loop)
+    await client.start_server()
+
+    assert client.server.port == port
+
+    resp = await client.get('/')
+    assert resp.status == 200
+    text = await resp.text()
+    assert _hello_world_str == text
+
+    await client.close()

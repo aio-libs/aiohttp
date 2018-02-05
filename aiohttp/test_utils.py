@@ -20,14 +20,8 @@ from . import ClientSession, hdrs
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import Request, Server, UrlMappingMatchInfo
-
-
-def run_briefly(loop):
-    async def once():
-        pass
-    t = asyncio.Task(once(), loop=loop)
-    loop.run_until_complete(t)
+from .web import (AppRunner, Request, Server, ServerRunner, TCPSite,
+                  UrlMappingMatchInfo)
 
 
 def unused_port():
@@ -39,25 +33,29 @@ def unused_port():
 
 class BaseTestServer(ABC):
     def __init__(self, *, scheme=sentinel, loop=None,
-                 host='127.0.0.1', skip_url_asserts=False, **kwargs):
+                 host='127.0.0.1', port=None, skip_url_asserts=False,
+                 **kwargs):
         self._loop = loop
-        self.port = None
-        self.server = None
-        self.handler = None
+        self.runner = None
         self._root = None
         self.host = host
+        self.port = port
         self._closed = False
         self.scheme = scheme
         self.skip_url_asserts = skip_url_asserts
 
     async def start_server(self, loop=None, **kwargs):
-        if self.server:
+        if self.runner:
             return
         self._loop = loop
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.bind((self.host, 0))
-        self.port = self._socket.getsockname()[1]
         self._ssl = kwargs.pop('ssl', None)
+        self.runner = await self._make_runner(**kwargs)
+        await self.runner.setup()
+        if not self.port:
+            self.port = unused_port()
+        site = TCPSite(self.runner, host=self.host, port=self.port,
+                       ssl_context=self._ssl)
+        await site.start()
         if self.scheme is sentinel:
             if self._ssl:
                 scheme = 'https'
@@ -68,12 +66,8 @@ class BaseTestServer(ABC):
                                              self.host,
                                              self.port))
 
-        handler = await self._make_factory(**kwargs)
-        self.server = await self._loop.create_server(
-            handler, ssl=self._ssl, sock=self._socket)
-
     @abstractmethod  # pragma: no cover
-    async def _make_factory(self, **kwargs):
+    async def _make_runner(self, **kwargs):
         pass
 
     def make_url(self, path):
@@ -86,11 +80,17 @@ class BaseTestServer(ABC):
 
     @property
     def started(self):
-        return self.server is not None
+        return self.runner is not None
 
     @property
     def closed(self):
         return self._closed
+
+    @property
+    def handler(self):
+        # for backward compatibility
+        # web.Server instance
+        return self.runner.server
 
     async def close(self):
         """Close all fixtures created by the test client.
@@ -105,16 +105,10 @@ class BaseTestServer(ABC):
 
         """
         if self.started and not self.closed:
-            self.server.close()
-            await self.server.wait_closed()
+            await self.runner.cleanup()
             self._root = None
             self.port = None
-            await self._close_hook()
             self._closed = True
-
-    @abstractmethod
-    async def _close_hook(self):
-        pass  # pragma: no cover
 
     def __enter__(self):
         raise TypeError("Use async with instead")
@@ -134,37 +128,25 @@ class BaseTestServer(ABC):
 class TestServer(BaseTestServer):
 
     def __init__(self, app, *,
-                 scheme=sentinel, host='127.0.0.1', **kwargs):
+                 scheme=sentinel, host='127.0.0.1', port=None, **kwargs):
         self.app = app
-        super().__init__(scheme=scheme, host=host, **kwargs)
+        super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_factory(self, **kwargs):
-        self.app._set_loop(self._loop)
-        self.app.freeze()
-        await self.app.startup()
-        self.handler = self.app.make_handler(loop=self._loop, **kwargs)
-        return self.handler
-
-    async def _close_hook(self):
-        await self.app.shutdown()
-        await self.handler.shutdown()
-        await self.app.cleanup()
+    async def _make_runner(self, **kwargs):
+        return AppRunner(self.app, **kwargs)
 
 
 class RawTestServer(BaseTestServer):
 
     def __init__(self, handler, *,
-                 scheme=sentinel, host='127.0.0.1', **kwargs):
+                 scheme=sentinel, host='127.0.0.1', port=None, **kwargs):
         self._handler = handler
-        super().__init__(scheme=scheme, host=host, **kwargs)
+        super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_factory(self, debug=True, **kwargs):
-        self.handler = Server(
+    async def _make_runner(self, debug=True, **kwargs):
+        srv = Server(
             self._handler, loop=self._loop, debug=True, **kwargs)
-        return self.handler
-
-    async def _close_hook(self):
-        return
+        return ServerRunner(srv, debug=debug, **kwargs)
 
 
 class TestClient:

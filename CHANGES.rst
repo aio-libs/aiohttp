@@ -14,6 +14,35 @@ Changelog
 
 .. towncrier release notes start
 
+
+2.3.10 (2018-02-02)
+===================
+
+- Fix 100% CPU usage on HTTP GET and websocket connection just after it (#1955)
+
+- Patch broken `ssl.match_hostname()` on Python<3.7 (#2674)
+
+2.3.9 (2018-01-16)
+==================
+
+- Fix colon handing in path for dynamic resources (#2670)
+
+2.3.8 (2018-01-15)
+==================
+
+- Do not use `yarl.unquote` internal function in aiohttp.  Fix
+  incorrectly unquoted path part in URL dispatcher (#2662)
+
+- Fix compatibility with `yarl==1.0.0` (#2662)
+
+2.3.7 (2017-12-27)
+==================
+
+- Fixed race-condition for iterating addresses from the DNSCache. (#2620)
+- Fix docstring for request.host (#2591)
+- Fix docstring for request.remote (#2592)
+
+
 2.3.6 (2017-12-04)
 ==================
 

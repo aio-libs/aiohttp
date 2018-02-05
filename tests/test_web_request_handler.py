@@ -1,26 +1,25 @@
 from unittest import mock
 
 from aiohttp import web
-from aiohttp.test_utils import make_mocked_coro, make_mocked_request
+from aiohttp.test_utils import make_mocked_coro
+
+
+async def serve(request):
+    return web.Response()
 
 
 def test_repr(loop):
-    app = web.Application()
-    manager = app.make_handler(loop=loop)
+    manager = web.Server(serve, loop=loop)
     handler = manager()
 
-    assert '<RequestHandler none:none disconnected>' == repr(handler)
+    assert '<RequestHandler disconnected>' == repr(handler)
 
     handler.transport = object()
-    request = make_mocked_request('GET', '/index.html')
-    handler._request = request
-    # assert '<RequestHandler GET:/index.html connected>' == repr(handler)
-    assert '<RequestHandler none:none connected>' == repr(handler)
+    assert '<RequestHandler connected>' == repr(handler)
 
 
 def test_connections(loop):
-    app = web.Application()
-    manager = app.make_handler(loop=loop)
+    manager = web.Server(serve, loop=loop)
     assert manager.connections == []
 
     handler = object()
@@ -33,8 +32,7 @@ def test_connections(loop):
 
 
 async def test_shutdown_no_timeout(loop):
-    app = web.Application()
-    manager = app.make_handler(loop=loop)
+    manager = web.Server(serve, loop=loop)
 
     handler = mock.Mock()
     handler.shutdown = make_mocked_coro(mock.Mock())
@@ -49,8 +47,7 @@ async def test_shutdown_no_timeout(loop):
 
 
 async def test_shutdown_timeout(loop):
-    app = web.Application()
-    manager = app.make_handler(loop=loop)
+    manager = web.Server(serve, loop=loop)
 
     handler = mock.Mock()
     handler.shutdown = make_mocked_coro(mock.Mock())

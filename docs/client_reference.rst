@@ -34,7 +34,7 @@ Usage example::
              print(html)
 
      loop = asyncio.get_event_loop()
-     loop.run_until_complete(main(loop))
+     loop.run_until_complete(main())
 
 
 The client session supports the context manager protocol for self closing.
@@ -101,7 +101,7 @@ The client session supports the context manager protocol for self closing.
       proxy mode.
 
       If no cookie processing is needed, a
-      :class:`aiohttp.helpers.DummyCookieJar` instance can be
+      :class:`aiohttp.DummyCookieJar` instance can be
       provided.
 
    :param callable json_serialize: Json *serializer* callable.
@@ -141,7 +141,18 @@ The client session supports the context manager protocol for self closing.
                          *HTTPS_PROXY* environment variables if the
                          parameter is ``True`` (``False`` by default).
 
+                         Get proxy credentials from ``~/.netrc`` file if
+                         present.
+
+      .. seealso::
+
+         ``.netrc`` documentation: https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html
+
       .. versionadded:: 2.3
+
+      .. versionchanged:: 3.0
+
+         Added support for ``~/.netrc`` file.
 
    .. attribute:: closed
 
@@ -186,7 +197,8 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
-                         timeout=5*60, verify_ssl=None, fingerprint=None, \
+                         timeout=5*60, ssl=None, \
+                         verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None)
       :async-with:
       :coroutine:
@@ -266,20 +278,40 @@ The client session supports the context manager protocol for self closing.
       :param int timeout: override the session's timeout
                           (``read_timeout``) for IO operations.
 
+      :param ssl: SSL validation mode. ``None`` for default SSL check
+                  (:func:`ssl.create_default_context` is used),
+                  ``False`` for skip SSL certificate validation,
+                  :class:`aiohttp.Fingerprint` for fingerprint
+                  validation, :class:`ssl.SSLContext` for custom SSL
+                  certificate validation.
+
+                  Supersedes *verify_ssl*, *ssl_context* and
+                  *fingerprint* parameters.
+
+         .. versionadded:: 3.0
+
       :param bool verify_ssl: Perform SSL certificate validation for
          *HTTPS* requests (enabled by default). May be disabled to
          skip validation for sites with invalid certificates.
 
          .. versionadded:: 2.3
 
+         .. deprecated:: 3.0
+
+            Use ``ssl=False``
+
       :param bytes fingerprint: Pass the SHA256 digest of the expected
-           certificate in DER format to verify that the certificate the
-           server presents matches. Useful for `certificate pinning
-           <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+         certificate in DER format to verify that the certificate the
+         server presents matches. Useful for `certificate pinning
+         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
 
-           Warning: use of MD5 or SHA1 digests is insecure and deprecated.
+         Warning: use of MD5 or SHA1 digests is insecure and removed.
 
-           .. versionadded:: 2.3
+         .. versionadded:: 2.3
+
+         .. deprecated:: 3.0
+
+            Use ``ssl=aiohttp.Fingerprint(digest)``
 
       :param ssl.SSLContext ssl_context: ssl context used for processing
          *HTTPS* requests (optional).
@@ -289,14 +321,18 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
+         .. deprecated:: 3.0
+
+            Use ``ssl=ssl_context``
+
       :param abc.Mapping proxy_headers: HTTP headers to send to the proxy if the
          parameter proxy has been provided.
 
          .. versionadded:: 2.3
 
-      :param trace_request_ctx: Object used to give as a kw param for the all
-        signals triggered by the ongoing request and for all :class:`TraceConfig`
-        configured. Default passes a None value.
+      :param trace_request_ctx: Object used to give as a kw param for each new
+        :class:`TraceConfig` object instantiated, used to give information to the
+        tracers that is only available at request time.
 
          .. versionadded:: 3.0
 
@@ -437,7 +473,7 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
-                            proxy=None, proxy_auth=None, \
+                            proxy=None, proxy_auth=None, ssl=None, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
                             compress=0)
@@ -480,20 +516,40 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
+      :param ssl: SSL validation mode. ``None`` for default SSL check
+                  (:func:`ssl.create_default_context` is used),
+                  ``False`` for skip SSL certificate validation,
+                  :class:`aiohttp.Fingerprint` for fingerprint
+                  validation, :class:`ssl.SSLContext` for custom SSL
+                  certificate validation.
+
+                  Supersedes *verify_ssl*, *ssl_context* and
+                  *fingerprint* parameters.
+
+         .. versionadded:: 3.0
+
       :param bool verify_ssl: Perform SSL certificate validation for
          *HTTPS* requests (enabled by default). May be disabled to
          skip validation for sites with invalid certificates.
 
          .. versionadded:: 2.3
 
+         .. deprecated:: 3.0
+
+            Use ``ssl=False``
+
       :param bytes fingerprint: Pass the SHA256 digest of the expected
-           certificate in DER format to verify that the certificate the
-           server presents matches. Useful for `certificate pinning
-           <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
+         certificate in DER format to verify that the certificate the
+         server presents matches. Useful for `certificate pinning
+         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
 
-           Note: use of MD5 or SHA1 digests is insecure and deprecated.
+         Note: use of MD5 or SHA1 digests is insecure and deprecated.
 
-           .. versionadded:: 2.3
+         .. versionadded:: 2.3
+
+         .. deprecated:: 3.0
+
+            Use ``ssl=aiohttp.Fingerprint(digest)``
 
       :param ssl.SSLContext ssl_context: ssl context used for processing
          *HTTPS* requests (optional).
@@ -508,6 +564,9 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
+         .. deprecated:: 3.0
+
+            Use ``ssl=ssl_context``
 
       :param int compress: Enable Per-Message Compress Extension support.
                            0 for disable, 9 to 15 for window bit support.
@@ -734,7 +793,7 @@ BaseConnector
 TCPConnector
 ^^^^^^^^^^^^
 
-.. class:: TCPConnector(*, verify_ssl=True, fingerprint=None, \
+.. class:: TCPConnector(*, ssl=None, verify_ssl=True, fingerprint=None, \
                  use_dns_cache=True, ttl_dns_cache=10, \
                  family=0, ssl_context=None, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
@@ -750,6 +809,18 @@ TCPConnector
 
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
+
+      :param ssl: SSL validation mode. ``None`` for default SSL check
+                  (:func:`ssl.create_default_context` is used),
+                  ``False`` for skip SSL certificate validation,
+                  :class:`aiohttp.Fingerprint` for fingerprint
+                  validation, :class:`ssl.SSLContext` for custom SSL
+                  certificate validation.
+
+                  Supersedes *verify_ssl*, *ssl_context* and
+                  *fingerprint* parameters.
+
+         .. versionadded:: 3.0
 
    :param bool verify_ssl: perform SSL certificate validation for
       *HTTPS* requests (enabled by default). May be disabled to
@@ -833,16 +904,6 @@ TCPConnector
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
 
-   .. attribute:: verify_ssl
-
-      Check *ssl certifications* if ``True``.
-
-      Read-only :class:`bool` property.
-
-   .. attribute:: ssl_context
-
-      :class:`ssl.SSLContext` instance for *https* requests, read-only property.
-
    .. attribute:: family
 
       *TCP* socket family e.g. :const:`socket.AF_INET` or
@@ -861,14 +922,6 @@ TCPConnector
       The cache of resolved hosts if :attr:`dns_cache` is enabled.
 
       Read-only :class:`types.MappingProxyType` property.
-
-   .. attribute:: fingerprint
-
-      MD5, SHA1, or SHA256 hash of the expected certificate in DER
-      format, or ``None`` if no certificate fingerprint check
-      required.
-
-      Read-only :class:`bytes` property.
 
    .. method:: clear_dns_cache(self, host=None, port=None)
 
@@ -1168,7 +1221,7 @@ Response object
       ``Content-Type`` HTTP header. If this info is not exists or there
       are no appropriate codecs for encoding then :term:`cchardet` /
       :term:`chardet` is used.
-      
+
       .. versionadded:: 3.0
 
 
@@ -1235,7 +1288,7 @@ manually.
       :param str data: data to send.
 
       :param int compress: sets specific level of compression for
-                           single message, 
+                           single message,
                            ``None`` for not overriding per-socket setting.
 
       :raise TypeError: if data is not :class:`str`
@@ -1506,6 +1559,27 @@ CookieJar
 
       jar = aiohttp.DummyCookieJar()
       session = aiohttp.ClientSession(cookie_jar=DummyCookieJar())
+
+
+.. class:: Fingerprint(digest)
+
+   Fingerprint helper for checking SSL certificates by *SHA256* digest.
+
+   :param bytes digest: *SHA256* digest for certificate in DER-encoded
+                        binary form (see
+                        :meth:`ssl.SSLSocket.getpeercert`).
+
+   To check fingerprint pass the object into :meth:`ClientSession.get`
+   call, e.g.::
+
+      import hashlib
+
+      with open(path_to_cert, 'rb') as f:
+          digest = hashlib.sha256(f.read()).digest()
+
+      await session.get(url, ssl=aiohttp.Fingerprint(digest))
+
+   .. versionadded:: 3.0
 
 Client exceptions
 -----------------

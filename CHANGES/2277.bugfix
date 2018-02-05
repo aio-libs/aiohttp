@@ -1,0 +1,3 @@
+Correctly process upgrade request from server to HTTP2. ``aiohttp`` does
+not support HTTP2 yet, the protocol is not upgraded but response is
+handled correctly.

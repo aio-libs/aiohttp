@@ -8,17 +8,14 @@ import keyword
 import os
 import re
 import warnings
-from collections import namedtuple
 from collections.abc import Container, Iterable, Sequence, Sized
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 
-# do not use yarl.quote directly,
-# use `URL(path).raw_path` instead of `quote(path)`
-# Escaping of the URLs need to be consitent with the escaping done by yarl
-from yarl import URL, unquote
+import attr
+from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
@@ -33,14 +30,20 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
            'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
-           'head', 'get', 'post', 'patch', 'put', 'delete', 'route')
+           'head', 'get', 'post', 'patch', 'put', 'delete', 'route', 'view')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
 
 
-class RouteDef(namedtuple('_RouteDef', 'method, path, handler, kwargs')):
+@attr.s(frozen=True, repr=False, slots=True)
+class RouteDef:
+    method = attr.ib(type=str)
+    path = attr.ib(type=str)
+    handler = attr.ib()
+    kwargs = attr.ib()
+
     def __repr__(self):
         info = []
         for name, value in sorted(self.kwargs.items()):
@@ -91,6 +94,10 @@ class AbstractResource(Sized, Iterable):
 
     def freeze(self):
         pass
+
+    @abc.abstractmethod
+    def raw_match(self, path):
+        """Perform a raw match against path"""
 
 
 class AbstractRoute(abc.ABC):
@@ -332,11 +339,14 @@ class PlainResource(Resource):
         else:
             return None
 
+    def raw_match(self, path):
+        return self._path == path
+
     def get_info(self):
         return {'path': self._path}
 
     def url_for(self):
-        return URL(self._path)
+        return URL.build(path=self._path, encoded=True)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -371,7 +381,7 @@ class DynamicResource(Resource):
             if '{' in part or '}' in part:
                 raise ValueError("Invalid path '{}'['{}']".format(path, part))
 
-            path = URL(part).raw_path
+            path = URL.build(path=part).raw_path
             formatter += path
             pattern += re.escape(path)
 
@@ -397,16 +407,20 @@ class DynamicResource(Resource):
         if match is None:
             return None
         else:
-            return {key: unquote(value, unsafe='+') for key, value in
-                    match.groupdict().items()}
+            return {key: URL.build(path=value, encoded=True).path
+                    for key, value in match.groupdict().items()}
+
+    def raw_match(self, path):
+        return self._formatter == path
 
     def get_info(self):
         return {'formatter': self._formatter,
                 'pattern': self._pattern}
 
     def url_for(self, **parts):
-        url = self._formatter.format_map(parts)
-        return URL(url)
+        url = self._formatter.format_map({k: URL.build(path=v).raw_path
+                                          for k, v in parts.items()})
+        return URL.build(path=url)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -420,13 +434,16 @@ class PrefixResource(AbstractResource):
         assert not prefix or prefix.startswith('/'), prefix
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
-        self._prefix = URL(prefix).raw_path
+        self._prefix = URL.build(path=prefix).raw_path
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
         assert not prefix.endswith('/')
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix
+
+    def raw_match(self, prefix):
+        return False
 
     # TODO: impl missing abstract methods
 
@@ -470,8 +487,10 @@ class StaticResource(PrefixResource):
         while filename.startswith('/'):
             filename = filename[1:]
         filename = '/' + filename
-        url = self._prefix + URL(filename).raw_path
-        url = URL(url)
+
+        # filename is not encoded
+        url = URL.build(path=self._prefix + filename)
+
         if append_version is True:
             try:
                 if filename.startswith('/'):
@@ -521,7 +540,8 @@ class StaticResource(PrefixResource):
         if method not in allowed_methods:
             return None, allowed_methods
 
-        match_dict = {'filename': unquote(path[len(self._prefix)+1:])}
+        match_dict = {'filename': URL.build(path=path[len(self._prefix)+1:],
+                                            encoded=True).path}
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
 
@@ -532,7 +552,7 @@ class StaticResource(PrefixResource):
         return iter(self._routes.values())
 
     async def _handle(self, request):
-        filename = unquote(request.match_info['filename'])
+        filename = request.match_info['filename']
         try:
             filepath = self._directory.joinpath(filename).resolve()
             if not self._follow_symlinks:
@@ -830,8 +850,13 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
     def add_resource(self, path, *, name=None):
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
+        # Reuse last added resource if path and name are the same
+        if self._resources:
+            resource = self._resources[-1]
+            if resource.name == name and resource.raw_match(path):
+                return resource
         if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
-            url = URL(path)
+            url = URL.build(path=path)
             resource = PlainResource(url.raw_path, name=name)
             self.register_resource(resource)
             return resource
@@ -908,6 +933,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
+    def add_view(self, path, handler, **kwargs):
+        """
+        Shortcut for add_route with ANY methods for a class-based view
+        """
+        return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)
+
     def freeze(self):
         super().freeze()
         for resource in self._resources:
@@ -918,7 +949,6 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
 
         Parameter should be a sequence of RouteDef objects.
         """
-        # TODO: add_table maybe?
         for route_obj in routes:
             route_obj.register(self)
 
@@ -950,6 +980,10 @@ def patch(path, handler, **kwargs):
 
 def delete(path, handler, **kwargs):
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
+
+
+def view(path, handler, **kwargs):
+    return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 
 class RouteTableDef(Sequence):
@@ -995,3 +1029,6 @@ class RouteTableDef(Sequence):
 
     def delete(self, path, **kwargs):
         return self.route(hdrs.METH_DELETE, path, **kwargs)
+
+    def view(self, path, **kwargs):
+        return self.route(hdrs.METH_ANY, path, **kwargs)

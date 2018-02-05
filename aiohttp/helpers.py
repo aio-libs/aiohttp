@@ -7,8 +7,10 @@ import cgi
 import datetime
 import functools
 import inspect
+import netrc
 import os
 import re
+import sys
 import time
 import weakref
 from collections import namedtuple
@@ -19,6 +21,8 @@ from urllib.parse import quote
 from urllib.request import getproxies
 
 import async_timeout
+import attr
+from multidict import MultiDict
 from yarl import URL
 
 from . import hdrs
@@ -27,6 +31,12 @@ from .log import client_logger
 
 
 __all__ = ('BasicAuth',)
+
+PY_36 = sys.version_info >= (3, 6)
+
+if sys.version_info < (3, 7):
+    import idna_ssl
+    idna_ssl.patch_match_hostname()
 
 
 sentinel = object()
@@ -111,12 +121,43 @@ def strip_auth_from_url(url):
         return url.with_user(None), auth
 
 
-ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
+def netrc_from_env():
+    netrc_obj = None
+    netrc_path = os.environ.get('NETRC')
+    try:
+        if netrc_path is not None:
+            netrc_path = Path(netrc_path)
+        else:
+            home_dir = Path.home()
+            if os.name == 'nt':  # pragma: no cover
+                netrc_path = home_dir.joinpath('_netrc')
+            else:
+                netrc_path = home_dir.joinpath('.netrc')
+
+        if netrc_path and netrc_path.is_file():
+            try:
+                netrc_obj = netrc.netrc(str(netrc_path))
+            except (netrc.NetrcParseError, OSError) as e:
+                client_logger.warning(".netrc file parses fail: %s", e)
+
+        if netrc_obj is None:
+            client_logger.warning("could't find .netrc file")
+    except RuntimeError as e:  # pragma: no cover
+        """ handle error raised by pathlib """
+        client_logger.warning("could't find .netrc file: %s", e)
+    return netrc_obj
+
+
+@attr.s(frozen=True, slots=True)
+class ProxyInfo:
+    proxy = attr.ib(type=str)
+    proxy_auth = attr.ib(type=BasicAuth)
 
 
 def proxies_from_env():
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
                   if k in ('http', 'https')}
+    netrc_obj = netrc_from_env()
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
@@ -125,6 +166,15 @@ def proxies_from_env():
             client_logger.warning(
                 "HTTPS proxies %s are not supported, ignoring", proxy)
             continue
+        if netrc_obj and auth is None:
+            auth_from_netrc = netrc_obj.authenticators(proxy.host)
+            if auth_from_netrc is not None:
+                # auth_from_netrc is a (`user`, `account`, `password`) tuple,
+                # `user` and `account` both can be username,
+                # if `user` is None, use `account`
+                *logins, password = auth_from_netrc
+                auth = BasicAuth(logins[0] if logins[0] else logins[-1],
+                                 password)
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
@@ -147,7 +197,12 @@ def isasyncgenfunction(obj):
     return False
 
 
-MimeType = namedtuple('MimeType', 'type subtype suffix parameters')
+@attr.s(frozen=True, slots=True)
+class MimeType:
+    type = attr.ib(type=str)
+    subtype = attr.ib(type=str)
+    suffix = attr.ib(type=str)
+    parameters = attr.ib(type=MultiDict)
 
 
 def parse_mimetype(mimetype):
@@ -174,7 +229,7 @@ def parse_mimetype(mimetype):
             continue
         key, value = item.split('=', 1) if '=' in item else (item, '')
         params.append((key.lower().strip(), value.strip(' "')))
-    params = dict(params)
+    params = MultiDict(params)
 
     fulltype = parts[0].strip().lower()
     if fulltype == '*':
@@ -263,7 +318,7 @@ class AccessLogger(AbstractAccessLogger):
         'o': 'response_header',
     }
 
-    LOG_FORMAT = '%a %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+    LOG_FORMAT = '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}
@@ -617,6 +672,9 @@ class CeilTimeout(async_timeout.timeout):
 
 
 class HeadersMixin:
+
+    ATTRS = frozenset([
+        '_content_type', '_content_dict', '_stored_content_type'])
 
     _content_type = None
     _content_dict = None
