@@ -334,7 +334,6 @@ class Application(MutableMapping):
         return "<Application 0x{:x}>".format(id(self))
 
 
-
 class CleanupError(RuntimeError):
     @property
     def exceptions(self):
@@ -348,14 +347,12 @@ class CleanupContext(FrozenList):
         self._exits = []
 
     async def _on_startup(self, app):
-        assert self.frozen
         for cb in self:
             it = cb(app).__aiter__()
             await it.__anext__()
             self._exits.append(it)
 
     async def _on_cleanup(self, app):
-        assert self.frozen
         errors = []
         for it in reversed(self._exits):
             try:
