@@ -14,6 +14,10 @@ Changelog
 
 .. towncrier release notes start
 
+2.3.11 (2018-02-06)
+===================
+
+- Fix package problems for distributions uploaded on PyPI
 
 2.3.10 (2018-02-02)
 ===================
