@@ -40,7 +40,6 @@ with codecs.open(_version_path, 'r', 'latin1') as fp:
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('.'))
 
-# import alabaster
 
 # -- General configuration ------------------------------------------------
 
@@ -54,7 +53,6 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
-    'alabaster',
     'sphinxcontrib.asyncio',
 ]
 
@@ -164,17 +162,19 @@ html_theme_options = {
     'github_button': True,
     'github_type': 'star',
     'github_banner': True,
-    'travis_button': True,
     'codecov_button': True,
-    'pre_bg': '#424750',
-    'note_bg': '#E5ECD1',
-    'note_border': '#BFCF8C',
-    'body_text': '#482C0A',
-    'sidebar_text': '#49443E',
-    'sidebar_header': '#4B4032',
-    'font_family': "'Lato', sans-serif",
-    'head_font_family': "'Lato', sans-serif",
-    'code_font_family': "'Roboto Mono', monospace",
+    'badges': [{'image': 'https://secure.travis-ci.org/aio-libs/aiohttp.svg?branch=master',
+                'target': 'https://travis-ci.org/aio-libs/aiohttp',
+                'alt': 'Travis CI status'},
+               {'image': 'https://codecov.io/github/aio-libs/aiohttp/coverage.svg?branch=master',
+               'target': 'https://codecov.io/github/aio-libs/aiohttp',
+                'alt': 'Code coverage status'},
+               {'image': 'https://badge.fury.io/py/aiohttp.svg',
+               'target': 'https://badge.fury.io/py/aiohttp',
+                'alt': 'Latest PyPI package version'},
+               {'image': 'https://badges.gitter.im/Join%20Chat.svg',
+                'target': 'https://gitter.im/aio-libs/Lobby',
+                'alt': 'Chat on Gitter'}],
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
