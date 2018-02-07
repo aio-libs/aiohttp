@@ -18,7 +18,6 @@ import os
 import re
 import sys
 
-
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(os.path.join(_docs_path,
                                              '..', 'aiohttp', '__init__.py'))
@@ -132,7 +131,7 @@ exclude_patterns = ['_build']
 # show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+# pygments_style = 'sphinx'
 
 # The default language to highlight source code in.
 highlight_language = 'python3'
