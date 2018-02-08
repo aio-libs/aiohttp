@@ -553,3 +553,9 @@ def test_request_custom_attr():
     req = make_mocked_request('GET', '/')
     with pytest.warns(DeprecationWarning):
         req.custom = None
+
+
+def test_remote_with_closed_transport():
+    req = make_mocked_request('GET', '/')
+    req._protocol = None
+    assert req.remote is None
