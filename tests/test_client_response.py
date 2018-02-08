@@ -300,7 +300,7 @@ async def test_text_detect_encoding_if_invalid_charset(loop, session):
     res = await response.text()
     assert res == '{"тест": "пройден"}'
     assert response._connection is None
-    assert response.get_encoding().lower() == 'windows-1251'
+    assert response.get_encoding().lower() in ('windows-1251', 'maccyrillic')
 
 
 async def test_text_after_read(loop, session):
