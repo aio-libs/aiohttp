@@ -384,9 +384,9 @@ class AccessLogger(AbstractAccessLogger):
         'r': 'first_request_line',
         's': 'response_status',
         'b': 'response_size',
-        'T': 'request_time',
-        'Tf': 'request_time_frac',
-        'D': 'request_time_micro',
+        'T': 'request_elapsed',
+        'Tf': 'request_elapsed_frac',
+        'D': 'request_elapsed_micro',
         'i': 'request_header',
         'o': 'response_header',
     }
@@ -407,10 +407,10 @@ class AccessLogger(AbstractAccessLogger):
         """
         super().__init__(logger, log_format=log_format)
 
-        _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
+        _compiled_format = self._FORMAT_CACHE.get(log_format)
         if not _compiled_format:
             _compiled_format = self.compile_format(log_format)
-            AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
+            self._FORMAT_CACHE[log_format] = _compiled_format
 
         self._log_format, self._methods = _compiled_format
 
@@ -446,10 +446,10 @@ class AccessLogger(AbstractAccessLogger):
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
                 format_key = self.LOG_FORMAT_MAP[atom[0]]
-                m = getattr(AccessLogger, '_format_%s' % atom[0])
+                m = getattr(self, '_format_%s' % atom[0])
             else:
                 format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
-                m = getattr(AccessLogger, '_format_%s' % atom[2])
+                m = getattr(self, '_format_%s' % atom[2])
                 m = functools.partial(m, atom[1])
 
             methods.append(self.KeyMethod(format_key, m))
@@ -459,7 +459,7 @@ class AccessLogger(AbstractAccessLogger):
         return log_format, methods
 
     @staticmethod
-    def _format_i(key, request, response, time):
+    def _format_i(key, request, response, elapsed_time, start_time=None):
         if request is None:
             return '(no headers)'
 
@@ -467,59 +467,62 @@ class AccessLogger(AbstractAccessLogger):
         return request.headers.get(key, '-')
 
     @staticmethod
-    def _format_o(key, request, response, time):
+    def _format_o(key, request, response, elapsed_time, start_time=None):
         # suboptimal, make istr(key) once
         return response.headers.get(key, '-')
 
     @staticmethod
-    def _format_a(request, response, time):
+    def _format_a(request, response, elapsed_time, start_time=None):
         if request is None:
             return '-'
         ip = request.remote
         return ip if ip is not None else '-'
 
     @staticmethod
-    def _format_t(request, response, time):
-        return datetime.datetime.utcnow().strftime('[%d/%b/%Y:%H:%M:%S +0000]')
+    def _format_t(request, response, elapsed_time, start_time=None):
+        if not start_time:
+            # This is an approximation of an approximation
+            start_time = datetime.datetime.utcnow() - datetime.timedelta(seconds=elapsed_time)
+        return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
-    def _format_P(request, response, time):
+    def _format_P(request, response, elapsed_time, start_time=None):
         return "<%s>" % os.getpid()
 
     @staticmethod
-    def _format_r(request, response, time):
+    def _format_r(request, response, elapsed_time, start_time=None):
         if request is None:
             return '-'
         return '%s %s HTTP/%s.%s' % tuple((request.method,
                                            request.path_qs) + request.version)
 
     @staticmethod
-    def _format_s(request, response, time):
+    def _format_s(request, response, elapsed_time, start_time=None):
         return response.status
 
     @staticmethod
-    def _format_b(request, response, time):
+    def _format_b(request, response, elapsed_time, start_time=None):
         return response.body_length
 
     @staticmethod
-    def _format_T(request, response, time):
-        return round(time)
+    def _format_T(request, response, elapsed_time, start_time=None):
+        return round(elapsed_time)
 
     @staticmethod
-    def _format_Tf(request, response, time):
-        return '%06f' % time
+    def _format_Tf(request, response, elapsed_time, start_time=None):
+        return '%06f' % elapsed_time
 
     @staticmethod
-    def _format_D(request, response, time):
-        return round(time * 1000000)
+    def _format_D(request, response, elapsed_time, start_time=None):
+        return round(elapsed_time * 1000000)
 
-    def _format_line(self, request, response, time):
-        return ((key, method(request, response, time))
+    def _format_line(self, *args, **kwargs):
+        return ((key, method(*args, **kwargs))
                 for key, method in self._methods)
 
-    def log(self, request, response, time):
+    def log(self, *args, **kwargs):
         try:
-            fmt_info = self._format_line(request, response, time)
+            fmt_info = self._format_line(*args, **kwargs)
 
             values = list()
             extra = dict()
@@ -529,7 +532,9 @@ class AccessLogger(AbstractAccessLogger):
                 if key.__class__ is str:
                     extra[key] = value
                 else:
-                    extra[key[0]] = {key[1]: value}
+                    if key[0] not in extra:
+                        extra[key[0]] = dict()
+                    extra[key[0]][key[1]] = value
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
