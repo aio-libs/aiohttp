@@ -206,9 +206,9 @@ def test_make_mocked_request_transport():
 
 async def test_test_client_props(loop):
     app = _create_example_app()
-    client = _TestClient(_TestServer(app, host='localhost', loop=loop),
+    client = _TestClient(_TestServer(app, host='127.0.0.1', loop=loop),
                          loop=loop)
-    assert client.host == 'localhost'
+    assert client.host == '127.0.0.1'
     assert client.port is None
     async with client:
         assert isinstance(client.port, int)
