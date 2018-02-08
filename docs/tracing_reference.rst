@@ -31,110 +31,97 @@ TraceConfig
 
       Build a new trace context from the config.
 
+   Every signal handler should have the following signature::
+
+      async def on_signal(session, context, params): ...
+
+   where ``session`` is :class:`ClientSession` instance, ``context`` is an
+   object returned by :meth:`trace_config_ctx` call and ``params`` is a
+   data class with signal parameters. The type of ``params`` depends on
+   subscribed signal and described below.
+
    .. attribute:: on_request_start
 
       Property that gives access to the signals that will be executed
       when a request starts.
 
-      The signal handler signature is
-      ``async def on_request_start(session, context, params): ...``
-      where ``params`` is :class:`aiohttp.TraceRequestStartParams` instance
+      ``params`` is :class:`aiohttp.TraceRequestStartParams` instance.
 
    .. attribute:: on_request_redirect
 
       Property that gives access to the signals that will be executed when a
       redirect happens during a request flow.
 
-      The signal handler signature is
-      ``async def on_request_redirect(session, context, params): ...``
-      where ``params`` is :class:`aiohttp.TraceRequestRedirectParams` instance
+      ``params`` is :class:`aiohttp.TraceRequestRedirectParams` instance.
 
    .. attribute:: on_request_end
 
       Property that gives access to the signals that will be executed when a
       request ends.
 
-      The signal handler signature is
-      ``async def on_request_end(session, context, params): ...``
-      where ``params`` is :class:`aiohttp.TraceRequestEndParams` instance
+      ``params`` is :class:`aiohttp.TraceRequestEndParams` instance.
 
    .. attribute:: on_request_exception
 
       Property that gives access to the signals that will be executed when a
       request finishes with an exception.
 
-      The signal handler signature is
-      ``async def on_request_exception(session, context, params): ...``
-      where ``params`` is :class:`aiohttp.TraceRequestExceptionParams` instance
+      ``params`` is :class:`aiohttp.TraceRequestExceptionParams` instance.
 
    .. attribute:: on_connection_queued_start
 
       Property that gives access to the signals that will be executed when a
       request has been queued waiting for an available connection.
 
-      The signal handler signature is
-      ``async def on_connection_queued_start(session, context, params): ...``
-      where ``params`` is
-      :class:`aiohttp.TraceConnectionQueuedStartParams` instance
+      ``params`` is :class:`aiohttp.TraceConnectionQueuedStartParams`
+      instance.
 
    .. attribute:: on_connection_queued_end
 
       Property that gives access to the signals that will be executed when a
       request that was queued already has an available connection.
 
-      The signal handler signature is
-      ``async def on_connection_queued_end(session, context, params): ...``
-      where ``params`` is
-      :class:`aiohttp.TraceConnectionQueuedEndParams` instance
+      ``params`` is :class:`aiohttp.TraceConnectionQueuedEndParams`
+      instance.
 
    .. attribute:: on_connection_create_start
 
       Property that gives access to the signals that will be executed when a
       request creates a new connection.
 
-      The signal handler signature is
-      ``async def on_connection_create_start(session, context, params): ...``
-      where ``params`` is
-      :class:`aiohttp.TraceConnectionCreateStartParams` instance
+      ``params`` is :class:`aiohttp.TraceConnectionCreateStartParams`
+      instance.
 
    .. attribute:: on_connection_create_end
 
       Property that gives access to the signals that will be executed when a
       request that created a new connection finishes its creation.
 
-      The signal handler signature is
-      ``async def on_connection_create_end(session, context, params): ...``
-      where ``params`` is
-      :class:`aiohttp.TraceConnectionCreateEndParams` instance
+      ``params`` is :class:`aiohttp.TraceConnectionCreateEndParams`
+      instance.
 
    .. attribute:: on_connection_reuseconn
 
       Property that gives access to the signals that will be executed when a
       request reuses a connection.
 
-      The signal handler signature is
-      ``async def on_connection_reuseconn(session, context, params): ...``
-      where ``params`` is
-      :class:`aiohttp.TraceConnectionReuseconnParams` instance
+      ``params`` is :class:`aiohttp.TraceConnectionReuseconnParams`
+      instance.
 
    .. attribute:: on_dns_resolvehost_start
 
       Property that gives access to the signals that will be executed when a
       request starts to resolve the domain related with the request.
 
-      The signal handler signature is
-      ``async def on_dns_resolvehost_start(session, context, params): ...``
-      where ``params`` is
-      :class:`aiohttp.TraceDnsResolveHostStartParams` instance
+      ``params`` is :class:`aiohttp.TraceDnsResolveHostStartParams`
+      instance.
 
    .. attribute:: on_dns_resolvehost_end
 
       Property that gives access to the signals that will be executed when a
       request finishes to resolve the domain related with the request.
 
-      The signal handler signature is
-      ``async def on_dns_resolvehost_end(session, context, params): ...``
-      where ``params`` is :class:`aiohttp.TraceDnsResolveHostEndParams` instance
+      ``params`` is :class:`aiohttp.TraceDnsResolveHostEndParams` instance.
 
    .. attribute:: on_dns_cache_hit
 
@@ -142,9 +129,7 @@ TraceConfig
       request was able to use a cached DNS resolution for the domain related
       with the request.
 
-      The signal handler signature is
-      ``async def on_dns_cache_hit(session, context, params): ...``
-      where ``params`` is :class:`aiohttp.TraceDnsCacheHitParams` instance
+      ``params`` is :class:`aiohttp.TraceDnsCacheHitParams` instance.
 
    .. attribute:: on_dns_cache_miss
 
@@ -152,9 +137,7 @@ TraceConfig
       request was not able to use a cached DNS resolution for the domain related
       with the request.
 
-      The signal handler signature is
-      ``async def on_dns_cache_miss(session, context, params): ...``
-      where ``params`` is :class:`aiohttp.TraceDnsCacheMissParams` instance
+      ``params`` is :class:`aiohttp.TraceDnsCacheMissParams` instance.
 
 
 TraceRequestStartParams
@@ -197,7 +180,7 @@ TraceRequestEndParams
 
    .. attribute:: response
 
-       Response :class:`ClientReponse`.
+       Response :class:`ClientResponse`.
 
 
 TraceRequestExceptionParams
@@ -244,7 +227,7 @@ TraceRequestRedirectParams
 
    .. attribute:: response
 
-       Response :class:`ClientReponse` got from the redirect.
+       Response :class:`ClientResponse` got from the redirect.
 
 TraceConnectionQueuedStartParams
 --------------------------------
