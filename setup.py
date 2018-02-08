@@ -113,7 +113,7 @@ args = dict(
     url='https://github.com/aio-libs/aiohttp/',
     license='Apache 2',
     packages=['aiohttp'],
-    python_requires='>=3.5.0',
+    python_requires='>=3.5.3',
     install_requires=install_requires,
     tests_require=tests_require,
     include_package_data=True,
