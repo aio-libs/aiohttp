@@ -166,6 +166,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def transport(self):
+        if self._protocol is None:
+            return None
         return self._protocol.transport
 
     @property
@@ -325,6 +327,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
+        if self.transport is None:
+            return None
         peername = self.transport.get_extra_info('peername')
         if isinstance(peername, (list, tuple)):
             return peername[0]
