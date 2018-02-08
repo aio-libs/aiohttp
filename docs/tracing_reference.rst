@@ -145,7 +145,7 @@ TraceRequestStartParams
 
 .. class:: TraceRequestStartParams
 
-   See :attr:`TraceConfig.on_request_start` for detals.
+   See :attr:`TraceConfig.on_request_start` for details.
 
    .. attribute:: method
 
@@ -164,7 +164,7 @@ TraceRequestEndParams
 
 .. class:: TraceRequestEndParams
 
-   See :attr:`TraceConfig.on_request_end` for detals.
+   See :attr:`TraceConfig.on_request_end` for details.
 
    .. attribute:: method
 
@@ -188,7 +188,7 @@ TraceRequestExceptionParams
 
 .. class:: TraceRequestExceptionParams
 
-   See :attr:`TraceConfig.on_request_exception` for detals.
+   See :attr:`TraceConfig.on_request_exception` for details.
 
    .. attribute:: method
 
@@ -211,7 +211,7 @@ TraceRequestRedirectParams
 
 .. class:: TraceRequestRedirectParams
 
-   See :attr:`TraceConfig.on_request_redirect` for detals.
+   See :attr:`TraceConfig.on_request_redirect` for details.
 
    .. attribute:: method
 
@@ -234,7 +234,7 @@ TraceConnectionQueuedStartParams
 
 .. class:: TraceConnectionQueuedStartParams
 
-   See :attr:`TraceConfig.on_connection_queued_start` for detals.
+   See :attr:`TraceConfig.on_connection_queued_start` for details.
 
    There are no attributes right now.
 
@@ -243,7 +243,7 @@ TraceConnectionQueuedEndParams
 
 .. class:: TraceConnectionQueuedEndParams
 
-   See :attr:`TraceConfig.on_connection_queued_end` for detals.
+   See :attr:`TraceConfig.on_connection_queued_end` for details.
 
    There are no attributes right now.
 
@@ -252,7 +252,7 @@ TraceConnectionCreateStartParams
 
 .. class:: TraceConnectionCreateStartParams
 
-   See :attr:`TraceConfig.on_connection_create_start` for detals.
+   See :attr:`TraceConfig.on_connection_create_start` for details.
 
    There are no attributes right now.
 
@@ -261,7 +261,7 @@ TraceConnectionCreateEndParams
 
 .. class:: TraceConnectionCreateEndParams
 
-   See :attr:`TraceConfig.on_connection_create_end` for detals.
+   See :attr:`TraceConfig.on_connection_create_end` for details.
 
    There are no attributes right now.
 
@@ -270,7 +270,7 @@ TraceConnectionReuseconnParams
 
 .. class:: TraceConnectionReuseconnParams
 
-   See :attr:`TraceConfig.on_connection_reuseconn` for detals.
+   See :attr:`TraceConfig.on_connection_reuseconn` for details.
 
    There are no attributes right now.
 
@@ -279,7 +279,7 @@ TraceDnsResolveHostStartParams
 
 .. class:: TraceDnsResolveHostStartParams
 
-   See :attr:`TraceConfig.on_dns_resolvehost_start` for detals.
+   See :attr:`TraceConfig.on_dns_resolvehost_start` for details.
 
    .. attribute:: Host
 
@@ -290,7 +290,7 @@ TraceDnsResolveHostEndParams
 
 .. class:: TraceDnsResolveHostEndParams
 
-   See :attr:`TraceConfig.on_dns_resolvehost_end` for detals.
+   See :attr:`TraceConfig.on_dns_resolvehost_end` for details.
 
    .. attribute:: Host
 
@@ -301,7 +301,7 @@ TraceDnsCacheHitParams
 
 .. class:: TraceDnsCacheHitParams
 
-   See :attr:`TraceConfig.on_dns_cache_hit` for detals.
+   See :attr:`TraceConfig.on_dns_cache_hit` for details.
 
    .. attribute:: Host
 
@@ -312,7 +312,7 @@ TraceDnsCacheMissParams
 
 .. class:: TraceDnsCacheMissParams
 
-   See :attr:`TraceConfig.on_dns_cache_miss` for detals.
+   See :attr:`TraceConfig.on_dns_cache_miss` for details.
 
    .. attribute:: Host
 
