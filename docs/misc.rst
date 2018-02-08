@@ -8,15 +8,15 @@ Helpful pages.
 .. toctree::
    :name: misc
 
-   faq
    essays
+   glossary
 
 .. toctree::
    :hidden:
 
    changes
-   glossary
 
+* :ref:`aiohttp_changes`
 
 Indices and tables
 ------------------
