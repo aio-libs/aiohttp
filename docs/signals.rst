@@ -1,6 +1,8 @@
 Signals
 =======
 
+.. currentmodule:: aiohttp
+
 Signal is a list of registered asynchronous callbacks.
 
 The signal's life-cycle has two stages: after creation it's content
