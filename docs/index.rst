@@ -112,9 +112,10 @@ Dependencies
 ============
 
 - Python 3.5.3+
+- *async_timeout*
+- *attrs*
 - *chardet*
 - *multidict*
-- *async_timeout*
 - *yarl*
 - *Optional* :term:`cchardet` as faster replacement for
   :term:`chardet`.
