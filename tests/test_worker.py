@@ -165,34 +165,6 @@ def test__get_valid_log_format_exc(worker):
     assert '%(name)s' in str(exc)
 
 
-async def test__run_ok(worker, loop, unused_port):
-    skip_if_no_dict(loop)
-
-    worker.ppid = 1
-    worker.alive = True
-    sock = socket.socket()
-    addr = ('localhost', unused_port())
-    sock.bind(addr)
-    worker.sockets = [sock]
-    worker.log = mock.Mock()
-    worker.loop = loop
-    worker.cfg.max_requests = 100
-    worker.cfg.is_ssl = False
-    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-
-    worker._runner = web.AppRunner(worker.wsgi)
-    await worker._runner.setup()
-
-    await worker._run()
-
-    worker.notify.assert_called_with()
-    if os.getppid() != 1:  # not Docker
-        worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                           worker)
-
-    assert worker._runner.server is None
-
-
 async def test__run_ok_parent_changed(worker, loop, unused_port):
     skip_if_no_dict(loop)
 
