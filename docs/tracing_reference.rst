@@ -195,7 +195,7 @@ TraceRequestEndParams
 
        Headers used for the request.
 
-   .. attribute:: resp
+   .. attribute:: response
 
        Response :class:`ClientReponse`.
 
@@ -242,7 +242,7 @@ TraceRequestRedirectParams
 
        Headers used for this redirect.
 
-   .. attribute:: resp
+   .. attribute:: response
 
        Response :class:`ClientReponse` got from the redirect.
 
