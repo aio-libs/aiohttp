@@ -1,0 +1,487 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="1084px" height="1084px" viewBox="0 0 1084 1084" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+    <!-- Generator: Sketch 3.1.1 (8761) - http://www.bohemiancoding.com/sketch -->
+    <title>aiohttp-icon</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-1">
+            <feOffset dx="0" dy="10" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="15" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.277697577 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feOffset dx="0" dy="0" in="SourceAlpha" result="shadowOffsetOuter2"></feOffset>
+            <feGaussianBlur stdDeviation="5" in="shadowOffsetOuter2" result="shadowBlurOuter2"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter2" type="matrix" result="shadowMatrixOuter2"></feColorMatrix>
+            <feOffset dx="0" dy="-5" in="SourceAlpha" result="shadowOffsetInner1"></feOffset>
+            <feGaussianBlur stdDeviation="0" in="shadowOffsetInner1" result="shadowBlurInner1"></feGaussianBlur>
+            <feComposite in="shadowBlurInner1" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowInnerInner1"></feComposite>
+            <feColorMatrix values="0 0 0 0 1   0 0 0 0 1   0 0 0 0 1  0 0 0 0.112 0" in="shadowInnerInner1" type="matrix" result="shadowMatrixInner1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="shadowMatrixOuter2"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+                <feMergeNode in="shadowMatrixInner1"></feMergeNode>
+            </feMerge>
+        </filter>
+        <path id="path-2" d="M473,946.358491 C734.428676,946.358491 946.358491,734.428676 946.358491,473 C946.358491,211.571324 734.428676,-0.358490566 473,-0.358490566 C211.571324,-0.358490566 -0.358490566,211.571324 -0.358490566,473 C-0.358490566,734.428676 211.571324,946.358491 473,946.358491 Z"></path>
+        <linearGradient x1="50%" y1="100%" x2="50%" y2="0%" id="linearGradient-4">
+            <stop stop-color="#FBDA61" offset="0%"></stop>
+            <stop stop-color="#F76B1C" offset="100%"></stop>
+        </linearGradient>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-5">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-6">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-7">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-8">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-9">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-10">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-11">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-12">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <filter x="-50%" y="-50%" width="200%" height="200%" filterUnits="objectBoundingBox" id="filter-13">
+            <feOffset dx="0" dy="4" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="4" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.175 0" in="shadowBlurOuter1" type="matrix" result="shadowMatrixOuter1"></feColorMatrix>
+            <feMerge>
+                <feMergeNode in="shadowMatrixOuter1"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+        </filter>
+        <radialGradient cx="50%" cy="50%" fx="50%" fy="50%" r="50%" id="radialGradient-14">
+            <stop stop-color="#000000" stop-opacity="0" offset="0%"></stop>
+            <stop stop-color="#FFFFFF" stop-opacity="0" offset="95.8922406%"></stop>
+            <stop stop-color="#000000" stop-opacity="0.2" offset="100%"></stop>
+        </radialGradient>
+        <path id="path-15" d="M512,985.358491 C773.428676,985.358491 985.358491,773.428676 985.358491,512 C985.358491,250.571324 773.428676,38.6415094 512,38.6415094 C250.571324,38.6415094 38.6415094,250.571324 38.6415094,512 C38.6415094,773.428676 250.571324,985.358491 512,985.358491 Z"></path>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+        <g id="opensource_aiohttp" sketch:type="MSLayerGroup" transform="translate(30.000000, 20.000000)">
+            <circle id="ring" fill="#FFFFFF" filter="url(#filter-1)" sketch:type="MSShapeGroup" cx="512" cy="512" r="512"></circle>
+            <g id="center" transform="translate(39.000000, 39.000000)">
+                <mask id="mask-3" sketch:name="center mask" fill="white">
+                    <use xlink:href="#path-2"></use>
+                </mask>
+                <use id="center-mask" sketch:type="MSShapeGroup" xlink:href="#path-2"></use>
+                <path d="M473,946.358491 C734.428676,946.358491 946.358491,734.428676 946.358491,473 C946.358491,211.571324 734.428676,-0.358490566 473,-0.358490566 C211.571324,-0.358490566 -0.358490566,211.571324 -0.358490566,473 C-0.358490566,734.428676 211.571324,946.358491 473,946.358491 Z" id="orange" fill="#FDB75B" sketch:type="MSShapeGroup" mask="url(#mask-3)"></path>
+                <g id="Pattern" mask="url(#mask-3)" sketch:type="MSShapeGroup">
+                    <g transform="translate(-103.000000, -13.000000)">
+                        <path d="M288,81 L384,81 L336,162 L288,81 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="336 0 384 81 288 81 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="144 0 192 81 96 81 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="144 162 192 243 96 243 "></polygon>
+                        <path d="M96,81 L192,81 L144,162 L96,81 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M96,243 L192,243 L144,324 L96,243 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="336 162 384 243 288 243 "></polygon>
+                        <path d="M288,243 L384,243 L336,324 L288,243 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="48 0 96 81 3.33066907e-16 81 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="48 162 96 243 3.33066907e-16 243 "></polygon>
+                        <path d="M0,81 L96,81 L48,162 L0,81 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M0,243 L96,243 L48,324 L0,243 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="240 0 288 81 192 81 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="240 162 288 243 192 243 "></polygon>
+                        <path d="M192,81 L288,81 L240,162 L192,81 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M192,243 L288,243 L240,324 L192,243 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M48,0 L144,0 L96,81 L48,0 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M48,162 L144,162 L96,243 L48,162 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M144,162 L48,162 L96,81 L144,162 L144,162 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M144,324 L48,324 L96,243 L144,324 L144,324 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M240,0 L336,0 L288,81 L240,0 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M240,162 L336,162 L288,243 L240,162 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M336,162 L240,162 L288,81 L336,162 L336,162 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M336,324 L240,324 L288,243 L336,324 L336,324 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M336,0 L384,0 L384,81 L336,0 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M336,162 L384,162 L384,243 L336,162 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M48,162 L0,162 L0,81 L48,162 L48,162 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M48,324 L0,324 L7.10542736e-15,243 L48,324 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M0,0 L48,0 L0,81 L0,0 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M0,162 L48,162 L0,243 L0,162 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M384,162 L336,162 L384,81 L384,162 L384,162 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M384,324 L336,324 L384,243 L384,324 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M144,0 L240,0 L192,81 L144,0 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M144,162 L240,162 L192,243 L144,162 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M240,162 L144,162 L192,81 L240,162 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M240,324 L144,324 L192,243 L240,324 L240,324 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M672,81 L768,81 L720,162 L672,81 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="720 0 768 81 672 81 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="528 0 576 81 480 81 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="528 162 576 243 480 243 "></polygon>
+                        <path d="M480,81 L576,81 L528,162 L480,81 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M480,243 L576,243 L528,324 L480,243 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="720 162 768 243 672 243 "></polygon>
+                        <path d="M672,243 L768,243 L720,324 L672,243 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="432 0 480 81 384 81 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="432 162 480 243 384 243 "></polygon>
+                        <path d="M384,81 L480,81 L432,162 L384,81 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M384,243 L480,243 L432,324 L384,243 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="624 0 672 81 576 81 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="624 162 672 243 576 243 "></polygon>
+                        <path d="M576,81 L672,81 L624,162 L576,81 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M576,243 L672,243 L624,324 L576,243 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M432,0 L528,0 L480,81 L432,0 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M432,162 L528,162 L480,243 L432,162 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M528,162 L432,162 L480,81 L528,162 L528,162 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M528,324 L432,324 L480,243 L528,324 L528,324 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M624,0 L720,0 L672,81 L624,0 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M624,162 L720,162 L672,243 L624,162 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M720,162 L624,162 L672,81 L720,162 L720,162 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M720,324 L624,324 L672,243 L720,324 L720,324 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M720,0 L768,0 L768,81 L720,0 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M720,162 L768,162 L768,243 L720,162 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M432,162 L384,162 L384,81 L432,162 L432,162 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M432,324 L384,324 L384,243 L432,324 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M384,0 L432,0 L384,81 L384,0 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M384,162 L432,162 L384,243 L384,162 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M768,162 L720,162 L768,81 L768,162 L768,162 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M768,324 L720,324 L768,243 L768,324 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M528,0 L624,0 L576,81 L528,0 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M528,162 L624,162 L576,243 L528,162 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M624,162 L528,162 L576,81 L624,162 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M624,324 L528,324 L576,243 L624,324 L624,324 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M1056,81 L1152,81 L1104,162 L1056,81 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="1104 0 1152 81 1056 81 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="912 0 960 81 864 81 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="912 162 960 243 864 243 "></polygon>
+                        <path d="M864,81 L960,81 L912,162 L864,81 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M864,243 L960,243 L912,324 L864,243 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="1104 162 1152 243 1056 243 "></polygon>
+                        <path d="M1056,243 L1152,243 L1104,324 L1056,243 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="816 0 864 81 768 81 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="816 162 864 243 768 243 "></polygon>
+                        <path d="M768,81 L864,81 L816,162 L768,81 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M768,243 L864,243 L816,324 L768,243 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="1008 0 1056 81 960 81 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="1008 162 1056 243 960 243 "></polygon>
+                        <path d="M960,81 L1056,81 L1008,162 L960,81 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M960,243 L1056,243 L1008,324 L960,243 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M816,0 L912,0 L864,81 L816,0 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M816,162 L912,162 L864,243 L816,162 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M912,162 L816,162 L864,81 L912,162 L912,162 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M912,324 L816,324 L864,243 L912,324 L912,324 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M1008,0 L1104,0 L1056,81 L1008,0 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M1008,162 L1104,162 L1056,243 L1008,162 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M1104,162 L1008,162 L1056,81 L1104,162 L1104,162 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M1104,324 L1008,324 L1056,243 L1104,324 L1104,324 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M1104,0 L1152,0 L1152,81 L1104,0 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M1104,162 L1152,162 L1152,243 L1104,162 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M816,162 L768,162 L768,81 L816,162 L816,162 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M816,324 L768,324 L768,243 L816,324 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M768,0 L816,0 L768,81 L768,0 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M768,162 L816,162 L768,243 L768,162 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M1152,162 L1104,162 L1152,81 L1152,162 L1152,162 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M1152,324 L1104,324 L1152,243 L1152,324 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M912,0 L1008,0 L960,81 L912,0 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M912,162 L1008,162 L960,243 L912,162 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M1008,162 L912,162 L960,81 L1008,162 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M1008,324 L912,324 L960,243 L1008,324 L1008,324 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M288,405 L384,405 L336,486 L288,405 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="336 324 384 405 288 405 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="144 324 192 405 96 405 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="144 486 192 567 96 567 "></polygon>
+                        <path d="M96,405 L192,405 L144,486 L96,405 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M96,567 L192,567 L144,648 L96,567 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="336 486 384 567 288 567 "></polygon>
+                        <path d="M288,567 L384,567 L336,648 L288,567 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="48 324 96 405 3.33066907e-16 405 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="48 486 96 567 3.33066907e-16 567 "></polygon>
+                        <path d="M0,405 L96,405 L48,486 L0,405 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M0,567 L96,567 L48,648 L0,567 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="240 324 288 405 192 405 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="240 486 288 567 192 567 "></polygon>
+                        <path d="M192,405 L288,405 L240,486 L192,405 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M192,567 L288,567 L240,648 L192,567 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M48,324 L144,324 L96,405 L48,324 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M48,486 L144,486 L96,567 L48,486 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M144,486 L48,486 L96,405 L144,486 L144,486 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M144,648 L48,648 L96,567 L144,648 L144,648 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M240,324 L336,324 L288,405 L240,324 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M240,486 L336,486 L288,567 L240,486 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M336,486 L240,486 L288,405 L336,486 L336,486 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M336,648 L240,648 L288,567 L336,648 L336,648 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M336,324 L384,324 L384,405 L336,324 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M336,486 L384,486 L384,567 L336,486 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M48,486 L0,486 L0,405 L48,486 L48,486 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M48,648 L0,648 L7.10542736e-15,567 L48,648 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M0,324 L48,324 L0,405 L0,324 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M0,486 L48,486 L0,567 L0,486 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M384,486 L336,486 L384,405 L384,486 L384,486 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M384,648 L336,648 L384,567 L384,648 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M144,324 L240,324 L192,405 L144,324 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M144,486 L240,486 L192,567 L144,486 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M240,486 L144,486 L192,405 L240,486 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M240,648 L144,648 L192,567 L240,648 L240,648 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M672,405 L768,405 L720,486 L672,405 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="720 324 768 405 672 405 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="528 324 576 405 480 405 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="528 486 576 567 480 567 "></polygon>
+                        <path d="M480,405 L576,405 L528,486 L480,405 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M480,567 L576,567 L528,648 L480,567 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="720 486 768 567 672 567 "></polygon>
+                        <path d="M672,567 L768,567 L720,648 L672,567 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="432 324 480 405 384 405 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="432 486 480 567 384 567 "></polygon>
+                        <path d="M384,405 L480,405 L432,486 L384,405 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M384,567 L480,567 L432,648 L384,567 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="624 324 672 405 576 405 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="624 486 672 567 576 567 "></polygon>
+                        <path d="M576,405 L672,405 L624,486 L576,405 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M576,567 L672,567 L624,648 L576,567 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M432,324 L528,324 L480,405 L432,324 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M432,486 L528,486 L480,567 L432,486 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M528,486 L432,486 L480,405 L528,486 L528,486 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M528,648 L432,648 L480,567 L528,648 L528,648 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M624,324 L720,324 L672,405 L624,324 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M624,486 L720,486 L672,567 L624,486 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M720,486 L624,486 L672,405 L720,486 L720,486 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M720,648 L624,648 L672,567 L720,648 L720,648 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M720,324 L768,324 L768,405 L720,324 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M720,486 L768,486 L768,567 L720,486 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M432,486 L384,486 L384,405 L432,486 L432,486 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M432,648 L384,648 L384,567 L432,648 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M384,324 L432,324 L384,405 L384,324 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M384,486 L432,486 L384,567 L384,486 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M768,486 L720,486 L768,405 L768,486 L768,486 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M768,648 L720,648 L768,567 L768,648 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M528,324 L624,324 L576,405 L528,324 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M528,486 L624,486 L576,567 L528,486 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M624,486 L528,486 L576,405 L624,486 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M624,648 L528,648 L576,567 L624,648 L624,648 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M1056,405 L1152,405 L1104,486 L1056,405 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="1104 324 1152 405 1056 405 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="912 324 960 405 864 405 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="912 486 960 567 864 567 "></polygon>
+                        <path d="M864,405 L960,405 L912,486 L864,405 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M864,567 L960,567 L912,648 L864,567 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="1104 486 1152 567 1056 567 "></polygon>
+                        <path d="M1056,567 L1152,567 L1104,648 L1056,567 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="816 324 864 405 768 405 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="816 486 864 567 768 567 "></polygon>
+                        <path d="M768,405 L864,405 L816,486 L768,405 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M768,567 L864,567 L816,648 L768,567 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="1008 324 1056 405 960 405 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="1008 486 1056 567 960 567 "></polygon>
+                        <path d="M960,405 L1056,405 L1008,486 L960,405 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M960,567 L1056,567 L1008,648 L960,567 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M816,324 L912,324 L864,405 L816,324 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M816,486 L912,486 L864,567 L816,486 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M912,486 L816,486 L864,405 L912,486 L912,486 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M912,648 L816,648 L864,567 L912,648 L912,648 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M1008,324 L1104,324 L1056,405 L1008,324 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M1008,486 L1104,486 L1056,567 L1008,486 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M1104,486 L1008,486 L1056,405 L1104,486 L1104,486 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M1104,648 L1008,648 L1056,567 L1104,648 L1104,648 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M1104,324 L1152,324 L1152,405 L1104,324 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M1104,486 L1152,486 L1152,567 L1104,486 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M816,486 L768,486 L768,405 L816,486 L816,486 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M816,648 L768,648 L768,567 L816,648 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M768,324 L816,324 L768,405 L768,324 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M768,486 L816,486 L768,567 L768,486 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M1152,486 L1104,486 L1152,405 L1152,486 L1152,486 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M1152,648 L1104,648 L1152,567 L1152,648 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M912,324 L1008,324 L960,405 L912,324 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M912,486 L1008,486 L960,567 L912,486 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M1008,486 L912,486 L960,405 L1008,486 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M1008,648 L912,648 L960,567 L1008,648 L1008,648 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M288,729 L384,729 L336,810 L288,729 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="336 648 384 729 288 729 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="144 648 192 729 96 729 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="144 810 192 891 96 891 "></polygon>
+                        <path d="M96,729 L192,729 L144,810 L96,729 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M96,891 L192,891 L144,972 L96,891 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="336 810 384 891 288 891 "></polygon>
+                        <path d="M288,891 L384,891 L336,972 L288,891 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="48 648 96 729 3.33066907e-16 729 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="48 810 96 891 3.33066907e-16 891 "></polygon>
+                        <path d="M0,729 L96,729 L48,810 L0,729 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M0,891 L96,891 L48,972 L0,891 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="240 648 288 729 192 729 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="240 810 288 891 192 891 "></polygon>
+                        <path d="M192,729 L288,729 L240,810 L192,729 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M192,891 L288,891 L240,972 L192,891 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M48,648 L144,648 L96,729 L48,648 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M48,810 L144,810 L96,891 L48,810 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M144,810 L48,810 L96,729 L144,810 L144,810 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M144,972 L48,972 L96,891 L144,972 L144,972 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M240,648 L336,648 L288,729 L240,648 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M240,810 L336,810 L288,891 L240,810 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M336,810 L240,810 L288,729 L336,810 L336,810 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M336,972 L240,972 L288,891 L336,972 L336,972 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M336,648 L384,648 L384,729 L336,648 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M336,810 L384,810 L384,891 L336,810 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M48,810 L0,810 L0,729 L48,810 L48,810 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M48,972 L0,972 L7.10542736e-15,891 L48,972 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M0,648 L48,648 L0,729 L0,648 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M0,810 L48,810 L0,891 L0,810 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M384,810 L336,810 L384,729 L384,810 L384,810 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M384,972 L336,972 L384,891 L384,972 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M144,648 L240,648 L192,729 L144,648 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M144,810 L240,810 L192,891 L144,810 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M240,810 L144,810 L192,729 L240,810 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M240,972 L144,972 L192,891 L240,972 L240,972 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M672,729 L768,729 L720,810 L672,729 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="720 648 768 729 672 729 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="528 648 576 729 480 729 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="528 810 576 891 480 891 "></polygon>
+                        <path d="M480,729 L576,729 L528,810 L480,729 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M480,891 L576,891 L528,972 L480,891 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="720 810 768 891 672 891 "></polygon>
+                        <path d="M672,891 L768,891 L720,972 L672,891 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="432 648 480 729 384 729 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="432 810 480 891 384 891 "></polygon>
+                        <path d="M384,729 L480,729 L432,810 L384,729 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M384,891 L480,891 L432,972 L384,891 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="624 648 672 729 576 729 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="624 810 672 891 576 891 "></polygon>
+                        <path d="M576,729 L672,729 L624,810 L576,729 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M576,891 L672,891 L624,972 L576,891 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M432,648 L528,648 L480,729 L432,648 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M432,810 L528,810 L480,891 L432,810 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M528,810 L432,810 L480,729 L528,810 L528,810 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M528,972 L432,972 L480,891 L528,972 L528,972 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M624,648 L720,648 L672,729 L624,648 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M624,810 L720,810 L672,891 L624,810 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M720,810 L624,810 L672,729 L720,810 L720,810 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M720,972 L624,972 L672,891 L720,972 L720,972 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M720,648 L768,648 L768,729 L720,648 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M720,810 L768,810 L768,891 L720,810 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M432,810 L384,810 L384,729 L432,810 L432,810 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M432,972 L384,972 L384,891 L432,972 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M384,648 L432,648 L384,729 L384,648 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M384,810 L432,810 L384,891 L384,810 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M768,810 L720,810 L768,729 L768,810 L768,810 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M768,972 L720,972 L768,891 L768,972 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M528,648 L624,648 L576,729 L528,648 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M528,810 L624,810 L576,891 L528,810 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M624,810 L528,810 L576,729 L624,810 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M624,972 L528,972 L576,891 L624,972 L624,972 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                        <path d="M1056,729 L1152,729 L1104,810 L1056,729 Z" id="Triangle-16" fill="#FCA63B"></path>
+                        <polygon id="Triangle-46" fill="#FCB555" points="1104 648 1152 729 1056 729 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCAB2D" points="912 648 960 729 864 729 "></polygon>
+                        <polygon id="Triangle-37" fill="#FCB555" points="912 810 960 891 864 891 "></polygon>
+                        <path d="M864,729 L960,729 L912,810 L864,729 Z" id="Triangle-36" fill="#FCB457"></path>
+                        <path d="M864,891 L960,891 L912,972 L864,891 Z" id="Triangle-36" fill="#FCA63B"></path>
+                        <polygon id="Triangle-35" fill="#FCAB2D" points="1104 810 1152 891 1056 891 "></polygon>
+                        <path d="M1056,891 L1152,891 L1104,972 L1056,891 Z" id="Triangle-34" fill="#FCB457"></path>
+                        <polygon id="Triangle-33" fill="#FCA63B" points="816 648 864 729 768 729 "></polygon>
+                        <polygon id="Triangle-33" fill="#FCAB2D" points="816 810 864 891 768 891 "></polygon>
+                        <path d="M768,729 L864,729 L816,810 L768,729 Z" id="Triangle-32" fill="#FCB555"></path>
+                        <path d="M768,891 L864,891 L816,972 L768,891 Z" id="Triangle-32" fill="#FCB457"></path>
+                        <polygon id="Triangle-31" fill="#FCAB2D" points="1008 648 1056 729 960 729 "></polygon>
+                        <polygon id="Triangle-31" fill="#FCA63B" points="1008 810 1056 891 960 891 "></polygon>
+                        <path d="M960,729 L1056,729 L1008,810 L960,729 Z" id="Triangle-30" fill="#FCB457"></path>
+                        <path d="M960,891 L1056,891 L1008,972 L960,891 Z" id="Triangle-30" fill="#FCB555"></path>
+                        <path d="M816,648 L912,648 L864,729 L816,648 Z" id="Triangle-29" fill="#FCB555"></path>
+                        <path d="M816,810 L912,810 L864,891 L816,810 Z" id="Triangle-29" fill="#FCA63B"></path>
+                        <path d="M912,810 L816,810 L864,729 L912,810 L912,810 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M912,972 L816,972 L864,891 L912,972 L912,972 Z" id="Triangle-28" fill="#FCB546"></path>
+                        <path d="M1008,648 L1104,648 L1056,729 L1008,648 Z" id="Triangle-25" fill="#FCA63B"></path>
+                        <path d="M1008,810 L1104,810 L1056,891 L1008,810 Z" id="Triangle-25" fill="#FCB555"></path>
+                        <path d="M1104,810 L1008,810 L1056,729 L1104,810 L1104,810 Z" id="Triangle-24" fill="#FCB546"></path>
+                        <path d="M1104,972 L1008,972 L1056,891 L1104,972 L1104,972 Z" id="Triangle-24" fill="#FCAB2D"></path>
+                        <path d="M1104,648 L1152,648 L1152,729 L1104,648 Z" id="Triangle-23" fill="#FFC474"></path>
+                        <path d="M1104,810 L1152,810 L1152,891 L1104,810 Z" id="Triangle-23" fill="#FCB546"></path>
+                        <path d="M816,810 L768,810 L768,729 L816,810 L816,810 Z" id="Triangle-22" fill="#FCAB2D"></path>
+                        <path d="M816,972 L768,972 L768,891 L816,972 Z" id="Triangle-22" fill="#FFC474"></path>
+                        <path d="M768,648 L816,648 L768,729 L768,648 Z" id="Triangle-21" fill="#FFC474"></path>
+                        <path d="M768,810 L816,810 L768,891 L768,810 Z" id="Triangle-21" fill="#FCB546"></path>
+                        <path d="M1152,810 L1104,810 L1152,729 L1152,810 L1152,810 Z" id="Triangle-20" fill="#FCAB2D"></path>
+                        <path d="M1152,972 L1104,972 L1152,891 L1152,972 Z" id="Triangle-20" fill="#FFC474"></path>
+                        <path d="M912,648 L1008,648 L960,729 L912,648 Z" id="Triangle-19" fill="#FCB546"></path>
+                        <path d="M912,810 L1008,810 L960,891 L912,810 Z" id="Triangle-19" fill="#FFC474"></path>
+                        <path d="M1008,810 L912,810 L960,729 L1008,810 Z" id="Triangle-18" fill="#FFC474"></path>
+                        <path d="M1008,972 L912,972 L960,891 L1008,972 L1008,972 Z" id="Triangle-18" fill="#FCAB2D"></path>
+                    </g>
+                </g>
+                <path d="M473,946.358491 C734.428676,946.358491 946.358491,734.428676 946.358491,473 C946.358491,211.571324 734.428676,-0.358490566 473,-0.358490566 C211.571324,-0.358490566 -0.358490566,211.571324 -0.358490566,473 C-0.358490566,734.428676 211.571324,946.358491 473,946.358491 Z" id="overlay" fill-opacity="0.4" fill="url(#linearGradient-4)" sketch:type="MSShapeGroup" mask="url(#mask-3)"></path>
+                <g id="lines" mask="url(#mask-3)" stroke="#FFFFFF" stroke-width="6" sketch:type="MSShapeGroup">
+                    <g transform="translate(-845.000000, -79.000000)">
+                        <circle id="Oval-114" cx="923" cy="892" r="760"></circle>
+                        <circle id="Oval-114" cx="1125.5" cy="1109.5" r="401.5"></circle>
+                        <circle id="Oval-114" cx="497.5" cy="613.5" r="497.5"></circle>
+                        <circle id="Oval-114" cx="2184" cy="762" r="760"></circle>
+                        <circle id="Oval-115" cx="1873.5" cy="1077.5" r="1077.5"></circle>
+                        <circle id="Oval-115" cx="1969.5" cy="1525.5" r="861.5"></circle>
+                        <circle id="Oval-114" cx="1687" cy="868" r="500"></circle>
+                    </g>
+                </g>
+            </g>
+            <g id="dots" transform="translate(119.000000, 114.000000)" sketch:type="MSShapeGroup">
+                <circle id="Oval-111" fill="#FFFFFF" filter="url(#filter-5)" cx="510" cy="694" r="76"></circle>
+                <circle id="Oval-111" fill="#FFFFFF" filter="url(#filter-6)" cx="286" cy="562" r="50"></circle>
+                <circle id="Oval-111" fill="#FFFFFF" filter="url(#filter-7)" cx="322" cy="50" r="50"></circle>
+                <circle id="Oval-111" fill="#FFFFFF" filter="url(#filter-8)" cx="50" cy="594" r="50"></circle>
+                <circle id="Oval-111" fill="#FFFFFF" filter="url(#filter-9)" cx="56" cy="320" r="27"></circle>
+                <g id="red-dot" transform="translate(417.000000, 85.000000)">
+                    <circle id="Oval-113" opacity="0.2" fill-opacity="0.5" fill="#FFFFFF" filter="url(#filter-10)" cx="169.5" cy="169.5" r="169.5"></circle>
+                    <circle id="Oval-112" fill-opacity="0.5" fill="#FFFFFF" filter="url(#filter-11)" cx="169.5" cy="169.5" r="141.5"></circle>
+                    <circle id="Oval-111" opacity="0.8" fill="#FFFFFF" filter="url(#filter-12)" cx="170" cy="170" r="110"></circle>
+                    <circle id="Oval-112" fill="#F26262" filter="url(#filter-13)" cx="170" cy="170" r="81"></circle>
+                </g>
+            </g>
+            <mask id="mask-16" sketch:name="inner shadow" fill="white">
+                <use xlink:href="#path-15"></use>
+            </mask>
+            <use id="inner-shadow" fill="url(#radialGradient-14)" sketch:type="MSShapeGroup" xlink:href="#path-15"></use>
+        </g>
+    </g>
+</svg>
