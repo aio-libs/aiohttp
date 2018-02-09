@@ -19,7 +19,7 @@ from aiohttp.client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
                                    _merge_ssl_params)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def make_request(loop):
     request = None
 
@@ -46,7 +46,7 @@ def protocol(loop):
     return protocol
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def transport(buf):
     transport = mock.Mock()
 

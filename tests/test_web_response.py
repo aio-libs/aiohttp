@@ -27,12 +27,12 @@ def make_request(method, path, headers=CIMultiDict(),
                                app=app, **kwargs)
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def buf():
     return bytearray()
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def writer(buf):
     writer = mock.Mock()
 

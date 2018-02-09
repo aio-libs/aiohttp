@@ -26,7 +26,7 @@ def connector(loop):
     conn.close()
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def create_session(loop):
     session = None
 
