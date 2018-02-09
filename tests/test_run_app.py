@@ -319,8 +319,8 @@ def test_run_app_https(patched_loop):
         reuse_address=None, reuse_port=None)
 
 
-def test_run_app_nondefault_host_port(patched_loop, unused_port):
-    port = unused_port()
+def test_run_app_nondefault_host_port(patched_loop, aiohttp_unused_port):
+    port = aiohttp_unused_port()
     host = '127.0.0.1'
 
     app = web.Application()

@@ -11,7 +11,7 @@ from aiohttp import web
 
 
 @pytest.fixture
-def proxy_test_server(raw_test_server, loop, monkeypatch):
+def proxy_test_server(aiohttp_raw_server, loop, monkeypatch):
     """Handle all proxy requests and imitate remote server response."""
 
     _patch_ssl_transport(monkeypatch)
@@ -50,7 +50,7 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
         proxy_mock.auth = None
         proxy_mock.requests_list = []
 
-        server = await raw_test_server(proxy_handler)
+        server = await aiohttp_raw_server(proxy_handler)
 
         proxy_mock.server = server
         proxy_mock.url = server.make_url('/')

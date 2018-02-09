@@ -47,3 +47,4 @@ virtualenv.py
 .gitconfig
 .flake
 .python-version
+.pytest_cache

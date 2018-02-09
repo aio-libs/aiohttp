@@ -1767,14 +1767,14 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
     assert proto in conn._acquired
 
 
-async def test_tcp_connector(test_client, loop):
+async def test_tcp_connector(aiohttp_client, loop):
 
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     r = await client.get('/')
     assert r.status == 200

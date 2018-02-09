@@ -50,7 +50,7 @@ def _create_example_app():
 
 
 # these exist to test the pytest scenario
-@pytest.yield_fixture
+@pytest.fixture
 def loop():
     with loop_context() as loop:
         yield loop
@@ -76,14 +76,14 @@ def test_with_test_server_fails(loop):
             pass
 
 
-def test_with_test_client_fails(loop):
+def test_with_client_fails(loop):
     app = _create_example_app()
     with pytest.raises(TypeError):
         with _TestClient(_TestServer(app, loop=loop), loop=loop):
             pass
 
 
-def test_test_client_close_is_idempotent():
+def test_aiohttp_client_close_is_idempotent():
     """
     a test client, called multiple times, should
     not attempt to close the server again.
@@ -276,8 +276,8 @@ async def test_client_context_manager_response(method, app, loop):
                 assert "Hello, world" in text
 
 
-async def test_custom_port(loop, app, unused_port):
-    port = unused_port()
+async def test_custom_port(loop, app, aiohttp_unused_port):
+    port = aiohttp_unused_port()
     client = _TestClient(_TestServer(app, loop=loop, port=port), loop=loop)
     await client.start_server()
 

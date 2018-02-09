@@ -5,7 +5,7 @@ import pytest
 from aiohttp import web
 
 
-async def test_middleware_modifies_response(loop, test_client):
+async def test_middleware_modifies_response(loop, aiohttp_client):
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -20,14 +20,14 @@ async def test_middleware_modifies_response(loop, test_client):
     app = web.Application()
     app.middlewares.append(middleware)
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     resp = await client.get('/')
     assert 201 == resp.status
     txt = await resp.text()
     assert 'OK[MIDDLEWARE]' == txt
 
 
-async def test_middleware_handles_exception(loop, test_client):
+async def test_middleware_handles_exception(loop, aiohttp_client):
     async def handler(request):
         raise RuntimeError('Error text')
 
@@ -41,14 +41,14 @@ async def test_middleware_handles_exception(loop, test_client):
     app = web.Application()
     app.middlewares.append(middleware)
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     resp = await client.get('/')
     assert 501 == resp.status
     txt = await resp.text()
     assert 'Error text[MIDDLEWARE]' == txt
 
 
-async def test_middleware_chain(loop, test_client):
+async def test_middleware_chain(loop, aiohttp_client):
     async def handler(request):
         return web.Response(text='OK')
 
@@ -64,7 +64,7 @@ async def test_middleware_chain(loop, test_client):
     app.middlewares.append(make_middleware(1))
     app.middlewares.append(make_middleware(2))
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     resp = await client.get('/')
     assert 200 == resp.status
     txt = await resp.text()
@@ -72,7 +72,7 @@ async def test_middleware_chain(loop, test_client):
 
 
 @pytest.fixture
-def cli(loop, test_client):
+def cli(loop, aiohttp_client):
     async def handler(request):
         return web.Response(text="OK")
 
@@ -87,7 +87,7 @@ def cli(loop, test_client):
         app.router.add_route(
             'GET', '/resource2/a/b/', handler)
         app.middlewares.extend(extra_middlewares)
-        return test_client(app, server_kwargs={'skip_url_asserts': True})
+        return aiohttp_client(app, server_kwargs={'skip_url_asserts': True})
     return wrapper
 
 
@@ -195,7 +195,7 @@ class TestNormalizePathMiddleware:
         assert resp.status == status
 
 
-async def test_old_style_middleware(loop, test_client):
+async def test_old_style_middleware(loop, aiohttp_client):
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -213,7 +213,7 @@ async def test_old_style_middleware(loop, test_client):
         app = web.Application()
         app.middlewares.append(middleware_factory)
         app.router.add_route('GET', '/', handler)
-        client = await test_client(app)
+        client = await aiohttp_client(app)
         resp = await client.get('/')
         assert 201 == resp.status
         txt = await resp.text()
@@ -228,7 +228,7 @@ async def test_old_style_middleware(loop, test_client):
                     msg)
 
 
-async def test_mixed_middleware(loop, test_client):
+async def test_mixed_middleware(loop, aiohttp_client):
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -263,7 +263,7 @@ async def test_mixed_middleware(loop, test_client):
     with pytest.warns(DeprecationWarning) as w:
         app = web.Application(middlewares=middlewares)
         app.router.add_route('GET', '/', handler)
-        client = await test_client(app)
+        client = await aiohttp_client(app)
         resp = await client.get('/')
         assert 200 == resp.status
         txt = await resp.text()
@@ -281,7 +281,7 @@ async def test_mixed_middleware(loop, test_client):
     assert re.match(p1, str(w.list[1].message))
 
 
-async def test_old_style_middleware_class(loop, test_client):
+async def test_old_style_middleware_class(loop, aiohttp_client):
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -299,7 +299,7 @@ async def test_old_style_middleware_class(loop, test_client):
         app = web.Application()
         app.middlewares.append(Middleware())
         app.router.add_route('GET', '/', handler)
-        client = await test_client(app)
+        client = await aiohttp_client(app)
         resp = await client.get('/')
         assert 201 == resp.status
         txt = await resp.text()
@@ -313,7 +313,7 @@ async def test_old_style_middleware_class(loop, test_client):
                     'at 0x[0-9a-fA-F]+>" deprecated, see #2252$', msg)
 
 
-async def test_new_style_middleware_class(loop, test_client):
+async def test_new_style_middleware_class(loop, aiohttp_client):
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -330,7 +330,7 @@ async def test_new_style_middleware_class(loop, test_client):
         app = web.Application()
         app.middlewares.append(Middleware())
         app.router.add_route('GET', '/', handler)
-        client = await test_client(app)
+        client = await aiohttp_client(app)
         resp = await client.get('/')
         assert 201 == resp.status
         txt = await resp.text()
@@ -339,7 +339,7 @@ async def test_new_style_middleware_class(loop, test_client):
     assert len(warning_checker) == 0
 
 
-async def test_new_style_middleware_method(loop, test_client):
+async def test_new_style_middleware_method(loop, aiohttp_client):
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -356,7 +356,7 @@ async def test_new_style_middleware_method(loop, test_client):
         app = web.Application()
         app.middlewares.append(Middleware().call)
         app.router.add_route('GET', '/', handler)
-        client = await test_client(app)
+        client = await aiohttp_client(app)
         resp = await client.get('/')
         assert 201 == resp.status
         txt = await resp.text()
