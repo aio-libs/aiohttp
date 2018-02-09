@@ -125,31 +125,34 @@ def test_access_logger_format():
 
 
 def test_access_logger_atoms(mocker):
-    mock_datetime = mocker.patch("aiohttp.helpers.datetime")
+    utcnow = datetime.datetime(1843, 1, 1, 0, 30)
+    mock_datetime = mocker.patch("aiohttp.helpers.datetime.datetime")
     mock_getpid = mocker.patch("os.getpid")
-    utcnow = datetime.datetime(1843, 1, 1, 0, 0)
-    mock_datetime.datetime.utcnow.return_value = utcnow
+    mock_datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
-    log_format = '%a %t %P %r %s %b %T %Tf %D'
+    log_format = '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
     mock_logger = mock.Mock()
     access_logger = helpers.AccessLogger(mock_logger, log_format)
-    request = mock.Mock(headers={}, method="GET", path_qs="/path",
+    request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
+                        method="GET", path_qs="/path",
                         version=(1, 1),
                         remote="127.0.0.2")
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
-    expected = ('127.0.0.2 [01/Jan/1843:00:00:00 +0000] <42> '
-                'GET /path HTTP/1.1 200 42 3 3.141593 3141593')
+    expected = ('127.0.0.2 [01/Jan/1843:00:29:56 +0000] <42> '
+                'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"')
     extra = {
         'first_request_line': 'GET /path HTTP/1.1',
         'process_id': '<42>',
         'remote_address': '127.0.0.2',
+        'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
         'request_time': 3,
         'request_time_frac': '3.141593',
         'request_time_micro': 3141593,
         'response_size': 42,
-        'response_status': 200
+        'response_status': 200,
+        'request_header': {'H1': 'a', 'H2': 'b'},
     }
 
     mock_logger.info.assert_called_with(expected, extra=extra)
@@ -166,7 +169,7 @@ def test_access_logger_dicts():
     assert not mock_logger.error.called
     expected = 'Mock/1.0 123 -'
     extra = {
-        'request_header': {'None': '-'},
+        'request_header': {"User-Agent": "Mock/1.0", 'None': '-'},
         'response_header': {'Content-Length': 123}
     }
 
