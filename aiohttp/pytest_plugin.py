@@ -1,11 +1,9 @@
 import asyncio
 import collections
 import contextlib
-import tempfile
 import warnings
 
 import pytest
-from py import path
 
 from aiohttp.helpers import isasyncgenfunction
 from aiohttp.web import Application
@@ -321,13 +319,3 @@ def test_client(aiohttp_client):  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_client fixture instead",
                   DeprecationWarning)
     return aiohttp_client
-
-
-@pytest.fixture
-def shorttmpdir():
-    """Provides a temporary directory with a shorter file system path than the
-    tmpdir fixture.
-    """
-    tmpdir = path.local(tempfile.mkdtemp())
-    yield tmpdir
-    tmpdir.remove(rec=1)
