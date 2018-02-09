@@ -10,9 +10,9 @@ from py import path
 from aiohttp.helpers import isasyncgenfunction
 from aiohttp.web import Application
 
-from .test_utils import unused_port as _unused_port
 from .test_utils import (BaseTestServer, RawTestServer, TestClient, TestServer,
                          loop_context, setup_test_loop, teardown_test_loop)
+from .test_utils import unused_port as _unused_port
 
 
 try:
