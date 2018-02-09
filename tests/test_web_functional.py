@@ -64,7 +64,7 @@ async def test_simple_get_with_text(loop, aiohttp_client):
     assert 'OK' == txt
 
 
-async def test_handler_returns_not_response(loop, test_server, aiohttp_client):
+async def test_handler_returns_not_response(aiohttp_server, aiohttp_client):
     logger = mock.Mock()
 
     async def handler(request):
@@ -72,7 +72,7 @@ async def test_handler_returns_not_response(loop, test_server, aiohttp_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app, logger=logger)
+    server = await aiohttp_server(app, logger=logger)
     client = await aiohttp_client(server)
 
     resp = await client.get('/')
@@ -699,14 +699,14 @@ async def test_large_header(loop, aiohttp_client):
     assert 400 == resp.status
 
 
-async def test_large_header_allowed(loop, aiohttp_client, test_server):
+async def test_large_header_allowed(loop, aiohttp_client, aiohttp_server):
 
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_post('/', handler)
-    server = await test_server(app, max_field_size=81920)
+    server = await aiohttp_server(app, max_field_size=81920)
     client = await aiohttp_client(server)
 
     headers = {'Long-Header': 'ab' * 8129}
@@ -1228,7 +1228,7 @@ async def test_subapp_on_response_prepare(loop, aiohttp_client):
     assert [app, subapp1, subapp2] == order
 
 
-async def test_subapp_on_startup(loop, test_server):
+async def test_subapp_on_startup(loop, aiohttp_server):
     order = []
 
     async def on_signal(app):
@@ -1243,12 +1243,12 @@ async def test_subapp_on_startup(loop, test_server):
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
 
-    await test_server(app)
+    await aiohttp_server(app)
 
     assert [app, subapp1, subapp2] == order
 
 
-async def test_subapp_on_shutdown(loop, test_server):
+async def test_subapp_on_shutdown(loop, aiohttp_server):
     order = []
 
     async def on_signal(app):
@@ -1263,13 +1263,13 @@ async def test_subapp_on_shutdown(loop, test_server):
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
 
-    server = await test_server(app)
+    server = await aiohttp_server(app)
     await server.close()
 
     assert [app, subapp1, subapp2] == order
 
 
-async def test_subapp_on_cleanup(loop, test_server):
+async def test_subapp_on_cleanup(loop, aiohttp_server):
     order = []
 
     async def on_signal(app):
@@ -1284,7 +1284,7 @@ async def test_subapp_on_cleanup(loop, test_server):
     subapp1.add_subapp('/b/', subapp2)
     app.add_subapp('/a/', subapp1)
 
-    server = await test_server(app)
+    server = await aiohttp_server(app)
     await server.close()
 
     assert [app, subapp1, subapp2] == order
@@ -1515,7 +1515,7 @@ async def test_request_clone(loop, aiohttp_client):
     assert 200 == resp.status
 
 
-async def test_await(test_server, loop):
+async def test_await(aiohttp_server, loop):
 
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': str(4)})
@@ -1530,7 +1530,7 @@ async def test_await(test_server, loop):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
         resp = await session.get(server.make_url('/'))
@@ -1541,14 +1541,14 @@ async def test_await(test_server, loop):
         assert resp.connection is None
 
 
-async def test_response_context_manager(test_server, loop):
+async def test_response_context_manager(aiohttp_server, loop):
 
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
     resp = await aiohttp.ClientSession(loop=loop).get(server.make_url('/'))
     async with resp:
         assert resp.status == 200
@@ -1556,14 +1556,14 @@ async def test_response_context_manager(test_server, loop):
     assert resp.connection is None
 
 
-async def test_response_context_manager_error(test_server, loop):
+async def test_response_context_manager_error(aiohttp_server, loop):
 
     async def handler(request):
         return web.Response(text='some text')
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
     session = aiohttp.ClientSession(loop=loop)
     cm = session.get(server.make_url('/'))
     resp = await cm
@@ -1577,14 +1577,14 @@ async def test_response_context_manager_error(test_server, loop):
     assert len(session._connector._conns) == 1
 
 
-async def aiohttp_client_api_context_manager(test_server, loop):
+async def aiohttp_client_api_context_manager(aiohttp_server, loop):
 
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
         async with session.get(server.make_url('/')) as resp:
@@ -1593,7 +1593,7 @@ async def aiohttp_client_api_context_manager(test_server, loop):
     assert resp.connection is None
 
 
-async def test_context_manager_close_on_release(test_server, loop, mocker):
+async def test_context_manager_close_on_release(aiohttp_server, loop, mocker):
 
     async def handler(request):
         resp = web.StreamResponse()
@@ -1605,7 +1605,7 @@ async def test_context_manager_close_on_release(test_server, loop, mocker):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
         resp = await session.get(server.make_url('/'))
@@ -1618,7 +1618,7 @@ async def test_context_manager_close_on_release(test_server, loop, mocker):
         assert proto.close.called
 
 
-async def test_iter_any(test_server, loop):
+async def test_iter_any(aiohttp_server, loop):
 
     data = b'0123456789' * 1024
 
@@ -1631,7 +1631,7 @@ async def test_iter_any(test_server, loop):
 
     app = web.Application()
     app.router.add_route('POST', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
         async with session.post(server.make_url('/'), data=data) as resp:

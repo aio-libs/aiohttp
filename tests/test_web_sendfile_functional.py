@@ -271,7 +271,7 @@ async def test_static_file_if_modified_since_future_date(
 
 
 @pytest.mark.skipif(not ssl, reason="ssl not supported")
-async def test_static_file_ssl(loop, test_server, aiohttp_client):
+async def test_static_file_ssl(loop, aiohttp_server, aiohttp_client):
     dirname = os.path.dirname(__file__)
     filename = 'data.unknown_mime_type'
     ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -281,7 +281,7 @@ async def test_static_file_ssl(loop, test_server, aiohttp_client):
     )
     app = web.Application()
     app.router.add_static('/static', dirname)
-    server = await test_server(app, ssl=ssl_ctx)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
     conn = aiohttp.TCPConnector(ssl=False, loop=loop)
     client = await aiohttp_client(server, connector=conn)
 

@@ -271,7 +271,7 @@ async def test_post_data_textio_encoding(loop, aiohttp_client):
     assert 200 == resp.status
 
 
-async def test_ssl_client(loop, ssl_ctx, test_server, aiohttp_client):
+async def test_ssl_client(loop, ssl_ctx, aiohttp_server, aiohttp_client):
     connector = aiohttp.TCPConnector(ssl=False, loop=loop)
 
     async def handler(request):
@@ -279,7 +279,7 @@ async def test_ssl_client(loop, ssl_ctx, test_server, aiohttp_client):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app, ssl=ssl_ctx)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
     client = await aiohttp_client(server, connector=connector)
 
     resp = await client.get('/')
@@ -288,7 +288,7 @@ async def test_ssl_client(loop, ssl_ctx, test_server, aiohttp_client):
     assert txt == 'Test message'
 
 
-async def test_tcp_connector_fingerprint_ok(test_server, aiohttp_client,
+async def test_tcp_connector_fingerprint_ok(aiohttp_server, aiohttp_client,
                                             loop, ssl_ctx):
 
     fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
@@ -301,7 +301,7 @@ async def test_tcp_connector_fingerprint_ok(test_server, aiohttp_client,
     connector = aiohttp.TCPConnector(loop=loop, ssl=Fingerprint(fingerprint))
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app, ssl=ssl_ctx)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
     client = await aiohttp_client(server, connector=connector)
 
     resp = await client.get('/')
@@ -309,7 +309,7 @@ async def test_tcp_connector_fingerprint_ok(test_server, aiohttp_client,
     resp.close()
 
 
-async def test_tcp_connector_fingerprint_fail(test_server, aiohttp_client,
+async def test_tcp_connector_fingerprint_fail(aiohttp_server, aiohttp_client,
                                               loop, ssl_ctx):
 
     fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
@@ -326,7 +326,7 @@ async def test_tcp_connector_fingerprint_fail(test_server, aiohttp_client,
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app, ssl=ssl_ctx)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
     client = await aiohttp_client(server, connector=connector)
 
     with pytest.raises(ServerFingerprintMismatch) as cm:
@@ -336,14 +336,14 @@ async def test_tcp_connector_fingerprint_fail(test_server, aiohttp_client,
     assert exc.got == fingerprint
 
 
-async def test_format_task_get(test_server, loop):
+async def test_format_task_get(aiohttp_server, loop):
 
     async def handler(request):
         return web.Response(body=b'OK')
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
     client = aiohttp.ClientSession(loop=loop)
     task = loop.create_task(client.get(server.make_url('/')))
     assert "{}".format(task).startswith("<Task pending")
@@ -2048,7 +2048,7 @@ async def test_creds_in_auth_and_url(loop):
         await session.close()
 
 
-async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
+async def test_drop_auth_on_redirect_to_other_host(aiohttp_server, loop):
 
     async def srv1(request):
         assert request.host == 'host1.com'
@@ -2064,7 +2064,7 @@ async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
     app.router.add_route('GET', '/path1', srv1)
     app.router.add_route('GET', '/path2', srv2)
 
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     class FakeResolver(AbstractResolver):
 
@@ -2120,7 +2120,7 @@ def test_close_run_until_complete_not_deprecated(loop):
     assert len(cm.list) == 0
 
 
-async def test_close_resp_on_error_async_with_session(loop, test_server):
+async def test_close_resp_on_error_async_with_session(loop, aiohttp_server):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
         await resp.prepare(request)
@@ -2129,7 +2129,7 @@ async def test_close_resp_on_error_async_with_session(loop, test_server):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
         with pytest.raises(RuntimeError):
@@ -2140,13 +2140,13 @@ async def test_close_resp_on_error_async_with_session(loop, test_server):
         assert len(session._connector._conns) == 0
 
 
-async def test_release_resp_on_normal_exit_from_cm(loop, test_server):
+async def test_release_resp_on_normal_exit_from_cm(loop, aiohttp_server):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as session:
         async with session.get(server.make_url('/')) as resp:
@@ -2155,7 +2155,7 @@ async def test_release_resp_on_normal_exit_from_cm(loop, test_server):
         assert len(session._connector._conns) == 1
 
 
-async def test_non_close_detached_session_on_error_cm(loop, test_server):
+async def test_non_close_detached_session_on_error_cm(loop, aiohttp_server):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
         await resp.prepare(request)
@@ -2164,7 +2164,7 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     session = aiohttp.ClientSession(loop=loop)
     cm = session.get(server.make_url('/'))
@@ -2198,13 +2198,13 @@ async def test_close_detached_session_on_non_existing_addr(loop):
     assert session.closed
 
 
-async def test_aiohttp_request_context_manager(loop, test_server):
+async def test_aiohttp_request_context_manager(loop, aiohttp_server):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.request('GET', server.make_url('/'), loop=loop) as resp:
         await resp.read()
@@ -2219,13 +2219,13 @@ async def test_aiohttp_request_ctx_manager_not_found(loop):
             assert False, "never executed"  # pragma: no cover
 
 
-async def test_aiohttp_request_coroutine(loop, test_server):
+async def test_aiohttp_request_coroutine(loop, aiohttp_server):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     with pytest.raises(TypeError):
         await aiohttp.request('GET', server.make_url('/'), loop=loop)
@@ -2470,7 +2470,7 @@ async def test_handle_keepalive_on_closed_connection(loop):
 
 
 async def test_error_in_performing_request(loop, ssl_ctx,
-                                           aiohttp_client, test_server):
+                                           aiohttp_client, aiohttp_server):
     async def handler(request):
         return web.Response()
 
@@ -2483,7 +2483,7 @@ async def test_error_in_performing_request(loop, ssl_ctx,
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    server = await test_server(app, ssl=ssl_ctx)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
 
     conn = aiohttp.TCPConnector(limit=1, loop=loop)
     client = await aiohttp_client(server, connector=conn)

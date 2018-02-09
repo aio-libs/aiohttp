@@ -692,7 +692,7 @@ async def test_heartbeat_no_pong(loop, aiohttp_client, ceil):
     assert cancelled
 
 
-async def test_server_ws_async_for(loop, test_server):
+async def test_server_ws_async_for(loop, aiohttp_server):
     closed = loop.create_future()
 
     async def handler(request):
@@ -708,7 +708,7 @@ async def test_server_ws_async_for(loop, test_server):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as sm:
         async with sm.ws_connect(server.make_url('/')) as resp:

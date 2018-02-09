@@ -135,10 +135,10 @@ async def test_custom_port_aiohttp_client(aiohttp_client, unused_port):
     assert 'Hello, world' in text
 
 
-async def test_custom_port_test_server(test_server, unused_port):
+async def test_custom_port_test_server(aiohttp_server, unused_port):
     app = create_app()
     port = unused_port()
-    server = await test_server(app, port=port)
+    server = await aiohttp_server(app, port=port)
     assert server.port == port
 
 """)

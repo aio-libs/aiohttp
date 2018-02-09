@@ -674,7 +674,7 @@ async def test_ws_client_async_for(loop, aiohttp_client):
     assert resp.closed
 
 
-async def test_ws_async_with(loop, test_server):
+async def test_ws_async_with(loop, aiohttp_server):
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -687,7 +687,7 @@ async def test_ws_async_with(loop, test_server):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as client:
         async with client.ws_connect(server.make_url('/')) as ws:
@@ -698,7 +698,7 @@ async def test_ws_async_with(loop, test_server):
         assert ws.closed
 
 
-async def test_ws_async_with_send(loop, test_server):
+async def test_ws_async_with_send(loop, aiohttp_server):
     # send_xxx methods have to return awaitable objects
 
     async def handler(request):
@@ -712,7 +712,7 @@ async def test_ws_async_with_send(loop, test_server):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as client:
         async with client.ws_connect(server.make_url('/')) as ws:
@@ -723,7 +723,7 @@ async def test_ws_async_with_send(loop, test_server):
         assert ws.closed
 
 
-async def test_ws_async_with_shortcut(loop, test_server):
+async def test_ws_async_with_shortcut(loop, aiohttp_server):
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -735,7 +735,7 @@ async def test_ws_async_with_shortcut(loop, test_server):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     async with aiohttp.ClientSession(loop=loop) as client:
         async with client.ws_connect(server.make_url('/')) as ws:
