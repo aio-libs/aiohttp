@@ -71,7 +71,8 @@ Bugfixes
 - Fix default value of `access_log_format` argument in `web.run_app` (#2649)
 - Freeze sub-application on adding to parent app (#2656)
 - Do percent encoding for `.url_for()` parameters (#2668)
-
+- Correctly process request start time and multiple request/response
+  headers in access log extra (#2641)
 
 Improved Documentation
 ----------------------

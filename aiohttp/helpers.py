@@ -306,7 +306,7 @@ class AccessLogger(AbstractAccessLogger):
     """
     LOG_FORMAT_MAP = {
         'a': 'remote_address',
-        't': 'request_time',
+        't': 'request_start_time',
         'P': 'process_id',
         'r': 'first_request_line',
         's': 'response_status',
@@ -403,7 +403,9 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_t(request, response, time):
-        return datetime.datetime.utcnow().strftime('[%d/%b/%Y:%H:%M:%S +0000]')
+        now = datetime.datetime.utcnow()
+        start_time = now - datetime.timedelta(seconds=time)
+        return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
     def _format_P(request, response, time):
@@ -452,7 +454,10 @@ class AccessLogger(AbstractAccessLogger):
                 if key.__class__ is str:
                     extra[key] = value
                 else:
-                    extra[key[0]] = {key[1]: value}
+                    k1, k2 = key
+                    dct = extra.get(k1, {})
+                    dct[k2] = value
+                    extra[k1] = dct
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
