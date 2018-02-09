@@ -212,7 +212,7 @@ name (usually ``deflate`` or ``gzip``) as the value of the
 
 .. _aiohttp-client-tracing:
 
-Client tracing
+Client Tracing
 --------------
 
 The execution flow of a specific request can be followed attaching

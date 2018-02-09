@@ -24,8 +24,6 @@ Features
 - StreamResponse and Response are now MutableMappings. (#2246)
 - ClientSession publishes a set of signals to track the HTTP request execution.
   (#2313)
-- Forbid synchronous context managers for `ClientSession` and test
-  server/client. (#2362)
 - Content-Disposition fast access in ClientResponse (#2455)
 - Added support to Flask-style decorators with class-based Views. (#2472)
 - Signal handlers (registered callbacks) should be coroutines. (#2480)
@@ -131,6 +129,8 @@ Deprecations and Removals
   ``web.Application`` (#2691)
 - Drop `resp = await aiohttp.request(...)` syntax for sake of `async with
   aiohttp.request(...) as resp:`. (#2540)
+- Forbid synchronous context managers for `ClientSession` and test
+  server/client. (#2362)
 
 
 Misc
