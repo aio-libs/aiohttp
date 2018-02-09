@@ -208,7 +208,7 @@ def loop(loop_factory, fast, loop_debug):
 
 
 @pytest.fixture
-def unused_port(aiohttp_unused_port):
+def unused_port(aiohttp_unused_port):  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_unused_port fixture instead",
                   DeprecationWarning)
     return aiohttp_unused_port
