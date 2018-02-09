@@ -89,6 +89,13 @@ For more information please visit :ref:`aiohttp-client` and
 :ref:`aiohttp-web` pages.
 
 
+What's new in aiohttp 3?
+========================
+
+Go to :ref:`aiohttp_whats_new_3_0` page for aiohttp 3.0 major release
+changes.
+
+
 Tutorial
 ========
 
