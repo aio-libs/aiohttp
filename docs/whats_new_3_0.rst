@@ -50,7 +50,8 @@ HTTPS support
 =============
 
 Unfortunately asyncio has a bug with checking SSL certificates for
-non-ASCII site DNS names, e.g. `https://историк.рф <https://историк.рф>`_.
+non-ASCII site DNS names, e.g. `https://историк.рф <https://историк.рф>`_ or
+`https://雜草工作室.香港 <https://雜草工作室.香港>`_.
 
 The bug has been fixed in upcoming Python 3.7 only (the change
 requires breaking backward compatibility in :mod:`ssl` API).
