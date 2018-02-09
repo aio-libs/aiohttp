@@ -7,11 +7,11 @@ coverage==4.4.2
 cython==0.27.3
 flake8==3.5.0
 gunicorn==19.7.1
-isort==4.2.15
+isort==4.3.3
 pip==9.0.1
 pyflakes==1.6.0
 multidict==4.1.0
-pytest==3.3.2
+pytest==3.4.0
 pytest-cov==2.5.1
 pytest-mock==1.6.3
 towncrier==17.8.0

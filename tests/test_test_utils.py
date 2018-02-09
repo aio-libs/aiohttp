@@ -7,11 +7,12 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.test_utils import AioHTTPTestCase
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
-from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
-                                make_mocked_request, setup_test_loop,
-                                teardown_test_loop, unittest_run_loop)
+from aiohttp.test_utils import (loop_context, make_mocked_request,
+                                setup_test_loop, teardown_test_loop,
+                                unittest_run_loop)
 
 
 _hello_world_str = "Hello, world"

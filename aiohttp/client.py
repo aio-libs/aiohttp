@@ -13,8 +13,9 @@ from collections.abc import Coroutine
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
+from . import client_exceptions, client_reqrep
 from . import connector as connector_mod
-from . import client_exceptions, client_reqrep, hdrs, http, payload
+from . import hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, WSServerHandshakeError)
