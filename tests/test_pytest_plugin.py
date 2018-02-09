@@ -28,42 +28,42 @@ def create_app(loop=None):
     return app
 
 
-async def test_hello(test_client):
-    client = await test_client(create_app)
+async def test_hello(aiohttp_client):
+    client = await aiohttp_client(create_app)
     resp = await client.get('/')
     assert resp.status == 200
     text = await resp.text()
     assert 'Hello, world' in text
 
 
-async def test_hello_from_app(test_client, loop):
+async def test_hello_from_app(aiohttp_client, loop):
     app = web.Application()
     app.router.add_get('/', hello)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     resp = await client.get('/')
     assert resp.status == 200
     text = await resp.text()
     assert 'Hello, world' in text
 
 
-async def test_hello_with_loop(test_client, loop):
-    client = await test_client(create_app)
+async def test_hello_with_loop(aiohttp_client, loop):
+    client = await aiohttp_client(create_app)
     resp = await client.get('/')
     assert resp.status == 200
     text = await resp.text()
     assert 'Hello, world' in text
 
 
-async def test_set_args(test_client, loop):
+async def test_set_args(aiohttp_client, loop):
     with pytest.raises(AssertionError):
         app = web.Application()
-        await test_client(app, 1, 2, 3)
+        await aiohttp_client(app, 1, 2, 3)
 
 
-async def test_set_keyword_args(test_client, loop):
+async def test_set_keyword_args(aiohttp_client, loop):
     app = web.Application()
     with pytest.raises(TypeError):
-        await test_client(app, param=1)
+        await aiohttp_client(app, param=1)
 
 
 async def test_noop():
@@ -87,8 +87,8 @@ def create_stateful_app(loop):
 
 
 @pytest.fixture
-def cli(loop, test_client):
-    return loop.run_until_complete(test_client(create_stateful_app))
+def cli(loop, aiohttp_client):
+    return loop.run_until_complete(aiohttp_client(create_stateful_app))
 
 
 async def test_set_value(cli):
@@ -116,18 +116,18 @@ def test_noncoro():
     assert True
 
 
-async def test_client_failed_to_create(test_client):
+async def test_client_failed_to_create(aiohttp_client):
 
     def make_app(loop):
         raise RuntimeError()
 
     with pytest.raises(RuntimeError):
-        await test_client(make_app)
+        await aiohttp_client(make_app)
 
 
-async def test_custom_port_test_client(test_client, unused_port):
+async def test_custom_port_aiohttp_client(aiohttp_client, unused_port):
     port = unused_port()
-    client = await test_client(create_app, server_kwargs={'port': port})
+    client = await aiohttp_client(create_app, server_kwargs={'port': port})
     assert client.port == port
     resp = await client.get('/')
     assert resp.status == 200
@@ -184,8 +184,8 @@ def create_app(loop):
 
 
 @pytest.fixture
-async def cli(test_client):
-    client = await test_client(create_app)
+async def cli(aiohttp_client):
+    client = await aiohttp_client(create_app)
     return client
 
 
@@ -249,8 +249,8 @@ def create_app(loop):
 
 
 @pytest.fixture
-async def cli(test_client):
-    yield await test_client(create_app)
+async def cli(aiohttp_client):
+    yield await aiohttp_client(create_app)
     canary()
 
 

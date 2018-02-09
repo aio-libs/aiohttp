@@ -215,11 +215,11 @@ def unused_port():
     return _unused_port
 
 
-@pytest.yield_fixture
-def test_server(loop):
+@pytest.fixture
+def aiohttp_server(loop):
     """Factory to create a TestServer instance, given an app.
 
-    test_server(app, **kwargs)
+    aiohttp_server(app, **kwargs)
     """
     servers = []
 
@@ -238,11 +238,18 @@ def test_server(loop):
     loop.run_until_complete(finalize())
 
 
-@pytest.yield_fixture
-def raw_test_server(loop):
+@pytest.fixture
+def test_server(aiohttp_server):
+    warnings.warn("Deprecated, use aiohttp_server fixture instead",
+                  DeprecationWarning)
+    return aiohttp_server
+
+
+@pytest.fixture
+def aiohttp_raw_server(loop):
     """Factory to create a RawTestServer instance, given a web handler.
 
-    raw_test_server(handler, **kwargs)
+    aiohttp_raw_server(handler, **kwargs)
     """
     servers = []
 
@@ -261,13 +268,20 @@ def raw_test_server(loop):
     loop.run_until_complete(finalize())
 
 
-@pytest.yield_fixture
-def test_client(loop):
+@pytest.fixture
+def raw_test_server(aiohttp_raw_server):
+    warnings.warn("Deprecated, use aiohttp_raw_server fixture instead",
+                  DeprecationWarning)
+    return aiohttp_raw_server
+
+
+@pytest.fixture
+def aiohttp_client(loop):
     """Factory to create a TestClient instance.
 
-    test_client(app, **kwargs)
-    test_client(server, **kwargs)
-    test_client(raw_server, **kwargs)
+    aiohttp_client(app, **kwargs)
+    aiohttp_client(server, **kwargs)
+    aiohttp_client(raw_server, **kwargs)
     """
     clients = []
 
@@ -300,6 +314,13 @@ def test_client(loop):
             await clients.pop().close()
 
     loop.run_until_complete(finalize())
+
+
+@pytest.fixture
+def test_client(aiohttp_client):
+    warnings.warn("Deprecated, use aiohttp_client fixture instead",
+                  DeprecationWarning)
+    return aiohttp_client
 
 
 @pytest.fixture
