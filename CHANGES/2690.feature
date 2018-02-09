@@ -1,1 +1,0 @@
-Use ``attrs`` library for data classes, replace `namedtuple`.

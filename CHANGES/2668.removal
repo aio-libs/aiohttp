@@ -1,1 +1,0 @@
-Forbid non-strings in `resource.url_for()` parameters.
