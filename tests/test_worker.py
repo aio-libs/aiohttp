@@ -165,13 +165,13 @@ def test__get_valid_log_format_exc(worker):
     assert '%(name)s' in str(exc)
 
 
-async def test__run_ok_parent_changed(worker, loop, unused_port):
+async def test__run_ok_parent_changed(worker, loop, aiohttp_unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = 0
     worker.alive = True
     sock = socket.socket()
-    addr = ('localhost', unused_port())
+    addr = ('localhost', aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()
@@ -191,13 +191,13 @@ async def test__run_ok_parent_changed(worker, loop, unused_port):
     assert worker._runner.server is None
 
 
-async def test__run_exc(worker, loop, unused_port):
+async def test__run_exc(worker, loop, aiohttp_unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = os.getppid()
     worker.alive = True
     sock = socket.socket()
-    addr = ('localhost', unused_port())
+    addr = ('localhost', aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()
@@ -221,14 +221,15 @@ async def test__run_exc(worker, loop, unused_port):
     assert worker._runner.server is None
 
 
-async def test__run_ok_max_requests_exceeded(worker, loop, unused_port):
+async def test__run_ok_max_requests_exceeded(worker, loop,
+                                             aiohttp_unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = os.getppid()
     worker.alive = True
     worker.servers = {}
     sock = socket.socket()
-    addr = ('localhost', unused_port())
+    addr = ('localhost', aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()

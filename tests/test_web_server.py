@@ -6,27 +6,28 @@ import pytest
 from aiohttp import client, web
 
 
-async def test_simple_server(raw_test_server, test_client):
+async def test_simple_server(aiohttp_raw_server, aiohttp_client):
     async def handler(request):
         return web.Response(text=str(request.rel_url))
 
-    server = await raw_test_server(handler)
-    cli = await test_client(server)
+    server = await aiohttp_raw_server(handler)
+    cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 200
     txt = await resp.text()
     assert txt == '/path/to'
 
 
-async def test_raw_server_not_http_exception(raw_test_server, test_client):
+async def test_raw_server_not_http_exception(aiohttp_raw_server,
+                                             aiohttp_client):
     exc = RuntimeError("custom runtime error")
 
     async def handler(request):
         raise exc
 
     logger = mock.Mock()
-    server = await raw_test_server(handler, logger=logger)
-    cli = await test_client(server)
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 500
 
@@ -38,15 +39,15 @@ async def test_raw_server_not_http_exception(raw_test_server, test_client):
         exc_info=exc)
 
 
-async def test_raw_server_handler_timeout(raw_test_server, test_client):
+async def test_raw_server_handler_timeout(aiohttp_raw_server, aiohttp_client):
     exc = asyncio.TimeoutError("error")
 
     async def handler(request):
         raise exc
 
     logger = mock.Mock()
-    server = await raw_test_server(handler, logger=logger)
-    cli = await test_client(server)
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 504
 
@@ -54,14 +55,14 @@ async def test_raw_server_handler_timeout(raw_test_server, test_client):
     logger.debug.assert_called_with("Request handler timed out.")
 
 
-async def test_raw_server_do_not_swallow_exceptions(raw_test_server,
-                                                    test_client):
+async def test_raw_server_do_not_swallow_exceptions(aiohttp_raw_server,
+                                                    aiohttp_client):
     async def handler(request):
         raise asyncio.CancelledError()
 
     logger = mock.Mock()
-    server = await raw_test_server(handler, logger=logger)
-    cli = await test_client(server)
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
 
     with pytest.raises(client.ServerDisconnectedError):
         await cli.get('/path/to')
@@ -69,7 +70,8 @@ async def test_raw_server_do_not_swallow_exceptions(raw_test_server,
     logger.debug.assert_called_with('Ignored premature client disconnection')
 
 
-async def test_raw_server_cancelled_in_write_eof(raw_test_server, test_client):
+async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server,
+                                                 aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text=str(request.rel_url))
@@ -77,8 +79,8 @@ async def test_raw_server_cancelled_in_write_eof(raw_test_server, test_client):
         return resp
 
     logger = mock.Mock()
-    server = await raw_test_server(handler, logger=logger)
-    cli = await test_client(server)
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)
 
     resp = await cli.get('/path/to')
     with pytest.raises(client.ClientPayloadError):
@@ -87,16 +89,16 @@ async def test_raw_server_cancelled_in_write_eof(raw_test_server, test_client):
     logger.debug.assert_called_with('Ignored premature client disconnection ')
 
 
-async def test_raw_server_not_http_exception_debug(raw_test_server,
-                                                   test_client):
+async def test_raw_server_not_http_exception_debug(aiohttp_raw_server,
+                                                   aiohttp_client):
     exc = RuntimeError("custom runtime error")
 
     async def handler(request):
         raise exc
 
     logger = mock.Mock()
-    server = await raw_test_server(handler, logger=logger, debug=True)
-    cli = await test_client(server)
+    server = await aiohttp_raw_server(handler, logger=logger, debug=True)
+    cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 500
 

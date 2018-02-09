@@ -52,7 +52,7 @@ Features
   `TCPSite`. (#2679)
 - Use custom classes to pass client signals parameters (#2686)
 - Use ``attrs`` library for data classes, replace `namedtuple`. (#2690)
-
+- Pytest fixtures renaming (#2578)
 
 Bugfixes
 --------
