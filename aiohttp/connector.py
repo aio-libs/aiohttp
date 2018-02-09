@@ -420,7 +420,7 @@ class BaseConnector:
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-            except Exception:
+            except BaseException:
                 # signal to waiter
                 if key in self._waiters:
                     for waiter in self._waiters[key]:
@@ -710,7 +710,7 @@ class TCPConnector(BaseConnector):
 
                 self._cached_hosts.add(key, addrs)
                 self._throttle_dns_events[key].set()
-            except Exception as e:
+            except BaseException as e:
                 # any DNS exception, independently of the implementation
                 # is set for the waiters to raise the same exception.
                 self._throttle_dns_events[key].set(exc=e)
@@ -896,7 +896,7 @@ class TCPConnector(BaseConnector):
             proxy_resp = proxy_req.send(conn)
             try:
                 resp = await proxy_resp.start(conn, True)
-            except Exception:
+            except BaseException:
                 proxy_resp.close()
                 conn.close()
                 raise

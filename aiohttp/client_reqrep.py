@@ -796,7 +796,7 @@ class ClientResponse(HeadersMixin):
         if self._content is None:
             try:
                 self._content = await self.content.read()
-            except Exception:
+            except BaseException:
                 self.close()
                 raise
 
