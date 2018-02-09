@@ -377,7 +377,7 @@ async def test_reraise_os_error(create_session):
     assert e.strerror == err.strerror
 
 
-async def test_cookie_jar_usage(loop, test_client):
+async def test_cookie_jar_usage(loop, aiohttp_client):
     req_url = None
 
     jar = mock.Mock()
@@ -393,7 +393,7 @@ async def test_cookie_jar_usage(loop, test_client):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    session = await test_client(
+    session = await aiohttp_client(
         app,
         cookies={"request": "req_value"},
         cookie_jar=jar

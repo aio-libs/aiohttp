@@ -76,14 +76,14 @@ def test_with_test_server_fails(loop):
             pass
 
 
-def test_with_test_client_fails(loop):
+def test_with_client_fails(loop):
     app = _create_example_app()
     with pytest.raises(TypeError):
         with _TestClient(_TestServer(app, loop=loop), loop=loop):
             pass
 
 
-def test_test_client_close_is_idempotent():
+def test_aiohttp_client_close_is_idempotent():
     """
     a test client, called multiple times, should
     not attempt to close the server again.

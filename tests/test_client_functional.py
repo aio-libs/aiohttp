@@ -271,7 +271,7 @@ async def test_post_data_textio_encoding(loop, aiohttp_client):
     assert 200 == resp.status
 
 
-async def test_client_ssl(loop, ssl_ctx, test_server, aiohttp_client):
+async def test_ssl_client(loop, ssl_ctx, test_server, aiohttp_client):
     connector = aiohttp.TCPConnector(ssl=False, loop=loop)
 
     async def handler(request):

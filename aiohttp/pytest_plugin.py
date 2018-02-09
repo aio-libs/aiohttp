@@ -239,7 +239,7 @@ def aiohttp_server(loop):
 
 
 @pytest.fixture
-def test_server(aiohttp_server):
+def test_server(aiohttp_server):  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_server fixture instead",
                   DeprecationWarning)
     return aiohttp_server
@@ -269,7 +269,7 @@ def aiohttp_raw_server(loop):
 
 
 @pytest.fixture
-def raw_test_server(aiohttp_raw_server):
+def raw_test_server(aiohttp_raw_server):  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_raw_server fixture instead",
                   DeprecationWarning)
     return aiohttp_raw_server
@@ -317,7 +317,7 @@ def aiohttp_client(loop):
 
 
 @pytest.fixture
-def test_client(aiohttp_client):
+def test_client(aiohttp_client):  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_client fixture instead",
                   DeprecationWarning)
     return aiohttp_client
