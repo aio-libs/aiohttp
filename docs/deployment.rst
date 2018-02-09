@@ -214,7 +214,7 @@ Create a directory for your application::
   >> mkdir myapp
   >> cd myapp
 
-`Ubuntu` has a bug in pyenv, so to create virtualenv you need to do some
+`Ubuntu` has a bug in pyvenv, so to create virtualenv you need to do some
 extra manipulation::
 
   >> pyvenv-3.4 --without-pip venv

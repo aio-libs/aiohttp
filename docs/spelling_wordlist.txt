@@ -190,6 +190,7 @@ pyenv
 pyflakes
 pytest
 Pytest
+pyvenv
 Quickstart
 quote’s
 readonly
