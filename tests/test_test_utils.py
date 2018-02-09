@@ -61,7 +61,7 @@ def app():
     return _create_example_app()
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def test_client(loop, app):
     client = _TestClient(_TestServer(app, loop=loop), loop=loop)
     loop.run_until_complete(client.start_server())
