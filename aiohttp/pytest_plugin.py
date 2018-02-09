@@ -208,7 +208,14 @@ def loop(loop_factory, fast, loop_debug):
 
 
 @pytest.fixture
-def unused_port():
+def unused_port(aiohttp_unused_port):
+    warnings.warn("Deprecated, use aiohttp_unused_port fixture instead",
+                  DeprecationWarning)
+    return aiohttp_unused_port
+
+
+@pytest.fixture
+def aiohttp_unused_port():
     """Return a port that is unused on the current host."""
     return _unused_port
 

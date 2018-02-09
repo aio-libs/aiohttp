@@ -276,8 +276,8 @@ async def test_client_context_manager_response(method, app, loop):
                 assert "Hello, world" in text
 
 
-async def test_custom_port(loop, app, unused_port):
-    port = unused_port()
+async def test_custom_port(loop, app, aiohttp_unused_port):
+    port = aiohttp_unused_port()
     client = _TestClient(_TestServer(app, loop=loop, port=port), loop=loop)
     await client.start_server()
 

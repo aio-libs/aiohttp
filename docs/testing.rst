@@ -210,17 +210,21 @@ Pytest tooling has the following fixtures:
 
    .. versionadded:: 3.0
 
-.. data:: unused_port()
+.. data:: aiohttp_unused_port()
 
    Function to return an unused port number for IPv4 TCP protocol::
 
-      async def test_f(aiohttp_client, unused_port):
-          port = unused_port()
+      async def test_f(aiohttp_client, aiohttp_unused_port):
+          port = aiohttp_unused_port()
           app = web.Application()
           # fill route table
 
           client = await aiohttp_client(app, server_kwargs={'port': port})
           ...
+
+   .. versionchanged:: 3.0
+
+      The fixture was renamed from ``unused_port`` to ``aiohttp_unused_port``.
 
 
 .. _aiohttp-testing-unittest-example:

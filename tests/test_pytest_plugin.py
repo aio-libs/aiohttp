@@ -125,8 +125,8 @@ async def test_failed_to_create_client(aiohttp_client):
         await aiohttp_client(make_app)
 
 
-async def test_custom_port_aiohttp_client(aiohttp_client, unused_port):
-    port = unused_port()
+async def test_custom_port_aiohttp_client(aiohttp_client, aiohttp_unused_port):
+    port = aiohttp_unused_port()
     client = await aiohttp_client(create_app, server_kwargs={'port': port})
     assert client.port == port
     resp = await client.get('/')
@@ -135,9 +135,9 @@ async def test_custom_port_aiohttp_client(aiohttp_client, unused_port):
     assert 'Hello, world' in text
 
 
-async def test_custom_port_test_server(aiohttp_server, unused_port):
+async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     app = create_app()
-    port = unused_port()
+    port = aiohttp_unused_port()
     server = await aiohttp_server(app, port=port)
     assert server.port == port
 
