@@ -50,7 +50,7 @@ def _create_example_app():
 
 
 # these exist to test the pytest scenario
-@pytest.yield
+@pytest.fixture
 def loop():
     with loop_context() as loop:
         yield loop

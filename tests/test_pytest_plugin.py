@@ -116,7 +116,7 @@ def test_noncoro():
     assert True
 
 
-async def test_client_failed_to_create(aiohttp_client):
+async def test_failed_to_create_client(aiohttp_client):
 
     def make_app(loop):
         raise RuntimeError()
