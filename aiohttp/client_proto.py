@@ -165,7 +165,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
                 # parse http messages
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
-                except BaseException as exc:
+                except Exception as exc:
                     self._should_close = True
                     self.transport.close()
                     self.set_exception(exc)

@@ -217,7 +217,7 @@ class HttpParser:
                 try:
                     eof, data = self._payload_parser.feed_data(
                         data[start_pos:])
-                except BaseException as exc:
+                except Exception as exc:
                     if self.payload_exception is not None:
                         self._payload_parser.payload.set_exception(
                             self.payload_exception(str(exc)))

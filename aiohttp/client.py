@@ -722,7 +722,7 @@ class _SessionRequestContextManager(_RequestContextManager):
     def __iter__(self):
         try:
             return (yield from self._coro)
-        except BaseException:
+        except Exception:
             yield from self._session.close()
             raise
 
@@ -730,7 +730,7 @@ class _SessionRequestContextManager(_RequestContextManager):
         def __await__(self):
             try:
                 return (yield from self._coro)
-            except BaseException:
+            except Exception:
                 yield from self._session.close()
                 raise
 
