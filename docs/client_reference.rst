@@ -507,7 +507,8 @@ The client session supports the context manager protocol for self closing.
       :param float heartbeat: Send *ping* message every *heartbeat*
                               seconds and wait *pong* response, if
                               *pong* response is not received then
-                              close connection.
+                              close connection. The timer is reset on any data
+                              reception.
 
       :param str origin: Origin header to send to server
 
