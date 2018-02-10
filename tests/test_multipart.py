@@ -548,22 +548,22 @@ class PartReaderTestCase(TestCase):
         self.assertEqual(len(data), size)
 
 
-class MultipartReaderTestCase(TestCase):
+class TestMultipartReader:
 
     def test_from_response(self):
         resp = Response({CONTENT_TYPE: 'multipart/related;boundary=":"'},
                         Stream(b'--:\r\n\r\nhello\r\n--:--'))
         res = aiohttp.multipart.MultipartReader.from_response(resp)
-        self.assertIsInstance(res,
-                              aiohttp.multipart.MultipartResponseWrapper)
-        self.assertIsInstance(res.stream,
-                              aiohttp.multipart.MultipartReader)
+        assert isinstance(res,
+                          aiohttp.multipart.MultipartResponseWrapper)
+        assert isinstance(res.stream,
+                          aiohttp.multipart.MultipartReader)
 
     def test_bad_boundary(self):
         resp = Response(
             {CONTENT_TYPE: 'multipart/related;boundary=' + 'a' * 80},
             Stream(b''))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             aiohttp.multipart.MultipartReader.from_response(resp)
 
     def test_dispatch(self):
@@ -571,14 +571,14 @@ class MultipartReaderTestCase(TestCase):
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         res = reader._get_part_reader({CONTENT_TYPE: 'text/plain'})
-        self.assertIsInstance(res, reader.part_reader_cls)
+        assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_bodypart(self):
         reader = aiohttp.multipart.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         res = reader._get_part_reader({CONTENT_TYPE: 'text/plain'})
-        self.assertIsInstance(res, reader.part_reader_cls)
+        assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_multipart(self):
         reader = aiohttp.multipart.MultipartReader(
@@ -593,7 +593,7 @@ class MultipartReaderTestCase(TestCase):
                    b'--:--'))
         res = reader._get_part_reader(
             {CONTENT_TYPE: 'multipart/related;boundary=--:--'})
-        self.assertIsInstance(res, reader.__class__)
+        assert isinstance(res, reader.__class__)
 
     def test_dispatch_custom_multipart_reader(self):
         class CustomReader(aiohttp.multipart.MultipartReader):
@@ -611,20 +611,20 @@ class MultipartReaderTestCase(TestCase):
         reader.multipart_reader_cls = CustomReader
         res = reader._get_part_reader(
             {CONTENT_TYPE: 'multipart/related;boundary=--:--'})
-        self.assertIsInstance(res, CustomReader)
+        assert isinstance(res, CustomReader)
 
     async def test_emit_next(self):
         reader = aiohttp.multipart.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         res = await reader.next()
-        self.assertIsInstance(res, reader.part_reader_cls)
+        assert isinstance(res, reader.part_reader_cls)
 
     async def test_invalid_boundary(self):
         reader = aiohttp.multipart.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'---:\r\n\r\necho\r\n---:--'))
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             await reader.next()
 
     async def test_release(self):
@@ -643,25 +643,25 @@ class MultipartReaderTestCase(TestCase):
                    b'\r\n'
                    b'--:--'))
         await reader.release()
-        self.assertTrue(reader.at_eof())
+        assert reader.at_eof()
 
     async def test_release_release(self):
         reader = aiohttp.multipart.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         await reader.release()
-        self.assertTrue(reader.at_eof())
+        assert reader.at_eof()
         await reader.release()
-        self.assertTrue(reader.at_eof())
+        assert reader.at_eof()
 
     async def test_release_next(self):
         reader = aiohttp.multipart.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         await reader.release()
-        self.assertTrue(reader.at_eof())
+        assert reader.at_eof()
         res = await reader.next()
-        self.assertIsNone(res)
+        assert res is None
 
     async def test_second_next_releases_previous_object(self):
         reader = aiohttp.multipart.MultipartReader(
@@ -674,10 +674,10 @@ class MultipartReaderTestCase(TestCase):
                    b'passed\r\n'
                    b'--:--'))
         first = await reader.next()
-        self.assertIsInstance(first, aiohttp.multipart.BodyPartReader)
+        assert isinstance(first, aiohttp.multipart.BodyPartReader)
         second = await reader.next()
-        self.assertTrue(first.at_eof())
-        self.assertFalse(second.at_eof())
+        assert first.at_eof()
+        assert not second.at_eof()
 
     async def test_release_without_read_the_last_object(self):
         reader = aiohttp.multipart.MultipartReader(
@@ -692,10 +692,10 @@ class MultipartReaderTestCase(TestCase):
         first = await reader.next()
         second = await reader.next()
         third = await reader.next()
-        self.assertTrue(first.at_eof())
-        self.assertTrue(second.at_eof())
-        self.assertTrue(second.at_eof())
-        self.assertIsNone(third)
+        assert first.at_eof()
+        assert second.at_eof()
+        assert second.at_eof()
+        assert third is None
 
     async def test_read_chunk_by_length_doesnt_breaks_reader(self):
         reader = aiohttp.multipart.MultipartReader(
@@ -716,7 +716,7 @@ class MultipartReaderTestCase(TestCase):
             while not part.at_eof():
                 read_part += await part.read_chunk(3)
             body_parts.append(read_part)
-        self.assertListEqual(body_parts, [b'test', b'passed'])
+        assert body_parts == [b'test', b'passed']
 
     async def test_read_chunk_from_stream_doesnt_breaks_reader(self):
         reader = aiohttp.multipart.MultipartReader(
@@ -736,10 +736,10 @@ class MultipartReaderTestCase(TestCase):
                 break
             while not part.at_eof():
                 chunk = await part.read_chunk(5)
-                self.assertTrue(chunk)
+                assert chunk
                 read_part += chunk
             body_parts.append(read_part)
-        self.assertListEqual(body_parts, [b'chunk', b'two_chunks'])
+        assert body_parts == [b'chunk', b'two_chunks']
 
     async def test_reading_skips_prelude(self):
         reader = aiohttp.multipart.MultipartReader(
@@ -754,10 +754,10 @@ class MultipartReaderTestCase(TestCase):
                    b'passed\r\n'
                    b'--:--'))
         first = await reader.next()
-        self.assertIsInstance(first, aiohttp.multipart.BodyPartReader)
+        assert isinstance(first, aiohttp.multipart.BodyPartReader)
         second = await reader.next()
-        self.assertTrue(first.at_eof())
-        self.assertFalse(second.at_eof())
+        assert first.at_eof()
+        assert not second.at_eof()
 
 
 async def test_writer(writer):
