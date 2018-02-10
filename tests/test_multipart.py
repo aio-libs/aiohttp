@@ -920,120 +920,108 @@ def test_writer_content_transfer_encoding_unknown(buf, stream, writer):
         writer.append('Time to Relax!', {CONTENT_TRANSFER_ENCODING: 'unknown'})
 
 
-class MultipartWriterTestCase(TestCase):
+class TestMultipartWriter:
 
-    def setUp(self):
-        super().setUp()
-        self.buf = bytearray()
-        self.stream = mock.Mock()
+    def test_default_subtype(self, writer):
+        mimetype = parse_mimetype(writer.headers.get(CONTENT_TYPE))
 
-        async def write(chunk):
-            self.buf.extend(chunk)
-
-        self.stream.write.side_effect = write
-
-        self.writer = aiohttp.multipart.MultipartWriter(boundary=':')
-
-    def test_default_subtype(self):
-        mimetype = parse_mimetype(self.writer.headers.get(CONTENT_TYPE))
-
-        self.assertEqual('multipart', mimetype.type)
-        self.assertEqual('mixed', mimetype.subtype)
+        assert 'multipart' == mimetype.type
+        assert 'mixed' == mimetype.subtype
 
     def test_unquoted_boundary(self):
         writer = aiohttp.multipart.MultipartWriter(boundary='abc123')
-        self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=abc123'},
-                         writer.headers)
+        expected = {CONTENT_TYPE: 'multipart/mixed; boundary=abc123'}
+        assert expected == writer.headers
 
     def test_quoted_boundary(self):
         writer = aiohttp.multipart.MultipartWriter(boundary=R'\"')
-        self.assertEqual({CONTENT_TYPE: R'multipart/mixed; boundary="\\\""'},
-                         writer.headers)
+        expected = {CONTENT_TYPE: R'multipart/mixed; boundary="\\\""'}
+        assert expected == writer.headers
 
     def test_bad_boundary(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             aiohttp.multipart.MultipartWriter(boundary='тест')
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             aiohttp.multipart.MultipartWriter(boundary='test\n')
 
-    def test_default_headers(self):
-        self.assertEqual({CONTENT_TYPE: 'multipart/mixed; boundary=":"'},
-                         self.writer.headers)
+    def test_default_headers(self, writer):
+        expected = {CONTENT_TYPE: 'multipart/mixed; boundary=":"'}
+        assert expected == writer.headers
 
-    def test_iter_parts(self):
-        self.writer.append('foo')
-        self.writer.append('bar')
-        self.writer.append('baz')
-        self.assertEqual(3, len(list(self.writer)))
+    def test_iter_parts(self, writer):
+        writer.append('foo')
+        writer.append('bar')
+        writer.append('baz')
+        assert 3 == len(list(writer))
 
-    def test_append(self):
-        self.assertEqual(0, len(self.writer))
-        self.writer.append('hello, world!')
-        self.assertEqual(1, len(self.writer))
-        self.assertIsInstance(self.writer._parts[0][0], payload.Payload)
+    def test_append(self, writer):
+        assert 0 == len(writer)
+        writer.append('hello, world!')
+        assert 1 == len(writer)
+        assert isinstance(writer._parts[0][0], payload.Payload)
 
-    def test_append_with_headers(self):
-        self.writer.append('hello, world!', {'x-foo': 'bar'})
-        self.assertEqual(1, len(self.writer))
-        self.assertIn('x-foo', self.writer._parts[0][0].headers)
-        self.assertEqual(self.writer._parts[0][0].headers['x-foo'], 'bar')
+    def test_append_with_headers(self, writer):
+        writer.append('hello, world!', {'x-foo': 'bar'})
+        assert 1 == len(writer)
+        assert 'x-foo' in writer._parts[0][0].headers
+        assert writer._parts[0][0].headers['x-foo'] == 'bar'
 
-    def test_append_json(self):
-        self.writer.append_json({'foo': 'bar'})
-        self.assertEqual(1, len(self.writer))
-        part = self.writer._parts[0][0]
-        self.assertEqual(part.headers[CONTENT_TYPE], 'application/json')
+    def test_append_json(self, writer):
+        writer.append_json({'foo': 'bar'})
+        assert 1 == len(writer)
+        part = writer._parts[0][0]
+        assert part.headers[CONTENT_TYPE] == 'application/json'
 
-    def test_append_part(self):
+    def test_append_part(self, writer):
         part = payload.get_payload(
             'test', headers={CONTENT_TYPE: 'text/plain'})
-        self.writer.append(part, {CONTENT_TYPE: 'test/passed'})
-        self.assertEqual(1, len(self.writer))
-        part = self.writer._parts[0][0]
-        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
+        writer.append(part, {CONTENT_TYPE: 'test/passed'})
+        assert 1 == len(writer)
+        part = writer._parts[0][0]
+        assert part.headers[CONTENT_TYPE] == 'test/passed'
 
-    def test_append_json_overrides_content_type(self):
-        self.writer.append_json({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
-        self.assertEqual(1, len(self.writer))
-        part = self.writer._parts[0][0]
-        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
+    def test_append_json_overrides_content_type(self, writer):
+        writer.append_json({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
+        assert 1 == len(writer)
+        part = writer._parts[0][0]
+        assert part.headers[CONTENT_TYPE] == 'test/passed'
 
-    def test_append_form(self):
-        self.writer.append_form({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
-        self.assertEqual(1, len(self.writer))
-        part = self.writer._parts[0][0]
-        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
+    def test_append_form(self, writer):
+        writer.append_form({'foo': 'bar'}, {CONTENT_TYPE: 'test/passed'})
+        assert 1 == len(writer)
+        part = writer._parts[0][0]
+        assert part.headers[CONTENT_TYPE] == 'test/passed'
 
-    def test_append_multipart(self):
+    def test_append_multipart(self, writer):
         subwriter = aiohttp.multipart.MultipartWriter(boundary=':')
         subwriter.append_json({'foo': 'bar'})
-        self.writer.append(subwriter, {CONTENT_TYPE: 'test/passed'})
-        self.assertEqual(1, len(self.writer))
-        part = self.writer._parts[0][0]
-        self.assertEqual(part.headers[CONTENT_TYPE], 'test/passed')
+        writer.append(subwriter, {CONTENT_TYPE: 'test/passed'})
+        assert 1 == len(writer)
+        part = writer._parts[0][0]
+        assert part.headers[CONTENT_TYPE] == 'test/passed'
 
-    async def test_write(self):
-        await self.writer.write(self.stream)
+    async def test_write(self, writer, stream):
+        await writer.write(stream)
 
     def test_with(self):
         with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
             writer.append('foo')
             writer.append(b'bar')
             writer.append_json({'baz': True})
-        self.assertEqual(3, len(writer))
+        assert 3 == len(writer)
 
     def test_append_int_not_allowed(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
                 writer.append(1)
 
     def test_append_float_not_allowed(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
                 writer.append(1.1)
 
     def test_append_none_not_allowed(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
                 writer.append(None)
 
