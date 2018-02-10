@@ -8,13 +8,12 @@ from unittest import mock
 
 import pytest
 
-import aiohttp.multipart
+import aiohttp
 from aiohttp import payload
 from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
                           CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from aiohttp.helpers import parse_mimetype
-from aiohttp.multipart import (content_disposition_filename,
-                               parse_content_disposition)
+from aiohttp.multipart import MultipartResponseWrapper
 from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
 
@@ -40,7 +39,7 @@ def stream(buf):
 
 @pytest.fixture
 def writer():
-    return aiohttp.multipart.MultipartWriter(boundary=':')
+    return aiohttp.MultipartWriter(boundary=':')
 
 
 def run_in_loop(f):
@@ -118,8 +117,8 @@ class MultipartResponseWrapperTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
-        wrapper = aiohttp.multipart.MultipartResponseWrapper(mock.Mock(),
-                                                             mock.Mock())
+        wrapper = MultipartResponseWrapper(mock.Mock(),
+                                           mock.Mock())
         self.wrapper = wrapper
 
     def test_at_eof(self):
@@ -149,14 +148,14 @@ class MultipartResponseWrapperTestCase(TestCase):
 class TestPartReader:
 
     async def test_next(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello, world!\r\n--:'))
         result = await obj.next()
         assert b'Hello, world!' == result
         assert obj.at_eof()
 
     async def test_next_next(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello, world!\r\n--:'))
         result = await obj.next()
         assert b'Hello, world!' == result
@@ -165,21 +164,21 @@ class TestPartReader:
         assert result is None
 
     async def test_read(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello, world!\r\n--:'))
         result = await obj.read()
         assert b'Hello, world!' == result
         assert obj.at_eof()
 
     async def test_read_chunk_at_eof(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'--:'))
         obj._at_eof = True
         result = await obj.read_chunk()
         assert b'' == result
 
     async def test_read_chunk_without_content_length(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello, world!\r\n--:'))
         c1 = await obj.read_chunk(8)
         c2 = await obj.read_chunk(8)
@@ -201,7 +200,7 @@ class TestPartReader:
             prepare(b'!\r\n--:'),
             prepare(b'')
         ]):
-            obj = aiohttp.multipart.BodyPartReader(
+            obj = aiohttp.BodyPartReader(
                 BOUNDARY, {}, stream)
             c1 = await obj.read_chunk(8)
             assert c1 == b'Hello, '
@@ -212,7 +211,7 @@ class TestPartReader:
 
     async def test_read_all_at_once(self):
         stream = Stream(b'Hello, World!\r\n--:--\r\n')
-        obj = aiohttp.multipart.BodyPartReader(BOUNDARY, {}, stream)
+        obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
         result = await obj.read_chunk()
         assert b'Hello, World!' == result
         result = await obj.read_chunk()
@@ -221,7 +220,7 @@ class TestPartReader:
 
     async def test_read_incomplete_body_chunked(self):
         stream = Stream(b'Hello, World!\r\n-')
-        obj = aiohttp.multipart.BodyPartReader(BOUNDARY, {}, stream)
+        obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
         result = b''
         with pytest.raises(AssertionError):
             for _ in range(4):
@@ -242,7 +241,7 @@ class TestPartReader:
             prepare(b'--:'),
             prepare(b'')
         ]):
-            obj = aiohttp.multipart.BodyPartReader(
+            obj = aiohttp.BodyPartReader(
                 BOUNDARY, {}, stream)
             c1 = await obj.read_chunk(12)
             assert c1 == b'Hello, World'
@@ -253,7 +252,7 @@ class TestPartReader:
 
     async def test_multi_read_chunk(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
-        obj = aiohttp.multipart.BodyPartReader(BOUNDARY, {}, stream)
+        obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
         result = await obj.read_chunk(8)
         assert b'Hello,' == result
         result = await obj.read_chunk(8)
@@ -263,7 +262,7 @@ class TestPartReader:
     async def test_read_chunk_properly_counts_read_bytes(self):
         expected = b'.' * 10
         size = len(expected)
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {'CONTENT-LENGTH': size},
             StreamWithShortenRead(expected + b'\r\n--:--'))
         result = bytearray()
@@ -278,14 +277,14 @@ class TestPartReader:
 
     async def test_read_does_not_read_boundary(self):
         stream = Stream(b'Hello, world!\r\n--:')
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, stream)
         result = await obj.read()
         assert b'Hello, world!' == result
         assert b'--:' == (await stream.read())
 
     async def test_multiread(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--'))
         result = await obj.read()
         assert b'Hello,' == result
@@ -294,7 +293,7 @@ class TestPartReader:
         assert obj.at_eof()
 
     async def test_read_multiline(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello\n,\r\nworld!\r\n--:--'))
         result = await obj.read()
         assert b'Hello\n,\r\nworld!' == result
@@ -303,7 +302,7 @@ class TestPartReader:
         assert obj.at_eof()
 
     async def test_read_respects_content_length(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {'CONTENT-LENGTH': 100500},
             Stream(b'.' * 100500 + b'\r\n--:--'))
         result = await obj.read()
@@ -311,7 +310,7 @@ class TestPartReader:
         assert obj.at_eof()
 
     async def test_read_with_content_encoding_gzip(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'gzip'},
             Stream(b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
                    b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
@@ -320,7 +319,7 @@ class TestPartReader:
         assert b'Time to Relax!' == result
 
     async def test_read_with_content_encoding_deflate(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'deflate'},
             Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
         result = await obj.read(decode=True)
@@ -330,28 +329,28 @@ class TestPartReader:
         thing = (b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
                  b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
                  b'\r\n')
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'identity'},
             Stream(thing + b'--:--'))
         result = await obj.read(decode=True)
         assert thing[:-2] == result
 
     async def test_read_with_content_encoding_unknown(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'snappy'},
             Stream(b'\x0e4Time to Relax!\r\n--:--'))
         with pytest.raises(RuntimeError):
             await obj.read(decode=True)
 
     async def test_read_with_content_transfer_encoding_base64(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'base64'},
             Stream(b'VGltZSB0byBSZWxheCE=\r\n--:--'))
         result = await obj.read(decode=True)
         assert b'Time to Relax!' == result
 
     async def test_read_with_content_transfer_encoding_quoted_printable(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'quoted-printable'},
             Stream(b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
                    b' =D0=BC=D0=B8=D1=80!\r\n--:--'))
@@ -364,114 +363,114 @@ class TestPartReader:
     async def test_read_with_content_transfer_encoding_binary(self, encoding):
         data = b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,' \
                b' \xd0\xbc\xd0\xb8\xd1\x80!'
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: encoding},
             Stream(data + b'\r\n--:--'))
         result = await obj.read(decode=True)
         assert data == result
 
     async def test_read_with_content_transfer_encoding_unknown(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'unknown'},
             Stream(b'\x0e4Time to Relax!\r\n--:--'))
         with pytest.raises(RuntimeError):
             await obj.read(decode=True)
 
     async def test_read_text(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello, world!\r\n--:--'))
         result = await obj.text()
         assert 'Hello, world!' == result
 
     async def test_read_text_default_encoding(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {},
             Stream('Привет, Мир!\r\n--:--'.encode('utf-8')))
         result = await obj.text()
         assert 'Привет, Мир!' == result
 
     async def test_read_text_encoding(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {},
             Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
         result = await obj.text(encoding='cp1251')
         assert 'Привет, Мир!' == result
 
     async def test_read_text_guess_encoding(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'text/plain;charset=cp1251'},
             Stream('Привет, Мир!\r\n--:--'.encode('cp1251')))
         result = await obj.text()
         assert 'Привет, Мир!' == result
 
     async def test_read_text_compressed(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'deflate',
-                            CONTENT_TYPE: 'text/plain'},
+                       CONTENT_TYPE: 'text/plain'},
             Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
         result = await obj.text()
         assert 'Time to Relax!' == result
 
     async def test_read_text_while_closed(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'text/plain'}, Stream(b''))
         obj._at_eof = True
         result = await obj.text()
         assert '' == result
 
     async def test_read_json(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/json'},
             Stream(b'{"test": "passed"}\r\n--:--'))
         result = await obj.json()
         assert {'test': 'passed'} == result
 
     async def test_read_json_encoding(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/json'},
             Stream('{"тест": "пассед"}\r\n--:--'.encode('cp1251')))
         result = await obj.json(encoding='cp1251')
         assert {'тест': 'пассед'} == result
 
     async def test_read_json_guess_encoding(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/json; charset=cp1251'},
             Stream('{"тест": "пассед"}\r\n--:--'.encode('cp1251')))
         result = await obj.json()
         assert {'тест': 'пассед'} == result
 
     async def test_read_json_compressed(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'deflate',
-                            CONTENT_TYPE: 'application/json'},
+                       CONTENT_TYPE: 'application/json'},
             Stream(b'\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00\r\n--:--'))
         result = await obj.json()
         assert {'test': 'passed'} == result
 
     async def test_read_json_while_closed(self):
         stream = Stream(b'')
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/json'}, stream)
         obj._at_eof = True
         result = await obj.json()
         assert result is None
 
     async def test_read_form(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
             Stream(b'foo=bar&foo=baz&boo=\r\n--:--'))
         result = await obj.form()
         assert [('foo', 'bar'), ('foo', 'baz'), ('boo', '')] == result
 
     async def test_read_form_encoding(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
             Stream('foo=bar&foo=baz&boo=\r\n--:--'.encode('cp1251')))
         result = await obj.form(encoding='cp1251')
         assert [('foo', 'bar'), ('foo', 'baz'), ('boo', '')] == result
 
     async def test_read_form_guess_encoding(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY,
             {CONTENT_TYPE: 'application/x-www-form-urlencoded; charset=utf-8'},
             Stream('foo=bar&foo=baz&boo=\r\n--:--'.encode('utf-8')))
@@ -480,7 +479,7 @@ class TestPartReader:
 
     async def test_read_form_while_closed(self):
         stream = Stream(b'')
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY,
             {CONTENT_TYPE: 'application/x-www-form-urlencoded'}, stream)
         obj._at_eof = True
@@ -488,7 +487,7 @@ class TestPartReader:
         assert result is None
 
     async def test_readline(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, Stream(b'Hello\n,\r\nworld!\r\n--:--'))
         result = await obj.readline()
         assert b'Hello\n' == result
@@ -502,14 +501,14 @@ class TestPartReader:
 
     async def test_release(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, stream)
         await obj.release()
         assert obj.at_eof()
         assert b'--:\r\n\r\nworld!\r\n--:--' == stream.content.read()
 
     async def test_release_respects_content_length(self):
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {'CONTENT-LENGTH': 100500},
             Stream(b'.' * 100500 + b'\r\n--:--'))
         result = await obj.release()
@@ -518,14 +517,14 @@ class TestPartReader:
 
     async def test_release_release(self):
         stream = Stream(b'Hello,\r\n--:\r\n\r\nworld!\r\n--:--')
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, stream)
         await obj.release()
         await obj.release()
         assert b'--:\r\n\r\nworld!\r\n--:--' == stream.content.read()
 
     async def test_filename(self):
-        part = aiohttp.multipart.BodyPartReader(
+        part = aiohttp.BodyPartReader(
             BOUNDARY,
             {CONTENT_DISPOSITION: 'attachment; filename=foo.html'},
             None)
@@ -537,7 +536,7 @@ class TestPartReader:
         stream = StreamReader(protocol)
         stream.feed_data(b'0' * size + b'\r\n--:--')
         stream.feed_eof()
-        obj = aiohttp.multipart.BodyPartReader(
+        obj = aiohttp.BodyPartReader(
             BOUNDARY, {}, stream)
         data = await obj.read()
         assert len(data) == size
@@ -548,35 +547,35 @@ class TestMultipartReader:
     def test_from_response(self):
         resp = Response({CONTENT_TYPE: 'multipart/related;boundary=":"'},
                         Stream(b'--:\r\n\r\nhello\r\n--:--'))
-        res = aiohttp.multipart.MultipartReader.from_response(resp)
+        res = aiohttp.MultipartReader.from_response(resp)
         assert isinstance(res,
-                          aiohttp.multipart.MultipartResponseWrapper)
+                          MultipartResponseWrapper)
         assert isinstance(res.stream,
-                          aiohttp.multipart.MultipartReader)
+                          aiohttp.MultipartReader)
 
     def test_bad_boundary(self):
         resp = Response(
             {CONTENT_TYPE: 'multipart/related;boundary=' + 'a' * 80},
             Stream(b''))
         with pytest.raises(ValueError):
-            aiohttp.multipart.MultipartReader.from_response(resp)
+            aiohttp.MultipartReader.from_response(resp)
 
     def test_dispatch(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         res = reader._get_part_reader({CONTENT_TYPE: 'text/plain'})
         assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_bodypart(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         res = reader._get_part_reader({CONTENT_TYPE: 'text/plain'})
         assert isinstance(res, reader.part_reader_cls)
 
     def test_dispatch_multipart(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'----:--\r\n'
                    b'\r\n'
@@ -591,9 +590,9 @@ class TestMultipartReader:
         assert isinstance(res, reader.__class__)
 
     def test_dispatch_custom_multipart_reader(self):
-        class CustomReader(aiohttp.multipart.MultipartReader):
+        class CustomReader(aiohttp.MultipartReader):
             pass
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'----:--\r\n'
                    b'\r\n'
@@ -609,21 +608,21 @@ class TestMultipartReader:
         assert isinstance(res, CustomReader)
 
     async def test_emit_next(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         res = await reader.next()
         assert isinstance(res, reader.part_reader_cls)
 
     async def test_invalid_boundary(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'---:\r\n\r\necho\r\n---:--'))
         with pytest.raises(ValueError):
             await reader.next()
 
     async def test_release(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/mixed;boundary=":"'},
             Stream(b'--:\r\n'
                    b'Content-Type: multipart/related;boundary=--:--\r\n'
@@ -641,7 +640,7 @@ class TestMultipartReader:
         assert reader.at_eof()
 
     async def test_release_release(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         await reader.release()
@@ -650,7 +649,7 @@ class TestMultipartReader:
         assert reader.at_eof()
 
     async def test_release_next(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n\r\necho\r\n--:--'))
         await reader.release()
@@ -659,7 +658,7 @@ class TestMultipartReader:
         assert res is None
 
     async def test_second_next_releases_previous_object(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n'
                    b'\r\n'
@@ -669,13 +668,13 @@ class TestMultipartReader:
                    b'passed\r\n'
                    b'--:--'))
         first = await reader.next()
-        assert isinstance(first, aiohttp.multipart.BodyPartReader)
+        assert isinstance(first, aiohttp.BodyPartReader)
         second = await reader.next()
         assert first.at_eof()
         assert not second.at_eof()
 
     async def test_release_without_read_the_last_object(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n'
                    b'\r\n'
@@ -693,7 +692,7 @@ class TestMultipartReader:
         assert third is None
 
     async def test_read_chunk_by_length_doesnt_breaks_reader(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n'
                    b'Content-Length: 4\r\n\r\n'
@@ -714,7 +713,7 @@ class TestMultipartReader:
         assert body_parts == [b'test', b'passed']
 
     async def test_read_chunk_from_stream_doesnt_breaks_reader(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'--:\r\n'
                    b'\r\n'
@@ -737,7 +736,7 @@ class TestMultipartReader:
         assert body_parts == [b'chunk', b'two_chunks']
 
     async def test_reading_skips_prelude(self):
-        reader = aiohttp.multipart.MultipartReader(
+        reader = aiohttp.MultipartReader(
             {CONTENT_TYPE: 'multipart/related;boundary=":"'},
             Stream(b'Multi-part data is not supported.\r\n'
                    b'\r\n'
@@ -749,7 +748,7 @@ class TestMultipartReader:
                    b'passed\r\n'
                    b'--:--'))
         first = await reader.next()
-        assert isinstance(first, aiohttp.multipart.BodyPartReader)
+        assert isinstance(first, aiohttp.BodyPartReader)
         second = await reader.next()
         assert first.at_eof()
         assert not second.at_eof()
@@ -797,7 +796,7 @@ async def test_writer_write(buf, stream, writer):
     writer.append_form({'test': 'passed'})
     writer.append_form([('one', 1), ('two', 2)])
 
-    sub_multipart = aiohttp.multipart.MultipartWriter(boundary='::')
+    sub_multipart = aiohttp.MultipartWriter(boundary='::')
     sub_multipart.append('nested content')
     sub_multipart.headers['X-CUSTOM'] = 'test'
     writer.append(sub_multipart)
@@ -929,20 +928,20 @@ class TestMultipartWriter:
         assert 'mixed' == mimetype.subtype
 
     def test_unquoted_boundary(self):
-        writer = aiohttp.multipart.MultipartWriter(boundary='abc123')
+        writer = aiohttp.MultipartWriter(boundary='abc123')
         expected = {CONTENT_TYPE: 'multipart/mixed; boundary=abc123'}
         assert expected == writer.headers
 
     def test_quoted_boundary(self):
-        writer = aiohttp.multipart.MultipartWriter(boundary=R'\"')
+        writer = aiohttp.MultipartWriter(boundary=R'\"')
         expected = {CONTENT_TYPE: R'multipart/mixed; boundary="\\\""'}
         assert expected == writer.headers
 
     def test_bad_boundary(self):
         with pytest.raises(ValueError):
-            aiohttp.multipart.MultipartWriter(boundary='тест')
+            aiohttp.MultipartWriter(boundary='тест')
         with pytest.raises(ValueError):
-            aiohttp.multipart.MultipartWriter(boundary='test\n')
+            aiohttp.MultipartWriter(boundary='test\n')
 
     def test_default_headers(self, writer):
         expected = {CONTENT_TYPE: 'multipart/mixed; boundary=":"'}
@@ -993,7 +992,7 @@ class TestMultipartWriter:
         assert part.headers[CONTENT_TYPE] == 'test/passed'
 
     def test_append_multipart(self, writer):
-        subwriter = aiohttp.multipart.MultipartWriter(boundary=':')
+        subwriter = aiohttp.MultipartWriter(boundary=':')
         subwriter.append_json({'foo': 'bar'})
         writer.append(subwriter, {CONTENT_TYPE: 'test/passed'})
         assert 1 == len(writer)
@@ -1004,7 +1003,7 @@ class TestMultipartWriter:
         await writer.write(stream)
 
     def test_with(self):
-        with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+        with aiohttp.MultipartWriter(boundary=':') as writer:
             writer.append('foo')
             writer.append(b'bar')
             writer.append_json({'baz': True})
@@ -1012,681 +1011,18 @@ class TestMultipartWriter:
 
     def test_append_int_not_allowed(self):
         with pytest.raises(TypeError):
-            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+            with aiohttp.MultipartWriter(boundary=':') as writer:
                 writer.append(1)
 
     def test_append_float_not_allowed(self):
         with pytest.raises(TypeError):
-            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+            with aiohttp.MultipartWriter(boundary=':') as writer:
                 writer.append(1.1)
 
     def test_append_none_not_allowed(self):
         with pytest.raises(TypeError):
-            with aiohttp.multipart.MultipartWriter(boundary=':') as writer:
+            with aiohttp.MultipartWriter(boundary=':') as writer:
                 writer.append(None)
-
-
-class ParseContentDispositionTestCase(unittest.TestCase):
-    # http://greenbytes.de/tech/tc2231/
-
-    def test_parse_empty(self):
-        disptype, params = parse_content_disposition(None)
-        assert disptype is None
-        assert {} == params
-
-    def test_inlonly(self):
-        disptype, params = parse_content_disposition('inline')
-        assert 'inline' == disptype
-        assert {} == params
-
-    def test_inlonlyquoted(self):
-        with pytest.warns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition('"inline"')
-        assert disptype is None
-        assert {} == params
-
-    def test_semicolon(self):
-        disptype, params = parse_content_disposition(
-            'form-data; name="data"; filename="file ; name.mp4"')
-        assert disptype == 'form-data'
-        assert params == {'name': 'data', 'filename': 'file ; name.mp4'}
-
-    def test_inlwithasciifilename(self):
-        disptype, params = parse_content_disposition(
-            'inline; filename="foo.html"')
-        assert 'inline' == disptype
-        assert {'filename': 'foo.html'} == params
-
-    def test_inlwithfnattach(self):
-        disptype, params = parse_content_disposition(
-            'inline; filename="Not an attachment!"')
-        assert 'inline' == disptype
-        assert {'filename': 'Not an attachment!'} == params
-
-    def test_attonly(self):
-        disptype, params = parse_content_disposition('attachment')
-        assert 'attachment' ==  disptype
-        assert {} == params
-
-    def test_attonlyquoted(self):
-        with pytest.warns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition('"attachment"')
-        assert disptype is None
-        assert {} == params
-
-    def test_attonlyucase(self):
-        disptype, params = parse_content_disposition('ATTACHMENT')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithasciifilename(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
-
-    def test_inlwithasciifilenamepdf(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo.pdf"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.pdf'}, params)
-
-    def test_attwithasciifilename25(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="0000000000111111111122222"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': '0000000000111111111122222'}, params)
-
-    def test_attwithasciifilename35(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="00000000001111111111222222222233333"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': '00000000001111111111222222222233333'},
-                         params)
-
-    def test_attwithasciifnescapedchar(self):
-        disptype, params = parse_content_disposition(
-            r'attachment; filename="f\oo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
-
-    def test_attwithasciifnescapedquote(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="\"quoting\" tested.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': '"quoting" tested.html'}, params)
-
-    @unittest.skip('need more smart parser which respects quoted text')
-    def test_attwithquotedsemicolon(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="Here\'s a semicolon;.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'Here\'s a semicolon;.html'}, params)
-
-    def test_attwithfilenameandextparam(self):
-        disptype, params = parse_content_disposition(
-            'attachment; foo="bar"; filename="foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html', 'foo': 'bar'}, params)
-
-    def test_attwithfilenameandextparamescaped(self):
-        disptype, params = parse_content_disposition(
-            'attachment; foo="\"\\";filename="foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html', 'foo': '"\\'}, params)
-
-    def test_attwithasciifilenameucase(self):
-        disptype, params = parse_content_disposition(
-            'attachment; FILENAME="foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
-
-    def test_attwithasciifilenamenq(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename=foo.html')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
-
-    def test_attwithtokfncommanq(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo,bar.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithasciifilenamenqs(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo.html ;')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attemptyparam(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; ;filename=foo')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithasciifilenamenqws(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo bar.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithfntokensq(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename='foo.html'")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': "'foo.html'"}, params)
-
-    def test_attwithisofnplain(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo-ä.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo-ä.html'}, params)
-
-    def test_attwithutf8fnplain(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo-Ã¤.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo-Ã¤.html'}, params)
-
-    def test_attwithfnrawpctenca(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo-%41.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo-%41.html'}, params)
-
-    def test_attwithfnusingpct(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="50%.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': '50%.html'}, params)
-
-    def test_attwithfnrawpctencaq(self):
-        disptype, params = parse_content_disposition(
-            r'attachment; filename="foo-%\41.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': r'foo-%41.html'}, params)
-
-    def test_attwithnamepct(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo-%41.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo-%41.html'}, params)
-
-    def test_attwithfilenamepctandiso(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="ä-%41.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'ä-%41.html'}, params)
-
-    def test_attwithfnrawpctenclong(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo-%c3%a4-%e2%82%ac.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo-%c3%a4-%e2%82%ac.html'}, params)
-
-    def test_attwithasciifilenamews1(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename ="foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
-
-    def test_attwith2filenames(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename="foo.html"; filename="bar.html"')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attfnbrokentoken(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo[1](2).html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attfnbrokentokeniso(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo-ä.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attfnbrokentokenutf(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo-Ã¤.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmissingdisposition(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'filename=foo.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmissingdisposition2(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'x=y; filename=foo.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmissingdisposition3(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                '"foo; filename=bar;baz"; filename=qux')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmissingdisposition4(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'filename=foo.html, filename=bar.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_emptydisposition(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                '; filename=foo.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_doublecolon(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                ': inline; attachment; filename=foo.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attandinline(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'inline; attachment; filename=foo.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attandinline2(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; inline; filename=foo.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attbrokenquotedfn(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename="foo.html".txt')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attbrokenquotedfn2(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename="bar')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attbrokenquotedfn3(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo"bar;baz"qux')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmultinstances(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=foo.html, attachment; filename=bar.html')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmissingdelim(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; foo=foo filename=bar')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmissingdelim2(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename=bar foo=foo')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attmissingdelim3(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment filename=bar')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attreversed(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'filename=foo.html; attachment')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attconfusedparam(self):
-        disptype, params = parse_content_disposition(
-            'attachment; xfilename=foo.html')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'xfilename': 'foo.html'}, params)
-
-    def test_attabspath(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="/foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
-
-    def test_attabspathwin(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="\\foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
-
-    def test_attcdate(self):
-        disptype, params = parse_content_disposition(
-            'attachment; creation-date="Wed, 12 Feb 1997 16:29:51 -0500"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'creation-date': 'Wed, 12 Feb 1997 16:29:51 -0500'},
-                         params)
-
-    def test_attmdate(self):
-        disptype, params = parse_content_disposition(
-            'attachment; modification-date="Wed, 12 Feb 1997 16:29:51 -0500"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual(
-            {'modification-date': 'Wed, 12 Feb 1997 16:29:51 -0500'},
-            params)
-
-    def test_dispext(self):
-        disptype, params = parse_content_disposition('foobar')
-        self.assertEqual('foobar', disptype)
-        self.assertEqual({}, params)
-
-    def test_dispextbadfn(self):
-        disptype, params = parse_content_disposition(
-            'attachment; example="filename=example.txt"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'example': 'filename=example.txt'}, params)
-
-    def test_attwithisofn2231iso(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*=iso-8859-1''foo-%E4.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'foo-ä.html'}, params)
-
-    def test_attwithfn2231utf8(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*=UTF-8''foo-%c3%a4-%e2%82%ac.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'foo-ä-€.html'}, params)
-
-    def test_attwithfn2231noc(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*=''foo-%c3%a4-%e2%82%ac.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'foo-ä-€.html'}, params)
-
-    def test_attwithfn2231utf8comp(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*=UTF-8''foo-a%cc%88.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'foo-ä.html'}, params)
-
-    @unittest.skip('should raise decoding error: %82 is invalid for latin1')
-    def test_attwithfn2231utf8_bad(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename*=iso-8859-1''foo-%c3%a4-%e2%82%ac.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    @unittest.skip('should raise decoding error: %E4 is invalid for utf-8')
-    def test_attwithfn2231iso_bad(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename*=utf-8''foo-%E4.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithfn2231ws1(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename *=UTF-8''foo-%c3%a4.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithfn2231ws2(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*= UTF-8''foo-%c3%a4.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'foo-ä.html'}, params)
-
-    def test_attwithfn2231ws3(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename* =UTF-8''foo-%c3%a4.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'foo-ä.html'}, params)
-
-    def test_attwithfn2231quot(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename*=\"UTF-8''foo-%c3%a4.html\"")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithfn2231quot2(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename*=\"foo%20bar.html\"")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithfn2231singleqmissing(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename*=UTF-8'foo-%c3%a4.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    @unittest.skip('urllib.parse.unquote is tolerate to standalone % chars')
-    def test_attwithfn2231nbadpct1(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename*=UTF-8''foo%")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    @unittest.skip('urllib.parse.unquote is tolerate to standalone % chars')
-    def test_attwithfn2231nbadpct2(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                "attachment; filename*=UTF-8''f%oo.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-    def test_attwithfn2231dpct(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*=UTF-8''A-%2541.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'A-%41.html'}, params)
-
-    def test_attwithfn2231abspathdisguised(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*=UTF-8''%5cfoo.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': '\\foo.html'}, params)
-
-    def test_attfncont(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename*0="foo."; filename*1="html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*0': 'foo.',
-                          'filename*1': 'html'}, params)
-
-    def test_attfncontqs(self):
-        disptype, params = parse_content_disposition(
-            r'attachment; filename*0="foo"; filename*1="\b\a\r.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*0': 'foo',
-                          'filename*1': 'bar.html'}, params)
-
-    def test_attfncontenc(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename*0*=UTF-8''foo-%c3%a4; filename*1=".html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*0*': 'UTF-8''foo-%c3%a4',
-                          'filename*1': '.html'}, params)
-
-    def test_attfncontlz(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename*0="foo"; filename*01="bar"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*0': 'foo',
-                          'filename*01': 'bar'}, params)
-
-    def test_attfncontnc(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename*0="foo"; filename*2="bar"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*0': 'foo',
-                          'filename*2': 'bar'}, params)
-
-    def test_attfnconts1(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename*0="foo."; filename*2="html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*0': 'foo.',
-                          'filename*2': 'html'}, params)
-
-    def test_attfncontord(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename*1="bar"; filename*0="foo"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*0': 'foo',
-                          'filename*1': 'bar'}, params)
-
-    def test_attfnboth(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="foo-ae.html";'
-            " filename*=UTF-8''foo-%c3%a4.html")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo-ae.html',
-                          'filename*': 'foo-ä.html'}, params)
-
-    def test_attfnboth2(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*=UTF-8''foo-%c3%a4.html;"
-            ' filename="foo-ae.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': 'foo-ae.html',
-                          'filename*': 'foo-ä.html'}, params)
-
-    def test_attfnboth3(self):
-        disptype, params = parse_content_disposition(
-            "attachment; filename*0*=ISO-8859-15''euro-sign%3d%a4;"
-            " filename*=ISO-8859-1''currency-sign%3d%a4")
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename*': 'currency-sign=¤',
-                          'filename*0*': "ISO-8859-15''euro-sign%3d%a4"},
-                         params)
-
-    def test_attnewandfn(self):
-        disptype, params = parse_content_disposition(
-            'attachment; foobar=x; filename="foo.html"')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'foobar': 'x',
-                          'filename': 'foo.html'}, params)
-
-    def test_attrfc2047token(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
-            disptype, params = parse_content_disposition(
-                'attachment; filename==?ISO-8859-1?Q?foo-=E4.html?=')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
-
-    def test_attrfc2047quoted(self):
-        disptype, params = parse_content_disposition(
-            'attachment; filename="=?ISO-8859-1?Q?foo-=E4.html?="')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({'filename': '=?ISO-8859-1?Q?foo-=E4.html?='}, params)
-
-    def test_bad_continuous_param(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionParam):
-            disptype, params = parse_content_disposition(
-                'attachment; filename*0=foo bar')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
-
-
-class ContentDispositionFilenameTestCase(unittest.TestCase):
-    # http://greenbytes.de/tech/tc2231/
-
-    def test_no_filename(self):
-        self.assertIsNone(content_disposition_filename({}))
-        self.assertIsNone(content_disposition_filename({'foo': 'bar'}))
-
-    def test_filename(self):
-        params = {'filename': 'foo.html'}
-        self.assertEqual('foo.html', content_disposition_filename(params))
-
-    def test_filename_ext(self):
-        params = {'filename*': 'файл.html'}
-        self.assertEqual('файл.html', content_disposition_filename(params))
-
-    def test_attfncont(self):
-        params = {'filename*0': 'foo.', 'filename*1': 'html'}
-        self.assertEqual('foo.html', content_disposition_filename(params))
-
-    def test_attfncontqs(self):
-        params = {'filename*0': 'foo', 'filename*1': 'bar.html'}
-        self.assertEqual('foobar.html', content_disposition_filename(params))
-
-    def test_attfncontenc(self):
-        params = {'filename*0*': "UTF-8''foo-%c3%a4",
-                  'filename*1': '.html'}
-        self.assertEqual('foo-ä.html', content_disposition_filename(params))
-
-    def test_attfncontlz(self):
-        params = {'filename*0': 'foo',
-                  'filename*01': 'bar'}
-        self.assertEqual('foo', content_disposition_filename(params))
-
-    def test_attfncontnc(self):
-        params = {'filename*0': 'foo',
-                  'filename*2': 'bar'}
-        self.assertEqual('foo', content_disposition_filename(params))
-
-    def test_attfnconts1(self):
-        params = {'filename*1': 'foo',
-                  'filename*2': 'bar'}
-        self.assertEqual(None, content_disposition_filename(params))
-
-    def test_attfnboth(self):
-        params = {'filename': 'foo-ae.html',
-                  'filename*': 'foo-ä.html'}
-        self.assertEqual('foo-ä.html', content_disposition_filename(params))
-
-    def test_attfnboth3(self):
-        params = {'filename*0*': "ISO-8859-15''euro-sign%3d%a4",
-                  'filename*': 'currency-sign=¤'}
-        self.assertEqual('currency-sign=¤',
-                         content_disposition_filename(params))
-
-    def test_attrfc2047quoted(self):
-        params = {'filename': '=?ISO-8859-1?Q?foo-=E4.html?='}
-        self.assertEqual('=?ISO-8859-1?Q?foo-=E4.html?=',
-                         content_disposition_filename(params))
 
 
 async def test_async_for_reader(loop):
