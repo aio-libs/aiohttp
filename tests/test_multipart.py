@@ -1031,49 +1031,48 @@ class ParseContentDispositionTestCase(unittest.TestCase):
 
     def test_parse_empty(self):
         disptype, params = parse_content_disposition(None)
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
+        assert disptype is None
+        assert {} == params
 
     def test_inlonly(self):
         disptype, params = parse_content_disposition('inline')
-        self.assertEqual('inline', disptype)
-        self.assertEqual({}, params)
+        assert 'inline' == disptype
+        assert {} == params
 
     def test_inlonlyquoted(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
+        with pytest.warns(aiohttp.multipart.BadContentDispositionHeader):
             disptype, params = parse_content_disposition('"inline"')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
+        assert disptype is None
+        assert {} == params
 
     def test_semicolon(self):
         disptype, params = parse_content_disposition(
             'form-data; name="data"; filename="file ; name.mp4"')
-        self.assertEqual(disptype, 'form-data')
-        self.assertEqual(
-            params, {'name': 'data', 'filename': 'file ; name.mp4'})
+        assert disptype == 'form-data'
+        assert params == {'name': 'data', 'filename': 'file ; name.mp4'}
 
     def test_inlwithasciifilename(self):
         disptype, params = parse_content_disposition(
             'inline; filename="foo.html"')
-        self.assertEqual('inline', disptype)
-        self.assertEqual({'filename': 'foo.html'}, params)
+        assert 'inline' == disptype
+        assert {'filename': 'foo.html'} == params
 
     def test_inlwithfnattach(self):
         disptype, params = parse_content_disposition(
             'inline; filename="Not an attachment!"')
-        self.assertEqual('inline', disptype)
-        self.assertEqual({'filename': 'Not an attachment!'}, params)
+        assert 'inline' == disptype
+        assert {'filename': 'Not an attachment!'} == params
 
     def test_attonly(self):
         disptype, params = parse_content_disposition('attachment')
-        self.assertEqual('attachment', disptype)
-        self.assertEqual({}, params)
+        assert 'attachment' ==  disptype
+        assert {} == params
 
     def test_attonlyquoted(self):
-        with self.assertWarns(aiohttp.multipart.BadContentDispositionHeader):
+        with pytest.warns(aiohttp.multipart.BadContentDispositionHeader):
             disptype, params = parse_content_disposition('"attachment"')
-        self.assertEqual(None, disptype)
-        self.assertEqual({}, params)
+        assert disptype is None
+        assert {} == params
 
     def test_attonlyucase(self):
         disptype, params = parse_content_disposition('ATTACHMENT')
