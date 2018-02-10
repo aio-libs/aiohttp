@@ -1,8 +1,5 @@
-import asyncio
-import functools
 import io
 import json
-import unittest
 import zlib
 from unittest import mock
 
@@ -16,6 +13,7 @@ from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import MultipartResponseWrapper
 from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
+from aiohttp.test_utils import make_mocked_coro
 
 
 BOUNDARY = b'--:'
@@ -40,39 +38,6 @@ def stream(buf):
 @pytest.fixture
 def writer():
     return aiohttp.MultipartWriter(boundary=':')
-
-
-def run_in_loop(f):
-    @functools.wraps(f)
-    def wrapper(testcase, *args, **kwargs):
-        coro = asyncio.coroutine(f)
-        future = asyncio.wait_for(coro(testcase, *args, **kwargs), timeout=5)
-        return testcase.loop.run_until_complete(future)
-    return wrapper
-
-
-class MetaAioTestCase(type):
-
-    def __new__(cls, name, bases, attrs):
-        for key, obj in attrs.items():
-            if key.startswith('test_'):
-                attrs[key] = run_in_loop(obj)
-        return super().__new__(cls, name, bases, attrs)
-
-
-class TestCase(unittest.TestCase, metaclass=MetaAioTestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def future(self, obj):
-        fut = self.loop.create_future()
-        fut.set_result(obj)
-        return fut
 
 
 class Response:
@@ -113,36 +78,38 @@ class StreamWithShortenRead(Stream):
         return await super().read(size)
 
 
-class MultipartResponseWrapperTestCase(TestCase):
-
-    def setUp(self):
-        super().setUp()
-        wrapper = MultipartResponseWrapper(mock.Mock(),
-                                           mock.Mock())
-        self.wrapper = wrapper
+class TestMultipartResponseWrapper:
 
     def test_at_eof(self):
-        self.wrapper.at_eof()
-        self.assertTrue(self.wrapper.resp.content.at_eof.called)
+        wrapper = MultipartResponseWrapper(mock.Mock(),
+                                           mock.Mock())
+        wrapper.at_eof()
+        assert wrapper.resp.content.at_eof.called
 
     async def test_next(self):
-        self.wrapper.stream.next.return_value = self.future(b'')
-        self.wrapper.stream.at_eof.return_value = False
-        await self.wrapper.next()
-        self.assertTrue(self.wrapper.stream.next.called)
+        wrapper = MultipartResponseWrapper(mock.Mock(),
+                                           mock.Mock())
+        wrapper.stream.next = make_mocked_coro(b'')
+        wrapper.stream.at_eof.return_value = False
+        await wrapper.next()
+        assert wrapper.stream.next.called
 
     async def test_release(self):
-        self.wrapper.resp.release.return_value = self.future(None)
-        await self.wrapper.release()
-        self.assertTrue(self.wrapper.resp.release.called)
+        wrapper = MultipartResponseWrapper(mock.Mock(),
+                                           mock.Mock())
+        wrapper.resp.release = make_mocked_coro(None)
+        await wrapper.release()
+        assert wrapper.resp.release.called
 
     async def test_release_when_stream_at_eof(self):
-        self.wrapper.resp.release.return_value = self.future(None)
-        self.wrapper.stream.next.return_value = self.future(b'')
-        self.wrapper.stream.at_eof.return_value = True
-        await self.wrapper.next()
-        self.assertTrue(self.wrapper.stream.next.called)
-        self.assertTrue(self.wrapper.resp.release.called)
+        wrapper = MultipartResponseWrapper(mock.Mock(),
+                                           mock.Mock())
+        wrapper.resp.release = make_mocked_coro(None)
+        wrapper.stream.next = make_mocked_coro(b'')
+        wrapper.stream.at_eof.return_value = True
+        await wrapper.next()
+        assert wrapper.stream.next.called
+        assert wrapper.resp.release.called
 
 
 class TestPartReader:
