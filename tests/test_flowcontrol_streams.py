@@ -1,5 +1,3 @@
-import asyncio
-import unittest
 from unittest import mock
 
 import pytest
@@ -15,6 +13,13 @@ def protocol():
 @pytest.fixture
 def stream(loop, protocol):
     out = streams.StreamReader(protocol, limit=1, loop=loop)
+    out._allow_pause = True
+    return out
+
+
+@pytest.fixture
+def buffer(loop, protocol):
+    out = streams.FlowControlDataQueue(protocol, limit=1, loop=loop)
     out._allow_pause = True
     return out
 
@@ -110,36 +115,17 @@ class TestFlowControlStreamReader:
         assert stream._protocol.resume_reading.call_count == 1
 
 
-class FlowControlMixin:
+class TestFlowControlDataQueue:
 
-    def test_feed_pause(self):
-        out = self._make_one()
-        out._protocol._reading_paused = False
-        out.feed_data(object(), 100)
+    def test_feed_pause(self, buffer):
+        buffer._protocol._reading_paused = False
+        buffer.feed_data(object(), 100)
 
-        self.assertTrue(out._protocol.pause_reading.called)
+        assert buffer._protocol.pause_reading.called
 
-    def test_resume_on_read(self):
-        out = self._make_one()
-        out.feed_data(object(), 100)
+    async def test_resume_on_read(self, buffer):
+        buffer.feed_data(object(), 100)
 
-        out._protocol._reading_paused = True
-        self.loop.run_until_complete(out.read())
-        self.assertTrue(out._protocol.resume_reading.called)
-
-
-class TestFlowControlDataQueue(unittest.TestCase, FlowControlMixin):
-
-    def setUp(self):
-        self.protocol = mock.Mock()
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def _make_one(self, *args, **kwargs):
-        out = streams.FlowControlDataQueue(
-            self.protocol, limit=1, loop=self.loop, *args, **kwargs)
-        out._allow_pause = True
-        return out
+        buffer._protocol._reading_paused = True
+        await buffer.read()
+        assert buffer._protocol.resume_reading.called
