@@ -63,11 +63,13 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
         raise RuntimeError('Unable to determine version.')
 
 
-install_requires = ['attrs>=17.4.0', 'chardet', 'multidict>=4.0.0',
-                    'async_timeout>=1.2.0', 'yarl>=1.0.0']
+install_requires = ['attrs>=17.4.0', 'chardet>=2.0,<4.0',
+                    'multidict>=4.0,<5.0',
+                    'async_timeout>=1.2,<2.0',
+                    'yarl>=1.0,<2.0']
 
 if sys.version_info < (3, 7):
-    install_requires.append('idna-ssl>=1.0.0')
+    install_requires.append('idna-ssl>=1.0')
 
 
 def read(f):
