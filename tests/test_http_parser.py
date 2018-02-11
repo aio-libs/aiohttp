@@ -61,6 +61,11 @@ def response_cls(request):
     return request.param
 
 
+@pytest.fixture
+def stream():
+    return mock.Mock()
+
+
 def test_parse_headers(parser):
     text = b'''GET /test HTTP/1.1\r
 test: line\r
@@ -648,30 +653,26 @@ def test_url_parse_non_strict_mode(parser):
     assert payload.is_eof()
 
 
-class TestParsePayload(unittest.TestCase):
+class TestParsePayload:
 
-    def setUp(self):
-        self.stream = mock.Mock()
-        asyncio.set_event_loop(None)
-
-    def test_parse_eof_payload(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
+    def test_parse_eof_payload(self, stream):
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(out, readall=True)
         p.feed_data(b'data')
         p.feed_eof()
 
-        self.assertTrue(out.is_eof())
-        self.assertEqual([(bytearray(b'data'), 4)], list(out._buffer))
+        assert out.is_eof()
+        assert [(bytearray(b'data'), 4)] == list(out._buffer)
 
-    def test_parse_no_body(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
+    def test_parse_no_body(self, stream):
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(out, method='PUT')
 
-        self.assertTrue(out.is_eof())
-        self.assertTrue(p.done)
+        assert out.is_eof()
+        assert p.done
 
-    def test_parse_length_payload_eof(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
+    def test_parse_length_payload_eof(self, stream):
+        out = aiohttp.FlowControlDataQueue(stream)
 
         p = HttpPayloadParser(out, length=4)
         p.feed_data(b'da')
@@ -679,62 +680,62 @@ class TestParsePayload(unittest.TestCase):
         with pytest.raises(http_exceptions.ContentLengthError):
             p.feed_eof()
 
-    def test_parse_chunked_payload_size_error(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
+    def test_parse_chunked_payload_size_error(self, stream):
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(out, chunked=True)
-        self.assertRaises(
-            http_exceptions.TransferEncodingError, p.feed_data, b'blah\r\n')
-        self.assertIsInstance(
-            out.exception(), http_exceptions.TransferEncodingError)
+        with pytest.raises(http_exceptions.TransferEncodingError):
+            p.feed_data(b'blah\r\n')
+        assert isinstance(out.exception(),
+                          http_exceptions.TransferEncodingError)
 
-    def test_http_payload_parser_length(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
+    def test_http_payload_parser_length(self, stream):
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(out, length=2)
         eof, tail = p.feed_data(b'1245')
-        self.assertTrue(eof)
+        assert eof
 
-        self.assertEqual(b'12', b''.join(d for d, _ in out._buffer))
-        self.assertEqual(b'45', tail)
+        assert b'12' == b''.join(d for d, _ in out._buffer)
+        assert b'45' == tail
 
     _comp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
     _COMPRESSED = b''.join([_comp.compress(b'data'), _comp.flush()])
 
-    def test_http_payload_parser_deflate(self):
+    def test_http_payload_parser_deflate(self, stream):
         length = len(self._COMPRESSED)
-        out = aiohttp.FlowControlDataQueue(self.stream)
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(
             out, length=length, compression='deflate')
         p.feed_data(self._COMPRESSED)
-        self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
-        self.assertTrue(out.is_eof())
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+        assert out.is_eof()
 
-    def test_http_payload_parser_deflate_no_wbits(self):
+    def test_http_payload_parser_deflate_no_wbits(self, stream):
         comp = zlib.compressobj()
         COMPRESSED = b''.join([comp.compress(b'data'), comp.flush()])
 
         length = len(COMPRESSED)
-        out = aiohttp.FlowControlDataQueue(self.stream)
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(
             out, length=length, compression='deflate')
         p.feed_data(COMPRESSED)
-        self.assertEqual(b'data', b''.join(d for d, _ in out._buffer))
-        self.assertTrue(out.is_eof())
+        assert b'data' == b''.join(d for d, _ in out._buffer)
+        assert out.is_eof()
 
-    def test_http_payload_parser_length_zero(self):
-        out = aiohttp.FlowControlDataQueue(self.stream)
+    def test_http_payload_parser_length_zero(self, stream):
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(out, length=0)
-        self.assertTrue(p.done)
-        self.assertTrue(out.is_eof())
+        assert p.done
+        assert out.is_eof()
 
     @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
-    def test_http_payload_brotli(self):
+    def test_http_payload_brotli(self, stream):
         compressed = brotli.compress(b'brotli data')
-        out = aiohttp.FlowControlDataQueue(self.stream)
+        out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(
             out, length=len(compressed), compression='br')
         p.feed_data(compressed)
-        self.assertEqual(b'brotli data', b''.join(d for d, _ in out._buffer))
-        self.assertTrue(out.is_eof())
+        assert b'brotli data' == b''.join(d for d, _ in out._buffer)
+        assert out.is_eof()
 
 
 class TestDeflateBuffer(unittest.TestCase):
