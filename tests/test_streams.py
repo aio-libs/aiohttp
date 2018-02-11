@@ -2,7 +2,6 @@
 
 import asyncio
 import re
-import unittest
 from unittest import mock
 
 import pytest
@@ -11,13 +10,6 @@ from aiohttp import streams
 
 
 DATA = b'line1\nline2\nline3\n'
-
-
-def run_briefly(loop):
-    async def once():
-        pass
-    t = loop.create_task(once())
-    loop.run_until_complete(t)
 
 
 def chunkify(seq, n):
@@ -764,145 +756,136 @@ async def test_empty_stream_reader():
     assert s.read_nowait() == b''
 
 
-class DataQueueMixin:
+@pytest.fixture
+def buffer(loop):
+    return streams.DataQueue(loop=loop)
 
-    def test_is_eof(self):
-        self.assertFalse(self.buffer.is_eof())
-        self.buffer.feed_eof()
-        self.assertTrue(self.buffer.is_eof())
 
-    def test_at_eof(self):
-        self.assertFalse(self.buffer.at_eof())
-        self.buffer.feed_eof()
-        self.assertTrue(self.buffer.at_eof())
-        self.buffer._buffer.append(object())
-        self.assertFalse(self.buffer.at_eof())
+class TestDataQueue:
 
-    def test_feed_data(self):
+    def test_is_eof(self, buffer):
+        assert not buffer.is_eof()
+        buffer.feed_eof()
+        assert buffer.is_eof()
+
+    def test_at_eof(self, buffer):
+        assert not buffer.at_eof()
+        buffer.feed_eof()
+        assert buffer.at_eof()
+        buffer._buffer.append(object())
+        assert not buffer.at_eof()
+
+    def test_feed_data(self, buffer):
         item = object()
-        self.buffer.feed_data(item, 1)
-        self.assertEqual([(item, 1)], list(self.buffer._buffer))
+        buffer.feed_data(item, 1)
+        assert [(item, 1)] == list(buffer._buffer)
 
-    def test_feed_eof(self):
-        self.buffer.feed_eof()
-        self.assertTrue(self.buffer._eof)
+    def test_feed_eof(self, buffer):
+        buffer.feed_eof()
+        assert buffer._eof
 
-    def test_read(self):
+    async def test_read(self, buffer, loop):
         item = object()
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
 
         def cb():
-            self.buffer.feed_data(item, 1)
-        self.loop.call_soon(cb)
+            buffer.feed_data(item, 1)
+        loop.call_soon(cb)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertIs(item, data)
+        data = await buffer.read()
+        assert item is data
 
-    def test_read_eof(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
+    async def test_read_eof(self, buffer, loop):
+        read_task = loop.create_task(buffer.read())
 
         def cb():
-            self.buffer.feed_eof()
-        self.loop.call_soon(cb)
+            buffer.feed_eof()
+        loop.call_soon(cb)
 
-        self.assertRaises(
-            streams.EofStream, self.loop.run_until_complete, read_task)
+        with pytest.raises(streams.EofStream):
+            await buffer.read()
 
-    def test_read_cancelled(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-        run_briefly(self.loop)
-        waiter = self.buffer._waiter
-        self.assertTrue(asyncio.isfuture(waiter))
+    async def test_read_cancelled(self, buffer, loop):
+        read_task = loop.create_task(buffer.read())
+        await asyncio.sleep(0)
+        waiter = buffer._waiter
+        assert asyncio.isfuture(waiter)
 
         read_task.cancel()
-        self.assertRaises(
-            asyncio.CancelledError,
-            self.loop.run_until_complete, read_task)
-        self.assertTrue(waiter.cancelled())
-        self.assertIsNone(self.buffer._waiter)
+        with pytest.raises(asyncio.CancelledError):
+            await read_task
+        assert waiter.cancelled()
+        assert buffer._waiter is None
 
-        self.buffer.feed_data(b'test', 4)
-        self.assertIsNone(self.buffer._waiter)
+        buffer.feed_data(b'test', 4)
+        assert buffer._waiter is None
 
-    def test_read_until_eof(self):
+    async def test_read_until_eof(self, buffer):
         item = object()
-        self.buffer.feed_data(item, 1)
-        self.buffer.feed_eof()
+        buffer.feed_data(item, 1)
+        buffer.feed_eof()
 
-        data = self.loop.run_until_complete(self.buffer.read())
-        self.assertIs(data, item)
+        data = await buffer.read()
+        assert data is item
 
-        self.assertRaises(
-            streams.EofStream,
-            self.loop.run_until_complete, self.buffer.read())
+        with pytest.raises(streams.EofStream):
+            await buffer.read()
 
-    def test_read_exc(self):
+    async def test_read_exc(self, buffer):
         item = object()
-        self.buffer.feed_data(item)
-        self.buffer.set_exception(ValueError)
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
+        buffer.feed_data(item)
+        buffer.set_exception(ValueError)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertIs(item, data)
+        data = await buffer.read()
+        assert item is data
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, self.buffer.read())
+        with pytest.raises(ValueError):
+            await buffer.read()
 
-    def test_read_exception(self):
-        self.buffer.set_exception(ValueError())
+    async def test_read_exception(self, buffer):
+        buffer.set_exception(ValueError())
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, self.buffer.read())
+        with pytest.raises(ValueError):
+            await buffer.read()
 
-    def test_read_exception_with_data(self):
+    async def test_read_exception_with_data(self, buffer):
         val = object()
-        self.buffer.feed_data(val, 1)
-        self.buffer.set_exception(ValueError())
+        buffer.feed_data(val, 1)
+        buffer.set_exception(ValueError())
 
-        self.assertIs(val, self.loop.run_until_complete(self.buffer.read()))
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, self.buffer.read())
+        assert val is (await buffer.read())
+        with pytest.raises(ValueError):
+            await buffer.read()
 
-    def test_read_exception_on_wait(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-        run_briefly(self.loop)
-        self.assertTrue(asyncio.isfuture(self.buffer._waiter))
+    async def test_read_exception_on_wait(self, buffer, loop):
+        read_task = loop.create_task(buffer.read())
+        await asyncio.sleep(0)
+        assert asyncio.isfuture(buffer._waiter)
 
-        self.buffer.feed_eof()
-        self.buffer.set_exception(ValueError())
+        buffer.feed_eof()
+        buffer.set_exception(ValueError())
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, read_task)
+        with pytest.raises(ValueError):
+            await read_task
 
-    def test_exception(self):
-        self.assertIsNone(self.buffer.exception())
+    def test_exception(self, buffer):
+        assert buffer.exception() is None
 
         exc = ValueError()
-        self.buffer.set_exception(exc)
-        self.assertIs(self.buffer.exception(), exc)
+        buffer.set_exception(exc)
+        assert buffer.exception() is exc
 
-    def test_exception_waiter(self):
+    async def test_exception_waiter(self, buffer, loop):
 
         async def set_err():
-            self.buffer.set_exception(ValueError())
+            buffer.set_exception(ValueError())
 
-        t1 = asyncio.Task(self.buffer.read(), loop=self.loop)
-        t2 = asyncio.Task(set_err(), loop=self.loop)
+        t1 = loop.create_task(buffer.read())
+        t2 = loop.create_task(set_err())
 
-        self.loop.run_until_complete(asyncio.wait([t1, t2], loop=self.loop))
+        await asyncio.wait([t1, t2])
 
-        self.assertRaises(ValueError, t1.result)
-
-
-class TestDataQueue(unittest.TestCase, DataQueueMixin):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.buffer = streams.DataQueue(loop=self.loop)
-
-    def tearDown(self):
-        self.loop.close()
+        with pytest.raises(ValueError):
+            t1.result()
 
 
 def test_feed_data_waiters(loop, protocol):
