@@ -1,7 +1,5 @@
 """Tests for aiohttp/protocol.py"""
 
-import asyncio
-import unittest
 import zlib
 from unittest import mock
 
