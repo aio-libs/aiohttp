@@ -1896,6 +1896,31 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(aiohttp_server):
     conn.close()
 
 
+async def test_tcp_connector_uses_provided_local_addr(aiohttp_server):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    srv = await aiohttp_server(app)
+
+    port = unused_port()
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', port))
+
+    session = aiohttp.ClientSession(connector=conn)
+    url = srv.make_url('/')
+
+    r = await session.get(url)
+    r.release()
+
+    first_conn = next(iter(conn._conns.values()))[0][0]
+    assert first_conn.transport.get_extra_info(
+        'sockname') == ('127.0.0.1', port)
+    r.close()
+    await session.close()
+    conn.close()
+
+
 class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
@@ -1938,31 +1963,6 @@ class TestHttpClientConnector(unittest.TestCase):
         url = "http://127.0.0.1" + path
         self.addCleanup(srv.close)
         return app, srv, url, sock_path
-
-    def test_tcp_connector_uses_provided_local_addr(self):
-        async def handler(request):
-            return web.Response()
-
-        app, srv, url = self.loop.run_until_complete(
-            self.create_server('get', '/', handler)
-        )
-
-        port = unused_port()
-        conn = aiohttp.TCPConnector(loop=self.loop,
-                                    local_addr=('127.0.0.1', port))
-
-        session = aiohttp.ClientSession(connector=conn)
-
-        r = self.loop.run_until_complete(
-            session.request('get', url)
-        )
-
-        r.release()
-        first_conn = next(iter(conn._conns.values()))[0][0]
-        assert first_conn.transport._sock.getsockname() == ('127.0.0.1', port)
-        r.close()
-        self.loop.run_until_complete(session.close())
-        conn.close()
 
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
     def test_unix_connector(self):
