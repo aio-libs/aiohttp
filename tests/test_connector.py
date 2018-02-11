@@ -1879,8 +1879,8 @@ class TestHttpClientConnector(unittest.TestCase):
         with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
             self.loop.run_until_complete(session.request('get', url))
 
-        self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
-        self.assertIsInstance(ctx.value, aiohttp.ClientSSLError)
+        assert isinstance(ctx.value.os_error, ssl.SSLError)
+        assert isinstance(ctx.value, aiohttp.ClientSSLError)
 
         self.loop.run_until_complete(session.close())
         conn.close()
@@ -1916,7 +1916,7 @@ class TestHttpClientConnector(unittest.TestCase):
         except AttributeError:
             _sslcontext = first_conn.transport._sslcontext
 
-        self.assertIs(_sslcontext, sslcontext)
+        assert _sslcontext is sslcontext
         r.close()
 
         self.loop.run_until_complete(session.close())
@@ -1942,8 +1942,7 @@ class TestHttpClientConnector(unittest.TestCase):
 
         r.release()
         first_conn = next(iter(conn._conns.values()))[0][0]
-        self.assertEqual(
-            first_conn.transport._sock.getsockname(), ('127.0.0.1', port))
+        assert first_conn.transport._sock.getsockname() == ('127.0.0.1', port)
         r.close()
         self.loop.run_until_complete(session.close())
         conn.close()
@@ -1957,13 +1956,13 @@ class TestHttpClientConnector(unittest.TestCase):
             self.create_unix_server('get', '/', handler))
 
         connector = aiohttp.UnixConnector(sock_path, loop=self.loop)
-        self.assertEqual(sock_path, connector.path)
+        assert sock_path == connector.path
 
         session = client.ClientSession(
             connector=connector, loop=self.loop)
         r = self.loop.run_until_complete(
             session.request('get', url))
-        self.assertEqual(r.status, 200)
+        assert r.status == 200
         r.close()
         self.loop.run_until_complete(session.close())
 
@@ -1976,7 +1975,7 @@ class TestHttpClientConnector(unittest.TestCase):
                             loop=self.loop,
                             response_class=mock.Mock())
 
-        with self.assertRaises(OSError):
+        with pytest.raises(OSError):
             self.loop.run_until_complete(connector.connect(req))
 
         resolver.resolve.assert_not_called()
