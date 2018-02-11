@@ -738,57 +738,54 @@ class TestParsePayload:
         assert out.is_eof()
 
 
-class TestDeflateBuffer(unittest.TestCase):
+class TestDeflateBuffer:
 
-    def setUp(self):
-        self.stream = mock.Mock()
-        asyncio.set_event_loop(None)
-
-    def test_feed_data(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
+    def test_feed_data(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.decompress.return_value = b'line'
 
         dbuf.feed_data(b'data', 4)
-        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
+        assert [b'line'] == list(d for d, _ in buf._buffer)
 
-    def test_feed_data_err(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
+    def test_feed_data_err(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
         exc = ValueError()
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.decompress.side_effect = exc
 
-        self.assertRaises(
-            http_exceptions.ContentEncodingError, dbuf.feed_data, b'data', 4)
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            dbuf.feed_data(b'data', 4)
 
-    def test_feed_eof(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
+    def test_feed_eof(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.flush.return_value = b'line'
 
         dbuf.feed_eof()
-        self.assertEqual([b'line'], list(d for d, _ in buf._buffer))
-        self.assertTrue(buf._eof)
+        assert [b'line'] == list(d for d, _ in buf._buffer)
+        assert buf._eof
 
-    def test_feed_eof_err(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
+    def test_feed_eof_err(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
         dbuf.decompressor = mock.Mock()
         dbuf.decompressor.flush.return_value = b'line'
         dbuf.decompressor.eof = False
 
-        self.assertRaises(http_exceptions.ContentEncodingError, dbuf.feed_eof)
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            dbuf.feed_eof()
 
-    def test_empty_body(self):
-        buf = aiohttp.FlowControlDataQueue(self.stream)
+    def test_empty_body(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
         dbuf.feed_eof()
 
-        self.assertTrue(buf.at_eof())
+        assert buf.at_eof()
