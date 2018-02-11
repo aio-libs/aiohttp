@@ -747,36 +747,21 @@ class TestStreamReader:
         assert stream.at_eof()
 
 
-class TestEmptyStreamReader(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_empty_stream_reader(self):
-        s = streams.EmptyStreamReader()
-        self.assertIsNone(s.set_exception(ValueError()))
-        self.assertIsNone(s.exception())
-        self.assertIsNone(s.feed_eof())
-        self.assertIsNone(s.feed_data(b'data'))
-        self.assertTrue(s.at_eof())
-        self.assertIsNone(
-            self.loop.run_until_complete(s.wait_eof()))
-        self.assertEqual(
-            self.loop.run_until_complete(s.read()), b'')
-        self.assertEqual(
-            self.loop.run_until_complete(s.readline()), b'')
-        self.assertEqual(
-            self.loop.run_until_complete(s.readany()), b'')
-        self.assertEqual(
-            self.loop.run_until_complete(s.readchunk()), (b'', False))
-        self.assertRaises(
-            asyncio.IncompleteReadError,
-            self.loop.run_until_complete, s.readexactly(10))
-        self.assertEqual(s.read_nowait(), b'')
+async def test_empty_stream_reader():
+    s = streams.EmptyStreamReader()
+    assert s.set_exception(ValueError()) is None
+    assert s.exception() is None
+    assert s.feed_eof() is None
+    assert s.feed_data(b'data') is None
+    assert s.at_eof()
+    assert (await s.wait_eof()) is None
+    assert await s.read() == b''
+    assert await s.readline() == b''
+    assert await s.readany() == b''
+    assert await s.readchunk() == (b'', False)
+    with pytest.raises(asyncio.IncompleteReadError):
+        await s.readexactly(10)
+    assert s.read_nowait() == b''
 
 
 class DataQueueMixin:
