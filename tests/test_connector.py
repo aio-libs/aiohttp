@@ -1813,6 +1813,52 @@ def test_default_use_dns_cache(loop):
     assert conn.use_dns_cache
 
 
+async def test_resolver_not_called_with_address_is_ip(loop):
+    resolver = mock.MagicMock()
+    connector = aiohttp.TCPConnector(resolver=resolver)
+
+    req = ClientRequest('GET',
+                        URL('http://127.0.0.1:{}'.format(unused_port())),
+                        loop=loop,
+                        response_class=mock.Mock())
+
+    with pytest.raises(OSError):
+        await connector.connect(req)
+
+    resolver.resolve.assert_not_called()
+
+
+async def test_tcp_connector_raise_connector_ssl_error(aiohttp_server):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
+    here = os.path.join(os.path.dirname(__file__), '..', 'tests')
+    keyfile = os.path.join(here, 'sample.key')
+    certfile = os.path.join(here, 'sample.crt')
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    sslcontext.load_cert_chain(certfile, keyfile)
+
+    srv = await aiohttp_server(app, ssl=sslcontext)
+
+    port = unused_port()
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', port))
+
+    session = aiohttp.ClientSession(connector=conn)
+    url = srv.make_url('/')
+
+    with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
+        print(url)
+        await session.get(url)
+
+    assert isinstance(ctx.value.os_error, ssl.SSLError)
+    assert isinstance(ctx.value, aiohttp.ClientSSLError)
+
+    await session.close()
+
+
 class TestHttpClientConnector(unittest.TestCase):
 
     def setUp(self):
@@ -1855,35 +1901,6 @@ class TestHttpClientConnector(unittest.TestCase):
         url = "http://127.0.0.1" + path
         self.addCleanup(srv.close)
         return app, srv, url, sock_path
-
-    def test_tcp_connector_raise_connector_ssl_error(self):
-        async def handler(request):
-            return web.Response()
-
-        here = os.path.join(os.path.dirname(__file__), '..', 'tests')
-        keyfile = os.path.join(here, 'sample.key')
-        certfile = os.path.join(here, 'sample.crt')
-        sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        sslcontext.load_cert_chain(certfile, keyfile)
-
-        app, srv, url = self.loop.run_until_complete(
-            self.create_server('get', '/', handler, ssl_context=sslcontext)
-        )
-
-        port = unused_port()
-        conn = aiohttp.TCPConnector(loop=self.loop,
-                                    local_addr=('127.0.0.1', port))
-
-        session = aiohttp.ClientSession(connector=conn)
-
-        with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
-            self.loop.run_until_complete(session.request('get', url))
-
-        assert isinstance(ctx.value.os_error, ssl.SSLError)
-        assert isinstance(ctx.value, aiohttp.ClientSSLError)
-
-        self.loop.run_until_complete(session.close())
-        conn.close()
 
     def test_tcp_connector_do_not_raise_connector_ssl_error(self):
         async def handler(request):
@@ -1965,20 +1982,6 @@ class TestHttpClientConnector(unittest.TestCase):
         assert r.status == 200
         r.close()
         self.loop.run_until_complete(session.close())
-
-    def test_resolver_not_called_with_address_is_ip(self):
-        resolver = mock.MagicMock()
-        connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
-
-        req = ClientRequest('GET',
-                            URL('http://127.0.0.1:{}'.format(unused_port())),
-                            loop=self.loop,
-                            response_class=mock.Mock())
-
-        with pytest.raises(OSError):
-            self.loop.run_until_complete(connector.connect(req))
-
-        resolver.resolve.assert_not_called()
 
 
 class TestDNSCacheTable:
