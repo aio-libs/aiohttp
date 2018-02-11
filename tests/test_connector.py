@@ -5,11 +5,8 @@ import gc
 import hashlib
 import os.path
 import platform
-import shutil
 import socket
 import ssl
-import tempfile
-import unittest
 import uuid
 from unittest import mock
 
@@ -40,6 +37,29 @@ def key2():
 def ssl_key():
     """Connection key"""
     return ('localhost', 80, True)
+
+
+@pytest.fixture
+def unix_sockname(tmpdir):
+    sock_path = tmpdir / 'socket.sock'
+    return str(sock_path)
+
+
+@pytest.fixture
+def unix_server(loop, unix_sockname):
+    runners = []
+
+    async def go(app):
+        runner = web.AppRunner(app)
+        runners.append(runner)
+        await runner.setup()
+        site = web.UnixSite(runner, unix_sockname)
+        await site.start()
+
+    yield go
+
+    for runner in runners:
+        loop.run_until_complete(runner.cleanup())
 
 
 def test_del(loop):
@@ -1921,67 +1941,26 @@ async def test_tcp_connector_uses_provided_local_addr(aiohttp_server):
     conn.close()
 
 
-class TestHttpClientConnector(unittest.TestCase):
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason='requires UNIX sockets')
+async def test_unix_connector(unix_server, unix_sockname):
+    async def handler(request):
+        return web.Response()
 
-    def setUp(self):
-        self.handler = None
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    app = web.Application()
+    app.router.add_get('/', handler)
+    await unix_server(app)
 
-    def tearDown(self):
-        if self.handler:
-            self.loop.run_until_complete(self.handler.shutdown())
-        self.loop.stop()
-        self.loop.run_forever()
-        self.loop.close()
-        gc.collect()
+    url = "http://127.0.0.1/"
 
-    async def create_server(self, method, path, handler, ssl_context=None):
-        app = web.Application()
-        app.router.add_route(method, path, handler)
+    connector = aiohttp.UnixConnector(unix_sockname)
+    assert unix_sockname == connector.path
 
-        port = unused_port()
-        self.handler = app.make_handler(loop=self.loop, tcp_keepalive=False)
-        srv = await self.loop.create_server(
-            self.handler, '127.0.0.1', port, ssl=ssl_context)
-        scheme = 's' if ssl_context is not None else ''
-        url = "http{}://127.0.0.1:{}".format(scheme, port) + path
-        self.addCleanup(srv.close)
-        return app, srv, url
-
-    async def create_unix_server(self, method, path, handler):
-        tmpdir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmpdir)
-        app = web.Application()
-        app.router.add_route(method, path, handler)
-
-        self.handler = app.make_handler(
-            loop=self.loop, tcp_keepalive=False, access_log=None)
-        sock_path = os.path.join(tmpdir, 'socket.sock')
-        srv = await self.loop.create_unix_server(
-            self.handler, sock_path)
-        url = "http://127.0.0.1" + path
-        self.addCleanup(srv.close)
-        return app, srv, url, sock_path
-
-    @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
-    def test_unix_connector(self):
-        async def handler(request):
-            return web.Response()
-
-        app, srv, url, sock_path = self.loop.run_until_complete(
-            self.create_unix_server('get', '/', handler))
-
-        connector = aiohttp.UnixConnector(sock_path, loop=self.loop)
-        assert sock_path == connector.path
-
-        session = client.ClientSession(
-            connector=connector, loop=self.loop)
-        r = self.loop.run_until_complete(
-            session.request('get', url))
-        assert r.status == 200
-        r.close()
-        self.loop.run_until_complete(session.close())
+    session = client.ClientSession(connector=connector)
+    r = await session.get(url)
+    assert r.status == 200
+    r.close()
+    await session.close()
 
 
 class TestDNSCacheTable:
