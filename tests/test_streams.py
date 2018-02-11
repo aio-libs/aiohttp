@@ -1,7 +1,7 @@
 """Tests for streams.py"""
 
 import asyncio
-import unittest
+import re
 from unittest import mock
 
 import pytest
@@ -10,13 +10,6 @@ from aiohttp import streams
 
 
 DATA = b'line1\nline2\nline3\n'
-
-
-def run_briefly(loop):
-    async def once():
-        pass
-    t = loop.create_task(once())
-    loop.run_until_complete(t)
 
 
 def chunkify(seq, n):
@@ -37,241 +30,235 @@ def protocol():
     return mock.Mock(_reading_paused=False)
 
 
-class TestStreamReader(unittest.TestCase):
+class TestStreamReader:
 
     DATA = b'line1\nline2\nline3\n'
 
-    def setUp(self):
-        self.protocol = mock.Mock(_reading_paused=False)
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
     def _make_one(self, *args, **kwargs):
-        return streams.StreamReader(self.protocol,
-                                    loop=self.loop, *args, **kwargs)
+        return streams.StreamReader(mock.Mock(_reading_paused=False),
+                                    *args, **kwargs)
 
-    def test_create_waiter(self):
+    async def test_create_waiter(self, loop):
+        stream = self._make_one(loop=loop)
+        stream._waiter = loop.create_future
+        with pytest.raises(RuntimeError):
+            await stream._wait('test')
+
+    def test_ctor_global_loop(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        stream = streams.StreamReader(mock.Mock(_reading_paused=False))
+
+        assert stream._loop is loop
+
+    async def test_at_eof(self):
         stream = self._make_one()
-        stream._waiter = self.loop.create_future
-        with self.assertRaises(RuntimeError):
-            self.loop.run_until_complete(stream._wait('test'))
-
-    @mock.patch('aiohttp.streams.asyncio')
-    def test_ctor_global_loop(self, m_asyncio):
-        stream = streams.StreamReader(self.protocol)
-        self.assertIs(stream._loop, m_asyncio.get_event_loop.return_value)
-
-    def test_at_eof(self):
-        stream = self._make_one()
-        self.assertFalse(stream.at_eof())
+        assert not stream.at_eof()
 
         stream.feed_data(b'some data\n')
-        self.assertFalse(stream.at_eof())
+        assert not stream.at_eof()
 
-        self.loop.run_until_complete(stream.readline())
-        self.assertFalse(stream.at_eof())
+        await stream.readline()
+        assert not stream.at_eof()
 
         stream.feed_data(b'some data\n')
         stream.feed_eof()
-        self.loop.run_until_complete(stream.readline())
-        self.assertTrue(stream.at_eof())
+        await stream.readline()
+        assert stream.at_eof()
 
-    def test_wait_eof(self):
+    async def test_wait_eof(self, loop):
         stream = self._make_one()
-        wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
+        wait_task = loop.create_task(stream.wait_eof())
 
         async def cb():
-            await asyncio.sleep(0.1, loop=self.loop)
+            await asyncio.sleep(0.1)
             stream.feed_eof()
 
-        asyncio.Task(cb(), loop=self.loop)
-        self.loop.run_until_complete(wait_task)
-        self.assertTrue(stream.is_eof())
-        self.assertIsNone(stream._eof_waiter)
+        loop.create_task(cb())
+        await wait_task
+        assert stream.is_eof()
+        assert stream._eof_waiter is None
 
-    def test_wait_eof_eof(self):
+    async def test_wait_eof_eof(self, loop):
         stream = self._make_one()
         stream.feed_eof()
 
-        wait_task = asyncio.Task(stream.wait_eof(), loop=self.loop)
-        self.loop.run_until_complete(wait_task)
-        self.assertTrue(stream.is_eof())
+        wait_task = loop.create_task(stream.wait_eof())
+        await wait_task
+        assert stream.is_eof()
 
-    def test_feed_empty_data(self):
+    async def test_feed_empty_data(self):
         stream = self._make_one()
         stream.feed_data(b'')
         stream.feed_eof()
 
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'', data)
+        data = await stream.read()
+        assert b'' == data
 
-    def test_feed_nonempty_data(self):
+    async def test_feed_nonempty_data(self):
         stream = self._make_one()
         stream.feed_data(self.DATA)
         stream.feed_eof()
 
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(self.DATA, data)
+        data = await stream.read()
+        assert self.DATA == data
 
-    def test_read_zero(self):
+    async def test_read_zero(self):
         # Read zero bytes.
         stream = self._make_one()
         stream.feed_data(self.DATA)
 
-        data = self.loop.run_until_complete(stream.read(0))
-        self.assertEqual(b'', data)
+        data = await stream.read(0)
+        assert b'' == data
 
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(self.DATA, data)
+        data = await stream.read()
+        assert self.DATA == data
 
-    def test_read(self):
+    async def test_read(self, loop):
         # Read bytes.
         stream = self._make_one()
-        read_task = asyncio.Task(stream.read(30), loop=self.loop)
+        read_task = loop.create_task(stream.read(30))
 
         def cb():
             stream.feed_data(self.DATA)
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertEqual(self.DATA, data)
+        data = await read_task
+        assert self.DATA == data
 
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'', data)
+        data = await stream.read()
+        assert b'' == data
 
-    def test_read_line_breaks(self):
+    async def test_read_line_breaks(self):
         # Read bytes without line breaks.
         stream = self._make_one()
         stream.feed_data(b'line1')
         stream.feed_data(b'line2')
 
-        data = self.loop.run_until_complete(stream.read(5))
-        self.assertEqual(b'line1', data)
+        data = await stream.read(5)
+        assert b'line1' == data
 
-        data = self.loop.run_until_complete(stream.read(5))
-        self.assertEqual(b'line2', data)
+        data = await stream.read(5)
+        assert b'line2' == data
 
-    def test_read_all(self):
+    async def test_read_all(self):
         # Read all avaliable buffered bytes
         stream = self._make_one()
         stream.feed_data(b'line1')
         stream.feed_data(b'line2')
         stream.feed_eof()
 
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'line1line2', data)
+        data = await stream.read()
+        assert b'line1line2' == data
 
-    def test_read_up_to(self):
+    async def test_read_up_to(self):
         # Read available buffered bytes up to requested amount
         stream = self._make_one()
         stream.feed_data(b'line1')
         stream.feed_data(b'line2')
 
-        data = self.loop.run_until_complete(stream.read(8))
-        self.assertEqual(b'line1lin', data)
+        data = await stream.read(8)
+        assert b'line1lin' == data
 
-        data = self.loop.run_until_complete(stream.read(8))
-        self.assertEqual(b'e2', data)
+        data = await stream.read(8)
+        assert b'e2' == data
 
-    def test_read_eof(self):
+    async def test_read_eof(self, loop):
         # Read bytes, stop at eof.
         stream = self._make_one()
-        read_task = asyncio.Task(stream.read(1024), loop=self.loop)
+        read_task = loop.create_task(stream.read(1024))
 
         def cb():
             stream.feed_eof()
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertEqual(b'', data)
+        data = await read_task
+        assert b'' == data
 
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(data, b'')
+        data = await stream.read()
+        assert data == b''
 
-    @mock.patch('aiohttp.streams.internal_logger')
-    def test_read_eof_infinit(self, internal_logger):
+    async def test_read_eof_infinit(self):
         # Read bytes.
         stream = self._make_one()
         stream.feed_eof()
 
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.assertTrue(internal_logger.warning.called)
+        with mock.patch('aiohttp.streams.internal_logger') as internal_logger:
+            await stream.read()
+            await stream.read()
+            await stream.read()
+            await stream.read()
+            await stream.read()
+            await stream.read()
+        assert internal_logger.warning.called
 
-    @mock.patch('aiohttp.streams.internal_logger')
-    def test_read_eof_unread_data_no_warning(self, internal_logger):
+    async def test_read_eof_unread_data_no_warning(self):
         # Read bytes.
         stream = self._make_one()
         stream.feed_eof()
 
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
+        with mock.patch('aiohttp.streams.internal_logger') as internal_logger:
+            await stream.read()
+            await stream.read()
+            await stream.read()
+            await stream.read()
+            await stream.read()
         stream.unread_data(b'data')
-        self.loop.run_until_complete(stream.read())
-        self.loop.run_until_complete(stream.read())
-        self.assertFalse(internal_logger.warning.called)
+        await stream.read()
+        await stream.read()
+        assert not internal_logger.warning.called
 
-    def test_read_until_eof(self):
+    async def test_read_until_eof(self, loop):
         # Read all bytes until eof.
         stream = self._make_one()
-        read_task = asyncio.Task(stream.read(-1), loop=self.loop)
+        read_task = loop.create_task(stream.read(-1))
 
         def cb():
             stream.feed_data(b'chunk1\n')
             stream.feed_data(b'chunk2')
             stream.feed_eof()
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertEqual(b'chunk1\nchunk2', data)
+        data = await read_task
+        assert b'chunk1\nchunk2' == data
 
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'', data)
+        data = await stream.read()
+        assert b'' == data
 
-    def test_read_exception(self):
+    async def test_read_exception(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')
 
-        data = self.loop.run_until_complete(stream.read(2))
-        self.assertEqual(b'li', data)
+        data = await stream.read(2)
+        assert b'li' == data
 
         stream.set_exception(ValueError())
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.read(2))
+        with pytest.raises(ValueError):
+            await stream.read(2)
 
-    def test_readline(self):
+    async def test_readline(self, loop):
         # Read one line. 'readline' will need to wait for the data
         # to come from 'cb'
         stream = self._make_one()
         stream.feed_data(b'chunk1 ')
-        read_task = asyncio.Task(stream.readline(), loop=self.loop)
+        read_task = loop.create_task(stream.readline())
 
         def cb():
             stream.feed_data(b'chunk2 ')
             stream.feed_data(b'chunk3 ')
             stream.feed_data(b'\n chunk4')
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        line = self.loop.run_until_complete(read_task)
-        self.assertEqual(b'chunk1 chunk2 chunk3 \n', line)
+        line = await read_task
+        assert b'chunk1 chunk2 chunk3 \n' == line
 
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b' chunk4', data)
+        data = await stream.read()
+        assert b' chunk4' == data
 
-    def test_readline_limit_with_existing_data(self):
+    async def test_readline_limit_with_existing_data(self):
         # Read one line. The data is in StreamReader's buffer
         # before the event loop is run.
 
@@ -279,14 +266,14 @@ class TestStreamReader(unittest.TestCase):
         stream.feed_data(b'li')
         stream.feed_data(b'ne1\nline2\n')
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readline())
+        with pytest.raises(ValueError):
+            await stream.readline()
         # The buffer should contain the remaining data after exception
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'line2\n', data)
+        data = await stream.read()
+        assert b'line2\n' == data
 
-    def test_readline_limit(self):
+    async def test_readline_limit(self, loop):
         # Read one line. StreamReaders are fed with data after
         # their 'readline' methods are called.
         stream = self._make_one(limit=4)
@@ -296,318 +283,319 @@ class TestStreamReader(unittest.TestCase):
             stream.feed_data(b'chunk2\n')
             stream.feed_data(b'chunk3\n')
             stream.feed_eof()
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readline())
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'chunk3\n', data)
+        with pytest.raises(ValueError):
+            await stream.readline()
+        data = await stream.read()
+        assert b'chunk3\n' == data
 
-    def test_readline_nolimit_nowait(self):
+    async def test_readline_nolimit_nowait(self):
         # All needed data for the first 'readline' call will be
         # in the buffer.
         stream = self._make_one()
         stream.feed_data(self.DATA[:6])
         stream.feed_data(self.DATA[6:])
 
-        line = self.loop.run_until_complete(stream.readline())
-        self.assertEqual(b'line1\n', line)
+        line = await stream.readline()
+        assert b'line1\n' == line
 
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'line2\nline3\n', data)
+        data = await stream.read()
+        assert b'line2\nline3\n' == data
 
-    def test_readline_eof(self):
+    async def test_readline_eof(self):
         stream = self._make_one()
         stream.feed_data(b'some data')
         stream.feed_eof()
 
-        line = self.loop.run_until_complete(stream.readline())
-        self.assertEqual(b'some data', line)
+        line = await stream.readline()
+        assert b'some data' == line
 
-    def test_readline_empty_eof(self):
+    async def test_readline_empty_eof(self):
         stream = self._make_one()
         stream.feed_eof()
 
-        line = self.loop.run_until_complete(stream.readline())
-        self.assertEqual(b'', line)
+        line = await stream.readline()
+        assert b'' == line
 
-    def test_readline_read_byte_count(self):
+    async def test_readline_read_byte_count(self):
         stream = self._make_one()
         stream.feed_data(self.DATA)
 
-        self.loop.run_until_complete(stream.readline())
+        await stream.readline()
 
-        data = self.loop.run_until_complete(stream.read(7))
-        self.assertEqual(b'line2\nl', data)
+        data = await stream.read(7)
+        assert b'line2\nl' == data
 
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'ine3\n', data)
+        data = await stream.read()
+        assert b'ine3\n' == data
 
-    def test_readline_exception(self):
+    async def test_readline_exception(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')
 
-        data = self.loop.run_until_complete(stream.readline())
-        self.assertEqual(b'line\n', data)
+        data = await stream.readline()
+        assert b'line\n' == data
 
         stream.set_exception(ValueError())
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readline())
+        with pytest.raises(ValueError):
+            await stream.readline()
 
-    def test_readexactly_zero_or_less(self):
+    async def test_readexactly_zero_or_less(self):
         # Read exact number of bytes (zero or less).
         stream = self._make_one()
         stream.feed_data(self.DATA)
 
-        data = self.loop.run_until_complete(stream.readexactly(0))
-        self.assertEqual(b'', data)
+        data = await stream.readexactly(0)
+        assert b'' == data
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(self.DATA, data)
+        data = await stream.read()
+        assert self.DATA == data
 
         stream = self._make_one()
         stream.feed_data(self.DATA)
 
-        data = self.loop.run_until_complete(stream.readexactly(-1))
-        self.assertEqual(b'', data)
+        data = await stream.readexactly(-1)
+        assert b'' == data
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(self.DATA, data)
+        data = await stream.read()
+        assert self.DATA == data
 
-    def test_readexactly(self):
+    async def test_readexactly(self, loop):
         # Read exact number of bytes.
         stream = self._make_one()
 
         n = 2 * len(self.DATA)
-        read_task = asyncio.Task(stream.readexactly(n), loop=self.loop)
+        read_task = loop.create_task(stream.readexactly(n))
 
         def cb():
             stream.feed_data(self.DATA)
             stream.feed_data(self.DATA)
             stream.feed_data(self.DATA)
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertEqual(self.DATA + self.DATA, data)
+        data = await read_task
+        assert self.DATA + self.DATA == data
 
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(self.DATA, data)
+        data = await stream.read()
+        assert self.DATA == data
 
-    def test_readexactly_eof(self):
+    async def test_readexactly_eof(self, loop):
         # Read exact number of bytes (eof).
-        stream = self._make_one()
+        stream = self._make_one(loop=loop)
         n = 2 * len(self.DATA)
-        read_task = asyncio.Task(stream.readexactly(n), loop=self.loop)
+        read_task = loop.create_task(stream.readexactly(n))
 
         def cb():
             stream.feed_data(self.DATA)
             stream.feed_eof()
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        with self.assertRaises(asyncio.IncompleteReadError) as cm:
-            self.loop.run_until_complete(read_task)
-        self.assertEqual(cm.exception.partial, self.DATA)
-        self.assertEqual(cm.exception.expected, n)
-        self.assertEqual(str(cm.exception),
-                         '18 bytes read on a total of 36 expected bytes')
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'', data)
+        with pytest.raises(asyncio.IncompleteReadError) as cm:
+            await read_task
+        assert cm.value.partial == self.DATA
+        assert cm.value.expected == n
+        assert (str(cm.value) ==
+                '18 bytes read on a total of 36 expected bytes')
+        data = await stream.read()
+        assert b'' == data
 
-    def test_readexactly_exception(self):
+    async def test_readexactly_exception(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')
 
-        data = self.loop.run_until_complete(stream.readexactly(2))
-        self.assertEqual(b'li', data)
+        data = await stream.readexactly(2)
+        assert b'li' == data
 
         stream.set_exception(ValueError())
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readexactly(2))
+        with pytest.raises(ValueError):
+            await stream.readexactly(2)
 
-    def test_unread_data(self):
+    async def test_unread_data(self):
         stream = self._make_one()
         stream.feed_data(b'line1')
         stream.feed_data(b'line2')
         stream.feed_data(b'onemoreline')
 
-        data = self.loop.run_until_complete(stream.read(5))
-        self.assertEqual(b'line1', data)
+        data = await stream.read(5)
+        assert b'line1' == data
 
         stream.unread_data(data)
 
-        data = self.loop.run_until_complete(stream.read(5))
-        self.assertEqual(b'line1', data)
+        data = await stream.read(5)
+        assert b'line1' == data
 
-        data = self.loop.run_until_complete(stream.read(4))
-        self.assertEqual(b'line', data)
+        data = await stream.read(4)
+        assert b'line' == data
 
         stream.unread_data(b'line1line')
 
         data = b''
         while len(data) < 10:
-            data += self.loop.run_until_complete(stream.read(10))
-        self.assertEqual(b'line1line2', data)
+            data += await stream.read(10)
+        assert b'line1line2' == data
 
-        data = self.loop.run_until_complete(stream.read(7))
-        self.assertEqual(b'onemore', data)
+        data = await stream.read(7)
+        assert b'onemore' == data
 
         stream.unread_data(data)
 
         data = b''
         while len(data) < 11:
-            data += self.loop.run_until_complete(stream.read(11))
-        self.assertEqual(b'onemoreline', data)
+            data += await stream.read(11)
+        assert b'onemoreline' == data
 
         stream.unread_data(b'line')
-        data = self.loop.run_until_complete(stream.read(4))
-        self.assertEqual(b'line', data)
+        data = await stream.read(4)
+        assert b'line' == data
 
         stream.feed_eof()
         stream.unread_data(b'at_eof')
-        data = self.loop.run_until_complete(stream.read(6))
-        self.assertEqual(b'at_eof', data)
+        data = await stream.read(6)
+        assert b'at_eof' == data
 
-    def test_exception(self):
+    async def test_exception(self):
         stream = self._make_one()
-        self.assertIsNone(stream.exception())
+        assert stream.exception() is None
 
         exc = ValueError()
         stream.set_exception(exc)
-        self.assertIs(stream.exception(), exc)
+        assert stream.exception() is exc
 
-    def test_exception_waiter(self):
+    async def test_exception_waiter(self, loop):
         stream = self._make_one()
 
         async def set_err():
             stream.set_exception(ValueError())
 
-        t1 = asyncio.Task(stream.readline(), loop=self.loop)
-        t2 = asyncio.Task(set_err(), loop=self.loop)
+        t1 = loop.create_task(stream.readline())
+        t2 = loop.create_task(set_err())
 
-        self.loop.run_until_complete(asyncio.wait([t1, t2], loop=self.loop))
-        self.assertRaises(ValueError, t1.result)
+        await asyncio.wait([t1, t2])
+        with pytest.raises(ValueError):
+            t1.result()
 
-    def test_exception_cancel(self):
+    async def test_exception_cancel(self, loop):
         stream = self._make_one()
 
         async def read_a_line():
             await stream.readline()
 
-        t = asyncio.Task(read_a_line(), loop=self.loop)
-        run_briefly(self.loop)
+        t = loop.create_task(read_a_line())
+        await asyncio.sleep(0)
         t.cancel()
-        run_briefly(self.loop)
+        await asyncio.sleep(0)
         # The following line fails if set_exception() isn't careful.
         stream.set_exception(RuntimeError('message'))
-        run_briefly(self.loop)
-        self.assertIs(stream._waiter, None)
+        await asyncio.sleep(0)
+        assert stream._waiter is None
 
-    def test_readany_eof(self):
+    async def test_readany_eof(self, loop):
         stream = self._make_one()
-        read_task = asyncio.Task(stream.readany(), loop=self.loop)
-        self.loop.call_soon(stream.feed_data, b'chunk1\n')
+        read_task = loop.create_task(stream.readany())
+        loop.call_soon(stream.feed_data, b'chunk1\n')
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertEqual(b'chunk1\n', data)
+        data = await read_task
+        assert b'chunk1\n' == data
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'', data)
+        data = await stream.read()
+        assert b'' == data
 
-    def test_readany_empty_eof(self):
+    async def test_readany_empty_eof(self, loop):
         stream = self._make_one()
         stream.feed_eof()
-        read_task = asyncio.Task(stream.readany(), loop=self.loop)
+        read_task = loop.create_task(stream.readany())
 
-        data = self.loop.run_until_complete(read_task)
+        data = await read_task
 
-        self.assertEqual(b'', data)
+        assert b'' == data
 
-    def test_readany_exception(self):
+    async def test_readany_exception(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')
 
-        data = self.loop.run_until_complete(stream.readany())
-        self.assertEqual(b'line\n', data)
+        data = await stream.readany()
+        assert b'line\n' == data
 
         stream.set_exception(ValueError())
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, stream.readany())
+        with pytest.raises(ValueError):
+            await stream.readany()
 
-    def test_read_nowait(self):
+    async def test_read_nowait(self):
         stream = self._make_one()
         stream.feed_data(b'line1\nline2\n')
 
-        self.assertEqual(stream.read_nowait(), b'line1\nline2\n')
-        self.assertEqual(stream.read_nowait(), b'')
+        assert stream.read_nowait() == b'line1\nline2\n'
+        assert stream.read_nowait() == b''
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'', data)
+        data = await stream.read()
+        assert b'' == data
 
-    def test_read_nowait_n(self):
+    async def test_read_nowait_n(self):
         stream = self._make_one()
         stream.feed_data(b'line1\nline2\n')
 
-        self.assertEqual(
-            stream.read_nowait(4), b'line')
-        self.assertEqual(
-            stream.read_nowait(), b'1\nline2\n')
-        self.assertEqual(stream.read_nowait(), b'')
+        assert stream.read_nowait(4) == b'line'
+        assert stream.read_nowait() == b'1\nline2\n'
+        assert stream.read_nowait() == b''
         stream.feed_eof()
-        data = self.loop.run_until_complete(stream.read())
-        self.assertEqual(b'', data)
+        data = await stream.read()
+        assert b'' == data
 
-    def test_read_nowait_exception(self):
+    async def test_read_nowait_exception(self):
         stream = self._make_one()
         stream.feed_data(b'line\n')
         stream.set_exception(ValueError())
 
-        self.assertRaises(ValueError, stream.read_nowait)
+        with pytest.raises(ValueError):
+            stream.read_nowait()
 
-    def test_read_nowait_waiter(self):
+    async def test_read_nowait_waiter(self, loop):
         stream = self._make_one()
         stream.feed_data(b'line\n')
-        stream._waiter = self.loop.create_future()
+        stream._waiter = loop.create_future()
 
-        self.assertRaises(RuntimeError, stream.read_nowait)
+        with pytest.raises(RuntimeError):
+            stream.read_nowait()
 
-    def test_readchunk(self):
+    async def test_readchunk(self, loop):
         stream = self._make_one()
 
         def cb():
             stream.feed_data(b'chunk1')
             stream.feed_data(b'chunk2')
             stream.feed_eof()
-        self.loop.call_soon(cb)
+        loop.call_soon(cb)
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'chunk1', data)
-        self.assertFalse(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'chunk1' == data
+        assert not end_of_chunk
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'chunk2', data)
-        self.assertFalse(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'chunk2' == data
+        assert not end_of_chunk
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'', data)
-        self.assertFalse(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert not end_of_chunk
 
-    def test_readchunk_wait_eof(self):
+    async def test_readchunk_wait_eof(self, loop):
         stream = self._make_one()
 
         async def cb():
-            await asyncio.sleep(0.1, loop=self.loop)
+            await asyncio.sleep(0.1)
             stream.feed_eof()
 
-        asyncio.Task(cb(), loop=self.loop)
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b"", data)
-        self.assertFalse(end_of_chunk)
-        self.assertTrue(stream.is_eof())
+        loop.create_task(cb())
+        data, end_of_chunk = await stream.readchunk()
+        assert b"" == data
+        assert not end_of_chunk
+        assert stream.is_eof()
 
-    def test_begin_and_end_chunk_receiving(self):
+    async def test_begin_and_end_chunk_receiving(self):
         stream = self._make_one()
 
         stream.begin_http_chunk_receiving()
@@ -615,34 +603,35 @@ class TestStreamReader(unittest.TestCase):
         stream.feed_data(b'part2')
         stream.end_http_chunk_receiving()
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'part1part2', data)
-        self.assertTrue(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part1part2' == data
+        assert end_of_chunk
 
         stream.begin_http_chunk_receiving()
         stream.feed_data(b'part3')
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'part3', data)
-        self.assertFalse(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part3' == data
+        assert not end_of_chunk
 
         stream.end_http_chunk_receiving()
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'', data)
-        self.assertTrue(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
 
         stream.feed_eof()
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'', data)
-        self.assertFalse(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert not end_of_chunk
 
-    def test_end_chunk_receiving_without_begin(self):
+    async def test_end_chunk_receiving_without_begin(self):
         stream = self._make_one()
-        self.assertRaises(RuntimeError, stream.end_http_chunk_receiving)
+        with pytest.raises(RuntimeError):
+            stream.end_http_chunk_receiving()
 
-    def test_readchunk_with_unread(self):
+    async def test_readchunk_with_unread(self):
         """Test that stream.unread does not break controlled chunk receiving.
         """
         stream = self._make_one()
@@ -656,31 +645,31 @@ class TestStreamReader(unittest.TestCase):
         stream.end_http_chunk_receiving()
 
         # Read only one chunk
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
+        data, end_of_chunk = await stream.readchunk()
 
         # Try to unread a part of the first chunk
         stream.unread_data(b'rt1')
 
         # The end_of_chunk signal was already received for the first chunk,
         # so we receive up to the second one
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'rt1part2', data)
-        self.assertTrue(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'rt1part2' == data
+        assert end_of_chunk
 
         # Unread a part of the second chunk
         stream.unread_data(b'rt2')
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'rt2', data)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'rt2' == data
         # end_of_chunk was already received for this chunk
-        self.assertFalse(end_of_chunk)
+        assert not end_of_chunk
 
         stream.feed_eof()
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'', data)
-        self.assertFalse(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert not end_of_chunk
 
-    def test_readchunk_with_other_read_calls(self):
+    async def test_readchunk_with_other_read_calls(self):
         """Test that stream.readchunk works when other read calls are made on
         the stream.
         """
@@ -693,235 +682,208 @@ class TestStreamReader(unittest.TestCase):
         stream.feed_data(b'part2')
         stream.end_http_chunk_receiving()
 
-        data = self.loop.run_until_complete(stream.read(7))
-        self.assertEqual(b'part1pa', data)
+        data = await stream.read(7)
+        assert b'part1pa' == data
 
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'rt2', data)
-        self.assertTrue(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'rt2' == data
+        assert end_of_chunk
 
         stream.feed_eof()
-        data, end_of_chunk = self.loop.run_until_complete(stream.readchunk())
-        self.assertEqual(b'', data)
-        self.assertFalse(end_of_chunk)
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert not end_of_chunk
 
-    def test___repr__(self):
+    async def test___repr__(self):
         stream = self._make_one()
-        self.assertEqual("<StreamReader>", repr(stream))
+        assert "<StreamReader>" == repr(stream)
 
-    def test___repr__nondefault_limit(self):
+    async def test___repr__nondefault_limit(self):
         stream = self._make_one(limit=123)
-        self.assertEqual("<StreamReader low=123 high=246>", repr(stream))
+        assert "<StreamReader low=123 high=246>" == repr(stream)
 
-    def test___repr__eof(self):
+    async def test___repr__eof(self):
         stream = self._make_one()
         stream.feed_eof()
-        self.assertEqual("<StreamReader eof>", repr(stream))
+        assert "<StreamReader eof>" == repr(stream)
 
-    def test___repr__data(self):
+    async def test___repr__data(self):
         stream = self._make_one()
         stream.feed_data(b'data')
-        self.assertEqual("<StreamReader 4 bytes>", repr(stream))
+        assert "<StreamReader 4 bytes>" == repr(stream)
 
-    def test___repr__exception(self):
-        stream = self._make_one()
+    def test___repr__exception(self, loop):
+        stream = self._make_one(loop=loop)
         exc = RuntimeError()
         stream.set_exception(exc)
-        self.assertEqual("<StreamReader e=RuntimeError()>", repr(stream))
+        assert "<StreamReader e=RuntimeError()>" == repr(stream)
 
-    def test___repr__waiter(self):
+    async def test___repr__waiter(self, loop):
         stream = self._make_one()
-        stream._waiter = self.loop.create_future()
-        self.assertRegex(
-            repr(stream),
-            "<StreamReader w=<Future pending[\S ]*>>")
+        stream._waiter = loop.create_future()
+        assert re.search("<StreamReader w=<Future pending[\S ]*>>",
+                         repr(stream))
         stream._waiter.set_result(None)
-        self.loop.run_until_complete(stream._waiter)
+        await stream._waiter
         stream._waiter = None
-        self.assertEqual("<StreamReader>", repr(stream))
+        assert "<StreamReader>" == repr(stream)
 
-    def test_unread_empty(self):
+    async def test_unread_empty(self):
         stream = self._make_one()
         stream.feed_data(b'line1')
         stream.feed_eof()
         stream.unread_data(b'')
 
-        data = self.loop.run_until_complete(stream.read(5))
-        self.assertEqual(b'line1', data)
-        self.assertTrue(stream.at_eof())
+        data = await stream.read(5)
+        assert b'line1' == data
+        assert stream.at_eof()
 
 
-class TestEmptyStreamReader(unittest.TestCase):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-
-    def test_empty_stream_reader(self):
-        s = streams.EmptyStreamReader()
-        self.assertIsNone(s.set_exception(ValueError()))
-        self.assertIsNone(s.exception())
-        self.assertIsNone(s.feed_eof())
-        self.assertIsNone(s.feed_data(b'data'))
-        self.assertTrue(s.at_eof())
-        self.assertIsNone(
-            self.loop.run_until_complete(s.wait_eof()))
-        self.assertEqual(
-            self.loop.run_until_complete(s.read()), b'')
-        self.assertEqual(
-            self.loop.run_until_complete(s.readline()), b'')
-        self.assertEqual(
-            self.loop.run_until_complete(s.readany()), b'')
-        self.assertEqual(
-            self.loop.run_until_complete(s.readchunk()), (b'', False))
-        self.assertRaises(
-            asyncio.IncompleteReadError,
-            self.loop.run_until_complete, s.readexactly(10))
-        self.assertEqual(s.read_nowait(), b'')
+async def test_empty_stream_reader():
+    s = streams.EmptyStreamReader()
+    assert s.set_exception(ValueError()) is None
+    assert s.exception() is None
+    assert s.feed_eof() is None
+    assert s.feed_data(b'data') is None
+    assert s.at_eof()
+    assert (await s.wait_eof()) is None
+    assert await s.read() == b''
+    assert await s.readline() == b''
+    assert await s.readany() == b''
+    assert await s.readchunk() == (b'', False)
+    with pytest.raises(asyncio.IncompleteReadError):
+        await s.readexactly(10)
+    assert s.read_nowait() == b''
 
 
-class DataQueueMixin:
+@pytest.fixture
+def buffer(loop):
+    return streams.DataQueue(loop=loop)
 
-    def test_is_eof(self):
-        self.assertFalse(self.buffer.is_eof())
-        self.buffer.feed_eof()
-        self.assertTrue(self.buffer.is_eof())
 
-    def test_at_eof(self):
-        self.assertFalse(self.buffer.at_eof())
-        self.buffer.feed_eof()
-        self.assertTrue(self.buffer.at_eof())
-        self.buffer._buffer.append(object())
-        self.assertFalse(self.buffer.at_eof())
+class TestDataQueue:
 
-    def test_feed_data(self):
+    def test_is_eof(self, buffer):
+        assert not buffer.is_eof()
+        buffer.feed_eof()
+        assert buffer.is_eof()
+
+    def test_at_eof(self, buffer):
+        assert not buffer.at_eof()
+        buffer.feed_eof()
+        assert buffer.at_eof()
+        buffer._buffer.append(object())
+        assert not buffer.at_eof()
+
+    def test_feed_data(self, buffer):
         item = object()
-        self.buffer.feed_data(item, 1)
-        self.assertEqual([(item, 1)], list(self.buffer._buffer))
+        buffer.feed_data(item, 1)
+        assert [(item, 1)] == list(buffer._buffer)
 
-    def test_feed_eof(self):
-        self.buffer.feed_eof()
-        self.assertTrue(self.buffer._eof)
+    def test_feed_eof(self, buffer):
+        buffer.feed_eof()
+        assert buffer._eof
 
-    def test_read(self):
+    async def test_read(self, buffer, loop):
         item = object()
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
 
         def cb():
-            self.buffer.feed_data(item, 1)
-        self.loop.call_soon(cb)
+            buffer.feed_data(item, 1)
+        loop.call_soon(cb)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertIs(item, data)
+        data = await buffer.read()
+        assert item is data
 
-    def test_read_eof(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-
+    async def test_read_eof(self, buffer, loop):
         def cb():
-            self.buffer.feed_eof()
-        self.loop.call_soon(cb)
+            buffer.feed_eof()
+        loop.call_soon(cb)
 
-        self.assertRaises(
-            streams.EofStream, self.loop.run_until_complete, read_task)
+        with pytest.raises(streams.EofStream):
+            await buffer.read()
 
-    def test_read_cancelled(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-        run_briefly(self.loop)
-        waiter = self.buffer._waiter
-        self.assertTrue(asyncio.isfuture(waiter))
+    async def test_read_cancelled(self, buffer, loop):
+        read_task = loop.create_task(buffer.read())
+        await asyncio.sleep(0)
+        waiter = buffer._waiter
+        assert asyncio.isfuture(waiter)
 
         read_task.cancel()
-        self.assertRaises(
-            asyncio.CancelledError,
-            self.loop.run_until_complete, read_task)
-        self.assertTrue(waiter.cancelled())
-        self.assertIsNone(self.buffer._waiter)
+        with pytest.raises(asyncio.CancelledError):
+            await read_task
+        assert waiter.cancelled()
+        assert buffer._waiter is None
 
-        self.buffer.feed_data(b'test', 4)
-        self.assertIsNone(self.buffer._waiter)
+        buffer.feed_data(b'test', 4)
+        assert buffer._waiter is None
 
-    def test_read_until_eof(self):
+    async def test_read_until_eof(self, buffer):
         item = object()
-        self.buffer.feed_data(item, 1)
-        self.buffer.feed_eof()
+        buffer.feed_data(item, 1)
+        buffer.feed_eof()
 
-        data = self.loop.run_until_complete(self.buffer.read())
-        self.assertIs(data, item)
+        data = await buffer.read()
+        assert data is item
 
-        self.assertRaises(
-            streams.EofStream,
-            self.loop.run_until_complete, self.buffer.read())
+        with pytest.raises(streams.EofStream):
+            await buffer.read()
 
-    def test_read_exc(self):
+    async def test_read_exc(self, buffer):
         item = object()
-        self.buffer.feed_data(item)
-        self.buffer.set_exception(ValueError)
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
+        buffer.feed_data(item)
+        buffer.set_exception(ValueError)
 
-        data = self.loop.run_until_complete(read_task)
-        self.assertIs(item, data)
+        data = await buffer.read()
+        assert item is data
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, self.buffer.read())
+        with pytest.raises(ValueError):
+            await buffer.read()
 
-    def test_read_exception(self):
-        self.buffer.set_exception(ValueError())
+    async def test_read_exception(self, buffer):
+        buffer.set_exception(ValueError())
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, self.buffer.read())
+        with pytest.raises(ValueError):
+            await buffer.read()
 
-    def test_read_exception_with_data(self):
+    async def test_read_exception_with_data(self, buffer):
         val = object()
-        self.buffer.feed_data(val, 1)
-        self.buffer.set_exception(ValueError())
+        buffer.feed_data(val, 1)
+        buffer.set_exception(ValueError())
 
-        self.assertIs(val, self.loop.run_until_complete(self.buffer.read()))
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, self.buffer.read())
+        assert val is (await buffer.read())
+        with pytest.raises(ValueError):
+            await buffer.read()
 
-    def test_read_exception_on_wait(self):
-        read_task = asyncio.Task(self.buffer.read(), loop=self.loop)
-        run_briefly(self.loop)
-        self.assertTrue(asyncio.isfuture(self.buffer._waiter))
+    async def test_read_exception_on_wait(self, buffer, loop):
+        read_task = loop.create_task(buffer.read())
+        await asyncio.sleep(0)
+        assert asyncio.isfuture(buffer._waiter)
 
-        self.buffer.feed_eof()
-        self.buffer.set_exception(ValueError())
+        buffer.feed_eof()
+        buffer.set_exception(ValueError())
 
-        self.assertRaises(
-            ValueError, self.loop.run_until_complete, read_task)
+        with pytest.raises(ValueError):
+            await read_task
 
-    def test_exception(self):
-        self.assertIsNone(self.buffer.exception())
+    def test_exception(self, buffer):
+        assert buffer.exception() is None
 
         exc = ValueError()
-        self.buffer.set_exception(exc)
-        self.assertIs(self.buffer.exception(), exc)
+        buffer.set_exception(exc)
+        assert buffer.exception() is exc
 
-    def test_exception_waiter(self):
+    async def test_exception_waiter(self, buffer, loop):
 
         async def set_err():
-            self.buffer.set_exception(ValueError())
+            buffer.set_exception(ValueError())
 
-        t1 = asyncio.Task(self.buffer.read(), loop=self.loop)
-        t2 = asyncio.Task(set_err(), loop=self.loop)
+        t1 = loop.create_task(buffer.read())
+        t2 = loop.create_task(set_err())
 
-        self.loop.run_until_complete(asyncio.wait([t1, t2], loop=self.loop))
+        await asyncio.wait([t1, t2])
 
-        self.assertRaises(ValueError, t1.result)
-
-
-class TestDataQueue(unittest.TestCase, DataQueueMixin):
-
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-        self.buffer = streams.DataQueue(loop=self.loop)
-
-    def tearDown(self):
-        self.loop.close()
+        with pytest.raises(ValueError):
+            t1.result()
 
 
 def test_feed_data_waiters(loop, protocol):
