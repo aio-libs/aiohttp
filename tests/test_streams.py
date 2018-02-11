@@ -691,7 +691,7 @@ class TestStreamReader:
 
         stream.feed_eof()
         data, end_of_chunk = await stream.readchunk()
-        assert  b'' == data
+        assert b'' == data
         assert not end_of_chunk
 
     async def test___repr__(self):
@@ -795,8 +795,6 @@ class TestDataQueue:
         assert item is data
 
     async def test_read_eof(self, buffer, loop):
-        read_task = loop.create_task(buffer.read())
-
         def cb():
             buffer.feed_eof()
         loop.call_soon(cb)
