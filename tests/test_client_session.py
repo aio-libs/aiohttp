@@ -455,7 +455,13 @@ def test_client_session_implicit_loop_warn():
     loop.close()
 
 
-async def test_request_tracing(loop):
+async def test_request_tracing(loop, aiohttp_client):
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+
     trace_config_ctx = mock.Mock()
     trace_request_ctx = {}
     on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
@@ -469,34 +475,31 @@ async def test_request_tracing(loop):
     trace_config.on_request_end.append(on_request_end)
     trace_config.on_request_redirect.append(on_request_redirect)
 
-    async with aiohttp.ClientSession(loop=loop,
-                                     trace_configs=[trace_config]) as session:
+    session = await aiohttp_client(app, trace_configs=[trace_config])
 
-        async with await session.get(
-                'http://example.com',
-                trace_request_ctx=trace_request_ctx) as resp:
+    async with session.get('/', trace_request_ctx=trace_request_ctx) as resp:
 
-            on_request_start.assert_called_once_with(
-                session,
-                trace_config_ctx,
-                aiohttp.TraceRequestStartParams(
-                    hdrs.METH_GET,
-                    URL("http://example.com"),
-                    CIMultiDict()
-                )
+        on_request_start.assert_called_once_with(
+            session.session,
+            trace_config_ctx,
+            aiohttp.TraceRequestStartParams(
+                hdrs.METH_GET,
+                session.make_url('/'),
+                CIMultiDict()
             )
+        )
 
-            on_request_end.assert_called_once_with(
-                session,
-                trace_config_ctx,
-                aiohttp.TraceRequestEndParams(
-                    hdrs.METH_GET,
-                    URL("http://example.com"),
-                    CIMultiDict(),
-                    resp
-                )
+        on_request_end.assert_called_once_with(
+            session.session,
+            trace_config_ctx,
+            aiohttp.TraceRequestEndParams(
+                hdrs.METH_GET,
+                session.make_url('/'),
+                CIMultiDict(),
+                resp
             )
-            assert not on_request_redirect.called
+        )
+        assert not on_request_redirect.called
 
 
 async def test_request_tracing_exception(loop):
@@ -538,7 +541,13 @@ async def test_request_tracing_exception(loop):
         assert not on_request_end.called
 
 
-async def test_request_tracing_interpose_headers(loop):
+async def test_request_tracing_interpose_headers(loop, aiohttp_client):
+
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
 
     class MyClientRequest(ClientRequest):
         headers = None
@@ -556,13 +565,13 @@ async def test_request_tracing_interpose_headers(loop):
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(new_headers)
 
-    session = aiohttp.ClientSession(
-        loop=loop,
+    session = await aiohttp_client(
+        app,
         request_class=MyClientRequest,
         trace_configs=[trace_config]
     )
 
-    await session.get('http://example.com')
+    await session.get('/')
     assert MyClientRequest.headers['foo'] == 'bar'
 
 
