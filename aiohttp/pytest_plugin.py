@@ -26,13 +26,13 @@ except ImportError:  # pragma: no cover
 
 def pytest_addoption(parser):
     parser.addoption(
-        '--fast', action='store_true', default=False,
+        '--aiohttp-fast', action='store_true', default=False,
         help='run tests faster by disabling extra checks')
     parser.addoption(
-        '--loop', action='store', default='pyloop',
+        '--aiohttp-loop', action='store', default='pyloop',
         help='run tests with specific loop: pyloop, uvloop, tokio or all')
     parser.addoption(
-        '--enable-loop-debug', action='store_true', default=False,
+        '--aiohttp-enable-loop-debug', action='store_true', default=False,
         help='enable event loop debug mode')
 
 
@@ -95,13 +95,13 @@ def pytest_fixture_setup(fixturedef):
 @pytest.fixture
 def fast(request):
     """--fast config option"""
-    return request.config.getoption('--fast')
+    return request.config.getoption('--aiohttp-fast')
 
 
 @pytest.fixture
 def loop_debug(request):
     """--enable-loop-debug config option"""
-    return request.config.getoption('--enable-loop-debug')
+    return request.config.getoption('--aiohttp-enable-loop-debug')
 
 
 @contextlib.contextmanager
@@ -152,7 +152,7 @@ def pytest_pyfunc_call(pyfuncitem):
     """
     Run coroutines in an event loop instead of a normal function call.
     """
-    fast = pyfuncitem.config.getoption("--fast")
+    fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get('loop', None)
         with _runtime_warning_context():
@@ -168,7 +168,7 @@ def pytest_generate_tests(metafunc):
     if 'loop_factory' not in metafunc.fixturenames:
         return
 
-    loops = metafunc.config.option.loop
+    loops = metafunc.config.option.aiohttp_loop
     avail_factories = {'pyloop': asyncio.new_event_loop}
 
     if uvloop is not None:  # pragma: no cover

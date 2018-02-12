@@ -143,7 +143,7 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
 
 """)
     testdir.makeconftest(CONFTEST)
-    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
+    result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
     result.assert_outcomes(passed=12)
 
 
@@ -162,7 +162,7 @@ async def test_bad():
 """)
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '-s', '-W',
-                               'default', '--loop=pyloop')
+                               'default', '--aiohttp-loop=pyloop')
     result.assert_outcomes(passed=1, failed=1)
 
 
@@ -218,7 +218,7 @@ def test_bar(loop, bar):
     assert bar is test_bar
 """)
     testdir.makeconftest(CONFTEST)
-    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
+    result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
     result.assert_outcomes(passed=3, error=1)
     result.stdout.fnmatch_lines(
         "*Asynchronous fixtures must depend on the 'loop' fixture "
@@ -263,5 +263,5 @@ def test_finalized():
     assert canary.called is True
 """)
     testdir.makeconftest(CONFTEST)
-    result = testdir.runpytest('-p', 'no:sugar', '--loop=pyloop')
+    result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
     result.assert_outcomes(passed=2)
