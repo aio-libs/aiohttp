@@ -52,7 +52,9 @@ Features
   `TCPSite`. (#2679)
 - Use custom classes to pass client signals parameters (#2686)
 - Use ``attrs`` library for data classes, replace `namedtuple`. (#2690)
-- Pytest fixtures renaming (#2578)
+- Pytest fixtures renaming, add ``aiohttp_`` prefix (#2578)
+- Add ``aiohttp-`` prefix for ``pytest-aiohttp`` commandline
+  parameters (#2578)
 
 Bugfixes
 --------
