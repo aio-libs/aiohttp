@@ -1154,6 +1154,26 @@ const struct message requests[] =
   ,.body= ""
   }
 
+#define SOURCE_REQUEST 42
+, {.name = "source request"
+  ,.type= HTTP_REQUEST
+  ,.raw= "SOURCE /music/sweet/music HTTP/1.1\r\n"
+         "Host: example.com\r\n"
+         "\r\n"
+  ,.should_keep_alive= TRUE
+  ,.message_complete_on_eof= FALSE
+  ,.http_major= 1
+  ,.http_minor= 1
+  ,.method= HTTP_SOURCE
+  ,.request_path= "/music/sweet/music"
+  ,.request_url= "/music/sweet/music"
+  ,.query_string= ""
+  ,.fragment= ""
+  ,.num_headers= 1
+  ,.headers= { { "Host", "example.com" } }
+  ,.body= ""
+  }
+
 , {.name= NULL } /* sentinel */
 };
 
@@ -3665,6 +3685,30 @@ test_header_cr_no_lf_error (int req)
 }
 
 void
+test_no_overflow_parse_url (void)
+{
+  int rv;
+  struct http_parser_url u;
+
+  http_parser_url_init(&u);
+  rv = http_parser_parse_url("http://example.com:8001", 22, 0, &u);
+
+  if (rv != 0) {
+    fprintf(stderr,
+            "\n*** test_no_overflow_parse_url invalid return value=%d\n",
+            rv);
+    abort();
+  }
+
+  if (u.port != 800) {
+    fprintf(stderr,
+            "\n*** test_no_overflow_parse_url invalid port number=%d\n",
+            u.port);
+    abort();
+  }
+}
+
+void
 test_header_overflow_error (int req)
 {
   http_parser parser;
@@ -4099,6 +4143,7 @@ main (void)
   test_header_nread_value();
 
   //// OVERFLOW CONDITIONS
+  test_no_overflow_parse_url();
 
   test_header_overflow_error(HTTP_REQUEST);
   test_no_overflow_long_body(HTTP_REQUEST, 1000);
