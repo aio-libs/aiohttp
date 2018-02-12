@@ -65,7 +65,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 install_requires = ['attrs>=17.4.0', 'chardet>=2.0,<4.0',
                     'multidict>=4.0,<5.0',
-                    'async_timeout>=1.2,<2.0',
+                    'async_timeout>=1.2,<3.0',
                     'yarl>=1.0,<2.0']
 
 if sys.version_info < (3, 7):
