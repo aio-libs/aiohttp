@@ -73,7 +73,7 @@ if sys.version_info < (3, 7):
 
 
 def read(f):
-    return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
+    return open(os.path.join(os.path.dirname(__file__), f), 'r', encoding='utf-8').read().strip()
 
 
 class PyTest(TestCommand):
