@@ -85,7 +85,7 @@ Improved Documentation
   used in `session.get("http://python.org", trust_env=True)` method instead of
   aiohttp.ClientSession constructor as follows:
   `aiohttp.ClientSession(trust_env=True)`. (#2688)
-
+- Fix issue with unittest example not compiling in testing docs. (#2717)
 
 Deprecations and Removals
 -------------------------
