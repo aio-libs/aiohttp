@@ -754,10 +754,17 @@ class TCPConnector(BaseConnector):
     def _get_ssl_context(self, req):
         """Logic to get the correct SSL context
 
-        0. if req.ssl is false, return None
+        0. if req.is_ssl() is false, return None
 
         1. if ssl_context is specified in req, use it
         2. if _ssl_context is specified in self, use it
+
+            for both we first check the following:
+            1. if it an instance of ssl.SSLContext, use it
+            2. if it an instance of aiohttp.Fingerprint, has a specified ssl_context which is also a ssl.SSLContext
+                instance, use it
+            3. fallback to a newly generated SSL Context without verification
+
         3. otherwise:
             1. if verify_ssl is not specified in req, use self.ssl_context
                (will generate a default context according to self.verify_ssl)
@@ -771,12 +778,18 @@ class TCPConnector(BaseConnector):
             sslcontext = req.ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
+            if not (not isinstance(sslcontext, Fingerprint) or not (sslcontext.ssl_context is not None) or not isinstance(
+                    sslcontext.ssl_context, ssl.SSLContext)):
+                return sslcontext.ssl_context
             if sslcontext is not None:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
             sslcontext = self._ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
+            if not (not isinstance(sslcontext, Fingerprint) or not (sslcontext.ssl_context is not None) or not isinstance(
+                    sslcontext.ssl_context, ssl.SSLContext)):
+                return sslcontext.ssl_context
             if sslcontext is not None:
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)

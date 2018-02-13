@@ -60,7 +60,7 @@ class Fingerprint:
         32: sha256,
     }
 
-    def __init__(self, fingerprint):
+    def __init__(self, fingerprint, ssl_context=None):
         digestlen = len(fingerprint)
         hashfunc = self.HASHFUNC_BY_DIGESTLEN.get(digestlen)
         if not hashfunc:
@@ -70,10 +70,15 @@ class Fingerprint:
                              'not supported. Use sha256.')
         self._hashfunc = hashfunc
         self._fingerprint = fingerprint
+        self._ssl_context = ssl_context
 
     @property
     def fingerprint(self):
         return self._fingerprint
+
+    @property
+    def ssl_context(self):
+        return self._ssl_context
 
     def check(self, transport):
         if not transport.get_extra_info('sslcontext'):
