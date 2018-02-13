@@ -778,8 +778,8 @@ class TCPConnector(BaseConnector):
             sslcontext = req.ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if not (not isinstance(sslcontext, Fingerprint) or not (sslcontext.ssl_context is not None) or not isinstance(
-                    sslcontext.ssl_context, ssl.SSLContext)):
+            if isinstance(sslcontext, Fingerprint) and (sslcontext.ssl_context is not None) and isinstance(
+                    sslcontext.ssl_context, ssl.SSLContext):
                 return sslcontext.ssl_context
             if sslcontext is not None:
                 # not verified or fingerprinted
@@ -787,8 +787,8 @@ class TCPConnector(BaseConnector):
             sslcontext = self._ssl
             if isinstance(sslcontext, ssl.SSLContext):
                 return sslcontext
-            if not (not isinstance(sslcontext, Fingerprint) or not (sslcontext.ssl_context is not None) or not isinstance(
-                    sslcontext.ssl_context, ssl.SSLContext)):
+            if isinstance(sslcontext, Fingerprint) and (sslcontext.ssl_context is not None) and isinstance(
+                    sslcontext.ssl_context, ssl.SSLContext):
                 return sslcontext.ssl_context
             if sslcontext is not None:
                 # not verified or fingerprinted
