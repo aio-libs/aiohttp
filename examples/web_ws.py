@@ -2,7 +2,6 @@
 """Example for aiohttp.web websocket server
 """
 
-import asyncio
 import os
 
 from aiohttp.web import (Application, Response, WebSocketResponse, WSMsgType,
