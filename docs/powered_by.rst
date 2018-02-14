@@ -19,3 +19,5 @@ make a Pull Request!
 * `Eyepea - Custom telephony solutions <http://www.eyepea.eu>`_
 * `ALLOcloud - Telephony in the cloud <https://www.allocloud.com>`_
 * `helpmanual - comprehensive help and man page database <https://helpmanual.io/>`_
+* `bedevere <https://github.com/python/bedevere`_ - CPython's GitHub bot, helps maintain and identify issues with a CPython pull request.
+* `miss-islington <https://github.com/python/miss-islington`_ - CPython's GitHub bot, backports and merge CPython's pull requests
