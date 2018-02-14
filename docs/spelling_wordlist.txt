@@ -23,6 +23,7 @@ awaitable
 backend
 backends
 Backport
+backports
 BaseEventLoop
 basename
 BasicAuth
@@ -56,6 +57,7 @@ coroutine
 Coroutine
 coroutines
 cpu
+CPython
 css
 ctor
 Ctrl
