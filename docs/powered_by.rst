@@ -21,3 +21,4 @@ make a Pull Request!
 * `helpmanual - comprehensive help and man page database <https://helpmanual.io/>`_
 * `bedevere <https://github.com/python/bedevere>`_ - CPython's GitHub bot, helps maintain and identify issues with a CPython pull request.
 * `miss-islington <https://github.com/python/miss-islington>`_ - CPython's GitHub bot, backports and merge CPython's pull requests
+* `noa technologies - Bike-sharing management platform <https://noa.one/>`_ - SSE endpoint, pushes real time updates of bikes location.
