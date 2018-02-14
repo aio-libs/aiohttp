@@ -14,8 +14,8 @@ WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 async def wshandler(request):
     resp = WebSocketResponse()
-    ok, protocol = resp.can_prepare(request)
-    if not ok:
+    available = resp.can_prepare(request)
+    if not available:
         with open(WS_FILE, 'rb') as fp:
             return Response(body=fp.read(), content_type='text/html')
 
@@ -48,7 +48,7 @@ async def on_shutdown(app):
         await ws.close()
 
 
-async def init(loop):
+def init():
     app = Application()
     app['sockets'] = []
     app.router.add_get('/', wshandler)
@@ -56,6 +56,4 @@ async def init(loop):
     return app
 
 
-loop = asyncio.get_event_loop()
-app = loop.run_until_complete(init(loop))
-run_app(app)
+run_app(init())
