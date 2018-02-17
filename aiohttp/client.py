@@ -13,8 +13,9 @@ from collections.abc import Coroutine
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
+from . import client_exceptions, client_reqrep
 from . import connector as connector_mod
-from . import client_exceptions, client_reqrep, hdrs, http, payload
+from . import hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, WSServerHandshakeError)
@@ -328,7 +329,7 @@ class ClientSession:
                         resp = req.send(conn)
                         try:
                             await resp.start(conn, read_until_eof)
-                        except Exception:
+                        except BaseException:
                             resp.close()
                             conn.close()
                             raise
@@ -424,7 +425,7 @@ class ClientSession:
                 )
             return resp
 
-        except Exception as e:
+        except BaseException as e:
             # cleanup timer
             tm.close()
             if handle:
@@ -610,7 +611,7 @@ class ClientSession:
             writer = WebSocketWriter(
                 proto, transport, use_mask=True,
                 compress=compress, notakeover=notakeover)
-        except Exception:
+        except BaseException:
             resp.close()
             raise
         else:

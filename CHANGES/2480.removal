@@ -1,3 +1,0 @@
-Drop undocumented `app.on_pre_signal` and `app.on_post_signal`. Signal
-handlers should be coroutines, support for regular functions is
-dropped.

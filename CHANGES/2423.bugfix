@@ -1,1 +1,0 @@
-Fix connector convert OSError to ClientConnectorError

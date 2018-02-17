@@ -19,7 +19,8 @@ Key Features
 
 - Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
 - Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
-  :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box.
+  :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box
+  without the Callback Hell.
 - Web-server has :ref:`aiohttp-web-middlewares`,
   :ref:`aiohttp-web-signals` and pluggable routing.
 
@@ -89,6 +90,13 @@ For more information please visit :ref:`aiohttp-client` and
 :ref:`aiohttp-web` pages.
 
 
+What's new in aiohttp 3?
+========================
+
+Go to :ref:`aiohttp_whats_new_3_0` page for aiohttp 3.0 major release
+changes.
+
+
 Tutorial
 ========
 
@@ -112,9 +120,10 @@ Dependencies
 ============
 
 - Python 3.5.3+
+- *async_timeout*
+- *attrs*
 - *chardet*
 - *multidict*
-- *async_timeout*
 - *yarl*
 - *Optional* :term:`cchardet` as faster replacement for
   :term:`chardet`.

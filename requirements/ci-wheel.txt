@@ -4,18 +4,18 @@ async-timeout==2.0.0
 brotlipy==0.7.0
 cchardet==2.1.1
 chardet==3.0.4
-coverage==4.4.2
+coverage==4.5.1
 cython==0.27.3
 flake8==3.5.0
 gunicorn==19.7.1
-idna-ssl==1.0.0
-isort==4.2.15
+isort==4.3.3
 pip==9.0.1
 pyflakes==1.6.0
 multidict==4.1.0
-pytest==3.3.2
+pytest==3.4.0
 pytest-cov==2.5.1
 pytest-mock==1.6.3
+pytest-xdist==1.22.0
 towncrier==17.8.0
 tox==2.9.1
 twine==1.9.1
@@ -23,5 +23,6 @@ yarl==1.1.0
 
 # Using PEP 508 env markers to control dependency on runtimes:
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
-codecov==2.0.14; platform_system!="Windows"  # We only use it in Travis CI
+codecov==2.0.15; platform_system!="Windows"  # We only use it in Travis CI
 uvloop==0.9.1; python_version>="3.5" and platform_system!="Windows"  # MagicStack/uvloop#14
+idna-ssl==1.0.0; python_version<"3.7"

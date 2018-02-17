@@ -41,7 +41,7 @@ def ceil(val):
     return val
 
 
-async def test_keepalive_two_requests_success(loop, test_client):
+async def test_keepalive_two_requests_success(aiohttp_client):
     async def handler(request):
         body = await request.read()
         assert b'' == body
@@ -50,8 +50,8 @@ async def test_keepalive_two_requests_success(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    connector = aiohttp.TCPConnector(loop=loop, limit=1)
-    client = await test_client(app, connector=connector)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
 
     resp1 = await client.get('/')
     await resp1.read()
@@ -61,7 +61,7 @@ async def test_keepalive_two_requests_success(loop, test_client):
     assert 1 == len(client._session.connector._conns)
 
 
-async def test_keepalive_response_released(loop, test_client):
+async def test_keepalive_response_released(aiohttp_client):
     async def handler(request):
         body = await request.read()
         assert b'' == body
@@ -70,8 +70,8 @@ async def test_keepalive_response_released(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    connector = aiohttp.TCPConnector(loop=loop, limit=1)
-    client = await test_client(app, connector=connector)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
 
     resp1 = await client.get('/')
     resp1.release()
@@ -81,7 +81,7 @@ async def test_keepalive_response_released(loop, test_client):
     assert 1 == len(client._session.connector._conns)
 
 
-async def test_keepalive_server_force_close_connection(loop, test_client):
+async def test_keepalive_server_force_close_connection(aiohttp_client):
     async def handler(request):
         body = await request.read()
         assert b'' == body
@@ -92,8 +92,8 @@ async def test_keepalive_server_force_close_connection(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    connector = aiohttp.TCPConnector(loop=loop, limit=1)
-    client = await test_client(app, connector=connector)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
 
     resp1 = await client.get('/')
     resp1.close()
@@ -103,7 +103,7 @@ async def test_keepalive_server_force_close_connection(loop, test_client):
     assert 0 == len(client._session.connector._conns)
 
 
-async def test_release_early(loop, test_client):
+async def test_release_early(aiohttp_client):
     async def handler(request):
         await request.read()
         return web.Response(body=b'OK')
@@ -111,13 +111,13 @@ async def test_release_early(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     resp = await client.get('/')
     assert resp.closed
     assert 1 == len(client._session.connector._conns)
 
 
-async def test_HTTP_304(loop, test_client):
+async def test_HTTP_304(aiohttp_client):
     async def handler(request):
         body = await request.read()
         assert b'' == body
@@ -125,7 +125,7 @@ async def test_HTTP_304(loop, test_client):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert resp.status == 304
@@ -133,7 +133,7 @@ async def test_HTTP_304(loop, test_client):
     assert content == b''
 
 
-async def test_HTTP_304_WITH_BODY(loop, test_client):
+async def test_HTTP_304_WITH_BODY(aiohttp_client):
     async def handler(request):
         body = await request.read()
         assert b'' == body
@@ -141,7 +141,7 @@ async def test_HTTP_304_WITH_BODY(loop, test_client):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert resp.status == 304
@@ -149,59 +149,59 @@ async def test_HTTP_304_WITH_BODY(loop, test_client):
     assert content == b''
 
 
-async def test_auto_header_user_agent(loop, test_client):
+async def test_auto_header_user_agent(aiohttp_client):
     async def handler(request):
         assert 'aiohttp' in request.headers['user-agent']
         return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200, resp.status
 
 
-async def test_skip_auto_headers_user_agent(loop, test_client):
+async def test_skip_auto_headers_user_agent(aiohttp_client):
     async def handler(request):
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/', skip_auto_headers=['user-agent'])
     assert 200 == resp.status
 
 
-async def test_skip_default_auto_headers_user_agent(loop, test_client):
+async def test_skip_default_auto_headers_user_agent(aiohttp_client):
     async def handler(request):
         assert hdrs.USER_AGENT not in request.headers
         return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app, skip_auto_headers=['user-agent'])
+    client = await aiohttp_client(app, skip_auto_headers=['user-agent'])
 
     resp = await client.get('/')
     assert 200 == resp.status
 
 
-async def test_skip_auto_headers_content_type(loop, test_client):
+async def test_skip_auto_headers_content_type(aiohttp_client):
     async def handler(request):
         assert hdrs.CONTENT_TYPE not in request.headers
         return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/', skip_auto_headers=['content-type'])
     assert 200 == resp.status
 
 
-async def test_post_data_bytesio(loop, test_client):
+async def test_post_data_bytesio(aiohttp_client):
     data = b'some buffer'
 
     async def handler(request):
@@ -212,13 +212,13 @@ async def test_post_data_bytesio(loop, test_client):
 
     app = web.Application()
     app.router.add_route('POST', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data=io.BytesIO(data))
     assert 200 == resp.status
 
 
-async def test_post_data_with_bytesio_file(loop, test_client):
+async def test_post_data_with_bytesio_file(aiohttp_client):
     data = b'some buffer'
 
     async def handler(request):
@@ -229,13 +229,13 @@ async def test_post_data_with_bytesio_file(loop, test_client):
 
     app = web.Application()
     app.router.add_route('POST', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data={'file': io.BytesIO(data)})
     assert 200 == resp.status
 
 
-async def test_post_data_stringio(loop, test_client):
+async def test_post_data_stringio(aiohttp_client):
     data = 'some buffer'
 
     async def handler(request):
@@ -247,13 +247,13 @@ async def test_post_data_stringio(loop, test_client):
 
     app = web.Application()
     app.router.add_route('POST', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data=io.StringIO(data))
     assert 200 == resp.status
 
 
-async def test_post_data_textio_encoding(loop, test_client):
+async def test_post_data_textio_encoding(aiohttp_client):
     data = 'текст'
 
     async def handler(request):
@@ -264,23 +264,23 @@ async def test_post_data_textio_encoding(loop, test_client):
 
     app = web.Application()
     app.router.add_route('POST', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     pl = aiohttp.TextIOPayload(io.StringIO(data), encoding='koi8-r')
     resp = await client.post('/', data=pl)
     assert 200 == resp.status
 
 
-async def test_client_ssl(loop, ssl_ctx, test_server, test_client):
-    connector = aiohttp.TCPConnector(ssl=False, loop=loop)
+async def test_ssl_client(ssl_ctx, aiohttp_server, aiohttp_client):
+    connector = aiohttp.TCPConnector(ssl=False)
 
     async def handler(request):
         return web.Response(text='Test message')
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app, ssl=ssl_ctx)
-    client = await test_client(server, connector=connector)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -288,8 +288,8 @@ async def test_client_ssl(loop, ssl_ctx, test_server, test_client):
     assert txt == 'Test message'
 
 
-async def test_tcp_connector_fingerprint_ok(test_server, test_client,
-                                            loop, ssl_ctx):
+async def test_tcp_connector_fingerprint_ok(aiohttp_server, aiohttp_client,
+                                            ssl_ctx):
 
     fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
                    b'\xcb~7U\x14D@L'
@@ -298,19 +298,19 @@ async def test_tcp_connector_fingerprint_ok(test_server, test_client,
     async def handler(request):
         return web.Response(text='Test message')
 
-    connector = aiohttp.TCPConnector(loop=loop, ssl=Fingerprint(fingerprint))
+    connector = aiohttp.TCPConnector(ssl=Fingerprint(fingerprint))
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app, ssl=ssl_ctx)
-    client = await test_client(server, connector=connector)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)
 
     resp = await client.get('/')
     assert resp.status == 200
     resp.close()
 
 
-async def test_tcp_connector_fingerprint_fail(test_server, test_client,
-                                              loop, ssl_ctx):
+async def test_tcp_connector_fingerprint_fail(aiohttp_server, aiohttp_client,
+                                              ssl_ctx):
 
     fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
                    b'\xcb~7U\x14D@L'
@@ -321,13 +321,12 @@ async def test_tcp_connector_fingerprint_fail(test_server, test_client,
 
     bad_fingerprint = b'\x00' * len(fingerprint)
 
-    connector = aiohttp.TCPConnector(loop=loop,
-                                     ssl=Fingerprint(bad_fingerprint))
+    connector = aiohttp.TCPConnector(ssl=Fingerprint(bad_fingerprint))
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app, ssl=ssl_ctx)
-    client = await test_client(server, connector=connector)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)
 
     with pytest.raises(ServerFingerprintMismatch) as cm:
         await client.get('/')
@@ -336,15 +335,15 @@ async def test_tcp_connector_fingerprint_fail(test_server, test_client,
     assert exc.got == fingerprint
 
 
-async def test_format_task_get(test_server, loop):
+async def test_format_task_get(aiohttp_server, loop):
 
     async def handler(request):
         return web.Response(body=b'OK')
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_server(app)
-    client = aiohttp.ClientSession(loop=loop)
+    server = await aiohttp_server(app)
+    client = aiohttp.ClientSession()
     task = loop.create_task(client.get(server.make_url('/')))
     assert "{}".format(task).startswith("<Task pending")
     resp = await task
@@ -352,7 +351,7 @@ async def test_format_task_get(test_server, loop):
     await client.close()
 
 
-async def test_str_params(loop, test_client):
+async def test_str_params(aiohttp_client):
 
     async def handler(request):
         assert 'q=t est' in request.rel_url.query_string
@@ -360,13 +359,13 @@ async def test_str_params(loop, test_client):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/', params='q=t+est')
     assert 200 == resp.status
 
 
-async def test_drop_params_on_redirect(loop, test_client):
+async def test_drop_params_on_redirect(aiohttp_client):
 
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok?a=redirect'})
@@ -378,13 +377,13 @@ async def test_drop_params_on_redirect(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/redirect', params={'a': 'initial'})
     assert resp.status == 200
 
 
-async def test_drop_fragment_on_redirect(loop, test_client):
+async def test_drop_fragment_on_redirect(aiohttp_client):
 
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok#fragment'})
@@ -395,28 +394,28 @@ async def test_drop_fragment_on_redirect(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/redirect')
     assert resp.status == 200
     assert resp.url.path == '/ok'
 
 
-async def test_drop_fragment(loop, test_client):
+async def test_drop_fragment(aiohttp_client):
 
     async def handler_ok(request):
         return web.Response(status=200)
 
     app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/ok#fragment')
     assert resp.status == 200
     assert resp.url.path == '/ok'
 
 
-async def test_history(loop, test_client):
+async def test_history(aiohttp_client):
     async def handler_redirect(request):
         return web.Response(status=301, headers={'Location': '/ok'})
 
@@ -426,7 +425,7 @@ async def test_history(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/ok', handler_ok)
     app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/ok')
     assert len(resp.history) == 0
@@ -438,7 +437,7 @@ async def test_history(loop, test_client):
     assert resp_redirect.status == 200
 
 
-async def test_keepalive_closed_by_server(loop, test_client):
+async def test_keepalive_closed_by_server(aiohttp_client):
     async def handler(request):
         body = await request.read()
         assert b'' == body
@@ -449,8 +448,8 @@ async def test_keepalive_closed_by_server(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    connector = aiohttp.TCPConnector(loop=loop, limit=1)
-    client = await test_client(app, connector=connector)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
 
     resp1 = await client.get('/')
     val1 = await resp1.read()
@@ -462,27 +461,27 @@ async def test_keepalive_closed_by_server(loop, test_client):
     assert 0 == len(client._session.connector._conns)
 
 
-async def test_wait_for(loop, test_client):
+async def test_wait_for(aiohttp_client):
     async def handler(request):
         return web.Response(body=b'OK')
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
-    resp = await asyncio.wait_for(client.get('/'), 10, loop=loop)
+    resp = await asyncio.wait_for(client.get('/'), 10)
     assert resp.status == 200
     txt = await resp.text()
     assert txt == 'OK'
 
 
-async def test_raw_headers(loop, test_client):
+async def test_raw_headers(aiohttp_client):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     resp = await client.get('/')
     assert resp.status == 200
 
@@ -494,7 +493,7 @@ async def test_raw_headers(loop, test_client):
     resp.close()
 
 
-async def test_204_with_gzipped_content_encoding(loop, test_client):
+async def test_204_with_gzipped_content_encoding(aiohttp_client):
     async def handler(request):
         resp = web.StreamResponse(status=204)
         resp.content_length = 0
@@ -506,71 +505,71 @@ async def test_204_with_gzipped_content_encoding(loop, test_client):
 
     app = web.Application()
     app.router.add_route('DELETE', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.delete('/')
     assert resp.status == 204
     assert resp.closed
 
 
-async def test_timeout_on_reading_headers(loop, test_client, mocker):
+async def test_timeout_on_reading_headers(aiohttp_client, mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = web.StreamResponse()
-        await asyncio.sleep(0.1, loop=loop)
+        await asyncio.sleep(0.1)
         await resp.prepare(request)
         return resp
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with pytest.raises(asyncio.TimeoutError):
         await client.get('/', timeout=0.01)
 
 
-async def test_timeout_on_conn_reading_headers(loop, test_client, mocker):
+async def test_timeout_on_conn_reading_headers(aiohttp_client, mocker):
     # tests case where user did not set a connection timeout
 
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = web.StreamResponse()
-        await asyncio.sleep(0.1, loop=loop)
+        await asyncio.sleep(0.1)
         await resp.prepare(request)
         return resp
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    conn = aiohttp.TCPConnector(loop=loop)
-    client = await test_client(app, connector=conn)
+    conn = aiohttp.TCPConnector()
+    client = await aiohttp_client(app, connector=conn)
 
     with pytest.raises(asyncio.TimeoutError):
         await client.get('/', timeout=0.01)
 
 
-async def test_timeout_on_session_read_timeout(loop, test_client, mocker):
+async def test_timeout_on_session_read_timeout(aiohttp_client, mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
         resp = web.StreamResponse()
-        await asyncio.sleep(0.1, loop=loop)
+        await asyncio.sleep(0.1)
         await resp.prepare(request)
         return resp
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    conn = aiohttp.TCPConnector(loop=loop)
-    client = await test_client(app, connector=conn, read_timeout=0.01)
+    conn = aiohttp.TCPConnector()
+    client = await aiohttp_client(app, connector=conn, read_timeout=0.01)
 
     with pytest.raises(asyncio.TimeoutError):
         await client.get('/')
 
 
-async def test_timeout_on_reading_data(loop, test_client, mocker):
+async def test_timeout_on_reading_data(loop, aiohttp_client, mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
     fut = loop.create_future()
 
@@ -578,12 +577,12 @@ async def test_timeout_on_reading_data(loop, test_client, mocker):
         resp = web.StreamResponse(headers={'content-length': '100'})
         await resp.prepare(request)
         fut.set_result(None)
-        await asyncio.sleep(0.2, loop=loop)
+        await asyncio.sleep(0.2)
         return resp
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/', timeout=1)
     await fut
@@ -592,7 +591,7 @@ async def test_timeout_on_reading_data(loop, test_client, mocker):
         await resp.read()
 
 
-async def test_timeout_none(loop, test_client, mocker):
+async def test_timeout_none(aiohttp_client, mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
     async def handler(request):
@@ -602,13 +601,13 @@ async def test_timeout_none(loop, test_client, mocker):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/', timeout=None)
     assert resp.status == 200
 
 
-async def test_readline_error_on_conn_close(loop, test_client):
+async def test_readline_error_on_conn_close(loop, aiohttp_client):
 
     async def handler(request):
         resp_ = web.StreamResponse()
@@ -618,14 +617,14 @@ async def test_readline_error_on_conn_close(loop, test_client):
         with pytest.raises(aiohttp.ServerDisconnectedError):
             for _ in range(10):
                 await resp_.write(b'data\n')
-                await asyncio.sleep(0.5, loop=loop)
+                await asyncio.sleep(0.5)
             return resp_
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_client(app)
+    server = await aiohttp_client(app)
 
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     try:
         timer_started = False
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
@@ -646,20 +645,20 @@ async def test_readline_error_on_conn_close(loop, test_client):
         await session.close()
 
 
-async def test_no_error_on_conn_close_if_eof(loop, test_client):
+async def test_no_error_on_conn_close_if_eof(aiohttp_client):
 
     async def handler(request):
         resp_ = web.StreamResponse()
         await resp_.prepare(request)
         await resp_.write(b'data\n')
-        await asyncio.sleep(0.5, loop=loop)
+        await asyncio.sleep(0.5)
         return resp_
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_client(app)
+    server = await aiohttp_client(app)
 
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = await session.get(url, headers=headers)
@@ -675,7 +674,7 @@ async def test_no_error_on_conn_close_if_eof(loop, test_client):
         await session.close()
 
 
-async def test_error_not_overwrote_on_conn_close(loop, test_client):
+async def test_error_not_overwrote_on_conn_close(aiohttp_client):
 
     async def handler(request):
         resp_ = web.StreamResponse()
@@ -684,9 +683,9 @@ async def test_error_not_overwrote_on_conn_close(loop, test_client):
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
-    server = await test_client(app)
+    server = await aiohttp_client(app)
 
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     try:
         url, headers = server.make_url('/'), {'Connection': 'Keep-alive'}
         resp = await session.get(url, headers=headers)
@@ -697,7 +696,7 @@ async def test_error_not_overwrote_on_conn_close(loop, test_client):
     assert isinstance(resp.content.exception(), ValueError)
 
 
-async def test_HTTP_200_OK_METHOD(loop, test_client):
+async def test_HTTP_200_OK_METHOD(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -706,7 +705,7 @@ async def test_HTTP_200_OK_METHOD(loop, test_client):
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
 
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         resp = await client.request(meth, '/')
         assert resp.status == 200
@@ -723,18 +722,18 @@ async def test_HTTP_200_OK_METHOD(loop, test_client):
             assert meth.upper() == content
 
 
-async def test_HTTP_200_OK_METHOD_connector(loop, test_client):
+async def test_HTTP_200_OK_METHOD_connector(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
 
-    conn = aiohttp.TCPConnector(loop=loop)
+    conn = aiohttp.TCPConnector()
     conn.clear_dns_cache()
 
     app = web.Application()
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         app.router.add_route(meth.upper(), '/', handler)
-    client = await test_client(app, connector=conn, conn_timeout=0.2)
+    client = await aiohttp_client(app, connector=conn, conn_timeout=0.2)
 
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         resp = await client.request(meth, '/')
@@ -751,7 +750,7 @@ async def test_HTTP_200_OK_METHOD_connector(loop, test_client):
             assert meth.upper() == content
 
 
-async def test_HTTP_302_REDIRECT_GET(loop, test_client):
+async def test_HTTP_302_REDIRECT_GET(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -762,7 +761,7 @@ async def test_HTTP_302_REDIRECT_GET(loop, test_client):
     app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_get('/redirect', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/redirect')
     assert 200 == resp.status
@@ -770,7 +769,7 @@ async def test_HTTP_302_REDIRECT_GET(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
+async def test_HTTP_302_REDIRECT_HEAD(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -783,7 +782,7 @@ async def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     app.router.add_get('/redirect', redirect)
     app.router.add_head('/', handler)
     app.router.add_head('/redirect', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.request('head', '/redirect')
     assert 200 == resp.status
@@ -792,20 +791,20 @@ async def test_HTTP_302_REDIRECT_HEAD(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_302_REDIRECT_NON_HTTP(loop, test_client):
+async def test_HTTP_302_REDIRECT_NON_HTTP(aiohttp_client):
 
     async def redirect(request):
         raise web.HTTPFound(location='ftp://127.0.0.1/test/')
 
     app = web.Application()
     app.router.add_get('/redirect', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with pytest.raises(ValueError):
         await client.get('/redirect')
 
 
-async def test_HTTP_302_REDIRECT_POST(loop, test_client):
+async def test_HTTP_302_REDIRECT_POST(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -816,7 +815,7 @@ async def test_HTTP_302_REDIRECT_POST(loop, test_client):
     app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/redirect')
     assert 200 == resp.status
@@ -826,8 +825,7 @@ async def test_HTTP_302_REDIRECT_POST(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
-                                                                 test_client):
+async def test_HTTP_302_REDIRECT_POST_with_content_length_hdr(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -840,7 +838,7 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
     app = web.Application(debug=True)
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post(
         '/redirect',
@@ -854,7 +852,7 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_header(loop,
     resp.close()
 
 
-async def test_HTTP_307_REDIRECT_POST(loop, test_client):
+async def test_HTTP_307_REDIRECT_POST(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -866,7 +864,7 @@ async def test_HTTP_307_REDIRECT_POST(loop, test_client):
     app = web.Application()
     app.router.add_post('/', handler)
     app.router.add_post('/redirect', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/redirect', data={'some': 'data'})
     assert 200 == resp.status
@@ -876,7 +874,7 @@ async def test_HTTP_307_REDIRECT_POST(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
+async def test_HTTP_308_PERMANENT_REDIRECT_POST(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -888,7 +886,7 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
     app = web.Application()
     app.router.add_post('/', handler)
     app.router.add_post('/redirect', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/redirect', data={'some': 'data'})
     assert 200 == resp.status
@@ -898,7 +896,7 @@ async def test_HTTP_308_PERMANENT_REDIRECT_POST(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_302_max_redirects(loop, test_client):
+async def test_HTTP_302_max_redirects(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -913,7 +911,7 @@ async def test_HTTP_302_max_redirects(loop, test_client):
     app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_get(r'/redirect/{count:\d+}', redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/redirect/5', max_redirects=2)
     assert 302 == resp.status
@@ -921,7 +919,7 @@ async def test_HTTP_302_max_redirects(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
+async def test_HTTP_200_GET_WITH_PARAMS(aiohttp_client):
 
     async def handler(request):
         return web.Response(text='&'.join(
@@ -929,7 +927,7 @@ async def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/', params={'q': 'test'})
     assert 200 == resp.status
@@ -938,7 +936,7 @@ async def test_HTTP_200_GET_WITH_PARAMS(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
+async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(aiohttp_client):
 
     async def handler(request):
         return web.Response(text='&'.join(
@@ -946,7 +944,7 @@ async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/', params=MultiDict([('q', 'test'),
                                                    ('q', 'test2')]))
@@ -956,7 +954,7 @@ async def test_HTTP_200_GET_WITH_MultiDict_PARAMS(loop, test_client):
     resp.close()
 
 
-async def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
+async def test_HTTP_200_GET_WITH_MIXED_PARAMS(aiohttp_client):
 
     async def handler(request):
         return web.Response(text='&'.join(
@@ -964,7 +962,7 @@ async def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/?test=true', params={'q': 'test'})
     assert 200 == resp.status
@@ -973,7 +971,7 @@ async def test_HTTP_200_GET_WITH_MIXED_PARAMS(loop, test_client):
     resp.close()
 
 
-async def test_POST_DATA(loop, test_client):
+async def test_POST_DATA(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -981,7 +979,7 @@ async def test_POST_DATA(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data={'some': 'data'})
     assert 200 == resp.status
@@ -990,7 +988,7 @@ async def test_POST_DATA(loop, test_client):
     resp.close()
 
 
-async def test_POST_DATA_with_explicit_formdata(loop, test_client):
+async def test_POST_DATA_with_explicit_formdata(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -998,7 +996,7 @@ async def test_POST_DATA_with_explicit_formdata(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'text')
@@ -1010,7 +1008,7 @@ async def test_POST_DATA_with_explicit_formdata(loop, test_client):
     resp.close()
 
 
-async def test_POST_DATA_with_charset(loop, test_client):
+async def test_POST_DATA_with_charset(aiohttp_client):
 
     async def handler(request):
         mp = await request.multipart()
@@ -1020,7 +1018,7 @@ async def test_POST_DATA_with_charset(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'текст', content_type='text/plain; charset=koi8-r')
@@ -1032,7 +1030,7 @@ async def test_POST_DATA_with_charset(loop, test_client):
     resp.close()
 
 
-async def test_POST_DATA_formdats_with_charset(loop, test_client):
+async def test_POST_DATA_formdats_with_charset(aiohttp_client):
 
     async def handler(request):
         mp = await request.post()
@@ -1041,7 +1039,7 @@ async def test_POST_DATA_formdats_with_charset(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     form = aiohttp.FormData(charset='koi8-r')
     form.add_field('name', 'текст')
@@ -1053,7 +1051,7 @@ async def test_POST_DATA_formdats_with_charset(loop, test_client):
     resp.close()
 
 
-async def test_POST_DATA_with_charset_post(loop, test_client):
+async def test_POST_DATA_with_charset_post(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -1061,7 +1059,7 @@ async def test_POST_DATA_with_charset_post(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'текст', content_type='text/plain; charset=koi8-r')
@@ -1073,7 +1071,7 @@ async def test_POST_DATA_with_charset_post(loop, test_client):
     resp.close()
 
 
-async def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
+async def test_POST_DATA_with_context_transfer_encoding(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -1082,7 +1080,7 @@ async def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'text', content_transfer_encoding='base64')
@@ -1095,7 +1093,7 @@ async def test_POST_DATA_with_context_transfer_encoding(loop, test_client):
 
 
 async def test_POST_DATA_with_content_type_context_transfer_encoding(
-        loop, test_client):
+        aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -1104,7 +1102,7 @@ async def test_POST_DATA_with_content_type_context_transfer_encoding(
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     form = aiohttp.FormData()
     form.add_field('name', 'text',
@@ -1118,7 +1116,7 @@ async def test_POST_DATA_with_content_type_context_transfer_encoding(
     resp.close()
 
 
-async def test_POST_MultiDict(loop, test_client):
+async def test_POST_MultiDict(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -1127,7 +1125,7 @@ async def test_POST_MultiDict(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data=MultiDict(
         [('q', 'test1'), ('q', 'test2')]))
@@ -1135,7 +1133,7 @@ async def test_POST_MultiDict(loop, test_client):
     resp.close()
 
 
-async def test_POST_DATA_DEFLATE(loop, test_client):
+async def test_POST_DATA_DEFLATE(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -1143,7 +1141,7 @@ async def test_POST_DATA_DEFLATE(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data={'some': 'data'}, compress=True)
     assert 200 == resp.status
@@ -1152,7 +1150,7 @@ async def test_POST_DATA_DEFLATE(loop, test_client):
     resp.close()
 
 
-async def test_POST_FILES(loop, test_client, fname):
+async def test_POST_FILES(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.post()
@@ -1166,7 +1164,7 @@ async def test_POST_FILES(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post(
@@ -1175,7 +1173,7 @@ async def test_POST_FILES(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_DEFLATE(loop, test_client, fname):
+async def test_POST_FILES_DEFLATE(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.post()
@@ -1188,7 +1186,7 @@ async def test_POST_FILES_DEFLATE(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post(
@@ -1201,7 +1199,7 @@ async def test_POST_FILES_DEFLATE(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_bytes(loop, test_client):
+async def test_POST_bytes(aiohttp_client):
     body = b'0' * 12345
 
     async def handler(request):
@@ -1211,14 +1209,14 @@ async def test_POST_bytes(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data=body)
     assert 200 == resp.status
     resp.close()
 
 
-async def test_POST_bytes_too_large(loop, test_client):
+async def test_POST_bytes_too_large(aiohttp_client):
     body = b'0' * (2 ** 20 + 1)
 
     async def handler(request):
@@ -1228,7 +1226,7 @@ async def test_POST_bytes_too_large(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with pytest.warns(ResourceWarning):
         resp = await client.post('/', data=body)
@@ -1237,7 +1235,7 @@ async def test_POST_bytes_too_large(loop, test_client):
     resp.close()
 
 
-async def test_POST_FILES_STR(loop, test_client, fname):
+async def test_POST_FILES_STR(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.post()
@@ -1249,7 +1247,7 @@ async def test_POST_FILES_STR(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post('/', data={'some': f.read()})
@@ -1257,7 +1255,7 @@ async def test_POST_FILES_STR(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
+async def test_POST_FILES_STR_SIMPLE(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.read()
@@ -1268,7 +1266,7 @@ async def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post('/', data=f.read())
@@ -1276,7 +1274,7 @@ async def test_POST_FILES_STR_SIMPLE(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_LIST(loop, test_client, fname):
+async def test_POST_FILES_LIST(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.post()
@@ -1288,7 +1286,7 @@ async def test_POST_FILES_LIST(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post('/', data=[('some', f)])
@@ -1296,7 +1294,7 @@ async def test_POST_FILES_LIST(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_CT(loop, test_client, fname):
+async def test_POST_FILES_CT(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.post()
@@ -1309,7 +1307,7 @@ async def test_POST_FILES_CT(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         form = aiohttp.FormData()
@@ -1319,7 +1317,7 @@ async def test_POST_FILES_CT(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_SINGLE(loop, test_client, fname):
+async def test_POST_FILES_SINGLE(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.text()
@@ -1337,7 +1335,7 @@ async def test_POST_FILES_SINGLE(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post('/', data=f)
@@ -1345,7 +1343,7 @@ async def test_POST_FILES_SINGLE(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
+async def test_POST_FILES_SINGLE_content_disposition(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.text()
@@ -1364,7 +1362,7 @@ async def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post(
@@ -1373,7 +1371,7 @@ async def test_POST_FILES_SINGLE_content_disposition(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
+async def test_POST_FILES_SINGLE_BINARY(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.read()
@@ -1389,7 +1387,7 @@ async def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open('rb') as f:
         resp = await client.post('/', data=f)
@@ -1397,7 +1395,7 @@ async def test_POST_FILES_SINGLE_BINARY(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_IO(loop, test_client):
+async def test_POST_FILES_IO(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -1408,7 +1406,7 @@ async def test_POST_FILES_IO(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     data = io.BytesIO(b'data')
     resp = await client.post('/', data=[data])
@@ -1416,7 +1414,7 @@ async def test_POST_FILES_IO(loop, test_client):
     resp.close()
 
 
-async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
+async def test_POST_FILES_IO_WITH_PARAMS(aiohttp_client):
 
     async def handler(request):
         data = await request.post()
@@ -1430,7 +1428,7 @@ async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     data = io.BytesIO(b'data')
     resp = await client.post(
@@ -1442,7 +1440,7 @@ async def test_POST_FILES_IO_WITH_PARAMS(loop, test_client):
     resp.close()
 
 
-async def test_POST_FILES_WITH_DATA(loop, test_client, fname):
+async def test_POST_FILES_WITH_DATA(aiohttp_client, fname):
 
     async def handler(request):
         data = await request.post()
@@ -1458,7 +1456,7 @@ async def test_POST_FILES_WITH_DATA(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open() as f:
         resp = await client.post('/', data={'test': 'true', 'some': f})
@@ -1466,7 +1464,7 @@ async def test_POST_FILES_WITH_DATA(loop, test_client, fname):
         resp.close()
 
 
-async def test_POST_STREAM_DATA(loop, test_client, fname):
+async def test_POST_STREAM_DATA(aiohttp_client, fname):
 
     async def handler(request):
         assert request.content_type == 'application/octet-stream'
@@ -1480,7 +1478,7 @@ async def test_POST_STREAM_DATA(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open('rb') as f:
         data_size = len(f.read())
@@ -1499,7 +1497,7 @@ async def test_POST_STREAM_DATA(loop, test_client, fname):
     resp.close()
 
 
-async def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
+async def test_POST_STREAM_DATA_no_params(aiohttp_client, fname):
 
     async def handler(request):
         assert request.content_type == 'application/octet-stream'
@@ -1513,7 +1511,7 @@ async def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with fname.open('rb') as f:
         data_size = len(f.read())
@@ -1532,7 +1530,7 @@ async def test_POST_STREAM_DATA_no_params(loop, test_client, fname):
     resp.close()
 
 
-async def test_json(loop, test_client):
+async def test_json(aiohttp_client):
 
     async def handler(request):
         assert request.content_type == 'application/json'
@@ -1541,7 +1539,7 @@ async def test_json(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', json={'some': 'data'})
     assert 200 == resp.status
@@ -1553,7 +1551,7 @@ async def test_json(loop, test_client):
         await client.post('/', data="some data", json={'some': 'data'})
 
 
-async def test_json_custom(loop, test_client):
+async def test_json_custom(aiohttp_client):
 
     async def handler(request):
         assert request.content_type == 'application/json'
@@ -1569,7 +1567,7 @@ async def test_json_custom(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(app, json_serialize=dumps)
+    client = await aiohttp_client(app, json_serialize=dumps)
 
     resp = await client.post('/', json={'some': 'data'})
     assert 200 == resp.status
@@ -1582,7 +1580,7 @@ async def test_json_custom(loop, test_client):
         await client.post('/', data="some data", json={'some': 'data'})
 
 
-async def test_expect_continue(loop, test_client):
+async def test_expect_continue(aiohttp_client):
     expect_called = False
 
     async def handler(request):
@@ -1599,7 +1597,7 @@ async def test_expect_continue(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler, expect_handler=expect_handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', data={'some': 'data'}, expect100=True)
     assert 200 == resp.status
@@ -1607,7 +1605,7 @@ async def test_expect_continue(loop, test_client):
     assert expect_called
 
 
-async def test_encoding_deflate(loop, test_client):
+async def test_encoding_deflate(aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text='text')
@@ -1617,7 +1615,7 @@ async def test_encoding_deflate(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1626,7 +1624,7 @@ async def test_encoding_deflate(loop, test_client):
     resp.close()
 
 
-async def test_encoding_deflate_nochunk(loop, test_client):
+async def test_encoding_deflate_nochunk(aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text='text')
@@ -1635,7 +1633,7 @@ async def test_encoding_deflate_nochunk(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1644,7 +1642,7 @@ async def test_encoding_deflate_nochunk(loop, test_client):
     resp.close()
 
 
-async def test_encoding_gzip(loop, test_client):
+async def test_encoding_gzip(aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text='text')
@@ -1654,7 +1652,7 @@ async def test_encoding_gzip(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1663,7 +1661,7 @@ async def test_encoding_gzip(loop, test_client):
     resp.close()
 
 
-async def test_encoding_gzip_write_by_chunks(loop, test_client):
+async def test_encoding_gzip_write_by_chunks(aiohttp_client):
 
     async def handler(request):
         resp = web.StreamResponse()
@@ -1675,7 +1673,7 @@ async def test_encoding_gzip_write_by_chunks(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1684,7 +1682,7 @@ async def test_encoding_gzip_write_by_chunks(loop, test_client):
     resp.close()
 
 
-async def test_encoding_gzip_nochunk(loop, test_client):
+async def test_encoding_gzip_nochunk(aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text='text')
@@ -1693,7 +1691,7 @@ async def test_encoding_gzip_nochunk(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1702,7 +1700,7 @@ async def test_encoding_gzip_nochunk(loop, test_client):
     resp.close()
 
 
-async def test_bad_payload_compression(loop, test_client):
+async def test_bad_payload_compression(aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text='text')
@@ -1711,7 +1709,7 @@ async def test_bad_payload_compression(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1722,7 +1720,7 @@ async def test_bad_payload_compression(loop, test_client):
     resp.close()
 
 
-async def test_bad_payload_chunked_encoding(loop, test_client):
+async def test_bad_payload_chunked_encoding(aiohttp_client):
 
     async def handler(request):
         resp = web.StreamResponse()
@@ -1736,7 +1734,7 @@ async def test_bad_payload_chunked_encoding(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1747,7 +1745,7 @@ async def test_bad_payload_chunked_encoding(loop, test_client):
     resp.close()
 
 
-async def test_bad_payload_content_length(loop, test_client):
+async def test_bad_payload_content_length(aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text='text')
@@ -1757,7 +1755,7 @@ async def test_bad_payload_content_length(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1768,7 +1766,7 @@ async def test_bad_payload_content_length(loop, test_client):
     resp.close()
 
 
-async def test_payload_content_length_by_chunks(loop, test_client):
+async def test_payload_content_length_by_chunks(aiohttp_client):
 
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '3'})
@@ -1780,7 +1778,7 @@ async def test_payload_content_length_by_chunks(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     data = await resp.read()
@@ -1788,7 +1786,7 @@ async def test_payload_content_length_by_chunks(loop, test_client):
     resp.close()
 
 
-async def test_chunked(loop, test_client):
+async def test_chunked(aiohttp_client):
 
     async def handler(request):
         resp = web.Response(text='text')
@@ -1797,7 +1795,7 @@ async def test_chunked(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     assert 200 == resp.status
@@ -1807,7 +1805,7 @@ async def test_chunked(loop, test_client):
     resp.close()
 
 
-async def test_shortcuts(test_client, loop):
+async def test_shortcuts(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -1815,7 +1813,7 @@ async def test_shortcuts(test_client, loop):
     app = web.Application()
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         app.router.add_route(meth.upper(), '/', handler)
-    client = await test_client(lambda loop: app)
+    client = await aiohttp_client(app)
 
     for meth in ('get', 'post', 'put', 'delete', 'head', 'patch', 'options'):
         coro = getattr(client.session, meth)
@@ -1835,7 +1833,7 @@ async def test_shortcuts(test_client, loop):
             assert meth.upper() == content
 
 
-async def test_cookies(test_client, loop):
+async def test_cookies(aiohttp_client):
 
     async def handler(request):
         assert request.cookies.keys() == {'test1', 'test3'}
@@ -1848,7 +1846,7 @@ async def test_cookies(test_client, loop):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(
+    client = await aiohttp_client(
         app, cookies={'test1': '123', 'test2': c})
 
     resp = await client.get('/')
@@ -1856,7 +1854,7 @@ async def test_cookies(test_client, loop):
     resp.close()
 
 
-async def test_morsel_with_attributes(test_client, loop):
+async def test_morsel_with_attributes(aiohttp_client):
     # A comment from original test:
     #
     # No cookie attribute should pass here
@@ -1879,14 +1877,14 @@ async def test_morsel_with_attributes(test_client, loop):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app, cookies={'test2': c})
+    client = await aiohttp_client(app, cookies={'test2': c})
 
     resp = await client.get('/')
     assert 200 == resp.status
     resp.close()
 
 
-async def test_set_cookies(test_client, loop):
+async def test_set_cookies(aiohttp_client):
 
     async def handler(request):
         ret = web.Response()
@@ -1900,7 +1898,7 @@ async def test_set_cookies(test_client, loop):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(lambda loop: app)
+    client = await aiohttp_client(app)
 
     with mock.patch('aiohttp.client_reqrep.client_logger') as m_log:
         resp = await client.get('/')
@@ -1913,15 +1911,15 @@ async def test_set_cookies(test_client, loop):
                                          mock.ANY)
 
 
-async def test_request_conn_error(loop):
-    client = aiohttp.ClientSession(loop=loop)
+async def test_request_conn_error():
+    client = aiohttp.ClientSession()
     with pytest.raises(aiohttp.ClientConnectionError):
         await client.get('http://0.0.0.0:1')
     await client.close()
 
 
 @pytest.mark.xfail
-async def test_broken_connection(loop, test_client):
+async def test_broken_connection(aiohttp_client):
 
     async def handler(request):
         request.transport.close()
@@ -1929,13 +1927,13 @@ async def test_broken_connection(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with pytest.raises(aiohttp.ClientResponseError):
         await client.get('/')
 
 
-async def test_broken_connection_2(loop, test_client):
+async def test_broken_connection_2(aiohttp_client):
 
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '1000'})
@@ -1946,7 +1944,7 @@ async def test_broken_connection_2(loop, test_client):
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/')
     with pytest.raises(aiohttp.ClientPayloadError):
@@ -1954,7 +1952,7 @@ async def test_broken_connection_2(loop, test_client):
     resp.close()
 
 
-async def test_custom_headers(loop, test_client):
+async def test_custom_headers(aiohttp_client):
 
     async def handler(request):
         assert request.headers["x-api-key"] == "foo"
@@ -1962,7 +1960,7 @@ async def test_custom_headers(loop, test_client):
 
     app = web.Application()
     app.router.add_post('/', handler)
-    client = await test_client(lambda loop: app)
+    client = await aiohttp_client(app)
 
     resp = await client.post('/', headers={
         "Content-Type": "application/json",
@@ -1970,7 +1968,7 @@ async def test_custom_headers(loop, test_client):
     assert resp.status == 200
 
 
-async def test_redirect_to_absolute_url(loop, test_client):
+async def test_redirect_to_absolute_url(aiohttp_client):
 
     async def handler(request):
         return web.Response(text=request.method)
@@ -1982,13 +1980,13 @@ async def test_redirect_to_absolute_url(loop, test_client):
     app.router.add_get('/', handler)
     app.router.add_get('/redirect', redirect)
 
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     resp = await client.get('/redirect')
     assert 200 == resp.status
     resp.close()
 
 
-async def test_redirect_without_location_header(loop, test_client):
+async def test_redirect_without_location_header(aiohttp_client):
     body = b'redirect'
 
     async def handler_redirect(request):
@@ -1996,41 +1994,41 @@ async def test_redirect_without_location_header(loop, test_client):
 
     app = web.Application()
     app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/redirect')
     data = await resp.read()
     assert data == body
 
 
-async def test_chunked_deprecated(loop, test_client):
+async def test_chunked_deprecated(aiohttp_client):
 
     async def handler_redirect(request):
         return web.Response(status=301)
 
     app = web.Application()
     app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     with pytest.warns(DeprecationWarning):
         await client.post('/', chunked=1024)
 
 
-async def test_raise_for_status(loop, test_client):
+async def test_raise_for_status(aiohttp_client):
 
     async def handler_redirect(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler_redirect)
-    client = await test_client(app, raise_for_status=True)
+    client = await aiohttp_client(app, raise_for_status=True)
 
     with pytest.raises(aiohttp.ClientResponseError):
         await client.get('/')
 
 
-async def test_invalid_idna(loop):
-    session = aiohttp.ClientSession(loop=loop)
+async def test_invalid_idna():
+    session = aiohttp.ClientSession()
     try:
         with pytest.raises(aiohttp.InvalidURL):
             await session.get('http://\u2061owhefopw.com')
@@ -2038,8 +2036,8 @@ async def test_invalid_idna(loop):
         await session.close()
 
 
-async def test_creds_in_auth_and_url(loop):
-    session = aiohttp.ClientSession(loop=loop)
+async def test_creds_in_auth_and_url():
+    session = aiohttp.ClientSession()
     try:
         with pytest.raises(ValueError):
             await session.get('http://user:pass@example.com',
@@ -2048,7 +2046,7 @@ async def test_creds_in_auth_and_url(loop):
         await session.close()
 
 
-async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
+async def test_drop_auth_on_redirect_to_other_host(aiohttp_server):
 
     async def srv1(request):
         assert request.host == 'host1.com'
@@ -2064,7 +2062,7 @@ async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
     app.router.add_route('GET', '/path1', srv1)
     app.router.add_route('GET', '/path2', srv2)
 
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     class FakeResolver(AbstractResolver):
 
@@ -2079,7 +2077,7 @@ async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
         async def close(self):
             pass
 
-    connector = aiohttp.TCPConnector(loop=loop, resolver=FakeResolver())
+    connector = aiohttp.TCPConnector(resolver=FakeResolver())
     async with aiohttp.ClientSession(connector=connector) as client:
         resp = await client.get(
             'http://host1.com/path1',
@@ -2093,17 +2091,17 @@ async def test_drop_auth_on_redirect_to_other_host(test_server, loop):
         assert resp.status == 200
 
 
-async def test_async_with_session(loop):
+async def test_async_with_session():
     with pytest.warns(None) as cm:
-        async with aiohttp.ClientSession(loop=loop) as session:
+        async with aiohttp.ClientSession() as session:
             pass
     assert len(cm.list) == 0
 
     assert session.closed
 
 
-async def test_session_close_awaitable(loop):
-    session = aiohttp.ClientSession(loop=loop)
+async def test_session_close_awaitable():
+    session = aiohttp.ClientSession()
     with pytest.warns(None) as cm:
         await session.close()
     assert len(cm.list) == 0
@@ -2111,27 +2109,27 @@ async def test_session_close_awaitable(loop):
     assert session.closed
 
 
-def test_close_run_until_complete_not_deprecated(loop):
-    session = aiohttp.ClientSession(loop=loop)
+async def test_close_run_until_complete_not_deprecated():
+    session = aiohttp.ClientSession()
 
     with pytest.warns(None) as cm:
-        loop.run_until_complete(session.close())
+        await session.close()
 
     assert len(cm.list) == 0
 
 
-async def test_close_resp_on_error_async_with_session(loop, test_server):
+async def test_close_resp_on_error_async_with_session(aiohttp_server):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
         await resp.prepare(request)
-        await asyncio.sleep(0.1, loop=request.app.loop)
+        await asyncio.sleep(0.1)
         return resp
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
-    async with aiohttp.ClientSession(loop=loop) as session:
+    async with aiohttp.ClientSession() as session:
         with pytest.raises(RuntimeError):
             async with session.get(server.make_url('/')) as resp:
                 resp.content.set_exception(RuntimeError())
@@ -2140,33 +2138,33 @@ async def test_close_resp_on_error_async_with_session(loop, test_server):
         assert len(session._connector._conns) == 0
 
 
-async def test_release_resp_on_normal_exit_from_cm(loop, test_server):
+async def test_release_resp_on_normal_exit_from_cm(aiohttp_server):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
-    async with aiohttp.ClientSession(loop=loop) as session:
+    async with aiohttp.ClientSession() as session:
         async with session.get(server.make_url('/')) as resp:
             await resp.read()
 
         assert len(session._connector._conns) == 1
 
 
-async def test_non_close_detached_session_on_error_cm(loop, test_server):
+async def test_non_close_detached_session_on_error_cm(aiohttp_server):
     async def handler(request):
         resp = web.StreamResponse(headers={'content-length': '100'})
         await resp.prepare(request)
-        await asyncio.sleep(0.1, loop=request.app.loop)
+        await asyncio.sleep(0.1)
         return resp
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     cm = session.get(server.make_url('/'))
     assert not session.closed
     with pytest.raises(RuntimeError):
@@ -2176,7 +2174,7 @@ async def test_non_close_detached_session_on_error_cm(loop, test_server):
     assert not session.closed
 
 
-async def test_close_detached_session_on_non_existing_addr(loop):
+async def test_close_detached_session_on_non_existing_addr():
     class FakeResolver(AbstractResolver):
         async def resolve(host, port=0, family=socket.AF_INET):
             return {}
@@ -2184,8 +2182,7 @@ async def test_close_detached_session_on_non_existing_addr(loop):
         async def close(self):
             pass
 
-    connector = aiohttp.TCPConnector(resolver=FakeResolver(),
-                                     loop=loop)
+    connector = aiohttp.TCPConnector(resolver=FakeResolver())
 
     session = aiohttp.ClientSession(connector=connector)
 
@@ -2198,41 +2195,40 @@ async def test_close_detached_session_on_non_existing_addr(loop):
     assert session.closed
 
 
-async def test_aiohttp_request_context_manager(loop, test_server):
+async def test_aiohttp_request_context_manager(aiohttp_server):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
-    async with aiohttp.request('GET', server.make_url('/'), loop=loop) as resp:
+    async with aiohttp.request('GET', server.make_url('/')) as resp:
         await resp.read()
         assert resp.status == 200
 
 
-async def test_aiohttp_request_ctx_manager_not_found(loop):
+async def test_aiohttp_request_ctx_manager_not_found():
 
     with pytest.raises(aiohttp.ClientConnectionError):
-        async with aiohttp.request('GET', 'http://wrong-dns-name.com',
-                                   loop=loop):
+        async with aiohttp.request('GET', 'http://wrong-dns-name.com'):
             assert False, "never executed"  # pragma: no cover
 
 
-async def test_aiohttp_request_coroutine(loop, test_server):
+async def test_aiohttp_request_coroutine(aiohttp_server):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    server = await test_server(app)
+    server = await aiohttp_server(app)
 
     with pytest.raises(TypeError):
-        await aiohttp.request('GET', server.make_url('/'), loop=loop)
+        await aiohttp.request('GET', server.make_url('/'))
 
 
 @asyncio.coroutine
-def test_yield_from_in_session_request(test_client):
+def test_yield_from_in_session_request(aiohttp_client):
     # a test for backward compatibility with yield from syntax
     async def handler(request):
         return web.Response()
@@ -2240,13 +2236,13 @@ def test_yield_from_in_session_request(test_client):
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = yield from test_client(app)
+    client = yield from aiohttp_client(app)
     resp = yield from client.get('/')
     assert resp.status == 200
 
 
 @asyncio.coroutine
-def test_close_context_manager(test_client):
+def test_close_context_manager(aiohttp_client):
     # a test for backward compatibility with yield from syntax
     async def handler(request):
         return web.Response()
@@ -2254,20 +2250,20 @@ def test_close_context_manager(test_client):
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = yield from test_client(app)
+    client = yield from aiohttp_client(app)
     ctx = client.get('/')
     ctx.close()
     assert not ctx._coro.cr_running
 
 
-async def test_session_auth(test_client):
+async def test_session_auth(aiohttp_client):
     async def handler(request):
         return web.json_response({'headers': dict(request.headers)})
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+    client = await aiohttp_client(app, auth=aiohttp.BasicAuth("login", "pass"))
 
     r = await client.get('/')
     assert r.status == 200
@@ -2275,14 +2271,14 @@ async def test_session_auth(test_client):
     assert content['headers']["Authorization"] == "Basic bG9naW46cGFzcw=="
 
 
-async def test_session_auth_override(test_client):
+async def test_session_auth_override(aiohttp_client):
     async def handler(request):
         return web.json_response({'headers': dict(request.headers)})
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+    client = await aiohttp_client(app, auth=aiohttp.BasicAuth("login", "pass"))
 
     r = await client.get('/', auth=aiohttp.BasicAuth("other_login", "pass"))
     assert r.status == 200
@@ -2291,27 +2287,27 @@ async def test_session_auth_override(test_client):
     assert val == "Basic b3RoZXJfbG9naW46cGFzcw=="
 
 
-async def test_session_auth_header_conflict(test_client):
+async def test_session_auth_header_conflict(aiohttp_client):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = await test_client(app, auth=aiohttp.BasicAuth("login", "pass"))
+    client = await aiohttp_client(app, auth=aiohttp.BasicAuth("login", "pass"))
     headers = {'Authorization': "Basic b3RoZXJfbG9naW46cGFzcw=="}
     with pytest.raises(ValueError):
         await client.get('/', headers=headers)
 
 
-async def test_session_headers(test_client):
+async def test_session_headers(aiohttp_client):
     async def handler(request):
         return web.json_response({'headers': dict(request.headers)})
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = await test_client(app, headers={"X-Real-IP": "192.168.0.1"})
+    client = await aiohttp_client(app, headers={"X-Real-IP": "192.168.0.1"})
 
     r = await client.get('/')
     assert r.status == 200
@@ -2319,14 +2315,14 @@ async def test_session_headers(test_client):
     assert content['headers']["X-Real-IP"] == "192.168.0.1"
 
 
-async def test_session_headers_merge(test_client):
+async def test_session_headers_merge(aiohttp_client):
     async def handler(request):
         return web.json_response({'headers': dict(request.headers)})
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = await test_client(app, headers=[
+    client = await aiohttp_client(app, headers=[
         ("X-Real-IP", "192.168.0.1"),
         ("X-Sent-By", "requests")])
 
@@ -2337,7 +2333,7 @@ async def test_session_headers_merge(test_client):
     assert content['headers']["X-Sent-By"] == "aiohttp"
 
 
-async def test_multidict_headers(test_client):
+async def test_multidict_headers(aiohttp_client):
     async def handler(request):
         assert await request.read() == data
         return web.Response()
@@ -2345,7 +2341,7 @@ async def test_multidict_headers(test_client):
     app = web.Application()
     app.router.add_post('/', handler)
 
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     data = b'sample data'
 
@@ -2355,7 +2351,7 @@ async def test_multidict_headers(test_client):
     assert r.status == 200
 
 
-async def test_request_conn_closed(test_client):
+async def test_request_conn_closed(aiohttp_client):
     async def handler(request):
         request.transport.close()
         return web.Response()
@@ -2363,20 +2359,20 @@ async def test_request_conn_closed(test_client):
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     with pytest.raises(aiohttp.ServerDisconnectedError):
         resp = await client.get('/')
         await resp.read()
 
 
-async def test_dont_close_explicit_connector(test_client):
+async def test_dont_close_explicit_connector(aiohttp_client):
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = await test_client(app)
+    client = await aiohttp_client(app)
     r = await client.get('/')
     await r.read()
 
@@ -2410,8 +2406,8 @@ async def test_server_close_keepalive_connection(loop):
 
     addr = server.sockets[0].getsockname()
 
-    connector = aiohttp.TCPConnector(loop=loop, limit=1)
-    session = aiohttp.ClientSession(loop=loop, connector=connector)
+    connector = aiohttp.TCPConnector(limit=1)
+    session = aiohttp.ClientSession(connector=connector)
 
     url = 'http://{}:{}/'.format(*addr)
     for i in range(2):
@@ -2450,8 +2446,8 @@ async def test_handle_keepalive_on_closed_connection(loop):
 
     addr = server.sockets[0].getsockname()
 
-    connector = aiohttp.TCPConnector(loop=loop, limit=1)
-    session = aiohttp.ClientSession(loop=loop, connector=connector)
+    connector = aiohttp.TCPConnector(limit=1)
+    session = aiohttp.ClientSession(connector=connector)
 
     url = 'http://{}:{}/'.format(*addr)
 
@@ -2470,7 +2466,7 @@ async def test_handle_keepalive_on_closed_connection(loop):
 
 
 async def test_error_in_performing_request(loop, ssl_ctx,
-                                           test_client, test_server):
+                                           aiohttp_client, aiohttp_server):
     async def handler(request):
         return web.Response()
 
@@ -2483,10 +2479,10 @@ async def test_error_in_performing_request(loop, ssl_ctx,
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    server = await test_server(app, ssl=ssl_ctx)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
 
-    conn = aiohttp.TCPConnector(limit=1, loop=loop)
-    client = await test_client(server, connector=conn)
+    conn = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(server, connector=conn)
 
     with pytest.raises(aiohttp.ClientConnectionError):
         await client.get('/')
@@ -2496,7 +2492,7 @@ async def test_error_in_performing_request(loop, ssl_ctx,
         await client.get('/')
 
 
-async def test_await_after_cancelling(loop, test_client):
+async def test_await_after_cancelling(loop, aiohttp_client):
 
     async def handler(request):
         return web.Response()
@@ -2504,7 +2500,7 @@ async def test_await_after_cancelling(loop, test_client):
     app = web.Application()
     app.router.add_route('GET', '/', handler)
 
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     fut1 = loop.create_future()
     fut2 = loop.create_future()
@@ -2526,4 +2522,4 @@ async def test_await_after_cancelling(loop, test_client):
         await fut1
         fut2.cancel()
 
-    await asyncio.gather(fetch1(), fetch2(), canceller(), loop=loop)
+    await asyncio.gather(fetch1(), fetch2(), canceller())

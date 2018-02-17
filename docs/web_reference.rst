@@ -856,7 +856,7 @@ WebSocketResponse
    :param float heartbeat: Send `ping` message every `heartbeat`
                            seconds and wait `pong` response, close
                            connection if `pong` response is not
-                           received.
+                           received. The timer is reset on any data reception.
 
    :param float receive_timeout: Timeout value for `receive`
                                  operations.  Default value is None

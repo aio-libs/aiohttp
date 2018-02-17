@@ -507,7 +507,8 @@ The client session supports the context manager protocol for self closing.
       :param float heartbeat: Send *ping* message every *heartbeat*
                               seconds and wait *pong* response, if
                               *pong* response is not received then
-                              close connection.
+                              close connection. The timer is reset on any data
+                              reception.
 
       :param str origin: Origin header to send to server
 
@@ -1169,6 +1170,9 @@ Response object
 
       :return str: decoded *BODY*
 
+      :raise LookupError: if the encoding detected by chardet or cchardet is
+                          unknown by Python (e.g. VISCII).
+
       .. note::
 
          If response has no ``charset`` info in ``Content-Type`` HTTP
@@ -1221,6 +1225,10 @@ Response object
       ``Content-Type`` HTTP header. If this info is not exists or there
       are no appropriate codecs for encoding then :term:`cchardet` /
       :term:`chardet` is used.
+
+      Beware that it is not always safe to use the result of this function to
+      decode a response. Some encodings detected by cchardet are not known by
+      Python (e.g. VISCII).
 
       .. versionadded:: 3.0
 

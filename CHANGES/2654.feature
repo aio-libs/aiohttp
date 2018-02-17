@@ -1,1 +1,0 @@
-Rename PayloadWriter to StreamWriter

@@ -210,8 +210,9 @@ name (usually ``deflate`` or ``gzip``) as the value of the
                                 headers=headers)
             pass
 
+.. _aiohttp-client-tracing:
 
-Client tracing
+Client Tracing
 --------------
 
 The execution flow of a specific request can be followed attaching
@@ -288,7 +289,7 @@ request time, perhaps::
                 trace_request_ctx={'foo': 'bar'})
 
 
-.. seealso:: :ref:`aiohttp-tracing-reference` section for
+.. seealso:: :ref:`aiohttp-client-tracing-reference` section for
              more information about the different signals supported.
 
 Connectors

@@ -2,10 +2,9 @@
 """Example for aiohttp.web basic server
 """
 
-import asyncio
 import textwrap
 
-from aiohttp.web import Application, Response, StreamResponse, run_app
+from aiohttp import web
 
 
 async def intro(request):
@@ -14,7 +13,7 @@ async def intro(request):
         in browser url bar
     """).format(url='127.0.0.1:8080')
     binary = txt.encode('utf8')
-    resp = StreamResponse()
+    resp = web.StreamResponse()
     resp.content_length = len(binary)
     resp.content_type = 'text/plain'
     await resp.prepare(request)
@@ -23,18 +22,18 @@ async def intro(request):
 
 
 async def simple(request):
-    return Response(text="Simple answer")
+    return web.Response(text="Simple answer")
 
 
 async def change_body(request):
-    resp = Response()
+    resp = web.Response()
     resp.body = b"Body changed"
     resp.content_type = 'text/plain'
     return resp
 
 
 async def hello(request):
-    resp = StreamResponse()
+    resp = web.StreamResponse()
     name = request.match_info.get('name', 'Anonymous')
     answer = ('Hello, ' + name).encode('utf8')
     resp.content_length = len(answer)
@@ -45,8 +44,8 @@ async def hello(request):
     return resp
 
 
-async def init(loop):
-    app = Application()
+def init():
+    app = web.Application()
     app.router.add_get('/', intro)
     app.router.add_get('/simple', simple)
     app.router.add_get('/change_body', change_body)
@@ -54,6 +53,5 @@ async def init(loop):
     app.router.add_get('/hello', hello)
     return app
 
-loop = asyncio.get_event_loop()
-app = loop.run_until_complete(init(loop))
-run_app(app)
+
+web.run_app(init())

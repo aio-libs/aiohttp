@@ -127,7 +127,7 @@ class TraceRequestEndParams:
     method = attr.ib(type=str)
     url = attr.ib(type=URL)
     headers = attr.ib(type=CIMultiDict)
-    resp = attr.ib(type=ClientResponse)
+    response = attr.ib(type=ClientResponse)
 
 
 @attr.s(frozen=True, slots=True)
@@ -145,7 +145,7 @@ class TraceRequestRedirectParams:
     method = attr.ib(type=str)
     url = attr.ib(type=URL)
     headers = attr.ib(type=CIMultiDict)
-    resp = attr.ib(type=ClientResponse)
+    response = attr.ib(type=ClientResponse)
 
 
 @attr.s(frozen=True, slots=True)
