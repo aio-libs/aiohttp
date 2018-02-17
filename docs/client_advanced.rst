@@ -210,6 +210,18 @@ name (usually ``deflate`` or ``gzip``) as the value of the
                                 headers=headers)
             pass
 
+Disabling content type validation for JSON responses
+----------------------------------------------------
+
+The standard explicitly restricts JSON ``Content-Type`` HTTP header to
+``apllication/json``. Unfortunately some servers send wrong type like
+``text/html`` or custom one, e.g. ``application/vnd.custom-type+json``.
+
+In this case there are two options:
+
+1. Pass expected type explicitly: ``await resp.json(content_type='custom')``.
+2. Disable the check entirely: ``await resp.json(content_type=None)``.
+
 .. _aiohttp-client-tracing:
 
 Client Tracing

@@ -1203,6 +1203,12 @@ Response object
                            ``None`` for encoding autodetection
                            (default).
 
+                           By the standard JSON encoding should be
+                           ``UTF-8`` but practice beats purity: some
+                           servers return non-UTF
+                           responses. Autodetection works pretty fine
+                           anyway.
+
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.
 
