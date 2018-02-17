@@ -16,7 +16,7 @@ from .web_server import Server
 from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
 
 
-__all__ = ('Application',)
+__all__ = ('Application', 'CleanupError')
 
 
 class Application(MutableMapping):
