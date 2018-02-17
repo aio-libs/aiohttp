@@ -80,7 +80,8 @@ between multiple requests::
     async with aiohttp.ClientSession() as session:
         await session.get(
             'http://httpbin.org/cookies/set?my_cookie=my_value')
-        filtered = session.cookie_jar.filter_cookies('http://httpbin.org')
+        filtered = session.cookie_jar.filter_cookies(
+            'http://httpbin.org')
         assert filtered['my_cookie'].value == 'my_value'
         async with session.get('http://httpbin.org/cookies') as r:
             json_body = await r.json()
@@ -247,7 +248,8 @@ signals of a request flow can be followed::
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
-    async with aiohttp.ClientSession(trace_configs=[trace_config]) as client:
+    async with aiohttp.ClientSession(
+            trace_configs=[trace_config]) as client:
         client.get('http://example.com/some/redirect/')
 
 The ``trace_configs`` is a list that can contain instances of
@@ -259,8 +261,8 @@ nature are installed to perform their job in each signal handle::
     from mylib.traceconfig import AuditRequest
     from mylib.traceconfig import XRay
 
-    async with aiohttp.ClientSession(trace_configs=[AuditRequest(),
-                                                    XRay()]) as client:
+    async with aiohttp.ClientSession(
+            trace_configs=[AuditRequest(), XRay()]) as client:
         client.get('http://example.com/some/redirect/')
 
 
@@ -451,15 +453,15 @@ You may also verify certificates via *SHA256* fingerprint::
 
   # Attempt to connect to https://www.python.org
   # with a pin to a bogus certificate:
-  bad_fingerprint = b'0'*64
+  bad_fp = b'0'*64
   exc = None
   try:
       r = await session.get('https://www.python.org',
-                            ssl=aiohttp.Fingerprint(bad_fingerprint))
+                            ssl=aiohttp.Fingerprint(bad_fp))
   except aiohttp.FingerprintMismatch as e:
       exc = e
   assert exc is not None
-  assert exc.expected == bad_fingerprint
+  assert exc.expected == bad_fp
 
   # www.python.org cert's actual fingerprint
   assert exc.got == b'...'
@@ -487,7 +489,7 @@ aiohttp supports HTTP/HTTPS proxies. You have to use
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
-                              proxy="http://some.proxy.com") as resp:
+                              proxy="http://proxy.com") as resp:
            print(resp.status)
 
 It also supports proxy authorization::
@@ -495,7 +497,7 @@ It also supports proxy authorization::
    async with aiohttp.ClientSession() as session:
        proxy_auth = aiohttp.BasicAuth('user', 'pass')
        async with session.get("http://python.org",
-                              proxy="http://some.proxy.com",
+                              proxy="http://proxy.com",
                               proxy_auth=proxy_auth) as resp:
            print(resp.status)
 
@@ -537,8 +539,8 @@ asyncio.sleep(0)``) will suffice::
 
     async def read_website():
         async with aiohttp.ClientSession() as session:
-            async with session.get('http://example.org/') as response:
-                await response.read()
+            async with session.get('http://example.org/') as resp:
+                await resp.read()
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(read_website())
