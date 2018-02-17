@@ -14,13 +14,13 @@ arguments to the `cli_app:init` function for processing.
 
 from argparse import ArgumentParser
 
-from aiohttp.web import Application, Response
+from aiohttp import web
 
 
 def display_message(req):
     args = req.app["args"]
     text = "\n".join([args.message] * args.repeat)
-    return Response(text=text)
+    return web.Response(text=text)
 
 
 def init(argv):
@@ -48,7 +48,7 @@ def init(argv):
 
     args = arg_parser.parse_args(argv)
 
-    app = Application()
+    app = web.Application()
     app["args"] = args
     app.router.add_get('/', display_message)
 

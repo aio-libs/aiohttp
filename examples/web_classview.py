@@ -44,15 +44,15 @@ async def index(request):
         </body>
       </html>
     """
-    return Response(text=txt, content_type='text/html')
+    return web.Response(text=txt, content_type='text/html')
 
 
 def init():
-    app = Application()
+    app = web.Application()
     app.router.add_get('/', index)
     app.router.add_get('/get', MyView)
     app.router.add_post('/post', MyView)
     return app
 
 
-run_app(init())
+web.run_app(init())
