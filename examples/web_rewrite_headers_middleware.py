@@ -3,8 +3,6 @@
 Example for rewriting response headers by middleware.
 """
 
-import asyncio
-
 from aiohttp.web import Application, HTTPException, Response, run_app
 
 
@@ -26,12 +24,10 @@ async def middleware_factory(app, next_handler):
     return middleware
 
 
-def init(loop):
+def init():
     app = Application(loop=loop, middlewares=[middleware_factory])
     app.router.add_get('/', handler)
     return app
 
 
-loop = asyncio.get_event_loop()
-app = init(loop)
-run_app(app)
+run_app(init())
