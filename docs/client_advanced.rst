@@ -92,13 +92,13 @@ Response Headers and Cookies
 We can view the server's response :attr:`ClientResponse.headers` using
 a :class:`~multidict.CIMultiDictProxy`::
 
-    >>> resp.headers
-    {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
-     'CONTENT-TYPE': 'application/json',
-     'DATE': 'Tue, 15 Jul 2014 16:49:51 GMT',
-     'SERVER': 'gunicorn/18.0',
-     'CONTENT-LENGTH': '331',
-     'CONNECTION': 'keep-alive'}
+    assert resp.headers == {
+        'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
+        'CONTENT-TYPE': 'application/json',
+        'DATE': 'Tue, 15 Jul 2014 16:49:51 GMT',
+        'SERVER': 'gunicorn/18.0',
+        'CONTENT-LENGTH': '331',
+        'CONNECTION': 'keep-alive'}
 
 The dictionary is special, though: it's made just for HTTP
 headers. According to `RFC 7230
@@ -108,11 +108,9 @@ key as HTTP protocol does.
 
 So, we can access the headers using any capitalization we want::
 
-    >>> resp.headers['Content-Type']
-    'application/json'
+    assert resp.headers['Content-Type'] == 'application/json'
 
-    >>> resp.headers.get('content-type')
-    'application/json'
+    assert resp.headers.get('content-type') == 'application/json'
 
 All headers are converted from binary data using UTF-8 with
 ``surrogateescape`` option. That works fine on most cases but
@@ -121,12 +119,12 @@ encoding. While these headers are malformed from :rfc:`7230`
 perspective they may be retrieved by using
 :attr:`ClientResponse.raw_headers` property::
 
-    >>> resp.raw_headers
-    ((b'SERVER', b'nginx'),
-     (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
-     (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
-     (b'CONTENT-LENGTH', b'12150'),
-     (b'CONNECTION', b'keep-alive'))
+    assert resp.raw_headers == (
+        (b'SERVER', b'nginx'),
+        (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
+        (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
+        (b'CONTENT-LENGTH', b'12150'),
+        (b'CONNECTION', b'keep-alive'))
 
 
 If a response contains some *HTTP Cookies*, you can quickly access them::
@@ -149,11 +147,13 @@ Redirection History
 If a request was redirected, it is possible to view previous responses using
 the :attr:`~ClientResponse.history` attribute::
 
-    >>> resp = await session.get('http://example.com/some/redirect/')
-    >>> resp
-    <ClientResponse(http://example.com/some/other/url/) [200]>
-    >>> resp.history
-    (<ClientResponse(http://example.com/some/redirect/) [301]>,)
+    resp = await session.get('http://example.com/some/redirect/')
+    assert resp.status == 200
+    assert resp.url = URL('http://example.com/some/other/url/')
+    assert len(resp.history) == 1
+    assert resp.history[0].status == 301
+    assert resp.history[0].url = URL(
+        'http://example.com/some/redirect/')
 
 If no redirects occurred or ``allow_redirects`` is set to ``False``,
 history will be an empty sequence.

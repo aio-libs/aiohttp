@@ -210,8 +210,8 @@ Routes can also be given a *name*::
 Which can then be used to access and build a *URL* for that resource later (e.g.
 in a :ref:`request handler <aiohttp-web-handler>`)::
 
-   >>> request.app.router['root'].url_for().with_query({"a": "b", "c": "d"})
-   URL('/root?a=b&c=d')
+   url == request.app.router['root'].url_for().with_query({"a": "b", "c": "d"})
+   assert url == URL('/root?a=b&c=d')
 
 A more interesting example is building *URLs* for :ref:`variable
 resources <aiohttp-web-variable-handler>`::
@@ -221,9 +221,9 @@ resources <aiohttp-web-variable-handler>`::
 
 In this case you can also pass in the *parts* of the route::
 
-   >>> request.app.router['user-info'].url_for(user='john_doe')\
-   ...                                         .with_query("a=b")
-   '/john_doe/info?a=b'
+   url = request.app.router['user-info'].url_for(user='john_doe')
+   url_with_qs = url.with_query("a=b")
+   assert url_with_qs == '/john_doe/info?a=b'
 
 
 Organizing Handlers in Classes
