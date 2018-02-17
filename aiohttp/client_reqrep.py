@@ -840,8 +840,11 @@ class ClientResponse(HeadersMixin):
             await self.read()
 
         if content_type:
-            ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-            if content_type not in ctype:
+            ctype_header = self.headers.get(hdrs.CONTENT_TYPE, '')
+            ctype = helpers.strip_mimetype_parameters(ctype_header.lower())
+
+            if helpers.strip_mimetype_parameters(
+                    content_type.lower()) not in ctype:
                 raise ContentTypeError(
                     self.request_info,
                     self.history,

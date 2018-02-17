@@ -1,0 +1,1 @@
+Fixes content type check in client by ignoring content type parameters like encoding etc.

@@ -243,6 +243,10 @@ def parse_mimetype(mimetype):
                     parameters=params)
 
 
+def strip_mimetype_parameters(mimetype):
+    return mimetype.split(";")[0]
+
+
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
     if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
