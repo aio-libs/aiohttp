@@ -32,7 +32,8 @@ Key Features
 ============
 
 - Supports both client and server side of HTTP protocol.
-- Supports both client and server Web-Sockets out-of-the-box.
+- Supports both client and server Web-Sockets out-of-the-box without the
+  Callback Hell.
 - Web-server has middlewares and pluggable routing.
 
 
