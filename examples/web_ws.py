@@ -54,4 +54,4 @@ def init():
     return app
 
 
-run_app(init())
+web.run_app(init())

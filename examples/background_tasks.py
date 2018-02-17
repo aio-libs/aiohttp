@@ -61,4 +61,5 @@ def init():
     app.on_shutdown.append(on_shutdown)
     return app
 
+
 web.run_app(init())
