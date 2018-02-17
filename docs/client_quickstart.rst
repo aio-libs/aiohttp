@@ -26,7 +26,7 @@ Now, let's try to get a web-page. For example let's get GitHub's public
 time-line::
 
     async with aiohttp.ClientSession() as session:
-        async with session.get('https://api.github.com/events') as resp:
+        async with session.get('http://httpbin.org/get') as resp:
             print(resp.status)
             print(await resp.text())
 
@@ -70,7 +70,8 @@ following code::
     params = {'key1': 'value1', 'key2': 'value2'}
     async with session.get('http://httpbin.org/get',
                            params=params) as resp:
-        assert str(resp.url) == 'http://httpbin.org/get?key2=value2&key1=value1'
+        expect = 'http://httpbin.org/get?key2=value2&key1=value1'
+        assert str(resp.url) == expect
 
 You can see that the URL has been correctly encoded by printing the URL.
 
@@ -84,7 +85,8 @@ that case you can specify multiple values for each key::
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
                            params=params) as r:
-        assert str(r.url) == 'http://httpbin.org/get?key=value2&key=value1'
+        expect == 'http://httpbin.org/get?key=value2&key=value1'
+        assert str(r.url) == expect
 
 You can also pass :class:`str` content as param, but beware -- content
 is not encoded by library. Note that ``+`` is not encoded::
@@ -108,7 +110,8 @@ is not encoded by library. Note that ``+`` is not encoded::
 
    To disable canonization use ``encoded=True`` parameter for URL construction::
 
-      await session.get(URL('http://example.com/%30', encoded=True))
+      await session.get(
+          URL('http://example.com/%30', encoded=True))
 
 .. warning::
 
@@ -170,8 +173,9 @@ parameter::
 
   import ujson
 
-  async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
-      async with session.post(url, json={'test': 'object'})
+  async with aiohttp.ClientSession(
+          json_serialize=ujson.dumps) as session:
+      await session.post(url, json={'test': 'object'})
 
 .. note::
 
@@ -342,7 +346,8 @@ calculate the file SHA1 hash::
 
    resp = session.get('http://httpbin.org/post')
    stream = StreamReader()
-   loop.create_task(session.post('http://httpbin.org/post', data=stream))
+   loop.create_task(session.post('http://httpbin.org/post',
+                                 data=stream))
 
    file_hash = await feed_stream(resp, stream)
 
@@ -371,7 +376,7 @@ object you can communicate with websocket server using response's
 methods::
 
    session = aiohttp.ClientSession()
-   async with session.ws_connect('http://example.org/websocket') as ws:
+   async with session.ws_connect('http://example.org/ws') as ws:
 
        async for msg in ws:
            if msg.type == aiohttp.WSMsgType.TEXT:

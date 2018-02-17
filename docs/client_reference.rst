@@ -673,7 +673,8 @@ certification chaining.
       import aiohttp
 
       async def fetch():
-          async with aiohttp.request('GET', 'http://python.org/') as resp:
+          async with aiohttp.request('GET',
+                  'http://python.org/') as resp:
               assert resp.status == 200
               print(await resp.text())
 
