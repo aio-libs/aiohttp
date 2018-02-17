@@ -3,11 +3,11 @@
 import asyncio
 
 import aioredis
-from aiohttp.web import Application, WebSocketResponse, run_app
+from aiohttp import web
 
 
 async def websocket_handler(request):
-    ws = WebSocketResponse()
+    ws = web.WebSocketResponse()
     await ws.prepare(request)
     request.app['websockets'].append(ws)
     try:
@@ -52,8 +52,8 @@ async def cleanup_background_tasks(app):
     await app['redis_listener']
 
 
-async def init(loop):
-    app = Application()
+def init():
+    app = web.Application()
     app['websockets'] = []
     app.router.add_get('/news', websocket_handler)
     app.on_startup.append(start_background_tasks)
@@ -61,6 +61,4 @@ async def init(loop):
     app.on_shutdown.append(on_shutdown)
     return app
 
-loop = asyncio.get_event_loop()
-app = loop.run_until_complete(init(loop))
-run_app(app)
+web.run_app(init())

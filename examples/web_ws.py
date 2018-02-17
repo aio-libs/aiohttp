@@ -4,19 +4,18 @@
 
 import os
 
-from aiohttp.web import (Application, Response, WebSocketResponse, WSMsgType,
-                         run_app)
+from aiohttp import web
 
 
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 
 async def wshandler(request):
-    resp = WebSocketResponse()
+    resp = web.WebSocketResponse()
     available = resp.can_prepare(request)
     if not available:
         with open(WS_FILE, 'rb') as fp:
-            return Response(body=fp.read(), content_type='text/html')
+            return web.Response(body=fp.read(), content_type='text/html')
 
     await resp.prepare(request)
 
@@ -27,7 +26,7 @@ async def wshandler(request):
         request.app['sockets'].append(resp)
 
         async for msg in resp:
-            if msg.type == WSMsgType.TEXT:
+            if msg.type == web.WSMsgType.TEXT:
                 for ws in request.app['sockets']:
                     if ws is not resp:
                         await ws.send_str(msg.data)
@@ -48,7 +47,7 @@ async def on_shutdown(app):
 
 
 def init():
-    app = Application()
+    app = web.Application()
     app['sockets'] = []
     app.router.add_get('/', wshandler)
     app.on_shutdown.append(on_shutdown)
