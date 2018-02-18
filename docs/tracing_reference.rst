@@ -11,6 +11,90 @@ A reference for client tracing API.
 
 .. seealso:: :ref:`aiohttp-client-tracing` for tracing usage instructions.
 
+
+Request life cycle
+------------------
+
+A request goes through the following stages and corresponding fallbacks.
+
+
+Overview
+^^^^^^^^
+
+.. blockdiag::
+   :desctable:
+
+   blockdiag {
+     start[shape=beginpoint, description="on_request_start"];
+     redirect[description="on_request_redirect"];
+     end[shape=endpoint, description="on_request_end"];
+     exception[shape=flowchart.terminator, description="on_request_exception"];
+
+     got_response;
+     send_request;
+
+     start -> acquire_connection;
+     acquire_connection -> resolve_dns;
+     resolve_dns -> send_request;
+     send_request -> got_response;
+     got_response -> redirect;
+     got_response -> end;
+     redirect -> send_request;
+     send_request -> exception;
+
+   }
+
+
+Connection acquiring
+^^^^^^^^^^^^^^^^^^^^
+
+.. blockdiag::
+   :desctable:
+
+   blockdiag {
+
+     begin[shape=beginpoint];
+     end[shape=endpoint];
+     exception[shape=flowchart.terminator];
+
+     queued_start[description="on_connection_queued_start"];
+     queued_end[description="on_connection_queued_end"];
+     create_start[description="on_connection_create_start"];
+     create_end[description="on_connection_create_end"];
+     reuseconn[description="on_connection_reuseconn"];
+
+     begin -> reuseconn -> end;
+     begin -> create_start;
+     create_start -> exception;
+     create_start -> create_end -> end;
+     begin -> queued_start;
+     queued_start -> queued_end -> end;
+
+   }
+
+DNS resolving
+^^^^^^^^^^^^^
+
+.. blockdiag::
+   :desctable:
+
+   blockdiag {
+     dns_resolvehost_start;
+     dns_resolvehost_end;
+     dns_cache_hit;
+     dns_cache_miss;
+
+     dns_request;
+     request_exception;
+
+     dns_request -> dns_cache_hit;
+     dns_request -> dns_cache_miss -> dns_resolvehost_start;
+     dns_resolvehost_start -> dns_resolvehost_end;
+     dns_resolvehost_start -> request_exception;
+
+   }
+
+
 TraceConfig
 -----------
 
