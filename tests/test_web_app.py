@@ -366,3 +366,26 @@ async def test_cleanup_ctx_exception_on_cleanup_multiple():
     assert str(exc.exceptions[0]) == 'fail_3'
     assert str(exc.exceptions[1]) == 'fail_2'
     assert out == ['pre_1', 'pre_2', 'pre_3', 'post_3', 'post_2', 'post_1']
+
+
+async def test_cleanup_ctx_multiple_yields():
+    app = web.Application()
+    out = []
+
+    def f(num):
+        @async_generator
+        async def inner(app):
+            out.append('pre_' + str(num))
+            await yield_(None)
+            out.append('post_' + str(num))
+            await yield_(None)
+        return inner
+
+    app.cleanup_ctx.append(f(1))
+    app.freeze()
+    await app.startup()
+    assert out == ['pre_1']
+    with pytest.raises(RuntimeError) as ctx:
+        await app.cleanup()
+    assert "has more than one 'yield'" in str(ctx.value)
+    assert out == ['pre_1', 'post_1']
