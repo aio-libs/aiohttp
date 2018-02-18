@@ -218,6 +218,7 @@ request’s
 Request’s
 requote
 requoting
+resolvehost
 resolvers
 reusage
 reuseconn
