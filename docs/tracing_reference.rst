@@ -24,18 +24,21 @@ Overview
 .. blockdiag::
    :desctable:
 
+
    blockdiag {
+     orientation = portrait;
+
      start[shape=beginpoint, description="on_request_start"];
      redirect[description="on_request_redirect"];
      end[shape=endpoint, description="on_request_end"];
      exception[shape=flowchart.terminator, description="on_request_exception"];
 
+     acquire_connection[description="Connection acquiring"];
      got_response;
      send_request;
 
      start -> acquire_connection;
-     acquire_connection -> resolve_dns;
-     resolve_dns -> send_request;
+     acquire_connection -> send_request;
      send_request -> got_response;
      got_response -> redirect;
      got_response -> end;
@@ -52,10 +55,11 @@ Connection acquiring
    :desctable:
 
    blockdiag {
+     orientation = portrait;
 
      begin[shape=beginpoint];
      end[shape=endpoint];
-     exception[shape=flowchart.terminator];
+     exception[shape=flowchart.terminator, description="Exception raised"];
 
      queued_start[description="on_connection_queued_start"];
      queued_end[description="on_connection_queued_end"];
@@ -63,12 +67,21 @@ Connection acquiring
      create_end[description="on_connection_create_end"];
      reuseconn[description="on_connection_reuseconn"];
 
-     begin -> reuseconn -> end;
+     resolve_dns[description="DNS resolving"];
+     sock_connect[description="Connection establishment"];
+
+     begin -> reuseconn;
      begin -> create_start;
-     create_start -> exception;
-     create_start -> create_end -> end;
+     create_start -> resolve_dns;
+     resolve_dns -> exception;
+     resolve_dns -> sock_connect;
+     sock_connect -> exception;
+     sock_connect -> create_end -> end;
      begin -> queued_start;
-     queued_start -> queued_end -> end;
+     queued_start -> queued_end;
+     queued_end -> reuseconn;
+     queued_end -> create_start;
+     reuseconn -> end;
 
    }
 
@@ -79,18 +92,21 @@ DNS resolving
    :desctable:
 
    blockdiag {
-     dns_resolvehost_start;
-     dns_resolvehost_end;
-     dns_cache_hit;
-     dns_cache_miss;
+     orientation = portrait;
 
-     dns_request;
-     request_exception;
+     begin[shape=beginpoint];
+     end[shape=endpoint];
+     exception[shape=flowchart.terminator, description="Exception raised"];
 
-     dns_request -> dns_cache_hit;
-     dns_request -> dns_cache_miss -> dns_resolvehost_start;
-     dns_resolvehost_start -> dns_resolvehost_end;
-     dns_resolvehost_start -> request_exception;
+     resolve_start[description="on_dns_resolvehost_start"];
+     resolve_end[description="on_dns_resolvehost_end"];
+     cache_hit[description="on_dns_cache_hit"];
+     cache_miss[description="on_dns_cache_miss"];
+
+     begin -> cache_hit -> end;
+     begin -> cache_miss -> resolve_start;
+     resolve_start -> resolve_end -> end;
+     resolve_start -> exception;
 
    }
 
