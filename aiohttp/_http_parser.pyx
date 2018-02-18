@@ -25,6 +25,8 @@ from . cimport _cparser as cparser
 __all__ = ('HttpRequestParserC', 'HttpResponseMessageC', 'parse_url')
 
 
+cdef object URL_build = URL.build
+
 @cython.internal
 cdef class HttpParser:
 
@@ -610,7 +612,7 @@ def _parse_url(char* buf_data, size_t length):
 
                 user, sep, password = userinfo.partition(':')
 
-            return URL.build(scheme=schema,
+            return URL_build(scheme=schema,
                              user=user, password=password, host=host, port=port,
                              path=path, query=query, fragment=fragment)
         else:
