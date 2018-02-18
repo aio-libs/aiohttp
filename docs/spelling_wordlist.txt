@@ -87,6 +87,7 @@ epoll
 Facebook
 facto
 fallback
+fallbacks
 filename
 finalizers
 frontend
@@ -219,6 +220,7 @@ requote
 requoting
 resolvers
 reusage
+reuseconn
 Runit
 sa
 Satisfiable
