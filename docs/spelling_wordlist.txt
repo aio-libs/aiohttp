@@ -87,6 +87,7 @@ epoll
 Facebook
 facto
 fallback
+fallbacks
 filename
 finalizers
 frontend
@@ -217,8 +218,10 @@ request’s
 Request’s
 requote
 requoting
+resolvehost
 resolvers
 reusage
+reuseconn
 Runit
 sa
 Satisfiable
