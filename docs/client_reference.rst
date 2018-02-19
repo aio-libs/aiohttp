@@ -673,7 +673,8 @@ certification chaining.
       import aiohttp
 
       async def fetch():
-          async with aiohttp.request('GET', 'http://python.org/') as resp:
+          async with aiohttp.request('GET',
+                  'http://python.org/') as resp:
               assert resp.status == 200
               print(await resp.text())
 
@@ -1202,6 +1203,12 @@ Response object
       :param str encoding: text encoding used for *BODY* decoding, or
                            ``None`` for encoding autodetection
                            (default).
+
+                           By the standard JSON encoding should be
+                           ``UTF-8`` but practice beats purity: some
+                           servers return non-UTF
+                           responses. Autodetection works pretty fine
+                           anyway.
 
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.

@@ -3,7 +3,6 @@
 with decorator definition for routes
 """
 
-import asyncio
 import textwrap
 
 from aiohttp import web
@@ -53,11 +52,10 @@ async def hello(request):
     return resp
 
 
-async def init():
+def init():
     app = web.Application()
     app.router.add_routes(routes)
     return app
 
-loop = asyncio.get_event_loop()
-app = loop.run_until_complete(init())
-web.run_app(app)
+
+web.run_app(init())
