@@ -393,6 +393,11 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                             "please raise the exception instead",
                             DeprecationWarning)
 
+                if None in resp.headers.values():
+                    resp = self.handle_error(
+                        request, 500,
+                        exc=TypeError("Header value can't be None!")
+                    )
                 await resp.prepare(request)
                 await resp.write_eof()
 
