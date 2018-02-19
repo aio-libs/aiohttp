@@ -55,7 +55,7 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         if headers is not None:
             self._headers = CIMultiDict(headers)
             if None in headers.values():
-                raise RuntimeError("Header value can't be None!")
+                raise ValueError("Header value can't be None!")
         else:
             self._headers = CIMultiDict()
 
