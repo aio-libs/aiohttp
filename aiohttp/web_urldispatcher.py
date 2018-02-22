@@ -552,14 +552,22 @@ class StaticResource(PrefixResource):
         return iter(self._routes.values())
 
     async def _handle(self, request):
-        filename = request.match_info['filename']
+        rel_url = request.match_info['filename']
         try:
+            filename = Path(rel_url)
+            if filename.anchor:
+                # rel_url is an absolute name like
+                # /static/\\machine_name\c$ or /static/D:\path
+                # where the static dir is totally different
+                raise HTTPForbidden()
             filepath = self._directory.joinpath(filename).resolve()
             if not self._follow_symlinks:
                 filepath.relative_to(self._directory)
         except (ValueError, FileNotFoundError) as error:
             # relatively safe
             raise HTTPNotFound() from error
+        except HTTPForbidden:
+            raise
         except Exception as error:
             # perm error or other kind!
             request.app.logger.exception(error)
