@@ -27,7 +27,7 @@ Security Fix
 3.0.1
 =====
 
-- Technical release for fixing disrtribution problems.
+- Technical release for fixing distribution problems.
 
 3.0.0 (2018-02-12)
 ==================
