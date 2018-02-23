@@ -306,7 +306,7 @@ async def test_static_file_directory_traversal_attack(loop, aiohttp_client):
     url_abspath = \
         '/static/' + os.path.abspath(os.path.join(dirname, relpath))
     resp = await client.get(url_abspath)
-    assert 404 == resp.status
+    assert 403 == resp.status
 
 
 def test_static_route_path_existence_check():

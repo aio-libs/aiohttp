@@ -14,6 +14,21 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.2 (2018-02-23)
+==================
+
+Security Fix
+------------
+
+- Prevent Windows absolute URLs in static files.  Paths like
+  ``/static/D:\path`` and ``/static/\\hostname\drive\path`` are
+  forbidden.
+
+3.0.1
+=====
+
+- Technical release for fixing distribution problems.
+
 3.0.0 (2018-02-12)
 ==================
 
