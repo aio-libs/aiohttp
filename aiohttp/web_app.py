@@ -13,9 +13,8 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import (DynamicSubAppResource,
-                                PrefixedSubAppResource,
-                                UrlDispatcher, ROUTE_RE)
+from .web_urldispatcher import (ROUTE_RE, DynamicSubAppResource,
+                                PrefixedSubAppResource, UrlDispatcher)
 
 
 __all__ = ('Application', 'CleanupError')

@@ -12,9 +12,9 @@ from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
 from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
-                                       ResourceRoute, SystemRoute, View,
                                        DynamicSubAppResource,
-                                       PrefixedSubAppResource,
+                                       PrefixedSubAppResource, ResourceRoute,
+                                       SystemRoute, View,
                                        _default_expect_handler)
 
 
