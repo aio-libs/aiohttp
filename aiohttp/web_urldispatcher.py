@@ -682,6 +682,7 @@ class PrefixedSubAppResource(PrefixResource):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
         match_info = await self._app.router.resolve(request)
+        match_info.maps.append({})
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
