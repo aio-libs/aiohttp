@@ -1354,6 +1354,10 @@ duplicated like one using :meth:`Application.copy`.
       In resolving process if request's path starts with *prefix* then
       further resolving is passed to *subapp*.
 
+      You may use variables in *prefix*. If a matched resource in the
+      sub-application defines another variable with the same name, the
+      sub-application's match result will override the *prefix*'s match result.
+
       :param str prefix: path's prefix for the resource.
 
       :param Application subapp: nested application attached under *prefix*.
