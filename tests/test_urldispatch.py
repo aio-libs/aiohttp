@@ -1134,6 +1134,8 @@ async def test_dynamic_subapp_resolution_overriden(app, loop):
     ret = await resource.resolve(
         make_mocked_request('GET', '/andrew/abc.py'))
     assert 'abc' == ret[0]['name']
+    assert 'abc' == ret[0].maps[0]['name']
+    assert 'andrew' == ret[0].maps[1]['name']
     assert set() == ret[1]
 
 

@@ -197,7 +197,7 @@ class AbstractRoute(abc.ABC):
         return await self._expect_handler(request)
 
 
-class UrlMappingMatchInfo(dict, AbstractMatchInfo):
+class UrlMappingMatchInfo(collections.ChainMap, AbstractMatchInfo):
 
     def __init__(self, match_dict, route):
         super().__init__(match_dict)
@@ -256,7 +256,7 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         self._frozen = True
 
     def __repr__(self):
-        return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
+        return "<MatchInfo {}: {}>".format(dict(self).__repr__(), self._route)
 
 
 class MatchInfoError(UrlMappingMatchInfo):
@@ -732,9 +732,7 @@ class DynamicSubAppResource(DynamicResource):
         subrequest = request.clone(
             rel_url=request.url.with_path(request.url.raw_path[mend:]))
         match_info = await self._app.router.resolve(subrequest)
-        for k, v in mdict.items():
-            if k not in match_info:
-                match_info[k] = v
+        match_info.maps.append(mdict)
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
