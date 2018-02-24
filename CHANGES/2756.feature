@@ -1,1 +1,1 @@
-Allow use of variables in subapp prefixes.
+Allow use of variables in sub-application prefixes.
