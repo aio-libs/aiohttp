@@ -13,6 +13,8 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
 from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
                                        ResourceRoute, SystemRoute, View,
+                                       DynamicSubAppResource,
+                                       PrefixedSubAppResource,
                                        _default_expect_handler)
 
 
@@ -1003,7 +1005,7 @@ def test_url_for_in_resource_route(router):
 
 def test_subapp_get_info(app, loop):
     subapp = web.Application()
-    resource = subapp.add_subapp('/pre', subapp)
+    resource = app.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
@@ -1083,6 +1085,55 @@ def test_set_options_route(router):
 def test_dynamic_url_with_name_started_from_undescore(router):
     route = router.add_route('GET', '/get/{_name}', make_handler())
     assert URL('/get/John') == route.url_for(_name='John')
+
+
+def test_add_subapp_with_plain_prefix(app, loop):
+    subapp = web.Application()
+    resource = app.add_subapp('/name/prefix', subapp)
+    assert isinstance(resource, PrefixedSubAppResource)
+
+
+def test_add_subapp_with_dynamic_prefix(app, loop):
+    subapp = web.Application()
+    resource = app.add_subapp('/{name}/prefix', subapp)
+    assert isinstance(resource, DynamicSubAppResource)
+    assert resource.get_info() == {'prefix': '/{name}/prefix', 'app': subapp}
+
+
+async def test_plain_subapp_resolution(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/abc.py')
+    subresource.add_route('GET', handler)
+    resource = app.add_subapp('/plain', subapp)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/plain/abc.py'))
+    assert len(ret[0]) == 0
+    assert set() == ret[1]
+
+
+async def test_dynamic_subapp_resolution(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/abc.py')
+    subresource.add_route('GET', handler)
+    resource = app.add_subapp('/{name}', subapp)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/andrew/abc.py'))
+    assert 'andrew' == ret[0]['name']
+    assert set() == ret[1]
+
+
+async def test_dynamic_subapp_resolution_overriden(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/{name}.py')
+    subresource.add_route('GET', handler)
+    resource = app.add_subapp('/{name}', subapp)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/andrew/abc.py'))
+    assert 'abc' == ret[0]['name']
+    assert set() == ret[1]
 
 
 def test_cannot_add_subapp_with_empty_prefix(app, loop):

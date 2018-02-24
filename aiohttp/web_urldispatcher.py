@@ -700,6 +700,64 @@ class PrefixedSubAppResource(PrefixResource):
             prefix=self._prefix, app=self._app)
 
 
+class DynamicSubAppResource(DynamicResource):
+
+    def __init__(self, prefix, app):
+        super().__init__(prefix)
+        self._app = app
+        self._prefix = prefix
+
+    def add_prefix(self, prefix):
+        super().add_prefix(prefix)
+        for resource in self._app.router.resources():
+            resource.add_prefix(prefix)
+
+    def url_for(self, *args, **kwargs):
+        raise RuntimeError(".url_for() is not supported "
+                           "by sub-application root")
+
+    def get_info(self):
+        return {'app': self._app,
+                'prefix': self._prefix}
+
+    def _match(self, path):
+        # match from the beginning of path
+        match = self._pattern.match(path)
+        if match is None:
+            return None, -1
+        else:
+            mdict = {key: URL.build(path=value, encoded=True).path
+                     for key, value in match.groupdict().items()}
+            return mdict, match.end()
+
+    async def resolve(self, request):
+        mdict, mend = self._match(request.url.raw_path)
+        if mdict is None:
+            return None, set()
+        subrequest = request.clone(
+            rel_url=request.url.with_path(request.url.raw_path[mend:]))
+        match_info = await self._app.router.resolve(subrequest)
+        for k, v in mdict.items():
+            if k not in match_info:
+                match_info[k] = v
+        match_info.add_app(self._app)
+        if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
+            methods = match_info.http_exception.allowed_methods
+        else:
+            methods = set()
+        return match_info, methods
+
+    def __len__(self):
+        return len(self._app.router.routes())
+
+    def __iter__(self):
+        return iter(self._app.router.routes())
+
+    def __repr__(self):
+        return "<DynamicSubAppResource {prefix} -> {app!r}>".format(
+            prefix=self._prefix, app=self._app)
+
+
 class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
