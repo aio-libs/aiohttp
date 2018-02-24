@@ -1357,7 +1357,7 @@ duplicated like one using :meth:`Application.copy`.
       You may use variables in *prefix*. If a matched resource in the
       sub-application defines another variable with the same name, the
       sub-application's match result will override the *prefix*'s match result.
-      In web handlers, all overriden results can be accessed via ``maps``
+      In web handlers, all overridden results can be accessed via ``maps``
       attribute of ``request.match_info`` object as it is a merged view
       (:class:`collections.ChainMap`) of all nested dynamically prefixed
       sub-applications in the reversed order.

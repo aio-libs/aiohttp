@@ -1125,7 +1125,7 @@ async def test_dynamic_subapp_resolution(app, loop):
     assert set() == ret[1]
 
 
-async def test_dynamic_subapp_resolution_overriden(app, loop):
+async def test_dynamic_subapp_resolution_overridden(app, loop):
     handler = make_handler()
     subapp = web.Application()
     subresource = subapp.router.add_resource('/{name}.py')

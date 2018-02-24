@@ -352,7 +352,7 @@ def test_basic_auth_from_url(make_request):
     assert 'python.org' == req.host
 
 
-def test_basic_auth_from_url_overriden(make_request):
+def test_basic_auth_from_url_overridden(make_request):
     req = make_request('get', 'http://garbage@python.org',
                        auth=aiohttp.BasicAuth('nkim', '1234'))
     assert 'AUTHORIZATION' in req.headers
