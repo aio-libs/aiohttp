@@ -1115,12 +1115,13 @@ async def test_plain_subapp_resolution(app, loop):
 async def test_dynamic_subapp_resolution(app, loop):
     handler = make_handler()
     subapp = web.Application()
-    subresource = subapp.router.add_resource('/abc.py')
+    subresource = subapp.router.add_resource('/{myvar}.py')
     subresource.add_route('GET', handler)
     resource = app.add_subapp('/{name}', subapp)
     ret = await resource.resolve(
         make_mocked_request('GET', '/andrew/abc.py'))
     assert 'andrew' == ret[0]['name']
+    assert 'abc' == ret[0]['myvar']
     assert set() == ret[1]
 
 
@@ -1133,6 +1134,21 @@ async def test_dynamic_subapp_resolution_overriden(app, loop):
     ret = await resource.resolve(
         make_mocked_request('GET', '/andrew/abc.py'))
     assert 'abc' == ret[0]['name']
+    assert set() == ret[1]
+
+
+async def test_nested_dynamic_subapp_resolution(app, loop):
+    handler = make_handler()
+    subapp1 = web.Application()
+    subapp2 = web.Application()
+    subresource2 = subapp2.router.add_resource('/{myvar}.txt')
+    subresource2.add_route('GET', handler)
+    subapp1.add_subapp('/{name}', subapp2)
+    resource = app.add_subapp('/foo', subapp1)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/foo/bar/abc.txt'))
+    assert 'bar' == ret[0]['name']
+    assert 'abc' == ret[0]['myvar']
     assert set() == ret[1]
 
 
