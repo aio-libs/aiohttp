@@ -1708,3 +1708,16 @@ async def test_request_path(aiohttp_client):
     assert 200 == resp.status
     txt = await resp.text()
     assert 'OK' == txt
+
+
+async def test_none_in_resp_headers(aiohttp_client):
+
+    async def handler(request):
+        return web.Response(headers={'a': None})
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 500 == resp.status
