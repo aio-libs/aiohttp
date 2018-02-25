@@ -461,7 +461,7 @@ class ClientRequest:
         finally:
             self._writer = None
 
-    def send(self, conn):
+    async def send(self, conn):
         # Specify request target:
         # - CONNECT request must send authority form URI
         # - not CONNECT proxy must send absolute form URI
