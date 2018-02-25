@@ -93,60 +93,6 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
             ssl=None)
 
-    @mock.patch('aiohttp.connector.ClientRequest', **clientrequest_mock_attrs)
-    def test_connect_req_verify_ssl_true(self, ClientRequestMock):
-        req = ClientRequest(
-            'GET', URL('https://www.python.org'),
-            proxy=URL('http://proxy.example.com'),
-            loop=self.loop,
-            ssl=True,
-        )
-
-        proto = mock.Mock()
-        connector = aiohttp.TCPConnector(loop=self.loop)
-        connector._create_proxy_connection = mock.MagicMock(
-            side_effect=connector._create_proxy_connection)
-        connector._create_direct_connection = mock.MagicMock(
-            side_effect=connector._create_direct_connection)
-        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
-
-        self.loop.create_connection = make_mocked_coro(
-            (proto.transport, proto))
-        self.loop.run_until_complete(connector.connect(req))
-
-        connector._create_proxy_connection.assert_called_with(
-            req,
-            traces=None)
-        ((proxy_req,), _) = connector._create_direct_connection.call_args
-        proxy_req.send.assert_called_with(mock.ANY)
-
-    @mock.patch('aiohttp.connector.ClientRequest', **clientrequest_mock_attrs)
-    def test_connect_req_verify_ssl_false(self, ClientRequestMock):
-        req = ClientRequest(
-            'GET', URL('https://www.python.org'),
-            proxy=URL('http://proxy.example.com'),
-            loop=self.loop,
-            ssl=False,
-        )
-
-        proto = mock.Mock()
-        connector = aiohttp.TCPConnector(loop=self.loop)
-        connector._create_proxy_connection = mock.MagicMock(
-            side_effect=connector._create_proxy_connection)
-        connector._create_direct_connection = mock.MagicMock(
-            side_effect=connector._create_direct_connection)
-        connector._resolve_host = make_mocked_coro([mock.MagicMock()])
-
-        self.loop.create_connection = make_mocked_coro(
-            (proto.transport, proto))
-        self.loop.run_until_complete(connector.connect(req))
-
-        connector._create_proxy_connection.assert_called_with(
-            req,
-            traces=None)
-        ((proxy_req,), _) = connector._create_direct_connection.call_args
-        proxy_req.send.assert_called_with(mock.ANY)
-
     def test_proxy_auth(self):
         with self.assertRaises(ValueError) as ctx:
             ClientRequest(
@@ -201,8 +147,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
         connector = aiohttp.TCPConnector(loop=self.loop)
@@ -238,8 +183,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
         connector = aiohttp.TCPConnector(loop=self.loop)
@@ -281,8 +225,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
         connector = aiohttp.TCPConnector(loop=self.loop)
@@ -324,8 +267,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
         connector = aiohttp.TCPConnector(loop=self.loop)
@@ -358,8 +300,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(
             mock.Mock(status=400, reason='bad request'))
 
@@ -393,8 +334,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(
             raise_exception=OSError("error message"))
 
@@ -461,8 +401,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
         connector = aiohttp.TCPConnector(loop=self.loop)
@@ -506,8 +445,7 @@ class TestProxy(unittest.TestCase):
 
         proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
         proxy_resp._loop = self.loop
-        proxy_req.send = send_mock = mock.Mock()
-        send_mock.return_value = proxy_resp
+        proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
         connector = aiohttp.TCPConnector(loop=self.loop)

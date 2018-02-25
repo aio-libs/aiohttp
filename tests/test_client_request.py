@@ -501,7 +501,7 @@ def test_gen_netloc_no_port(make_request):
         '012345678901234567890'
 
 
-def test_connection_header(loop, conn):
+async def test_connection_header(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
     req.keep_alive = mock.Mock()
     req.headers.clear()
@@ -509,24 +509,24 @@ def test_connection_header(loop, conn):
     req.keep_alive.return_value = True
     req.version = (1, 1)
     req.headers.clear()
-    req.send(conn)
+    await req.send(conn)
     assert req.headers.get('CONNECTION') is None
 
     req.version = (1, 0)
     req.headers.clear()
-    req.send(conn)
+    await req.send(conn)
     assert req.headers.get('CONNECTION') == 'keep-alive'
 
     req.keep_alive.return_value = False
     req.version = (1, 1)
     req.headers.clear()
-    req.send(conn)
+    await req.send(conn)
     assert req.headers.get('CONNECTION') == 'close'
 
 
 async def test_no_content_length(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert req.headers.get('CONTENT-LENGTH') is None
     await req.close()
     resp.close()
@@ -534,69 +534,69 @@ async def test_no_content_length(loop, conn):
 
 async def test_no_content_length_head(loop, conn):
     req = ClientRequest('head', URL('http://python.org'), loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert req.headers.get('CONTENT-LENGTH') is None
     await req.close()
     resp.close()
 
 
-def test_content_type_auto_header_get(loop, conn):
+async def test_content_type_auto_header_get(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'CONTENT-TYPE' not in req.headers
     resp.close()
 
 
-def test_content_type_auto_header_form(loop, conn):
+async def test_content_type_auto_header_form(loop, conn):
     req = ClientRequest('post', URL('http://python.org'),
                         data={'hey': 'you'}, loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'application/x-www-form-urlencoded' == \
         req.headers.get('CONTENT-TYPE')
     resp.close()
 
 
-def test_content_type_auto_header_bytes(loop, conn):
+async def test_content_type_auto_header_bytes(loop, conn):
     req = ClientRequest('post', URL('http://python.org'), data=b'hey you',
                         loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'application/octet-stream' == req.headers.get('CONTENT-TYPE')
     resp.close()
 
 
-def test_content_type_skip_auto_header_bytes(loop, conn):
+async def test_content_type_skip_auto_header_bytes(loop, conn):
     req = ClientRequest('post', URL('http://python.org'), data=b'hey you',
                         skip_auto_headers={'Content-Type'},
                         loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'CONTENT-TYPE' not in req.headers
     resp.close()
 
 
-def test_content_type_skip_auto_header_form(loop, conn):
+async def test_content_type_skip_auto_header_form(loop, conn):
     req = ClientRequest('post', URL('http://python.org'),
                         data={'hey': 'you'}, loop=loop,
                         skip_auto_headers={'Content-Type'})
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'CONTENT-TYPE' not in req.headers
     resp.close()
 
 
-def test_content_type_auto_header_content_length_no_skip(loop, conn):
+async def test_content_type_auto_header_content_length_no_skip(loop, conn):
     req = ClientRequest('post', URL('http://python.org'),
                         data=io.BytesIO(b'hey'),
                         skip_auto_headers={'Content-Length'},
                         loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert req.headers.get('CONTENT-LENGTH') == '3'
     resp.close()
 
 
-def test_urlencoded_formdata_charset(loop, conn):
+async def test_urlencoded_formdata_charset(loop, conn):
     req = ClientRequest(
         'post', URL('http://python.org'),
         data=aiohttp.FormData({'hey': 'you'}, charset='koi8-r'), loop=loop)
-    req.send(conn)
+    await req.send(conn)
     assert 'application/x-www-form-urlencoded; charset=koi8-r' == \
         req.headers.get('CONTENT-TYPE')
 
@@ -606,7 +606,7 @@ async def test_post_data(loop, conn):
         req = ClientRequest(
             meth, URL('http://python.org/'),
             data={'life': '42'}, loop=loop)
-        resp = req.send(conn)
+        resp = await req.send(conn)
         assert '/' == req.url.path
         assert b'life=42' == req.body._value
         assert 'application/x-www-form-urlencoded' ==\
@@ -655,7 +655,7 @@ async def test_bytes_data(loop, conn):
         req = ClientRequest(
             meth, URL('http://python.org/'),
             data=b'binary data', loop=loop)
-        resp = req.send(conn)
+        resp = await req.send(conn)
         assert '/' == req.url.path
         assert isinstance(req.body, payload.BytesPayload)
         assert b'binary data' == req.body._value
@@ -668,7 +668,7 @@ async def test_content_encoding(loop, conn):
     req = ClientRequest('post', URL('http://python.org/'), data='foo',
                         compress='deflate', loop=loop)
     with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
-        resp = req.send(conn)
+        resp = await req.send(conn)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
     m_writer.return_value\
@@ -681,7 +681,7 @@ async def test_content_encoding_dont_set_headers_if_no_body(loop, conn):
     req = ClientRequest('post', URL('http://python.org/'),
                         compress='deflate', loop=loop)
     with mock.patch('aiohttp.client_reqrep.http'):
-        resp = req.send(conn)
+        resp = await req.send(conn)
     assert 'TRANSFER-ENCODING' not in req.headers
     assert 'CONTENT-ENCODING' not in req.headers
     await req.close()
@@ -693,7 +693,7 @@ async def test_content_encoding_header(loop, conn):
         'post', URL('http://python.org/'), data='foo',
         headers={'Content-Encoding': 'deflate'}, loop=loop)
     with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
-        resp = req.send(conn)
+        resp = await req.send(conn)
 
     assert not m_writer.return_value.enable_compression.called
     assert not m_writer.return_value.enable_chunking.called
@@ -712,7 +712,7 @@ async def test_chunked(loop, conn):
     req = ClientRequest(
         'post', URL('http://python.org/'),
         headers={'TRANSFER-ENCODING': 'gzip'}, loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'gzip' == req.headers['TRANSFER-ENCODING']
     await req.close()
     resp.close()
@@ -722,7 +722,7 @@ async def test_chunked2(loop, conn):
     req = ClientRequest(
         'post', URL('http://python.org/'),
         headers={'Transfer-encoding': 'chunked'}, loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     await req.close()
     resp.close()
@@ -732,7 +732,7 @@ async def test_chunked_explicit(loop, conn):
     req = ClientRequest(
         'post', URL('http://python.org/'), chunked=True, loop=loop)
     with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
-        resp = req.send(conn)
+        resp = await req.send(conn)
 
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
     m_writer.return_value.enable_chunking.assert_called_with()
@@ -809,20 +809,20 @@ async def test_file_upload_force_chunked(loop):
         await req.close()
 
 
-def test_expect100(loop, conn):
+async def test_expect100(loop, conn):
     req = ClientRequest('get', URL('http://python.org/'),
                         expect100=True, loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert '100-continue' == req.headers['EXPECT']
     assert req._continue is not None
     req.terminate()
     resp.close()
 
 
-def test_expect_100_continue_header(loop, conn):
+async def test_expect_100_continue_header(loop, conn):
     req = ClientRequest('get', URL('http://python.org/'),
                         headers={'expect': '100-continue'}, loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert '100-continue' == req.headers['EXPECT']
     assert req._continue is not None
     req.terminate()
@@ -840,7 +840,7 @@ async def test_data_stream(loop, buf, conn):
     assert req.chunked
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
@@ -858,7 +858,7 @@ async def test_data_file(loop, buf, conn):
     assert isinstance(req.body, payload.BufferedReaderPayload)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert asyncio.isfuture(req._writer)
     await resp.wait_for_close()
     assert req._writer is None
@@ -886,7 +886,7 @@ async def test_data_stream_exc(loop, conn):
 
     loop.create_task(throw_exc())
 
-    req.send(conn)
+    await req.send(conn)
     await req._writer
     # assert conn.close.called
     assert conn.protocol.set_exception.called
@@ -911,7 +911,7 @@ async def test_data_stream_exc_chain(loop, conn):
 
     loop.create_task(throw_exc())
 
-    req.send(conn)
+    await req.send(conn)
     await req._writer
     # assert connection.close.called
     assert conn.protocol.set_exception.called
@@ -940,7 +940,7 @@ async def test_data_stream_continue(loop, buf, conn):
 
     loop.create_task(coro())
 
-    resp = req.send(conn)
+    resp = await req.send(conn)
     await req._writer
     assert buf.split(b'\r\n\r\n', 1)[1] == \
         b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
@@ -959,7 +959,7 @@ async def test_data_continue(loop, buf, conn):
 
     loop.create_task(coro())
 
-    resp = req.send(conn)
+    resp = await req.send(conn)
 
     await req._writer
     assert buf.split(b'\r\n\r\n', 1)[1] == b'data'
@@ -975,7 +975,7 @@ async def test_close(loop, buf, conn):
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     await req.close()
     assert buf.split(b'\r\n\r\n', 1)[1] == b'6\r\nresult\r\n0\r\n\r\n'
     await req.close()
@@ -990,7 +990,7 @@ async def test_custom_response_class(loop, conn):
     req = ClientRequest(
         'GET', URL('http://python.org/'), response_class=CustomResponse,
         loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert 'customized!' == resp.read()
     await req.close()
     resp.close()
@@ -1012,7 +1012,7 @@ async def test_oserror_on_write_bytes(loop, conn):
 
 async def test_terminate(loop, conn):
     req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(conn)
+    resp = await req.send(conn)
     assert req._writer is not None
     writer = req._writer = mock.Mock()
 
@@ -1023,12 +1023,18 @@ async def test_terminate(loop, conn):
 
 
 def test_terminate_with_closed_loop(loop, conn):
-    req = ClientRequest('get', URL('http://python.org'), loop=loop)
-    resp = req.send(conn)
-    assert req._writer is not None
-    writer = req._writer = mock.Mock()
+    req = resp = writer = None
 
-    loop.run_until_complete(asyncio.sleep(0.05, loop=loop))
+    async def go():
+        nonlocal req, resp, writer
+        req = ClientRequest('get', URL('http://python.org'))
+        resp = await req.send(conn)
+        assert req._writer is not None
+        writer = req._writer = mock.Mock()
+
+        await asyncio.sleep(0.05)
+
+    loop.run_until_complete(go())
 
     loop.close()
     req.terminate()
@@ -1063,7 +1069,7 @@ async def test_custom_req_rep(loop):
 
     class CustomRequest(ClientRequest):
 
-        def send(self, conn):
+        async def send(self, conn):
             resp = self.response_class(self.method,
                                        self.url,
                                        writer=self._writer,

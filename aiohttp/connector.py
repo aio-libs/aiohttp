@@ -893,7 +893,7 @@ class TCPConnector(BaseConnector):
             proxy_req.url = req.url
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proto, self._loop)
-            proxy_resp = proxy_req.send(conn)
+            proxy_resp = await proxy_req.send(conn)
             try:
                 resp = await proxy_resp.start(conn, True)
             except BaseException:
