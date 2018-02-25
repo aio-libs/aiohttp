@@ -251,7 +251,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 if self._waiter:
                     self._waiter.set_result(None)
 
-                self._upgraded = upgraded
+                self._upgrade = upgraded
                 if upgraded and tail:
                     self._message_tail = tail
 
