@@ -463,7 +463,6 @@ def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
                         writer=sentinel,
-                        payload_writer=sentinel,
                         protocol=sentinel,
                         transport=sentinel,
                         payload=sentinel,
@@ -509,13 +508,11 @@ def make_mocked_request(method, path, headers=None, *,
 
     if writer is sentinel:
         writer = mock.Mock()
+        writer.write_headers = make_mocked_coro(None)
+        writer.write = make_mocked_coro(None)
+        writer.write_eof = make_mocked_coro(None)
+        writer.drain = make_mocked_coro(None)
         writer.transport = transport
-
-    if payload_writer is sentinel:
-        payload_writer = mock.Mock()
-        payload_writer.write = make_mocked_coro(None)
-        payload_writer.write_eof = make_mocked_coro(None)
-        payload_writer.drain = make_mocked_coro(None)
 
     protocol.transport = transport
     protocol.writer = writer
@@ -524,7 +521,7 @@ def make_mocked_request(method, path, headers=None, *,
         payload = mock.Mock()
 
     req = Request(message, payload,
-                  protocol, payload_writer, task, loop,
+                  protocol, writer, task, loop,
                   client_max_size=client_max_size)
 
     match_info = UrlMappingMatchInfo(
