@@ -1,1 +1,0 @@
-Fix ``IndexError`` in HTTP request handling by server.

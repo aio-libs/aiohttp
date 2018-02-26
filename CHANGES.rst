@@ -14,6 +14,13 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.4 (2018-02-26)
+==================
+
+- Fix ``IndexError`` in HTTP request handling by server. (#2752)
+- Fix MultipartWriter.append* no longer returning part/payload. (#2759)
+
+
 3.0.3 (2018-02-25)
 ==================
 
