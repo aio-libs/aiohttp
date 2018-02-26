@@ -102,6 +102,34 @@ It prevents all ``handler`` async function from cancellation,
 
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
+
+Passing a coroutine to run_app
+------------------------------
+
+:func:`run_app` accepts either application instance or a coroutine for
+making an application. The coroutine based approach allows to perform
+async IO before making an app::
+
+   async def app_factory():
+       await pre_init()
+       app = web.Application()
+       app.router.add_get(...)
+       return app
+
+   web.run_app(app_factory())
+
+Gunicorn worker supports a facotry as well. For gunocord the factory
+should accept zero parameters::
+
+   async def my_web_app():
+       app = web.Application()
+       app.router.add_get(...)
+       return app
+
+Start gunicorn::
+
+   $ gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
+
 Custom Routing Criteria
 -----------------------
 

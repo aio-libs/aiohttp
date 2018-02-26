@@ -2461,7 +2461,8 @@ Utilities
    handled on the same event loop. See :doc:`deployment` for ways of
    distributing work for increased performance.
 
-   :param app: :class:`Application` instance to run
+   :param app: :class:`Application` instance to run or a *coroutine*
+               that returns an application.
 
    :param str host: TCP/IP host or a sequence of hosts for HTTP server.
                     Default is ``'0.0.0.0'`` if *port* has been specified
@@ -2529,9 +2530,12 @@ Utilities
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
-      
+
       Support *reuse_address*, *reuse_port* parameter.
 
+   .. versionadded:: 3.1
+
+      Accept a coroutine as *app* parameter.
 
 Constants
 ---------
