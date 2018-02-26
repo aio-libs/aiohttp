@@ -251,7 +251,7 @@ class AppRunner(BaseRunner):
     def __init__(self, app, *, handle_signals=False, **kwargs):
         super().__init__(handle_signals=handle_signals, **kwargs)
         if not isinstance(app, Application):
-            raise TypeError("The first parameter should be web.Application "
+            raise TypeError("The first argument should be web.Application "
                             "instance, got {!r}".format(app))
         self._app = app
 
