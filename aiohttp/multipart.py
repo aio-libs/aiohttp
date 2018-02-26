@@ -14,7 +14,7 @@ from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HttpParser
-from .payload import (BytesPayload, LookupError, Payload, StringPayload,
+from .payload import (JsonPayload, LookupError, Payload, StringPayload,
                       get_payload, payload_type)
 
 
@@ -712,10 +712,10 @@ class MultipartWriter(Payload):
                 obj.headers.update(headers)
             else:
                 obj._headers = headers
-            self.append_payload(obj)
+            return self.append_payload(obj)
         else:
             try:
-                self.append_payload(get_payload(obj, headers=headers))
+                return self.append_payload(get_payload(obj, headers=headers))
             except LookupError:
                 raise TypeError
 
@@ -752,16 +752,14 @@ class MultipartWriter(Payload):
         ).encode('utf-8') + b'\r\n'
 
         self._parts.append((payload, headers, encoding, te_encoding))
+        return payload
 
     def append_json(self, obj, headers=None):
         """Helper to append JSON part."""
         if headers is None:
             headers = CIMultiDict()
 
-        data = json.dumps(obj).encode('utf-8')
-        self.append_payload(
-            BytesPayload(
-                data, headers=headers, content_type='application/json'))
+        return self.append_payload(JsonPayload(obj, headers=headers))
 
     def append_form(self, obj, headers=None):
         """Helper to append form urlencoded part."""

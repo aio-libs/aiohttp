@@ -152,9 +152,9 @@ will include the file's basename::
     part = root.append(open(__file__, 'rb'))
 
 If you want to send a file with a different name, just handle the
-:class:`BodyPartWriter` instance which :meth:`MultipartWriter.append` will
+:class:`Payload` instance which :meth:`MultipartWriter.append` will
 always return and set `Content-Disposition` explicitly by using
-the :meth:`BodyPartWriter.set_content_disposition` helper::
+the :meth:`Payload.set_content_disposition` helper::
 
     part.set_content_disposition('attachment', filename='secret.txt')
 
