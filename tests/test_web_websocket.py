@@ -22,16 +22,6 @@ def app(loop):
 
 
 @pytest.fixture
-def writer(loop):
-    writer = mock.Mock()
-    writer.drain.return_value = loop.create_future()
-    writer.drain.return_value.set_result(None)
-    writer.write_eof.return_value = loop.create_future()
-    writer.write_eof.return_value.set_result(None)
-    return writer
-
-
-@pytest.fixture
 def protocol():
     ret = mock.Mock()
     ret.set_parser.return_value = ret
@@ -39,7 +29,7 @@ def protocol():
 
 
 @pytest.fixture
-def make_request(app, protocol, writer):
+def make_request(app, protocol):
     def maker(method, path, headers=None, protocols=False):
         if headers is None:
             headers = CIMultiDict(
@@ -54,7 +44,7 @@ def make_request(app, protocol, writer):
 
         return make_mocked_request(
             method, path, headers,
-            app=app, protocol=protocol, payload_writer=writer,
+            app=app, protocol=protocol,
             loop=app.loop)
 
     return maker
@@ -301,7 +291,7 @@ async def test_pong_closed(make_request, mocker):
     assert ws_logger.warning.called
 
 
-async def test_close_idempotent(make_request, writer):
+async def test_close_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     await ws.prepare(req)

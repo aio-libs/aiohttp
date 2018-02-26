@@ -24,7 +24,7 @@ def request(buf):
         buf.extend(data)
         return helpers.noop()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         headers = status_line + ''.join(
             [k + ': ' + v + '\r\n' for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
@@ -39,7 +39,7 @@ def request(buf):
     app._debug = False
     app.on_response_prepare = signals.Signal(app)
     app.on_response_prepare.freeze()
-    req = make_mocked_request(method, path, app=app, payload_writer=writer)
+    req = make_mocked_request(method, path, app=app, writer=writer)
     return req
 
 

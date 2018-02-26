@@ -45,7 +45,7 @@ def writer(buf):
     def write(chunk):
         buf.extend(chunk)
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         headers = status_line + ''.join(
             [k + ': ' + v + '\r\n' for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
@@ -235,7 +235,7 @@ def test_last_modified_reset():
 
 
 async def test_start():
-    req = make_request('GET', '/', payload_writer=mock.Mock())
+    req = make_request('GET', '/')
     resp = StreamResponse()
     assert resp.keep_alive is None
 
@@ -274,7 +274,7 @@ def test_enable_chunked_encoding_with_content_length():
 
 
 async def test_chunk_size():
-    req = make_request('GET', '/', payload_writer=mock.Mock())
+    req = make_request('GET', '/')
     resp = StreamResponse()
     assert not resp.chunked
 
@@ -300,7 +300,7 @@ async def test_chunked_encoding_forbidden_for_http_10():
 
 
 async def test_compression_no_accept():
-    req = make_request('GET', '/', payload_writer=mock.Mock())
+    req = make_request('GET', '/')
     resp = StreamResponse()
     assert not resp.chunked
 
@@ -313,7 +313,7 @@ async def test_compression_no_accept():
 
 
 async def test_force_compression_no_accept_backwards_compat():
-    req = make_request('GET', '/', payload_writer=mock.Mock())
+    req = make_request('GET', '/')
     resp = StreamResponse()
     assert not resp.chunked
 
@@ -327,7 +327,7 @@ async def test_force_compression_no_accept_backwards_compat():
 
 
 async def test_force_compression_false_backwards_compat():
-    req = make_request('GET', '/', payload_writer=mock.Mock())
+    req = make_request('GET', '/')
     resp = StreamResponse()
 
     assert not resp.compression
@@ -421,13 +421,13 @@ async def test_change_content_length_if_compression_enabled():
 async def test_set_content_length_if_compression_enabled():
     writer = mock.Mock()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         assert hdrs.CONTENT_LENGTH in headers
         assert headers[hdrs.CONTENT_LENGTH] == '26'
         assert hdrs.TRANSFER_ENCODING not in headers
 
     writer.write_headers.side_effect = write_headers
-    req = make_request('GET', '/', payload_writer=writer)
+    req = make_request('GET', '/', writer=writer)
     resp = Response(body=b'answer')
     resp.enable_compression(ContentCoding.gzip)
 
@@ -440,12 +440,12 @@ async def test_set_content_length_if_compression_enabled():
 async def test_remove_content_length_if_compression_enabled_http11():
     writer = mock.Mock()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         assert hdrs.CONTENT_LENGTH not in headers
         assert headers.get(hdrs.TRANSFER_ENCODING, '') == 'chunked'
 
     writer.write_headers.side_effect = write_headers
-    req = make_request('GET', '/', payload_writer=writer)
+    req = make_request('GET', '/', writer=writer)
     resp = StreamResponse()
     resp.content_length = 123
     resp.enable_compression(ContentCoding.gzip)
@@ -456,13 +456,13 @@ async def test_remove_content_length_if_compression_enabled_http11():
 async def test_remove_content_length_if_compression_enabled_http10():
     writer = mock.Mock()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         assert hdrs.CONTENT_LENGTH not in headers
         assert hdrs.TRANSFER_ENCODING not in headers
 
     writer.write_headers.side_effect = write_headers
     req = make_request('GET', '/', version=HttpVersion10,
-                       payload_writer=writer)
+                       writer=writer)
     resp = StreamResponse()
     resp.content_length = 123
     resp.enable_compression(ContentCoding.gzip)
@@ -473,13 +473,13 @@ async def test_remove_content_length_if_compression_enabled_http10():
 async def test_force_compression_identity():
     writer = mock.Mock()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         assert hdrs.CONTENT_LENGTH in headers
         assert hdrs.TRANSFER_ENCODING not in headers
 
     writer.write_headers.side_effect = write_headers
     req = make_request('GET', '/',
-                       payload_writer=writer)
+                       writer=writer)
     resp = StreamResponse()
     resp.content_length = 123
     resp.enable_compression(ContentCoding.identity)
@@ -490,28 +490,28 @@ async def test_force_compression_identity():
 async def test_force_compression_identity_response():
     writer = mock.Mock()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         assert headers[hdrs.CONTENT_LENGTH] == "6"
         assert hdrs.TRANSFER_ENCODING not in headers
 
     writer.write_headers.side_effect = write_headers
     req = make_request('GET', '/',
-                       payload_writer=writer)
+                       writer=writer)
     resp = Response(body=b'answer')
     resp.enable_compression(ContentCoding.identity)
     await resp.prepare(req)
     assert resp.content_length == 6
 
 
-async def test_remove_content_length_if_compression_enabled_on_payload_http11():  # noqa
+async def test_rm_content_length_if_compression_enabled_on_payload_http11():
     writer = mock.Mock()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         assert hdrs.CONTENT_LENGTH not in headers
         assert headers.get(hdrs.TRANSFER_ENCODING, '') == 'chunked'
 
     writer.write_headers.side_effect = write_headers
-    req = make_request('GET', '/', payload_writer=writer)
+    req = make_request('GET', '/', writer=writer)
     payload = BytesPayload(b'answer', headers={"X-Test-Header": "test"})
     resp = Response(body=payload)
     assert resp.content_length == 6
@@ -521,16 +521,16 @@ async def test_remove_content_length_if_compression_enabled_on_payload_http11():
     assert resp.content_length is None
 
 
-async def test_remove_content_length_if_compression_enabled_on_payload_http10():  # noqa
+async def test_rm_content_length_if_compression_enabled_on_payload_http10():
     writer = mock.Mock()
 
-    def write_headers(status_line, headers):
+    async def write_headers(status_line, headers):
         assert hdrs.CONTENT_LENGTH not in headers
         assert hdrs.TRANSFER_ENCODING not in headers
 
     writer.write_headers.side_effect = write_headers
     req = make_request('GET', '/', version=HttpVersion10,
-                       payload_writer=writer)
+                       writer=writer)
     resp = Response(body=BytesPayload(b'answer'))
     resp.enable_compression(ContentCoding.gzip)
     await resp.prepare(req)
@@ -788,7 +788,7 @@ def test_response_ctor():
     assert 'CONTENT-LENGTH' not in resp.headers
 
 
-def test_ctor_with_headers_and_status():
+async def test_ctor_with_headers_and_status():
     resp = Response(body=b'body', status=201,
                     headers={'Age': '12', 'DATE': 'date'})
 
@@ -796,7 +796,8 @@ def test_ctor_with_headers_and_status():
     assert b'body' == resp.body
     assert resp.headers['AGE'] == '12'
 
-    resp._start(mock.Mock(version=HttpVersion11))
+    req = make_mocked_request('GET', '/')
+    await resp._start(req)
     assert 4 == resp.content_length
     assert resp.headers['CONTENT-LENGTH'] == '4'
 
@@ -816,7 +817,7 @@ def test_ctor_text_body_combined():
         Response(body=b'123', text='test text')
 
 
-def test_ctor_text():
+async def test_ctor_text():
     resp = Response(text='test text')
 
     assert 200 == resp.status
@@ -829,7 +830,8 @@ def test_ctor_text():
     assert resp.text == 'test text'
 
     resp.headers['DATE'] = 'date'
-    resp._start(mock.Mock(version=HttpVersion11))
+    req = make_mocked_request('GET', '/', version=HttpVersion11)
+    await resp._start(req)
     assert resp.headers['CONTENT-LENGTH'] == '9'
 
 
@@ -889,7 +891,7 @@ def test_ctor_both_charset_param_and_header():
                  charset='koi8-r')
 
 
-def test_assign_nonbyteish_body():
+async def test_assign_nonbyteish_body():
     resp = Response(body=b'data')
 
     with pytest.raises(ValueError):
@@ -898,7 +900,8 @@ def test_assign_nonbyteish_body():
     assert 4 == resp.content_length
 
     resp.headers['DATE'] = 'date'
-    resp._start(mock.Mock(version=HttpVersion11))
+    req = make_mocked_request('GET', '/', version=HttpVersion11)
+    await resp._start(req)
     assert resp.headers['CONTENT-LENGTH'] == '4'
     assert 4 == resp.content_length
 
@@ -919,7 +922,7 @@ def test_response_set_content_length():
 
 
 async def test_send_headers_for_empty_body(buf, writer):
-    req = make_request('GET', '/', payload_writer=writer)
+    req = make_request('GET', '/', writer=writer)
     resp = Response()
 
     await resp.prepare(req)
@@ -933,7 +936,7 @@ async def test_send_headers_for_empty_body(buf, writer):
 
 
 async def test_render_with_body(buf, writer):
-    req = make_request('GET', '/', payload_writer=writer)
+    req = make_request('GET', '/', writer=writer)
     resp = Response(body=b'data')
 
     await resp.prepare(req)
@@ -951,7 +954,7 @@ async def test_render_with_body(buf, writer):
 async def test_send_set_cookie_header(buf, writer):
     resp = Response()
     resp.cookies['name'] = 'value'
-    req = make_request('GET', '/', payload_writer=writer)
+    req = make_request('GET', '/', writer=writer)
 
     await resp.prepare(req)
     await resp.write_eof()
@@ -966,16 +969,17 @@ async def test_send_set_cookie_header(buf, writer):
 
 
 async def test_consecutive_write_eof():
-    payload_writer = mock.Mock()
-    payload_writer.write_eof = make_mocked_coro()
-    req = make_request('GET', '/', payload_writer=payload_writer)
+    writer = mock.Mock()
+    writer.write_eof = make_mocked_coro()
+    writer.write_headers = make_mocked_coro()
+    req = make_request('GET', '/', writer=writer)
     data = b'data'
     resp = Response(body=data)
 
     await resp.prepare(req)
     await resp.write_eof()
     await resp.write_eof()
-    payload_writer.write_eof.assert_called_once_with(data)
+    writer.write_eof.assert_called_once_with(data)
 
 
 def test_set_text_with_content_type():
