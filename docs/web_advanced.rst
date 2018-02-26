@@ -118,7 +118,7 @@ async IO before making an app::
 
    web.run_app(app_factory())
 
-Gunicorn worker supports a facotry as well. For gunocord the factory
+Gunicorn worker supports a factory as well. For Gunicorn the factory
 should accept zero parameters::
 
    async def my_web_app():
@@ -129,6 +129,8 @@ should accept zero parameters::
 Start gunicorn::
 
    $ gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
+
+.. versionadded:: 3.1
 
 Custom Routing Criteria
 -----------------------
