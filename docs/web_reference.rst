@@ -719,7 +719,7 @@ StreamResponse
 
       The value converted to lower-case on attribute assigning.
 
-   .. attribute:: last_modified
+   .. attribute:: last_modified(value)
 
       *Last-Modified* header for outgoing response.
 
@@ -769,8 +769,8 @@ StreamResponse
 Response
 ^^^^^^^^
 
-.. class:: Response(*, status=200, headers=None, content_type=None, \
-                    charset=None, body=None, text=None)
+.. class:: Response(*, body=None, status=200, reason=None, text=None, \
+   headers=None, content_type=None, charset=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -862,7 +862,7 @@ WebSocketResponse
                                  operations.  Default value is None
                                  (no timeout for receive operation)
 
-   :param float compress: Enable per-message deflate extension support.
+   :param bool compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
 
    The class supports ``async for`` statement for iterating over
@@ -1761,13 +1761,10 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
-   .. comethod:: resolve(method, path)
+   .. comethod:: resolve(request)
 
       Resolve resource by finding appropriate :term:`web-handler` for
       ``(method, path)`` combination.
-
-      :param str method: requested HTTP method.
-      :param str path: *path* part of request.
 
       :return: (*match_info*, *allowed_methods*) pair.
 
@@ -2066,7 +2063,7 @@ The definition is created by functions like :func:`get` or
 
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
-   Return :class:`RouteDef` for processing ``POST`` requests. See
+   Return :class:`RouteDef` for processing requests that decided by ``method``. See
    :meth:`UrlDispatcher.add_route` for information about parameters.
 
    .. versionadded:: 2.3
