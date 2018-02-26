@@ -22,6 +22,7 @@ from .formdata import FormData
 from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
+from .signals import Signal
 from .streams import StreamReader
 
 
@@ -168,7 +169,8 @@ class ClientRequest:
                  proxy=None, proxy_auth=None,
                  timer=None, session=None, auto_decompress=True,
                  ssl=None,
-                 proxy_headers=None):
+                 proxy_headers=None,
+                 traces=[]):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -209,6 +211,7 @@ class ClientRequest:
         if data or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
+        self.traces = traces
 
     def is_ssl(self):
         return self.url.scheme in ('https', 'wss')
@@ -475,7 +478,13 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
-        writer = StreamWriter(conn.protocol, conn.transport, self.loop)
+        async def on_chunk_sent(chunk):
+            for trace in self.traces:
+                await trace.send_request_chunk_sent(chunk)
+
+        writer = StreamWriter(
+            conn.protocol, conn.transport, self.loop)
+        writer.on_chunk_sent.append(on_chunk_sent)
 
         if self.compress:
             writer.enable_compression(self.compress)
@@ -509,11 +518,16 @@ class ClientRequest:
 
         self._writer = self.loop.create_task(self.write_bytes(writer, conn))
 
+        async def on_chunk_received(chunk):
+            for trace in self.traces:
+                await trace.send_response_chunk_received(chunk)
+
         self.response = self.response_class(
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
             auto_decompress=self._auto_decompress)
+        self.response.on_chunk_received.append(on_chunk_received)
 
         self.response._post_init(self.loop, self._session)
         return self.response
@@ -572,6 +586,9 @@ class ClientResponse(HeadersMixin):
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
         self._cache = {}  # reqired for @reify method decorator
+
+        # avoid circular reference so that __del__ works
+        self.on_chunk_received = Signal(owner=None)
 
     @property
     def url(self):
@@ -796,6 +813,8 @@ class ClientResponse(HeadersMixin):
         if self._content is None:
             try:
                 self._content = await self.content.read()
+                self.on_chunk_received.freeze()
+                await self.on_chunk_received.send(self._content)
             except BaseException:
                 self.close()
                 raise

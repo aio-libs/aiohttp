@@ -5,6 +5,8 @@ import collections
 import zlib
 
 from .abc import AbstractStreamWriter
+from .helpers import noop
+from .signals import Signal
 
 
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
@@ -29,6 +31,8 @@ class StreamWriter(AbstractStreamWriter):
         self._eof = False
         self._compress = None
         self._drain_waiter = None
+
+        self.on_chunk_sent = Signal(self)
 
     @property
     def transport(self):
@@ -55,13 +59,18 @@ class StreamWriter(AbstractStreamWriter):
             raise asyncio.CancelledError('Cannot write to closing transport')
         self._transport.write(chunk)
 
-    async def write(self, chunk, *, drain=True, LIMIT=64*1024):
+    async def write(self, chunk, *, drain=True, LIMIT=64 * 1024):
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
         writer can't be used after write_eof() method being called.
         write() return drain future.
         """
+        self.on_chunk_sent.freeze()
+        self.loop.create_task(
+            self.on_chunk_sent.send(chunk)
+        )
+
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:

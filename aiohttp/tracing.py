@@ -9,13 +9,14 @@ from .signals import Signal
 
 
 __all__ = (
-    'TraceConfig', 'TraceRequestStartParams', 'TraceRequestEndParams',
-    'TraceRequestExceptionParams', 'TraceConnectionQueuedStartParams',
-    'TraceConnectionQueuedEndParams', 'TraceConnectionCreateStartParams',
-    'TraceConnectionCreateEndParams', 'TraceConnectionReuseconnParams',
-    'TraceDnsResolveHostStartParams', 'TraceDnsResolveHostEndParams',
-    'TraceDnsCacheHitParams', 'TraceDnsCacheMissParams',
-    'TraceRequestRedirectParams'
+    'TraceConfig', 'TraceRequestStartParams',
+    'TraceRequestChunkSentParams', 'TraceResponseChunkReceivedParams',
+    'TraceRequestEndParams', 'TraceRequestExceptionParams',
+    'TraceConnectionQueuedStartParams', 'TraceConnectionQueuedEndParams',
+    'TraceConnectionCreateStartParams', 'TraceConnectionCreateEndParams',
+    'TraceConnectionReuseconnParams', 'TraceDnsResolveHostStartParams',
+    'TraceDnsResolveHostEndParams', 'TraceDnsCacheHitParams',
+    'TraceDnsCacheMissParams', 'TraceRequestRedirectParams'
 )
 
 
@@ -25,6 +26,8 @@ class TraceConfig:
 
     def __init__(self, trace_config_ctx_factory=SimpleNamespace):
         self._on_request_start = Signal(self)
+        self._on_request_chunk_sent = Signal(self)
+        self._on_response_chunk_received = Signal(self)
         self._on_request_end = Signal(self)
         self._on_request_exception = Signal(self)
         self._on_request_redirect = Signal(self)
@@ -47,6 +50,8 @@ class TraceConfig:
 
     def freeze(self):
         self._on_request_start.freeze()
+        self._on_request_chunk_sent.freeze()
+        self._on_response_chunk_received.freeze()
         self._on_request_end.freeze()
         self._on_request_exception.freeze()
         self._on_request_redirect.freeze()
@@ -63,6 +68,14 @@ class TraceConfig:
     @property
     def on_request_start(self):
         return self._on_request_start
+
+    @property
+    def on_request_chunk_sent(self):
+        return self._on_request_chunk_sent
+
+    @property
+    def on_response_chunk_received(self):
+        return self._on_response_chunk_received
 
     @property
     def on_request_end(self):
@@ -119,6 +132,18 @@ class TraceRequestStartParams:
     method = attr.ib(type=str)
     url = attr.ib(type=URL)
     headers = attr.ib(type=CIMultiDict)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceRequestChunkSentParams:
+    """ Parameters sent by the `on_request_chunk_sent` signal"""
+    chunk = attr.ib(type=bytes)
+
+
+@attr.s(frozen=True, slots=True)
+class TraceResponseChunkReceivedParams:
+    """ Parameters sent by the `on_response_chunk_received` signal"""
+    chunk = attr.ib(type=bytes)
 
 
 @attr.s(frozen=True, slots=True)
@@ -211,6 +236,20 @@ class Trace:
             self._session,
             self._trace_config_ctx,
             TraceRequestStartParams(method, url, headers)
+        )
+
+    async def send_request_chunk_sent(self, chunk):
+        return await self._trace_config.on_request_chunk_sent.send(
+            self._session,
+            self._trace_config_ctx,
+            TraceRequestChunkSentParams(chunk)
+        )
+
+    async def send_response_chunk_received(self, chunk):
+        return await self._trace_config.on_response_chunk_received.send(
+            self._session,
+            self._trace_config_ctx,
+            TraceResponseChunkReceivedParams(chunk)
         )
 
     async def send_request_end(self, method, url, headers, response):
