@@ -505,7 +505,7 @@ class ClientRequest:
         # status + headers
         status_line = '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
             self.method, path, self.version)
-        writer.write_headers(status_line, self.headers)
+        await writer.write_headers(status_line, self.headers)
 
         self._writer = self.loop.create_task(self.write_bytes(writer, conn))
 

@@ -91,7 +91,7 @@ class StreamWriter(AbstractStreamWriter):
 
         return noop()
 
-    def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
+    async def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
         """Write request/response status and headers."""
         # status + headers
         headers = status_line + ''.join(

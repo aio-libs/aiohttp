@@ -17,6 +17,7 @@ import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
 from aiohttp.client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
                                    _merge_ssl_params)
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -668,6 +669,7 @@ async def test_content_encoding(loop, conn):
     req = ClientRequest('post', URL('http://python.org/'), data='foo',
                         compress='deflate', loop=loop)
     with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
+        m_writer.return_value.write_headers = make_mocked_coro()
         resp = await req.send(conn)
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
     assert req.headers['CONTENT-ENCODING'] == 'deflate'
@@ -693,6 +695,7 @@ async def test_content_encoding_header(loop, conn):
         'post', URL('http://python.org/'), data='foo',
         headers={'Content-Encoding': 'deflate'}, loop=loop)
     with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
+        m_writer.return_value.write_headers = make_mocked_coro()
         resp = await req.send(conn)
 
     assert not m_writer.return_value.enable_compression.called
@@ -732,6 +735,7 @@ async def test_chunked_explicit(loop, conn):
     req = ClientRequest(
         'post', URL('http://python.org/'), chunked=True, loop=loop)
     with mock.patch('aiohttp.client_reqrep.StreamWriter') as m_writer:
+        m_writer.return_value.write_headers = make_mocked_coro()
         resp = await req.send(conn)
 
     assert 'chunked' == req.headers['TRANSFER-ENCODING']
