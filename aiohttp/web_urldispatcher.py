@@ -8,7 +8,7 @@ import keyword
 import os
 import re
 import warnings
-from collections.abc import Container, Iterable, Sequence, Sized
+from collections.abc import Container, Iterable, Mapping, Sequence, Sized
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
@@ -197,12 +197,13 @@ class AbstractRoute(abc.ABC):
         return await self._expect_handler(request)
 
 
-class UrlMappingMatchInfo(collections.ChainMap, AbstractMatchInfo):
+class UrlMappingMatchInfo(AbstractMatchInfo, Mapping):
 
     def __init__(self, match_dict, route):
-        super().__init__(match_dict)
+        super().__init__()
         self._route = route
         self._apps = ()
+        self._variables = collections.ChainMap(match_dict)
         self._current_app = None
         self._frozen = False
 
@@ -254,6 +255,22 @@ class UrlMappingMatchInfo(collections.ChainMap, AbstractMatchInfo):
 
     def freeze(self):
         self._frozen = True
+
+    @property
+    def variable_maps(self):
+        return tuple(reversed(self._variables.maps))
+
+    def add_variables(self, match_dict):
+        self._variables.maps.append(match_dict)
+
+    def __getitem__(self, key):
+        return self._variables[key]
+
+    def __iter__(self):
+        return self._variables.__iter__()
+
+    def __len__(self):
+        return self._variables.__len__()
 
     def __repr__(self):
         return "<MatchInfo {}: {}>".format(dict(self).__repr__(), self._route)
@@ -682,7 +699,7 @@ class PrefixedSubAppResource(PrefixResource):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
         match_info = await self._app.router.resolve(request)
-        match_info.maps.append({})
+        match_info.add_variables({})
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
@@ -733,7 +750,7 @@ class DynamicSubAppResource(DynamicResource):
         subrequest = request.clone(
             rel_url=request.url.with_path(request.url.raw_path[mend:]))
         match_info = await self._app.router.resolve(subrequest)
-        match_info.maps.append(mdict)
+        match_info.add_variables(mdict)
         match_info.add_app(self._app)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
@@ -861,7 +878,7 @@ class RoutesView(Sized, Iterable, Container):
         return route_obj in self._routes
 
 
-class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
+class UrlDispatcher(AbstractRouter, Mapping):
 
     NAME_SPLIT_RE = re.compile(r'[.:-]')
 
