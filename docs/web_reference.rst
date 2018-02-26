@@ -719,7 +719,7 @@ StreamResponse
 
       The value converted to lower-case on attribute assigning.
 
-   .. attribute:: last_modified(value)
+   .. attribute:: last_modified
 
       *Last-Modified* header for outgoing response.
 
