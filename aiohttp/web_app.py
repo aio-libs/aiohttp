@@ -1,7 +1,9 @@
 import asyncio
 import warnings
+import logging
 from collections import MutableMapping
 from functools import partial
+from typing import Tuple, Callable, Awaitable, MutableSequence, Any
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
@@ -13,10 +15,18 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
+from .web_urldispatcher import (
+    PrefixedSubAppResource, UrlDispatcher, AbstractView
+)
 
 
 __all__ = ('Application',)
+
+
+_ResponseType = Awaitable[StreamResponse]
+_HandlerType = Callable[Any, _ResponseType]
+_MiddlewareType = Callable[['Application', _HandlerType], _ResponseType]
+_MiddlewareTupleType = Tuple[_MiddlewareType]
 
 
 class Application(MutableMapping):
@@ -28,12 +38,12 @@ class Application(MutableMapping):
         '_on_cleanup', '_client_max_size'])
 
     def __init__(self, *,
-                 logger=web_logger,
-                 router=None,
-                 middlewares=(),
+                 logger: logging.Logger=web_logger,
+                 router: UrlDispatcher=None,
+                 middlewares: _MiddlewareTupleType=(),
                  handler_args=None,
-                 client_max_size=1024**2,
-                 loop=None,
+                 client_max_size: int=1024**2,
+                 loop: asyncio.AbstractEventLoop=None,
                  debug=...):
         if router is None:
             router = UrlDispatcher()
@@ -99,7 +109,7 @@ class Application(MutableMapping):
         self._check_frozen()
         del self._state[key]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._state)
 
     def __iter__(self):
@@ -107,7 +117,7 @@ class Application(MutableMapping):
 
     ########
     @property
-    def loop(self):
+    def loop(self) -> asyncio.AbstractEventLoop:
         return self._loop
 
     def _set_loop(self, loop):
@@ -174,7 +184,7 @@ class Application(MutableMapping):
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
-    def add_subapp(self, prefix, subapp):
+    def add_subapp(self, prefix, subapp: "Application"):
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
@@ -199,29 +209,29 @@ class Application(MutableMapping):
         return self._on_response_prepare
 
     @property
-    def on_startup(self):
+    def on_startup(self) -> Signal:
         return self._on_startup
 
     @property
-    def on_shutdown(self):
+    def on_shutdown(self) -> Signal:
         return self._on_shutdown
 
     @property
-    def on_cleanup(self):
+    def on_cleanup(self) -> Signal:
         return self._on_cleanup
 
     @property
-    def router(self):
+    def router(self) -> UrlDispatcher:
         return self._router
 
     @property
-    def middlewares(self):
+    def middlewares(self) -> MutableSequence[_MiddlewareType]:
         return self._middlewares
 
     def make_handler(self, *,
                      loop=None,
                      access_log_class=AccessLogger,
-                     **kwargs):
+                     **kwargs) -> Server:
 
         if not issubclass(access_log_class, AbstractAccessLogger):
             raise TypeError(
