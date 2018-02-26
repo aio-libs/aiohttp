@@ -503,7 +503,7 @@ async def test_force_compression_identity_response():
     assert resp.content_length == 6
 
 
-async def test_remove_content_length_if_compression_enabled_on_payload_http11():  # noqa
+async def test_rm_content_length_if_compression_enabled_on_payload_http11():
     writer = mock.Mock()
 
     def write_headers(status_line, headers):
@@ -521,7 +521,7 @@ async def test_remove_content_length_if_compression_enabled_on_payload_http11():
     assert resp.content_length is None
 
 
-async def test_remove_content_length_if_compression_enabled_on_payload_http10():  # noqa
+async def test_rm_content_length_if_compression_enabled_on_payload_http10():
     writer = mock.Mock()
 
     def write_headers(status_line, headers):
@@ -788,7 +788,7 @@ def test_response_ctor():
     assert 'CONTENT-LENGTH' not in resp.headers
 
 
-def test_ctor_with_headers_and_status():
+async def test_ctor_with_headers_and_status():
     resp = Response(body=b'body', status=201,
                     headers={'Age': '12', 'DATE': 'date'})
 
@@ -796,7 +796,7 @@ def test_ctor_with_headers_and_status():
     assert b'body' == resp.body
     assert resp.headers['AGE'] == '12'
 
-    resp._start(mock.Mock(version=HttpVersion11))
+    await resp._start(mock.Mock(version=HttpVersion11))
     assert 4 == resp.content_length
     assert resp.headers['CONTENT-LENGTH'] == '4'
 
@@ -816,7 +816,7 @@ def test_ctor_text_body_combined():
         Response(body=b'123', text='test text')
 
 
-def test_ctor_text():
+async def test_ctor_text():
     resp = Response(text='test text')
 
     assert 200 == resp.status
@@ -829,7 +829,7 @@ def test_ctor_text():
     assert resp.text == 'test text'
 
     resp.headers['DATE'] = 'date'
-    resp._start(mock.Mock(version=HttpVersion11))
+    await resp._start(mock.Mock(version=HttpVersion11))
     assert resp.headers['CONTENT-LENGTH'] == '9'
 
 
@@ -889,7 +889,7 @@ def test_ctor_both_charset_param_and_header():
                  charset='koi8-r')
 
 
-def test_assign_nonbyteish_body():
+async def test_assign_nonbyteish_body():
     resp = Response(body=b'data')
 
     with pytest.raises(ValueError):
@@ -898,7 +898,7 @@ def test_assign_nonbyteish_body():
     assert 4 == resp.content_length
 
     resp.headers['DATE'] = 'date'
-    resp._start(mock.Mock(version=HttpVersion11))
+    await resp._start(mock.Mock(version=HttpVersion11))
     assert resp.headers['CONTENT-LENGTH'] == '4'
     assert 4 == resp.content_length
 

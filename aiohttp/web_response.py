@@ -297,19 +297,19 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
             return self._payload_writer
 
         await request._prepare_hook(self)
-        return self._start(request)
+        return await self._start(request)
 
-    def _start(self, request,
-               HttpVersion10=HttpVersion10,
-               HttpVersion11=HttpVersion11,
-               CONNECTION=hdrs.CONNECTION,
-               DATE=hdrs.DATE,
-               SERVER=hdrs.SERVER,
-               CONTENT_TYPE=hdrs.CONTENT_TYPE,
-               CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
-               SET_COOKIE=hdrs.SET_COOKIE,
-               SERVER_SOFTWARE=SERVER_SOFTWARE,
-               TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING):
+    async def _start(self, request,
+                     HttpVersion10=HttpVersion10,
+                     HttpVersion11=HttpVersion11,
+                     CONNECTION=hdrs.CONNECTION,
+                     DATE=hdrs.DATE,
+                     SERVER=hdrs.SERVER,
+                     CONTENT_TYPE=hdrs.CONTENT_TYPE,
+                     CONTENT_LENGTH=hdrs.CONTENT_LENGTH,
+                     SET_COOKIE=hdrs.SET_COOKIE,
+                     SERVER_SOFTWARE=SERVER_SOFTWARE,
+                     TRANSFER_ENCODING=hdrs.TRANSFER_ENCODING):
         self._req = request
 
         keep_alive = self._keep_alive
@@ -594,7 +594,7 @@ class Response(StreamResponse):
         else:
             await super().write_eof()
 
-    def _start(self, request):
+    async def _start(self, request):
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if not self._body_payload:
                 if self._body is not None:
@@ -602,7 +602,7 @@ class Response(StreamResponse):
                 else:
                     self._headers[hdrs.CONTENT_LENGTH] = '0'
 
-        return super()._start(request)
+        return await super()._start(request)
 
     def _do_start_compression(self, coding):
         if self._body_payload or self._chunked:
