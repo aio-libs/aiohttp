@@ -59,7 +59,7 @@ class StreamWriter(AbstractStreamWriter):
             raise asyncio.CancelledError('Cannot write to closing transport')
         self._transport.write(chunk)
 
-    async def write(self, chunk, *, drain=True, LIMIT=64 * 1024):
+    async def write(self, chunk, *, drain=True, LIMIT=64*1024):
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
