@@ -443,7 +443,7 @@ class ClientRequest:
                     self.body = (self.body,)
 
                 for chunk in self.body:
-                    writer.write(chunk)
+                    await writer.write(chunk)
 
             await writer.write_eof()
         except OSError as exc:

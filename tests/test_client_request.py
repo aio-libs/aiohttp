@@ -835,9 +835,9 @@ async def test_expect_100_continue_header(loop, conn):
 
 async def test_data_stream(loop, buf, conn):
     @aiohttp.streamer
-    def gen(writer):
-        writer.write(b'binary data')
-        writer.write(b' result')
+    async def gen(writer):
+        await writer.write(b'binary data')
+        await writer.write(b' result')
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -876,7 +876,7 @@ async def test_data_stream_exc(loop, conn):
 
     @aiohttp.streamer
     async def gen(writer):
-        writer.write(b'binary data')
+        await writer.write(b'binary data')
         await fut
 
     req = ClientRequest(
@@ -929,8 +929,8 @@ async def test_data_stream_exc_chain(loop, conn):
 async def test_data_stream_continue(loop, buf, conn):
     @aiohttp.streamer
     async def gen(writer):
-        writer.write(b'binary data')
-        writer.write(b' result')
+        await writer.write(b'binary data')
+        await writer.write(b' result')
         await writer.write_eof()
 
     req = ClientRequest(
@@ -975,7 +975,7 @@ async def test_close(loop, buf, conn):
     @aiohttp.streamer
     async def gen(writer):
         await asyncio.sleep(0.00001, loop=loop)
-        writer.write(b'result')
+        await writer.write(b'result')
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
