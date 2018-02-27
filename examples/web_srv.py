@@ -17,7 +17,7 @@ async def intro(request):
     resp.content_length = len(binary)
     resp.content_type = 'text/plain'
     await resp.prepare(request)
-    resp.write(binary)
+    await resp.write(binary)
     return resp
 
 
@@ -39,7 +39,7 @@ async def hello(request):
     resp.content_length = len(answer)
     resp.content_type = 'text/plain'
     await resp.prepare(request)
-    resp.write(answer)
+    await resp.write(answer)
     await resp.write_eof()
     return resp
 
