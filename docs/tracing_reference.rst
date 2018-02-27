@@ -34,8 +34,8 @@ Overview
      exception[shape=flowchart.terminator, description="on_request_exception"];
 
      acquire_connection[description="Connection acquiring"];
-     got_response;
-     send_request;
+     got_response[description="on_response_chunk_received"];
+     send_request[description="on_request_chunk_sent"];
 
      start -> acquire_connection;
      acquire_connection -> send_request;
@@ -287,7 +287,7 @@ TraceRequestChunkSentParams
 
 
 TraceResponseChunkSentParams
----------------------------
+----------------------------
 
 .. class:: TraceResponseChunkSentParams
 
