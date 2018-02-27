@@ -9,14 +9,14 @@ from .signals import Signal
 
 
 __all__ = (
-    'TraceConfig', 'TraceRequestStartParams',
+    'TraceConfig', 'TraceRequestStartParams', 'TraceRequestEndParams',
+    'TraceRequestExceptionParams', 'TraceConnectionQueuedStartParams',
+    'TraceConnectionQueuedEndParams', 'TraceConnectionCreateStartParams',
+    'TraceConnectionCreateEndParams', 'TraceConnectionReuseconnParams',
+    'TraceDnsResolveHostStartParams', 'TraceDnsResolveHostEndParams',
+    'TraceDnsCacheHitParams', 'TraceDnsCacheMissParams',
+    'TraceRequestRedirectParams',
     'TraceRequestChunkSentParams', 'TraceResponseChunkReceivedParams',
-    'TraceRequestEndParams', 'TraceRequestExceptionParams',
-    'TraceConnectionQueuedStartParams', 'TraceConnectionQueuedEndParams',
-    'TraceConnectionCreateStartParams', 'TraceConnectionCreateEndParams',
-    'TraceConnectionReuseconnParams', 'TraceDnsResolveHostStartParams',
-    'TraceDnsResolveHostEndParams', 'TraceDnsCacheHitParams',
-    'TraceDnsCacheMissParams', 'TraceRequestRedirectParams'
 )
 
 
