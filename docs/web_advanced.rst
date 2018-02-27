@@ -353,10 +353,20 @@ response. For example, here's a simple *middleware* which appends
         resp.text = resp.text + ' wink'
         return resp
 
-(Note: this example won't work with streamed responses or websockets)
+.. note::
 
-Every *middleware* should accept two parameters, a
-:class:`request <Request>` instance and a *handler*, and return the response.
+   The example won't work with streamed responses or websockets
+
+Every *middleware* should accept two parameters, a :class:`request
+<Request>` instance and a *handler*, and return the response or raise
+an exception. If the exception is not an instance of
+:exc:`aiohttp.web.HTTPException` it is converted to ``500``
+:exc:`aiohttp.web.HTTPInternalServerError` after processing the
+middlewares chain.
+
+.. warning::
+
+   Second argument should be named *handler* exactly.
 
 When creating an :class:`Application`, these *middlewares* are passed to
 the keyword-only ``middlewares`` parameter::
