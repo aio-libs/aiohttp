@@ -10,22 +10,19 @@ async def handler(request):
     return web.Response(text="Everything is fine")
 
 
-async def middleware_factory(app, next_handler):
-
-    async def middleware(request):
-        try:
-            response = await next_handler(request)
-        except web.HTTPException as exc:
-            raise exc
-        if not response.prepared:
-            response.headers['SERVER'] = "Secured Server Software"
-        return response
-
-    return middleware
+@web.middleware
+async def middleware(request, handler):
+    try:
+        response = await handler(request)
+    except web.HTTPException as exc:
+        raise exc
+    if not response.prepared:
+        response.headers['SERVER'] = "Secured Server Software"
+    return response
 
 
 def init():
-    app = web.Application(middlewares=[middleware_factory])
+    app = web.Application(middlewares=[middleware])
     app.router.add_get('/', handler)
     return app
 
