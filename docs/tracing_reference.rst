@@ -34,16 +34,24 @@ Overview
      exception[shape=flowchart.terminator, description="on_request_exception"];
 
      acquire_connection[description="Connection acquiring"];
-     got_response[description="on_response_chunk_received"];
-     send_request[description="on_request_chunk_sent"];
+     headers_received;
+     headers_sent;
+     chunk_sent[description="on_request_chunk_sent"];
+     chunk_received[description="on_response_chunk_received"];
 
      start -> acquire_connection;
-     acquire_connection -> send_request;
-     send_request -> got_response;
-     got_response -> redirect;
-     got_response -> end;
-     redirect -> send_request;
-     send_request -> exception;
+     acquire_connection -> headers_sent;
+     headers_sent -> headers_received;
+     headers_sent -> chunk_sent;
+     chunk_sent -> chunk_sent;
+     chunk_sent -> headers_received;
+     headers_received -> chunk_received;
+     chunk_received -> chunk_received;
+     chunk_received -> end;
+     headers_received -> redirect;
+     headers_received -> end;
+     redirect -> headers_sent;
+     headers_sent -> exception;
 
    }
 
@@ -149,12 +157,15 @@ TraceConfig
 
    .. attribute:: on_request_chunk_sent
 
+      .. versionadded:: 3.1
+
       Property that gives access to the signals that will be executed
       when a chunk of request body is sent.
 
       ``params`` is :class:`aiohttp.TraceRequestChunkSentParams` instance.
 
    .. attribute:: on_response_chunk_received
+
 
       Property that gives access to the signals that will be executed
       when a chunk of response body is received.
@@ -279,6 +290,8 @@ TraceRequestChunkSentParams
 
 .. class:: TraceRequestChunkSentParams
 
+   .. versionadded:: 3.1
+
    See :attr:`TraceConfig.on_request_chunk_sent` for details.
 
    .. attribute:: chunk
@@ -290,6 +303,8 @@ TraceResponseChunkSentParams
 ----------------------------
 
 .. class:: TraceResponseChunkSentParams
+
+   .. versionadded:: 3.1
 
    See :attr:`TraceConfig.on_response_chunk_received` for details.
 
