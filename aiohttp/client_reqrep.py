@@ -169,7 +169,7 @@ class ClientRequest:
                  timer=None, session=None, auto_decompress=True,
                  ssl=None,
                  proxy_headers=None,
-                 traces=[]):
+                 traces=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -210,7 +210,7 @@ class ClientRequest:
         if data or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        self.traces = traces
+        self._traces = traces or []
 
     def is_ssl(self):
         return self.url.scheme in ('https', 'wss')
@@ -519,7 +519,7 @@ class ClientRequest:
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
             auto_decompress=self._auto_decompress,
-            traces=self.traces,
+            traces=self._traces,
         )
         self.response._post_init(self.loop, self._session)
         return self.response
@@ -538,7 +538,7 @@ class ClientRequest:
             self._writer = None
 
     async def _on_chunk_request_sent(self, chunk):
-        for trace in self.traces:
+        for trace in self._traces:
             await trace.send_request_chunk_sent(chunk)
 
 
@@ -566,7 +566,7 @@ class ClientResponse(HeadersMixin):
     def __init__(self, method, url, *,
                  writer=None, continue100=None, timer=None,
                  request_info=None, auto_decompress=True,
-                 traces=[]):
+                 traces=None):
         assert isinstance(url, URL)
 
         self.method = method
@@ -583,7 +583,7 @@ class ClientResponse(HeadersMixin):
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
         self._cache = {}  # reqired for @reify method decorator
-        self._traces = traces
+        self._traces = traces or []
 
     @property
     def url(self):
