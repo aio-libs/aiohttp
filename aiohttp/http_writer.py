@@ -70,7 +70,7 @@ class StreamWriter(AbstractStreamWriter):
         writer can't be used after write_eof() method being called.
         write() return drain future.
         """
-        if self._on_chunk_sent:
+        if self._on_chunk_sent is not None:
             await self._on_chunk_sent(chunk)
 
         if self._compress is not None:
