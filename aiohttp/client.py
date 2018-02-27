@@ -9,6 +9,7 @@ import sys
 import traceback
 import warnings
 from collections.abc import Coroutine
+from typing import Coroutine
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
@@ -42,6 +43,8 @@ __all__ = (client_exceptions.__all__ +  # noqa
 
 # 5 Minute default read and connect timeout
 DEFAULT_TIMEOUT = 5 * 60
+
+_ResponseType = Coroutine[ClientResponse]
 
 
 class ClientSession:
@@ -172,7 +175,7 @@ class ClientSession:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    def request(self, method, url, **kwargs):
+    def request(self, method, url, **kwargs) -> Coroutine[ClientResponse]:
         """Perform HTTP request."""
         return _RequestContextManager(self._request(method, url, **kwargs))
 
@@ -197,7 +200,7 @@ class ClientSession:
                        ssl_context=None,
                        ssl=None,
                        proxy_headers=None,
-                       trace_request_ctx=None):
+                       trace_request_ctx=None) -> ClientResponse:
 
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
@@ -458,7 +461,7 @@ class ClientSession:
                    fingerprint=None,
                    ssl_context=None,
                    proxy_headers=None,
-                   compress=0):
+                   compress=0) -> Coroutine[ClientWebSocketResponse]:
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -497,7 +500,7 @@ class ClientSession:
                           fingerprint=None,
                           ssl_context=None,
                           proxy_headers=None,
-                          compress=0):
+                          compress=0) -> ClientWebSocketResponse:
 
         if headers is None:
             headers = CIMultiDict()
@@ -645,49 +648,49 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    def get(self, url, *, allow_redirects=True, **kwargs):
+    def get(self, url, *, allow_redirects=True, **kwargs) -> _ResponseType:
         """Perform HTTP GET request."""
         return _RequestContextManager(
             self._request(hdrs.METH_GET, url,
                           allow_redirects=allow_redirects,
                           **kwargs))
 
-    def options(self, url, *, allow_redirects=True, **kwargs):
+    def options(self, url, *, allow_redirects=True, **kwargs) -> _ResponseType:
         """Perform HTTP OPTIONS request."""
         return _RequestContextManager(
             self._request(hdrs.METH_OPTIONS, url,
                           allow_redirects=allow_redirects,
                           **kwargs))
 
-    def head(self, url, *, allow_redirects=False, **kwargs):
+    def head(self, url, *, allow_redirects=False, **kwargs) -> _ResponseType:
         """Perform HTTP HEAD request."""
         return _RequestContextManager(
             self._request(hdrs.METH_HEAD, url,
                           allow_redirects=allow_redirects,
                           **kwargs))
 
-    def post(self, url, *, data=None, **kwargs):
+    def post(self, url, *, data=None, **kwargs) -> _ResponseType:
         """Perform HTTP POST request."""
         return _RequestContextManager(
             self._request(hdrs.METH_POST, url,
                           data=data,
                           **kwargs))
 
-    def put(self, url, *, data=None, **kwargs):
+    def put(self, url, *, data=None, **kwargs) -> _ResponseType:
         """Perform HTTP PUT request."""
         return _RequestContextManager(
             self._request(hdrs.METH_PUT, url,
                           data=data,
                           **kwargs))
 
-    def patch(self, url, *, data=None, **kwargs):
+    def patch(self, url, *, data=None, **kwargs) -> _ResponseType:
         """Perform HTTP PATCH request."""
         return _RequestContextManager(
             self._request(hdrs.METH_PATCH, url,
                           data=data,
                           **kwargs))
 
-    def delete(self, url, **kwargs):
+    def delete(self, url, **kwargs) -> _ResponseType:
         """Perform HTTP DELETE request."""
         return _RequestContextManager(
             self._request(hdrs.METH_DELETE, url,
@@ -712,12 +715,12 @@ class ClientSession:
         return self._connector is None or self._connector.closed
 
     @property
-    def connector(self):
+    def connector(self) -> TCPConnector:
         """Connector instance used for the session."""
         return self._connector
 
     @property
-    def cookie_jar(self):
+    def cookie_jar(self) -> CookieJar:
         """The session cookies."""
         return self._cookie_jar
 
@@ -727,7 +730,7 @@ class ClientSession:
         return self._version
 
     @property
-    def loop(self):
+    def loop(self) -> asyncio.AbstractEventLoop:
         """Session's loop."""
         return self._loop
 
@@ -804,7 +807,7 @@ class _SessionRequestContextManager:
         self._resp = None
         self._session = session
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> _ResponseType:
         self._resp = await self._coro
         return self._resp
 
@@ -831,7 +834,7 @@ def request(method, url, *,
             loop=None,
             read_until_eof=True,
             proxy=None,
-            proxy_auth=None):
+            proxy_auth=None) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
     method - HTTP method
     url - request url

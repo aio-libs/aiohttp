@@ -855,7 +855,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             self._named_resources[name] = resource
         self._resources.append(resource)
 
-    def add_resource(self, path, *, name=None):
+    def add_resource(self, path: str, *, name=None):
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
         # Reuse last added resource if path and name are the same
@@ -872,7 +872,7 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self.register_resource(resource)
         return resource
 
-    def add_route(self, method, path, handler,
+    def add_route(self, method, path: str, handler,
                   *, name=None, expect_handler=None):
         resource = self.add_resource(path, name=name)
         return resource.add_route(method, handler,
