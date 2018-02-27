@@ -432,7 +432,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 pattern = r'^bytes=(\d*)-(\d*)$'
                 start, end = re.findall(pattern, rng)[0]
             except IndexError:  # pattern was not found in header
-                raise ValueError("range not in acceptible format")
+                raise ValueError("range not in acceptable format")
 
             end = int(end) if end else None
             start = int(start) if start else None
