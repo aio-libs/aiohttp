@@ -5,7 +5,6 @@ import collections
 import zlib
 
 from .abc import AbstractStreamWriter
-from .helpers import noop
 
 
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
@@ -56,7 +55,7 @@ class StreamWriter(AbstractStreamWriter):
             raise asyncio.CancelledError('Cannot write to closing transport')
         self._transport.write(chunk)
 
-    def write(self, chunk, *, drain=True, LIMIT=64*1024):
+    async def write(self, chunk, *, drain=True, LIMIT=64*1024):
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
@@ -66,7 +65,7 @@ class StreamWriter(AbstractStreamWriter):
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:
-                return noop()
+                return
 
         if self.length is not None:
             chunk_len = len(chunk)
@@ -76,7 +75,7 @@ class StreamWriter(AbstractStreamWriter):
                 chunk = chunk[:self.length]
                 self.length = 0
                 if not chunk:
-                    return noop()
+                    return
 
         if chunk:
             if self.chunked:
@@ -87,9 +86,7 @@ class StreamWriter(AbstractStreamWriter):
 
             if self.buffer_size > LIMIT and drain:
                 self.buffer_size = 0
-                return self.drain()
-
-        return noop()
+                await self.drain()
 
     async def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
         """Write request/response status and headers."""
