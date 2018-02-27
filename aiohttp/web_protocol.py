@@ -250,8 +250,11 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         self._request_count += 1
                         self._messages.append((msg, payload))
 
-                    if self._waiter is not None:
-                        self._waiter.set_result(None)
+                    waiter = self._waiter
+                    if waiter is not None:
+                        if not waiter.done():
+                            # don't set result twice
+                            waiter.set_result(None)
 
                 self._upgrade = upgraded
                 if upgraded and tail:
