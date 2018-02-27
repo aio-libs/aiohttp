@@ -2782,7 +2782,7 @@ test_preserve_data (void)
   parser.data = my_data;
   http_parser_init(&parser, HTTP_REQUEST);
   if (parser.data != my_data) {
-    printf("\n*** parser.data not preserved across http_parser_init ***\n\n");
+    printf("\n*** parser.data not preserved accross http_parser_init ***\n\n");
     abort();
   }
 }
