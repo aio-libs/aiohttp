@@ -477,13 +477,9 @@ class ClientRequest:
             if self.url.raw_query_string:
                 path += '?' + self.url.raw_query_string
 
-        async def on_chunk_sent(chunk):
-            for trace in self.traces:
-                await trace.send_request_chunk_sent(chunk)
-
         writer = StreamWriter(
             conn.protocol, conn.transport, self.loop,
-            on_chunk_sent=on_chunk_sent
+            on_chunk_sent=self._on_chunk_request_sent
         )
 
         if self.compress:
@@ -540,6 +536,10 @@ class ClientRequest:
             if not self.loop.is_closed():
                 self._writer.cancel()
             self._writer = None
+
+    async def _on_chunk_request_sent(self, chunk):
+        for trace in self.traces:
+            await trace.send_request_chunk_sent(chunk)
 
 
 class ClientResponse(HeadersMixin):
