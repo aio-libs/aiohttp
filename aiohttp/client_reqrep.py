@@ -22,7 +22,6 @@ from .formdata import FormData
 from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
-from .signals import Signal
 from .streams import StreamReader
 
 
@@ -483,8 +482,9 @@ class ClientRequest:
                 await trace.send_request_chunk_sent(chunk)
 
         writer = StreamWriter(
-            conn.protocol, conn.transport, self.loop)
-        writer.on_chunk_sent.append(on_chunk_sent)
+            conn.protocol, conn.transport, self.loop,
+            on_chunk_sent=on_chunk_sent
+        )
 
         if self.compress:
             writer.enable_compression(self.compress)
@@ -518,17 +518,13 @@ class ClientRequest:
 
         self._writer = self.loop.create_task(self.write_bytes(writer, conn))
 
-        async def on_chunk_received(chunk):
-            for trace in self.traces:
-                await trace.send_response_chunk_received(chunk)
-
         self.response = self.response_class(
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress)
-        self.response.on_chunk_received.append(on_chunk_received)
-
+            auto_decompress=self._auto_decompress,
+            traces=self.traces,
+        )
         self.response._post_init(self.loop, self._session)
         return self.response
 
@@ -569,7 +565,8 @@ class ClientResponse(HeadersMixin):
 
     def __init__(self, method, url, *,
                  writer=None, continue100=None, timer=None,
-                 request_info=None, auto_decompress=True):
+                 request_info=None, auto_decompress=True,
+                 traces=[]):
         assert isinstance(url, URL)
 
         self.method = method
@@ -586,9 +583,7 @@ class ClientResponse(HeadersMixin):
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
         self._cache = {}  # reqired for @reify method decorator
-
-        # avoid circular reference so that __del__ works
-        self.on_chunk_received = Signal(owner=None)
+        self._traces = traces
 
     @property
     def url(self):
@@ -813,8 +808,8 @@ class ClientResponse(HeadersMixin):
         if self._content is None:
             try:
                 self._content = await self.content.read()
-                self.on_chunk_received.freeze()
-                await self.on_chunk_received.send(self._content)
+                for trace in self._traces:
+                    await trace.send_response_chunk_received(self._content)
             except BaseException:
                 self.close()
                 raise

@@ -2,11 +2,10 @@
 
 import asyncio
 import collections
+import inspect
 import zlib
 
 from .abc import AbstractStreamWriter
-from .helpers import noop
-from .signals import Signal
 
 
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
@@ -18,7 +17,12 @@ HttpVersion11 = HttpVersion(1, 1)
 
 class StreamWriter(AbstractStreamWriter):
 
-    def __init__(self, protocol, transport, loop):
+    def __init__(self, protocol, transport, loop, on_chunk_sent=None):
+        assert (
+            on_chunk_sent is None or
+            inspect.iscoroutinefunction(on_chunk_sent)
+        )
+
         self._protocol = protocol
         self._transport = transport
 
@@ -32,7 +36,7 @@ class StreamWriter(AbstractStreamWriter):
         self._compress = None
         self._drain_waiter = None
 
-        self.on_chunk_sent = Signal(self)
+        self._on_chunk_sent = on_chunk_sent
 
     @property
     def transport(self):
@@ -66,10 +70,8 @@ class StreamWriter(AbstractStreamWriter):
         writer can't be used after write_eof() method being called.
         write() return drain future.
         """
-        self.on_chunk_sent.freeze()
-        self.loop.create_task(
-            self.on_chunk_sent.send(chunk)
-        )
+        if self._on_chunk_sent:
+            await self._on_chunk_sent(chunk)
 
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
