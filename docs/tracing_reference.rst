@@ -147,6 +147,20 @@ TraceConfig
 
       ``params`` is :class:`aiohttp.TraceRequestStartParams` instance.
 
+   .. attribute:: on_request_chunk_sent
+
+      Property that gives access to the signals that will be executed
+      when a chunk of request body is sent.
+
+      ``params`` is :class:`aiohttp.TraceRequestChunkSentParams` instance.
+
+   .. attribute:: on_response_chunk_received
+
+      Property that gives access to the signals that will be executed
+      when a chunk of response body is received.
+
+      ``params`` is :class:`aiohttp.TraceResponseChunkReceivedParams` instance.
+
    .. attribute:: on_request_redirect
 
       Property that gives access to the signals that will be executed when a
@@ -258,6 +272,31 @@ TraceRequestStartParams
    .. attribute:: headers
 
        Headers that will be used for the request, can be mutated.
+
+
+TraceRequestChunkSentParams
+---------------------------
+
+.. class:: TraceRequestChunkSentParams
+
+   See :attr:`TraceConfig.on_request_chunk_sent` for details.
+
+   .. attribute:: chunk
+
+       Bytes of chunk sent
+
+
+TraceResponseChunkSentParams
+---------------------------
+
+.. class:: TraceResponseChunkSentParams
+
+   See :attr:`TraceConfig.on_response_chunk_received` for details.
+
+   .. attribute:: chunk
+
+       Bytes of chunk received
+
 
 TraceRequestEndParams
 ---------------------
