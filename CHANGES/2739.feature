@@ -1,2 +1,2 @@
 Accept a coroutine as an application factory in ``web.run_app`` and
-gunicor worker.
+gunicorn worker.
