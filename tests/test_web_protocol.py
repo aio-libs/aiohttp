@@ -797,3 +797,23 @@ def test__process_keepalive_force_close(loop, srv):
     with mock.patch.object(loop, "call_at") as call_at_patched:
         srv._process_keepalive()
         assert not call_at_patched.called
+
+
+def test_two_data_received_without_waking_up_start_task(srv, loop):
+    # make a chance to srv.start() method start waiting for srv._waiter
+    loop.run_until_complete(asyncio.sleep(0.01))
+    assert srv._waiter is not None
+
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n'
+        b'Host: ex.com\r\n'
+        b'Content-Length: 1\r\n\r\n'
+        b'a')
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n'
+        b'Host: ex.com\r\n'
+        b'Content-Length: 1\r\n\r\n'
+        b'b')
+
+    assert len(srv._messages) == 2
+    assert srv._waiter.done()

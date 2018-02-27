@@ -14,6 +14,12 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.5 (2018-02-27)
+==================
+
+- Fix ``InvalidStateError`` on processing a sequence of two
+  ``RequestHandler.data_received`` calls on web server. (#2773)
+
 3.0.4 (2018-02-26)
 ==================
 
