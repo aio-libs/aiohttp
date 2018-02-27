@@ -144,7 +144,7 @@ class TestStreamReader:
         assert b'line2' == data
 
     async def test_read_all(self):
-        # Read all avaliable buffered bytes
+        # Read all available buffered bytes
         stream = self._make_one()
         stream.feed_data(b'line1')
         stream.feed_data(b'line2')
