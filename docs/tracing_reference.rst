@@ -51,6 +51,8 @@ Overview
      headers_received -> redirect;
      headers_received -> end;
      redirect -> headers_sent;
+     chunk_received -> exception;
+     chunk_sent -> exception;
      headers_sent -> exception;
 
    }
@@ -157,12 +159,13 @@ TraceConfig
 
    .. attribute:: on_request_chunk_sent
 
-      .. versionadded:: 3.1
 
       Property that gives access to the signals that will be executed
       when a chunk of request body is sent.
 
       ``params`` is :class:`aiohttp.TraceRequestChunkSentParams` instance.
+
+      .. versionadded:: 3.1
 
    .. attribute:: on_response_chunk_received
 
@@ -171,6 +174,8 @@ TraceConfig
       when a chunk of response body is received.
 
       ``params`` is :class:`aiohttp.TraceResponseChunkReceivedParams` instance.
+
+      .. versionadded:: 3.1
 
    .. attribute:: on_request_redirect
 
