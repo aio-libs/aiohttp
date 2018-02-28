@@ -966,7 +966,7 @@ WebSocketResponse
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overriding per-socket setting.                           
+                           ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -2063,8 +2063,9 @@ The definition is created by functions like :func:`get` or
 
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
-   Return :class:`RouteDef` for processing requests that decided by ``method``. See
-   :meth:`UrlDispatcher.add_route` for information about parameters.
+   Return :class:`RouteDef` for processing requests that decided by
+   ``method``. See :meth:`UrlDispatcher.add_route` for information
+   about parameters.
 
    .. versionadded:: 2.3
 
