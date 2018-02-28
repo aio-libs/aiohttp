@@ -278,7 +278,7 @@ async def test_access_special_resource(tmp_dir_path, aiohttp_client):
         assert r.status == 403
 
 
-async def test_partialy_applied_handler(aiohttp_client):
+async def test_partially_applied_handler(aiohttp_client):
     app = web.Application()
 
     async def handler(data, request):
