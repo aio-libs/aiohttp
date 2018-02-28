@@ -346,7 +346,7 @@ class AccessLogger(AbstractAccessLogger):
 
         All known atoms will be replaced with %s
         Also methods for formatting of those atoms will be added to
-        _methods in apropriate order
+        _methods in appropriate order
 
         For example we have log_format = "%a %t"
         This format will be translated to "%s %s"
