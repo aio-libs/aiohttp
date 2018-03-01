@@ -18,8 +18,7 @@ flake: .flake
                       $(shell find tests -type f) \
                       $(shell find examples -type f) \
                       $(shell find demos -type f)
-	@flake8 aiohttp --exclude=aiohttp/backport_cookies.py
-	@flake8 examples tests demos
+	@flake8 aiohttp examples tests demos
 	python setup.py check -rms
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
