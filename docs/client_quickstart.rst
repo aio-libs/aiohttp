@@ -53,6 +53,10 @@ Other HTTP methods are available as well::
    Don't create a session per request. Most likely you need a session
    per application which performs all requests altogether.
 
+   More complex cases may require a session per site, e.g. one for
+   Github and other one for Facebook APIs. Anyway making a session for
+   every request is a **very bad** idea.
+
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
