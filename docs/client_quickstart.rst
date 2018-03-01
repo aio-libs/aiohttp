@@ -22,18 +22,19 @@ Begin by importing the aiohttp module::
 
     import aiohttp
 
-Now, let's try to get a web-page. For example let's get GitHub's public
-time-line::
+Now, let's try to get a web-page. For example let's query
+``http://httpbin.org/get``::
 
     async with aiohttp.ClientSession() as session:
         async with session.get('http://httpbin.org/get') as resp:
             print(resp.status)
             print(await resp.text())
 
-Now, we have a :class:`ClientSession` called ``session`` and
-a :class:`ClientResponse` object called ``resp``. We can get all the
+Now, we have a :class:`ClientSession` called ``session`` and a
+:class:`ClientResponse` object called ``resp``. We can get all the
 information we need from the response.  The mandatory parameter of
-:meth:`ClientSession.get` coroutine is an HTTP url.
+:meth:`ClientSession.get` coroutine is an HTTP *url* (:class:`str` or
+class:`yarl.URL` instance).
 
 In order to make an HTTP POST request use :meth:`ClientSession.post` coroutine::
 
