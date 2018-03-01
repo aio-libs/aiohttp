@@ -2,7 +2,6 @@
 
 import asyncio
 import collections
-import inspect
 import zlib
 
 from .abc import AbstractStreamWriter
@@ -18,11 +17,6 @@ HttpVersion11 = HttpVersion(1, 1)
 class StreamWriter(AbstractStreamWriter):
 
     def __init__(self, protocol, transport, loop, on_chunk_sent=None):
-        assert (
-            on_chunk_sent is None or
-            inspect.iscoroutinefunction(on_chunk_sent)
-        )
-
         self._protocol = protocol
         self._transport = transport
 
