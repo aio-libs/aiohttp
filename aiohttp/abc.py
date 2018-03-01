@@ -62,6 +62,10 @@ class AbstractMatchInfo(ABC):
         """Add application to the nested apps stack."""
 
     @abstractmethod
+    def add_map(self, match_dict):
+        """Add matched variables to the nested apps stack."""
+
+    @abstractmethod
     def freeze(self):
         """Freeze the match info.
 

@@ -1354,19 +1354,20 @@ duplicated like one using :meth:`Application.copy`.
       In resolving process if request's path starts with *prefix* then
       further resolving is passed to *subapp*.
 
-      You may use variables in *prefix*. If a matched resource in the
-      sub-application defines another variable with the same name, the
-      sub-application's match result will override the *prefix*'s match result.
-      In web handlers, all overridden results can be accessed via ``maps``
-      attribute of ``request.match_info`` object as it is a merged view
-      (:class:`collections.ChainMap`) of all nested dynamically prefixed
-      sub-applications in the reversed order.
+      You may use variables in *prefix*.  ``request.match_info`` has the
+      matched variables defined by this *prefix* along with the variables
+      defined by the matched resource.
+
+      If there are variables with duplicate names in prefixes and resources,
+      the innermost values are exposed on the match info, but you still have
+      access to the overridden values via its ``maps`` property.
 
       :param str prefix: path's prefix for the resource.
 
       :param Application subapp: nested application attached under *prefix*.
 
-      :returns: a :class:`PrefixedSubAppResource` instance.
+      :returns: a :class:`PrefixedSubAppResource` or
+                :class:`DynamicSubAppResource` instance.
 
    .. method:: add_routes(routes_table)
 
@@ -1947,6 +1948,17 @@ Resource classes hierarchy::
       The call is not allowed, it raises :exc:`RuntimeError`.
 
 
+.. class:: DynamicSubAppResource
+
+   A resource for serving nested applications with dynamic variables in its prefix.
+   The class instance is returned by
+   :class:`~aiohttp.web.Application.add_subapp` call.
+
+   .. method:: url_for(**kwargs)
+
+      The call is not allowed, it raises :exc:`RuntimeError`.
+
+
 .. _aiohttp-web-route:
 
 Route
@@ -2310,8 +2322,9 @@ In general the result may be any object derived from
 
 .. class:: UrlMappingMatchInfo
 
-   Inherited from :class:`collections.ChainMap` and :class:`AbstractMatchInfo`.
-   Dict items are filled by matching info and is :term:`resource`\-specific.
+   Implements :class:`typing.Mapping` and :class:`AbstractMatchInfo`
+   interfaces.  Mapping items are filled by matching variables defined
+   in the :term:`resource` paths.
 
    .. attribute:: expect_handler
 
@@ -2319,11 +2332,33 @@ In general the result may be any object derived from
 
    .. attribute:: handler
 
-      A coroutine for handling request.
+      A coroutine for handling the request.
 
    .. attribute:: route
 
-      :class:`Route` instance for url matching.
+      :class:`Route` instance matched with the URL and method.
+
+   .. attribute:: current_app
+
+      The innermost :class:`Application` instance matched through the resolving
+      process.
+
+   .. attribute:: apps
+
+      A tuple of :class:`Application` instances matched through the resolving
+      process.  The innermost application comes at last.
+
+   .. attribute:: maps
+
+      A tuple of :class:`dict` instances where each instance corresponds to the
+      variables matched for each dynamic prefix of in the nested application
+      hierarchy.  The match dict of the innermost match comes at last.
+      Static prefixes without any variable insert an empty dict here.
+
+      This provides a decomposed view of the match info, while the match info
+      provides a merged view where innermost variables override outer variables
+      with duplicate names defined from dynamic prefixes in different levels of
+      the hierarchy.
 
 
 View

@@ -200,11 +200,10 @@ class AbstractRoute(abc.ABC):
 class UrlMappingMatchInfo(AbstractMatchInfo, Mapping):
 
     def __init__(self, match_dict, route):
-        super().__init__()
         self._route = route
         self._apps = ()
-        self._variables = collections.ChainMap(match_dict)
         self._current_app = None
+        self._variables = collections.ChainMap(match_dict)
         self._frozen = False
 
     @property
@@ -253,15 +252,17 @@ class UrlMappingMatchInfo(AbstractMatchInfo, Mapping):
         finally:
             self._current_app = prev
 
-    def freeze(self):
-        self._frozen = True
+    def add_map(self, match_dict):
+        if self._frozen:
+            raise RuntimeError("Cannot change maps stack after .freeze() call")
+        self._variables.maps.append(match_dict)
 
     @property
-    def variable_maps(self):
+    def maps(self):
         return tuple(reversed(self._variables.maps))
 
-    def add_variables(self, match_dict):
-        self._variables.maps.append(match_dict)
+    def freeze(self):
+        self._frozen = True
 
     def __getitem__(self, key):
         return self._variables[key]
@@ -273,7 +274,7 @@ class UrlMappingMatchInfo(AbstractMatchInfo, Mapping):
         return self._variables.__len__()
 
     def __repr__(self):
-        return "<MatchInfo {}: {}>".format(dict(self).__repr__(), self._route)
+        return "<MatchInfo {}: {}>".format(repr(self._variables), self._route)
 
 
 class MatchInfoError(UrlMappingMatchInfo):
@@ -699,8 +700,8 @@ class PrefixedSubAppResource(PrefixResource):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
         match_info = await self._app.router.resolve(request)
-        match_info.add_variables({})
         match_info.add_app(self._app)
+        match_info.add_map({})
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
         else:
@@ -750,8 +751,8 @@ class DynamicSubAppResource(DynamicResource):
         subrequest = request.clone(
             rel_url=request.url.with_path(request.url.raw_path[mend:]))
         match_info = await self._app.router.resolve(subrequest)
-        match_info.add_variables(mdict)
         match_info.add_app(self._app)
+        match_info.add_map(mdict)
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
         else:
