@@ -16,7 +16,7 @@ HttpVersion11 = HttpVersion(1, 1)
 
 class StreamWriter(AbstractStreamWriter):
 
-    def __init__(self, protocol, transport, loop):
+    def __init__(self, protocol, transport, loop, on_chunk_sent=None):
         self._protocol = protocol
         self._transport = transport
 
@@ -29,6 +29,8 @@ class StreamWriter(AbstractStreamWriter):
         self._eof = False
         self._compress = None
         self._drain_waiter = None
+
+        self._on_chunk_sent = on_chunk_sent
 
     @property
     def transport(self):
@@ -55,13 +57,16 @@ class StreamWriter(AbstractStreamWriter):
             raise asyncio.CancelledError('Cannot write to closing transport')
         self._transport.write(chunk)
 
-    async def write(self, chunk, *, drain=True, LIMIT=64*1024):
+    async def write(self, chunk, *, drain=True, LIMIT=0x10000):
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
         writer can't be used after write_eof() method being called.
         write() return drain future.
         """
+        if self._on_chunk_sent is not None:
+            await self._on_chunk_sent(chunk)
+
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:

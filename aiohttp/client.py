@@ -309,7 +309,7 @@ class ClientSession:
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
-                        ssl=ssl, proxy_headers=proxy_headers)
+                        ssl=ssl, proxy_headers=proxy_headers, traces=traces)
 
                     # connection timeout
                     try:

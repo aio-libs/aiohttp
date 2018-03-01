@@ -13,10 +13,12 @@ from aiohttp.tracing import (Trace, TraceConfig,
                              TraceDnsCacheHitParams, TraceDnsCacheMissParams,
                              TraceDnsResolveHostEndParams,
                              TraceDnsResolveHostStartParams,
+                             TraceRequestChunkSentParams,
                              TraceRequestEndParams,
                              TraceRequestExceptionParams,
                              TraceRequestRedirectParams,
-                             TraceRequestStartParams)
+                             TraceRequestStartParams,
+                             TraceResponseChunkReceivedParams)
 
 
 class TestTraceConfig:
@@ -41,6 +43,8 @@ class TestTraceConfig:
         trace_config.freeze()
 
         assert trace_config.on_request_start.frozen
+        assert trace_config.on_request_chunk_sent.frozen
+        assert trace_config.on_response_chunk_received.frozen
         assert trace_config.on_request_end.frozen
         assert trace_config.on_request_exception.frozen
         assert trace_config.on_request_redirect.frozen
@@ -62,6 +66,16 @@ class TestTrace:
             'request_start',
             (Mock(), Mock(), Mock()),
             TraceRequestStartParams
+        ),
+        (
+            'request_chunk_sent',
+            (Mock(), ),
+            TraceRequestChunkSentParams
+        ),
+        (
+            'response_chunk_received',
+            (Mock(), ),
+            TraceResponseChunkReceivedParams
         ),
         (
             'request_end',
