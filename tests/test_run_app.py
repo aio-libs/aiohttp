@@ -516,3 +516,25 @@ def test_startup_cleanup_signals_even_on_failure(patched_loop):
 
     startup_handler.assert_called_once_with(app)
     cleanup_handler.assert_called_once_with(app)
+
+
+def test_run_app_coro(patched_loop):
+    startup_handler = cleanup_handler = None
+
+    async def make_app():
+        nonlocal startup_handler, cleanup_handler
+        app = web.Application()
+        startup_handler = make_mocked_coro()
+        app.on_startup.append(startup_handler)
+        cleanup_handler = make_mocked_coro()
+        app.on_cleanup.append(cleanup_handler)
+        return app
+
+    web.run_app(make_app(), print=stopper(patched_loop))
+
+    patched_loop.create_server.assert_called_with(mock.ANY, '0.0.0.0', 8080,
+                                                  ssl=None, backlog=128,
+                                                  reuse_address=None,
+                                                  reuse_port=None)
+    startup_handler.assert_called_once_with(mock.ANY)
+    cleanup_handler.assert_called_once_with(mock.ANY)
