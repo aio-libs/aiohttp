@@ -210,7 +210,9 @@ class ClientRequest:
         if data or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        self._traces = traces or []
+        if traces is None:
+            traces = []
+        self._traces = traces
 
     def is_ssl(self):
         return self.url.scheme in ('https', 'wss')
@@ -583,7 +585,9 @@ class ClientResponse(HeadersMixin):
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress
         self._cache = {}  # reqired for @reify method decorator
-        self._traces = traces or []
+        if traces is None:
+            traces = []
+        self._traces = traces
 
     @property
     def url(self):
