@@ -91,3 +91,8 @@ async def test_unreg_site(make_runner):
 async def test_app_property(make_runner, app):
     runner = make_runner()
     assert runner.app is app
+
+
+def test_non_app():
+    with pytest.raises(TypeError):
+        web.AppRunner(object())

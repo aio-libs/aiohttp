@@ -56,6 +56,8 @@ class GunicornWebWorker(base.Worker):
             access_log=access_log,
             access_log_format=self._get_valid_log_format(
                 self.cfg.access_log_format))
+        if asyncio.iscoroutinefunction(self.wsgi):
+            self.wsgi = self.loop.run_until_complete(self.wsgi())
         self._runner = web.AppRunner(self.wsgi, **params)
         self.loop.run_until_complete(self._runner.setup())
         self._task = self.loop.create_task(self._run())
