@@ -46,6 +46,9 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
     """Run an app locally"""
     loop = asyncio.get_event_loop()
 
+    if asyncio.iscoroutine(app):
+        app = loop.run_until_complete(app)
+
     runner = AppRunner(app, handle_signals=handle_signals,
                        access_log_class=access_log_class,
                        access_log_format=access_log_format,

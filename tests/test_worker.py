@@ -85,7 +85,24 @@ def test_run(worker, loop):
     with pytest.raises(SystemExit):
         worker.run()
     assert worker._run.called
-    worker._runner.server is None
+    assert loop.is_closed()
+
+
+def test_run_async_factory(worker, loop):
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    app = worker.wsgi
+
+    async def make_app():
+        return app
+    worker.wsgi = make_app
+
+    worker.loop = loop
+    worker._run = make_mocked_coro(None)
+    with pytest.raises(SystemExit):
+        worker.run()
+    assert worker._run.called
     assert loop.is_closed()
 
 

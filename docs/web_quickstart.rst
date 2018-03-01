@@ -711,5 +711,3 @@ unsupported method and list of allowed methods::
     HTTPMethodNotAllowed(method, allowed_methods, *,
                          headers=None, reason=None,
                          body=None, text=None, content_type=None)
-
-
