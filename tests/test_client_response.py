@@ -10,6 +10,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -613,3 +614,35 @@ def test_redirect_history_in_exception():
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
     assert [hist_response] == cm.value.history
+
+
+async def test_response_read_triggers_callback(loop, session):
+    trace = mock.Mock()
+    trace.send_response_chunk_received = make_mocked_coro()
+    response_body = b'This is response'
+
+    response = ClientResponse(
+        'get', URL('http://def-cl-resp.org'),
+        traces=[trace]
+    )
+    response._post_init(loop, session)
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
+        fut.set_result(response_body)
+        return fut
+
+    response.headers = {
+        'Content-Type': 'application/json;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    res = await response.read()
+    assert res == response_body
+    assert response._connection is None
+
+    assert trace.send_response_chunk_received.called
+    assert (
+        trace.send_response_chunk_received.call_args ==
+        mock.call(response_body)
+    )
