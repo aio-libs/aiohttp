@@ -96,7 +96,6 @@ gethostbyname
 github
 google
 gunicorn
-Gunicorn
 gunicorn’s
 gzipped
 hackish
