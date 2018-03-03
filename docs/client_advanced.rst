@@ -416,7 +416,7 @@ same thing as the previous example, but add another call to
   sslcontext = ssl.create_default_context(
      cafile='/path/to/ca-bundle.crt')
   sslcontext.load_cert_chain('/path/to/client/public/device.pem',
-                             '/path/to/client/private/device.jey')
+                             '/path/to/client/private/device.key')
   r = await session.get('https://example.com', ssl=sslcontext)
 
 There is explicit errors when ssl verification fails
