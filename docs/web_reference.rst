@@ -1218,8 +1218,9 @@ duplicated like one using :meth:`Application.copy`.
    :param handler_args: dict-like object that overrides keyword arguments of
                         :meth:`Application.make_handler`
 
-   :param client_max_size: client's maximum size in a request, in bytes. If a POST
-                           request exceeds this value, it raises an
+   :param client_max_size: client's maximum size in a request, in
+                           bytes.  If a POST request exceeds this
+                           value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
 
    :param loop: event loop
@@ -1308,6 +1309,32 @@ duplicated like one using :meth:`Application.copy`.
               pass
 
       .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+
+   .. method:: add_subapp(prefix, subapp)
+
+      Register nested sub-application under given path *prefix*.
+
+      In resolving process if request's path starts with *prefix* then
+      further resolving is passed to *subapp*.
+
+      :param str prefix: path's prefix for the resource.
+
+      :param Application subapp: nested application attached under *prefix*.
+
+      :returns: a :class:`PrefixedSubAppResource` instance.
+
+   .. method:: add_routes(routes_table)
+
+      Register route definitions from *routes_table*.
+
+      The table is a :class:`list` of :class:`RouteDef` items or
+      :class:`RouteTableDef`.
+
+      The method is a shortcut for
+      ``app.router.add_routes(routes_table)``, see also
+      :meth:`UrlDispatcher.add_routes`.
+
+      .. versionadded:: 3.1
 
    .. method:: make_handler(loop=None, **kwargs)
 
@@ -1618,19 +1645,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
 
       :returns: new :class:`StaticRoute` instance.
-
-   .. method:: add_subapp(prefix, subapp)
-
-      Register nested sub-application under given path *prefix*.
-
-      In resolving process if request's path starts with *prefix* then
-      further resolving is passed to *subapp*.
-
-      :param str prefix: path's prefix for the resource.
-
-      :param Application subapp: nested application attached under *prefix*.
-
-      :returns: a :class:`PrefixedSubAppResource` instance.
 
    .. comethod:: resolve(request)
 
