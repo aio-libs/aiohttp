@@ -35,7 +35,7 @@ command:
 .. code-block:: shell
 
  $ python3 -c 'import aiohttp; print(aiohttp.__version__)'
- 2.0.5
+ 3.0.5
 
 Project structure looks very similar to other python based web projects:
 
