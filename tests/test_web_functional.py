@@ -1708,3 +1708,16 @@ async def test_request_path(aiohttp_client):
     assert 200 == resp.status
     txt = await resp.text()
     assert 'OK' == txt
+
+
+async def test_app_add_routes(aiohttp_client):
+
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.get('/get', handler)])
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/get')
+    assert resp.status == 200
