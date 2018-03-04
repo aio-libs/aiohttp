@@ -258,9 +258,9 @@ functionality, the AioHTTPTestCase is provided::
         # tests that are asynchronous
         @unittest_run_loop
         async def test_example(self):
-            request = await self.client.request("GET", "/")
-            assert request.status == 200
-            text = await request.text()
+            resp = await self.client.request("GET", "/")
+            assert resp.status == 200
+            text = await resp.text()
             assert "Hello, world" in text
 
         # a vanilla example
