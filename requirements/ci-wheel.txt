@@ -23,5 +23,5 @@ yarl==1.1.1
 # Using PEP 508 env markers to control dependency on runtimes:
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
 codecov==2.0.15; platform_system!="Windows"  # We only use it in Travis CI
-uvloop==0.9.1; platform_system!="Windows" and platform_implementation!="PyPy" # MagicStack/uvloop#14
+uvloop==0.9.1; platform_system!="Windows" and implementation_name!="pypy" # MagicStack/uvloop#14
 idna-ssl==1.0.0; python_version<"3.7"
