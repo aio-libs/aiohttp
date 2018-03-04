@@ -12,8 +12,8 @@ log = logging.getLogger(__name__)
 
 async def index(request):
     resp = web.WebSocketResponse()
-    ok, protocol = resp.can_start(request)
-    if not ok:
+    is_ws = resp.can_prepare(request)
+    if not is_ws:
         return aiohttp_jinja2.render_template('index.html', request, {})
 
     await resp.prepare(request)

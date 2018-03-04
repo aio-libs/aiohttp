@@ -8,8 +8,8 @@ from aiohttp import web
 
 async def wshandler(request):
     ws = web.WebSocketResponse(autoclose=False)
-    ok, protocol = ws.can_start(request)
-    if not ok:
+    is_ws = ws.can_prepare(request)
+    if not is_ws:
         return web.HTTPBadRequest()
 
     await ws.prepare(request)
