@@ -2,6 +2,7 @@
 """Tests for aiohttp/client.py"""
 
 import gc
+import sys
 from unittest import mock
 
 import pytest
@@ -152,6 +153,8 @@ async def test_release(loop, session):
     assert response._connection is None
 
 
+@pytest.mark.skipif(sys.implementation.name != 'cpython',
+                    reason="Other implementations has different GC strategies")
 async def test_release_on_del(loop, session):
     connection = mock.Mock()
     connection.protocol.upgraded = False
