@@ -57,7 +57,7 @@ class BaseSite(ABC):
 
 
 class TCPSite(BaseSite):
-    __slots__ = ('_host', '_port')
+    __slots__ = ('_host', '_port', '_reuse_address', '_reuse_port')
 
     def __init__(self, runner, host=None, port=None, *,
                  shutdown_timeout=60.0, ssl_context=None,
