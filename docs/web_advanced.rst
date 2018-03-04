@@ -126,7 +126,9 @@ should accept zero parameters::
        app.router.add_get(...)
        return app
 
-Start gunicorn::
+Start gunicorn:
+
+.. code-block:: shell
 
    $ gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
 
