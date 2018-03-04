@@ -57,6 +57,9 @@ aiohttp extensions
 - `aiohttp-jinja2 <https://github.com/aio-libs/aiohttp-jinja2>`_ Jinja2
   template renderer for aiohttp.web.
 
+- `aiozipkin <https://github.com/aio-libs/aiozipkin>`_ distributed
+  tracing instrumentation for `aiohttp` client and server.
+
 Database drivers
 ^^^^^^^^^^^^^^^^
 
