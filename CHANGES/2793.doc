@@ -1,0 +1,1 @@
+Drop removed functionality about passing ``StreamReader`` as data at client side.
