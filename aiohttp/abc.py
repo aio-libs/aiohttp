@@ -145,3 +145,13 @@ class AbstractAccessLogger(ABC):
     @abstractmethod
     def log(self, request, response, time):
         """Emit log to logger."""
+
+
+class AbstractRuleMatching(ABC):
+    @abstractmethod  # pragma: no branch
+    async def match(self, request):
+        """Return bool if the request satisfies the criteria"""
+
+    @abstractmethod  # pragma: no branch
+    def get_info(self):
+        """Return a dict with additional info useful for introspection"""

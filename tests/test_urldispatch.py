@@ -11,9 +11,9 @@ import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
-from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
-                                       ResourceRoute, SystemRoute, View,
-                                       _default_expect_handler)
+from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource, DefaultRule,
+                                       Domain, ResourceRoute, SystemRoute,
+                                       View, _default_expect_handler)
 
 
 def make_request(method, path):
@@ -1005,6 +1005,40 @@ def test_subapp_get_info(app, loop):
     subapp = web.Application()
     resource = subapp.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
+
+
+def test_subapp_rule_get_info(app, loop):
+    subapp = web.Application()
+    rule = Domain('example.com')
+    assert rule.get_info() == {'domain': 'example.com'}
+    resource = app.add_subapp(rule, subapp)
+    assert resource.get_info() == {'rule': rule, 'app': subapp}
+
+
+async def test_subapp_rule_domain(app, loop):
+    subapp1 = web.Application()
+    h1 = make_handler()
+    subapp1.router.add_get('/', h1)
+    app.add_subapp(Domain('example.com'), subapp1)
+
+    subapp2 = web.Application()
+    h2 = make_handler()
+    subapp2.router.add_get('/', h2)
+    app.add_subapp(DefaultRule(), subapp2)
+
+    assert h1 is not h2
+
+    request = make_mocked_request('GET', '/', {'host': 'example.com'})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is h1
+
+    request = make_mocked_request('GET', '/', {'host': 'example2.com'})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is h2
+
+    request = make_mocked_request('GET', '/')
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is h2
 
 
 def test_subapp_url_for(app, loop):

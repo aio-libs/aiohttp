@@ -4,7 +4,8 @@ from collections import MutableMapping
 from functools import partial
 
 from . import hdrs
-from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
+from .abc import (AbstractAccessLogger, AbstractMatchInfo, AbstractRouter,
+                  AbstractRuleMatching)
 from .frozenlist import FrozenList
 from .helpers import AccessLogger
 from .log import web_logger
@@ -13,7 +14,8 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
+from .web_urldispatcher import (PrefixedSubAppResource, SubAppResource,
+                                UrlDispatcher)
 
 
 __all__ = ('Application',)
@@ -174,18 +176,22 @@ class Application(MutableMapping):
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
-    def add_subapp(self, prefix, subapp):
+    def add_subapp(self, rule, subapp):
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
         if subapp.frozen:
             raise RuntimeError("Cannot add frozen application")
-        if prefix.endswith('/'):
-            prefix = prefix[:-1]
-        if prefix in ('', '/'):
-            raise ValueError("Prefix cannot be empty")
-
-        resource = PrefixedSubAppResource(prefix, subapp)
+        if isinstance(rule, str):
+            prefix = rule.rstrip('/')
+            if not prefix:
+                raise ValueError("Prefix cannot be empty")
+            resource = PrefixedSubAppResource(prefix, subapp)
+        elif isinstance(rule, AbstractRuleMatching):
+            resource = SubAppResource(rule, subapp)
+        else:
+            raise TypeError("Rule must be str or subclass of "
+                            "aiohttp.abc.AbstractRuleMatching")
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)

@@ -18,7 +18,8 @@ import attr
 from yarl import URL
 
 from . import hdrs
-from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
+from .abc import (AbstractMatchInfo, AbstractRouter, AbstractRuleMatching,
+                  AbstractView)
 from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
@@ -30,6 +31,7 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
            'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
+           'DefaultRule', 'Domain',
            'head', 'get', 'post', 'patch', 'put', 'delete', 'route', 'view')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
@@ -673,6 +675,76 @@ class PrefixedSubAppResource(PrefixResource):
     def __repr__(self):
         return "<PrefixedSubAppResource {prefix} -> {app!r}>".format(
             prefix=self._prefix, app=self._app)
+
+
+class DefaultRule(AbstractRuleMatching):
+    async def match(self, request):
+        return True
+
+    def get_info(self):
+        return {}
+
+
+class Domain(AbstractRuleMatching):
+
+    def __init__(self, domain):
+        if not isinstance(domain, str):
+            raise TypeError("Domain must be str")
+        elif not domain:
+            raise ValueError("Domain cannot be empty")
+        self._domain = domain.lower()
+
+    async def match(self, request):
+        host = request.headers.get('host')
+        if host:
+            return host.lower() == self._domain
+
+    def get_info(self):
+        return {'domain': self._domain}
+
+
+class SubAppResource(AbstractResource):
+
+    def __init__(self, rule, app):
+        super().__init__()
+        self._app = app
+        self._rule = rule
+
+    def add_prefix(self, prefix):
+        for resource in self._app.router.resources():
+            resource.add_prefix(prefix)
+
+    def url_for(self, *args, **kwargs):
+        raise RuntimeError(".url_for() is not supported "
+                           "by sub-application root")
+
+    def get_info(self):
+        return {'app': self._app,
+                'rule': self._rule}
+
+    async def resolve(self, request):
+        if not await self._rule.match(request):
+            return None, set()
+        match_info = await self._app.router.resolve(request)
+        match_info.add_app(self._app)
+        if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
+            methods = match_info.http_exception.allowed_methods
+        else:
+            methods = set()
+        return match_info, methods
+
+    def raw_match(self, path):
+        return False
+
+    def __len__(self):
+        return len(self._app.router.routes())
+
+    def __iter__(self):
+        return iter(self._app.router.routes())
+
+    def __repr__(self):
+        return "<SubAppResource {rule!r} -> {app!r}>".format(
+            rule=self._rule, app=self._app)
 
 
 class ResourceRoute(AbstractRoute):
