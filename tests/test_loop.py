@@ -29,7 +29,10 @@ class TestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_on_startup_hook(self):
-        assert self.startup_loop is not None
+        self.assertIsNotNone(self.startup_loop)
+
+    def test_default_loop(self):
+        self.assertIs(self.loop, asyncio.get_event_loop())
 
 
 def test_default_loop(loop):
