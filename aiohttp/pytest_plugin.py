@@ -200,11 +200,17 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture
 def loop(loop_factory, fast, loop_debug):
     """Return an instance of the event loop."""
+    try:
+        old_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        old_loop = None
     with loop_context(loop_factory, fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
+        asyncio.set_event_loop(_loop)
         yield _loop
-    asyncio.set_event_loop(None)
+    if old_loop is not None and not old_loop.is_closed():
+        asyncio.set_event_loop(old_loop)
 
 
 @pytest.fixture
