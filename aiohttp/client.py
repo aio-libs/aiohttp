@@ -17,7 +17,8 @@ from . import client_exceptions, client_reqrep
 from . import connector as connector_mod
 from . import hdrs, http, payload
 from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
+from .client_exceptions import (ClientError, ClientOSError, 
+                                ClientMaximumRedirectsReached, InvalidURL,
                                 ServerTimeoutError, WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
@@ -356,7 +357,13 @@ class ClientSession:
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
                             resp.close()
-                            break
+                            raise ClientMaximumRedirectsReached(
+                                request_info=req.request_info,
+                                history=history,
+                                code=429,
+                                message=ClientMaximumRedirectsReached.__doc__,
+                                headers=headers
+                            )
                         else:
                             resp.release()
 
