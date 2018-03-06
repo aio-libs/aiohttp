@@ -194,6 +194,9 @@ class Application(MutableMapping):
             subapp._set_loop(self._loop)
         return resource
 
+    def add_routes(self, routes):
+        self.router.add_routes(routes)
+
     @property
     def on_response_prepare(self):
         return self._on_response_prepare
