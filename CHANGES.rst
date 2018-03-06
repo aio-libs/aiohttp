@@ -14,6 +14,12 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.6 (2018-03-05)
+==================
+
+- Add ``_reuse_address`` and ``_reuse_port`` to
+  ``web_runner.TCPSite.__slots__``. (#2792)
+
 3.0.5 (2018-02-27)
 ==================
 

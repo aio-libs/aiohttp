@@ -77,27 +77,30 @@ following example::
         return app
 
 
-Why the minimal supported version is Python 3.4.2
+Why the minimal supported version is Python 3.5.3?
 --------------------------------------------------
 
-As of aiohttp **v0.18.0** we dropped support for Python 3.3 up to
-3.4.1.  The main reason for that is the :meth:`object.__del__` method,
-which is fully working since Python 3.4.1 and we need it for proper
-resource closing.
+Python 3.5.2 has fixed protocol for async iterators: ``__aiter()__`` is
+not a coroutine but regular function.
 
-The last Python 3.3, 3.4.0 compatible version of aiohttp is
-**v0.17.4**.
+Python 3.5.3 is even more important: :func:`asyncio.get_event_loop`
+returns the running loop instance if called from a coroutine
+(previously was returning a *default* one, set by
+:func:`asyncio.set_event_loop`.
 
-This should not be an issue for most aiohttp users (for example `Ubuntu`
-14.04.3 LTS provides python upgraded to 3.4.3), however libraries
-depending on aiohttp should consider this and either freeze aiohttp
-version or drop Python 3.3 support as well.
+The change is very crucial, in Python < 3.5.3
+:func:`asyncio.get_event_loop` was not reliable, thus user *was
+forced* to pass the event loop instance explicitly everywhere.
 
-As of aiohttp **v1.0.0** we dropped support for Python 3.4.1 up to
-3.4.2+ also. The reason is: `loop.is_closed` appears in 3.4.2+
+Otherwise if a future object was created for using one event loop
+(e.g. default) but a coroutine was run by other loop -- the coroutine
+was never awaited, task was *hung*.
 
-Again, it should be not an issue at 2016 Summer because all major
-distributions are switched to Python 3.5 now.
+Keep in mind that every ``await`` expression internally either passed
+instantly or paused by waiting for a future.
+
+It's extremely important that all tasks (coroutine runners) and
+futures are using the same event loop.
 
 
 How a middleware may store a data for using by web-handler later?
@@ -114,6 +117,9 @@ Just put data inside *request*::
 See https://github.com/aio-libs/aiohttp_session code for inspiration,
 ``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
 for saving request specific session info.
+
+As of aiohttp 3.0 all response objects are *dict-like* structures as
+well.
 
 
 .. _aiohttp_faq_parallel_event_sources:
@@ -177,9 +183,10 @@ For example we have an application with two endpoints:
    2. ``/logout_user`` that when invoked needs to close all open
       websockets for that user.
 
-One simple solution is keeping a shared registry of websocket responses
-for a user in the :class:`aiohttp.web.Application` instance and
-call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_user`` handler::
+One simple solution is keeping a shared registry of websocket
+responses for a user in the :class:`aiohttp.web.Application` instance
+and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
+``/logout_user`` handler::
 
     async def echo_handler(request):
 
@@ -200,9 +207,12 @@ call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in ``/logout_use
 
         user_id = authenticate_user(request)
 
-        ws_closers = [ws.close() for ws in request.app['websockets'][user_id] if not ws.closed]
+        ws_closers = [ws.close()
+                      for ws in request.app['websockets'][user_id]
+                      if not ws.closed]
 
-        # Watch out, this will keep us from returing the response until all are closed
+        # Watch out, this will keep us from returing the response
+        # until all are closed
         ws_closers and await asyncio.gather(*ws_closers)
 
         return web.Response(text='OK')
@@ -230,132 +240,34 @@ be used used to bind socket locally::
 .. seealso:: :class:`aiohttp.TCPConnector` and ``local_addr`` parameter.
 
 
-.. _aiohttp_faq_tests_and_implicit_loop:
-
-
-How to use aiohttp test features with code which works with implicit loop?
---------------------------------------------------------------------------
-
-Passing explicit loop everywhere is the recommended way.  But
-sometimes, in case you have many nested non well-written services,
-this is impossible.
-
-There is a technique based on monkey-patching your low level service
-that depends on aioes, to inject the loop at that level. This way, you
-just need your ``AioESService`` with the loop in its signature. An
-example would be the following::
-
-  import pytest
-
-  from unittest.mock import patch, MagicMock
-
-  from main import AioESService, create_app
-
-  class TestAcceptance:
-
-      async def test_get(self, test_client, loop):
-          with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args,
-                                                                   **kwargs,
-                                                                   loop=loop))):
-              client = await test_client(create_app)
-              resp = await client.get("/")
-              assert resp.status == 200
-
-Note how we are patching the ``AioESService`` with and instance of itself but
-adding the explicit loop as an extra (you need to load the loop fixture in your
-test signature).
-
-The final code to test all this (you will need a local instance of
-elasticsearch running)::
-
-  import asyncio
-
-  from aioes import Elasticsearch
-  from aiohttp import web
-
-
-  class AioESService:
-
-      def __init__(self, loop=None):
-          self.es = Elasticsearch(["127.0.0.1:9200"], loop=loop)
-
-      async def get_info(self):
-          return await self.es.info()
-
-
-  class MyService:
-
-      def __init__(self):
-          self.aioes_service = AioESService()
-
-      async def get_es_info(self):
-          return await self.aioes_service.get_info()
-
-
-  async def hello_aioes(request):
-      my_service = MyService()
-      cluster_info = await my_service.get_es_info()
-      return web.Response(text="{}".format(cluster_info))
-
-
-  def create_app(loop=None):
-
-      app = web.Application(loop=loop)
-      app.router.add_route('GET', '/', hello_aioes)
-      return app
-
-
-  if __name__ == "__main__":
-      web.run_app(create_app())
-
-
-And the full tests file::
-
-
-  from unittest.mock import patch, MagicMock
-
-  from main import AioESService, create_app
-
-
-  class TestAioESService:
-
-      async def test_get_info(self, loop):
-          cluster_info = await AioESService("random_arg", loop=loop).get_info()
-          assert isinstance(cluster_info, dict)
-
-
-  class TestAcceptance:
-
-      async def test_get(self, test_client, loop):
-          with patch("main.AioESService", MagicMock(
-                  side_effect=lambda *args, **kwargs: AioESService(*args,
-                                                                   **kwargs,
-                                                                   loop=loop))):
-              client = await test_client(create_app)
-              resp = await client.get("/")
-              assert resp.status == 200
-
-Note how we are using the ``side_effect`` feature for injecting the loop to the
-``AioESService.__init__`` call. The use of ``**args, **kwargs`` is mandatory
-in order to propagate the arguments being used by the caller.
-
-
 API stability and deprecation policy
 ------------------------------------
 
-aiohttp tries to not break existing users code.
+*aiohttp* follows strong [SemVer](https://semver.org/) schema.
 
 Obsolete attributes and methods are marked as *deprecated* in
 documentation and raises :class:`DeprecationWarning` on usage.
 
-Deprecation period is usually a year and half.
+Let's assume now we have aiohttp ``X.Y.Z`` where ``X`` is *major* version,
+``Y`` is minor version and ``Z`` is bugfix number.
 
-After the period is passed out deprecated code is be removed.
+E.g. now the latest released version is ``aiohttp==3.0.6``.
 
-Unfortunately we should break own rules if new functionality or bug
-fixing forces us to do it (for example proper cookies support on
-client side forced us to break backward compatibility twice).
+``3.0.7`` fixes some bugs but have no new features.
+
+``3.1.0`` introduces new features and can deprecate some API but never
+remove it, also all bug fixes from previous release are merged.
+
+``4.0.0`` removes all deprecations collected from ``3.Y`` versions
+**except** deprecations from the **last** ``3.Y`` release. These
+deprecations will be removed by ``5.0.0``.
+
+Unfortunately we have break the rules in case of found **security
+vulnerability**.
+
+If a security problem cannot be fixed without breaking backward
+compatibility -- a bugfix release may do it. The probability for this
+is very low but shit happens, sorry.
 
 All *backward incompatible* changes are explicitly marked in
 :ref:`CHANGES <aiohttp_changes>` chapter.
