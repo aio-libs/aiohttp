@@ -112,6 +112,19 @@ class ClientProxyConnectionError(ClientConnectorError):
         connection to proxy can not be established.
     """
 
+class ClientMaximumRedirectsReached(ClientConnectionError):
+    """ 
+    Client was redirected to many times in an attempt 
+    to connect to server without getting proper response.
+    This does not mean service wont be available in future.
+    """
+    def __init__(self, request_info, history, *,
+             code=0, message='', headers=None):
+        self.request_info = request_info
+        self.code = code
+        self.message = message
+        self.headers = headers
+        self.history = history
 
 class ServerConnectionError(ClientConnectionError):
     """Server connection errors."""
