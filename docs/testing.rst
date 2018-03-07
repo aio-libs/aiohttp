@@ -788,6 +788,20 @@ Utilities
    The caller should also call teardown_test_loop, once they are done
    with the loop.
 
+   .. note::
+
+      As side effect the function changes asyncio *default loop* by
+      :func:`asyncio.set_event_loop` call.
+
+      Previous default loop is not restored.
+
+      It should not be a problem for test suite: every test expects a
+      new test loop instance anyway.
+
+   .. versionchanged:: 3.1
+
+      The function installs a created event loop as *default*.
+
 .. function:: teardown_test_loop(loop)
 
    Teardown and cleanup an event_loop created by setup_test_loop.

@@ -203,8 +203,8 @@ def loop(loop_factory, fast, loop_debug):
     with loop_context(loop_factory, fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
+        asyncio.set_event_loop(_loop)
         yield _loop
-    asyncio.set_event_loop(None)
 
 
 @pytest.fixture
