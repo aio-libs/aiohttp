@@ -439,7 +439,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
             if start is None and end is not None:
                 # end with no start is to return tail of content
-                end = -end
+                start = -end
 
             if start is not None and end is not None:
                 # end is inclusive in range header, exclusive for slice
