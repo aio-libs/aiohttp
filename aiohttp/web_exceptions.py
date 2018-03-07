@@ -83,7 +83,7 @@ class HTTPException(Response, Exception):
         if self.body is None and not self.empty_body:
             self.text = "{}: {}".format(self.status, self.reason)
 
-            
+   
 class HTTPError(HTTPException):
     """Base class for exceptions with status codes in the 400s and 500s."""
 
