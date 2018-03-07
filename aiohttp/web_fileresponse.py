@@ -193,9 +193,9 @@ class FileResponse(StreamResponse):
         # If a range request has been made, convert start, end slice notation
         # into file pointer offset and count
         if start is not None or end is not None:
-            if start is None and end < 0:  # return tail of file
-                start = file_size + end
-                count = -end
+            if start < 0 and end is None:  # return tail of file
+                start = file_size + start
+                count = file_size - start
             else:
                 count = (end or file_size) - start
 
