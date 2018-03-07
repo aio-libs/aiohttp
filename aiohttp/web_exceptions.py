@@ -1,5 +1,3 @@
-import warnings
-
 from .web_response import Response
 
 
@@ -85,13 +83,7 @@ class HTTPException(Response, Exception):
         if self.body is None and not self.empty_body:
             self.text = "{}: {}".format(self.status, self.reason)
 
-    async def prepare(self, request):
-        warnings.warn("Returning HTTP exception instance is deprecated, "
-                      "please raise an exception and call ex.build_response()",
-                      DeprecationWarning)
-        return await super().prepare(request)
-
-
+            
 class HTTPError(HTTPException):
     """Base class for exceptions with status codes in the 400s and 500s."""
 
