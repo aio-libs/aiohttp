@@ -1,0 +1,1 @@
+Property http_range of BaseRequest now returns a python-like slice when requesting the tail of the range. It's now indicated by a negative value in rng.start rather then in rng.stop
