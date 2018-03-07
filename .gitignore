@@ -45,6 +45,7 @@ virtualenv.py
 .install-deps
 .develop
 .gitconfig
+.gitattributes
 .flake
 .python-version
 .pytest_cache
