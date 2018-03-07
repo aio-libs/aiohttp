@@ -48,3 +48,4 @@ virtualenv.py
 .flake
 .python-version
 .pytest_cache
+.vscode
