@@ -503,7 +503,7 @@ The common case for sending an answer from
 :class:`Response` instance::
 
    def handler(request):
-       return Response("All right!")
+       return Response(text="All right!")
 
 Response classes are :obj:`dict` like objects,
 allowing them to be used for :ref:`sharing
