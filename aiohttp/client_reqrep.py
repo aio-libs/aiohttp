@@ -468,7 +468,7 @@ class ClientRequest:
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
             path = '{}:{}'.format(self.url.raw_host, self.url.port)
-        elif self.proxy and not self.ssl:
+        elif self.proxy and not self.is_ssl():
             path = str(self.url)
         else:
             path = self.url.raw_path
