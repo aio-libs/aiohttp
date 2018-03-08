@@ -43,7 +43,7 @@ For example the following snippet is not safe::
    async def handler(request):
        await asyncio.shield(write_to_redis(request))
        await asyncio.shield(write_to_postgres(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 Cancellation might be occurred just after saving data in REDIS,
 ``write_to_postgres`` will be not called.
@@ -53,7 +53,7 @@ spawned tasks::
 
    async def handler(request):
        request.loop.create_task(write_to_redis(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 In this case errors from ``write_to_redis`` are not awaited, it leads
 to many asyncio log messages *Future exception was never retrieved*
