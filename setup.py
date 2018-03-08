@@ -10,6 +10,10 @@ from setuptools import Extension, setup
 from setuptools.command.test import test as TestCommand
 
 
+if sys.version_info < (3, 5, 3):
+    raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
+
+
 try:
     from Cython.Build import cythonize
     USE_CYTHON = True
