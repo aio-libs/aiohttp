@@ -14,6 +14,16 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.7 (2018-03-08)
+==================
+
+- Fix SSL proxy support by client. (#2810)
+- Restore a imperative check in ``setup.py`` for python version. The check
+  works in parallel to environment marker. As effect a error about unsupported
+  Python versions is raised even on outdated systems with very old
+  ``setuptools`` version installed. (#2813)
+
+
 3.0.6 (2018-03-05)
 ==================
 
