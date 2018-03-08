@@ -10,6 +10,7 @@ import aiohttp
 from aiohttp import client, hdrs
 from aiohttp.http import WS_KEY
 from aiohttp.log import ws_logger
+from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -262,6 +263,36 @@ async def test_close(loop, ws_key, key_data):
                 res = await resp.close()
                 assert not res
                 assert writer.close.call_count == 1
+
+                await session.close()
+
+
+async def test_close_eofstream(loop, ws_key, key_data):
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: hdrs.WEBSOCKET,
+        hdrs.CONNECTION: hdrs.UPGRADE,
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
+        with mock.patch('aiohttp.client.os') as m_os:
+            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+                m_os.urandom.return_value = key_data
+                m_req.return_value = loop.create_future()
+                m_req.return_value.set_result(resp)
+                writer = WebSocketWriter.return_value = mock.Mock()
+
+                session = aiohttp.ClientSession(loop=loop)
+                resp = await session.ws_connect('http://test.org')
+                assert not resp.closed
+
+                exc = EofStream()
+                resp._reader.set_exception(exc)
+
+                await resp.receive()
+                writer.close.assert_called_with(1000, b'')
+                assert resp.closed
 
                 await session.close()
 

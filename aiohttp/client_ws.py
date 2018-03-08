@@ -9,6 +9,7 @@ from .client_exceptions import ClientError
 from .helpers import call_later, set_result
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
+from .streams import EofStream
 
 
 class ClientWebSocketResponse:
@@ -200,6 +201,11 @@ class ClientWebSocketResponse:
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
+            except EofStream:
+                self._closing = True
+                self._close_code = 1000
+                await self.close()
+                return WSMessage(WSMsgType.CLOSING, None, None)
             except ClientError:
                 self._closed = True
                 self._close_code = 1006
