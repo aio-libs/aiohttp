@@ -110,6 +110,58 @@ def test_content_length():
     assert 123 == req.content_length
 
 
+def test_range_to_slice_head():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=0-499')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[:500]
+
+
+def test_range_to_slice_mid():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=500-999')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[500:1000]
+
+
+def test_range_to_slice_tail_start():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=9500-')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[-500:]
+
+
+def test_range_to_slice_tail_stop():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=-500')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[-500:]
+
+
 def test_non_keepalive_on_http10():
     req = make_mocked_request('GET', '/', version=HttpVersion(1, 0))
     assert not req.keep_alive
