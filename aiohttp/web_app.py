@@ -14,7 +14,8 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import (PrefixedSubAppResource, SubAppResource,
+from .web_urldispatcher import (DefaultRule, Domain, MaskDomain,
+                                PrefixedSubAppResource, SubAppResource,
                                 UrlDispatcher)
 
 
@@ -199,6 +200,17 @@ class Application(MutableMapping):
         if self._loop is not None:
             subapp._set_loop(self._loop)
         return resource
+
+    def add_domain(self, domain, subapp):
+        if not isinstance(domain, str):
+            raise TypeError("Domain must be str")
+        elif domain == '*':
+            rule = DefaultRule()
+        elif '*' in domain:
+            rule = MaskDomain(domain)
+        else:
+            rule = Domain(domain)
+        return self.add_subapp(rule, subapp)
 
     def add_routes(self, routes):
         self.router.add_routes(routes)

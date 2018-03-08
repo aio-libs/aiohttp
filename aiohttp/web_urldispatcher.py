@@ -686,21 +686,50 @@ class DefaultRule(AbstractRuleMatching):
 
 
 class Domain(AbstractRuleMatching):
+    re_part = re.compile(r"(?!-)[a-z\d-]{1,63}(?<!-)")
 
     def __init__(self, domain):
+        super().__init__()
+        self._domain = self.validation(domain)
+
+    def validation(self, domain):
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
-        elif not domain:
+        domain = domain.rstrip('.').lower()
+        if not domain:
             raise ValueError("Domain cannot be empty")
-        self._domain = domain.lower()
+        elif '://' in domain:
+            raise ValueError("Scheme not supported")
+        url = URL('http://' + domain)
+        if not all(
+                self.re_part.fullmatch(x)
+                for x in url.raw_host.split(".")):
+            raise ValueError("Domain not valid")
+        if url.port == 80:
+            return url.raw_host
+        return '{}:{}'.format(url.raw_host, url.port)
 
     async def match(self, request):
-        host = request.headers.get('host')
-        if host:
-            return host.lower() == self._domain
+        host = request.headers.get('host', False)
+        return host and self.match_domain(host)
+
+    def match_domain(self, host):
+        return host.lower() == self._domain
 
     def get_info(self):
         return {'domain': self._domain}
+
+
+class MaskDomain(Domain):
+    re_part = re.compile(r"(?!-)[a-z\d\*-]{1,63}(?<!-)")
+
+    def __init__(self, domain):
+        super().__init__(domain)
+        mask = self._domain.replace('.', '\.').replace('*', '.*')
+        self._mask = re.compile(mask)
+
+    def match_domain(self, host):
+        return self._mask.fullmatch(host) is not None
 
 
 class SubAppResource(AbstractResource):
