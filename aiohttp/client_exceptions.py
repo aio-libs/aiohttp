@@ -39,15 +39,22 @@ class ClientResponseError(ClientError):
     """
 
     def __init__(self, request_info, history, *,
-                 code=None, status=0, message='', headers=None):
+                 code=None, status=None, message='', headers=None):
         self.request_info = request_info
-        self.status = status
         if code is not None:
+            if status is not None:
+                raise ValueError(
+                    "Both code and status arguments are provided; "
+                    "code is deprecated, use status instead")
             warnings.warn("code argument is deprecated, use status instead",
                           DeprecationWarning,
                           stacklevel=2)
-            if status == 0:
-                self.status = code
+        if status is not None:
+            self.status = status
+        elif code is not None:
+            self.status = code
+        else:
+            self.status = 0
         self.message = message
         self.headers = headers
         self.history = history

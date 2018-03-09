@@ -21,7 +21,20 @@ def test_invalid_url():
     assert repr(err) == "<InvalidURL http://example.com>"
 
 
-def test_deprecated_code_property():
+def test_response_default_status():
+    err = client.ClientResponseError(history=None,
+                                     request_info=None)
+    assert err.status == 0
+
+
+def test_response_status():
+    err = client.ClientResponseError(status=400,
+                                     history=None,
+                                     request_info=None)
+    assert err.status == 400
+
+
+def test_response_deprecated_code_property():
     with pytest.warns(DeprecationWarning):
         err = client.ClientResponseError(code=400,
                                          history=None,
@@ -32,3 +45,11 @@ def test_deprecated_code_property():
         err.code = '404'
     with pytest.warns(DeprecationWarning):
         assert err.code == err.status
+
+
+def test_response_both_code_and_status():
+    with pytest.raises(ValueError):
+        client.ClientResponseError(code=400,
+                                   status=400,
+                                   history=None,
+                                   request_info=None)
