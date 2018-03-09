@@ -695,7 +695,7 @@ class ClientResponse(HeadersMixin):
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info, self.history,
-                        code=exc.code,
+                        status=exc.code,
                         message=exc.message, headers=exc.headers) from exc
 
                 if (message.code < 100 or
@@ -783,7 +783,7 @@ class ClientResponse(HeadersMixin):
             raise ClientResponseError(
                 self.request_info,
                 self.history,
-                code=self.status,
+                status=self.status,
                 message=self.reason,
                 headers=self.headers)
 

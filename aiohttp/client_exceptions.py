@@ -1,6 +1,7 @@
 """HTTP related errors."""
 
 import asyncio
+import warnings
 
 
 try:
@@ -38,14 +39,34 @@ class ClientResponseError(ClientError):
     """
 
     def __init__(self, request_info, history, *,
-                 code=0, message='', headers=None):
+                 code=None, status=0, message='', headers=None):
         self.request_info = request_info
-        self.code = code
+        self.status = status
+        if code is not None:
+            warnings.warn("code argument is deprecated, use status instead",
+                          DeprecationWarning,
+                          stacklevel=2)
+            if status == 0:
+                self.status = code
         self.message = message
         self.headers = headers
         self.history = history
 
-        super().__init__("%s, message='%s'" % (code, message))
+        super().__init__("%s, message='%s'" % (self.status, message))
+
+    @property
+    def code(self):
+        warnings.warn("code property is deprecated, use status instead",
+                      DeprecationWarning,
+                      stacklevel=2)
+        return self.status
+
+    @code.setter
+    def code(self, value):
+        warnings.warn("code property is deprecated, use status instead",
+                      DeprecationWarning,
+                      stacklevel=2)
+        self.status = value
 
 
 class ContentTypeError(ClientResponseError):
