@@ -138,7 +138,7 @@ ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
 def _is_expected_content_type(response_content_type, expected_content_type):
     if expected_content_type == 'application/json':
         return json_re.match(response_content_type)
-    return response_content_type in expected_content_type
+    return expected_content_type in response_content_type
 
 
 class ClientRequest:

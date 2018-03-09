@@ -365,6 +365,25 @@ async def test_json_extended_content_type(loop, session):
     assert response._connection is None
 
 
+async def test_json_custom_content_type(loop, session):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response._post_init(loop, session)
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {
+        'Content-Type': 'custom/type;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    res = await response.json(content_type='custom/type')
+    assert res == {'тест': 'пройден'}
+    assert response._connection is None
+
+
 async def test_json_custom_loader(loop, session):
     response = ClientResponse('get', URL('http://def-cl-resp.org'))
     response._post_init(loop, session)
