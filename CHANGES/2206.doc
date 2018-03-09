@@ -1,0 +1,1 @@
+Change ```ClientResponse.json()``` documentation to reflect that it now allows "application/xxx+json" content-types

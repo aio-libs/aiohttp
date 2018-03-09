@@ -2,6 +2,7 @@ import asyncio
 import codecs
 import io
 import json
+import re
 import sys
 import traceback
 import warnings
@@ -37,6 +38,9 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
+
+
+json_re = re.compile('^application/(?:[\w.+-]+?\+)?json')
 
 
 @attr.s(frozen=True, slots=True)
@@ -129,6 +133,12 @@ def _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint):
 
 
 ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
+
+
+def _is_expected_content_type(response_content_type, expected_content_type):
+    if expected_content_type == 'application/json':
+        return json_re.match(response_content_type)
+    return expected_content_type in response_content_type
 
 
 class ClientRequest:
@@ -859,7 +869,7 @@ class ClientResponse(HeadersMixin):
 
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-            if content_type not in ctype:
+            if not _is_expected_content_type(ctype, content_type):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
