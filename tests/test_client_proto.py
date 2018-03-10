@@ -6,6 +6,7 @@ from aiohttp import http
 from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
+from aiohttp.helpers import TimerNoop
 
 
 async def test_oserror(loop):
@@ -65,8 +66,15 @@ async def test_client_protocol_readuntil_eof(loop):
 
     proto.data_received(b'HTTP/1.1 200 Ok\r\n\r\n')
 
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, mock.Mock())
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              request_info=mock.Mock(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=mock.Mock())
     await response.start(conn, read_until_eof=True)
 
     assert not response.content.is_eof()
