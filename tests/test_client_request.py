@@ -1077,8 +1077,13 @@ async def test_custom_req_rep(loop):
             resp = self.response_class(self.method,
                                        self.url,
                                        writer=self._writer,
-                                       continue100=self._continue)
-            resp._post_init(self.loop, mock.Mock())
+                                       continue100=self._continue,
+                                       timer=self._timer,
+                                       request_info=self.request_info,
+                                       auto_decompress=self._auto_decompress,
+                                       traces=self._traces,
+                                       loop=self.loop,
+                                       session=self._session)
             self.response = resp
             nonlocal called
             called = True
