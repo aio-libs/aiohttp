@@ -908,7 +908,7 @@ class TCPConnector(BaseConnector):
                         raise ClientHttpProxyError(
                             proxy_resp.request_info,
                             resp.history,
-                            code=resp.status,
+                            status=resp.status,
                             message=resp.reason,
                             headers=resp.headers)
                     rawsock = transport.get_extra_info('socket', default=None)

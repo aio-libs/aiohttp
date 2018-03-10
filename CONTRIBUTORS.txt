@@ -65,6 +65,7 @@ Dmitry Doroshev
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Kuznetsov
+Dmitriy Safonov
 Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
