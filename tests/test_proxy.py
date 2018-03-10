@@ -9,6 +9,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
+from aiohttp.helpers import TimerNoop
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -145,8 +146,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
@@ -181,8 +189,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
@@ -223,8 +238,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
@@ -265,8 +287,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
@@ -298,8 +327,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(
             mock.Mock(status=400, reason='bad request'))
@@ -332,8 +368,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(
             raise_exception=OSError("error message"))
@@ -399,8 +442,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
@@ -443,8 +493,15 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'))
-        proxy_resp._loop = self.loop
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
