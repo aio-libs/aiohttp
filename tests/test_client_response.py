@@ -694,7 +694,7 @@ def test_raise_for_status_4xx():
     response.reason = 'CONFLICT'
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
-    assert str(cm.value.code) == '409'
+    assert str(cm.value.status) == '409'
     assert str(cm.value.message) == "CONFLICT"
 
 
