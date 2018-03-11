@@ -9,7 +9,7 @@ from . import (helpers, web_app, web_exceptions, web_fileresponse,
                web_middlewares, web_protocol, web_request, web_response,
                web_runner, web_server, web_urldispatcher, web_ws)
 from .log import access_logger
-from .web_app import Application  # noqa
+from .web_app import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
