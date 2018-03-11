@@ -31,6 +31,7 @@ BodyPartReader
 botocore
 Bugfixes
 builtin
+bugfix
 BytesIO
 cchardet
 cChardet
@@ -96,7 +97,6 @@ gethostbyname
 github
 google
 gunicorn
-Gunicorn
 gunicorn’s
 gzipped
 hackish

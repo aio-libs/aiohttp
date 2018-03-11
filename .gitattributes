@@ -1,0 +1,3 @@
+tests/sample.* binary
+tests/data.unknown_mime_type
+tests/hello.txt.gz

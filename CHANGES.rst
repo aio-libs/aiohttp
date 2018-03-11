@@ -14,6 +14,42 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.7 (2018-03-08)
+==================
+
+- Fix SSL proxy support by client. (#2810)
+- Restore a imperative check in ``setup.py`` for python version. The check
+  works in parallel to environment marker. As effect a error about unsupported
+  Python versions is raised even on outdated systems with very old
+  ``setuptools`` version installed. (#2813)
+
+
+3.0.6 (2018-03-05)
+==================
+
+- Add ``_reuse_address`` and ``_reuse_port`` to
+  ``web_runner.TCPSite.__slots__``. (#2792)
+
+3.0.5 (2018-02-27)
+==================
+
+- Fix ``InvalidStateError`` on processing a sequence of two
+  ``RequestHandler.data_received`` calls on web server. (#2773)
+
+3.0.4 (2018-02-26)
+==================
+
+- Fix ``IndexError`` in HTTP request handling by server. (#2752)
+- Fix MultipartWriter.append* no longer returning part/payload. (#2759)
+
+
+3.0.3 (2018-02-25)
+==================
+
+- Relax ``attrs`` dependency to minimal actually supported version
+  17.0.3 The change allows to avoid version conflicts with currently
+  existing test tools.
+
 3.0.2 (2018-02-23)
 ==================
 

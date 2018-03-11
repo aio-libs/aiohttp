@@ -309,7 +309,7 @@ class ClientSession:
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
-                        ssl=ssl, proxy_headers=proxy_headers)
+                        ssl=ssl, proxy_headers=proxy_headers, traces=traces)
 
                     # connection timeout
                     try:
@@ -326,7 +326,7 @@ class ClientSession:
                     tcp_nodelay(conn.transport, True)
                     tcp_cork(conn.transport, False)
                     try:
-                        resp = req.send(conn)
+                        resp = await req.send(conn)
                         try:
                             await resp.start(conn, read_until_eof)
                         except BaseException:
@@ -541,7 +541,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid response status',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
@@ -549,7 +549,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid upgrade header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
@@ -557,7 +557,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid connection header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # key calculation
@@ -569,7 +569,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid challenge response',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # websocket protocol
@@ -596,7 +596,7 @@ class ClientSession:
                             resp.request_info,
                             resp.history,
                             message=exc.args[0],
-                            code=resp.status,
+                            status=resp.status,
                             headers=resp.headers)
                 else:
                     compress = 0

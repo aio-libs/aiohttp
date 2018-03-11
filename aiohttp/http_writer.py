@@ -5,7 +5,6 @@ import collections
 import zlib
 
 from .abc import AbstractStreamWriter
-from .helpers import noop
 
 
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
@@ -17,7 +16,7 @@ HttpVersion11 = HttpVersion(1, 1)
 
 class StreamWriter(AbstractStreamWriter):
 
-    def __init__(self, protocol, transport, loop):
+    def __init__(self, protocol, transport, loop, on_chunk_sent=None):
         self._protocol = protocol
         self._transport = transport
 
@@ -30,6 +29,8 @@ class StreamWriter(AbstractStreamWriter):
         self._eof = False
         self._compress = None
         self._drain_waiter = None
+
+        self._on_chunk_sent = on_chunk_sent
 
     @property
     def transport(self):
@@ -56,17 +57,20 @@ class StreamWriter(AbstractStreamWriter):
             raise asyncio.CancelledError('Cannot write to closing transport')
         self._transport.write(chunk)
 
-    def write(self, chunk, *, drain=True, LIMIT=64*1024):
+    async def write(self, chunk, *, drain=True, LIMIT=0x10000):
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
         writer can't be used after write_eof() method being called.
         write() return drain future.
         """
+        if self._on_chunk_sent is not None:
+            await self._on_chunk_sent(chunk)
+
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:
-                return noop()
+                return
 
         if self.length is not None:
             chunk_len = len(chunk)
@@ -76,7 +80,7 @@ class StreamWriter(AbstractStreamWriter):
                 chunk = chunk[:self.length]
                 self.length = 0
                 if not chunk:
-                    return noop()
+                    return
 
         if chunk:
             if self.chunked:
@@ -87,11 +91,9 @@ class StreamWriter(AbstractStreamWriter):
 
             if self.buffer_size > LIMIT and drain:
                 self.buffer_size = 0
-                return self.drain()
+                await self.drain()
 
-        return noop()
-
-    def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
+    async def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
         """Write request/response status and headers."""
         # status + headers
         headers = status_line + ''.join(

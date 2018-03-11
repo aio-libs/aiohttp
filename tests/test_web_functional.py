@@ -460,7 +460,7 @@ async def test_100_continue_custom(aiohttp_client):
         nonlocal expect_received
         expect_received = True
         if request.version == HttpVersion11:
-            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     form = FormData()
     form.add_field('name', b'123',
@@ -487,7 +487,7 @@ async def test_100_continue_custom_response(aiohttp_client):
             if auth_err:
                 raise web.HTTPForbidden()
 
-            request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     form = FormData()
     form.add_field('name', b'123',
@@ -737,11 +737,11 @@ async def test_response_with_streamer(aiohttp_client, fname):
     data_size = len(data)
 
     @aiohttp.streamer
-    def stream(writer, f_name):
+    async def stream(writer, f_name):
         with f_name.open('rb') as f:
             data = f.read(100)
             while data:
-                yield from writer.write(data)
+                await writer.write(data)
                 data = f.read(100)
 
     async def handler(request):
@@ -767,11 +767,11 @@ async def test_response_with_streamer_no_params(aiohttp_client, fname):
     data_size = len(data)
 
     @aiohttp.streamer
-    def stream(writer):
+    async def stream(writer):
         with fname.open('rb') as f:
             data = f.read(100)
             while data:
-                yield from writer.write(data)
+                await writer.write(data)
                 data = f.read(100)
 
     async def handler(request):
@@ -1708,3 +1708,16 @@ async def test_request_path(aiohttp_client):
     assert 200 == resp.status
     txt = await resp.text()
     assert 'OK' == txt
+
+
+async def test_app_add_routes(aiohttp_client):
+
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.get('/get', handler)])
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/get')
+    assert resp.status == 200

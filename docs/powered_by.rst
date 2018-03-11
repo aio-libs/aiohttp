@@ -14,11 +14,20 @@ make a Pull Request!
 * `Skyscanner Hotels <https://www.skyscanner.net/hotels>`_
 * `Ocean S.A. <https://ocean.io/>`_
 * `GNS3 <http://gns3.com>`_
-* `TutorCruncher socket <https://tutorcruncher.com/features/tutorcruncher-socket/>`_
+* `TutorCruncher socket
+  <https://tutorcruncher.com/features/tutorcruncher-socket/>`_
 * `Morpheus messaging microservice <https://github.com/tutorcruncher/morpheus>`_
 * `Eyepea - Custom telephony solutions <http://www.eyepea.eu>`_
 * `ALLOcloud - Telephony in the cloud <https://www.allocloud.com>`_
-* `helpmanual - comprehensive help and man page database <https://helpmanual.io/>`_
-* `bedevere <https://github.com/python/bedevere>`_ - CPython's GitHub bot, helps maintain and identify issues with a CPython pull request.
-* `miss-islington <https://github.com/python/miss-islington>`_ - CPython's GitHub bot, backports and merge CPython's pull requests
-* `noa technologies - Bike-sharing management platform <https://noa.one/>`_ - SSE endpoint, pushes real time updates of bikes location.
+* `helpmanual - comprehensive help and man page database
+  <https://helpmanual.io/>`_
+* `bedevere <https://github.com/python/bedevere>`_ - CPython's GitHub
+  bot, helps maintain and identify issues with a CPython pull request.
+* `miss-islington <https://github.com/python/miss-islington>`_ -
+  CPython's GitHub bot, backports and merge CPython's pull requests
+* `noa technologies - Bike-sharing management platform
+  <https://noa.one/>`_ - SSE endpoint, pushes real time updates of
+  bikes location.
+* `Wargaming: World of Tanks <https://worldoftanks.ru/>`_
+* `Yandex <https://yandex.ru>`_
+* `Rambler <rambler.ru>`_

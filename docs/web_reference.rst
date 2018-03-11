@@ -503,7 +503,7 @@ The common case for sending an answer from
 :class:`Response` instance::
 
    def handler(request):
-       return Response("All right!")
+       return Response(text="All right!")
 
 Response classes are :obj:`dict` like objects,
 allowing them to be used for :ref:`sharing
@@ -769,8 +769,8 @@ StreamResponse
 Response
 ^^^^^^^^
 
-.. class:: Response(*, status=200, headers=None, content_type=None, \
-                    charset=None, body=None, text=None)
+.. class:: Response(*, body=None, status=200, reason=None, text=None, \
+   headers=None, content_type=None, charset=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -862,7 +862,7 @@ WebSocketResponse
                                  operations.  Default value is None
                                  (no timeout for receive operation)
 
-   :param float compress: Enable per-message deflate extension support.
+   :param bool compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
 
    The class supports ``async for`` statement for iterating over
@@ -966,7 +966,7 @@ WebSocketResponse
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overriding per-socket setting.                           
+                           ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1218,8 +1218,9 @@ duplicated like one using :meth:`Application.copy`.
    :param handler_args: dict-like object that overrides keyword arguments of
                         :meth:`Application.make_handler`
 
-   :param client_max_size: client's maximum size in a request, in bytes. If a POST
-                           request exceeds this value, it raises an
+   :param client_max_size: client's maximum size in a request, in
+                           bytes.  If a POST request exceeds this
+                           value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
 
    :param loop: event loop
@@ -1308,6 +1309,32 @@ duplicated like one using :meth:`Application.copy`.
               pass
 
       .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+
+   .. method:: add_subapp(prefix, subapp)
+
+      Register nested sub-application under given path *prefix*.
+
+      In resolving process if request's path starts with *prefix* then
+      further resolving is passed to *subapp*.
+
+      :param str prefix: path's prefix for the resource.
+
+      :param Application subapp: nested application attached under *prefix*.
+
+      :returns: a :class:`PrefixedSubAppResource` instance.
+
+   .. method:: add_routes(routes_table)
+
+      Register route definitions from *routes_table*.
+
+      The table is a :class:`list` of :class:`RouteDef` items or
+      :class:`RouteTableDef`.
+
+      The method is a shortcut for
+      ``app.router.add_routes(routes_table)``, see also
+      :meth:`UrlDispatcher.add_routes`.
+
+      .. versionadded:: 3.1
 
    .. method:: make_handler(loop=None, **kwargs)
 
@@ -1619,19 +1646,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
       :returns: new :class:`StaticRoute` instance.
 
-   .. method:: add_subapp(prefix, subapp)
-
-      Register nested sub-application under given path *prefix*.
-
-      In resolving process if request's path starts with *prefix* then
-      further resolving is passed to *subapp*.
-
-      :param str prefix: path's prefix for the resource.
-
-      :param Application subapp: nested application attached under *prefix*.
-
-      :returns: a :class:`PrefixedSubAppResource` instance.
-
    .. comethod:: resolve(request)
 
       A :ref:`coroutine<coroutine>` that returns
@@ -1761,13 +1775,10 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
-   .. comethod:: resolve(method, path)
+   .. comethod:: resolve(request)
 
       Resolve resource by finding appropriate :term:`web-handler` for
       ``(method, path)`` combination.
-
-      :param str method: requested HTTP method.
-      :param str path: *path* part of request.
 
       :return: (*match_info*, *allowed_methods*) pair.
 
@@ -2066,8 +2077,9 @@ The definition is created by functions like :func:`get` or
 
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
-   Return :class:`RouteDef` for processing ``POST`` requests. See
-   :meth:`UrlDispatcher.add_route` for information about parameters.
+   Return :class:`RouteDef` for processing requests that decided by
+   ``method``. See :meth:`UrlDispatcher.add_route` for information
+   about parameters.
 
    .. versionadded:: 2.3
 
@@ -2464,7 +2476,8 @@ Utilities
    handled on the same event loop. See :doc:`deployment` for ways of
    distributing work for increased performance.
 
-   :param app: :class:`Application` instance to run
+   :param app: :class:`Application` instance to run or a *coroutine*
+               that returns an application.
 
    :param str host: TCP/IP host or a sequence of hosts for HTTP server.
                     Default is ``'0.0.0.0'`` if *port* has been specified
@@ -2532,9 +2545,12 @@ Utilities
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
-      
+
       Support *reuse_address*, *reuse_port* parameter.
 
+   .. versionadded:: 3.1
+
+      Accept a coroutine as *app* parameter.
 
 Constants
 ---------

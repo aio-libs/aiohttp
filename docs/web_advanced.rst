@@ -43,7 +43,7 @@ For example the following snippet is not safe::
    async def handler(request):
        await asyncio.shield(write_to_redis(request))
        await asyncio.shield(write_to_postgres(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 Cancellation might be occurred just after saving data in REDIS,
 ``write_to_postgres`` will be not called.
@@ -53,7 +53,7 @@ spawned tasks::
 
    async def handler(request):
        request.loop.create_task(write_to_redis(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 In this case errors from ``write_to_redis`` are not awaited, it leads
 to many asyncio log messages *Future exception was never retrieved*
@@ -101,6 +101,38 @@ It prevents all ``handler`` async function from cancellation,
 ``write_to_db`` will be never interrupted.
 
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
+
+
+Passing a coroutine to run_app
+------------------------------
+
+:func:`run_app` accepts either application instance or a coroutine for
+making an application. The coroutine based approach allows to perform
+async IO before making an app::
+
+   async def app_factory():
+       await pre_init()
+       app = web.Application()
+       app.router.add_get(...)
+       return app
+
+   web.run_app(app_factory())
+
+Gunicorn worker supports a factory as well. For Gunicorn the factory
+should accept zero parameters::
+
+   async def my_web_app():
+       app = web.Application()
+       app.router.add_get(...)
+       return app
+
+Start gunicorn:
+
+.. code-block:: shell
+
+   $ gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
+
+.. versionadded:: 3.1
 
 Custom Routing Criteria
 -----------------------
@@ -323,10 +355,20 @@ response. For example, here's a simple *middleware* which appends
         resp.text = resp.text + ' wink'
         return resp
 
-(Note: this example won't work with streamed responses or websockets)
+.. note::
 
-Every *middleware* should accept two parameters, a
-:class:`request <Request>` instance and a *handler*, and return the response.
+   The example won't work with streamed responses or websockets
+
+Every *middleware* should accept two parameters, a :class:`request
+<Request>` instance and a *handler*, and return the response or raise
+an exception. If the exception is not an instance of
+:exc:`aiohttp.web.HTTPException` it is converted to ``500``
+:exc:`aiohttp.web.HTTPInternalServerError` after processing the
+middlewares chain.
+
+.. warning::
+
+   Second argument should be named *handler* exactly.
 
 When creating an :class:`Application`, these *middlewares* are passed to
 the keyword-only ``middlewares`` parameter::

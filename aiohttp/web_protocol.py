@@ -244,14 +244,19 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         500, exc))
                 self.close()
             else:
-                for (msg, payload) in messages:
-                    self._request_count += 1
-                    self._messages.append((msg, payload))
+                if messages:
+                    # sometimes the parser returns no messages
+                    for (msg, payload) in messages:
+                        self._request_count += 1
+                        self._messages.append((msg, payload))
 
-                if self._waiter:
-                    self._waiter.set_result(None)
+                    waiter = self._waiter
+                    if waiter is not None:
+                        if not waiter.done():
+                            # don't set result twice
+                            waiter.set_result(None)
 
-                self._upgraded = upgraded
+                self._upgrade = upgraded
                 if upgraded and tail:
                     self._message_tail = tail
 

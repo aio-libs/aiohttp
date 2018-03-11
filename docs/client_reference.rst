@@ -901,7 +901,7 @@ TCPConnector
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
 
-   :param tuple enable_cleanup_closed: Some ssl servers do not properly complete
+   :param bool enable_cleanup_closed: Some ssl servers do not properly complete
       SSL shutdown process, in that case asyncio leaks SSL connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
@@ -1673,9 +1673,9 @@ Response errors
       Instance of :class:`RequestInfo` object, contains information
       about request.
 
-   .. attribute:: code
+   .. attribute:: status
 
-      HTTP status code of response (:class:`int`), e.g. ``200``.
+      HTTP status code of response (:class:`int`), e.g. ``400``.
 
    .. attribute:: message
 
@@ -1691,6 +1691,12 @@ Response errors
 
       A :class:`tuple` of :class:`ClientResponse` objects used for
       handle redirection responses.
+
+   .. attribute:: code
+
+      HTTP status code of response (:class:`int`), e.g. ``400``.
+
+      .. deprecated:: 3.1
 
 
 .. class:: WSServerHandshakeError
@@ -1739,15 +1745,15 @@ Connection errors
 
 .. class:: ClientProxyConnectionError
 
-   Derived from :exc:`ClientConnectonError`
+   Derived from :exc:`ClientConnectorError`
 
 .. class:: ServerConnectionError
 
-   Derived from :exc:`ClientConnectonError`
+   Derived from :exc:`ClientConnectionError`
 
 .. class:: ClientSSLError
 
-   Derived from :exc:`ClientConnectonError`
+   Derived from :exc:`ClientConnectorError`
 
 .. class:: ClientConnectorSSLError
 
@@ -1765,7 +1771,7 @@ Connection errors
 
    Server disconnected.
 
-   Derived from :exc:`ServerDisconnectonError`
+   Derived from :exc:`ServerDisconnectionError`
 
    .. attribute:: message
 
@@ -1776,13 +1782,13 @@ Connection errors
 
    Server operation timeout: read timeout, etc.
 
-   Derived from :exc:`ServerConnectonError` and :exc:`asyncio.TimeoutError`
+   Derived from :exc:`ServerConnectionError` and :exc:`asyncio.TimeoutError`
 
 .. class:: ServerFingerprintMismatch
 
    Server fingerprint mismatch.
 
-   Derived from :exc:`ServerConnectonError`
+   Derived from :exc:`ServerConnectionError`
 
 
 Hierarchy of exceptions

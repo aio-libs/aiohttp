@@ -22,18 +22,19 @@ Begin by importing the aiohttp module::
 
     import aiohttp
 
-Now, let's try to get a web-page. For example let's get GitHub's public
-time-line::
+Now, let's try to get a web-page. For example let's query
+``http://httpbin.org/get``::
 
     async with aiohttp.ClientSession() as session:
         async with session.get('http://httpbin.org/get') as resp:
             print(resp.status)
             print(await resp.text())
 
-Now, we have a :class:`ClientSession` called ``session`` and
-a :class:`ClientResponse` object called ``resp``. We can get all the
+Now, we have a :class:`ClientSession` called ``session`` and a
+:class:`ClientResponse` object called ``resp``. We can get all the
 information we need from the response.  The mandatory parameter of
-:meth:`ClientSession.get` coroutine is an HTTP url.
+:meth:`ClientSession.get` coroutine is an HTTP *url* (:class:`str` or
+class:`yarl.URL` instance).
 
 In order to make an HTTP POST request use :meth:`ClientSession.post` coroutine::
 
@@ -51,6 +52,10 @@ Other HTTP methods are available as well::
 
    Don't create a session per request. Most likely you need a session
    per application which performs all requests altogether.
+
+   More complex cases may require a session per site, e.g. one for
+   Github and other one for Facebook APIs. Anyway making a session for
+   every request is a **very bad** idea.
 
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
@@ -315,11 +320,11 @@ As a simple case, simply provide a file-like object for your body::
 Or you can use :class:`aiohttp.streamer` decorator::
 
   @aiohttp.streamer
-  def file_sender(writer, file_name=None):
+  async def file_sender(writer, file_name=None):
       with open(file_name, 'rb') as f:
           chunk = f.read(2**16)
           while chunk:
-              yield from writer.write(chunk)
+              await writer.write(chunk)
               chunk = f.read(2**16)
 
   # Then you can use file_sender as a data provider:
@@ -327,38 +332,6 @@ Or you can use :class:`aiohttp.streamer` decorator::
   async with session.post('http://httpbin.org/post',
                           data=file_sender(file_name='huge_file')) as resp:
       print(await resp.text())
-
-Also it is possible to use a :class:`~aiohttp.streams.StreamReader`
-object. Lets say we want to upload a file from another request and
-calculate the file SHA1 hash::
-
-   async def feed_stream(resp, stream):
-       h = hashlib.sha256()
-
-       while True:
-           chunk = await resp.content.readany()
-           if not chunk:
-               break
-           h.update(chunk)
-           stream.feed_data(chunk)
-
-       return h.hexdigest()
-
-   resp = session.get('http://httpbin.org/post')
-   stream = StreamReader()
-   loop.create_task(session.post('http://httpbin.org/post',
-                                 data=stream))
-
-   file_hash = await feed_stream(resp, stream)
-
-
-Because the response content attribute is a
-:class:`~aiohttp.streams.StreamReader`, you can chain get and post
-requests together::
-
-   r = await session.get('http://python.org')
-   await session.post('http://httpbin.org/post',
-                      data=r.content)
 
 
 .. _aiohttp-client-websockets:
