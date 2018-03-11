@@ -103,8 +103,8 @@ It prevents all ``handler`` async function from cancellation,
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
 
-Passing a coroutine to run_app
-------------------------------
+Passing a coroutine into run_app and Gunicorn
+---------------------------------------------
 
 :func:`run_app` accepts either application instance or a coroutine for
 making an application. The coroutine based approach allows to perform
