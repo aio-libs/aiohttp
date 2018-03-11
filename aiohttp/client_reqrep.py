@@ -591,7 +591,7 @@ class ClientResponse(HeadersMixin):
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
         self._auto_decompress = auto_decompress  # True by default
-        self._cache = {}  # reqired for @reify method decorator
+        self._cache = {}  # required for @reify method decorator
         self._traces = traces
         self._loop = loop
         self._session = session  # store a reference to session #1985
