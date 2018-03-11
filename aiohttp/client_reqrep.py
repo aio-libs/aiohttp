@@ -583,7 +583,7 @@ class ClientResponse(HeadersMixin):
         self.cookies = SimpleCookie()
 
         self._url = url
-        self._content = None
+        self._body = None
         self._writer = writer
         self._continue = continue100  # None by default
         self._closed = True
@@ -810,16 +810,16 @@ class ClientResponse(HeadersMixin):
 
     async def read(self):
         """Read response payload."""
-        if self._content is None:
+        if self._body is None:
             try:
-                self._content = await self.content.read()
+                self._body = await self.content.read()
                 for trace in self._traces:
-                    await trace.send_response_chunk_received(self._content)
+                    await trace.send_response_chunk_received(self._body)
             except BaseException:
                 self.close()
                 raise
 
-        return self._content
+        return self._body
 
     def get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
@@ -836,7 +836,7 @@ class ClientResponse(HeadersMixin):
                 # RFC 7159 states that the default encoding is UTF-8.
                 encoding = 'utf-8'
             else:
-                encoding = chardet.detect(self._content)['encoding']
+                encoding = chardet.detect(self._body)['encoding']
         if not encoding:
             encoding = 'utf-8'
 
@@ -844,18 +844,18 @@ class ClientResponse(HeadersMixin):
 
     async def text(self, encoding=None, errors='strict'):
         """Read response payload and decode."""
-        if self._content is None:
+        if self._body is None:
             await self.read()
 
         if encoding is None:
             encoding = self.get_encoding()
 
-        return self._content.decode(encoding, errors=errors)
+        return self._body.decode(encoding, errors=errors)
 
     async def json(self, *, encoding=None, loads=json.loads,
                    content_type='application/json'):
         """Read and decodes JSON response."""
-        if self._content is None:
+        if self._body is None:
             await self.read()
 
         if content_type:
@@ -868,7 +868,7 @@ class ClientResponse(HeadersMixin):
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
 
-        stripped = self._content.strip()
+        stripped = self._body.strip()
         if not stripped:
             return None
 

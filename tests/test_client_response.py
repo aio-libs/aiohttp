@@ -573,7 +573,7 @@ async def test_json_custom_loader(loop, session):
                               session=session)
     response.headers = {
         'Content-Type': 'application/json;charset=cp1251'}
-    response._content = b'data'
+    response._body = b'data'
 
     def custom(content):
         return content + '-custom'
@@ -594,7 +594,7 @@ async def test_json_invalid_content_type(loop, session):
                               session=session)
     response.headers = {
         'Content-Type': 'data/octet-stream'}
-    response._content = b''
+    response._body = b''
 
     with pytest.raises(aiohttp.ContentTypeError) as info:
         await response.json()
@@ -614,7 +614,7 @@ async def test_json_no_content(loop, session):
                               session=session)
     response.headers = {
         'Content-Type': 'data/octet-stream'}
-    response._content = b''
+    response._body = b''
 
     res = await response.json(content_type=None)
     assert res is None
