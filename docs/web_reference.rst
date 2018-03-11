@@ -1274,7 +1274,7 @@ duplicated like one using :meth:`Application.copy`.
           async def on_startup(app):
               pass
 
-      .. seealso:: :ref:`aiohttp-web-background-tasks`.
+      .. seealso:: :ref:`aiohttp-web-signals`.
 
    .. attribute:: on_shutdown
 
@@ -1308,7 +1308,22 @@ duplicated like one using :meth:`Application.copy`.
           async def on_cleanup(app):
               pass
 
-      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+      .. seealso:: :ref:`aiohttp-web-signals` and :attr:`on_shutdown`.
+
+   .. attribute:: cleanup_ctx
+
+      A list of *context generators* for *startup*/*cleanup* handling.
+
+      Signal handlers should have the following signature::
+
+          async def context(app):
+              # do startup stuff
+              yield
+              # do cleanup
+
+      .. versionadded:: 3.1
+
+      .. seealso:: :ref:`aiohttp-web-cleanup-ctx`.
 
    .. method:: add_subapp(prefix, subapp)
 
