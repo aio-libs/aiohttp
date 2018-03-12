@@ -1323,6 +1323,21 @@ duplicated like one using :meth:`Application.copy`.
 
       :returns: a :class:`PrefixedSubAppResource` instance.
 
+   .. method:: add_domain(domain, subapp)
+
+      Register nested sub-application that serves
+      the domain name or domain name mask.
+
+      In resolving process if request.headers['host']
+      matches the pattern *domain* then
+      further resolving is passed to *subapp*.
+
+      :param str domain: domain or mask of domain for the resource.
+
+      :param Application subapp: nested application.
+
+      :returns: a :class:`SubAppResource` instance.
+
    .. method:: add_routes(routes_table)
 
       Register route definitions from *routes_table*.
