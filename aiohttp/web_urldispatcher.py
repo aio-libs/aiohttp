@@ -41,7 +41,7 @@ PATH_SEP = re.escape('/')
 class AbstractRouteDef(abc.ABC):
     @abc.abstractmethod
     def register(self, router):
-        pass
+        pass  # pragma: no cover
 
 
 @attr.s(frozen=True, repr=False, slots=True)

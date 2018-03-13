@@ -272,6 +272,17 @@ def test_repr_route_def_with_extra_info():
     assert repr(rd) == "<RouteDef GET /path -> 'handler', extra='info'>"
 
 
+def test_repr_static_def():
+    routes = web.RouteTableDef()
+
+    routes.static('/prefix', '/path', name='name')
+    async def handler(request):
+        pass
+
+    rd = routes[0]
+    assert repr(rd) == "<StaticDef /prefix -> /path, name='name'>"
+
+
 def test_repr_route_table_def():
     routes = web.RouteTableDef()
 
