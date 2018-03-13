@@ -43,7 +43,7 @@ For example the following snippet is not safe::
    async def handler(request):
        await asyncio.shield(write_to_redis(request))
        await asyncio.shield(write_to_postgres(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 Cancellation might be occurred just after saving data in REDIS,
 ``write_to_postgres`` will be not called.
@@ -53,7 +53,7 @@ spawned tasks::
 
    async def handler(request):
        request.loop.create_task(write_to_redis(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 In this case errors from ``write_to_redis`` are not awaited, it leads
 to many asyncio log messages *Future exception was never retrieved*
@@ -103,8 +103,8 @@ It prevents all ``handler`` async function from cancellation,
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
 
-Passing a coroutine to run_app
-------------------------------
+Passing a coroutine into run_app and Gunicorn
+---------------------------------------------
 
 :func:`run_app` accepts either application instance or a coroutine for
 making an application. The coroutine based approach allows to perform
@@ -548,6 +548,53 @@ is asynchronous, it will be awaited before calling next one.
    Signal subscription and sending will most likely be the same, but signal
    object creation is subject to change. As long as you are not creating new
    signals, but simply reusing existing ones, you will not be affected.
+
+.. _aiohttp-web-cleanup-ctx:
+
+Cleanup Context
+---------------
+
+Bare :attr:`Application.on_startup` / :attr:`Application.on_cleanup`
+pair still has a pitfall: signals handlers are independent on each other.
+
+E.g. we have ``[create_pg, create_redis]`` in *startup* signal and
+``[dispose_pg, dispose_redis]`` in *cleanup*.
+
+If, for example, ``create_pg(app)`` call fails ``create_redis(app)``
+is not called. But on application cleanup both ``dispose_pg(app)`` and
+``dispose_redis(app)`` are still called: *cleanup signal* has no
+knowledge about startup/cleanup pairs and their execution state.
+
+
+The solution is :attr:`Application.cleanup_ctx` usage::
+
+    async def pg_engine(app):
+        app['pg_engine'] = await create_engine(
+            user='postgre',
+            database='postgre',
+            host='localhost',
+            port=5432,
+            password=''
+        )
+        yield
+        app['pg_engine'].close()
+        await app['pg_engine'].wait_closed()
+
+    app.cleanup_ctx.append(pg_engine)
+
+The attribute is a list of *asynchronous generators*, a code *before*
+``yield`` is an initialization stage (called on *startup*), a code
+*after* ``yield`` is executed on *cleanup*. The generator must have only
+one ``yield``.
+
+*aiohttp* guarantees that *cleanup code* is called if and only if
+*startup code* was successfully finished.
+
+Asynchronous generators are supported by Python 3.6+, on Python 3.5
+please use `async_generator <https://pypi.org/project/async_generator/>`_
+library.
+
+.. versionadded:: 3.1
 
 .. _aiohttp-web-nested-applications:
 

@@ -541,7 +541,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid response status',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
@@ -549,7 +549,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid upgrade header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
@@ -557,7 +557,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid connection header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # key calculation
@@ -569,7 +569,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid challenge response',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # websocket protocol
@@ -596,7 +596,7 @@ class ClientSession:
                             resp.request_info,
                             resp.history,
                             message=exc.args[0],
-                            code=resp.status,
+                            status=resp.status,
                             headers=resp.headers)
                 else:
                     compress = 0

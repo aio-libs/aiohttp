@@ -2,6 +2,7 @@ import asyncio
 import codecs
 import io
 import json
+import re
 import sys
 import traceback
 import warnings
@@ -22,7 +23,6 @@ from .formdata import FormData
 from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
-from .streams import StreamReader
 
 
 try:
@@ -37,6 +37,9 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
+
+
+json_re = re.compile('^application/(?:[\w.+-]+?\+)?json')
 
 
 @attr.s(frozen=True, slots=True)
@@ -129,6 +132,12 @@ def _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint):
 
 
 ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
+
+
+def _is_expected_content_type(response_content_type, expected_content_type):
+    if expected_content_type == 'application/json':
+        return json_re.match(response_content_type)
+    return expected_content_type in response_content_type
 
 
 class ClientRequest:
@@ -472,7 +481,7 @@ class ClientRequest:
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
             path = '{}:{}'.format(self.url.raw_host, self.url.port)
-        elif self.proxy and not self.ssl:
+        elif self.proxy and not self.is_ssl():
             path = str(self.url)
         else:
             path = self.url.raw_path
@@ -522,8 +531,9 @@ class ClientRequest:
             request_info=self.request_info,
             auto_decompress=self._auto_decompress,
             traces=self._traces,
+            loop=self.loop,
+            session=self._session
         )
-        self.response._post_init(self.loop, self._session)
         return self.response
 
     async def close(self):
@@ -556,19 +566,16 @@ class ClientResponse(HeadersMixin):
     raw_headers = None  # Response raw headers, a sequence of pairs
 
     _connection = None  # current connection
-    flow_control_class = StreamReader  # reader flow control
     _reader = None     # input stream
     _source_traceback = None
     # setted up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
-    _loop = None
     _closed = True  # to allow __del__ for non-initialized properly response
-    _session = None
 
     def __init__(self, method, url, *,
-                 writer=None, continue100=None, timer=None,
-                 request_info=None, auto_decompress=True,
-                 traces=None):
+                 writer, continue100, timer,
+                 request_info, auto_decompress,
+                 traces, loop, session):
         assert isinstance(url, URL)
 
         self.method = method
@@ -576,18 +583,20 @@ class ClientResponse(HeadersMixin):
         self.cookies = SimpleCookie()
 
         self._url = url
-        self._content = None
+        self._body = None
         self._writer = writer
-        self._continue = continue100
+        self._continue = continue100  # None by default
         self._closed = True
         self._history = ()
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
-        self._auto_decompress = auto_decompress
-        self._cache = {}  # reqired for @reify method decorator
-        if traces is None:
-            traces = []
+        self._auto_decompress = auto_decompress  # True by default
+        self._cache = {}  # required for @reify method decorator
         self._traces = traces
+        self._loop = loop
+        self._session = session  # store a reference to session #1985
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     @property
     def url(self):
@@ -621,15 +630,7 @@ class ClientResponse(HeadersMixin):
         filename = multipart.content_disposition_filename(params)
         return ContentDisposition(disposition_type, params, filename)
 
-    def _post_init(self, loop, session):
-        self._loop = loop
-        self._session = session  # store a reference to session #1985
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
-
     def __del__(self, _warnings=warnings):
-        if self._loop is None:
-            return  # not started
         if self._closed:
             return
 
@@ -695,7 +696,7 @@ class ClientResponse(HeadersMixin):
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info, self.history,
-                        code=exc.code,
+                        status=exc.code,
                         message=exc.message, headers=exc.headers) from exc
 
                 if (message.code < 100 or
@@ -783,7 +784,7 @@ class ClientResponse(HeadersMixin):
             raise ClientResponseError(
                 self.request_info,
                 self.history,
-                code=self.status,
+                status=self.status,
                 message=self.reason,
                 headers=self.headers)
 
@@ -809,16 +810,16 @@ class ClientResponse(HeadersMixin):
 
     async def read(self):
         """Read response payload."""
-        if self._content is None:
+        if self._body is None:
             try:
-                self._content = await self.content.read()
+                self._body = await self.content.read()
                 for trace in self._traces:
-                    await trace.send_response_chunk_received(self._content)
+                    await trace.send_response_chunk_received(self._body)
             except BaseException:
                 self.close()
                 raise
 
-        return self._content
+        return self._body
 
     def get_encoding(self):
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
@@ -835,7 +836,7 @@ class ClientResponse(HeadersMixin):
                 # RFC 7159 states that the default encoding is UTF-8.
                 encoding = 'utf-8'
             else:
-                encoding = chardet.detect(self._content)['encoding']
+                encoding = chardet.detect(self._body)['encoding']
         if not encoding:
             encoding = 'utf-8'
 
@@ -843,23 +844,23 @@ class ClientResponse(HeadersMixin):
 
     async def text(self, encoding=None, errors='strict'):
         """Read response payload and decode."""
-        if self._content is None:
+        if self._body is None:
             await self.read()
 
         if encoding is None:
             encoding = self.get_encoding()
 
-        return self._content.decode(encoding, errors=errors)
+        return self._body.decode(encoding, errors=errors)
 
     async def json(self, *, encoding=None, loads=json.loads,
                    content_type='application/json'):
         """Read and decodes JSON response."""
-        if self._content is None:
+        if self._body is None:
             await self.read()
 
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-            if content_type not in ctype:
+            if not _is_expected_content_type(ctype, content_type):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
@@ -867,7 +868,7 @@ class ClientResponse(HeadersMixin):
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
 
-        stripped = self._content.strip()
+        stripped = self._body.strip()
         if not stripped:
             return None
 

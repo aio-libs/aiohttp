@@ -1673,9 +1673,9 @@ Response errors
       Instance of :class:`RequestInfo` object, contains information
       about request.
 
-   .. attribute:: code
+   .. attribute:: status
 
-      HTTP status code of response (:class:`int`), e.g. ``200``.
+      HTTP status code of response (:class:`int`), e.g. ``400``.
 
    .. attribute:: message
 
@@ -1691,6 +1691,12 @@ Response errors
 
       A :class:`tuple` of :class:`ClientResponse` objects used for
       handle redirection responses.
+
+   .. attribute:: code
+
+      HTTP status code of response (:class:`int`), e.g. ``400``.
+
+      .. deprecated:: 3.1
 
 
 .. class:: WSServerHandshakeError

@@ -439,7 +439,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
             if start is None and end is not None:
                 # end with no start is to return tail of content
-                end = -end
+                start = -end
+                end = None
 
             if start is not None and end is not None:
                 # end is inclusive in range header, exclusive for slice
@@ -450,6 +451,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
             if start is end is None:  # No valid range supplied
                 raise ValueError('No start or end of range specified')
+
         return slice(start, end, 1)
 
     @property
