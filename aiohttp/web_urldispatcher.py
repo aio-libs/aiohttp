@@ -29,7 +29,7 @@ from .web_response import Response
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
+           'StaticResource', 'View', 'RouteDef', 'StaticDef', 'RouteTableDef',
            'head', 'get', 'post', 'patch', 'put', 'delete', 'route', 'view',
            'static')
 
