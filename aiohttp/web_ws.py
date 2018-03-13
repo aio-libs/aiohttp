@@ -14,7 +14,7 @@ from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
                    WebSocketError, WebSocketReader, WebSocketWriter, WSMessage,
                    WSMsgType, ws_ext_gen, ws_ext_parse)
 from .log import ws_logger
-from .streams import FlowControlDataQueue
+from .streams import EofStream, FlowControlDataQueue
 from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
 from .web_response import StreamResponse
 
@@ -351,6 +351,10 @@ class WebSocketResponse(StreamResponse):
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
+            except EofStream:
+                self._close_code = 1000
+                await self.close()
+                return WSMessage(WSMsgType.CLOSING, None, None)
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)
