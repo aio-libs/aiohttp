@@ -381,7 +381,7 @@ async def test_reraise_os_error(create_session):
 
 
 async def test_close_conn_on_error(create_session):
-    class UnexpectedException(Exception):
+    class UnexpectedException(BaseException):
         pass
 
     err = UnexpectedException("permission error")
@@ -408,7 +408,8 @@ async def test_close_conn_on_error(create_session):
     session._connector._release = mock.Mock()
 
     with pytest.raises(UnexpectedException):
-        await session.request('get', 'http://example.com')
+        async with session.request('get', 'http://example.com') as resp:
+            await resp.text()
 
     # normally called during garbage collection.  triggers an exception
     # if the connection wasn't already closed

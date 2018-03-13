@@ -328,13 +328,12 @@ class ClientSession:
                     try:
                         try:
                             resp = await req.send(conn)
+                            try:
+                                await resp.start(conn, read_until_eof)
+                            except BaseException:
+                                resp.close()
+                                raise
                         except BaseException:
-                            conn.close()
-                            raise
-                        try:
-                            await resp.start(conn, read_until_eof)
-                        except BaseException:
-                            resp.close()
                             conn.close()
                             raise
                     except ClientError:
