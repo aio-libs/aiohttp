@@ -1,0 +1,1 @@
+Close a connection if an unexpected exception occurs while sending a request
