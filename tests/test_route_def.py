@@ -276,8 +276,6 @@ def test_repr_static_def():
     routes = web.RouteTableDef()
 
     routes.static('/prefix', '/path', name='name')
-    async def handler(request):
-        pass
 
     rd = routes[0]
     assert repr(rd) == "<StaticDef /prefix -> /path, name='name'>"
