@@ -33,8 +33,9 @@ from .log import client_logger
 __all__ = ('BasicAuth',)
 
 PY_36 = sys.version_info >= (3, 6)
+PY_37 = sys.version_info >= (3, 7)
 
-if sys.version_info < (3, 7):
+if not PY_37:
     import idna_ssl
     idna_ssl.patch_match_hostname()
 
@@ -183,8 +184,12 @@ def current_task(loop=None):
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    task = asyncio.Task.current_task(loop=loop)
+    if PY_37:
+        task = asyncio.current_task(loop=loop)
+    else:
+        task = asyncio.Task.current_task(loop=loop)
     if task is None:
+        # this should be removed, tokio must use register_task and family API
         if hasattr(loop, 'current_task'):
             task = loop.current_task()
 
