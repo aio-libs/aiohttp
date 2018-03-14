@@ -31,3 +31,4 @@ make a Pull Request!
 * `Wargaming: World of Tanks <https://worldoftanks.ru/>`_
 * `Yandex <https://yandex.ru>`_
 * `Rambler <rambler.ru>`_
+* `Escargot <https://escargot.log1p.xyz>`_ - Chat server
