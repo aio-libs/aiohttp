@@ -22,17 +22,37 @@ accepts a :class:`Request` instance as its only parameter and returns a
        return web.Response(text="Hello, world")
 
 Next, create an :class:`Application` instance and register the
-request handler with the application's :class:`router <UrlDispatcher>` on a
-particular *HTTP method* and *path*::
+request handler on a particular *HTTP method* and *path*::
 
    app = web.Application()
-   app.router.add_get('/', hello)
+   app.add_routes([web.get('/', hello)])
 
 After that, run the application by :func:`run_app` call::
 
    web.run_app(app)
 
 That's it. Now, head over to ``http://localhost:8080/`` to see the results.
+
+Alternatively if you prefer *route decorators* create a *route table*
+and register a :term:`web-handler`::
+
+   routes = web.RouteTableDef()
+
+   @routes.get('/')
+   async def hello(request):
+       return web.Response(text="Hello, world")
+
+   app = web.Application()
+   app.add_routes(routes)
+   web.run_app(app)
+
+Both ways essentially do the same work, the difference is only in your
+taste: do you prefer *Django style* with famous ``urls.py`` or *Flask*
+with shiny route decorators.
+
+*aiohttp* server documentation uses both ways in code snippets to
+emphasize their equality, switching from one style to other is very
+trivial.
 
 .. seealso::
 
@@ -70,64 +90,68 @@ accepts a list of any non-parsed command-line arguments and returns an
 Handler
 -------
 
-A request handler can be any :term:`callable` that accepts a :class:`Request`
-instance as its only argument and returns a :class:`StreamResponse` derived
-(e.g. :class:`Response`) instance::
-
-   def handler(request):
-       return web.Response()
-
-A handler **may** also be a :ref:`coroutine<coroutine>`, in which case
-:mod:`aiohttp.web` will ``await`` the handler::
+A request handler must be a :ref:`coroutine<coroutine>` that accepts a
+:class:`Request` instance as its only argument and returns a
+:class:`StreamResponse` derived (e.g. :class:`Response`) instance::
 
    async def handler(request):
        return web.Response()
 
 Handlers are setup to handle requests by registering them with the
-:attr:`Application.router` on a particular route (*HTTP method* and
-*path* pair) using methods like :class:`UrlDispatcher.add_get` and
-:class:`UrlDispatcher.add_post`::
+:meth:`Application.add_routes` on a particular route (*HTTP method* and
+*path* pair) using helpers like :func:`get` and
+:func:`post`::
 
-   app.router.add_get('/', handler)
-   app.router.add_post('/post', post_handler)
-   app.router.add_put('/put', put_handler)
+   app.add_routes([web.get('/', handler),
+                   web.post('/post', post_handler),
+                   web.put('/put', put_handler)])
 
-:meth:`~UrlDispatcher.add_route` also supports the wildcard *HTTP method*,
-allowing a handler to serve incoming requests on a *path* having **any**
-*HTTP method*::
+Or use *route decorators*::
 
-  app.router.add_route('*', '/path', all_handler)
+    routes = web.RouteTableDef()
+
+    @routes.get('/')
+    async def get_handler(request):
+        ...
+
+    @routes.post('/post')
+    async def post_handler(request):
+        ...
+
+    @routes.put('/put')
+    async def put_handler(request):
+        ...
+
+    app.add_routes(routes)
+
+
+Wildcard *HTTP method* is also supported by :func:`route` or
+:meth:`RouteTableDef.route`, allowing a handler to serve incoming
+requests on a *path* having **any** *HTTP method*::
+
+  app.add_routes[web.route('*', '/path', all_handler)]
 
 The *HTTP method* can be queried later in the request handler using the
 :attr:`Request.method` property.
 
-By default endpoints added with :meth:`~UrlDispatcher.add_get` will accept
+By default endpoints added with ``GET`` method will accept
 ``HEAD`` requests and return the same response headers as they would
 for a ``GET`` request. You can also deny ``HEAD`` requests on a route::
 
-   app.router.add_get('/', handler, allow_head=False)
+   web.get('/', handler, allow_head=False)
 
-Here ``handler`` won't be called and the server will response with ``405``.
-
-.. note::
-
-   This is a change as of **aiohttp v2.0** to act in accordance with
-   `RFC 7231 <https://tools.ietf.org/html/rfc7231#section-4.3.2>`_.
-
-   Previous version always returned ``405`` for ``HEAD`` requests
-   to routes added with :meth:`~UrlDispatcher.add_get`.
-
-If you have handlers which perform lots of processing to write the response
-body you may wish to improve performance by skipping that processing
-in the case of ``HEAD`` requests while still taking care to respond with
-the same headers as with ``GET`` requests.
+Here ``handler`` won't be called on ``HEAD`` request and the server
+will response with ``405: Method Not Allowed``.
 
 .. _aiohttp-web-resource-and-route:
 
 Resources and Routes
 --------------------
 
-Internally *router* is a list of *resources*.
+Internally routes a served by :attr:`Application.router`
+(:class:`UrlDispatcher` instance).
+
+The *router* is a list of *resources*.
 
 Resource is an entry in *route table* which corresponds to requested URL.
 
@@ -135,20 +159,26 @@ Resource in turn has at least one *route*.
 
 Route corresponds to handling *HTTP method* by calling *web handler*.
 
-:meth:`UrlDispatcher.add_get` / :meth:`UrlDispatcher.add_post` and
-family are plain shortcuts for :meth:`UrlDispatcher.add_route`.
+Thus when you add a *route* the *resouce* object is created under the hood.
 
-:meth:`UrlDispatcher.add_route` in turn is just a shortcut for pair of
-:meth:`UrlDispatcher.add_resource` and :meth:`Resource.add_route`::
+The library implementation **merges** all subsequent route additions
+for the same path adding the only resource for all HTTP methods.
 
-   resource = app.router.add_resource(path, name=name)
-   route = resource.add_route(method, handler)
-   return route
+Consider two examples::
 
-.. seealso::
+   app.add_routes([web.get('/path1', get_1),
+                   web.post('/path1', post_1),
+                   web.get('/path2', get_2),
+                   web.post('/path2', post_2)]
 
-   :ref:`aiohttp-router-refactoring-021` for more details
+and::
 
+   app.add_routes([web.get('/path1', get_1),
+                   web.get('/path2', get_2),
+                   web.post('/path2', post_2),
+                   web.post('/path1', post_1)]
+
+First one is *optimized*. You have got the idea.
 
 .. _aiohttp-web-variable-handler:
 
@@ -165,38 +195,17 @@ A variable *part* is specified in the form ``{identifier}``, where the
 that *part*. This is done by looking up the ``identifier`` in the
 :attr:`Request.match_info` mapping::
 
+   @routes.get('/{name}')
    async def variable_handler(request):
        return web.Response(
            text="Hello, {}".format(request.match_info['name']))
-
-   resource = app.router.add_resource('/{name}')
-   resource.add_route('GET', variable_handler)
 
 By default, each *part* matches the regular expression ``[^{}/]+``.
 
 You can also specify a custom regex in the form ``{identifier:regex}``::
 
-   resource = app.router.add_resource(r'/{name:\d+}')
+   web.get(r'/{name:\d+}', handler)
 
-.. note::
-
-   Regex should match against *percent encoded* URL
-   (``request.raw_path``). E.g. *space character* is encoded
-   as ``%20``.
-
-   According to
-   `RFC 3986 <https://tools.ietf.org/html/rfc3986.html#appendix-A>`_
-   allowed in path symbols are::
-
-      allowed       = unreserved / pct-encoded / sub-delims
-                    / ":" / "@" / "/"
-
-      pct-encoded   = "%" HEXDIG HEXDIG
-
-      unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
-
-      sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
-                    / "*" / "+" / "," / ";" / "="
 
 .. _aiohttp-web-named-routes:
 
@@ -205,7 +214,9 @@ Reverse URL Constructing using Named Resources
 
 Routes can also be given a *name*::
 
-   resource = app.router.add_resource('/root', name='root')
+   @routes.get('/root', name='root')
+   async def handler(request):
+       ...
 
 Which can then be used to access and build a *URL* for that resource later (e.g.
 in a :ref:`request handler <aiohttp-web-handler>`)::
@@ -230,7 +241,7 @@ Organizing Handlers in Classes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 As discussed above, :ref:`handlers <aiohttp-web-handler>` can be first-class
-functions or coroutines::
+coroutines::
 
    async def hello(request):
        return web.Response(text="Hello, world")
@@ -257,8 +268,8 @@ application developers can organize handlers in classes if they so wish::
            return web.Response(text=txt)
 
    handler = Handler()
-   app.router.add_get('/intro', handler.handle_intro)
-   app.router.add_get('/greet/{name}', handler.handle_greeting)
+   app.add_routes([web.get('/intro', handler.handle_intro),
+                   web.get('/greet/{name}', handler.handle_greeting)]
 
 
 .. _aiohttp-web-class-based-views:
@@ -266,7 +277,7 @@ application developers can organize handlers in classes if they so wish::
 Class Based Views
 ^^^^^^^^^^^^^^^^^
 
-:mod:`aiohttp.web` has support for django-style class based views.
+:mod:`aiohttp.web` has support for *class based views*.
 
 You can derive from :class:`View` and define methods for handling http
 requests::
@@ -278,14 +289,20 @@ requests::
        async def post(self):
            return await post_resp(self.request)
 
-Handlers should be coroutines accepting self only and returning
+Handlers should be coroutines accepting *self* only and returning
 response object as regular :term:`web-handler`. Request object can be
 retrieved by :attr:`View.request` property.
 
 After implementing the view (``MyView`` from example above) should be
 registered in application's router::
 
-   app.router.add_view('/path/to', MyView)
+   web.view('/path/to', MyView)
+
+or::
+
+   @routes.view('/path/to')
+   class MyView(web.View):
+       ...
 
 Example will process GET and POST requests for */path/to* but raise
 *405 Method not allowed* exception for unimplemented HTTP methods.
@@ -299,7 +316,7 @@ Resource Views
    for resource in app.router.resources():
        print(resource)
 
-Similarly, a *subset* of the resources that were registered with a *name* can be
+A *subset* of the resources that were registered with a *name* can be
 viewed using the :meth:`UrlDispatcher.named_resources` method::
 
    for name, resource in app.router.named_resources().items():
@@ -384,6 +401,7 @@ own.
 
 .. versionadded:: 2.3
 
+
 JSON Response
 -------------
 
@@ -421,13 +439,13 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
         text = 'Last visited: {}'.format(last_visit)
         return web.Response(text=text)
 
-    def make_app():
+    async def make_app():
         app = web.Application()
         # secret_key must be 32 url-safe base64-encoded bytes
         fernet_key = fernet.Fernet.generate_key()
         secret_key = base64.urlsafe_b64decode(fernet_key)
         setup(app, EncryptedCookieStorage(secret_key))
-        app.router.add_route('GET', '/', handler)
+        app.add_routes([web.get('/', handler)])
         return app
 
     web.run_app(make_app())
@@ -525,7 +543,8 @@ a container for the file as well as some of its metadata::
 
 
 You might have noticed a big warning in the example above. The general issue is
-that :meth:`Request.post` reads the whole payload in memory, resulting in possible
+that :meth:`Request.post` reads the whole payload in memory,
+resulting in possible
 :abbr:`OOM (Out Of Memory)` errors. To avoid this, for multipart uploads, you
 should use :meth:`Request.multipart` which returns a :ref:`multipart reader
 <aiohttp-multipart>`::
@@ -590,7 +609,7 @@ with the peer::
 
 The handler should be registered as HTTP GET processor::
 
-    app.router.add_get('/ws', websocket_handler)
+    app.add_routes([web.get('/ws', websocket_handler)])
 
 
 .. _aiohttp-web-exceptions:
@@ -601,27 +620,15 @@ Exceptions
 :mod:`aiohttp.web` defines a set of exceptions for every *HTTP status code*.
 
 Each exception is a subclass of :class:`~HTTPException` and relates to a single
-HTTP status code.
+HTTP status code::
 
-The exceptions are also a subclass of :class:`Response`, allowing you to either
-``raise`` or ``return`` them in a
-:ref:`request handler <aiohttp-web-handler>` for the same effect.
+    async def handler(request):
+        raise aiohttp.web.HTTPFound('/redirect')
 
 .. warning::
 
    Returning :class:`~HTTPException` or its subclasses is deprecated and will
    be removed in subsequent aiohttp versions.
-
-The following snippets are the same::
-
-    async def handler(request):
-        return aiohttp.web.HTTPFound('/redirect')
-
-and::
-
-    async def handler(request):
-        raise aiohttp.web.HTTPFound('/redirect')
-
 
 Each exception class has a status code according to :rfc:`2068`:
 codes with 100-300 are not really errors; 400s are client errors,
