@@ -14,6 +14,13 @@ Changelog
 
 .. towncrier release notes start
 
+3.0.9 (2018-03-14)
+==================
+
+- Close a connection if an unexpected exception occurs while sending a request
+  (#2827)
+
+
 3.0.8 (2018-03-12)
 ==================
 
