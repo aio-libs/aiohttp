@@ -14,6 +14,8 @@
 .cache
 .coverage
 .coverage.*
+.direnv
+.envrc
 .idea
 .installed.cfg
 .noseids
@@ -48,3 +50,4 @@ virtualenv.py
 .flake
 .python-version
 .pytest_cache
+.vscode
