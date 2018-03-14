@@ -326,11 +326,14 @@ class ClientSession:
                     tcp_nodelay(conn.transport, True)
                     tcp_cork(conn.transport, False)
                     try:
-                        resp = await req.send(conn)
                         try:
-                            await resp.start(conn, read_until_eof)
+                            resp = await req.send(conn)
+                            try:
+                                await resp.start(conn, read_until_eof)
+                            except BaseException:
+                                resp.close()
+                                raise
                         except BaseException:
-                            resp.close()
                             conn.close()
                             raise
                     except ClientError:
