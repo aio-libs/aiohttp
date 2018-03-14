@@ -1990,8 +1990,8 @@ and *405 Method Not Allowed*.
 .. _aiohttp-web-route-def:
 
 
-RouteDef
-^^^^^^^^
+RouteDef and StaticDef
+^^^^^^^^^^^^^^^^^^^^^^
 
 Route definition, a description for not registered yet route.
 
@@ -2014,10 +2014,32 @@ The definition is created by functions like :func:`get` or
    app.router.add_routes([web.get('/get', handle_get),
                           web.post('/post', handle_post),
 
+.. class:: AbstractRouteDef
+
+   A base class for route definitions.
+
+   Inherited from :class:`abc.ABC`.
+
+   .. versionadded:: 3.1
+
+   .. method:: register(router)
+
+      Register itself into :class:`UrlDispatcher`.
+
+      Abstract method, should be overridden by subclasses.
+
 
 .. class:: RouteDef
 
-   A definition for not added yet route.
+   A definition of not registered yet route.
+
+   Implements :class:`AbstractRouteDef`.
+
+   .. versionadded:: 2.3
+
+   .. versionchanged:: 3.1
+
+      The class implements :class:`AbstractRouteDef` interface.
 
    .. attribute:: method
 
@@ -2037,7 +2059,30 @@ The definition is created by functions like :func:`get` or
 
       A :class:`dict` of additional arguments.
 
-   .. versionadded:: 2.3
+
+.. class:: StaticDef
+
+   A definition of static file resource.
+
+   Implements :class:`AbstractRouteDef`.
+
+   .. versionadded:: 3.1
+
+   .. attribute:: prefix
+
+      A prefix used for static file handling, e.g. ``/static``.
+
+   .. attribute:: path
+
+      File system directory to serve, :class:`str` or
+      :class:`pathlib.Path`
+      (e.g. ``'/home/web-service/path/to/static'``.
+
+   .. attribute:: kwargs
+
+      A :class:`dict` of additional arguments, see
+      :meth:`UrlDispatcher.add_static` for a list of supported
+      options.
 
 
 .. function:: get(path, handler, *, name=None, allow_head=True, \
@@ -2090,6 +2135,18 @@ The definition is created by functions like :func:`get` or
 
    .. versionadded:: 3.0
 
+.. function:: static(prefix, path, *, name=None, expect_handler=None, \
+                     chunk_size=256*1024, \
+                     show_index=False, follow_symlinks=False, \
+                     append_version=False)
+
+   Return :class:`StaticDef` for processing static files.
+
+   See :meth:`UrlDispatcher.add_static` for information
+   about supported parameters.
+
+   .. versionadded:: 3.1
+
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
    Return :class:`RouteDef` for processing requests that decided by
@@ -2097,6 +2154,7 @@ The definition is created by functions like :func:`get` or
    about parameters.
 
    .. versionadded:: 2.3
+
 
 .. _aiohttp-web-route-table-def:
 
@@ -2138,6 +2196,8 @@ A routes table definition used for describing routes by decorators
    In addition to all standard :class:`list` methods the class
    provides also methods like ``get()`` and ``post()`` for adding new
    route definition.
+
+   .. versionadded:: 2.3
 
    .. decoratormethod:: get(path, *, allow_head=True, \
                             name=None, expect_handler=None)
@@ -2185,6 +2245,19 @@ A routes table definition used for describing routes by decorators
 
       .. versionadded:: 3.0
 
+   .. method:: static(prefix, path, *, name=None, expect_handler=None, \
+                      chunk_size=256*1024, \
+                      show_index=False, follow_symlinks=False, \
+                      append_version=False)
+
+
+      Add a new :class:`StaticDef` item for registering static files processor.
+
+      See :meth:`UrlDispatcher.add_static` for information about
+      supported parameters.
+
+      .. versionadded:: 3.1
+
    .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
 
       Add a new :class:`RouteDef` item for registering a web-handler
@@ -2192,7 +2265,6 @@ A routes table definition used for describing routes by decorators
 
       See :meth:`UrlDispatcher.add_route` for information about parameters.
 
-   .. versionadded:: 2.3
 
 MatchInfo
 ^^^^^^^^^

@@ -1,0 +1,1 @@
+Implement ``web.static()`` and ``RouteTableDef.static()`` API.
