@@ -180,7 +180,7 @@ class Application(MutableMapping):
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
-    def add_subapp(self, prefix, subapp):
+    def add_subapp(self, prefix, subapp, *, name=None):
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
@@ -192,9 +192,9 @@ class Application(MutableMapping):
             raise ValueError("Prefix cannot be empty")
 
         if not ('{' in prefix or '}' in prefix or ROUTE_RE.search(prefix)):
-            resource = PrefixedSubAppResource(prefix, subapp)
+            resource = PrefixedSubAppResource(prefix, subapp, name=name)
         else:
-            resource = DynamicSubAppResource(prefix, subapp)
+            resource = DynamicSubAppResource(prefix, subapp, name=name)
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
