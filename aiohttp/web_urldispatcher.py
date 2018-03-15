@@ -258,6 +258,8 @@ class UrlMappingMatchInfo(AbstractMatchInfo, Mapping):
         for k, v in match_dict.items():
             if name:
                 k = (name + '.' + k)
+            if k in self._variables:
+                continue
             self._variables[k] = v
 
     def freeze(self):

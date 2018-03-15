@@ -1099,6 +1099,16 @@ def test_add_subapp_with_dynamic_prefix(app, loop):
     assert resource.get_info() == {'prefix': '/{name}/prefix', 'app': subapp}
 
 
+def test_add_named_subapp_with_dynamic_prefix(app, loop):
+    subapp = web.Application()
+    resource = app.add_subapp('/{name}/prefix', subapp, name='x')
+    assert isinstance(resource, DynamicSubAppResource)
+    assert resource.get_info() == {
+        'prefix': '/{name}/prefix',
+        'app': subapp,
+        'name': 'x'}
+
+
 async def test_plain_subapp_resolution(app, loop):
     handler = make_handler()
     subapp = web.Application()
@@ -1122,6 +1132,20 @@ async def test_dynamic_subapp_resolution(app, loop):
     assert 'andrew' == ret[0]['name']
     assert 'abc' == ret[0]['myvar']
     assert set() == ret[1]
+
+
+async def test_dynamic_subapp_variable_collision(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/{var}.py')
+    route = subresource.add_route('GET', handler)
+    resource = app.add_subapp('/{var}', subapp)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/andrew/abc.py'))
+    assert 'abc' == ret[0]['var']  # innermost survives.
+    assert set() == ret[1]
+    url = route.url_for(var='xxx')
+    assert '/xxx/xxx.py' == str(url)
 
 
 async def test_dynamic_subapp_url_for(app, loop):
