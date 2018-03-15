@@ -208,3 +208,6 @@ period ask to raise the status.
 
 - `async-v20 <https://github.com/jamespeterschinner/async_v20>`_
   Asynchronous FOREX client for OANDA's v20 API. Python 3.6+
+
+- `aiohttp-jwt <https://github.com/hzlmn/aiohttp-jwt>`_
+  An aiohttp middleware for JWT(JSON Web Token) support. Python 3.5+ is required.
