@@ -449,13 +449,13 @@ conditions that hard to reproduce on real server::
    :type app: aiohttp.web.Application
 
    :param writer: object for managing outcoming data
-   :type wirter: aiohttp.streams.StreamWriter
+   :type writer: aiohttp.StreamWriter
 
    :param transport: asyncio transport instance
    :type transport: asyncio.transports.Transport
 
    :param payload: raw payload reader object
-   :type  payload: aiohttp.streams.FlowControlStreamReader
+   :type  payload: aiohttp.StreamReader
 
    :param sslcontext: ssl.SSLContext object, for HTTPS connection
    :type sslcontext: ssl.SSLContext
