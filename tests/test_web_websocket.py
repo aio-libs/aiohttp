@@ -356,7 +356,7 @@ async def test_receive_eofstream_in_reader(make_request, loop):
     ws._payload_writer.drain.return_value.set_result(True)
 
     msg = await ws.receive()
-    assert msg.type == WSMsgType.CLOSING
+    assert msg.type == WSMsgType.CLOSED
     assert ws.closed
 
 

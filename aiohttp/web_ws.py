@@ -354,7 +354,7 @@ class WebSocketResponse(StreamResponse):
             except EofStream:
                 self._close_code = 1000
                 await self.close()
-                return WSMessage(WSMsgType.CLOSING, None, None)
+                return WSMessage(WSMsgType.CLOSED, None, None)
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)

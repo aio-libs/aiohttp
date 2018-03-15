@@ -202,10 +202,9 @@ class ClientWebSocketResponse:
                 self._close_code = 1006
                 raise
             except EofStream:
-                self._closing = True
                 self._close_code = 1000
                 await self.close()
-                return WSMessage(WSMsgType.CLOSING, None, None)
+                return WSMessage(WSMsgType.CLOSED, None, None)
             except ClientError:
                 self._closed = True
                 self._close_code = 1006
