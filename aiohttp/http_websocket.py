@@ -589,19 +589,19 @@ class WebSocketWriter:
 
         return noop()
 
-    def pong(self, message=b''):
+    async def pong(self, message=b''):
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         return self._send_frame(message, WSMsgType.PONG)
 
-    def ping(self, message=b''):
+    async def ping(self, message=b''):
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         return self._send_frame(message, WSMsgType.PING)
 
-    def send(self, message, binary=False, compress=None):
+    async def send(self, message, binary=False, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')
