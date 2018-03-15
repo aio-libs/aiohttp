@@ -16,6 +16,7 @@ from .resolver import *  # noqa
 from .signals import *  # noqa
 from .streams import *  # noqa
 from .tracing import *  # noqa
+from .web import *  # noqa
 
 try:
     from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
