@@ -9,7 +9,7 @@ import zlib
 from enum import IntEnum
 from struct import Struct
 
-from .helpers import NO_EXTENSIONS, noop
+from .helpers import NO_EXTENSIONS
 from .log import ws_logger
 
 
@@ -527,7 +527,7 @@ class WebSocketWriter:
         self._output_size = 0
         self._compressobj = None
 
-    def _send_frame(self, message, opcode, compress=None):
+    async def _send_frame(self, message, opcode, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if self._closing:
             ws_logger.warning('websocket connection is closing.')
@@ -585,9 +585,7 @@ class WebSocketWriter:
 
         if self._output_size > self._limit:
             self._output_size = 0
-            return self.protocol._drain_helper()
-
-        return noop()
+            await self.protocol._drain_helper()
 
     async def pong(self, message=b''):
         """Send pong message."""
