@@ -9,7 +9,7 @@ import zlib
 from enum import IntEnum
 from struct import Struct
 
-from .helpers import NO_EXTENSIONS, noop
+from .helpers import NO_EXTENSIONS
 from .log import ws_logger
 
 
@@ -527,7 +527,7 @@ class WebSocketWriter:
         self._output_size = 0
         self._compressobj = None
 
-    def _send_frame(self, message, opcode, compress=None):
+    async def _send_frame(self, message, opcode, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if self._closing:
             ws_logger.warning('websocket connection is closing.')
@@ -585,37 +585,35 @@ class WebSocketWriter:
 
         if self._output_size > self._limit:
             self._output_size = 0
-            return self.protocol._drain_helper()
+            await self.protocol._drain_helper()
 
-        return noop()
-
-    def pong(self, message=b''):
+    async def pong(self, message=b''):
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(message, WSMsgType.PONG)
+        return await self._send_frame(message, WSMsgType.PONG)
 
-    def ping(self, message=b''):
+    async def ping(self, message=b''):
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(message, WSMsgType.PING)
+        return await self._send_frame(message, WSMsgType.PING)
 
-    def send(self, message, binary=False, compress=None):
+    async def send(self, message, binary=False, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         if binary:
-            return self._send_frame(message, WSMsgType.BINARY, compress)
+            return await self._send_frame(message, WSMsgType.BINARY, compress)
         else:
-            return self._send_frame(message, WSMsgType.TEXT, compress)
+            return await self._send_frame(message, WSMsgType.TEXT, compress)
 
-    def close(self, code=1000, message=b''):
+    async def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         try:
-            return self._send_frame(
+            return await self._send_frame(
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
         finally:
             self._closing = True

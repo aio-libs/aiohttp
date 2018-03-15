@@ -58,7 +58,7 @@ class WebSocketResponse(StreamResponse):
         self._heartbeat = heartbeat
         self._heartbeat_cb = None
         if heartbeat is not None:
-            self._pong_heartbeat = heartbeat/2.0
+            self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb = None
         self._compress = compress
 
@@ -80,7 +80,10 @@ class WebSocketResponse(StreamResponse):
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            self._writer.ping()
+            # fire-and-forget a task is not perfect but maybe ok for
+            # sending ping. Otherwise we need a long-living heartbeat
+            # task in the class.
+            self._loop.create_task(self._writer.ping())
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -286,7 +289,7 @@ class WebSocketResponse(StreamResponse):
         if not self._closed:
             self._closed = True
             try:
-                self._writer.close(code, message)
+                await self._writer.close(code, message)
                 await self._payload_writer.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006

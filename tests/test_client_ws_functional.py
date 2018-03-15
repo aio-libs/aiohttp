@@ -544,7 +544,7 @@ async def test_heartbeat(loop, aiohttp_client, ceil):
 
     client = await aiohttp_client(app)
     resp = await client.ws_connect('/', heartbeat=0.01)
-
+    await asyncio.sleep(0.1)
     await resp.receive()
     await resp.close()
 
