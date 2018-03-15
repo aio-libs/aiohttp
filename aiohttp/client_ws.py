@@ -140,7 +140,7 @@ class ClientWebSocketResponse:
             self._cancel_heartbeat()
             self._closed = True
             try:
-                self._writer.close(code, message)
+                await self._writer.close(code, message)
             except asyncio.CancelledError:
                 self._close_code = 1006
                 self._response.close()
