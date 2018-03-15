@@ -6,6 +6,21 @@ Web Server Advanced
 .. currentmodule:: aiohttp.web
 
 
+Unicode support
+---------------
+
+*aiohttp* does :term:`requoting` of incoming request path.
+
+Unicode (non-ASCII) symbols are processed transparently on both *route
+adding* and *resolving* (internally everything is converted to
+:term:`percent-encoding` form by :term:`yarl` library).
+
+But in case of custom regular expressions for
+:ref:`aiohttp-web-variable-handler` please take care that URL is
+*percent encoded*: if you pass Unicode patterns they don't match to
+*requoted* path.
+
+
 Web Handler Cancellation
 ------------------------
 
@@ -169,7 +184,7 @@ The following example shows custom routing based on the *HTTP Accept* header::
        # do xml handling
 
    chooser = AcceptChooser()
-   app.router.add_get('/', chooser.do_route)
+   app.add_routes([web.get('/', chooser.do_route)])
 
    chooser.reg_acceptor('application/json', handle_json)
    chooser.reg_acceptor('application/xml', handle_xml)
@@ -190,21 +205,23 @@ But for development it's very convenient to handle static files by
 aiohttp server itself.
 
 To do it just register a new static route by
-:meth:`UrlDispatcher.add_static` call::
+:meth:`RouteTableDef.static` or :func:`static` calls::
 
-   app.router.add_static('/prefix', path_to_static_folder)
+   app.add_routes([web.static('/prefix', path_to_static_folder)])
+
+   routes.static('/prefix', path_to_static_folder)
 
 When a directory is accessed within a static route then the server responses
 to client with ``HTTP/403 Forbidden`` by default. Displaying folder index
 instead could be enabled with ``show_index`` parameter set to ``True``::
 
-   app.router.add_static('/prefix', path_to_static_folder, show_index=True)
+   web.static('/prefix', path_to_static_folder, show_index=True)
 
 When a symlink from the static directory is accessed, the server responses to
 client with ``HTTP/404 Not Found`` by default. To allow the server to follow
 symlinks, parameter ``follow_symlinks`` should be set to ``True``::
 
-   app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
+   web.static('/prefix', path_to_static_folder, follow_symlinks=True)
 
 When you want to enable cache busting,
 parameter ``append_version`` can be set to ``True``
@@ -215,7 +232,7 @@ The performance advantage of doing this is that we can tell the browser
 to cache these files indefinitely without worrying about the client not getting
 the latest version when the file changes::
 
-   app.router.add_static('/prefix', path_to_static_folder, append_version=True)
+   web.static('/prefix', path_to_static_folder, append_version=True)
 
 Template Rendering
 ------------------
@@ -242,6 +259,19 @@ wrap your handlers with the  :func:`aiohttp_jinja2.template` decorator::
 
 If you prefer the `Mako`_ template engine, please take a look at the
 `aiohttp_mako`_ library.
+
+.. warning::
+
+   :func:`aiohttp_jinja2.template` should be applied **before**
+   :meth:`RouteTableDef.get` decorator and family, e.g. it must be
+   the *first* (most *down* decorator in the chain)::
+
+
+      @routes.get('/path')
+      @aiohttp_jinja2.template('tmpl.jinja2')
+      def handler(request):
+          return {'name': 'Andrew', 'surname': 'Svetlov'}
+
 
 .. _Mako: http://www.makotemplates.org/
 
@@ -644,7 +674,7 @@ Url reversing for sub-applications should generate urls with proper prefix.
 But for getting URL sub-application's router should be used::
 
    admin = web.Application()
-   admin.router.add_get('/resource', handler, name='name')
+   admin.add_routes([web.get('/resource', handler, name='name')])
 
    app.add_subapp('/admin/', admin)
 
@@ -657,7 +687,7 @@ If main application should do URL reversing for sub-application it could
 use the following explicit technique::
 
    admin = web.Application()
-   admin.router.add_get('/resource', handler, name='name')
+   admin.add_routes([web.get('/resource', handler, name='name')])
 
    app.add_subapp('/admin/', admin)
    app['admin'] = admin
@@ -716,7 +746,7 @@ header::
        return web.Response(body=b"Hello, world")
 
    app = web.Application()
-   app.router.add_get('/', hello, expect_handler=check_auth)
+   app.add_routes([web.add_get('/', hello, expect_handler=check_auth)])
 
 .. _aiohttp-web-custom-resource:
 
@@ -928,7 +958,7 @@ Debug Toolbar
 debugging toolbar while you're developing an :mod:`aiohttp.web`
 application.
 
-Install it via ``pip``:
+Install it with ``pip``:
 
 .. code-block:: shell
 
@@ -956,7 +986,7 @@ Dev Tools
 :mod:`aiohttp.web` applications.
 
 
-Install via ``pip``:
+Install with ``pip``:
 
 .. code-block:: shell
 

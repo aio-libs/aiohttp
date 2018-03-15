@@ -1,0 +1,1 @@
+Use ``app.add_routes()`` in server docs everywhere
