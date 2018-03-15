@@ -2354,18 +2354,6 @@ In general the result may be any object derived from
       A tuple of :class:`Application` instances matched through the resolving
       process.  The innermost application comes at last.
 
-   .. attribute:: maps
-
-      A tuple of :class:`dict` instances where each instance corresponds to the
-      variables matched for each dynamic prefix of in the nested application
-      hierarchy.  The match dict of the innermost match comes at last.
-      Static prefixes without any variable insert an empty dict here.
-
-      This provides a decomposed view of the match info, while the match info
-      provides a merged view where innermost variables override outer variables
-      with duplicate names defined from dynamic prefixes in different levels of
-      the hierarchy.
-
 
 View
 ^^^^
