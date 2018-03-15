@@ -1012,8 +1012,7 @@ def test_subapp_get_info(app, loop):
 def test_subapp_url_for(app, loop):
     subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
-    with pytest.raises(RuntimeError):
-        resource.url_for()
+    assert '/pre' == resource.url_for().path
 
 
 def test_subapp_repr(app, loop):
