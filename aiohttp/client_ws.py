@@ -61,7 +61,10 @@ class ClientWebSocketResponse:
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            self._writer.ping()
+            # fire-and-forget a task is not perfect but maybe ok for
+            # sending ping. Otherwise we need a long-living heartbeat
+            # task in the class.
+            self._loop.create_task(self._writer.ping())
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
