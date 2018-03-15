@@ -1144,7 +1144,7 @@ async def test_dynamic_subapp_variable_collision(app, loop):
         make_mocked_request('GET', '/andrew/abc.py'))
     assert 'abc' == ret[0]['var']  # innermost survives.
     assert set() == ret[1]
-    url = route.url_for(var='xxx')
+    url = route.url_for(var='xxx')  # used by all!
     assert '/xxx/xxx.py' == str(url)
 
 
@@ -1204,6 +1204,11 @@ async def test_nested_dynamic_subapps(app, loop):
         'b.key': 'def',
         'filename': 'figure.png'})
     assert '/%ED%95%9C%EA%B8%80/def/figure.png' == str(url)
+    with pytest.raises(KeyError):
+        # Error when name-prefixed variables are missing
+        url = route.url_for(**{
+            'key': 'abc',
+            'filename': 'figure.png'})
 
 
 def test_cannot_add_subapp_with_empty_prefix(app, loop):
