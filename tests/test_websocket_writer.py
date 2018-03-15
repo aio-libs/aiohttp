@@ -4,11 +4,14 @@ from unittest import mock
 import pytest
 
 from aiohttp.http import WebSocketWriter
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
 def protocol():
-    return mock.Mock()
+    ret = mock.Mock()
+    ret._drain_helper = make_mocked_coro()
+    return ret
 
 
 @pytest.fixture

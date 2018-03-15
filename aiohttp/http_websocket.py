@@ -593,22 +593,22 @@ class WebSocketWriter:
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(message, WSMsgType.PONG)
+        return await self._send_frame(message, WSMsgType.PONG)
 
     async def ping(self, message=b''):
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(message, WSMsgType.PING)
+        return await self._send_frame(message, WSMsgType.PING)
 
     async def send(self, message, binary=False, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         if binary:
-            return self._send_frame(message, WSMsgType.BINARY, compress)
+            return await self._send_frame(message, WSMsgType.BINARY, compress)
         else:
-            return self._send_frame(message, WSMsgType.TEXT, compress)
+            return await self._send_frame(message, WSMsgType.TEXT, compress)
 
     def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
