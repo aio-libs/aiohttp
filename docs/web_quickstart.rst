@@ -51,7 +51,7 @@ taste: do you prefer *Django style* with famous ``urls.py`` or *Flask*
 with shiny route decorators.
 
 *aiohttp* server documentation uses both ways in code snippets to
-emphasize their equality, switching from one style to other is very
+emphasize their equality, switching from one style to another is very
 trivial.
 
 .. seealso::
@@ -141,14 +141,14 @@ for a ``GET`` request. You can also deny ``HEAD`` requests on a route::
    web.get('/', handler, allow_head=False)
 
 Here ``handler`` won't be called on ``HEAD`` request and the server
-will response with ``405: Method Not Allowed``.
+will respond with ``405: Method Not Allowed``.
 
 .. _aiohttp-web-resource-and-route:
 
 Resources and Routes
 --------------------
 
-Internally routes a served by :attr:`Application.router`
+Internally routes are served by :attr:`Application.router`
 (:class:`UrlDispatcher` instance).
 
 The *router* is a list of *resources*.

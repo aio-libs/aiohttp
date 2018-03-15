@@ -9,11 +9,11 @@ Web Server Advanced
 Unicode support
 ---------------
 
-*aiohttp* do :term:`requoting` incoming request path.
+*aiohttp* does :term:`requoting` of incoming request path.
 
 Unicode (non-ASCII) symbols are processed transparently on both *route
 adding* and *resolving* (internally everything is converted to
-:term:`percent-encoding` form by :term:`yarl` library.
+:term:`percent-encoding` form by :term:`yarl` library).
 
 But in case of custom regular expressions for
 :ref:`aiohttp-web-variable-handler` please take care that URL is
@@ -215,13 +215,13 @@ When a directory is accessed within a static route then the server responses
 to client with ``HTTP/403 Forbidden`` by default. Displaying folder index
 instead could be enabled with ``show_index`` parameter set to ``True``::
 
-   static('/prefix', path_to_static_folder, show_index=True)
+   web.static('/prefix', path_to_static_folder, show_index=True)
 
 When a symlink from the static directory is accessed, the server responses to
 client with ``HTTP/404 Not Found`` by default. To allow the server to follow
 symlinks, parameter ``follow_symlinks`` should be set to ``True``::
 
-   static('/prefix', path_to_static_folder, follow_symlinks=True)
+   web.static('/prefix', path_to_static_folder, follow_symlinks=True)
 
 When you want to enable cache busting,
 parameter ``append_version`` can be set to ``True``
@@ -232,7 +232,7 @@ The performance advantage of doing this is that we can tell the browser
 to cache these files indefinitely without worrying about the client not getting
 the latest version when the file changes::
 
-   static('/prefix', path_to_static_folder, append_version=True)
+   web.static('/prefix', path_to_static_folder, append_version=True)
 
 Template Rendering
 ------------------
@@ -958,7 +958,7 @@ Debug Toolbar
 debugging toolbar while you're developing an :mod:`aiohttp.web`
 application.
 
-Install it by ``pip``:
+Install it with ``pip``:
 
 .. code-block:: shell
 
@@ -986,7 +986,7 @@ Dev Tools
 :mod:`aiohttp.web` applications.
 
 
-Install by ``pip``:
+Install with ``pip``:
 
 .. code-block:: shell
 
