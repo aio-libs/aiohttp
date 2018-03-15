@@ -696,6 +696,23 @@ use the following explicit technique::
        admin = request.app['admin']
        url = admin.router['name'].url_for()
 
+You may use variables in the subapplication prefixes, with optional
+dot-separated variable namespaces::
+
+   admin = web.Application()
+   admin.add_routes([web.get('/revision/{version:\d+}', handler, name='name')])
+
+   app.add_subapp('/v{version:\d+}/admin', admin, name='admin')
+   app['admin'] = admin
+
+   async def handler(request):  # main application's handler
+       admin = request.app['admin']
+       api_ver = request.match_info['admin.version']
+       revision = request.match_info['version']
+       url = admin.router['name'].url_for(**{
+           'admin.version': '123',
+           'version': '456'})
+
 .. _aiohttp-web-expect-header:
 
 *Expect* Header
