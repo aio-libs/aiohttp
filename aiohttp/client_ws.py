@@ -33,7 +33,7 @@ class ClientWebSocketResponse:
         self._heartbeat = heartbeat
         self._heartbeat_cb = None
         if heartbeat is not None:
-            self._pong_heartbeat = heartbeat/2.0
+            self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb = None
         self._loop = loop
         self._waiting = None
