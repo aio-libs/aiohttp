@@ -175,10 +175,8 @@ class ClientRequest:
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None,
-                 timer=None, session=None, auto_decompress=True,
-                 ssl=None,
-                 proxy_headers=None,
-                 traces=None):
+                 lifecycle=None, session=None, auto_decompress=True,
+                 ssl=None, proxy_headers=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -199,7 +197,7 @@ class ClientRequest:
         self.loop = loop
         self.length = None
         self.response_class = response_class or ClientResponse
-        self._timer = timer if timer is not None else TimerNoop()
+        self._lifecycle = lifecycle
         self._auto_decompress = auto_decompress
         self._ssl = ssl
 
@@ -219,9 +217,6 @@ class ClientRequest:
         if data or self.method not in self.GET_METHODS:
             self.update_transfer_encoding()
         self.update_expect_continue(expect100)
-        if traces is None:
-            traces = []
-        self._traces = traces
 
     def is_ssl(self):
         return self.url.scheme in ('https', 'wss')
@@ -527,10 +522,10 @@ class ClientRequest:
 
         self.response = self.response_class(
             self.method, self.original_url,
-            writer=self._writer, continue100=self._continue, timer=self._timer,
+            writer=self._writer, continue100=self._continue,
             request_info=self.request_info,
             auto_decompress=self._auto_decompress,
-            traces=self._traces,
+            lifecycle=self._lifecycle,
             loop=self.loop,
             session=self._session
         )
@@ -550,8 +545,8 @@ class ClientRequest:
             self._writer = None
 
     async def _on_chunk_request_sent(self, chunk):
-        for trace in self._traces:
-            await trace.send_request_chunk_sent(chunk)
+        if self._lifecycle:
+            await self._lifecycle.send_request_chunk_sent(chunk)
 
 
 class ClientResponse(HeadersMixin):
@@ -573,9 +568,9 @@ class ClientResponse(HeadersMixin):
     _closed = True  # to allow __del__ for non-initialized properly response
 
     def __init__(self, method, url, *,
-                 writer, continue100, timer,
+                 writer, continue100, lifecycle,
                  request_info, auto_decompress,
-                 traces, loop, session):
+                 loop, session):
         assert isinstance(url, URL)
 
         self.method = method
@@ -589,10 +584,9 @@ class ClientResponse(HeadersMixin):
         self._closed = True
         self._history = ()
         self._request_info = request_info
-        self._timer = timer if timer is not None else TimerNoop()
+        self._lifecycle = lifecycle
         self._auto_decompress = auto_decompress  # True by default
         self._cache = {}  # required for @reify method decorator
-        self._traces = traces
         self._loop = loop
         self._session = session  # store a reference to session #1985
         if loop.get_debug():
@@ -683,12 +677,12 @@ class ClientResponse(HeadersMixin):
         self._connection = connection
 
         connection.protocol.set_response_params(
-            timer=self._timer,
+            timer=self._lifecycle.request_timer_context,
             skip_payload=self.method.lower() == 'head',
             read_until_eof=read_until_eof,
             auto_decompress=self._auto_decompress)
 
-        with self._timer:
+        with self._lifecycle.request_timer_context:
             while True:
                 # read response
                 try:
@@ -813,8 +807,8 @@ class ClientResponse(HeadersMixin):
         if self._body is None:
             try:
                 self._body = await self.content.read()
-                for trace in self._traces:
-                    await trace.send_response_chunk_received(self._body)
+                if self._lifecycle:
+                    await self._lifecycle.send_response_chunk_received(self._body)
             except BaseException:
                 self.close()
                 raise
