@@ -690,11 +690,6 @@ class PrefixedSubAppResource(PrefixResource):
         for subresource in app.router.resources():
             subresource.add_prefix(self)
 
-    def add_prefix(self, resource):
-        super().add_prefix(resource)
-        for subresource in self._app.router.resources():
-            subresource.add_prefix(self)
-
     def get_info(self):
         return {'app': self._app,
                 'prefix': self._prefix}
@@ -732,18 +727,12 @@ class DynamicSubAppResource(DynamicResource):
         assert len(prefix) > 1
         super().__init__(prefix, name=name)
         self._app = app
-        self._prefix = prefix
         for subresource in app.router.resources():
-            subresource.add_prefix(self)
-
-    def add_prefix(self, resource):
-        super().add_prefix(resource)
-        for subresource in self._app.router.resources():
             subresource.add_prefix(self)
 
     def get_info(self):
         info = {'app': self._app,
-                'prefix': self._prefix}
+                'prefix': self._formatter}
         if self._name:
             info['name'] = self._name
         return info
@@ -791,9 +780,9 @@ class DynamicSubAppResource(DynamicResource):
     def __repr__(self):
         if self._name:
             return "<DynamicSubAppResource {name} {prefix} -> {app!r}>".format(
-                name=self._name, prefix=self._prefix, app=self._app)
+                name=self._name, prefix=self._formatter, app=self._app)
         return "<DynamicSubAppResource {prefix} -> {app!r}>".format(
-            prefix=self._prefix, app=self._app)
+            prefix=self._formatter, app=self._app)
 
 
 class ResourceRoute(AbstractRoute):

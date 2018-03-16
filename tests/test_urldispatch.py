@@ -93,6 +93,17 @@ async def test_add_route_simple(router):
     assert info.route.name is None
 
 
+async def test_add_route_unicode(router):
+    handler = make_handler()
+    router.add_route('GET', '/handler/to/目录', handler)
+    req = make_request('GET', '/handler/to/%E7%9B%AE%E5%BD%95')
+    info = await router.resolve(req)
+    assert info is not None
+    assert 0 == len(info)
+    assert handler is info.handler
+    assert info.route.name is None
+
+
 async def test_add_with_matchdict(router):
     handler = make_handler()
     router.add_route('GET', '/handler/{to}', handler)
@@ -1020,6 +1031,21 @@ def test_subapp_repr(app, loop):
     resource = app.add_subapp('/pre', subapp)
     assert repr(resource).startswith(
         '<PrefixedSubAppResource /pre -> <Application')
+    subapp = web.Application()
+    resource = app.add_subapp('/ホーム', subapp)
+    assert repr(resource).startswith(
+        '<PrefixedSubAppResource /%E3%83%9B%E3%83%BC%E3%83%A0 -> <Application')
+
+
+def test_dynamic_subapp_repr(app, loop):
+    subapp1 = web.Application()
+    subapp2 = web.Application()
+    resource = app.add_subapp('/가-{var}', subapp1)
+    assert repr(resource).startswith(
+        '<DynamicSubAppResource /%EA%B0%80-{var} -> <Application')
+    resource = app.add_subapp('/y-{var}', subapp2, name='y')
+    assert repr(resource).startswith(
+        '<DynamicSubAppResource y /y-{var} -> <Application')
 
 
 def test_subapp_len(app, loop):
@@ -1163,13 +1189,13 @@ async def test_dynamic_subapp_resolution_prefixed_key(app, loop):
     subapp = web.Application()
     subresource = subapp.router.add_resource('/{name}.py')
     subresource.add_route('GET', handler)
-    resource = app.add_subapp('/{name}', subapp, name='myprefix')
+    resource = app.add_subapp('/路/{name}', subapp, name='myprefix')
     assert resource.get_info() == {
-        'prefix': '/{name}',
+        'prefix': '/%E8%B7%AF/{name}',
         'app': subapp,
         'name': 'myprefix'}
     ret = await resource.resolve(
-        make_mocked_request('GET', '/andrew/abc.py'))
+        make_mocked_request('GET', '/%E8%B7%AF/andrew/abc.py'))
     assert 'abc' == ret[0]['name']
     assert 'andrew' == ret[0]['myprefix.name']
     assert set() == ret[1]
@@ -1193,11 +1219,13 @@ async def test_nested_dynamic_subapps(app, loop):
     route = subapp2.router.add_static('/', os.path.dirname(aiohttp.__file__))
     subapp1.add_subapp('/{key}', subapp2, name='b')
     resource = app.add_subapp('/{key}', subapp1, name='a')
+    request_path = ('/foo/%EA%B0%80%EB%82%98%EB%8B%A4'
+                    '/%D1%82%D0%B5%D0%BA%D1%81%D1%82.txt')
     ret = await resource.resolve(
-        make_mocked_request('GET', '/foo/가나다/abc.txt'))
+        make_mocked_request('GET', request_path))
     assert 'foo' == ret[0]['a.key']
     assert '가나다' == ret[0]['b.key']
-    assert 'abc.txt' == ret[0]['filename']
+    assert 'текст.txt' == ret[0]['filename']
     assert set() == ret[1]
     url = route.url_for(**{
         'a.key': '한글',
