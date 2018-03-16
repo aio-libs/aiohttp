@@ -389,8 +389,8 @@ class PlainResource(Resource):
     def get_info(self):
         return {'path': self._path}
 
-    def url_for(self, **kwargs):
-        prefix = self._parent.url_for(**kwargs).raw_path if self._parent else ''
+    def url_for(self, **parts):
+        prefix = self._parent.url_for(**parts).raw_path if self._parent else ''
         return URL.build(path=prefix + self._path, encoded=True)
 
     def __repr__(self):
@@ -526,7 +526,7 @@ class StaticResource(PrefixResource):
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
 
-    def url_for(self, *, filename, append_version=None, **kwargs):
+    def url_for(self, *, filename, append_version=None, **parts):
         if append_version is None:
             append_version = self._append_version
         if isinstance(filename, Path):
@@ -536,7 +536,7 @@ class StaticResource(PrefixResource):
         filename = '/' + filename
 
         # filename is not encoded
-        prefix = self._parent.url_for(**kwargs).path if self._parent else ''
+        prefix = self._parent.url_for(**parts).path if self._parent else ''
         url = URL.build(path=prefix + self._prefix + filename)
 
         if append_version is True:
