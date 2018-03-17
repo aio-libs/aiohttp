@@ -329,6 +329,8 @@ class Resource(AbstractResource):
         return route_obj
 
     def add_prefix(self, resource):
+        assert self._parent is None, \
+            'This app instance already has a prefix resource.'
         assert isinstance(resource,
                           (PrefixedSubAppResource, DynamicSubAppResource))
         self._parent = resource
@@ -481,6 +483,8 @@ class PrefixResource(AbstractResource):
         self._prefix = URL.build(path=prefix).raw_path
 
     def add_prefix(self, resource):
+        assert self._parent is None, \
+            'This app instance already has a prefix resource.'
         assert isinstance(resource,
                           (PrefixedSubAppResource, DynamicSubAppResource))
         self._parent = resource
