@@ -1027,7 +1027,7 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      It is save to call `close()` from different task.
+      It is safe to call `close()` from different task.
 
       :param int code: closing code
 
