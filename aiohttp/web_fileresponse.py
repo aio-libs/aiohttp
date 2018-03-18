@@ -257,7 +257,6 @@ class FileResponse(StreamResponse):
 
         self.headers[hdrs.ACCEPT_RANGES] = 'bytes'
 
-        assert count
         if status == HTTPPartialContent.status_code:
             self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
                 start, start + count - 1, file_size)
