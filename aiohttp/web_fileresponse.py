@@ -257,15 +257,13 @@ class FileResponse(StreamResponse):
 
         self.headers[hdrs.ACCEPT_RANGES] = 'bytes'
 
-        if count:
-            if status == HTTPPartialContent.status_code:
-                self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
-                    start, start + count - 1, file_size)
+        assert count
+        if status == HTTPPartialContent.status_code:
+            self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
+                start, start + count - 1, file_size)
 
-            with filepath.open('rb') as fobj:
-                if start:  # be aware that start could be None or int=0 here.
-                    fobj.seek(start)
+        with filepath.open('rb') as fobj:
+            if start:  # be aware that start could be None or int=0 here.
+                fobj.seek(start)
 
-                return await self._sendfile(request, fobj, count)
-
-        return await super().prepare(request)
+            return await self._sendfile(request, fobj, count)
