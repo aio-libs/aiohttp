@@ -402,6 +402,35 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                                          tzinfo=datetime.timezone.utc)
         return None
 
+    @reify
+    def if_unmodified_since(self,  # just copy & paste of if-modified-since
+                            _IF_UNMODIFIED_SINCE=hdrs.IF_UNMODIFIED_SINCE):
+        """The value of If-Unmodified-Since HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        httpdate = self.headers.get(_IF_UNMODIFIED_SINCE)
+        if httpdate is not None:
+            timetuple = parsedate(httpdate)
+            if timetuple is not None:
+                return datetime.datetime(*timetuple[:6],
+                                         tzinfo=datetime.timezone.utc)
+        return None
+
+    @reify
+    def if_range(self, _IF_RANGE=hdrs.IF_RANGE):  # Another copy & paste
+        """The value of If-Range HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        httpdate = self.headers.get(_IF_RANGE)
+        if httpdate is not None:
+            timetuple = parsedate(httpdate)
+            if timetuple is not None:
+                return datetime.datetime(*timetuple[:6],
+                                         tzinfo=datetime.timezone.utc)
+        return None
+
     @property
     def keep_alive(self):
         """Is keepalive enabled by client?"""

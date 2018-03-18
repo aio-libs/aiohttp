@@ -354,6 +354,8 @@ async def test_static_file_huge(loop, aiohttp_client, tmpdir):
 async def test_static_file_range(loop, aiohttp_client, sender):
     filepath = (pathlib.Path(__file__).parent.parent / 'LICENSE.txt')
 
+    filesize = filepath.stat().st_size
+
     async def handler(request):
         return sender(filepath, chunk_size=16)
 
@@ -374,10 +376,17 @@ async def test_static_file_range(loop, aiohttp_client, sender):
     assert len(responses) == 3
     assert responses[0].status == 206, \
         "failed 'bytes=0-999': %s" % responses[0].reason
+    assert responses[0].headers['Content-Range'] == 'bytes 0-999/{0}'.format(
+        filesize), 'failed: Content-Range Error'
     assert responses[1].status == 206, \
         "failed 'bytes=1000-1999': %s" % responses[1].reason
+    assert responses[1].headers['Content-Range'] == \
+        'bytes 1000-1999/{0}'.format(filesize), 'failed: Content-Range Error'
     assert responses[2].status == 206, \
         "failed 'bytes=2000-': %s" % responses[2].reason
+    assert responses[2].headers['Content-Range'] == \
+        'bytes 2000-{0}/{1}'.format(filesize - 1, filesize), \
+        'failed: Content-Range Error'
 
     body = await asyncio.gather(
         *(resp.read() for resp in responses),
@@ -418,10 +427,12 @@ async def test_static_file_range_end_bigger_than_size(
 
         assert response.status == 206, \
             "failed 'bytes=61000-62000': %s" % response.reason
+        assert response.headers['Content-Range'] == \
+            'bytes 61000-61107/61108', 'failed: Content-Range Error'
 
         body = await response.read()
         assert len(body) == 108, \
-            "failed 'bytes=0-999', received %d bytes" % len(body[0])
+            "failed 'bytes=61000-62000', received %d bytes" % len(body[0])
 
         assert content[61000:] == body
 
@@ -440,9 +451,8 @@ async def test_static_file_range_beyond_eof(loop, aiohttp_client, sender):
     response = await client.get(
         '/', headers={'Range': 'bytes=1000000-1200000'})
 
-    assert response.status == 206, \
+    assert response.status == 416, \
         "failed 'bytes=1000000-1200000': %s" % response.reason
-    assert response.headers['content-length'] == '0'
 
 
 async def test_static_file_range_tail(loop, aiohttp_client, sender):
@@ -461,9 +471,17 @@ async def test_static_file_range_tail(loop, aiohttp_client, sender):
     # Ensure the tail of the file is correct
     resp = await client.get('/', headers={'Range': 'bytes=-500'})
     assert resp.status == 206, resp.reason
+    assert resp.headers['Content-Range'] == 'bytes 60608-61107/61108', \
+        'failed: Content-Range Error'
     body4 = await resp.read()
     resp.close()
     assert content[-500:] == body4
+
+    # Ensure out-of-range tails could be handled
+    resp2 = await client.get('/', headers={'Range': 'bytes=-99999999999999'})
+    assert resp2.status == 206, resp.reason
+    assert resp2.headers['Content-Range'] == 'bytes 0-61107/61108', \
+        'failed: Content-Range Error'
 
 
 async def test_static_file_invalid_range(loop, aiohttp_client, sender):
@@ -504,4 +522,172 @@ async def test_static_file_invalid_range(loop, aiohttp_client, sender):
     # no range
     resp = await client.get('/', headers={'Range': 'bytes=-'})
     assert resp.status == 416, 'no range given'
+    resp.close()
+
+
+async def test_static_file_if_unmodified_since_past_with_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
+
+    resp = await client.get('/', headers={
+        'If-Unmodified-Since': lastmod,
+        'Range': 'bytes=2-'})
+    assert 412 == resp.status
+    resp.close()
+
+
+async def test_static_file_if_unmodified_since_future_with_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
+
+    resp = await client.get('/', headers={
+        'If-Unmodified-Since': lastmod,
+        'Range': 'bytes=2-'})
+    assert 206 == resp.status
+    assert resp.headers['Content-Range'] == 'bytes 2-12/13'
+    assert resp.headers['Content-Length'] == '11'
+    resp.close()
+
+
+async def test_static_file_if_range_past_with_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
+
+    resp = await client.get('/', headers={
+        'If-Range': lastmod,
+        'Range': 'bytes=2-'})
+    assert 200 == resp.status
+    assert resp.headers['Content-Length'] == '13'
+    resp.close()
+
+
+async def test_static_file_if_range_future_with_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
+
+    resp = await client.get('/', headers={
+        'If-Range': lastmod,
+        'Range': 'bytes=2-'})
+    assert 206 == resp.status
+    assert resp.headers['Content-Range'] == 'bytes 2-12/13'
+    assert resp.headers['Content-Length'] == '11'
+    resp.close()
+
+
+async def test_static_file_if_unmodified_since_past_without_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
+
+    resp = await client.get('/', headers={'If-Unmodified-Since': lastmod})
+    assert 412 == resp.status
+    resp.close()
+
+
+async def test_static_file_if_unmodified_since_future_without_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
+
+    resp = await client.get('/', headers={'If-Unmodified-Since': lastmod})
+    assert 200 == resp.status
+    assert resp.headers['Content-Length'] == '13'
+    resp.close()
+
+
+async def test_static_file_if_range_past_without_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Mon, 1 Jan 1990 01:01:01 GMT'
+
+    resp = await client.get('/', headers={'If-Range': lastmod})
+    assert 200 == resp.status
+    assert resp.headers['Content-Length'] == '13'
+    resp.close()
+
+
+async def test_static_file_if_range_future_without_range(
+        aiohttp_client, sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'Fri, 31 Dec 9999 23:59:59 GMT'
+
+    resp = await client.get('/', headers={'If-Range': lastmod})
+    assert 200 == resp.status
+    assert resp.headers['Content-Length'] == '13'
     resp.close()
