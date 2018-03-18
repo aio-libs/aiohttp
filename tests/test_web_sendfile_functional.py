@@ -691,3 +691,41 @@ async def test_static_file_if_range_future_without_range(
     assert 200 == resp.status
     assert resp.headers['Content-Length'] == '13'
     resp.close()
+
+
+async def test_static_file_if_unmodified_since_invalid_date(aiohttp_client,
+                                                            sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'not a valid HTTP-date'
+
+    resp = await client.get('/', headers={'If-Unmodified-Since': lastmod})
+    assert 200 == resp.status
+    resp.close()
+
+
+async def test_static_file_if_range_invalid_date(aiohttp_client,
+                                                 sender):
+    filename = 'data.unknown_mime_type'
+    filepath = pathlib.Path(__file__).parent / filename
+
+    async def handler(request):
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    lastmod = 'not a valid HTTP-date'
+
+    resp = await client.get('/', headers={'If-Range': lastmod})
+    assert 200 == resp.status
+    resp.close()
