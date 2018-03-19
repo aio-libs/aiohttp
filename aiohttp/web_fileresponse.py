@@ -207,7 +207,7 @@ class FileResponse(StreamResponse):
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to
                 # a byte-range request SHOULD send a Content-Range header field
-                # with an unsatisfied-range value. 
+                # with an unsatisfied-range value.
                 # The complete-length in a 416 response indicates the current
                 # length of the selected representation.
                 #
