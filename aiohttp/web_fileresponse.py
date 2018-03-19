@@ -204,6 +204,17 @@ class FileResponse(StreamResponse):
                 start = rng.start
                 end = rng.stop
             except ValueError:
+                # https://tools.ietf.org/html/rfc7233:
+                # A server generating a 416 (Range Not Satisfiable) response to
+                # a byte-range request SHOULD send a Content-Range header field
+                # with an unsatisfied-range value. 
+                # The complete-length in a 416 response indicates the current
+                # length of the selected representation.
+                #
+                # Will do the same below. Many servers ignore this and do not
+                # send a Content-Range header with HTTP 416
+                self.headers[hdrs.CONTENT_RANGE] = 'bytes */{0}'.format(
+                    file_size)
                 self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                 return await super().prepare(request)
 
@@ -238,6 +249,8 @@ class FileResponse(StreamResponse):
                     # suffix-byte-range-spec with a non-zero suffix-length,
                     # then the byte-range-set is satisfiable. Otherwise, the
                     # byte-range-set is unsatisfiable.
+                    self.headers[hdrs.CONTENT_RANGE] = 'bytes */{0}'.format(
+                        file_size)
                     self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
                     return await super().prepare(request)
 
