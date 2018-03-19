@@ -329,6 +329,24 @@ and :ref:`aiohttp-web-signals` handlers.
       *If-Modified-Since* header is absent or is not a valid
       HTTP date.
 
+   .. attribute:: if_unmodified_since
+
+      Read-only property that returns the date specified in the
+      *If-Unmodified-Since* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Unmodified-Since* header is absent or is not a valid
+      HTTP date.
+
+   .. attribute:: if_range
+
+      Read-only property that returns the date specified in the
+      *If-Range* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Range* header is absent or is not a valid
+      HTTP date.
+
    .. method:: clone(*, method=..., rel_url=..., headers=...)
 
       Clone itself with replacement some attributes.
