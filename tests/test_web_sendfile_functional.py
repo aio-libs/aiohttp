@@ -432,7 +432,7 @@ async def test_static_file_range_end_bigger_than_size(
 
         body = await response.read()
         assert len(body) == 108, \
-            "failed 'bytes=61000-62000', received %d bytes" % len(body[0])
+            "failed 'bytes=61000-62000', received %d bytes" % len(body)
 
         assert content[61000:] == body
 
