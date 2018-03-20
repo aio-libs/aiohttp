@@ -139,6 +139,7 @@ Requirements
 
 - Python >= 3.5.3
 - async-timeout_
+- attrs_
 - chardet_
 - multidict_
 - yarl_
@@ -148,6 +149,7 @@ recommended for sake of speed).
 
 .. _chardet: https://pypi.python.org/pypi/chardet
 .. _aiodns: https://pypi.python.org/pypi/aiodns
+.. _attrs: https://github.com/python-attrs/attrs
 .. _multidict: https://pypi.python.org/pypi/multidict
 .. _yarl: https://pypi.python.org/pypi/yarl
 .. _async-timeout: https://pypi.python.org/pypi/async_timeout
