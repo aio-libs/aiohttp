@@ -283,7 +283,8 @@ class HttpParser:
                         raise LineTooLong(
                             'request header field {}'.format(
                                 bname.decode("utf8", "xmlcharrefreplace")),
-                            self.max_field_size)
+                            self.max_field_size,
+                            header_length)
                     bvalue.append(line)
 
                     # next line
@@ -301,7 +302,8 @@ class HttpParser:
                     raise LineTooLong(
                         'request header field {}'.format(
                             bname.decode("utf8", "xmlcharrefreplace")),
-                        self.max_field_size)
+                        self.max_field_size,
+                        header_length)
 
             bvalue = bvalue.strip()
             name = bname.decode('utf-8', 'surrogateescape')
@@ -351,7 +353,7 @@ class HttpRequestParserPy(HttpParser):
     def parse_message(self, lines):
         if len(lines[0]) > self.max_line_size:
             raise LineTooLong(
-                'Status line is too long', self.max_line_size)
+                'Status line is too long', self.max_line_size, len(lines[0]))
 
         # request line
         line = lines[0].decode('utf-8', 'surrogateescape')
@@ -399,7 +401,7 @@ class HttpResponseParserPy(HttpParser):
     def parse_message(self, lines):
         if len(lines[0]) > self.max_line_size:
             raise LineTooLong(
-                'Status line is too long', self.max_line_size)
+                'Status line is too long', self.max_line_size, len(lines[0]))
 
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
