@@ -388,48 +388,41 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """A sequence of pars for all headers."""
         return self._message.raw_headers
 
+    @staticmethod
+    def _http_date(_date_str):
+        """Process a date string, return a datetime object
+        """
+        if _date_str is not None:
+            timetuple = parsedate(_date_str)
+            if timetuple is not None:
+                return datetime.datetime(*timetuple[:6],
+                                         tzinfo=datetime.timezone.utc)
+        return None
+
     @reify
     def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
         """The value of If-Modified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        httpdate = self.headers.get(_IF_MODIFIED_SINCE)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6],
-                                         tzinfo=datetime.timezone.utc)
-        return None
+        return self._http_date(self.headers.get(_IF_MODIFIED_SINCE))
 
     @reify
-    def if_unmodified_since(self,  # just copy & paste of if-modified-since
+    def if_unmodified_since(self,
                             _IF_UNMODIFIED_SINCE=hdrs.IF_UNMODIFIED_SINCE):
         """The value of If-Unmodified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        httpdate = self.headers.get(_IF_UNMODIFIED_SINCE)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6],
-                                         tzinfo=datetime.timezone.utc)
-        return None
+        return self._http_date(self.headers.get(_IF_UNMODIFIED_SINCE))
 
     @reify
-    def if_range(self, _IF_RANGE=hdrs.IF_RANGE):  # Another copy & paste
+    def if_range(self, _IF_RANGE=hdrs.IF_RANGE):
         """The value of If-Range HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        httpdate = self.headers.get(_IF_RANGE)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6],
-                                         tzinfo=datetime.timezone.utc)
-        return None
+        return self._http_date(self.headers.get(_IF_RANGE))
 
     @property
     def keep_alive(self):

@@ -167,7 +167,9 @@ class FileResponse(StreamResponse):
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
             self.set_status(HTTPNotModified.status_code)
-            # self._length_check = False     <- why this line is needed?
+            self._length_check = False
+            # Delete any Content-Length headers provided by user. HTTP 304
+            # should always have empty response body
             return await super().prepare(request)
 
         unmodsince = request.if_unmodified_since
