@@ -2672,7 +2672,7 @@ Constants
 
       *GZIP compression*
 
-.. attribute:: identity
+   .. attribute:: identity
 
       *no compression*
 
