@@ -1597,7 +1597,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_view(path, handler, **kwargs)
 
       Shortcut for adding a class-based view handler. Calls the \
-      :meth:`add_routre` with ``method`` equals to ``'*'``.
+      :meth:`add_route` with ``method`` equals to ``'*'``.
 
       .. versionadded:: 3.0
 
