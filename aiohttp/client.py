@@ -10,6 +10,7 @@ import traceback
 import warnings
 from collections.abc import Coroutine
 
+import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
@@ -31,7 +32,7 @@ from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tcp_helpers import tcp_cork, tcp_nodelay
-from .tracing import Trace
+from .lifecycle import RequestLifecycle, RequestTimeouts
 
 
 __all__ = (client_exceptions.__all__ +  # noqa
@@ -41,7 +42,7 @@ __all__ = (client_exceptions.__all__ +  # noqa
 
 
 # 5 Minute default read and connect timeout
-DEFAULT_TIMEOUT = 5 * 60
+DEFAULT_TIMEOUTS = RequestTimeouts(uber_timeout=5 * 60)
 
 
 class ClientSession:
@@ -69,7 +70,7 @@ class ClientSession:
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
-                 read_timeout=sentinel, conn_timeout=None,
+                 timeout=None, read_timeout=sentinel, conn_timeout=None,
                  auto_decompress=True, trust_env=False,
                  trace_configs=None):
 
@@ -116,12 +117,20 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        self._read_timeout = (read_timeout if read_timeout is not sentinel
-                              else DEFAULT_TIMEOUT)
-        self._conn_timeout = conn_timeout
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
+
+        if (read_timeout is not sentinel or conn_timeout is not None) and (timeout is not None):
+            raise ValueError("Can't not specify a RequestTimeouts config via `timeout` parameter together "
+                             "with legacy parameters `read_timeout` or `conn_timeout`. "
+                             "Please merge the timeout values into the timeout config object.")
+        elif timeout:
+            self._timeout = timeout
+        else:
+            self._timeout = attr.evolve(
+                DEFAULT_TIMEOUTS, connection_acquiring_timeout=conn_timeout,
+                uber_timeout=(read_timeout if read_timeout is not sentinel else DEFAULT_TIMEOUTS.uber_timeout))
 
         # Convert to list of tuples
         if headers:
@@ -191,17 +200,13 @@ class ClientSession:
                        read_until_eof=True,
                        proxy=None,
                        proxy_auth=None,
-                       timeout=sentinel,
+                       timeout=sentinel, # sentinel -> inherit from session, None -> disable
                        verify_ssl=None,
                        fingerprint=None,
                        ssl_context=None,
                        ssl=None,
                        proxy_headers=None,
                        trace_request_ctx=None):
-
-        # NOTE: timeout clamps existing connect and read timeouts.  We cannot
-        # set the default to None because we need to detect if the user wants
-        # to use the existing timeouts by setting timeout to None.
 
         if self.closed:
             raise RuntimeError('Session is closed')
@@ -242,33 +247,13 @@ class ClientSession:
             except ValueError:
                 raise InvalidURL(proxy)
 
-        # timeout is cumulative for all request operations
-        # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(
-            self._loop,
-            timeout if timeout is not sentinel else self._read_timeout)
-        handle = tm.start()
-
-        traces = [
-            Trace(
-                self,
-                trace_config,
-                trace_config.trace_config_ctx(
-                    trace_request_ctx=trace_request_ctx)
-            )
-            for trace_config in self._trace_configs
-        ]
-
-        for trace in traces:
-            await trace.send_request_start(
-                method,
-                url,
-                headers
-            )
-
-        timer = tm.timer()
+        if timeout == sentinel:
+            timeout = self._timeout
+        elif isinstance(timeout, int):
+            timeout = attr.evolve(self._timeout, uber_timeout=timeout)
+        lifecycle = RequestLifecycle(self, self._loop, self._trace_configs, trace_request_ctx, timeout)
         try:
-            with timer:
+            with lifecycle.request_timer_context:
                 while True:
                     url, auth_from_url = strip_auth_from_url(url)
                     if auth and auth_from_url:
@@ -307,17 +292,16 @@ class ClientSession:
                         compress=compress, chunked=chunked,
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
-                        proxy=proxy, proxy_auth=proxy_auth, timer=timer,
+                        proxy=proxy, proxy_auth=proxy_auth, lifecycle=lifecycle,
                         session=self, auto_decompress=self._auto_decompress,
-                        ssl=ssl, proxy_headers=proxy_headers, traces=traces)
+                        ssl=ssl, proxy_headers=proxy_headers)
 
                     # connection timeout
                     try:
-                        with CeilTimeout(self._conn_timeout, loop=self._loop):
-                            conn = await self._connector.connect(
-                                req,
-                                traces=traces
-                            )
+                        conn = await self._connector.connect(
+                            req,
+                            lifecycle=lifecycle
+                        )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(
                             'Connection timeout '
@@ -347,13 +331,12 @@ class ClientSession:
                     if resp.status in (
                             301, 302, 303, 307, 308) and allow_redirects:
 
-                        for trace in traces:
-                            await trace.send_request_redirect(
-                                method,
-                                url,
-                                headers,
-                                resp
-                            )
+                        await lifecycle.send_request_redirect(
+                            method,
+                            url,
+                            headers,
+                            resp
+                        )
 
                         redirects += 1
                         history.append(resp)
@@ -411,37 +394,30 @@ class ClientSession:
                 resp.raise_for_status()
 
             # register connection
-            if handle is not None:
-                if resp.connection is not None:
-                    resp.connection.add_callback(handle.cancel)
-                else:
-                    handle.cancel()
+            #  XXX this will only be required if there are still valid open timeouts after request_end
+            if resp.connection is not None:
+                resp.connection.add_callback(lifecycle.clear_timeouts)
+            else:
+                lifecycle.clear_timeouts()
 
             resp._history = tuple(history)
 
-            for trace in traces:
-                await trace.send_request_end(
-                    method,
-                    url,
-                    headers,
-                    resp
-                )
+            await lifecycle.send_request_end(
+                method,
+                url,
+                headers,
+                resp
+            )
             return resp
 
         except BaseException as e:
-            # cleanup timer
-            tm.close()
-            if handle:
-                handle.cancel()
-                handle = None
-
-            for trace in traces:
-                await trace.send_request_exception(
-                    method,
-                    url,
-                    headers,
-                    e
-                )
+            await lifecycle.send_request_exception(
+                method,
+                url,
+                headers,
+                e
+            )
+            lifecycle.clear_timeouts()
             raise
 
     def ws_connect(self, url, *,

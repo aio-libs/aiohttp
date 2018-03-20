@@ -335,3 +335,22 @@ class Trace:
             self._trace_config_ctx,
             TraceDnsCacheMissParams(host)
         )
+
+
+SIGNALS = {
+    "request_start": TraceRequestStartParams,  # (method, url, headers)
+    "request_chunk_sent": TraceRequestChunkSentParams,  # (chunk)
+    "response_chunk_received": TraceResponseChunkReceivedParams,  # (chunk)
+    "request_end": TraceRequestEndParams,  # (method, url, headers, response)
+    "request_exception": TraceRequestExceptionParams,  # (method, url, headers, exception)
+    "request_redirect": TraceRequestRedirectParams,  # (method, url, headers, response)
+    "connection_queued_start": TraceConnectionQueuedStartParams,  # ()
+    "connection_queued_end": TraceConnectionQueuedEndParams,  # ()
+    "connection_create_start": TraceConnectionCreateStartParams,  # ()
+    "connection_create_end": TraceConnectionCreateEndParams,  # ()
+    "connection_reuseconn": TraceConnectionReuseconnParams,  # ()
+    "dns_resolvehost_start": TraceDnsResolveHostStartParams,  # (host)
+    "dns_resolvehost_end": TraceDnsResolveHostEndParams,  # (host)
+    "dns_cache_hit": TraceDnsCacheHitParams,  # (host)
+    "dns_cache_miss": TraceDnsCacheMissParams,  # (host)
+}
