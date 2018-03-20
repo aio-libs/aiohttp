@@ -728,12 +728,12 @@ class TCPConnector(BaseConnector):
         if req.proxy:
             _, proto = await self._create_proxy_connection(
                 req,
-                traces=None
+                traces=traces
             )
         else:
             _, proto = await self._create_direct_connection(
                 req,
-                traces=None
+                traces=traces
             )
 
         return proto

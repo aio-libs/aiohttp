@@ -2,6 +2,7 @@ import asyncio
 import io
 import json
 import pathlib
+import socket
 import zlib
 from unittest import mock
 
@@ -1638,10 +1639,14 @@ async def test_iter_any(aiohttp_server):
             assert resp.status == 200
 
 
-async def test_request_tracing(aiohttp_client):
+async def test_request_tracing(aiohttp_server):
 
     on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_dns_resolvehost_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock()))
+    on_dns_resolvehost_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock()))
     on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_connection_create_start = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock()))
@@ -1663,20 +1668,50 @@ async def test_request_tracing(aiohttp_client):
         on_connection_create_start)
     trace_config.on_connection_create_end.append(
         on_connection_create_end)
+    trace_config.on_dns_resolvehost_start.append(
+        on_dns_resolvehost_start)
+    trace_config.on_dns_resolvehost_end.append(
+        on_dns_resolvehost_end)
 
     app = web.Application()
     app.router.add_get('/redirector', redirector)
     app.router.add_get('/redirected', redirected)
+    server = await aiohttp_server(app)
 
-    client = await aiohttp_client(app, trace_configs=[trace_config])
+    class FakeResolver:
+        _LOCAL_HOST = {0: '127.0.0.1',
+                       socket.AF_INET: '127.0.0.1'}
 
-    await client.get('/redirector', data="foo")
+        def __init__(self, fakes):
+            """fakes -- dns -> port dict"""
+            self._fakes = fakes
+            self._resolver = aiohttp.DefaultResolver()
+
+        async def resolve(self, host, port=0, family=socket.AF_INET):
+            fake_port = self._fakes.get(host)
+            if fake_port is not None:
+                return [{'hostname': host,
+                         'host': self._LOCAL_HOST[family], 'port': fake_port,
+                         'family': socket.AF_INET, 'proto': 0,
+                         'flags': socket.AI_NUMERICHOST}]
+            else:
+                return await self._resolver.resolve(host, port, family)
+
+    resolver = FakeResolver({'example.com': server.port})
+    connector = aiohttp.TCPConnector(resolver=resolver)
+    client = aiohttp.ClientSession(connector=connector,
+                                   trace_configs=[trace_config])
+
+    await client.get('http://example.com/redirector', data="foo")
 
     assert on_request_start.called
     assert on_request_end.called
+    assert on_dns_resolvehost_start.called
+    assert on_dns_resolvehost_end.called
     assert on_request_redirect.called
     assert on_connection_create_start.called
     assert on_connection_create_end.called
+    await client.close()
 
 
 async def test_return_http_exception_deprecated(aiohttp_client):
