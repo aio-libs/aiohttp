@@ -1,1 +1,0 @@
-Make ``writer.write_headers`` a coroutine.

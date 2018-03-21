@@ -14,3 +14,57 @@ Changelog
 
 .. towncrier release notes start
 
+3.1.0 (2018-03-21)
+==================
+
+Features
+--------
+
+- Relax JSON content-type checking in the ``ClientResponse.json()`` to allow
+  "application/xxx+json" instead of strict "application/json". (#2206)
+- Bump C HTTP parser to version 2.8 (#2730)
+- Accept a coroutine as an application factory in ``web.run_app`` and gunicorn
+  worker. (#2739)
+- Implement application cleanup context (``app.cleanup_ctx`` property). (#2747)
+- Make ``writer.write_headers`` a coroutine. (#2762)
+- Add tracking signals for getting request/response bodies. (#2767)
+- Deprecate ClientResponseError.code in favor of .status to keep similarity
+  with response classes. (#2781)
+- Implement ``app.add_routes()`` method. (#2787)
+- Implement ``web.static()`` and ``RouteTableDef.static()`` API. (#2795)
+- Install a test event loop as default by ``asyncio.set_event_loop()``. The
+  change affects aiohttp test utils but backward compatibility is not broken
+  for 99.99% of use cases. (#2804)
+- Refactor ``ClientResponse`` constructor: make logically required constructor
+  arguments mandatory, drop ``_post_init()`` method. (#2820)
+- Use ``app.add_routes()`` in server docs everywhere (#2830)
+- Websockets refactoring, all websocket writer methods are converted into
+  coroutines. (#2836)
+- Provide Content-Range header for Range requests (#2844)
+
+
+Bugfixes
+--------
+
+- Fix websocket client return EofStream. (#2784)
+- Fix websocket demo. (#2789)
+- Property `BaseRequest.http_range` now returns a python-like slice when
+  requesting the tail of the range. It's now indicated by a negative value in
+  `range.start` rather then in `range.stop` (#2805)
+- Close a connection if an unexpected exception occurs while sending a request
+  (#2827)
+- Fix firing DNS tracing events. (#2841)
+
+
+Improved Documentation
+----------------------
+
+- Change ```ClientResponse.json()``` documentation to reflect that it now
+  allows "application/xxx+json" content-types (#2206)
+- Document behavior when cchardet detects encodings that are unknown to Python.
+  (#2732)
+- Add diagrams for tracing request life style. (#2748)
+- Drop removed functionality about passing ``StreamReader`` as data at client
+  side. (#2793)
+
+
