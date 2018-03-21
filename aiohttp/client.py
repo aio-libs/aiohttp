@@ -25,8 +25,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_36, CeilTimeout, TimeoutHandle, proxies_from_env,
-                      sentinel, strip_auth_from_url)
+from .helpers import (DEBUG, PY_36, CeilTimeout, TimeoutHandle,
+                      proxies_from_env, sentinel, strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -149,13 +149,14 @@ class ClientSession:
                       DeprecationWarning,
                       stacklevel=2)
 
-    def __setattr__(self, name, val):
-        if name not in self.ATTRS:
-            warnings.warn("Setting custom ClientSession.{} attribute "
-                          "is discouraged".format(name),
-                          DeprecationWarning,
-                          stacklevel=2)
-        super().__setattr__(name, val)
+    if DEBUG:
+        def __setattr__(self, name, val):
+            if name not in self.ATTRS:
+                warnings.warn("Setting custom ClientSession.{} attribute "
+                              "is discouraged".format(name),
+                              DeprecationWarning,
+                              stacklevel=2)
+            super().__setattr__(name, val)
 
     def __del__(self, _warnings=warnings):
         if not self.closed:

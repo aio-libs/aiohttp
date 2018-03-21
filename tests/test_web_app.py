@@ -6,7 +6,7 @@ from async_generator import async_generator, yield_
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
-from aiohttp.helpers import PY_36
+from aiohttp.helpers import DEBUG, PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -256,6 +256,8 @@ def test_app_inheritance():
             pass
 
 
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
 def test_app_custom_attr():
     app = web.Application()
     with pytest.warns(DeprecationWarning):

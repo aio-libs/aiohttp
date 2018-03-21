@@ -19,7 +19,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, reify, sentinel
+from .helpers import DEBUG, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
@@ -632,14 +632,15 @@ class Request(BaseRequest):
         # or information about traversal lookup
         self._match_info = None  # initialized after route resolving
 
-    def __setattr__(self, name, val):
-        if name not in self.ATTRS:
-            warnings.warn("Setting custom {}.{} attribute "
-                          "is discouraged".format(self.__class__.__name__,
-                                                  name),
-                          DeprecationWarning,
-                          stacklevel=2)
-        super().__setattr__(name, val)
+    if DEBUG:
+        def __setattr__(self, name, val):
+            if name not in self.ATTRS:
+                warnings.warn("Setting custom {}.{} attribute "
+                              "is discouraged".format(self.__class__.__name__,
+                                                      name),
+                              DeprecationWarning,
+                              stacklevel=2)
+            super().__setattr__(name, val)
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel, scheme=sentinel, host=sentinel,

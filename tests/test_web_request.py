@@ -7,6 +7,7 @@ from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion
+from aiohttp.helpers import DEBUG
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPRequestEntityTooLarge
@@ -601,6 +602,8 @@ def test_clone_remote():
     assert req2.remote == '11.11.11.11'
 
 
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
 def test_request_custom_attr():
     req = make_mocked_request('GET', '/')
     with pytest.warns(DeprecationWarning):

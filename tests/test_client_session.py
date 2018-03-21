@@ -16,7 +16,7 @@ from aiohttp import hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import PY_36
+from aiohttp.helpers import DEBUG, PY_36
 
 
 @pytest.fixture
@@ -640,6 +640,8 @@ def test_client_session_inheritance():
             pass
 
 
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
 def test_client_session_custom_attr(loop):
     session = ClientSession(loop=loop)
     with pytest.warns(DeprecationWarning):
