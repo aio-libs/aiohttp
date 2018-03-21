@@ -17,6 +17,41 @@ Changelog
 3.1.0 (2018-03-21)
 ==================
 
+Welcome to aiohttp 3.1 release.
+
+This is an *incremental* release, fully backward compatible with *aiohttp 3.0*.
+
+But we have added several new features.
+
+The most visible one is ``app.add_routes()`` (an alias for existing
+``app.router.add_routes()``. The addition is very important because
+all *aiohttp* docs now uses ``app.add_routes()`` call in code
+snippets. All your existing code still do register routes / resource
+without any warning but you've got the idea for a favorite way: noisy
+``app.router.add_get()`` is replaced by ``app.add_routes()``.
+
+The library does not make a preference between decorators::
+
+   routes = web.RouteTableDef()
+
+   @routes.get('/')
+   async def hello(request):
+       return web.Response(text="Hello, world")
+
+   app.add_routes(routes)
+
+and route tables as a list::
+
+   async def hello(request):
+       return web.Response(text="Hello, world")
+
+   app.add_routes([web.get('/', hello)])
+
+Both ways are equal, user may decide basing on own code taste.
+
+Also we have a lot of minor features, bug fixes and documentation
+updates, see below.
+
 Features
 --------
 
@@ -40,7 +75,7 @@ Features
 - Use ``app.add_routes()`` in server docs everywhere (#2830)
 - Websockets refactoring, all websocket writer methods are converted into
   coroutines. (#2836)
-- Provide Content-Range header for Range requests (#2844)
+- Provide ``Content-Range`` header for ``Range`` requests (#2844)
 
 
 Bugfixes
@@ -48,9 +83,9 @@ Bugfixes
 
 - Fix websocket client return EofStream. (#2784)
 - Fix websocket demo. (#2789)
-- Property `BaseRequest.http_range` now returns a python-like slice when
+- Property ``BaseRequest.http_range`` now returns a python-like slice when
   requesting the tail of the range. It's now indicated by a negative value in
-  `range.start` rather then in `range.stop` (#2805)
+  ``range.start`` rather then in ``range.stop`` (#2805)
 - Close a connection if an unexpected exception occurs while sending a request
   (#2827)
 - Fix firing DNS tracing events. (#2841)
@@ -59,12 +94,10 @@ Bugfixes
 Improved Documentation
 ----------------------
 
-- Change ```ClientResponse.json()``` documentation to reflect that it now
+- Change ``ClientResponse.json()`` documentation to reflect that it now
   allows "application/xxx+json" content-types (#2206)
 - Document behavior when cchardet detects encodings that are unknown to Python.
   (#2732)
 - Add diagrams for tracing request life style. (#2748)
-- Drop removed functionality about passing ``StreamReader`` as data at client
+- Drop removed functionality for passing ``StreamReader`` as data at client
   side. (#2793)
-
-
