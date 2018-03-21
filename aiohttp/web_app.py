@@ -6,7 +6,7 @@ from functools import partial
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
-from .helpers import AccessLogger
+from .helpers import DEBUG, AccessLogger
 from .log import web_logger
 from .signals import Signal
 from .web_middlewares import _fix_request_current_app
@@ -71,13 +71,14 @@ class Application(MutableMapping):
                       DeprecationWarning,
                       stacklevel=2)
 
-    def __setattr__(self, name, val):
-        if name not in self.ATTRS:
-            warnings.warn("Setting custom web.Application.{} attribute "
-                          "is discouraged".format(name),
-                          DeprecationWarning,
-                          stacklevel=2)
-        super().__setattr__(name, val)
+    if DEBUG:
+        def __setattr__(self, name, val):
+            if name not in self.ATTRS:
+                warnings.warn("Setting custom web.Application.{} attribute "
+                              "is discouraged".format(name),
+                              DeprecationWarning,
+                              stacklevel=2)
+            super().__setattr__(name, val)
 
     # MutableMapping API
 
