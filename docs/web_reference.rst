@@ -329,6 +329,28 @@ and :ref:`aiohttp-web-signals` handlers.
       *If-Modified-Since* header is absent or is not a valid
       HTTP date.
 
+   .. attribute:: if_unmodified_since
+
+      Read-only property that returns the date specified in the
+      *If-Unmodified-Since* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Unmodified-Since* header is absent or is not a valid
+      HTTP date.
+
+      .. versionadded:: 3.1
+
+   .. attribute:: if_range
+
+      Read-only property that returns the date specified in the
+      *If-Range* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Range* header is absent or is not a valid
+      HTTP date.
+
+      .. versionadded:: 3.1
+
    .. method:: clone(*, method=..., rel_url=..., headers=...)
 
       Clone itself with replacement some attributes.
@@ -1027,7 +1049,7 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      It is save to call `close()` from different task.
+      It is safe to call `close()` from different task.
 
       :param int code: closing code
 
@@ -1597,7 +1619,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_view(path, handler, **kwargs)
 
       Shortcut for adding a class-based view handler. Calls the \
-      :meth:`add_routre` with ``method`` equals to ``'*'``.
+      :meth:`add_route` with ``method`` equals to ``'*'``.
 
       .. versionadded:: 3.0
 
@@ -2654,7 +2676,7 @@ Constants
 
       *GZIP compression*
 
-.. attribute:: identity
+   .. attribute:: identity
 
       *no compression*
 

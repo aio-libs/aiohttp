@@ -1,4 +1,4 @@
-<!-- Thank you for your contribution!
+<!-- Thank you for your contribution! -->
 
 ## What do these changes do?
 

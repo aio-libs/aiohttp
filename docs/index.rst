@@ -80,8 +80,8 @@ Server example::
         return web.Response(text=text)
 
     app = web.Application()
-    app.router.add_get('/', handle)
-    app.router.add_get('/{name}', handle)
+    app.add_routes([web.get('/', handle),
+                    web.get('/{name}', handle)])
 
     web.run_app(app)
 
