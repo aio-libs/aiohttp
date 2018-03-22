@@ -817,3 +817,7 @@ def test_two_data_received_without_waking_up_start_task(srv, loop):
 
     assert len(srv._messages) == 2
     assert srv._waiter.done()
+
+
+def test_disable_write_buffer(srv):
+    srv.transport.set_write_buffer_limits.assert_called_with(0)

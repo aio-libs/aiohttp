@@ -96,3 +96,10 @@ async def test_empty_data(loop):
     proto.data_received(b'')
 
     # do nothing
+
+
+async def test_disable_write_buffer(loop):
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
+    transport.set_write_buffer_limits.assert_called_with(0)

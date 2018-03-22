@@ -58,6 +58,7 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
 
     def connection_made(self, transport):
         self.transport = transport
+        transport.set_write_buffer_limits(0)
 
     def connection_lost(self, exc):
         if self._payload_parser is not None:

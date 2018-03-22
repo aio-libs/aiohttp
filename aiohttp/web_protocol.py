@@ -174,6 +174,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         super().connection_made(transport)
 
         self.transport = transport
+        transport.set_write_buffer_limits(0)
 
         if self._tcp_keepalive:
             tcp_keepalive(transport)
