@@ -1347,18 +1347,36 @@ duplicated like one using :meth:`Application.copy`.
 
       .. seealso:: :ref:`aiohttp-web-cleanup-ctx`.
 
-   .. method:: add_subapp(prefix, subapp)
+   .. method:: add_subapp(prefix, subapp, *, name=None)
 
       Register nested sub-application under given path *prefix*.
 
       In resolving process if request's path starts with *prefix* then
       further resolving is passed to *subapp*.
 
+      You may use variables in *prefix*.  ``request.match_info`` has the
+      matched variables defined by this *prefix* along with the variables
+      defined by the matched resource.
+
+      When one or more variables in the subapplication chain have a same name,
+      the innermost matched value survives.
+      If you set explicit *name* here, variables in the subapplication prefixes
+      are prefixed with ``"name."``.
+
       :param str prefix: path's prefix for the resource.
 
       :param Application subapp: nested application attached under *prefix*.
 
-      :returns: a :class:`PrefixedSubAppResource` instance.
+      :param str name: name for the subapplication resource which prefixes
+                       variables with *prefix*.
+
+      :returns: a :class:`PrefixedSubAppResource` or
+                :class:`DynamicSubAppResource` instance.
+
+      .. versionchanged:: 3.1
+
+         *prefix* may have variables and they can be prefixed with *name*
+         when read from ``request.match_info`` and passed to ``route.url_for``.
 
    .. method:: add_routes(routes_table)
 
@@ -1839,6 +1857,11 @@ Resource classes hierarchy::
       *args* and **kwargs** depend on a parameters list accepted by
       inherited resource class.
 
+      When the resource has multiple dynamic subapplication prefixes, you
+      should also provide variables defined in them.
+      If subapplications are added with explicit names, then **kwargs** should
+      have keys prefixed with ``"name."`` for all occurring names.
+
       :return: :class:`~yarl.URL` -- resulting URL instance.
 
 
@@ -1934,9 +1957,12 @@ Resource classes hierarchy::
    A resource for serving nested applications. The class instance is
    returned by :class:`~aiohttp.web.Application.add_subapp` call.
 
-   .. method:: url_for(**kwargs)
 
-      The call is not allowed, it raises :exc:`RuntimeError`.
+.. class:: DynamicSubAppResource
+
+   A resource for serving nested applications with dynamic variables in its prefix.
+   The class instance is returned by
+   :class:`~aiohttp.web.Application.add_subapp` call.
 
 
 .. _aiohttp-web-route:
@@ -2302,8 +2328,9 @@ In general the result may be any object derived from
 
 .. class:: UrlMappingMatchInfo
 
-   Inherited from :class:`dict` and :class:`AbstractMatchInfo`. Dict
-   items are filled by matching info and is :term:`resource`\-specific.
+   Implements :class:`typing.Mapping` and :class:`AbstractMatchInfo`
+   interfaces.  Mapping items are filled by matching variables defined
+   in the :term:`resource` paths.
 
    .. attribute:: expect_handler
 
@@ -2311,11 +2338,21 @@ In general the result may be any object derived from
 
    .. attribute:: handler
 
-      A coroutine for handling request.
+      A coroutine for handling the request.
 
    .. attribute:: route
 
-      :class:`Route` instance for url matching.
+      :class:`Route` instance matched with the URL and method.
+
+   .. attribute:: current_app
+
+      The innermost :class:`Application` instance matched through the resolving
+      process.
+
+   .. attribute:: apps
+
+      A tuple of :class:`Application` instances matched through the resolving
+      process.  The innermost application comes at last.
 
 
 View

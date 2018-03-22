@@ -160,6 +160,7 @@ Nagle’s
 namedtuple
 nameservers
 namespace
+namespaces
 nginx
 Nginx
 Nikolay
@@ -237,6 +238,7 @@ ssl
 SSLContext
 startup
 subapplication
+subapplications
 subclasses
 submodules
 subpackage

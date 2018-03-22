@@ -12,7 +12,9 @@ from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
 from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
-                                       ResourceRoute, SystemRoute, View,
+                                       DynamicSubAppResource,
+                                       PrefixedSubAppResource, ResourceRoute,
+                                       SystemRoute, View,
                                        _default_expect_handler)
 
 
@@ -84,6 +86,17 @@ async def test_add_route_simple(router):
     handler = make_handler()
     router.add_route('GET', '/handler/to/path', handler)
     req = make_request('GET', '/handler/to/path')
+    info = await router.resolve(req)
+    assert info is not None
+    assert 0 == len(info)
+    assert handler is info.handler
+    assert info.route.name is None
+
+
+async def test_add_route_unicode(router):
+    handler = make_handler()
+    router.add_route('GET', '/handler/to/目录', handler)
+    req = make_request('GET', '/handler/to/%E7%9B%AE%E5%BD%95')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -623,7 +636,7 @@ async def test_regular_match_info(router):
     req = make_request('GET', '/get/john')
     match_info = await router.resolve(req)
     assert {'name': 'john'} == match_info
-    assert re.match("<MatchInfo {'name': 'john'}: .+<Dynamic.+>>",
+    assert re.match(r"<MatchInfo {'name': 'john'}: .+<Dynamic.+>>",
                     repr(match_info))
 
 
@@ -1003,15 +1016,14 @@ def test_url_for_in_resource_route(router):
 
 def test_subapp_get_info(app, loop):
     subapp = web.Application()
-    resource = subapp.add_subapp('/pre', subapp)
+    resource = app.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
 def test_subapp_url_for(app, loop):
     subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
-    with pytest.raises(RuntimeError):
-        resource.url_for()
+    assert '/pre' == resource.url_for().path
 
 
 def test_subapp_repr(app, loop):
@@ -1019,6 +1031,21 @@ def test_subapp_repr(app, loop):
     resource = app.add_subapp('/pre', subapp)
     assert repr(resource).startswith(
         '<PrefixedSubAppResource /pre -> <Application')
+    subapp = web.Application()
+    resource = app.add_subapp('/ホーム', subapp)
+    assert repr(resource).startswith(
+        '<PrefixedSubAppResource /%E3%83%9B%E3%83%BC%E3%83%A0 -> <Application')
+
+
+def test_dynamic_subapp_repr(app, loop):
+    subapp1 = web.Application()
+    subapp2 = web.Application()
+    resource = app.add_subapp('/가-{var}', subapp1)
+    assert repr(resource).startswith(
+        '<DynamicSubAppResource /%EA%B0%80-{var} -> <Application')
+    resource = app.add_subapp('/y-{var}', subapp2, name='y')
+    assert repr(resource).startswith(
+        '<DynamicSubAppResource y /y-{var} -> <Application')
 
 
 def test_subapp_len(app, loop):
@@ -1083,6 +1110,133 @@ def test_set_options_route(router):
 def test_dynamic_url_with_name_started_from_undescore(router):
     route = router.add_route('GET', '/get/{_name}', make_handler())
     assert URL('/get/John') == route.url_for(_name='John')
+
+
+def test_add_subapp_with_plain_prefix(app, loop):
+    subapp = web.Application()
+    resource = app.add_subapp('/name/prefix', subapp)
+    assert isinstance(resource, PrefixedSubAppResource)
+
+
+def test_add_subapp_with_dynamic_prefix(app, loop):
+    subapp = web.Application()
+    resource = app.add_subapp('/{name}/prefix', subapp)
+    assert isinstance(resource, DynamicSubAppResource)
+    assert resource.get_info() == {'prefix': '/{name}/prefix', 'app': subapp}
+
+
+def test_add_named_subapp_with_dynamic_prefix(app, loop):
+    subapp = web.Application()
+    resource = app.add_subapp('/{name}/prefix', subapp, name='x')
+    assert isinstance(resource, DynamicSubAppResource)
+    assert resource.get_info() == {
+        'prefix': '/{name}/prefix',
+        'app': subapp,
+        'name': 'x'}
+
+
+async def test_plain_subapp_resolution(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/abc.py')
+    subresource.add_route('GET', handler)
+    resource = app.add_subapp('/plain', subapp)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/plain/abc.py'))
+    assert len(ret[0]) == 0
+    assert set() == ret[1]
+
+
+async def test_dynamic_subapp_resolution(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/{myvar}.py')
+    subresource.add_route('GET', handler)
+    resource = app.add_subapp('/{name}', subapp)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/andrew/abc.py'))
+    assert 'andrew' == ret[0]['name']
+    assert 'abc' == ret[0]['myvar']
+    assert set() == ret[1]
+
+
+async def test_dynamic_subapp_variable_collision(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/{var}.py')
+    route = subresource.add_route('GET', handler)
+    resource = app.add_subapp('/{var}', subapp)
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/andrew/abc.py'))
+    assert 'abc' == ret[0]['var']  # innermost survives.
+    assert set() == ret[1]
+    url = route.url_for(var='xxx')  # used by all!
+    assert '/xxx/xxx.py' == str(url)
+
+
+async def test_dynamic_subapp_url_for(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/{myvar}.py')
+    route = subresource.add_route('GET', handler)
+    app.add_subapp('/{name}', subapp)
+    url = route.url_for(name='abc', myvar='def')
+    assert '/abc/def.py' == str(url)
+
+
+async def test_dynamic_subapp_resolution_prefixed_key(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/{name}.py')
+    subresource.add_route('GET', handler)
+    resource = app.add_subapp('/路/{name}', subapp, name='myprefix')
+    assert resource.get_info() == {
+        'prefix': '/%E8%B7%AF/{name}',
+        'app': subapp,
+        'name': 'myprefix'}
+    ret = await resource.resolve(
+        make_mocked_request('GET', '/%E8%B7%AF/andrew/abc.py'))
+    assert 'abc' == ret[0]['name']
+    assert 'andrew' == ret[0]['myprefix.name']
+    assert set() == ret[1]
+
+
+async def test_dynamic_subapp_url_for_with_prefixed_key(app, loop):
+    handler = make_handler()
+    subapp = web.Application()
+    subresource = subapp.router.add_resource('/{name}.py')
+    route = subresource.add_route('GET', handler)
+    app.add_subapp('/{name}', subapp, name='myprefix')
+    with pytest.raises(KeyError):
+        url = route.url_for(**{'name': 'def'})
+    url = route.url_for(**{'myprefix.name': 'abc', 'name': 'def'})
+    assert '/abc/def.py' == str(url)
+
+
+async def test_nested_dynamic_subapps(app, loop):
+    subapp1 = web.Application()
+    subapp2 = web.Application()
+    route = subapp2.router.add_static('/', os.path.dirname(aiohttp.__file__))
+    subapp1.add_subapp('/{key}', subapp2, name='b')
+    resource = app.add_subapp('/{key}', subapp1, name='a')
+    request_path = ('/foo/%EA%B0%80%EB%82%98%EB%8B%A4'
+                    '/%D1%82%D0%B5%D0%BA%D1%81%D1%82.txt')
+    ret = await resource.resolve(
+        make_mocked_request('GET', request_path))
+    assert 'foo' == ret[0]['a.key']
+    assert '가나다' == ret[0]['b.key']
+    assert 'текст.txt' == ret[0]['filename']
+    assert set() == ret[1]
+    url = route.url_for(**{
+        'a.key': '한글',
+        'b.key': 'def',
+        'filename': 'figure.png'})
+    assert '/%ED%95%9C%EA%B8%80/def/figure.png' == str(url)
+    with pytest.raises(KeyError):
+        # Error when name-prefixed variables are missing
+        url = route.url_for(**{
+            'key': 'abc',
+            'filename': 'figure.png'})
 
 
 def test_cannot_add_subapp_with_empty_prefix(app, loop):

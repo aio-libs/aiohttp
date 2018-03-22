@@ -13,7 +13,8 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
+from .web_urldispatcher import (ROUTE_RE, DynamicSubAppResource,
+                                PrefixedSubAppResource, UrlDispatcher)
 
 
 __all__ = ('Application', 'CleanupError')
@@ -179,7 +180,7 @@ class Application(MutableMapping):
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
-    def add_subapp(self, prefix, subapp):
+    def add_subapp(self, prefix, subapp, *, name=None):
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
@@ -190,7 +191,10 @@ class Application(MutableMapping):
         if prefix in ('', '/'):
             raise ValueError("Prefix cannot be empty")
 
-        resource = PrefixedSubAppResource(prefix, subapp)
+        if not ('{' in prefix or '}' in prefix or ROUTE_RE.search(prefix)):
+            resource = PrefixedSubAppResource(prefix, subapp, name=name)
+        else:
+            resource = DynamicSubAppResource(prefix, subapp, name=name)
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)

@@ -1,14 +1,13 @@
 import abc
 import asyncio
 import base64
-import collections
 import hashlib
 import inspect
 import keyword
 import os
 import re
 import warnings
-from collections.abc import Container, Iterable, Sequence, Sized
+from collections.abc import Container, Iterable, Mapping, Sequence, Sized
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
@@ -90,6 +89,7 @@ class AbstractResource(Sized, Iterable):
 
     def __init__(self, *, name=None):
         self._name = name
+        self._parent = None
 
     @property
     def name(self):
@@ -106,7 +106,7 @@ class AbstractResource(Sized, Iterable):
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
 
     @abc.abstractmethod
-    def add_prefix(self, prefix):
+    def add_prefix(self, resource):
         """Add a prefix to processed URLs.
 
         Required for subapplications support.
@@ -197,13 +197,13 @@ class AbstractRoute(abc.ABC):
         return await self._expect_handler(request)
 
 
-class UrlMappingMatchInfo(dict, AbstractMatchInfo):
+class UrlMappingMatchInfo(AbstractMatchInfo, Mapping):
 
     def __init__(self, match_dict, route):
-        super().__init__(match_dict)
         self._route = route
         self._apps = ()
         self._current_app = None
+        self._variables = {**match_dict}  # copy
         self._frozen = False
 
     @property
@@ -252,11 +252,30 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         finally:
             self._current_app = prev
 
+    def add_map(self, name, match_dict):
+        if self._frozen:
+            raise RuntimeError("Cannot change maps stack after .freeze() call")
+        for k, v in match_dict.items():
+            if name:
+                k = (name + '.' + k)
+            if k in self._variables:
+                continue
+            self._variables[k] = v
+
     def freeze(self):
         self._frozen = True
 
+    def __getitem__(self, key):
+        return self._variables[key]
+
+    def __iter__(self):
+        return self._variables.__iter__()
+
+    def __len__(self):
+        return self._variables.__len__()
+
     def __repr__(self):
-        return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
+        return "<MatchInfo {}: {}>".format(repr(self._variables), self._route)
 
 
 class MatchInfoError(UrlMappingMatchInfo):
@@ -309,6 +328,13 @@ class Resource(AbstractResource):
         self.register_route(route_obj)
         return route_obj
 
+    def add_prefix(self, resource):
+        assert self._parent is None, \
+            'This app instance already has a prefix resource.'
+        assert isinstance(resource,
+                          (PrefixedSubAppResource, DynamicSubAppResource))
+        self._parent = resource
+
     def register_route(self, route):
         assert isinstance(route, ResourceRoute), \
             'Instance of Route class is required, got {!r}'.format(route)
@@ -346,17 +372,11 @@ class PlainResource(Resource):
     def __init__(self, path, *, name=None):
         super().__init__(name=name)
         assert not path or path.startswith('/')
-        self._path = path
+        self._path = URL.build(path=path).raw_path
 
     def freeze(self):
         if not self._path:
             self._path = '/'
-
-    def add_prefix(self, prefix):
-        assert prefix.startswith('/')
-        assert not prefix.endswith('/')
-        assert len(prefix) > 1
-        self._path = prefix + self._path
 
     def _match(self, path):
         # string comparison is about 10 times faster than regexp matching
@@ -371,8 +391,9 @@ class PlainResource(Resource):
     def get_info(self):
         return {'path': self._path}
 
-    def url_for(self):
-        return URL.build(path=self._path, encoded=True)
+    def url_for(self, **parts):
+        prefix = self._parent.url_for(**parts).raw_path if self._parent else ''
+        return URL.build(path=prefix + self._path, encoded=True)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -420,13 +441,7 @@ class DynamicResource(Resource):
         assert formatter.startswith('/')
         self._pattern = compiled
         self._formatter = formatter
-
-    def add_prefix(self, prefix):
-        assert prefix.startswith('/')
-        assert not prefix.endswith('/')
-        assert len(prefix) > 1
-        self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern)
-        self._formatter = prefix + self._formatter
+        self._parent = None
 
     def _match(self, path):
         match = self._pattern.fullmatch(path)
@@ -444,9 +459,13 @@ class DynamicResource(Resource):
                 'pattern': self._pattern}
 
     def url_for(self, **parts):
+        prefix = self._parent.url_for(**parts).path if self._parent else ''
+        # Skip prefixing keys with name as this is a leaf resource
+        # Extra keys not in self._formatter are ignored.
         url = self._formatter.format_map({k: URL.build(path=v).raw_path
-                                          for k, v in parts.items()})
-        return URL.build(path=url)
+                                          for k, v in parts.items()
+                                          if '.' not in k})
+        return URL.build(path=prefix + url)
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
@@ -460,16 +479,22 @@ class PrefixResource(AbstractResource):
         assert not prefix or prefix.startswith('/'), prefix
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
+        self._parent = None
         self._prefix = URL.build(path=prefix).raw_path
 
-    def add_prefix(self, prefix):
-        assert prefix.startswith('/')
-        assert not prefix.endswith('/')
-        assert len(prefix) > 1
-        self._prefix = prefix + self._prefix
+    def add_prefix(self, resource):
+        assert self._parent is None, \
+            'This app instance already has a prefix resource.'
+        assert isinstance(resource,
+                          (PrefixedSubAppResource, DynamicSubAppResource))
+        self._parent = resource
 
     def raw_match(self, prefix):
         return False
+
+    def url_for(self, **parts):
+        prefix = self._parent.url_for(**parts).raw_path if self._parent else ''
+        return URL.build(path=prefix + self._prefix, encoded=True)
 
     # TODO: impl missing abstract methods
 
@@ -505,7 +530,7 @@ class StaticResource(PrefixResource):
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
 
-    def url_for(self, *, filename, append_version=None):
+    def url_for(self, *, filename, append_version=None, **parts):
         if append_version is None:
             append_version = self._append_version
         if isinstance(filename, Path):
@@ -515,7 +540,8 @@ class StaticResource(PrefixResource):
         filename = '/' + filename
 
         # filename is not encoded
-        url = URL.build(path=self._prefix + filename)
+        prefix = self._parent.url_for(**parts).path if self._parent else ''
+        url = URL.build(path=prefix + self._prefix + filename)
 
         if append_version is True:
             try:
@@ -659,20 +685,14 @@ class StaticResource(PrefixResource):
 
 class PrefixedSubAppResource(PrefixResource):
 
-    def __init__(self, prefix, app):
-        super().__init__(prefix)
+    def __init__(self, prefix, app, *, name=None):
+        assert prefix.startswith('/')
+        assert not prefix.endswith('/')
+        assert len(prefix) > 1
+        super().__init__(prefix, name=name)
         self._app = app
-        for resource in app.router.resources():
-            resource.add_prefix(prefix)
-
-    def add_prefix(self, prefix):
-        super().add_prefix(prefix)
-        for resource in self._app.router.resources():
-            resource.add_prefix(prefix)
-
-    def url_for(self, *args, **kwargs):
-        raise RuntimeError(".url_for() is not supported "
-                           "by sub-application root")
+        for subresource in app.router.resources():
+            subresource.add_prefix(self)
 
     def get_info(self):
         return {'app': self._app,
@@ -681,8 +701,11 @@ class PrefixedSubAppResource(PrefixResource):
     async def resolve(self, request):
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
-        match_info = await self._app.router.resolve(request)
+        subpath = request.url.raw_path[len(self._prefix):]
+        subrequest = request.clone(rel_url=request.url.with_path(subpath))
+        match_info = await self._app.router.resolve(subrequest)
         match_info.add_app(self._app)
+        match_info.add_map(None, {})
         if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
             methods = match_info.http_exception.allowed_methods
         else:
@@ -698,6 +721,72 @@ class PrefixedSubAppResource(PrefixResource):
     def __repr__(self):
         return "<PrefixedSubAppResource {prefix} -> {app!r}>".format(
             prefix=self._prefix, app=self._app)
+
+
+class DynamicSubAppResource(DynamicResource):
+
+    def __init__(self, prefix, app, *, name=None):
+        assert prefix.startswith('/')
+        assert not prefix.endswith('/')
+        assert len(prefix) > 1
+        super().__init__(prefix, name=name)
+        self._app = app
+        for subresource in app.router.resources():
+            subresource.add_prefix(self)
+
+    def get_info(self):
+        info = {'app': self._app,
+                'prefix': self._formatter}
+        if self._name:
+            info['name'] = self._name
+        return info
+
+    def _match(self, path):
+        # match from the beginning of path
+        match = self._pattern.match(path)
+        if match is None:
+            return None, -1
+        else:
+            mdict = {key: URL.build(path=value, encoded=True).path
+                     for key, value in match.groupdict().items()}
+            return mdict, match.end()
+
+    async def resolve(self, request):
+        mdict, mend = self._match(request.url.raw_path)
+        if mdict is None:
+            return None, set()
+        subrequest = request.clone(
+            rel_url=request.url.with_path(request.url.raw_path[mend:]))
+        match_info = await self._app.router.resolve(subrequest)
+        match_info.add_app(self._app)
+        match_info.add_map(self._name, mdict)
+        if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
+            methods = match_info.http_exception.allowed_methods
+        else:
+            methods = set()
+        return match_info, methods
+
+    def url_for(self, **parts):
+        prefix = self._parent.url_for(**parts).raw_path if self._parent else ''
+        key_prefix = (self._name + '.') if self._name else ''
+        begin = len(key_prefix)
+        url = self._formatter.format_map({k[begin:]: URL.build(path=v).raw_path
+                                          for k, v in parts.items()
+                                          if k.startswith(key_prefix)})
+        return URL.build(path=prefix + url)
+
+    def __len__(self):
+        return len(self._app.router.routes())
+
+    def __iter__(self):
+        return iter(self._app.router.routes())
+
+    def __repr__(self):
+        if self._name:
+            return "<DynamicSubAppResource {name} {prefix} -> {app!r}>".format(
+                name=self._name, prefix=self._formatter, app=self._app)
+        return "<DynamicSubAppResource {prefix} -> {app!r}>".format(
+            prefix=self._formatter, app=self._app)
 
 
 class ResourceRoute(AbstractRoute):
@@ -809,7 +898,7 @@ class RoutesView(Sized, Iterable, Container):
         return route_obj in self._routes
 
 
-class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
+class UrlDispatcher(AbstractRouter, Mapping):
 
     NAME_SPLIT_RE = re.compile(r'[.:-]')
 
