@@ -211,3 +211,6 @@ period ask to raise the status.
 
 - `aiohttp-jwt <https://github.com/hzlmn/aiohttp-jwt>`_
   An aiohttp middleware for JWT(JSON Web Token) support. Python 3.5+ is required.
+
+- `AWS Xray Python SDK <https://github.com/aws/aws-xray-sdk-python>`_
+  Native tracing support for Aiohttp applications.
