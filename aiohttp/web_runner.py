@@ -141,14 +141,19 @@ class SockSite(BaseSite):
             ssl=self._ssl_context, backlog=self._backlog)
 
 
+_FINISHED = obbject()
+
+
 class BaseRunner(ABC):
-    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
+    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites',
+                 '_serving_forever_fut')
 
     def __init__(self, *, handle_signals=False, **kwargs):
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None
         self._sites = set()
+        self._serving_forever_fut = None
 
     @property
     def server(self):
@@ -189,7 +194,7 @@ class BaseRunner(ABC):
         for site in list(self._sites):
             await site.stop()
         await self._cleanup_server()
-        self._server = None
+        self._server = _FINISHED
         if self._handle_signals:
             try:
                 loop.remove_signal_handler(signal.SIGINT)
@@ -197,6 +202,35 @@ class BaseRunner(ABC):
             except NotImplementedError:  # pragma: no cover
                 # remove_signal_handler is not implemented on Windows
                 pass
+
+    async def server_forever(self):
+        if self._serving_forever_fut is not None:
+            raise RuntimeError(
+                'runner {!r} is already being awaited on serve_forever()'
+                .format(self))
+        if self._server is None:
+            raise RuntimeError('server.setup() {!r} was not called'
+                               .format(self))
+        if self._server is _FINISHED:
+            raise RuntimeError('server {!r} is closed'.format(self))
+
+        if not self._sites:
+            raise RuntimeError('server {!r} has no registered sites to run'
+                               .format(self))
+
+        loop = asyncio.get_event_loop()
+        self._serving_forever_fut = loop.create_future()
+
+        try:
+            await self._serving_forever_fut
+        except asyncio.CancelledError:
+            try:
+                await self.cleanup()
+            finally:
+                raise
+        finally:
+            self._serving_forever_fut = None
+
 
     @abstractmethod
     async def _make_server(self):
