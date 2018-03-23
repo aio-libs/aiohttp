@@ -308,3 +308,30 @@ database object please do it explicitly::
 
    subapp['db'] = mainapp['db']
    mainapp.add_subapp('/prefix', subapp)
+
+
+How to perform operations in request handler after sending the response?
+------------------------------------------------------------------------
+
+Middlewares can be written to handle post-response operations, but
+they run after every request. You can explicitly send the response by
+calling :meth:`aiohttp.web.Response.write_eof`, which starts sending
+before the handler returns, giving you space to add follow-up
+operations::
+
+    def ping_handler(request):
+        """Send PONG and increase DB counter."""
+
+        # explicitly send the response
+        resp = web.json_response({'message': 'PONG'})
+        await resp.prepare(request)
+        await resp.write_eof()
+
+        # increase the pong count
+        APP['db'].inc_pong()
+
+        return resp
+
+The :class:`aiohttp.web.Response` object must be returned. This is
+required by aiohttp web contracts, but actually the response has
+already been sent.
