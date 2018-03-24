@@ -1,9 +1,12 @@
+import enum
 import io
 import json
 import mimetypes
 import os
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterable
+from itertools import chain
 
 from multidict import CIMultiDict
 
@@ -16,7 +19,8 @@ from .streams import DEFAULT_LIMIT
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'BytesPayload', 'StringPayload',
            'IOBasePayload', 'BytesIOPayload', 'BufferedReaderPayload',
-           'TextIOPayload', 'StringIOPayload', 'JsonPayload')
+           'TextIOPayload', 'StringIOPayload', 'JsonPayload',
+           'AsyncIterablePayload')
 
 TOO_LARGE_BYTES_BODY = 2 ** 20
 
@@ -25,21 +29,28 @@ class LookupError(Exception):
     pass
 
 
+class Order(enum.Enum):
+    normal = enum.auto()
+    try_first = enum.auto()
+    try_last = enum.auto()
+
+
 def get_payload(data, *args, **kwargs):
     return PAYLOAD_REGISTRY.get(data, *args, **kwargs)
 
 
-def register_payload(factory, type):
+def register_payload(factory, type, *, order=Order.normal):
     PAYLOAD_REGISTRY.register(factory, type)
 
 
 class payload_type:
 
-    def __init__(self, type):
+    def __init__(self, type, *, order=Order.normal):
         self.type = type
+        self.order = order
 
     def __call__(self, factory):
-        register_payload(factory, self.type)
+        register_payload(factory, self.type, order=self.order)
         return factory
 
 
@@ -50,19 +61,26 @@ class PayloadRegistry:
     """
 
     def __init__(self):
-        self._registry = []
+        self._first = []
+        self._normal = []
+        self._last = []
 
-    def get(self, data, *args, **kwargs):
+    def get(self, data, _CHAIN=chain, *args, **kwargs):
         if isinstance(data, Payload):
             return data
-        for factory, type in self._registry:
+        for factory, type in _CHAIN(self._first, self._normal, self._last):
             if isinstance(data, type):
                 return factory(data, *args, **kwargs)
 
         raise LookupError()
 
-    def register(self, factory, type):
-        self._registry.append((factory, type))
+    def register(self, factory, type, order=Order.normal):
+        if order is Order.try_first:
+            self._first.append((factory, type))
+        elif order is Order.normal:
+            self._normal.append((factory, type))
+        elif order is Order.try_last:
+            self._last.append((factory, type))
 
 
 class Payload(ABC):
@@ -278,6 +296,30 @@ class JsonPayload(BytesPayload):
             content_type=content_type, encoding=encoding, *args, **kwargs)
 
 
+class AsyncIterablePayload(Payload):
+
+    def __init__(self, value, *args, **kwargs):
+        assert isinstance(value, AsyncIterable), \
+            ("value argument must support "
+             "collections.abc.AsyncIterablebe interface, "
+             "got {!r}".format(value))
+
+        if 'content_type' not in kwargs:
+            kwargs['content_type'] = 'application/octet-stream'
+
+        super().__init__(value, *args, **kwargs)
+
+        self._iter = value.__aiter__()
+
+    async def write(self, writer):
+        try:
+            while True:
+                chunck = await self._iter.__anext__()
+                await writer.write(chunck)
+        except AsyncStopIteration:
+            pass
+
+
 PAYLOAD_REGISTRY = PayloadRegistry()
 PAYLOAD_REGISTRY.register(BytesPayload, (bytes, bytearray, memoryview))
 PAYLOAD_REGISTRY.register(StringPayload, str)
@@ -287,3 +329,5 @@ PAYLOAD_REGISTRY.register(BytesIOPayload, io.BytesIO)
 PAYLOAD_REGISTRY.register(
     BufferedReaderPayload, (io.BufferedReader, io.BufferedRandom))
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
+PAYLOAD_REGISTRY.register(AsyncIterablePayload, AsyncIterable,
+                          order=Order.try_last)
