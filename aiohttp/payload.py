@@ -30,9 +30,9 @@ class LookupError(Exception):
 
 
 class Order(enum.Enum):
-    normal = enum.auto()
-    try_first = enum.auto()
-    try_last = enum.auto()
+    normal = 'normal'
+    try_first = 'try_first'
+    try_last = 'try_last'
 
 
 def get_payload(data, *args, **kwargs):
