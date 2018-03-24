@@ -10,6 +10,7 @@ import ssl
 from unittest import mock
 
 import pytest
+from async_generator import async_generator, yield_
 from multidict import MultiDict
 
 import aiohttp
@@ -2523,3 +2524,24 @@ async def test_await_after_cancelling(loop, aiohttp_client):
         fut2.cancel()
 
     await asyncio.gather(fetch1(), fetch2(), canceller())
+
+
+async def test_async_payload_generator(aiohttp_client):
+
+    async def handler(request):
+        data = await request.read()
+        assert data == b'1234567890' * 100
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.post('/', handler)])
+
+    client = await aiohttp_client(app)
+
+    @async_generator
+    async def gen():
+        for i in range(100):
+            await yield_(b'1234567890')
+
+    resp = await client.post('/', data=gen())
+    assert resp.status == 200

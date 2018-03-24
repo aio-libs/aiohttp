@@ -316,8 +316,8 @@ class AsyncIterablePayload(Payload):
             while True:
                 chunck = await self._iter.__anext__()
                 await writer.write(chunck)
-        except AsyncStopIteration:
-            pass
+        except StopAsyncIteration:
+            self._iter = None
 
 
 PAYLOAD_REGISTRY = PayloadRegistry()
