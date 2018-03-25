@@ -65,7 +65,7 @@ class PayloadRegistry:
         self._normal = []
         self._last = []
 
-    def get(self, data, _CHAIN=chain, *args, **kwargs):
+    def get(self, data, *args, _CHAIN=chain, **kwargs):
         if isinstance(data, Payload):
             return data
         for factory, type in _CHAIN(self._first, self._normal, self._last):
@@ -74,7 +74,7 @@ class PayloadRegistry:
 
         raise LookupError()
 
-    def register(self, factory, type, order=Order.normal):
+    def register(self, factory, type, *, order=Order.normal):
         if order is Order.try_first:
             self._first.append((factory, type))
         elif order is Order.normal:
@@ -313,9 +313,11 @@ class AsyncIterablePayload(Payload):
 
     async def write(self, writer):
         try:
-            while True:
-                chunck = await self._iter.__anext__()
-                await writer.write(chunck)
+            # iter is not None check prevents rare cases
+            # when the case iterable is used twice
+            while self._iter is not None:
+                chunk = await self._iter.__anext__()
+                await writer.write(chunk)
         except StopAsyncIteration:
             self._iter = None
 
