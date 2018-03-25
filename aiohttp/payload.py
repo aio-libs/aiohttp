@@ -22,7 +22,7 @@ __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'TextIOPayload', 'StringIOPayload', 'JsonPayload',
            'AsyncIterablePayload')
 
-TOO_LARGE_BYTES_BODY = 2 ** 20
+TOO_LARGE_BYTES_BODY = 2 ** 20  # 1 MB
 
 
 class LookupError(Exception):
@@ -40,7 +40,7 @@ def get_payload(data, *args, **kwargs):
 
 
 def register_payload(factory, type, *, order=Order.normal):
-    PAYLOAD_REGISTRY.register(factory, type)
+    PAYLOAD_REGISTRY.register(factory, type, order=order)
 
 
 class payload_type:
