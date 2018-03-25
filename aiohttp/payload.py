@@ -154,8 +154,9 @@ class Payload(ABC):
 class BytesPayload(Payload):
 
     def __init__(self, value, *args, **kwargs):
-        assert isinstance(value, (bytes, bytearray, memoryview)), \
-            "value argument must be byte-ish (%r)" % type(value)
+        if not isinstance(value, (bytes, bytearray, memoryview)):
+            raise TypeError("value argument must be byte-ish, not (!r)"
+                            .format(type(value)))
 
         if 'content_type' not in kwargs:
             kwargs['content_type'] = 'application/octet-stream'
@@ -299,10 +300,10 @@ class JsonPayload(BytesPayload):
 class AsyncIterablePayload(Payload):
 
     def __init__(self, value, *args, **kwargs):
-        assert isinstance(value, AsyncIterable), \
-            ("value argument must support "
-             "collections.abc.AsyncIterablebe interface, "
-             "got {!r}".format(value))
+        if not isinstance(value, AsyncIterable):
+            raise TypeError("value argument must support "
+                            "collections.abc.AsyncIterablebe interface, "
+                            "got {!r}".format(type(value)))
 
         if 'content_type' not in kwargs:
             kwargs['content_type'] = 'application/octet-stream'
@@ -331,5 +332,7 @@ PAYLOAD_REGISTRY.register(BytesIOPayload, io.BytesIO)
 PAYLOAD_REGISTRY.register(
     BufferedReaderPayload, (io.BufferedReader, io.BufferedRandom))
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
+# try_last for giving a chance to more specialized async interables like
+# multidict.BodyPartReaderPayload override the default
 PAYLOAD_REGISTRY.register(AsyncIterablePayload, AsyncIterable,
                           order=Order.try_last)

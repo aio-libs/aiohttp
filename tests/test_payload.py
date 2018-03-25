@@ -43,6 +43,21 @@ def test_payload_content_type():
     assert p.content_type == 'application/json'
 
 
+def test_bytes_payload_default_content_type():
+    p = payload.BytesPayload(b'data')
+    assert p.content_type == 'application/octet-stream'
+
+
+def test_bytes_payload_explicit_content_type():
+    p = payload.BytesPayload(b'data', content_type='application/custom')
+    assert p.content_type == 'application/custom'
+
+
+def test_bytes_payload_bad_type():
+    with pytest.raises(TypeError):
+        payload.BytesPayload(object())
+
+
 def test_string_payload():
     p = payload.StringPayload('test')
     assert p.encoding == 'utf-8'
@@ -86,5 +101,5 @@ def test_async_iterable_payload_explicit_content_type():
 
 def test_async_iterable_payload_not_async_iterable():
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())
