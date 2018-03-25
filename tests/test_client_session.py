@@ -555,8 +555,8 @@ async def test_request_tracing(loop, aiohttp_client):
         )
         assert not on_request_redirect.called
         assert gathered_req_body.getvalue() == body.encode('utf8')
-        assert gathered_res_body.getvalue() == json.dumps(
-            {'ok': True}).encode('utf8')
+
+        assert json.loads(gathered_res_body.getvalue().decode('utf-8')) == {'ok': True}
 
 
 async def test_request_tracing_exception(loop):

@@ -1,5 +1,4 @@
 import io
-import json
 import mimetypes
 import os
 import warnings
@@ -9,7 +8,7 @@ from multidict import CIMultiDict
 
 from . import hdrs
 from .helpers import (PY_36, content_disposition_header, guess_filename,
-                      parse_mimetype, sentinel)
+                      parse_mimetype, sentinel, json_dumps)
 from .streams import DEFAULT_LIMIT
 
 
@@ -271,7 +270,7 @@ class JsonPayload(BytesPayload):
 
     def __init__(self, value,
                  encoding='utf-8', content_type='application/json',
-                 dumps=json.dumps, *args, **kwargs):
+                 dumps=json_dumps, *args, **kwargs):
 
         super().__init__(
             dumps(value).encode(encoding),

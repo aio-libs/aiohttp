@@ -41,7 +41,7 @@ The client session supports the context manager protocol for self closing.
 
 .. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, json_serialize=json.dumps, \
+                         auth=None, json_serialize=json_dumps, \
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
@@ -106,7 +106,7 @@ The client session supports the context manager protocol for self closing.
 
    :param callable json_serialize: Json *serializer* callable.
 
-      By default :func:`json.dumps` function.
+      By default :func:`json.dumps`-like function.
 
    :param bool raise_for_status:
 
@@ -1331,7 +1331,7 @@ manually.
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
+   .. comethod:: send_json(data, compress=None, *, dumps=json_dumps)
 
       Send *data* to peer as JSON string.
 
@@ -1343,7 +1343,7 @@ manually.
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
-                             (:func:`json.dumps` by default).
+                             (:func:`json.dumps`-like by default).
 
       :raise RuntimeError: if connection is not started or closing
 

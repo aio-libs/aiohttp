@@ -3,7 +3,6 @@
 import asyncio
 import base64
 import hashlib
-import json
 import os
 import sys
 import traceback
@@ -26,7 +25,8 @@ from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (DEBUG, PY_36, CeilTimeout, TimeoutHandle,
-                      proxies_from_env, sentinel, strip_auth_from_url)
+                      proxies_from_env, sentinel, strip_auth_from_url,
+                      json_dumps)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -64,7 +64,7 @@ class ClientSession:
 
     def __init__(self, *, connector=None, loop=None, cookies=None,
                  headers=None, skip_auto_headers=None,
-                 auth=None, json_serialize=json.dumps,
+                 auth=None, json_serialize=json_dumps,
                  request_class=ClientRequest, response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,

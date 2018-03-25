@@ -1123,7 +1123,7 @@ class TestJSONResponse:
 
     def test_text_is_json_encoded(self):
         resp = json_response({'foo': 42})
-        assert json.dumps({'foo': 42}) == resp.text
+        assert {'foo': 42} == json.loads(resp.text)
 
     def test_content_type_is_overrideable(self):
         resp = json_response({'foo': 42},
