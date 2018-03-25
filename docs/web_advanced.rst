@@ -479,42 +479,22 @@ a JSON REST service::
     app = web.Application(middlewares=[error_middleware])
 
 
-Old Style Middleware
-^^^^^^^^^^^^^^^^^^^^
+Middleware Factory
+^^^^^^^^^^^^^^^^^^
 
-.. deprecated:: 2.3
+A *middleware factory* is a function that creates a middleware with passed arguments. For example, here's a trivial *middleware factory*::
 
-   Prior to *v2.3* middleware required an outer *middleware factory*
-   which returned the middleware coroutine. Since *v2.3* this is not
-   required; instead the ``@middleware`` decorator should
-   be used.
-
-Old style middleware (with an outer factory and no ``@middleware``
-decorator) is still supported. Furthermore, old and new style middleware
-can be mixed.
-
-A *middleware factory* is simply a coroutine that implements the logic of a
-*middleware*. For example, here's a trivial *middleware factory*::
-
-    async def middleware_factory(app, handler):
-        async def middleware_handler(request):
+    def middleware_factory(text):
+        @middleware
+        async def sample_middleware(request, handler):
             resp = await handler(request)
-            resp.text = resp.text + ' wink'
+            resp.text = resp.text + text
             return resp
-        return middleware_handler
+        return sample_middleware
 
-A *middleware factory* should accept two parameters, an
-:class:`app <Application>` instance and a *handler*, and return a new handler.
+Remember that contrary to regular middlewares you need the result of a middleware factory not the function itself. So when passing a middleware factory to an app you actually need to call it::
 
-.. note::
-
-   Both the outer *middleware_factory* coroutine and the inner
-   *middleware_handler* coroutine are called for every request handled.
-
-*Middleware factories* should return a new handler that has the same signature
-as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
-single :class:`Request` instance and return a :class:`Response`, or raise an
-exception.
+    app = web.Application(middlewares=[middleware_factory(' wink')])
 
 .. _aiohttp-web-signals:
 
