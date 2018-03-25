@@ -1484,13 +1484,14 @@ async def test_POST_STREAM_DATA(aiohttp_client, fname):
     with fname.open('rb') as f:
         data_size = len(f.read())
 
-    @aiohttp.streamer
-    async def stream(writer, fname):
-        with fname.open('rb') as f:
-            data = f.read(100)
-            while data:
-                await writer.write(data)
+    with pytest.warns(DeprecationWarning):
+        @aiohttp.streamer
+        async def stream(writer, fname):
+            with fname.open('rb') as f:
                 data = f.read(100)
+                while data:
+                    await writer.write(data)
+                    data = f.read(100)
 
     resp = await client.post(
         '/', data=stream(fname), headers={'Content-Length': str(data_size)})
@@ -1517,13 +1518,14 @@ async def test_POST_STREAM_DATA_no_params(aiohttp_client, fname):
     with fname.open('rb') as f:
         data_size = len(f.read())
 
-    @aiohttp.streamer
-    async def stream(writer):
-        with fname.open('rb') as f:
-            data = f.read(100)
-            while data:
-                await writer.write(data)
+    with pytest.warns(DeprecationWarning):
+        @aiohttp.streamer
+        async def stream(writer):
+            with fname.open('rb') as f:
                 data = f.read(100)
+                while data:
+                    await writer.write(data)
+                    data = f.read(100)
 
     resp = await client.post(
         '/', data=stream, headers={'Content-Length': str(data_size)})
