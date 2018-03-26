@@ -18,7 +18,7 @@ pytest-mock==1.7.1
 pytest-xdist==1.22.2
 towncrier==17.8.0
 tox==2.9.1
-twine==1.10.0
+twine==1.11.0
 yarl==1.1.1
 
 # Using PEP 508 env markers to control dependency on runtimes:
