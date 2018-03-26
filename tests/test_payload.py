@@ -29,6 +29,14 @@ def test_register_type(registry):
     assert isinstance(p, Payload)
 
 
+def test_register_unsupported_order(registry):
+    class TestProvider:
+        pass
+
+    with pytest.raises(ValueError):
+        payload.register_payload(Payload, TestProvider, order=object())
+
+
 def test_payload_ctor():
     p = Payload('test', encoding='utf-8', filename='test.txt')
     assert p._value == 'test'

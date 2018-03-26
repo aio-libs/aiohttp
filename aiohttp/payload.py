@@ -81,6 +81,8 @@ class PayloadRegistry:
             self._normal.append((factory, type))
         elif order is Order.try_last:
             self._last.append((factory, type))
+        else:
+            raise ValueError("Unsupported order {!r}".format(order))
 
 
 class Payload(ABC):
@@ -316,7 +318,7 @@ class AsyncIterablePayload(Payload):
         try:
             # iter is not None check prevents rare cases
             # when the case iterable is used twice
-            while self._iter is not None:
+            while True:
                 chunk = await self._iter.__anext__()
                 await writer.write(chunk)
         except StopAsyncIteration:
