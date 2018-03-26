@@ -53,7 +53,7 @@ _helpers:
   language: generic
   python: *pypy3
   env:
-  - &env_pypy3 PYTHON_VERSION=pypy3.5-5.8.0
+  - &env_pypy3 PYTHON_VERSION=pypy3.5-5.10.0
   - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
   - &env_path PATH="$PYENV_ROOT/bin:$PATH"
   before_install:
@@ -185,7 +185,7 @@ jobs:
     - PYTHON_VERSION=3.7-dev
     - *env_pyenv
     - *env_path
-  # pypy3.5-5.8.0 fails under OS X because it's unsupported
+  # pypy3.5-5.10.0 fails under OS X because it's unsupported
 
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
