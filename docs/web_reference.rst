@@ -2690,8 +2690,8 @@ Normalize path middleware
 .. function:: normalize_path_middleware(*, \
                                         append_slash=True, merge_slashes=True)
 
-  Middleware that normalizes the path of a request. By normalizing
-  it means:
+  Middleware factory which produces a middleware that normalizes
+  the path of a request. By normalizing it means:
 
       - Add a trailing slash to the path.
       - Double slashes are replaced by one.
