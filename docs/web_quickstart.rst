@@ -12,7 +12,7 @@ Run a Simple Web Server
 In order to implement a web server, first create a
 :ref:`request handler <aiohttp-web-handler>`.
 
-A request handler is a :ref:`coroutine <coroutine>` or regular function that
+A request handler must be a :ref:`coroutine <coroutine>` that
 accepts a :class:`Request` instance as its only parameter and returns a
 :class:`Response` instance::
 
@@ -90,7 +90,7 @@ accepts a list of any non-parsed command-line arguments and returns an
 Handler
 -------
 
-A request handler must be a :ref:`coroutine<coroutine>` or regular function that accepts a
+A request handler must be a :ref:`coroutine<coroutine>` that accepts a
 :class:`Request` instance as its only argument and returns a
 :class:`StreamResponse` derived (e.g. :class:`Response`) instance::
 
