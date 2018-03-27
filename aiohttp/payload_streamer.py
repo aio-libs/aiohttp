@@ -22,6 +22,7 @@ Then you can use `file_sender` like this:
 """
 
 import asyncio
+import warnings
 
 from .payload import Payload, payload_type
 
@@ -43,6 +44,9 @@ class _stream_wrapper:
 class streamer:
 
     def __init__(self, coro):
+        warnings.warn("@streamer is deprecated, use async generators instead",
+                      DeprecationWarning,
+                      stacklevel=2)
         self.coro = coro
 
     def __call__(self, *args, **kwargs):

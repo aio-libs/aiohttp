@@ -7,6 +7,7 @@ import zlib
 from unittest import mock
 
 import pytest
+from async_generator import async_generator, yield_
 from multidict import MultiDict
 from yarl import URL
 
@@ -730,6 +731,36 @@ async def test_get_with_empty_arg_with_equal(aiohttp_client):
     assert 200 == resp.status
 
 
+async def test_response_with_async_gen(aiohttp_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    data_size = len(data)
+
+    @async_generator
+    async def stream(f_name):
+        with f_name.open('rb') as f:
+            data = f.read(100)
+            while data:
+                await yield_(data)
+                data = f.read(100)
+
+    async def handler(request):
+        headers = {'Content-Length': str(data_size)}
+        return web.Response(body=stream(fname), headers=headers)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    resp_data = await resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+
+
 async def test_response_with_streamer(aiohttp_client, fname):
 
     with fname.open('rb') as f:
@@ -737,17 +768,48 @@ async def test_response_with_streamer(aiohttp_client, fname):
 
     data_size = len(data)
 
-    @aiohttp.streamer
-    async def stream(writer, f_name):
-        with f_name.open('rb') as f:
-            data = f.read(100)
-            while data:
-                await writer.write(data)
+    with pytest.warns(DeprecationWarning):
+        @aiohttp.streamer
+        async def stream(writer, f_name):
+            with f_name.open('rb') as f:
                 data = f.read(100)
+                while data:
+                    await writer.write(data)
+                    data = f.read(100)
 
     async def handler(request):
         headers = {'Content-Length': str(data_size)}
         return web.Response(body=stream(fname), headers=headers)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    resp_data = await resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+
+
+async def test_response_with_async_gen_no_params(aiohttp_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    data_size = len(data)
+
+    @async_generator
+    async def stream():
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                await yield_(data)
+                data = f.read(100)
+
+    async def handler(request):
+        headers = {'Content-Length': str(data_size)}
+        return web.Response(body=stream(), headers=headers)
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -767,13 +829,14 @@ async def test_response_with_streamer_no_params(aiohttp_client, fname):
 
     data_size = len(data)
 
-    @aiohttp.streamer
-    async def stream(writer):
-        with fname.open('rb') as f:
-            data = f.read(100)
-            while data:
-                await writer.write(data)
+    with pytest.warns(DeprecationWarning):
+        @aiohttp.streamer
+        async def stream(writer):
+            with fname.open('rb') as f:
                 data = f.read(100)
+                while data:
+                    await writer.write(data)
+                    data = f.read(100)
 
     async def handler(request):
         headers = {'Content-Length': str(data_size)}
