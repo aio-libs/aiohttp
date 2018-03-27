@@ -9,16 +9,16 @@ cython==0.28.1
 flake8==3.5.0
 gunicorn==19.7.1
 isort==4.3.4
-pip==9.0.2
+pip==9.0.3
 pyflakes==1.6.0
 multidict==4.1.0
-pytest==3.4.2
+pytest==3.5.0
 pytest-cov==2.5.1
 pytest-mock==1.7.1
 pytest-xdist==1.22.2
 towncrier==17.8.0
 tox==2.9.1
-twine==1.10.0
+twine==1.11.0
 yarl==1.1.1
 
 # Using PEP 508 env markers to control dependency on runtimes:
