@@ -408,7 +408,7 @@ JSON Response
 It is a common case to return JSON data in response, :mod:`aiohttp.web`
 provides a shortcut for returning JSON -- :func:`aiohttp.web.json_response`::
 
-   def handler(request):
+   async def handler(request):
        data = {'some': 'data'}
        return web.json_response(data)
 
