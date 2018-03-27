@@ -259,7 +259,7 @@ application developers can organize handlers in classes if they so wish::
        def __init__(self):
            pass
 
-       def handle_intro(self, request):
+       async def handle_intro(self, request):
            return web.Response(text="Hello, world")
 
        async def handle_greeting(self, request):
