@@ -333,9 +333,18 @@ Or you can use *asynchronous generator*::
                           data=file_sender(file_name='huge_file')) as resp:
       print(await resp.text())
 
+
+Because the :attr:`~aiohttp.ClientResponse.content` attribute is a
+:class:`~aiohttp.StreamReader` (provides async iterator protocol), you
+can chain get and post requests together::
+
+   resp = await session.get('http://python.org')
+   await session.post('http://httpbin.org/post',
+                      data=resp.content)
+
 .. note::
 
-   Python 3.5 has no support for asynchronous generators, use
+   Python 3.5 has no native support for asynchronous generators, use
    ``async_generator`` library as workaround.
 
 .. deprecated:: 3.1
