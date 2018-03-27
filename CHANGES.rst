@@ -14,6 +14,14 @@ Changelog
 
 .. towncrier release notes start
 
+3.1.1 (2018-03-27)
+==================
+
+* Support *asynchronous iterators* (and *asynchronous generators* as
+  well) in both client and server API as request / response BODY
+  payloads. (#2802)
+
+
 3.1.0 (2018-03-21)
 ==================
 
