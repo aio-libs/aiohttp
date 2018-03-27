@@ -1,4 +1,7 @@
+import pathlib
+
 import pytest
+from yarl import URL
 
 from aiohttp import web
 from aiohttp.web_urldispatcher import UrlDispatcher
@@ -101,6 +104,19 @@ def test_route(router):
     assert route.handler is handler
     assert route.method == 'OTHER'
     assert str(route.url_for()) == '/'
+
+
+def test_static(router):
+    folder = pathlib.Path(__file__).parent
+    router.add_routes([web.static('/prefix', folder)])
+    assert len(router.resources()) == 1  # 2 routes: for HEAD and GET
+
+    resource = list(router.resources())[0]
+    info = resource.get_info()
+    assert info['prefix'] == '/prefix'
+    assert info['directory'] == folder
+    url = resource.url_for(filename='sample.key')
+    assert url == URL('/prefix/sample.key')
 
 
 def test_head_deco(router):
@@ -254,6 +270,15 @@ def test_repr_route_def_with_extra_info():
 
     rd = routes[0]
     assert repr(rd) == "<RouteDef GET /path -> 'handler', extra='info'>"
+
+
+def test_repr_static_def():
+    routes = web.RouteTableDef()
+
+    routes.static('/prefix', '/path', name='name')
+
+    rd = routes[0]
+    assert repr(rd) == "<StaticDef /prefix -> /path, name='name'>"
 
 
 def test_repr_route_table_def():

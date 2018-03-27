@@ -243,7 +243,9 @@ async def test_close(loop, ws_key, key_data):
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
-                writer = WebSocketWriter.return_value = mock.Mock()
+                writer = mock.Mock()
+                WebSocketWriter.return_value = writer
+                writer.close = make_mocked_coro()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect(
@@ -311,7 +313,9 @@ async def test_close_exc(loop, ws_key, key_data):
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
-                WebSocketWriter.return_value = mock.Mock()
+                writer = mock.Mock()
+                WebSocketWriter.return_value = writer
+                writer.close = make_mocked_coro()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect('http://test.org')
@@ -431,7 +435,10 @@ async def test_reader_read_exception(ws_key, key_data, loop):
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(hresp)
-                WebSocketWriter.return_value = mock.Mock()
+
+                writer = mock.Mock()
+                WebSocketWriter.return_value = writer
+                writer.close = make_mocked_coro()
 
                 session = aiohttp.ClientSession(loop=loop)
                 resp = await session.ws_connect('http://test.org')

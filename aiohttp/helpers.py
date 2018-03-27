@@ -43,6 +43,13 @@ if not PY_37:
 sentinel = object()
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
 
+# N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
+# for compatibility with older versions
+DEBUG = (getattr(sys.flags, 'dev_mode', False) or
+         (not sys.flags.ignore_environment and
+          bool(os.environ.get('PYTHONASYNCIODEBUG'))))
+
+
 CHAR = set(chr(i) for i in range(0, 128))
 CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
 SEPARATORS = {'(', ')', '<', '>', '@', ',', ';', ':', '\\', '"', '/', '[', ']',
@@ -52,6 +59,8 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG
+
+# prevent "coroutine noop was never awaited" warning.
 coroutines._DEBUG = False
 
 

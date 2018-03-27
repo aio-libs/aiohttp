@@ -31,3 +31,7 @@ make a Pull Request!
 * `Wargaming: World of Tanks <https://worldoftanks.ru/>`_
 * `Yandex <https://yandex.ru>`_
 * `Rambler <rambler.ru>`_
+* `Escargot <https://escargot.log1p.xyz>`_ - Chat server
+* `Prom.ua <https://prom.ua/>`_ - Online trading platform
+* `globo.com <https://www.globo.com/>`_ - (some parts) Brazilian largest media portal 
+

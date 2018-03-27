@@ -42,6 +42,7 @@ Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bryce Drennan
 Carl George
 Cecile Tonglet
 Chien-Wei Huang
@@ -207,6 +208,7 @@ Weiwei Wang
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux
+Ye Cao
 Yegor Roganov
 Young-Ho Cha
 Yuriy Shatrov
