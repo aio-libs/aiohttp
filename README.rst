@@ -7,6 +7,8 @@ Async http client/server framework
    :width: 64px
    :alt: aiohttp logo
 
+|
+
 .. image:: https://travis-ci.org/aio-libs/aiohttp.svg?branch=master
    :target:  https://travis-ci.org/aio-libs/aiohttp
    :align: right
