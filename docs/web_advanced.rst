@@ -783,23 +783,28 @@ Developer should keep a list of opened connections
 The following :term:`websocket` snippet shows an example for websocket
 handler::
 
+    from aiohttp import web
+    import weakref
+
     app = web.Application()
-    app['websockets'] = []
+    app['websockets'] = weakref.WeakSet()
 
     async def websocket_handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        request.app['websockets'].append(ws)
+        request.app['websockets'].add(ws)
         try:
             async for msg in ws:
                 ...
         finally:
-            request.app['websockets'].remove(ws)
+            request.app['websockets'].discard(ws)
 
         return ws
 
 Signal handler may look like::
+
+    from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
         for ws in app['websockets']:
