@@ -331,7 +331,8 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 2.3
 
       :param trace_request_ctx: Object used to give as a kw param for each new
-        :class:`TraceConfig` object instantiated, used to give information to the
+        :class:`TraceConfig` object instantiated,
+        used to give information to the
         tracers that is only available at request time.
 
          .. versionadded:: 3.0
