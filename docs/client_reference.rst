@@ -474,6 +474,7 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
+                            headers=None, \
                             proxy=None, proxy_auth=None, ssl=None, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
@@ -500,18 +501,22 @@ The client session supports the context manager protocol for self closing.
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
-                             them close procedure has to be handled manually
+                             them close procedure has to be handled manually. 
+                             ``True`` by default
 
       :param bool autoping: automatically send *pong* on *ping*
-                            message from server
+                            message from server. ``True`` by default
 
       :param float heartbeat: Send *ping* message every *heartbeat*
                               seconds and wait *pong* response, if
                               *pong* response is not received then
                               close connection. The timer is reset on any data
-                              reception.
+                              reception.(optional)
 
-      :param str origin: Origin header to send to server
+      :param str origin: Origin header to send to server(optional)
+      
+      :param dict headers: HTTP Headers to send with
+                           the request (optional)
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
@@ -560,15 +565,15 @@ The client session supports the context manager protocol for self closing.
          authority channel, supported SSL options etc.
 
          .. versionadded:: 2.3
+         
+         .. deprecated:: 3.0
+
+            Use ``ssl=ssl_context``
 
       :param dict proxy_headers: HTTP headers to send to the proxy if the
          parameter proxy has been provided.
 
          .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=ssl_context``
 
       :param int compress: Enable Per-Message Compress Extension support.
                            0 for disable, 9 to 15 for window bit support.
