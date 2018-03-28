@@ -17,7 +17,7 @@ Async http client/server framework
    :alt: codecov.io status for master branch
 
 .. image:: https://badge.fury.io/py/aiohttp.svg
-   :target: https://badge.fury.io/py/aiohttp
+   :target: https://pypi.org/project/aiohttp
    :alt: Latest PyPI package version
 
 .. image:: https://readthedocs.org/projects/aiohttp/badge/?version=latest
