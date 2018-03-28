@@ -950,13 +950,12 @@ Install it with ``pip``:
     $ pip install aiohttp_debugtoolbar
 
 
-After that attach the :mod:`aiohttp_debugtoolbar` middleware to your
-:class:`aiohttp.web.Application` and call :func:`aiohttp_debugtoolbar.setup`::
+Just call :func:`aiohttp_debugtoolbar.setup`::
 
     import aiohttp_debugtoolbar
     from aiohttp_debugtoolbar import toolbar_middleware_factory
 
-    app = web.Application(middlewares=[toolbar_middleware_factory])
+    app = web.Application()
     aiohttp_debugtoolbar.setup(app)
 
 The toolbar is ready to use. Enjoy!!!
