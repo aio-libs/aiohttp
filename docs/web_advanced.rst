@@ -254,7 +254,7 @@ After that you may use the template engine in your
 wrap your handlers with the  :func:`aiohttp_jinja2.template` decorator::
 
     @aiohttp_jinja2.template('tmpl.jinja2')
-    def handler(request):
+    async def handler(request):
         return {'name': 'Andrew', 'surname': 'Svetlov'}
 
 If you prefer the `Mako`_ template engine, please take a look at the
@@ -269,7 +269,7 @@ If you prefer the `Mako`_ template engine, please take a look at the
 
       @routes.get('/path')
       @aiohttp_jinja2.template('tmpl.jinja2')
-      def handler(request):
+      async def handler(request):
           return {'name': 'Andrew', 'surname': 'Svetlov'}
 
 
@@ -423,7 +423,7 @@ The following code demonstrates middlewares execution order::
 
    from aiohttp import web
 
-   def test(request):
+   async def test(request):
        print('Handler function called')
        return web.Response(text="Hello")
 

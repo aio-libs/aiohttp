@@ -12,7 +12,7 @@ Run a Simple Web Server
 In order to implement a web server, first create a
 :ref:`request handler <aiohttp-web-handler>`.
 
-A request handler is a :ref:`coroutine <coroutine>` or regular function that
+A request handler must be a :ref:`coroutine <coroutine>` that
 accepts a :class:`Request` instance as its only parameter and returns a
 :class:`Response` instance::
 
@@ -259,7 +259,7 @@ application developers can organize handlers in classes if they so wish::
        def __init__(self):
            pass
 
-       def handle_intro(self, request):
+       async def handle_intro(self, request):
            return web.Response(text="Hello, world")
 
        async def handle_greeting(self, request):
@@ -408,7 +408,7 @@ JSON Response
 It is a common case to return JSON data in response, :mod:`aiohttp.web`
 provides a shortcut for returning JSON -- :func:`aiohttp.web.json_response`::
 
-   def handler(request):
+   async def handler(request):
        data = {'some': 'data'}
        return web.json_response(data)
 

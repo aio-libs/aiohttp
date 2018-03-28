@@ -524,7 +524,7 @@ The common case for sending an answer from
 :ref:`web-handler<aiohttp-web-handler>` is returning a
 :class:`Response` instance::
 
-   def handler(request):
+   async def handler(request):
        return Response(text="All right!")
 
 Response classes are :obj:`dict` like objects,
