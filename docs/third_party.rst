@@ -214,3 +214,6 @@ period ask to raise the status.
 
 - `AWS Xray Python SDK <https://github.com/aws/aws-xray-sdk-python>`_
   Native tracing support for Aiohttp applications.
+
+- `GINO <https://github.com/fantix/gino>`_
+  An asyncio ORM on top of SQLAlchemy core, delivered with an aiohttp extension.
