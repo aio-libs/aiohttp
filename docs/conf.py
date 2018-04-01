@@ -28,7 +28,7 @@ with codecs.open(_version_path, 'r', 'latin1') as fp:
                                   r"\.(?P<minor>\d+)"
                                   r"\.(?P<patch>\d+)"
                                   r"(?P<tag>.*)?'$",
-                                  fp.readline().strip(), re.M).groupdict()
+                                  fp.read().strip(), re.M).groupdict()
 
     except IndexError:
         raise RuntimeError('Unable to determine version.')
