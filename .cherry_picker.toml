@@ -1,0 +1,3 @@
+team = "aio-libs"
+repo = "aiohttp"
+check_sha = "f382b5ffc445e45a110734f5396728da7914aeb6"
