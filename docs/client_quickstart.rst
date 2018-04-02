@@ -403,17 +403,6 @@ overridden by passing ``timeout`` parameter into
 
 ``None`` or ``0`` disables timeout check.
 
-The example wraps a client call in :func:`async_timeout.timeout` context
-manager, adding timeout for both connecting and response body
-reading procedures::
-
-    import async_timeout
-
-    with async_timeout.timeout(0.001):
-        async with session.get('https://github.com') as r:
-            await r.text()
-
-
 .. note::
 
    Timeout is cumulative time, it includes all operations like sending request,
