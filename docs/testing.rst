@@ -684,6 +684,12 @@ Test Client
       :class:`BaseTestServer` test server instance used in conjunction
       with client.
 
+   .. attribute:: app
+
+      An alias for :attr:`self.server.app`. return ``None`` if 
+      ``self.server`` is not :class:`TestServer` 
+      instance(e.g. :class:`RawTestServer` instance for test low-level server).
+
    .. attribute:: session
 
       An internal :class:`aiohttp.ClientSession`.

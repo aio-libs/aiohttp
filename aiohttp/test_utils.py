@@ -188,6 +188,10 @@ class TestClient:
         return self._server
 
     @property
+    def app(self):
+        return getattr(self._server, "app", None)
+
+    @property
     def session(self):
         """An internal aiohttp.ClientSession.
 
