@@ -59,9 +59,9 @@ _helpers:
   before_install:
   - brew update
   - brew install pyenv || brew upgrade pyenv
-  - &ensure_pyenv_preloaded |	
-    eval "$(pyenv init -)"	
-    eval "$(pyenv virtualenv-init -)"	
+  - &ensure_pyenv_preloaded |
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
   - &install_python pyenv install --skip-existing --keep --verbose "$PYTHON_VERSION"
   - &switch_python pyenv shell "$PYTHON_VERSION"
   - &python_version python --version

@@ -783,23 +783,28 @@ Developer should keep a list of opened connections
 The following :term:`websocket` snippet shows an example for websocket
 handler::
 
+    from aiohttp import web
+    import weakref
+
     app = web.Application()
-    app['websockets'] = []
+    app['websockets'] = weakref.WeakSet()
 
     async def websocket_handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        request.app['websockets'].append(ws)
+        request.app['websockets'].add(ws)
         try:
             async for msg in ws:
                 ...
         finally:
-            request.app['websockets'].remove(ws)
+            request.app['websockets'].discard(ws)
 
         return ws
 
 Signal handler may look like::
+
+    from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
         for ws in app['websockets']:
@@ -945,13 +950,12 @@ Install it with ``pip``:
     $ pip install aiohttp_debugtoolbar
 
 
-After that attach the :mod:`aiohttp_debugtoolbar` middleware to your
-:class:`aiohttp.web.Application` and call :func:`aiohttp_debugtoolbar.setup`::
+Just call :func:`aiohttp_debugtoolbar.setup`::
 
     import aiohttp_debugtoolbar
     from aiohttp_debugtoolbar import toolbar_middleware_factory
 
-    app = web.Application(middlewares=[toolbar_middleware_factory])
+    app = web.Application()
     aiohttp_debugtoolbar.setup(app)
 
 The toolbar is ready to use. Enjoy!!!

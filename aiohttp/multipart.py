@@ -14,7 +14,7 @@ from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HttpParser
-from .payload import (JsonPayload, LookupError, Payload, StringPayload,
+from .payload import (JsonPayload, LookupError, Order, Payload, StringPayload,
                       get_payload, payload_type)
 
 
@@ -434,7 +434,7 @@ class BodyPartReader:
         return content_disposition_filename(params, 'filename')
 
 
-@payload_type(BodyPartReader)
+@payload_type(BodyPartReader, order=Order.try_first)
 class BodyPartReaderPayload(Payload):
 
     def __init__(self, value, *args, **kwargs):
