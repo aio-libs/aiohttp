@@ -38,7 +38,10 @@ def protocol():
 @pytest.fixture(params=REQUEST_PARSERS)
 def parser(loop, protocol, request):
     """Parser implementations"""
-    return request.param(protocol, loop, 8190, 32768, 8190)
+    return request.param(protocol, loop,
+                         max_line_size=8190,
+                         max_headers=32768,
+                         max_field_size=8190)
 
 
 @pytest.fixture(params=REQUEST_PARSERS)
@@ -50,7 +53,10 @@ def request_cls(request):
 @pytest.fixture(params=RESPONSE_PARSERS)
 def response(loop, protocol, request):
     """Parser implementations"""
-    return request.param(protocol, loop, 8190, 32768, 8190)
+    return request.param(protocol, loop,
+                         max_line_size=8190,
+                         max_headers=32768,
+                         max_field_size=8190)
 
 
 @pytest.fixture(params=RESPONSE_PARSERS)
