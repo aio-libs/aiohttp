@@ -364,33 +364,80 @@ def test_invalid_name(parser):
         parser.feed_data(text)
 
 
-def test_max_header_field_size(parser):
-    name = b'test' * 10 * 1024
+@pytest.mark.parametrize('size', [40960, 8191])
+def test_max_header_field_size(parser, size):
+    name = b't' * size
     text = (b'GET /test HTTP/1.1\r\n' + name + b':data\r\n\r\n')
 
-    match = "400, message='Got more than 8190 bytes \(40960\) when reading"
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
 
-def test_max_header_value_size(parser):
-    name = b'test' * 10 * 1024
+def test_max_header_field_size_under_limit(parser):
+    name = b't' * 8190
+    text = (b'GET /test HTTP/1.1\r\n' + name + b':data\r\n\r\n')
+
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg == (
+        'GET', '/test', (1, 1),
+        CIMultiDict({name.decode(): 'data'}),
+        ((name, b'data'),),
+        False, None, False, False, URL('/test'))
+
+
+@pytest.mark.parametrize('size', [40960, 8191])
+def test_max_header_value_size(parser, size):
+    name = b't' * size
     text = (b'GET /test HTTP/1.1\r\n'
             b'data:' + name + b'\r\n\r\n')
 
-    match = "400, message='Got more than 8190 bytes \(40960\) when reading"
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
 
-def test_max_header_value_size_continuation(parser):
-    name = b'test' * 10 * 1024
+def test_max_header_value_size_under_limit(parser):
+    value = b'A' * 8190
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'data:' + value + b'\r\n\r\n')
+
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg == (
+        'GET', '/test', (1, 1),
+        CIMultiDict({'data': value.decode()}),
+        ((b'data', value),),
+        False, None, False, False, URL('/test'))
+
+
+@pytest.mark.parametrize('size', [40965, 8191])
+def test_max_header_value_size_continuation(parser, size):
+    name = b'T' * (size - 5)
     text = (b'GET /test HTTP/1.1\r\n'
             b'data: test\r\n ' + name + b'\r\n\r\n')
 
-    match = "400, message='Got more than 8190 bytes \(40965\) when reading"
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
+
+
+def test_max_header_value_size_continuation_under_limit(parser):
+    value = b'A' * 8185
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'data: test\r\n ' + value + b'\r\n\r\n')
+
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg == (
+        'GET', '/test', (1, 1),
+        CIMultiDict({'data': 'test ' + value.decode()}),
+        ((b'data', b'test ' + value),),
+        False, None, False, False, URL('/test'))
 
 
 def test_http_request_parser(parser):
@@ -461,11 +508,23 @@ def test_http_request_parser_bad_version(parser):
         parser.feed_data(b'GET //get HT/11\r\n\r\n')
 
 
-def test_http_request_max_status_line(parser):
-    match = "400, message='Got more than 8190 bytes \(40965\) when reading"
+@pytest.mark.parametrize('size', [40965, 8191])
+def test_http_request_max_status_line(parser, size):
+    path = b't' * (size - 5)
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(
-            b'GET /path' + b'test' * 10 * 1024 + b' HTTP/1.1\r\n\r\n')
+            b'GET /path' + path + b' HTTP/1.1\r\n\r\n')
+
+
+def test_http_request_max_status_line_under_limit(parser):
+    path = b't' * (8190 - 5)
+    messages, upgraded, tail = parser.feed_data(
+        b'GET /path' + path + b' HTTP/1.1\r\n\r\n')
+    msg = messages[0][0]
+    assert msg == ('GET', '/path' + path.decode(), (1, 1), CIMultiDict(), (),
+                   False, None, False, False, URL('/path' + path.decode()))
 
 
 def test_http_response_parser_utf8(response):
@@ -484,11 +543,24 @@ def test_http_response_parser_utf8(response):
     assert not tail
 
 
-def test_http_response_parser_bad_status_line_too_long(response):
-    match = "400, message='Got more than 8190 bytes \(40962\) when reading"
+@pytest.mark.parametrize('size', [40962, 8191])
+def test_http_response_parser_bad_status_line_too_long(response, size):
+    reason = b't' * (size - 2)
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
     with pytest.raises(http_exceptions.LineTooLong, match=match):
         response.feed_data(
-            b'HTTP/1.1 200 Ok' + b'test' * 10 * 1024 + b'\r\n\r\n')
+            b'HTTP/1.1 200 Ok' + reason + b'\r\n\r\n')
+
+
+def test_http_response_parser_status_line_under_limit(response):
+    reason = b'O' * 8190
+    messages, upgraded, tail = response.feed_data(
+        b'HTTP/1.1 200 ' + reason + b'\r\n\r\n')
+    msg = messages[0][0]
+    assert msg.version == (1, 1)
+    assert msg.code == 200
+    assert msg.reason == reason.decode()
 
 
 def test_http_response_parser_bad_version(response):
