@@ -256,8 +256,6 @@ class HttpParser:
         line_count = len(lines)
 
         while line:
-            header_length = len(line)
-
             # Parse initial header name : value pair.
             try:
                 bname, bvalue = line.split(b':', 1)
@@ -265,8 +263,17 @@ class HttpParser:
                 raise InvalidHeader(line) from None
 
             bname = bname.strip(b' \t')
+            bvalue = bvalue.lstrip()
             if HDRRE.search(bname):
                 raise InvalidHeader(bname)
+            if len(bname) > self.max_field_size:
+                raise LineTooLong(
+                    "request header name {}".format(
+                        bname.decode("utf8", "xmlcharrefreplace")),
+                    self.max_field_size,
+                    len(bname))
+
+            header_length = len(bvalue)
 
             # next line
             lines_idx += 1
@@ -351,16 +358,16 @@ class HttpRequestParserPy(HttpParser):
     """
 
     def parse_message(self, lines):
-        if len(lines[0]) > self.max_line_size:
-            raise LineTooLong(
-                'Status line is too long', self.max_line_size, len(lines[0]))
-
         # request line
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             method, path, version = line.split(None, 2)
         except ValueError:
             raise BadStatusLine(line) from None
+
+        if len(path) > self.max_line_size:
+            raise LineTooLong(
+                'Status line is too long', self.max_line_size, len(path))
 
         # method
         method = method.upper()
@@ -399,20 +406,21 @@ class HttpResponseParserPy(HttpParser):
     Returns RawResponseMessage"""
 
     def parse_message(self, lines):
-        if len(lines[0]) > self.max_line_size:
-            raise LineTooLong(
-                'Status line is too long', self.max_line_size, len(lines[0]))
-
         line = lines[0].decode('utf-8', 'surrogateescape')
         try:
             version, status = line.split(None, 1)
         except ValueError:
             raise BadStatusLine(line) from None
-        else:
-            try:
-                status, reason = status.split(None, 1)
-            except ValueError:
-                reason = ''
+
+        try:
+            status, reason = status.split(None, 1)
+        except ValueError:
+            reason = ''
+
+        if len(reason) > self.max_line_size:
+            raise LineTooLong(
+                'Status line is too long', self.max_line_size,
+                len(reason))
 
         # version
         match = VERSRE.match(version)
