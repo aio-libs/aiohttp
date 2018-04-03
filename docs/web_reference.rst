@@ -268,7 +268,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
          Use :meth:`can_read_body` instead.
 
- .. attribute:: content_type
+   .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
 
