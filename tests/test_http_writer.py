@@ -171,6 +171,18 @@ async def test_write_calls_callback(protocol, transport, loop):
     assert on_chunk_sent.call_args == mock.call(chunk)
 
 
+async def test_write_eof_calls_callback(protocol, transport, loop):
+    on_chunk_sent = make_mocked_coro()
+    msg = http.StreamWriter(
+        protocol, transport, loop,
+        on_chunk_sent=on_chunk_sent
+    )
+    chunk = b'1'
+    await msg.write_eof(chunk=chunk)
+    assert on_chunk_sent.called
+    assert on_chunk_sent.call_args == mock.call(chunk)
+
+
 async def test_write_to_closing_transport(protocol, transport, loop):
     msg = http.StreamWriter(protocol, transport, loop)
 

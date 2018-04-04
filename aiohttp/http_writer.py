@@ -122,6 +122,9 @@ class StreamWriter(AbstractStreamWriter):
                     chunk = b'0\r\n\r\n'
 
         if chunk:
+            if self._on_chunk_sent is not None:
+                await self._on_chunk_sent(chunk)
+
             self._write(chunk)
 
         await self.drain()
