@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import datetime
+import io
 import json
 import re
 import socket
@@ -13,19 +14,27 @@ from http.cookies import SimpleCookie
 from types import MappingProxyType
 from urllib.parse import parse_qsl
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy
+import attr
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, reify, sentinel
+from .helpers import DEBUG, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
 
-FileField = collections.namedtuple(
-    'Field', 'name filename file content_type headers')
+
+@attr.s(frozen=True, slots=True)
+class FileField:
+    name = attr.ib(type=str)
+    filename = attr.ib(type=str)
+    file = attr.ib(type=io.BufferedReader)
+    content_type = attr.ib(type=str)
+    headers = attr.ib(type=CIMultiDictProxy)
+
 
 _TCHAR = string.digits + string.ascii_letters + r"!#$%&'*+.^_`|~-"
 # '-' at the end to prevent interpretation as range in a char class
@@ -62,6 +71,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
+    ATTRS = HeadersMixin.ATTRS | frozenset([
+        '_message', '_protocol', '_payload_writer', '_payload', '_headers',
+        '_method', '_version', '_rel_url', '_post', '_read_bytes',
+        '_state', '_cache', '_task', '_client_max_size', '_loop'])
+
     def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
                  *, client_max_size=1024**2,
@@ -87,9 +101,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._client_max_size = client_max_size
         self._loop = loop
 
-        self._scheme = scheme
-        self._host = host
-        self._remote = remote
+        if scheme is not None:
+            self._cache['scheme'] = scheme
+        if host is not None:
+            self._cache['host'] = host
+        if remote is not None:
+            self._cache['remote'] = remote
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel, scheme=sentinel, host=sentinel,
@@ -149,6 +166,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def transport(self):
+        if self._protocol is None:
+            return None
         return self._protocol.transport
 
     @property
@@ -262,9 +281,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         'http' or 'https'.
         """
-        scheme = self._scheme
-        if scheme is not None:
-            return scheme
         if self.transport.get_extra_info('sslcontext'):
             return 'https'
         else:
@@ -296,9 +312,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - HOST HTTP header
         - socket.getfqdn() value
         """
-        host = self._host
-        if host is not None:
-            return host
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
             return host
@@ -314,9 +327,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
-        remote = self._remote
-        if remote is not None:
-            return remote
+        if self.transport is None:
+            return None
         peername = self.transport.get_extra_info('peername')
         if isinstance(peername, (list, tuple)):
             return peername[0]
@@ -376,19 +388,41 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """A sequence of pars for all headers."""
         return self._message.raw_headers
 
+    @staticmethod
+    def _http_date(_date_str):
+        """Process a date string, return a datetime object
+        """
+        if _date_str is not None:
+            timetuple = parsedate(_date_str)
+            if timetuple is not None:
+                return datetime.datetime(*timetuple[:6],
+                                         tzinfo=datetime.timezone.utc)
+        return None
+
     @reify
     def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
         """The value of If-Modified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        httpdate = self.headers.get(_IF_MODIFIED_SINCE)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6],
-                                         tzinfo=datetime.timezone.utc)
-        return None
+        return self._http_date(self.headers.get(_IF_MODIFIED_SINCE))
+
+    @reify
+    def if_unmodified_since(self,
+                            _IF_UNMODIFIED_SINCE=hdrs.IF_UNMODIFIED_SINCE):
+        """The value of If-Unmodified-Since HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        return self._http_date(self.headers.get(_IF_UNMODIFIED_SINCE))
+
+    @reify
+    def if_range(self, _IF_RANGE=hdrs.IF_RANGE):
+        """The value of If-Range HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        return self._http_date(self.headers.get(_IF_RANGE))
 
     @property
     def keep_alive(self):
@@ -420,14 +454,15 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 pattern = r'^bytes=(\d*)-(\d*)$'
                 start, end = re.findall(pattern, rng)[0]
             except IndexError:  # pattern was not found in header
-                raise ValueError("range not in acceptible format")
+                raise ValueError("range not in acceptable format")
 
             end = int(end) if end else None
             start = int(start) if start else None
 
             if start is None and end is not None:
                 # end with no start is to return tail of content
-                end = -end
+                start = -end
+                end = None
 
             if start is not None and end is not None:
                 # end is inclusive in range header, exclusive for slice
@@ -438,6 +473,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
             if start is end is None:  # No valid range supplied
                 raise ValueError('No start or end of range specified')
+
         return slice(start, end, 1)
 
     @property
@@ -587,12 +623,24 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
 class Request(BaseRequest):
 
+    ATTRS = BaseRequest.ATTRS | frozenset(['_match_info'])
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # matchdict, route_name, handler
         # or information about traversal lookup
         self._match_info = None  # initialized after route resolving
+
+    if DEBUG:
+        def __setattr__(self, name, val):
+            if name not in self.ATTRS:
+                warnings.warn("Setting custom {}.{} attribute "
+                              "is discouraged".format(self.__class__.__name__,
+                                                      name),
+                              DeprecationWarning,
+                              stacklevel=2)
+            super().__setattr__(name, val)
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel, scheme=sentinel, host=sentinel,

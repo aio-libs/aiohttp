@@ -7,6 +7,7 @@ from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion
+from aiohttp.helpers import DEBUG
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPRequestEntityTooLarge
@@ -108,6 +109,58 @@ def test_content_length():
                               CIMultiDict([('CONTENT-LENGTH', '123')]))
 
     assert 123 == req.content_length
+
+
+def test_range_to_slice_head():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=0-499')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[:500]
+
+
+def test_range_to_slice_mid():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=500-999')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[500:1000]
+
+
+def test_range_to_slice_tail_start():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=9500-')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[-500:]
+
+
+def test_range_to_slice_tail_stop():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=-500')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[-500:]
 
 
 def test_non_keepalive_on_http10():
@@ -547,3 +600,17 @@ def test_clone_remote():
     req = make_mocked_request('GET', '/')
     req2 = req.clone(remote='11.11.11.11')
     assert req2.remote == '11.11.11.11'
+
+
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
+def test_request_custom_attr():
+    req = make_mocked_request('GET', '/')
+    with pytest.warns(DeprecationWarning):
+        req.custom = None
+
+
+def test_remote_with_closed_transport():
+    req = make_mocked_request('GET', '/')
+    req._protocol = None
+    assert req.remote is None

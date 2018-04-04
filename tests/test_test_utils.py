@@ -7,11 +7,13 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.test_utils import AioHTTPTestCase
+from aiohttp.test_utils import RawTestServer as _RawTestServer
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
-from aiohttp.test_utils import (AioHTTPTestCase, loop_context,
-                                make_mocked_request, setup_test_loop,
-                                teardown_test_loop, unittest_run_loop)
+from aiohttp.test_utils import (loop_context, make_mocked_request,
+                                setup_test_loop, teardown_test_loop,
+                                unittest_run_loop)
 
 
 _hello_world_str = "Hello, world"
@@ -49,7 +51,7 @@ def _create_example_app():
 
 
 # these exist to test the pytest scenario
-@pytest.yield_fixture
+@pytest.fixture
 def loop():
     with loop_context() as loop:
         yield loop
@@ -60,7 +62,7 @@ def app():
     return _create_example_app()
 
 
-@pytest.yield_fixture
+@pytest.fixture
 def test_client(loop, app):
     client = _TestClient(_TestServer(app, loop=loop), loop=loop)
     loop.run_until_complete(client.start_server())
@@ -75,14 +77,14 @@ def test_with_test_server_fails(loop):
             pass
 
 
-def test_with_test_client_fails(loop):
+def test_with_client_fails(loop):
     app = _create_example_app()
     with pytest.raises(TypeError):
         with _TestClient(_TestServer(app, loop=loop), loop=loop):
             pass
 
 
-def test_test_client_close_is_idempotent():
+def test_aiohttp_client_close_is_idempotent():
     """
     a test client, called multiple times, should
     not attempt to close the server again.
@@ -206,13 +208,30 @@ def test_make_mocked_request_transport():
 
 async def test_test_client_props(loop):
     app = _create_example_app()
-    client = _TestClient(_TestServer(app, host='localhost', loop=loop),
+    client = _TestClient(_TestServer(app, host='127.0.0.1', loop=loop),
                          loop=loop)
-    assert client.host == 'localhost'
+    assert client.host == '127.0.0.1'
     assert client.port is None
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        assert client.app is not None
+    assert client.port is None
+
+
+async def test_test_client_raw_server_props(loop):
+
+    async def hello(request):
+        return web.Response(body=_hello_world_bytes)
+
+    client = _TestClient(_RawTestServer(hello, host='127.0.0.1', loop=loop),
+                         loop=loop)
+    assert client.host == '127.0.0.1'
+    assert client.port is None
+    async with client:
+        assert isinstance(client.port, int)
+        assert client.server is not None
+        assert client.app is None
     assert client.port is None
 
 
@@ -275,8 +294,8 @@ async def test_client_context_manager_response(method, app, loop):
                 assert "Hello, world" in text
 
 
-async def test_custom_port(loop, app, unused_port):
-    port = unused_port()
+async def test_custom_port(loop, app, aiohttp_unused_port):
+    port = aiohttp_unused_port()
     client = _TestClient(_TestServer(app, loop=loop, port=port), loop=loop)
     await client.start_server()
 

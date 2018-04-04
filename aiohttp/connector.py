@@ -420,7 +420,7 @@ class BaseConnector:
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
-            except Exception:
+            except BaseException:
                 # signal to waiter
                 if key in self._waiters:
                     for waiter in self._waiters[key]:
@@ -660,14 +660,14 @@ class TCPConnector(BaseConnector):
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_resolvehost_start()
+                    await trace.send_dns_resolvehost_start(host)
 
             res = (await self._resolver.resolve(
                 host, port, family=self._family))
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_resolvehost_end()
+                    await trace.send_dns_resolvehost_end(host)
 
             return res
 
@@ -678,26 +678,26 @@ class TCPConnector(BaseConnector):
 
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_hit()
+                    await trace.send_dns_cache_hit(host)
 
             return self._cached_hosts.next_addrs(key)
 
         if key in self._throttle_dns_events:
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_hit()
+                    await trace.send_dns_cache_hit(host)
             await self._throttle_dns_events[key].wait()
         else:
             if traces:
                 for trace in traces:
-                    await trace.send_dns_cache_miss()
+                    await trace.send_dns_cache_miss(host)
             self._throttle_dns_events[key] = \
                 EventResultOrError(self._loop)
             try:
 
                 if traces:
                     for trace in traces:
-                        await trace.send_dns_resolvehost_start()
+                        await trace.send_dns_resolvehost_start(host)
 
                 addrs = await \
                     asyncio.shield(self._resolver.resolve(host,
@@ -706,11 +706,11 @@ class TCPConnector(BaseConnector):
                                    loop=self._loop)
                 if traces:
                     for trace in traces:
-                        await trace.send_dns_resolvehost_end()
+                        await trace.send_dns_resolvehost_end(host)
 
                 self._cached_hosts.add(key, addrs)
                 self._throttle_dns_events[key].set()
-            except Exception as e:
+            except BaseException as e:
                 # any DNS exception, independently of the implementation
                 # is set for the waiters to raise the same exception.
                 self._throttle_dns_events[key].set(exc=e)
@@ -728,12 +728,12 @@ class TCPConnector(BaseConnector):
         if req.proxy:
             _, proto = await self._create_proxy_connection(
                 req,
-                traces=None
+                traces=traces
             )
         else:
             _, proto = await self._create_direct_connection(
                 req,
-                traces=None
+                traces=traces
             )
 
         return proto
@@ -893,10 +893,10 @@ class TCPConnector(BaseConnector):
             proxy_req.url = req.url
             key = (req.host, req.port, req.ssl)
             conn = Connection(self, key, proto, self._loop)
-            proxy_resp = proxy_req.send(conn)
+            proxy_resp = await proxy_req.send(conn)
             try:
                 resp = await proxy_resp.start(conn, True)
-            except Exception:
+            except BaseException:
                 proxy_resp.close()
                 conn.close()
                 raise
@@ -908,7 +908,7 @@ class TCPConnector(BaseConnector):
                         raise ClientHttpProxyError(
                             proxy_resp.request_info,
                             resp.history,
-                            code=resp.status,
+                            status=resp.status,
                             message=resp.reason,
                             headers=resp.headers)
                     rawsock = transport.get_extra_info('socket', default=None)

@@ -7,6 +7,8 @@ from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
 
+import yarl
+
 from . import helpers, http
 from .helpers import CeilTimeout
 from .http import HttpProcessingError, HttpRequestParser, StreamWriter
@@ -22,7 +24,7 @@ __all__ = ('RequestHandler', 'RequestPayloadError')
 
 ERROR = http.RawRequestMessage(
     'UNKNOWN', '/', http.HttpVersion10, {},
-    {}, True, False, False, False, http.URL('/'))
+    {}, True, False, False, False, yarl.URL('/'))
 
 
 class RequestPayloadError(Exception):
@@ -70,6 +72,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     """
     _request_count = 0
     _keepalive = False  # keep transport open
+    KEEPALIVE_RESCHEDULE_DELAY = 1
 
     def __init__(self, manager, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
@@ -241,14 +244,19 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         500, exc))
                 self.close()
             else:
-                for (msg, payload) in messages:
-                    self._request_count += 1
-                    self._messages.append((msg, payload))
+                if messages:
+                    # sometimes the parser returns no messages
+                    for (msg, payload) in messages:
+                        self._request_count += 1
+                        self._messages.append((msg, payload))
 
-                if self._waiter:
-                    self._waiter.set_result(None)
+                    waiter = self._waiter
+                    if waiter is not None:
+                        if not waiter.done():
+                            # don't set result twice
+                            waiter.set_result(None)
 
-                self._upgraded = upgraded
+                self._upgrade = upgraded
                 if upgraded and tail:
                     self._message_tail = tail
 
@@ -268,6 +276,9 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         :param bool val: new state.
         """
         self._keepalive = val
+        if self._keepalive_handle:
+            self._keepalive_handle.cancel()
+            self._keepalive_handle = None
 
     def close(self):
         """Stop accepting new pipelinig messages and close
@@ -299,7 +310,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self.logger.exception(*args, **kw)
 
     def _process_keepalive(self):
-        if self._force_close:
+        if self._force_close or not self._keepalive:
             return
 
         next = self._keepalive_time + self._keepalive_timeout
@@ -310,8 +321,10 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 self.force_close(send_last_heartbeat=True)
                 return
 
-        self._keepalive_handle = self._loop.call_at(
-            next, self._process_keepalive)
+        # not all request handlers are done,
+        # reschedule itself to next second
+        self._keepalive_handle = self._loop.call_later(
+            self.KEEPALIVE_RESCHEDULE_DELAY, self._process_keepalive)
 
     def pause_reading(self):
         if not self._reading_paused:

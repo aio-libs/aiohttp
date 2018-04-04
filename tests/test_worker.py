@@ -85,7 +85,24 @@ def test_run(worker, loop):
     with pytest.raises(SystemExit):
         worker.run()
     assert worker._run.called
-    worker._runner.server is None
+    assert loop.is_closed()
+
+
+def test_run_async_factory(worker, loop):
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    app = worker.wsgi
+
+    async def make_app():
+        return app
+    worker.wsgi = make_app
+
+    worker.loop = loop
+    worker._run = make_mocked_coro(None)
+    with pytest.raises(SystemExit):
+        worker.run()
+    assert worker._run.called
     assert loop.is_closed()
 
 
@@ -165,41 +182,13 @@ def test__get_valid_log_format_exc(worker):
     assert '%(name)s' in str(exc)
 
 
-async def test__run_ok(worker, loop, unused_port):
-    skip_if_no_dict(loop)
-
-    worker.ppid = 1
-    worker.alive = True
-    sock = socket.socket()
-    addr = ('localhost', unused_port())
-    sock.bind(addr)
-    worker.sockets = [sock]
-    worker.log = mock.Mock()
-    worker.loop = loop
-    worker.cfg.max_requests = 100
-    worker.cfg.is_ssl = False
-    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-
-    worker._runner = web.AppRunner(worker.wsgi)
-    await worker._runner.setup()
-
-    await worker._run()
-
-    worker.notify.assert_called_with()
-    if os.getppid() != 1:  # not Docker
-        worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                           worker)
-
-    assert worker._runner.server is None
-
-
-async def test__run_ok_parent_changed(worker, loop, unused_port):
+async def test__run_ok_parent_changed(worker, loop, aiohttp_unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = 0
     worker.alive = True
     sock = socket.socket()
-    addr = ('localhost', unused_port())
+    addr = ('localhost', aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()
@@ -219,13 +208,13 @@ async def test__run_ok_parent_changed(worker, loop, unused_port):
     assert worker._runner.server is None
 
 
-async def test__run_exc(worker, loop, unused_port):
+async def test__run_exc(worker, loop, aiohttp_unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = os.getppid()
     worker.alive = True
     sock = socket.socket()
-    addr = ('localhost', unused_port())
+    addr = ('localhost', aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()
@@ -249,14 +238,15 @@ async def test__run_exc(worker, loop, unused_port):
     assert worker._runner.server is None
 
 
-async def test__run_ok_max_requests_exceeded(worker, loop, unused_port):
+async def test__run_ok_max_requests_exceeded(worker, loop,
+                                             aiohttp_unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = os.getppid()
     worker.alive = True
     worker.servers = {}
     sock = socket.socket()
-    addr = ('localhost', unused_port())
+    addr = ('localhost', aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()

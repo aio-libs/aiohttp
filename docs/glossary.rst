@@ -90,6 +90,18 @@
       Applying :term:`percent-encoding` to non-safe symbols and decode
       percent encoded safe symbols back.
 
+      According to :rfc:`3986` allowed path symbols are::
+
+         allowed       = unreserved / pct-encoded / sub-delims
+                         / ":" / "@" / "/"
+
+         pct-encoded   = "%" HEXDIG HEXDIG
+
+         unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+
+         sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+                         / "*" / "+" / "," / ";" / "="
+
    resource
 
       A concept reflects the HTTP **path**, every resource corresponds

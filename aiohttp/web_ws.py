@@ -3,9 +3,9 @@ import base64
 import binascii
 import hashlib
 import json
-from collections import namedtuple
 
 import async_timeout
+import attr
 from multidict import CIMultiDict
 
 from . import hdrs
@@ -14,21 +14,21 @@ from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
                    WebSocketError, WebSocketReader, WebSocketWriter, WSMessage,
                    WSMsgType, ws_ext_gen, ws_ext_parse)
 from .log import ws_logger
-from .streams import FlowControlDataQueue
+from .streams import EofStream, FlowControlDataQueue
 from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
 from .web_response import StreamResponse
 
 
-__all__ = ('WebSocketResponse', 'WebSocketReady', 'MsgType', 'WSMsgType',)
+__all__ = ('WebSocketResponse', 'WebSocketReady', 'WSMsgType',)
 
 THRESHOLD_CONNLOST_ACCESS = 5
 
 
-# deprecated since 1.0
-MsgType = WSMsgType
+@attr.s(frozen=True, slots=True)
+class WebSocketReady:
+    ok = attr.ib(type=bool)
+    protocol = attr.ib(type=str)
 
-
-class WebSocketReady(namedtuple('WebSocketReady', 'ok protocol')):
     def __bool__(self):
         return self.ok
 
@@ -58,7 +58,7 @@ class WebSocketResponse(StreamResponse):
         self._heartbeat = heartbeat
         self._heartbeat_cb = None
         if heartbeat is not None:
-            self._pong_heartbeat = heartbeat/2.0
+            self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb = None
         self._compress = compress
 
@@ -80,7 +80,10 @@ class WebSocketResponse(StreamResponse):
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            self._writer.ping()
+            # fire-and-forget a task is not perfect but maybe ok for
+            # sending ping. Otherwise we need a long-living heartbeat
+            # task in the class.
+            self._loop.create_task(self._writer.ping())
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -201,6 +204,8 @@ class WebSocketResponse(StreamResponse):
             request._protocol, limit=2 ** 16, loop=self._loop)
         request.protocol.set_parser(WebSocketReader(
             self._reader, compress=self._compress))
+        # disable HTTP keepalive for WebSocket
+        request.protocol.keep_alive(False)
 
     def can_prepare(self, request):
         if self._writer is not None:
@@ -284,7 +289,7 @@ class WebSocketResponse(StreamResponse):
         if not self._closed:
             self._closed = True
             try:
-                self._writer.close(code, message)
+                await self._writer.close(code, message)
                 await self._payload_writer.drain()
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
@@ -349,6 +354,10 @@ class WebSocketResponse(StreamResponse):
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
+            except EofStream:
+                self._close_code = 1000
+                await self.close()
+                return WSMessage(WSMsgType.CLOSED, None, None)
             except WebSocketError as exc:
                 self._close_code = exc.code
                 await self.close(code=exc.code)

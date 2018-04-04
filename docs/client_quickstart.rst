@@ -1,7 +1,8 @@
 .. _aiohttp-client-quickstart:
 
-Client Quickstart
-=================
+===================
+ Client Quickstart
+===================
 
 .. currentmodule:: aiohttp
 
@@ -16,24 +17,25 @@ Let's get started with some simple examples.
 
 
 Make a Request
---------------
+==============
 
 Begin by importing the aiohttp module::
 
     import aiohttp
 
-Now, let's try to get a web-page. For example let's get GitHub's public
-time-line::
+Now, let's try to get a web-page. For example let's query
+``http://httpbin.org/get``::
 
     async with aiohttp.ClientSession() as session:
-        async with session.get('https://api.github.com/events') as resp:
+        async with session.get('http://httpbin.org/get') as resp:
             print(resp.status)
             print(await resp.text())
 
-Now, we have a :class:`ClientSession` called ``session`` and
-a :class:`ClientResponse` object called ``resp``. We can get all the
+Now, we have a :class:`ClientSession` called ``session`` and a
+:class:`ClientResponse` object called ``resp``. We can get all the
 information we need from the response.  The mandatory parameter of
-:meth:`ClientSession.get` coroutine is an HTTP url.
+:meth:`ClientSession.get` coroutine is an HTTP *url* (:class:`str` or
+class:`yarl.URL` instance).
 
 In order to make an HTTP POST request use :meth:`ClientSession.post` coroutine::
 
@@ -52,12 +54,16 @@ Other HTTP methods are available as well::
    Don't create a session per request. Most likely you need a session
    per application which performs all requests altogether.
 
+   More complex cases may require a session per site, e.g. one for
+   Github and other one for Facebook APIs. Anyway making a session for
+   every request is a **very bad** idea.
+
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
 
 Passing Parameters In URLs
---------------------------
+==========================
 
 You often want to send some sort of data in the URL's query string. If
 you were constructing the URL by hand, this data would be given as key/value
@@ -70,7 +76,8 @@ following code::
     params = {'key1': 'value1', 'key2': 'value2'}
     async with session.get('http://httpbin.org/get',
                            params=params) as resp:
-        assert str(resp.url) == 'http://httpbin.org/get?key2=value2&key1=value1'
+        expect = 'http://httpbin.org/get?key2=value2&key1=value1'
+        assert str(resp.url) == expect
 
 You can see that the URL has been correctly encoded by printing the URL.
 
@@ -84,7 +91,8 @@ that case you can specify multiple values for each key::
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
                            params=params) as r:
-        assert str(r.url) == 'http://httpbin.org/get?key=value2&key=value1'
+        expect == 'http://httpbin.org/get?key=value2&key=value1'
+        assert str(r.url) == expect
 
 You can also pass :class:`str` content as param, but beware -- content
 is not encoded by library. Note that ``+`` is not encoded::
@@ -108,14 +116,15 @@ is not encoded by library. Note that ``+`` is not encoded::
 
    To disable canonization use ``encoded=True`` parameter for URL construction::
 
-      await session.get(URL('http://example.com/%30', encoded=True))
+      await session.get(
+          URL('http://example.com/%30', encoded=True))
 
 .. warning::
 
    Passing *params* overrides ``encoded=True``, never use both options.
 
 Response Content and Status Code
---------------------------------
+================================
 
 We can read the content of the server's response and it's status
 code. Consider the GitHub time-line again::
@@ -136,7 +145,7 @@ specify custom encoding for the :meth:`~ClientResponse.text` method::
 
 
 Binary Response Content
------------------------
+=======================
 
 You can also access the response body as bytes, for non-text requests::
 
@@ -153,7 +162,7 @@ You can enable ``brotli`` transfer-encodings support,
 just install  `brotlipy <https://github.com/python-hyper/brotlipy>`_.
 
 JSON Request
-------------
+============
 
 Any of session's request methods like :func:`request`,
 :meth:`ClientSession.get`, :meth:`ClientSesssion.post` etc. accept
@@ -170,8 +179,9 @@ parameter::
 
   import ujson
 
-  async with aiohttp.ClientSession(json_serialize=ujson.dumps) as session:
-      async with session.post(url, json={'test': 'object'})
+  async with aiohttp.ClientSession(
+          json_serialize=ujson.dumps) as session:
+      await session.post(url, json={'test': 'object'})
 
 .. note::
 
@@ -179,7 +189,7 @@ parameter::
    incompatible.
 
 JSON Response Content
----------------------
+=====================
 
 There's also a built-in JSON decoder, in case you're dealing with JSON data::
 
@@ -198,7 +208,7 @@ decoder functions for the :meth:`~ClientResponse.json` call.
 
 
 Streaming Response Content
---------------------------
+==========================
 
 While methods :meth:`~ClientResponse.read`,
 :meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` are very
@@ -228,7 +238,7 @@ It is not possible to use :meth:`~ClientResponse.read`,
 explicit reading from :attr:`~ClientResponse.content`.
 
 More complicated POST requests
-------------------------------
+==============================
 
 Typically, you want to send some form-encoded data -- much like an HTML form.
 To do this, simply pass a dictionary to the *data* argument. Your
@@ -269,7 +279,7 @@ To send text with appropriate content-type just use ``text`` attribute ::
         ...
 
 POST a Multipart-Encoded File
------------------------------
+=============================
 
 To upload Multipart-encoded files::
 
@@ -297,7 +307,7 @@ for supported format information.
 
 
 Streaming uploads
------------------
+=================
 
 :mod:`aiohttp` supports multiple types of streaming uploads, which allows you to
 send large files without reading them into memory.
@@ -308,15 +318,14 @@ As a simple case, simply provide a file-like object for your body::
        await session.post('http://httpbin.org/post', data=f)
 
 
-Or you can use :class:`aiohttp.streamer` decorator::
+Or you can use *asynchronous generator*::
 
-  @aiohttp.streamer
-  def file_sender(writer, file_name=None):
-      with open(file_name, 'rb') as f:
-          chunk = f.read(2**16)
+  async def file_sender(file_name=None):
+      async with aiofiles.open(file_name, 'rb') as f:
+          chunk = await f.read(64*1024)
           while chunk:
-              yield from writer.write(chunk)
-              chunk = f.read(2**16)
+              yield chunk
+              chunk = await f.read(64*1024)
 
   # Then you can use file_sender as a data provider:
 
@@ -324,43 +333,32 @@ Or you can use :class:`aiohttp.streamer` decorator::
                           data=file_sender(file_name='huge_file')) as resp:
       print(await resp.text())
 
-Also it is possible to use a :class:`~aiohttp.streams.StreamReader`
-object. Lets say we want to upload a file from another request and
-calculate the file SHA1 hash::
 
-   async def feed_stream(resp, stream):
-       h = hashlib.sha256()
+Because the :attr:`~aiohttp.ClientResponse.content` attribute is a
+:class:`~aiohttp.StreamReader` (provides async iterator protocol), you
+can chain get and post requests together::
 
-       while True:
-           chunk = await resp.content.readany()
-           if not chunk:
-               break
-           h.update(chunk)
-           stream.feed_data(chunk)
-
-       return h.hexdigest()
-
-   resp = session.get('http://httpbin.org/post')
-   stream = StreamReader()
-   loop.create_task(session.post('http://httpbin.org/post', data=stream))
-
-   file_hash = await feed_stream(resp, stream)
-
-
-Because the response content attribute is a
-:class:`~aiohttp.streams.StreamReader`, you can chain get and post
-requests together::
-
-   r = await session.get('http://python.org')
+   resp = await session.get('http://python.org')
    await session.post('http://httpbin.org/post',
-                      data=r.content)
+                      data=resp.content)
+
+.. note::
+
+   Python 3.5 has no native support for asynchronous generators, use
+   ``async_generator`` library as workaround.
+
+.. deprecated:: 3.1
+
+   ``aiohttp`` still supports ``aiohttp.streamer`` decorator but this
+   approach is deprecated in favor of *asynchronous generators* as
+   shown above.
 
 
 .. _aiohttp-client-websockets:
 
 
 WebSockets
-----------
+==========
 
 :mod:`aiohttp` works with client websockets out-of-the-box.
 
@@ -371,7 +369,7 @@ object you can communicate with websocket server using response's
 methods::
 
    session = aiohttp.ClientSession()
-   async with session.ws_connect('http://example.org/websocket') as ws:
+   async with session.ws_connect('http://example.org/ws') as ws:
 
        async for msg in ws:
            if msg.type == aiohttp.WSMsgType.TEXT:
@@ -394,7 +392,7 @@ multiple writer tasks which can only send data asynchronously (by
 
 
 Timeouts
---------
+========
 
 By default all IO operations have 5min timeout. The timeout may be
 overridden by passing ``timeout`` parameter into
@@ -404,17 +402,6 @@ overridden by passing ``timeout`` parameter into
         ...
 
 ``None`` or ``0`` disables timeout check.
-
-The example wraps a client call in :func:`async_timeout.timeout` context
-manager, adding timeout for both connecting and response body
-reading procedures::
-
-    import async_timeout
-
-    with async_timeout.timeout(0.001):
-        async with session.get('https://github.com') as r:
-            await r.text()
-
 
 .. note::
 

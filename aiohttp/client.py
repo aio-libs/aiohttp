@@ -13,8 +13,9 @@ from collections.abc import Coroutine
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
+from . import client_exceptions, client_reqrep
 from . import connector as connector_mod
-from . import client_exceptions, client_reqrep, hdrs, http, payload
+from . import hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, WSServerHandshakeError)
@@ -24,8 +25,8 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_36, CeilTimeout, TimeoutHandle, proxies_from_env,
-                      sentinel, strip_auth_from_url)
+from .helpers import (DEBUG, PY_36, CeilTimeout, TimeoutHandle,
+                      proxies_from_env, sentinel, strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -45,6 +46,16 @@ DEFAULT_TIMEOUT = 5 * 60
 
 class ClientSession:
     """First-class interface for making HTTP requests."""
+
+    ATTRS = frozenset([
+        '_source_traceback', '_connector',
+        'requote_redirect_url', '_loop', '_cookie_jar',
+        '_connector_owner', '_default_auth',
+        '_version', '_json_serialize', '_read_timeout',
+        '_conn_timeout', '_raise_for_status', '_auto_decompress',
+        '_trust_env', '_default_headers', '_skip_auto_headers',
+        '_request_class', '_response_class',
+        '_ws_response_class', '_trace_configs'])
 
     _source_traceback = None
     _connector = None
@@ -131,6 +142,21 @@ class ClientSession:
         self._trace_configs = trace_configs or []
         for trace_config in self._trace_configs:
             trace_config.freeze()
+
+    def __init_subclass__(cls):
+        warnings.warn("Inheritance class {} from ClientSession "
+                      "is discouraged".format(cls.__name__),
+                      DeprecationWarning,
+                      stacklevel=2)
+
+    if DEBUG:
+        def __setattr__(self, name, val):
+            if name not in self.ATTRS:
+                warnings.warn("Setting custom ClientSession.{} attribute "
+                              "is discouraged".format(name),
+                              DeprecationWarning,
+                              stacklevel=2)
+            super().__setattr__(name, val)
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
@@ -271,7 +297,8 @@ class ClientSession:
                     elif self._trust_env:
                         for scheme, proxy_info in proxies_from_env().items():
                             if scheme == url.scheme:
-                                proxy, proxy_auth = proxy_info
+                                proxy = proxy_info.proxy
+                                proxy_auth = proxy_info.proxy_auth
                                 break
 
                     req = self._request_class(
@@ -283,7 +310,7 @@ class ClientSession:
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
-                        ssl=ssl, proxy_headers=proxy_headers)
+                        ssl=ssl, proxy_headers=proxy_headers, traces=traces)
 
                     # connection timeout
                     try:
@@ -300,11 +327,14 @@ class ClientSession:
                     tcp_nodelay(conn.transport, True)
                     tcp_cork(conn.transport, False)
                     try:
-                        resp = req.send(conn)
                         try:
-                            await resp.start(conn, read_until_eof)
-                        except Exception:
-                            resp.close()
+                            resp = await req.send(conn)
+                            try:
+                                await resp.start(conn, read_until_eof)
+                            except BaseException:
+                                resp.close()
+                                raise
+                        except BaseException:
                             conn.close()
                             raise
                     except ClientError:
@@ -399,7 +429,7 @@ class ClientSession:
                 )
             return resp
 
-        except Exception as e:
+        except BaseException as e:
             # cleanup timer
             tm.close()
             if handle:
@@ -515,7 +545,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid response status',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
@@ -523,7 +553,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid upgrade header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
@@ -531,7 +561,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid connection header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # key calculation
@@ -543,7 +573,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid challenge response',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # websocket protocol
@@ -570,7 +600,7 @@ class ClientSession:
                             resp.request_info,
                             resp.history,
                             message=exc.args[0],
-                            code=resp.status,
+                            status=resp.status,
                             headers=resp.headers)
                 else:
                     compress = 0
@@ -585,7 +615,7 @@ class ClientSession:
             writer = WebSocketWriter(
                 proto, transport, use_mask=True,
                 compress=compress, notakeover=notakeover)
-        except Exception:
+        except BaseException:
             resp.close()
             raise
         else:

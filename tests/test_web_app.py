@@ -2,9 +2,11 @@ import asyncio
 from unittest import mock
 
 import pytest
+from async_generator import async_generator, yield_
 
 from aiohttp import log, web
 from aiohttp.abc import AbstractAccessLogger, AbstractRouter
+from aiohttp.helpers import DEBUG, PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -244,3 +246,148 @@ def test_subapp_frozen_after_adding():
 
     app.add_subapp('/prefix', subapp)
     assert subapp.frozen
+
+
+@pytest.mark.skipif(not PY_36,
+                    reason="Python 3.6+ required")
+def test_app_inheritance():
+    with pytest.warns(DeprecationWarning):
+        class A(web.Application):
+            pass
+
+
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
+def test_app_custom_attr():
+    app = web.Application()
+    with pytest.warns(DeprecationWarning):
+        app.custom = None
+
+
+async def test_cleanup_ctx():
+    app = web.Application()
+    out = []
+
+    def f(num):
+        @async_generator
+        async def inner(app):
+            out.append('pre_' + str(num))
+            await yield_(None)
+            out.append('post_' + str(num))
+        return inner
+
+    app.cleanup_ctx.append(f(1))
+    app.cleanup_ctx.append(f(2))
+    app.freeze()
+    await app.startup()
+    assert out == ['pre_1', 'pre_2']
+    await app.cleanup()
+    assert out == ['pre_1', 'pre_2', 'post_2', 'post_1']
+
+
+async def test_cleanup_ctx_exception_on_startup():
+    app = web.Application()
+    out = []
+
+    exc = Exception('fail')
+
+    def f(num, fail=False):
+        @async_generator
+        async def inner(app):
+            out.append('pre_' + str(num))
+            if fail:
+                raise exc
+            await yield_(None)
+            out.append('post_' + str(num))
+        return inner
+
+    app.cleanup_ctx.append(f(1))
+    app.cleanup_ctx.append(f(2, True))
+    app.cleanup_ctx.append(f(3))
+    app.freeze()
+    with pytest.raises(Exception) as ctx:
+        await app.startup()
+    assert ctx.value is exc
+    assert out == ['pre_1', 'pre_2']
+    await app.cleanup()
+    assert out == ['pre_1', 'pre_2', 'post_1']
+
+
+async def test_cleanup_ctx_exception_on_cleanup():
+    app = web.Application()
+    out = []
+
+    exc = Exception('fail')
+
+    def f(num, fail=False):
+        @async_generator
+        async def inner(app):
+            out.append('pre_' + str(num))
+            await yield_(None)
+            out.append('post_' + str(num))
+            if fail:
+                raise exc
+        return inner
+
+    app.cleanup_ctx.append(f(1))
+    app.cleanup_ctx.append(f(2, True))
+    app.cleanup_ctx.append(f(3))
+    app.freeze()
+    await app.startup()
+    assert out == ['pre_1', 'pre_2', 'pre_3']
+    with pytest.raises(Exception) as ctx:
+        await app.cleanup()
+    assert ctx.value is exc
+    assert out == ['pre_1', 'pre_2', 'pre_3', 'post_3', 'post_2', 'post_1']
+
+
+async def test_cleanup_ctx_exception_on_cleanup_multiple():
+    app = web.Application()
+    out = []
+
+    def f(num, fail=False):
+        @async_generator
+        async def inner(app):
+            out.append('pre_' + str(num))
+            await yield_(None)
+            out.append('post_' + str(num))
+            if fail:
+                raise Exception('fail_' + str(num))
+        return inner
+
+    app.cleanup_ctx.append(f(1))
+    app.cleanup_ctx.append(f(2, True))
+    app.cleanup_ctx.append(f(3, True))
+    app.freeze()
+    await app.startup()
+    assert out == ['pre_1', 'pre_2', 'pre_3']
+    with pytest.raises(web.CleanupError) as ctx:
+        await app.cleanup()
+    exc = ctx.value
+    assert len(exc.exceptions) == 2
+    assert str(exc.exceptions[0]) == 'fail_3'
+    assert str(exc.exceptions[1]) == 'fail_2'
+    assert out == ['pre_1', 'pre_2', 'pre_3', 'post_3', 'post_2', 'post_1']
+
+
+async def test_cleanup_ctx_multiple_yields():
+    app = web.Application()
+    out = []
+
+    def f(num):
+        @async_generator
+        async def inner(app):
+            out.append('pre_' + str(num))
+            await yield_(None)
+            out.append('post_' + str(num))
+            await yield_(None)
+        return inner
+
+    app.cleanup_ctx.append(f(1))
+    app.freeze()
+    await app.startup()
+    assert out == ['pre_1']
+    with pytest.raises(RuntimeError) as ctx:
+        await app.cleanup()
+    assert "has more than one 'yield'" in str(ctx.value)
+    assert out == ['pre_1', 'post_1']

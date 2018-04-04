@@ -5,11 +5,8 @@ import gc
 import hashlib
 import os.path
 import platform
-import shutil
 import socket
 import ssl
-import tempfile
-import unittest
 import uuid
 from unittest import mock
 
@@ -40,6 +37,29 @@ def key2():
 def ssl_key():
     """Connection key"""
     return ('localhost', 80, True)
+
+
+@pytest.fixture
+def unix_sockname(tmpdir):
+    sock_path = tmpdir / 'socket.sock'
+    return str(sock_path)
+
+
+@pytest.fixture
+def unix_server(loop, unix_sockname):
+    runners = []
+
+    async def go(app):
+        runner = web.AppRunner(app)
+        runners.append(runner)
+        await runner.setup()
+        site = web.UnixSite(runner, unix_sockname)
+        await site.start()
+
+    yield go
+
+    for runner in runners:
+        loop.run_until_complete(runner.cleanup())
 
 
 def test_del(loop):
@@ -666,14 +686,17 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
         on_dns_resolvehost_start.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsResolveHostStartParams('localhost')
         )
-        on_dns_resolvehost_start.assert_called_once_with(
+        on_dns_resolvehost_end.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsResolveHostEndParams('localhost')
         )
         on_dns_cache_miss.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsCacheMissParams('localhost')
         )
         assert not on_dns_cache_hit.called
 
@@ -685,6 +708,7 @@ async def test_tcp_connector_dns_tracing(loop, dns_response):
         on_dns_cache_hit.assert_called_once_with(
             session,
             trace_config_ctx,
+            aiohttp.TraceDnsCacheHitParams('localhost')
         )
 
 
@@ -738,21 +762,25 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop, dns_response):
         on_dns_resolvehost_start.assert_has_calls([
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostStartParams('localhost')
             ),
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostStartParams('localhost')
             )
         ])
         on_dns_resolvehost_end.assert_has_calls([
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostEndParams('localhost')
             ),
             mock.call(
                 session,
-                trace_config_ctx
+                trace_config_ctx,
+                aiohttp.TraceDnsResolveHostEndParams('localhost')
             )
         ])
 
@@ -793,11 +821,13 @@ async def test_tcp_connector_dns_tracing_throttle_requests(loop, dns_response):
         await asyncio.sleep(0, loop=loop)
         on_dns_cache_hit.assert_called_once_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceDnsCacheHitParams('localhost')
         )
         on_dns_cache_miss.assert_called_once_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceDnsCacheMissParams('localhost')
         )
 
 
@@ -933,11 +963,13 @@ async def test_connect_tracing(loop):
     await conn.connect(req, traces=traces)
     on_connection_create_start.assert_called_with(
         session,
-        trace_config_ctx
+        trace_config_ctx,
+        aiohttp.TraceConnectionCreateStartParams()
     )
     on_connection_create_end.assert_called_with(
         session,
-        trace_config_ctx
+        trace_config_ctx,
+        aiohttp.TraceConnectionCreateEndParams()
     )
 
 
@@ -1333,11 +1365,13 @@ async def test_connect_queued_operation_tracing(loop, key):
         )
         on_connection_queued_start.assert_called_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceConnectionQueuedStartParams()
         )
         on_connection_queued_end.assert_called_with(
             session,
-            trace_config_ctx
+            trace_config_ctx,
+            aiohttp.TraceConnectionQueuedEndParams()
         )
         connection2.release()
 
@@ -1381,7 +1415,8 @@ async def test_connect_reuseconn_tracing(loop, key):
 
     on_connection_reuseconn.assert_called_with(
         session,
-        trace_config_ctx
+        trace_config_ctx,
+        aiohttp.TraceConnectionReuseconnParams()
     )
     conn.close()
 
@@ -1752,14 +1787,14 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
     assert proto in conn._acquired
 
 
-async def test_tcp_connector(test_client, loop):
+async def test_tcp_connector(aiohttp_client, loop):
 
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
-    client = await test_client(app)
+    client = await aiohttp_client(app)
 
     r = await client.get('/')
     assert r.status == 200
@@ -1798,173 +1833,134 @@ def test_default_use_dns_cache(loop):
     assert conn.use_dns_cache
 
 
-class TestHttpClientConnector(unittest.TestCase):
+async def test_resolver_not_called_with_address_is_ip(loop):
+    resolver = mock.MagicMock()
+    connector = aiohttp.TCPConnector(resolver=resolver)
 
-    def setUp(self):
-        self.handler = None
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+    req = ClientRequest('GET',
+                        URL('http://127.0.0.1:{}'.format(unused_port())),
+                        loop=loop,
+                        response_class=mock.Mock())
 
-    def tearDown(self):
-        if self.handler:
-            self.loop.run_until_complete(self.handler.shutdown())
-        self.loop.stop()
-        self.loop.run_forever()
-        self.loop.close()
-        gc.collect()
+    with pytest.raises(OSError):
+        await connector.connect(req)
 
-    async def create_server(self, method, path, handler, ssl_context=None):
-        app = web.Application()
-        app.router.add_route(method, path, handler)
+    resolver.resolve.assert_not_called()
 
-        port = unused_port()
-        self.handler = app.make_handler(loop=self.loop, tcp_keepalive=False)
-        srv = await self.loop.create_server(
-            self.handler, '127.0.0.1', port, ssl=ssl_context)
-        scheme = 's' if ssl_context is not None else ''
-        url = "http{}://127.0.0.1:{}".format(scheme, port) + path
-        self.addCleanup(srv.close)
-        return app, srv, url
 
-    async def create_unix_server(self, method, path, handler):
-        tmpdir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, tmpdir)
-        app = web.Application()
-        app.router.add_route(method, path, handler)
+async def test_tcp_connector_raise_connector_ssl_error(aiohttp_server):
+    async def handler(request):
+        return web.Response()
 
-        self.handler = app.make_handler(
-            loop=self.loop, tcp_keepalive=False, access_log=None)
-        sock_path = os.path.join(tmpdir, 'socket.sock')
-        srv = await self.loop.create_unix_server(
-            self.handler, sock_path)
-        url = "http://127.0.0.1" + path
-        self.addCleanup(srv.close)
-        return app, srv, url, sock_path
+    app = web.Application()
+    app.router.add_get('/', handler)
 
-    def test_tcp_connector_raise_connector_ssl_error(self):
-        async def handler(request):
-            return web.Response()
+    here = os.path.join(os.path.dirname(__file__), '..', 'tests')
+    keyfile = os.path.join(here, 'sample.key')
+    certfile = os.path.join(here, 'sample.crt')
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    sslcontext.load_cert_chain(certfile, keyfile)
 
-        here = os.path.join(os.path.dirname(__file__), '..', 'tests')
-        keyfile = os.path.join(here, 'sample.key')
-        certfile = os.path.join(here, 'sample.crt')
-        sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        sslcontext.load_cert_chain(certfile, keyfile)
+    srv = await aiohttp_server(app, ssl=sslcontext)
 
-        app, srv, url = self.loop.run_until_complete(
-            self.create_server('get', '/', handler, ssl_context=sslcontext)
-        )
+    port = unused_port()
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', port))
 
-        port = unused_port()
-        conn = aiohttp.TCPConnector(loop=self.loop,
-                                    local_addr=('127.0.0.1', port))
+    session = aiohttp.ClientSession(connector=conn)
+    url = srv.make_url('/')
 
-        session = aiohttp.ClientSession(connector=conn)
+    with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
+        print(url)
+        await session.get(url)
 
-        with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
-            self.loop.run_until_complete(session.request('get', url))
+    assert isinstance(ctx.value.os_error, ssl.SSLError)
+    assert isinstance(ctx.value, aiohttp.ClientSSLError)
 
-        self.assertIsInstance(ctx.value.os_error, ssl.SSLError)
-        self.assertIsInstance(ctx.value, aiohttp.ClientSSLError)
+    await session.close()
 
-        self.loop.run_until_complete(session.close())
-        conn.close()
 
-    def test_tcp_connector_do_not_raise_connector_ssl_error(self):
-        async def handler(request):
-            return web.Response()
+async def test_tcp_connector_do_not_raise_connector_ssl_error(aiohttp_server):
+    async def handler(request):
+        return web.Response()
 
-        here = os.path.join(os.path.dirname(__file__), '..', 'tests')
-        keyfile = os.path.join(here, 'sample.key')
-        certfile = os.path.join(here, 'sample.crt')
-        sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        sslcontext.load_cert_chain(certfile, keyfile)
+    app = web.Application()
+    app.router.add_get('/', handler)
 
-        app, srv, url = self.loop.run_until_complete(
-            self.create_server('get', '/', handler, ssl_context=sslcontext)
-        )
+    here = os.path.join(os.path.dirname(__file__), '..', 'tests')
+    keyfile = os.path.join(here, 'sample.key')
+    certfile = os.path.join(here, 'sample.crt')
+    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    sslcontext.load_cert_chain(certfile, keyfile)
 
-        port = unused_port()
-        conn = aiohttp.TCPConnector(loop=self.loop,
-                                    local_addr=('127.0.0.1', port))
+    srv = await aiohttp_server(app, ssl=sslcontext)
+    port = unused_port()
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', port))
 
-        session = aiohttp.ClientSession(connector=conn)
+    session = aiohttp.ClientSession(connector=conn)
+    url = srv.make_url('/')
 
-        r = self.loop.run_until_complete(
-            session.request('get', url, ssl=sslcontext))
+    r = await session.get(url, ssl=sslcontext)
 
-        r.release()
-        first_conn = next(iter(conn._conns.values()))[0][0]
+    r.release()
+    first_conn = next(iter(conn._conns.values()))[0][0]
 
-        try:
-            _sslcontext = first_conn.transport._ssl_protocol._sslcontext
-        except AttributeError:
-            _sslcontext = first_conn.transport._sslcontext
+    try:
+        _sslcontext = first_conn.transport._ssl_protocol._sslcontext
+    except AttributeError:
+        _sslcontext = first_conn.transport._sslcontext
 
-        self.assertIs(_sslcontext, sslcontext)
-        r.close()
+    assert _sslcontext is sslcontext
+    r.close()
 
-        self.loop.run_until_complete(session.close())
-        conn.close()
+    await session.close()
+    conn.close()
 
-    def test_tcp_connector_uses_provided_local_addr(self):
-        async def handler(request):
-            return web.Response()
 
-        app, srv, url = self.loop.run_until_complete(
-            self.create_server('get', '/', handler)
-        )
+async def test_tcp_connector_uses_provided_local_addr(aiohttp_server):
+    async def handler(request):
+        return web.Response()
 
-        port = unused_port()
-        conn = aiohttp.TCPConnector(loop=self.loop,
-                                    local_addr=('127.0.0.1', port))
+    app = web.Application()
+    app.router.add_get('/', handler)
+    srv = await aiohttp_server(app)
 
-        session = aiohttp.ClientSession(connector=conn)
+    port = unused_port()
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', port))
 
-        r = self.loop.run_until_complete(
-            session.request('get', url)
-        )
+    session = aiohttp.ClientSession(connector=conn)
+    url = srv.make_url('/')
 
-        r.release()
-        first_conn = next(iter(conn._conns.values()))[0][0]
-        self.assertEqual(
-            first_conn.transport._sock.getsockname(), ('127.0.0.1', port))
-        r.close()
-        self.loop.run_until_complete(session.close())
-        conn.close()
+    r = await session.get(url)
+    r.release()
 
-    @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'requires unix')
-    def test_unix_connector(self):
-        async def handler(request):
-            return web.Response()
+    first_conn = next(iter(conn._conns.values()))[0][0]
+    assert first_conn.transport.get_extra_info(
+        'sockname') == ('127.0.0.1', port)
+    r.close()
+    await session.close()
+    conn.close()
 
-        app, srv, url, sock_path = self.loop.run_until_complete(
-            self.create_unix_server('get', '/', handler))
 
-        connector = aiohttp.UnixConnector(sock_path, loop=self.loop)
-        self.assertEqual(sock_path, connector.path)
+@pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
+                    reason='requires UNIX sockets')
+async def test_unix_connector(unix_server, unix_sockname):
+    async def handler(request):
+        return web.Response()
 
-        session = client.ClientSession(
-            connector=connector, loop=self.loop)
-        r = self.loop.run_until_complete(
-            session.request('get', url))
-        self.assertEqual(r.status, 200)
-        r.close()
-        self.loop.run_until_complete(session.close())
+    app = web.Application()
+    app.router.add_get('/', handler)
+    await unix_server(app)
 
-    def test_resolver_not_called_with_address_is_ip(self):
-        resolver = mock.MagicMock()
-        connector = aiohttp.TCPConnector(resolver=resolver, loop=self.loop)
+    url = "http://127.0.0.1/"
 
-        req = ClientRequest('GET',
-                            URL('http://127.0.0.1:{}'.format(unused_port())),
-                            loop=self.loop,
-                            response_class=mock.Mock())
+    connector = aiohttp.UnixConnector(unix_sockname)
+    assert unix_sockname == connector.path
 
-        with self.assertRaises(OSError):
-            self.loop.run_until_complete(connector.connect(req))
-
-        resolver.resolve.assert_not_called()
+    session = client.ClientSession(connector=connector)
+    r = await session.get(url)
+    assert r.status == 200
+    r.close()
+    await session.close()
 
 
 class TestDNSCacheTable:
@@ -2008,7 +2004,7 @@ class TestDNSCacheTable:
     async def test_expired_ttl(self, loop):
         dns_cache_table = _DNSCacheTable(ttl=0.01)
         dns_cache_table.add('localhost', ['127.0.0.1'])
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.02, loop=loop)
         assert dns_cache_table.expired('localhost')
 
     def test_next_addrs(self, dns_cache_table):

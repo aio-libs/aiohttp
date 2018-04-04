@@ -21,6 +21,8 @@ from urllib.parse import quote
 from urllib.request import getproxies
 
 import async_timeout
+import attr
+from multidict import MultiDict
 from yarl import URL
 
 from . import hdrs
@@ -30,10 +32,23 @@ from .log import client_logger
 
 __all__ = ('BasicAuth',)
 
-PY_36 = sys.version_info > (3, 6)
+PY_36 = sys.version_info >= (3, 6)
+PY_37 = sys.version_info >= (3, 7)
+
+if not PY_37:
+    import idna_ssl
+    idna_ssl.patch_match_hostname()
+
 
 sentinel = object()
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
+
+# N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
+# for compatibility with older versions
+DEBUG = (getattr(sys.flags, 'dev_mode', False) or
+         (not sys.flags.ignore_environment and
+          bool(os.environ.get('PYTHONASYNCIODEBUG'))))
+
 
 CHAR = set(chr(i) for i in range(0, 128))
 CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
@@ -44,6 +59,8 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG
+
+# prevent "coroutine noop was never awaited" warning.
 coroutines._DEBUG = False
 
 
@@ -141,7 +158,10 @@ def netrc_from_env():
     return netrc_obj
 
 
-ProxyInfo = namedtuple('ProxyInfo', 'proxy proxy_auth')
+@attr.s(frozen=True, slots=True)
+class ProxyInfo:
+    proxy = attr.ib(type=str)
+    proxy_auth = attr.ib(type=BasicAuth)
 
 
 def proxies_from_env():
@@ -173,8 +193,12 @@ def current_task(loop=None):
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    task = asyncio.Task.current_task(loop=loop)
+    if PY_37:
+        task = asyncio.current_task(loop=loop)
+    else:
+        task = asyncio.Task.current_task(loop=loop)
     if task is None:
+        # this should be removed, tokio must use register_task and family API
         if hasattr(loop, 'current_task'):
             task = loop.current_task()
 
@@ -187,7 +211,12 @@ def isasyncgenfunction(obj):
     return False
 
 
-MimeType = namedtuple('MimeType', 'type subtype suffix parameters')
+@attr.s(frozen=True, slots=True)
+class MimeType:
+    type = attr.ib(type=str)
+    subtype = attr.ib(type=str)
+    suffix = attr.ib(type=str)
+    parameters = attr.ib(type=MultiDict)
 
 
 def parse_mimetype(mimetype):
@@ -214,7 +243,7 @@ def parse_mimetype(mimetype):
             continue
         key, value = item.split('=', 1) if '=' in item else (item, '')
         params.append((key.lower().strip(), value.strip(' "')))
-    params = dict(params)
+    params = MultiDict(params)
 
     fulltype = parts[0].strip().lower()
     if fulltype == '*':
@@ -291,7 +320,7 @@ class AccessLogger(AbstractAccessLogger):
     """
     LOG_FORMAT_MAP = {
         'a': 'remote_address',
-        't': 'request_time',
+        't': 'request_start_time',
         'P': 'process_id',
         'r': 'first_request_line',
         's': 'response_status',
@@ -331,7 +360,7 @@ class AccessLogger(AbstractAccessLogger):
 
         All known atoms will be replaced with %s
         Also methods for formatting of those atoms will be added to
-        _methods in apropriate order
+        _methods in appropriate order
 
         For example we have log_format = "%a %t"
         This format will be translated to "%s %s"
@@ -388,7 +417,9 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_t(request, response, time):
-        return datetime.datetime.utcnow().strftime('[%d/%b/%Y:%H:%M:%S +0000]')
+        now = datetime.datetime.utcnow()
+        start_time = now - datetime.timedelta(seconds=time)
+        return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
     def _format_P(request, response, time):
@@ -437,7 +468,10 @@ class AccessLogger(AbstractAccessLogger):
                 if key.__class__ is str:
                     extra[key] = value
                 else:
-                    extra[key[0]] = {key[1]: value}
+                    k1, k2 = key
+                    dct = extra.get(k1, {})
+                    dct[k2] = value
+                    extra[k1] = dct
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
@@ -657,6 +691,9 @@ class CeilTimeout(async_timeout.timeout):
 
 
 class HeadersMixin:
+
+    ATTRS = frozenset([
+        '_content_type', '_content_dict', '_stored_content_type'])
 
     _content_type = None
     _content_dict = None

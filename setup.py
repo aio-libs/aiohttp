@@ -1,5 +1,5 @@
 import codecs
-import os
+import pathlib
 import re
 import sys
 from distutils.command.build_ext import build_ext
@@ -8,6 +8,10 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
 
 from setuptools import Extension, setup
 from setuptools.command.test import test as TestCommand
+
+
+if sys.version_info < (3, 5, 3):
+    raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
 
 
 try:
@@ -54,21 +58,27 @@ class ve_build_ext(build_ext):
             raise BuildFailed()
 
 
-with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
-        __file__)), 'aiohttp', '__init__.py'), 'r', 'latin1') as fp:
-    try:
-        version = re.findall(r"^__version__ = '([^']+)'\r?$",
-                             fp.read(), re.M)[0]
-    except IndexError:
-        raise RuntimeError('Unable to determine version.')
+here = pathlib.Path(__file__).parent
+
+txt = (here / 'aiohttp' / '__init__.py').read_text('utf-8')
+try:
+    version = re.findall(r"^__version__ = '([^']+)'\r?$",
+                         txt, re.M)[0]
+except IndexError:
+    raise RuntimeError('Unable to determine version.')
 
 
-install_requires = ['chardet', 'multidict>=4.0.0',
-                    'async_timeout>=1.2.0', 'yarl>=1.0.0']
+install_requires = ['attrs>=17.3.0', 'chardet>=2.0,<4.0',
+                    'multidict>=4.0,<5.0',
+                    'async_timeout>=1.2,<3.0',
+                    'yarl>=1.0,<2.0']
+
+if sys.version_info < (3, 7):
+    install_requires.append('idna-ssl>=1.0')
 
 
 def read(f):
-    return open(os.path.join(os.path.dirname(__file__), f)).read().strip()
+    return (here / f).read_text('utf-8').strip()
 
 
 class PyTest(TestCommand):
@@ -110,7 +120,7 @@ args = dict(
     url='https://github.com/aio-libs/aiohttp/',
     license='Apache 2',
     packages=['aiohttp'],
-    python_requires='>=3.5.0',
+    python_requires='>=3.5.3',
     install_requires=install_requires,
     tests_require=tests_require,
     include_package_data=True,

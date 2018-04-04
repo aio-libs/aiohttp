@@ -80,7 +80,8 @@ between multiple requests::
     async with aiohttp.ClientSession() as session:
         await session.get(
             'http://httpbin.org/cookies/set?my_cookie=my_value')
-        filtered = session.cookie_jar.filter_cookies('http://httpbin.org')
+        filtered = session.cookie_jar.filter_cookies(
+            'http://httpbin.org')
         assert filtered['my_cookie'].value == 'my_value'
         async with session.get('http://httpbin.org/cookies') as r:
             json_body = await r.json()
@@ -92,13 +93,13 @@ Response Headers and Cookies
 We can view the server's response :attr:`ClientResponse.headers` using
 a :class:`~multidict.CIMultiDictProxy`::
 
-    >>> resp.headers
-    {'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
-     'CONTENT-TYPE': 'application/json',
-     'DATE': 'Tue, 15 Jul 2014 16:49:51 GMT',
-     'SERVER': 'gunicorn/18.0',
-     'CONTENT-LENGTH': '331',
-     'CONNECTION': 'keep-alive'}
+    assert resp.headers == {
+        'ACCESS-CONTROL-ALLOW-ORIGIN': '*',
+        'CONTENT-TYPE': 'application/json',
+        'DATE': 'Tue, 15 Jul 2014 16:49:51 GMT',
+        'SERVER': 'gunicorn/18.0',
+        'CONTENT-LENGTH': '331',
+        'CONNECTION': 'keep-alive'}
 
 The dictionary is special, though: it's made just for HTTP
 headers. According to `RFC 7230
@@ -108,11 +109,9 @@ key as HTTP protocol does.
 
 So, we can access the headers using any capitalization we want::
 
-    >>> resp.headers['Content-Type']
-    'application/json'
+    assert resp.headers['Content-Type'] == 'application/json'
 
-    >>> resp.headers.get('content-type')
-    'application/json'
+    assert resp.headers.get('content-type') == 'application/json'
 
 All headers are converted from binary data using UTF-8 with
 ``surrogateescape`` option. That works fine on most cases but
@@ -121,12 +120,12 @@ encoding. While these headers are malformed from :rfc:`7230`
 perspective they may be retrieved by using
 :attr:`ClientResponse.raw_headers` property::
 
-    >>> resp.raw_headers
-    ((b'SERVER', b'nginx'),
-     (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
-     (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
-     (b'CONTENT-LENGTH', b'12150'),
-     (b'CONNECTION', b'keep-alive'))
+    assert resp.raw_headers == (
+        (b'SERVER', b'nginx'),
+        (b'DATE', b'Sat, 09 Jan 2016 20:28:40 GMT'),
+        (b'CONTENT-TYPE', b'text/html; charset=utf-8'),
+        (b'CONTENT-LENGTH', b'12150'),
+        (b'CONNECTION', b'keep-alive'))
 
 
 If a response contains some *HTTP Cookies*, you can quickly access them::
@@ -149,11 +148,13 @@ Redirection History
 If a request was redirected, it is possible to view previous responses using
 the :attr:`~ClientResponse.history` attribute::
 
-    >>> resp = await session.get('http://example.com/some/redirect/')
-    >>> resp
-    <ClientResponse(http://example.com/some/other/url/) [200]>
-    >>> resp.history
-    (<ClientResponse(http://example.com/some/redirect/) [301]>,)
+    resp = await session.get('http://example.com/some/redirect/')
+    assert resp.status == 200
+    assert resp.url = URL('http://example.com/some/other/url/')
+    assert len(resp.history) == 1
+    assert resp.history[0].status == 301
+    assert resp.history[0].url = URL(
+        'http://example.com/some/redirect/')
 
 If no redirects occurred or ``allow_redirects`` is set to ``False``,
 history will be an empty sequence.
@@ -210,8 +211,26 @@ name (usually ``deflate`` or ``gzip``) as the value of the
                                 headers=headers)
             pass
 
+Disabling content type validation for JSON responses
+----------------------------------------------------
 
-Client tracing
+The standard explicitly restricts JSON ``Content-Type`` HTTP header to
+``application/json`` or any extended form, e.g. ``application/vnd.custom-type+json``.
+Unfortunately, some servers send a wrong type, like ``text/html``.
+
+This can be worked around in two ways:
+
+1. Pass the expected type explicitly (in this case checking will be strict, without the extended form support,
+   so ``custom/xxx+type`` won't be accepted):
+
+   ``await resp.json(content_type='custom/type')``.
+2. Disable the check entirely:
+
+   ``await resp.json(content_type=None)``.
+
+.. _aiohttp-client-tracing:
+
+Client Tracing
 --------------
 
 The execution flow of a specific request can be followed attaching
@@ -225,16 +244,17 @@ disabled. The following snippet shows how the start and the end
 signals of a request flow can be followed::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers):
+            session, trace_config_ctx, params):
         print("Starting request")
 
-    async def on_request_end(session, trace_config_ctx, resp):
+    async def on_request_end(session, trace_config_ctx, params):
         print("Ending request")
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
-    async with aiohttp.ClientSession(trace_configs=[trace_config]) as client:
+    async with aiohttp.ClientSession(
+            trace_configs=[trace_config]) as client:
         client.get('http://example.com/some/redirect/')
 
 The ``trace_configs`` is a list that can contain instances of
@@ -246,8 +266,8 @@ nature are installed to perform their job in each signal handle::
     from mylib.traceconfig import AuditRequest
     from mylib.traceconfig import XRay
 
-    async with aiohttp.ClientSession(trace_configs=[AuditRequest(),
-                                                    XRay()]) as client:
+    async with aiohttp.ClientSession(
+            trace_configs=[AuditRequest(), XRay()]) as client:
         client.get('http://example.com/some/redirect/')
 
 
@@ -259,10 +279,10 @@ share the state through to the different signals that belong to the
 same request and to the same :class:`TraceConfig` class, perhaps::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers):
+            session, trace_config_ctx, params):
         trace_config_ctx.start = session.loop.time()
 
-    async def on_request_end(session, trace_config_ctx, resp):
+    async def on_request_end(session, trace_config_ctx, params):
         elapsed = session.loop.time() - trace_config_ctx.start
         print("Request took {}".format(elapsed))
 
@@ -280,7 +300,7 @@ factory. This param is useful to pass data that is only available at
 request time, perhaps::
 
     async def on_request_start(
-            session, trace_config_ctx, method, host, port, headers):
+            session, trace_config_ctx, params):
         print(trace_config_ctx.trace_request_ctx)
 
 
@@ -288,7 +308,7 @@ request time, perhaps::
                 trace_request_ctx={'foo': 'bar'})
 
 
-.. seealso:: :ref:`aiohttp-tracing-reference` section for
+.. seealso:: :ref:`aiohttp-client-tracing-reference` section for
              more information about the different signals supported.
 
 Connectors
@@ -401,7 +421,7 @@ same thing as the previous example, but add another call to
   sslcontext = ssl.create_default_context(
      cafile='/path/to/ca-bundle.crt')
   sslcontext.load_cert_chain('/path/to/client/public/device.pem',
-                             '/path/to/client/private/device.jey')
+                             '/path/to/client/private/device.key')
   r = await session.get('https://example.com', ssl=sslcontext)
 
 There is explicit errors when ssl verification fails
@@ -438,15 +458,15 @@ You may also verify certificates via *SHA256* fingerprint::
 
   # Attempt to connect to https://www.python.org
   # with a pin to a bogus certificate:
-  bad_fingerprint = b'0'*64
+  bad_fp = b'0'*64
   exc = None
   try:
       r = await session.get('https://www.python.org',
-                            ssl=aiohttp.Fingerprint(bad_fingerprint))
+                            ssl=aiohttp.Fingerprint(bad_fp))
   except aiohttp.FingerprintMismatch as e:
       exc = e
   assert exc is not None
-  assert exc.expected == bad_fingerprint
+  assert exc.expected == bad_fp
 
   # www.python.org cert's actual fingerprint
   assert exc.got == b'...'
@@ -474,7 +494,7 @@ aiohttp supports HTTP/HTTPS proxies. You have to use
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
-                              proxy="http://some.proxy.com") as resp:
+                              proxy="http://proxy.com") as resp:
            print(resp.status)
 
 It also supports proxy authorization::
@@ -482,7 +502,7 @@ It also supports proxy authorization::
    async with aiohttp.ClientSession() as session:
        proxy_auth = aiohttp.BasicAuth('user', 'pass')
        async with session.get("http://python.org",
-                              proxy="http://some.proxy.com",
+                              proxy="http://proxy.com",
                               proxy_auth=proxy_auth) as resp:
            print(resp.status)
 
@@ -498,8 +518,8 @@ constructor for extracting proxy configuration from
 *HTTP_PROXY* or *HTTPS_PROXY* *environment variables* (both are case
 insensitive)::
 
-   async with aiohttp.ClientSession() as session:
-       async with session.get("http://python.org", trust_env=True) as resp:
+   async with aiohttp.ClientSession(trust_env=True) as session:
+       async with session.get("http://python.org") as resp:
            print(resp.status)
 
 Proxy credentials are given from ``~/.netrc`` file if present (see
@@ -524,8 +544,8 @@ asyncio.sleep(0)``) will suffice::
 
     async def read_website():
         async with aiohttp.ClientSession() as session:
-            async with session.get('http://example.org/') as response:
-                await response.read()
+            async with session.get('http://example.org/') as resp:
+                await resp.read()
 
     loop = asyncio.get_event_loop()
     loop.run_until_complete(read_website())

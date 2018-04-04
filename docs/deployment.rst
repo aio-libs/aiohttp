@@ -207,27 +207,23 @@ Prepare environment
 -------------------
 
 You firstly need to setup your deployment environment. This example is
-based on `Ubuntu` 14.04.
+based on `Ubuntu <https://www.ubuntu.com/>`_ 16.04.
 
 Create a directory for your application::
 
   >> mkdir myapp
   >> cd myapp
 
-`Ubuntu` has a bug in pyenv, so to create virtualenv you need to do some
-extra manipulation::
+Create Python virtual environment::
 
-  >> pyvenv-3.4 --without-pip venv
-  >> source venv/bin/activate
-  >> curl https://bootstrap.pypa.io/get-pip.py | python
-  >> deactivate
+  >> python3 -m venv venv
   >> source venv/bin/activate
 
 Now that the virtual environment is ready, we'll proceed to install
 aiohttp and gunicorn::
 
   >> pip install gunicorn
-  >> pip install -e git+https://github.com/aio-libs/aiohttp.git#egg=aiohttp
+  >> pip install aiohttp
 
 
 Application
@@ -238,7 +234,7 @@ name this file *my_app_module.py*::
 
    from aiohttp import web
 
-   def index(request):
+   async def index(request):
        return web.Response(text="Welcome home!")
 
 
@@ -246,15 +242,33 @@ name this file *my_app_module.py*::
    my_web_app.router.add_get('/', index)
 
 
+Application factory
+-------------------
+
+As an option an entry point could be a coroutine that accepts no
+parameters and returns an application instance::
+
+   from aiohttp import web
+
+   async def index(request):
+       return web.Response(text="Welcome home!")
+
+
+   async def my_web_app():
+       app = web.Application()
+       app.router.add_get('/', index)
+       return app
+
+
 Start Gunicorn
 --------------
 
 When `Running Gunicorn
 <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name
-of the module, i.e. *my_app_module*, and the name of the app,
-i.e. *my_web_app*, along with other `Gunicorn Settings
-<http://docs.gunicorn.org/en/latest/settings.html>`_ provided as
-command line flags or in your config file.
+of the module, i.e. *my_app_module*, and the name of the app or
+application factory, i.e. *my_web_app*, along with other `Gunicorn
+Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided
+as command line flags or in your config file.
 
 In this case, we will use:
 
@@ -267,15 +281,12 @@ In this case, we will use:
   documentation for recommendations on `How Many Workers?
   <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
 
-The custom worker subclass is defined in
-*aiohttp.GunicornWebWorker* and should be used instead of the
-*gaiohttp* worker provided by Gunicorn, which supports only
-aiohttp.wsgi applications::
+The custom worker subclass is defined in ``aiohttp.GunicornWebWorker``::
 
   >> gunicorn my_app_module:my_web_app --bind localhost:8080 --worker-class aiohttp.GunicornWebWorker
-  [2015-03-11 18:27:21 +0000] [1249] [INFO] Starting gunicorn 19.3.0
-  [2015-03-11 18:27:21 +0000] [1249] [INFO] Listening at: http://127.0.0.1:8080 (1249)
-  [2015-03-11 18:27:21 +0000] [1249] [INFO] Using worker: aiohttp.worker.GunicornWebWorker
+  [2017-03-11 18:27:21 +0000] [1249] [INFO] Starting gunicorn 19.7.1
+  [2017-03-11 18:27:21 +0000] [1249] [INFO] Listening at: http://127.0.0.1:8080 (1249)
+  [2017-03-11 18:27:21 +0000] [1249] [INFO] Using worker: aiohttp.worker.GunicornWebWorker
   [2015-03-11 18:27:21 +0000] [1253] [INFO] Booting worker with pid: 1253
 
 Gunicorn is now running and ready to serve requests to your app's
@@ -304,7 +315,7 @@ Logging configuration
 
 By default aiohttp uses own defaults::
 
-   '%a %l %u %t "%r" %s %b "%{Referrer}i" "%{User-Agent}i"'
+   '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
 
 For more information please read :ref:`Format Specification for Access
 Log <aiohttp-logging-access-log-format-spec>`.

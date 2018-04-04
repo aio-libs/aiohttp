@@ -5,18 +5,19 @@ from argparse import ArgumentParser
 from collections import Iterable
 from importlib import import_module
 
-from . import (helpers, web_exceptions, web_fileresponse, web_middlewares,
-               web_protocol, web_request, web_response, web_runner, web_server,
-               web_urldispatcher, web_ws)
-from .http import HttpVersion  # noqa
+from . import (helpers, web_app, web_exceptions, web_fileresponse,
+               web_middlewares, web_protocol, web_request, web_response,
+               web_routedef, web_runner, web_server, web_urldispatcher, web_ws)
 from .log import access_logger
-from .web_app import Application  # noqa
+from .web_app import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
+from .web_routedef import *  # noqa
+from .web_runner import *  # noqa
 from .web_runner import AppRunner, GracefulExit, SockSite, TCPSite, UnixSite
 from .web_server import *  # noqa
 from .web_urldispatcher import *  # noqa
@@ -24,25 +25,31 @@ from .web_ws import *  # noqa
 
 
 __all__ = (web_protocol.__all__ +
+           web_app.__all__ +
            web_fileresponse.__all__ +
            web_request.__all__ +
            web_response.__all__ +
+           web_routedef.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
            web_server.__all__ +
            web_runner.__all__ +
            web_middlewares.__all__ +
-           ('Application', 'HttpVersion', 'MsgType'))
+           ('run_app',))
 
 
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
             print=print, backlog=128, access_log_class=helpers.AccessLogger,
             access_log_format=helpers.AccessLogger.LOG_FORMAT,
-            access_log=access_logger, handle_signals=True):
+            access_log=access_logger, handle_signals=True,
+            reuse_address=None, reuse_port=None):
     """Run an app locally"""
     loop = asyncio.get_event_loop()
+
+    if asyncio.iscoroutine(app):
+        app = loop.run_until_complete(app)
 
     runner = AppRunner(app, handle_signals=handle_signals,
                        access_log_class=access_log_class,
@@ -59,17 +66,23 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
                 sites.append(TCPSite(runner, host, port,
                                      shutdown_timeout=shutdown_timeout,
                                      ssl_context=ssl_context,
-                                     backlog=backlog))
+                                     backlog=backlog,
+                                     reuse_address=reuse_address,
+                                     reuse_port=reuse_port))
             else:
                 for h in host:
                     sites.append(TCPSite(runner, h, port,
                                          shutdown_timeout=shutdown_timeout,
                                          ssl_context=ssl_context,
-                                         backlog=backlog))
+                                         backlog=backlog,
+                                         reuse_address=reuse_address,
+                                         reuse_port=reuse_port))
         elif path is None and sock is None or port is not None:
             sites.append(TCPSite(runner, port=port,
                                  shutdown_timeout=shutdown_timeout,
-                                 ssl_context=ssl_context, backlog=backlog))
+                                 ssl_context=ssl_context, backlog=backlog,
+                                 reuse_address=reuse_address,
+                                 reuse_port=reuse_port))
 
         if path is not None:
             if isinstance(path, (str, bytes, bytearray, memoryview)):

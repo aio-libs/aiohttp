@@ -1,18 +1,16 @@
 import asyncio
 import collections
 import contextlib
-import tempfile
 import warnings
 
 import pytest
-from py import path
 
 from aiohttp.helpers import isasyncgenfunction
 from aiohttp.web import Application
 
-from .test_utils import unused_port as _unused_port
 from .test_utils import (BaseTestServer, RawTestServer, TestClient, TestServer,
                          loop_context, setup_test_loop, teardown_test_loop)
+from .test_utils import unused_port as _unused_port
 
 
 try:
@@ -28,13 +26,13 @@ except ImportError:  # pragma: no cover
 
 def pytest_addoption(parser):
     parser.addoption(
-        '--fast', action='store_true', default=False,
+        '--aiohttp-fast', action='store_true', default=False,
         help='run tests faster by disabling extra checks')
     parser.addoption(
-        '--loop', action='store', default='pyloop',
+        '--aiohttp-loop', action='store', default='pyloop',
         help='run tests with specific loop: pyloop, uvloop, tokio or all')
     parser.addoption(
-        '--enable-loop-debug', action='store_true', default=False,
+        '--aiohttp-enable-loop-debug', action='store_true', default=False,
         help='enable event loop debug mode')
 
 
@@ -97,13 +95,13 @@ def pytest_fixture_setup(fixturedef):
 @pytest.fixture
 def fast(request):
     """--fast config option"""
-    return request.config.getoption('--fast')
+    return request.config.getoption('--aiohttp-fast')
 
 
 @pytest.fixture
 def loop_debug(request):
     """--enable-loop-debug config option"""
-    return request.config.getoption('--enable-loop-debug')
+    return request.config.getoption('--aiohttp-enable-loop-debug')
 
 
 @contextlib.contextmanager
@@ -154,7 +152,7 @@ def pytest_pyfunc_call(pyfuncitem):
     """
     Run coroutines in an event loop instead of a normal function call.
     """
-    fast = pyfuncitem.config.getoption("--fast")
+    fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
         existing_loop = pyfuncitem.funcargs.get('loop', None)
         with _runtime_warning_context():
@@ -170,7 +168,7 @@ def pytest_generate_tests(metafunc):
     if 'loop_factory' not in metafunc.fixturenames:
         return
 
-    loops = metafunc.config.option.loop
+    loops = metafunc.config.option.aiohttp_loop
     avail_factories = {'pyloop': asyncio.new_event_loop}
 
     if uvloop is not None:  # pragma: no cover
@@ -205,21 +203,28 @@ def loop(loop_factory, fast, loop_debug):
     with loop_context(loop_factory, fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
+        asyncio.set_event_loop(_loop)
         yield _loop
-    asyncio.set_event_loop(None)
 
 
 @pytest.fixture
-def unused_port():
+def unused_port(aiohttp_unused_port):  # pragma: no cover
+    warnings.warn("Deprecated, use aiohttp_unused_port fixture instead",
+                  DeprecationWarning)
+    return aiohttp_unused_port
+
+
+@pytest.fixture
+def aiohttp_unused_port():
     """Return a port that is unused on the current host."""
     return _unused_port
 
 
-@pytest.yield_fixture
-def test_server(loop):
+@pytest.fixture
+def aiohttp_server(loop):
     """Factory to create a TestServer instance, given an app.
 
-    test_server(app, **kwargs)
+    aiohttp_server(app, **kwargs)
     """
     servers = []
 
@@ -238,11 +243,18 @@ def test_server(loop):
     loop.run_until_complete(finalize())
 
 
-@pytest.yield_fixture
-def raw_test_server(loop):
+@pytest.fixture
+def test_server(aiohttp_server):  # pragma: no cover
+    warnings.warn("Deprecated, use aiohttp_server fixture instead",
+                  DeprecationWarning)
+    return aiohttp_server
+
+
+@pytest.fixture
+def aiohttp_raw_server(loop):
     """Factory to create a RawTestServer instance, given a web handler.
 
-    raw_test_server(handler, **kwargs)
+    aiohttp_raw_server(handler, **kwargs)
     """
     servers = []
 
@@ -261,13 +273,20 @@ def raw_test_server(loop):
     loop.run_until_complete(finalize())
 
 
-@pytest.yield_fixture
-def test_client(loop):
+@pytest.fixture
+def raw_test_server(aiohttp_raw_server):  # pragma: no cover
+    warnings.warn("Deprecated, use aiohttp_raw_server fixture instead",
+                  DeprecationWarning)
+    return aiohttp_raw_server
+
+
+@pytest.fixture
+def aiohttp_client(loop):
     """Factory to create a TestClient instance.
 
-    test_client(app, **kwargs)
-    test_client(server, **kwargs)
-    test_client(raw_server, **kwargs)
+    aiohttp_client(app, **kwargs)
+    aiohttp_client(server, **kwargs)
+    aiohttp_client(raw_server, **kwargs)
     """
     clients = []
 
@@ -303,10 +322,7 @@ def test_client(loop):
 
 
 @pytest.fixture
-def shorttmpdir():
-    """Provides a temporary directory with a shorter file system path than the
-    tmpdir fixture.
-    """
-    tmpdir = path.local(tempfile.mkdtemp())
-    yield tmpdir
-    tmpdir.remove(rec=1)
+def test_client(aiohttp_client):  # pragma: no cover
+    warnings.warn("Deprecated, use aiohttp_client fixture instead",
+                  DeprecationWarning)
+    return aiohttp_client

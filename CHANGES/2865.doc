@@ -1,0 +1,1 @@
+Drop ``async_timeout`` usage from documentation for client API in favor of ``timeout`` parameter.
