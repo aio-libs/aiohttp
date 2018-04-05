@@ -14,10 +14,17 @@ Changelog
 
 .. towncrier release notes start
 
+3.1.2 (2018-04-05)
+==================
+
+- Make ``LineTooLong`` exception more detailed about actual data size (#2863)
+- Call ``on_chunk_sent`` when write_eof takes as a param the last chunk (#2909)
+
+
 3.1.1 (2018-03-27)
 ==================
 
-* Support *asynchronous iterators* (and *asynchronous generators* as
+- Support *asynchronous iterators* (and *asynchronous generators* as
   well) in both client and server API as request / response BODY
   payloads. (#2802)
 
