@@ -816,10 +816,10 @@ class TCPConnector(BaseConnector):
             # Cancelling this lookup should not cancel the underlying lookup
             #  or else the cancel event will get broadcast to all the waiters
             #  across all connections.
-            hosts = await  asyncio.shield(self._resolve_host(
+            hosts = await asyncio.shield(self._resolve_host(
                 req.url.raw_host,
                 req.port,
-                traces=traces))
+                traces=traces), loop=self._loop)
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself
