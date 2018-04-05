@@ -105,6 +105,9 @@ class StreamWriter(AbstractStreamWriter):
         if self._eof:
             return
 
+        if chunk and self._on_chunk_sent is not None:
+            await self._on_chunk_sent(chunk)
+
         if self._compress:
             if chunk:
                 chunk = self._compress.compress(chunk)
