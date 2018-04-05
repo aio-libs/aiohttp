@@ -370,7 +370,7 @@ cdef int cb_on_url(cparser.http_parser* parser,
     try:
         if length > pyparser._max_line_size:
             raise LineTooLong(
-                'Status line is too long', pyparser._max_line_size)
+                'Status line is too long', pyparser._max_line_size, length)
         pyparser._buf.extend(at[:length])
     except BaseException as ex:
         pyparser._last_error = ex
@@ -386,7 +386,7 @@ cdef int cb_on_status(cparser.http_parser* parser,
     try:
         if length > pyparser._max_line_size:
             raise LineTooLong(
-                'Status line is too long', pyparser._max_line_size)
+                'Status line is too long', pyparser._max_line_size, length)
         pyparser._buf.extend(at[:length])
     except BaseException as ex:
         pyparser._last_error = ex
@@ -402,7 +402,7 @@ cdef int cb_on_header_field(cparser.http_parser* parser,
         pyparser._on_status_complete()
         if length > pyparser._max_field_size:
             raise LineTooLong(
-                'Header name is too long', pyparser._max_field_size)
+                'Header name is too long', pyparser._max_field_size, length)
         pyparser._on_header_field(
             at[:length].decode('utf-8', 'surrogateescape'), at[:length])
     except BaseException as ex:
@@ -419,10 +419,11 @@ cdef int cb_on_header_value(cparser.http_parser* parser,
         if pyparser._header_value is not None:
             if len(pyparser._header_value) + length > pyparser._max_field_size:
                 raise LineTooLong(
-                    'Header value is too long', pyparser._max_field_size)
+                    'Header value is too long', pyparser._max_field_size,
+                    len(pyparser._header_value) + length)
         elif length > pyparser._max_field_size:
             raise LineTooLong(
-                'Header value is too long', pyparser._max_field_size)
+                'Header value is too long', pyparser._max_field_size, length)
         pyparser._on_header_value(
             at[:length].decode('utf-8', 'surrogateescape'), at[:length])
     except BaseException as ex:

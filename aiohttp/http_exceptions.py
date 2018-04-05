@@ -59,9 +59,10 @@ class ContentLengthError(PayloadEncodingError):
 
 class LineTooLong(BadHttpMessage):
 
-    def __init__(self, line, limit='Unknown'):
+    def __init__(self, line, limit='Unknown', actual_size='Unknown'):
         super().__init__(
-            "Got more than %s bytes when reading %s." % (limit, line))
+            "Got more than %s bytes (%s) when reading %s." % (
+                limit, actual_size, line))
 
 
 class InvalidHeader(BadHttpMessage):
