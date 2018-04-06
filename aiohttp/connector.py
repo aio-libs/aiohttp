@@ -700,10 +700,7 @@ class TCPConnector(BaseConnector):
                         await trace.send_dns_resolvehost_start(host)
 
                 addrs = await \
-                    asyncio.shield(self._resolver.resolve(host,
-                                                          port,
-                                                          family=self._family),
-                                   loop=self._loop)
+                    self._resolver.resolve(host, port, family=self._family)
                 if traces:
                     for trace in traces:
                         await trace.send_dns_resolvehost_end(host)
