@@ -115,7 +115,7 @@ specified explicitly it should use aiohttp's format specification.
 
 Gunicorn access log works only if accesslog_ is specified explicitly in your
 config or as a command line option.
-This configuation can be either a path or ``'-'``. If the application uses
+This configuration can be either a path or ``'-'``. If the application uses
 a custom logging setup intercepting the ``'gunicorn.access'`` logger,
 accesslog_ should be set to ``'-'`` to prevent Gunicorn to create an empty
 access log file upon every startup.
