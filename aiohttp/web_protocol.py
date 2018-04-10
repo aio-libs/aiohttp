@@ -20,7 +20,7 @@ from .web_request import BaseRequest
 from .web_response import Response
 
 
-__all__ = ('RequestHandler', 'RequestPayloadError')
+__all__ = ('RequestHandler', 'RequestPayloadError', 'PayloadAccessError')
 
 ERROR = http.RawRequestMessage(
     'UNKNOWN', '/', http.HttpVersion10, {},
@@ -29,6 +29,10 @@ ERROR = http.RawRequestMessage(
 
 class RequestPayloadError(Exception):
     """Payload parsing error."""
+
+
+class PayloadAccessError(Exception):
+    """Payload was accesed after responce was sent."""
 
 
 class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
@@ -432,6 +436,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     if not payload.is_eof() and not self._force_close:
                         self.log_debug('Uncompleted request.')
                         self.close()
+
+                request._payload.set_exception(PayloadAccessError())
 
             except asyncio.CancelledError:
                 self.log_debug('Ignored premature client disconnection ')

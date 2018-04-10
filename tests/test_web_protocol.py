@@ -474,6 +474,19 @@ async def test_lingering_timeout(
     transport.close.assert_called_with()
 
 
+async def test_handle_payload_access_error(
+    make_srv, loop, transport, request_handler
+):
+    srv = make_srv(lingering_time=0)
+    srv.connection_made(transport)
+    srv.data_received(b'POST /test HTTP/1.1\r\n\r\n')
+    # start request_handler task
+    await asyncio.sleep(0, loop=loop)
+
+    with pytest.raises(web.PayloadAccessError):
+        await request_handler.call_args[0][0].content.read()
+
+
 def test_handle_cancel(make_srv, loop, transport):
     log = mock.Mock()
 
