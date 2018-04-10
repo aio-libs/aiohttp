@@ -191,8 +191,8 @@ class ClientRequest:
             url2 = url.with_query(params)
             q.extend(url2.query)
             url = url.with_query(q)
-        self.url = url.with_fragment(None)
         self.original_url = url
+        self.url = url.with_fragment(None)
         self.method = method.upper()
         self.chunked = chunked
         self.compress = compress
