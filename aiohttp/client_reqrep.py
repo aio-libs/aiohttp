@@ -54,7 +54,11 @@ class RequestInfo:
     url = attr.ib(type=URL)
     method = attr.ib(type=str)
     headers = attr.ib(type=CIMultiDictProxy)
+    real_url = attr.ib(type=URL)
 
+    @real_url.default
+    def real_url_default(self):
+        return self.url
 
 class Fingerprint:
     HASHFUNC_BY_DIGESTLEN = {
@@ -244,7 +248,7 @@ class ClientRequest:
 
     @property
     def request_info(self):
-        return RequestInfo(self.url, self.method, self.headers)
+        return RequestInfo(self.url, self.method, self.headers, self.original_url)
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
@@ -582,7 +586,8 @@ class ClientResponse(HeadersMixin):
         self.headers = None
         self.cookies = SimpleCookie()
 
-        self._url = url
+        self._real_url = url
+        self._url = url.with_fragment(None)
         self._body = None
         self._writer = writer
         self._continue = continue100  # None by default
@@ -607,6 +612,10 @@ class ClientResponse(HeadersMixin):
         warnings.warn(
             "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
         return self._url
+
+    @property
+    def real_url(self):
+        return self._real_url
 
     @property
     def host(self):

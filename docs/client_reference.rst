@@ -1059,6 +1059,10 @@ Response object
 
       URL of request (:class:`~yarl.URL`).
 
+   .. attribute:: real_url
+
+      Unmodified URL of request (:class:`~yarl.URL`).
+
    .. attribute:: connection
 
       :class:`Connection` used for handling response.
@@ -1452,6 +1456,10 @@ RequestInfo
    .. attribute:: headers
 
       HTTP headers for request, :class:`multidict.CIMultiDict` instance.
+
+   .. attribute:: real_url
+
+      Requested *url* with URL fragment unstripped, :class:`yarl.URL` instance.
 
 
 BasicAuth
