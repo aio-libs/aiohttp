@@ -437,7 +437,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         self.log_debug('Uncompleted request.')
                         self.close()
 
-                request._payload.set_exception(PayloadAccessError())
+                payload.set_exception(PayloadAccessError())
 
             except asyncio.CancelledError:
                 self.log_debug('Ignored premature client disconnection ')

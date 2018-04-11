@@ -479,7 +479,11 @@ async def test_handle_payload_access_error(
 ):
     srv = make_srv(lingering_time=0)
     srv.connection_made(transport)
-    srv.data_received(b'POST /test HTTP/1.1\r\n\r\n')
+    srv.data_received(
+        b'POST /test HTTP/1.1\r\n'
+        b'Content-Length: 9\r\n\r\n'
+        b'some data'
+    )
     # start request_handler task
     await asyncio.sleep(0, loop=loop)
 
