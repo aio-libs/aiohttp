@@ -60,6 +60,7 @@ class RequestInfo:
     def real_url_default(self):
         return self.url
 
+
 class Fingerprint:
     HASHFUNC_BY_DIGESTLEN = {
         16: md5,
@@ -248,7 +249,8 @@ class ClientRequest:
 
     @property
     def request_info(self):
-        return RequestInfo(self.url, self.method, self.headers, self.original_url)
+        return RequestInfo(self.url, self.method,
+                           self.headers, self.original_url)
 
     def update_host(self, url):
         """Update destination host, port and connection type (ssl)."""
