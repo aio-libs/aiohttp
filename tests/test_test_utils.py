@@ -246,8 +246,11 @@ async def test_test_server_context_manager(loop):
 
 
 def test_client_unsupported_arg():
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as e:
         _TestClient('string')
+
+    assert str(e.value) == \
+        "server must be TestServer instance, found type: <class 'str'>"
 
 
 async def test_server_make_url_yarl_compatibility(loop):

@@ -478,14 +478,14 @@ Framework Agnostic Utilities
 
 High level test creation::
 
-    from aiohttp.test_utils import TestClient, loop_context
+    from aiohttp.test_utils import TestClient, TestServer, loop_context
     from aiohttp import request
 
     # loop_context is provided as a utility. You can use any
     # asyncio.BaseEventLoop class in it's place.
     with loop_context() as loop:
         app = _create_example_app()
-        with TestClient(app, loop=loop) as client:
+        with TestClient(TestServer(app), loop=loop) as client:
 
             async def test_get_route():
                 nonlocal client
@@ -500,11 +500,11 @@ High level test creation::
 If it's preferred to handle the creation / teardown on a more granular
 basis, the TestClient object can be used directly::
 
-    from aiohttp.test_utils import TestClient
+    from aiohttp.test_utils import TestClient, TestServer
 
     with loop_context() as loop:
         app = _create_example_app()
-        client = TestClient(app, loop=loop)
+        client = TestClient(TestSever(app), loop=loop)
         loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 
@@ -650,10 +650,9 @@ Test Client
    :param app_or_server: :class:`BaseTestServer` instance for making
                          client requests to it.
 
-                         If the parameter is
-                         :class:`aiohttp.web.Application` the tool
-                         creates :class:`TestServer` implicitly for
-                         serving the application.
+                         In order to pass a :class:`aiohttp.web.Application`
+                         you need to convert it first to :class:`TestServer`
+                         first with ``TestServer(app)``.
 
    :param cookie_jar: an optional :class:`aiohttp.CookieJar` instance,
                       may be useful with ``CookieJar(unsafe=True)``
