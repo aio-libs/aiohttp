@@ -483,15 +483,11 @@ class BaseConnector:
         if not waiters:
             return False
 
-        try:
-            waiter = waiters.pop(0)
-            waiter.set_result(None)
+        waiter = waiters.pop(0)
+        waiter.set_result(None)
 
-            if not waiters:
-                del self._waiters[key]
-
-        except:
-            raise
+        if not waiters:
+            del self._waiters[key]
 
         return True
 
