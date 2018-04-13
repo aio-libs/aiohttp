@@ -700,10 +700,7 @@ class TCPConnector(BaseConnector):
                         await trace.send_dns_resolvehost_start(host)
 
                 addrs = await \
-                    asyncio.shield(self._resolver.resolve(host,
-                                                          port,
-                                                          family=self._family),
-                                   loop=self._loop)
+                    self._resolver.resolve(host, port, family=self._family)
                 if traces:
                     for trace in traces:
                         await trace.send_dns_resolvehost_end(host)
@@ -813,10 +810,13 @@ class TCPConnector(BaseConnector):
         fingerprint = self._get_fingerprint(req)
 
         try:
-            hosts = await self._resolve_host(
+            # Cancelling this lookup should not cancel the underlying lookup
+            #  or else the cancel event will get broadcast to all the waiters
+            #  across all connections.
+            hosts = await asyncio.shield(self._resolve_host(
                 req.url.raw_host,
                 req.port,
-                traces=traces)
+                traces=traces), loop=self._loop)
         except OSError as exc:
             # in case of proxy it is not ClientProxyConnectionError
             # it is problem of resolving proxy ip itself

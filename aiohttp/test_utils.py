@@ -159,7 +159,7 @@ class TestClient:
 
     def __init__(self, server, *, cookie_jar=None, loop=None, **kwargs):
         if not isinstance(server, BaseTestServer):
-            raise TypeError("server must be web.Application TestServer "
+            raise TypeError("server must be TestServer "
                             "instance, found type: %r" % type(server))
         self._server = server
         self._loop = loop

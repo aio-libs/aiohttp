@@ -185,12 +185,14 @@ Thanos Lefteris
 Thijs Vermeir
 Thomas Grainger
 Tolga Tezel
+Vadim Suharnikov
 Vaibhav Sagar
 Vamsi Krishna Avula
 Vasiliy Faronov
 Vasyl Baran
 Victor Kovtun
 Vikas Kawadia
+Viktor Danyliuk
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya

@@ -14,10 +14,10 @@ pyflakes==1.6.0
 multidict==4.1.0
 pytest==3.5.0
 pytest-cov==2.5.1
-pytest-mock==1.7.1
+pytest-mock==1.8.0
 pytest-xdist==1.22.2
 towncrier==17.8.0
-tox==2.9.1
+tox==3.0.0
 twine==1.11.0
 yarl==1.1.1
 

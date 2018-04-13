@@ -325,8 +325,8 @@ class PlainResource(Resource):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return "<PlainResource {name} {path}".format(name=name,
-                                                     path=self._path)
+        return "<PlainResource {name} {path}>".format(name=name,
+                                                      path=self._path)
 
 
 class DynamicResource(Resource):
@@ -399,7 +399,7 @@ class DynamicResource(Resource):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return ("<DynamicResource {name} {formatter}"
+        return ("<DynamicResource {name} {formatter}>"
                 .format(name=name, formatter=self._formatter))
 
 
@@ -602,7 +602,7 @@ class StaticResource(PrefixResource):
 
     def __repr__(self):
         name = "'" + self.name + "'" if self.name is not None else ""
-        return "<StaticResource {name} {path} -> {directory!r}".format(
+        return "<StaticResource {name} {path} -> {directory!r}>".format(
             name=name, path=self._prefix, directory=self._directory)
 
 
