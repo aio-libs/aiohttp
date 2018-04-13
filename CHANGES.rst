@@ -115,8 +115,6 @@ Bugfixes
 Improved Documentation
 ----------------------
 
-- Change ``ClientResponse.json()`` documentation to reflect that it now
-  allows "application/xxx+json" content-types (`#2206 <https://github.com/aio-libs/aiohttp/pull/2206>`_)
 - Document behavior when cchardet detects encodings that are unknown to Python.
   (`#2732 <https://github.com/aio-libs/aiohttp/pull/2732>`_)
 - Add diagrams for tracing request life style. (`#2748 <https://github.com/aio-libs/aiohttp/pull/2748>`_)
