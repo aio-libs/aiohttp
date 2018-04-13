@@ -14,6 +14,12 @@ Changelog
 
 .. towncrier release notes start
 
+3.1.3 (2018-04-12)
+==================
+
+- Fix cancellation broadcast during DNS resolve (#2910)
+
+
 3.1.2 (2018-04-05)
 ==================
 
