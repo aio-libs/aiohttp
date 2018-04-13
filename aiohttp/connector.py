@@ -181,6 +181,10 @@ class BaseConnector:
         self._acquired_per_host = defaultdict(set)
         self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
+
+        # {host_key: FIFO list of waiters}
+        # NOTE: this is not a true FIFO because the true order is lost amongst
+        #       the dictionary keys
         self._waiters = defaultdict(list)
 
         self._loop = loop
@@ -392,11 +396,18 @@ class BaseConnector:
 
             try:
                 await fut
-            finally:
-                # remove a waiter even if it was cancelled
-                waiters.remove(fut)
-                if not waiters:
-                    del self._waiters[key]
+            except BaseException:
+                # remove a waiter even if it was cancelled, normally it's
+                #  removed when it's notified
+                try:
+                    waiters.remove(fut)
+
+                    if not waiters:
+                        del self._waiters[key]
+                except ValueError:  # fut may no longer be in list
+                    pass
+
+                raise
 
             if traces:
                 for trace in traces:
@@ -423,10 +434,8 @@ class BaseConnector:
             except BaseException:
                 # signal to waiter
                 if key in self._waiters:
-                    for waiter in self._waiters[key]:
-                        if not waiter.done():
-                            waiter.set_result(None)
-                            break
+                    waiters = self._waiters[key]
+                    self._release_key_waiter(key, waiters)
                 raise
             finally:
                 if not self._closed:
@@ -470,6 +479,22 @@ class BaseConnector:
         del self._conns[key]
         return None
 
+    def _release_key_waiter(self, key, waiters):
+        if not waiters:
+            return False
+
+        try:
+            waiter = waiters.pop(0)
+            waiter.set_result(None)
+
+            if not waiters:
+                del self._waiters[key]
+
+        except:
+            raise
+
+        return True
+
     def _release_waiter(self):
         # always release only one waiter
 
@@ -477,18 +502,14 @@ class BaseConnector:
             # if we have limit and we have available
             if self._limit - len(self._acquired) > 0:
                 for key, waiters in self._waiters.items():
-                    if waiters:
-                        if not waiters[0].done():
-                            waiters[0].set_result(None)
+                    if self._release_key_waiter(key, waiters):
                         break
 
         elif self._limit_per_host:
             # if we have dont have limit but have limit per host
             # then release first available
             for key, waiters in self._waiters.items():
-                if waiters:
-                    if not waiters[0].done():
-                        waiters[0].set_result(None)
+                if self._release_key_waiter(key, waiters):
                     break
 
     def _release_acquired(self, key, proto):
