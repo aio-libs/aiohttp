@@ -483,7 +483,7 @@ class BaseConnector:
         if not waiters:
             return False
 
-        waiter = waiters.pop(0)
+        waiter = waiters.popleft()
         waiter.set_result(None)
 
         if not waiters:
