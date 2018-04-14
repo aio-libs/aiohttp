@@ -3,7 +3,7 @@ import functools
 import sys
 import traceback
 import warnings
-from collections import defaultdict
+from collections import defaultdict, deque
 from contextlib import suppress
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
@@ -185,7 +185,7 @@ class BaseConnector:
         # {host_key: FIFO list of waiters}
         # NOTE: this is not a true FIFO because the true order is lost amongst
         #       the dictionary keys
-        self._waiters = defaultdict(list)
+        self._waiters = defaultdict(deque)
 
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
