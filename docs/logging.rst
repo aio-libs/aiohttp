@@ -103,6 +103,7 @@ Example of drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
                            f'done in {time}s: {response.status}')
 
 
+.. _gunicorn-accesslog:
 
 Gunicorn access logs
 ^^^^^^^^^^^^^^^^^^^^
@@ -138,5 +139,6 @@ To use different logger name please specify *logger* parameter
 
 .. _access_logformat:
     http://docs.gunicorn.org/en/stable/settings.html#access-log-format
+
 .. _accesslog:
     http://docs.gunicorn.org/en/stable/settings.html#accesslog
