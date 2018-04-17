@@ -1,13 +1,13 @@
 import collections
 import re
 import string
-import zlib
 from enum import IntEnum
 
 from multidict import CIMultiDict
 from yarl import URL
 
 from . import hdrs
+from .compression import get_decompressor
 from .helpers import NO_EXTENSIONS
 from .http_exceptions import (BadStatusLine, ContentEncodingError,
                               ContentLengthError, InvalidHeader, LineTooLong,
@@ -15,13 +15,6 @@ from .http_exceptions import (BadStatusLine, ContentEncodingError,
 from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
-
-
-try:
-    import brotli
-    HAS_BROTLI = True
-except ImportError:  # pragma: no cover
-    HAS_BROTLI = False
 
 
 __all__ = (
@@ -620,18 +613,7 @@ class DeflateBuffer:
         self.out = out
         self.size = 0
         self.encoding = encoding
-        self._started_decoding = False
-
-        if encoding == 'br':
-            if not HAS_BROTLI:  # pragma: no cover
-                raise ContentEncodingError(
-                    'Can not decode content-encoding: brotli (br). '
-                    'Please install `brotlipy`')
-            self.decompressor = brotli.Decompressor()
-        else:
-            zlib_mode = (16 + zlib.MAX_WBITS
-                         if encoding == 'gzip' else -zlib.MAX_WBITS)
-            self.decompressor = zlib.decompressobj(wbits=zlib_mode)
+        self.decompressor = get_decompressor(encoding)
 
     def set_exception(self, exc):
         self.out.set_exception(exc)
@@ -641,19 +623,10 @@ class DeflateBuffer:
         try:
             chunk = self.decompressor.decompress(chunk)
         except Exception:
-            if not self._started_decoding and self.encoding == 'deflate':
-                self.decompressor = zlib.decompressobj()
-                try:
-                    chunk = self.decompressor.decompress(chunk)
-                except Exception:
-                    raise ContentEncodingError(
-                        'Can not decode content-encoding: %s' % self.encoding)
-            else:
-                raise ContentEncodingError(
-                    'Can not decode content-encoding: %s' % self.encoding)
+            raise ContentEncodingError(
+                'Can not decode content-encoding: %s' % self.encoding)
 
         if chunk:
-            self._started_decoding = True
             self.out.feed_data(chunk, len(chunk))
 
     def feed_eof(self):
@@ -661,8 +634,8 @@ class DeflateBuffer:
 
         if chunk or self.size > 0:
             self.out.feed_data(chunk, len(chunk))
-            if self.encoding != 'br' and not self.decompressor.eof:
-                raise ContentEncodingError('deflate')
+            if not self.decompressor.eof:
+                raise ContentEncodingError(self.encoding)
 
         self.out.feed_eof()
 

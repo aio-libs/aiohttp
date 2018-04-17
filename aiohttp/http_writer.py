@@ -2,9 +2,9 @@
 
 import asyncio
 import collections
-import zlib
 
 from .abc import AbstractStreamWriter
+from .compression import get_compressor
 
 
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
@@ -44,9 +44,7 @@ class StreamWriter(AbstractStreamWriter):
         self.chunked = True
 
     def enable_compression(self, encoding='deflate'):
-        zlib_mode = (16 + zlib.MAX_WBITS
-                     if encoding == 'gzip' else -zlib.MAX_WBITS)
-        self._compress = zlib.compressobj(wbits=zlib_mode)
+        self._compress = get_compressor(encoding)
 
     def _write(self, chunk):
         size = len(chunk)

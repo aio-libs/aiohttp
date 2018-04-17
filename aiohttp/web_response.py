@@ -5,13 +5,13 @@ import json
 import math
 import time
 import warnings
-import zlib
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
+from .compression import get_compressor
 from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
@@ -27,6 +27,7 @@ class ContentCoding(enum.Enum):
     deflate = 'deflate'
     gzip = 'gzip'
     identity = 'identity'
+    br = 'br'
 
 
 ############################################################
@@ -610,9 +611,7 @@ class Response(StreamResponse):
         if coding != ContentCoding.identity:
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
-            zlib_mode = (16 + zlib.MAX_WBITS
-                         if coding.value == 'gzip' else -zlib.MAX_WBITS)
-            compressobj = zlib.compressobj(wbits=zlib_mode)
+            compressobj = get_compressor(coding.value)
             self._compressed_body = compressobj.compress(self._body) +\
                 compressobj.flush()
             self._headers[hdrs.CONTENT_ENCODING] = coding.value

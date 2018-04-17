@@ -4,12 +4,12 @@ import json
 import re
 import uuid
 import warnings
-import zlib
 from collections import Mapping, Sequence, deque
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict
 
+from .compression import decompress, get_compressor
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
@@ -386,15 +386,9 @@ class BodyPartReader:
 
     def _decode_content(self, data):
         encoding = self.headers[CONTENT_ENCODING].lower()
-
-        if encoding == 'deflate':
-            return zlib.decompress(data, -zlib.MAX_WBITS)
-        elif encoding == 'gzip':
-            return zlib.decompress(data, 16 + zlib.MAX_WBITS)
-        elif encoding == 'identity':
+        if encoding == 'identity':
             return data
-        else:
-            raise RuntimeError('unknown content encoding: {}'.format(encoding))
+        return decompress(encoding, data)
 
     def _decode_content_transfer(self, data):
         encoding = self.headers[CONTENT_TRANSFER_ENCODING].lower()
@@ -836,9 +830,7 @@ class MultipartPayloadWriter:
             self._encoding = 'quoted-printable'
 
     def enable_compression(self, encoding='deflate'):
-        zlib_mode = (16 + zlib.MAX_WBITS
-                     if encoding == 'gzip' else -zlib.MAX_WBITS)
-        self._compress = zlib.compressobj(wbits=zlib_mode)
+        self._compress = get_compressor(encoding)
 
     async def write_eof(self):
         if self._compress is not None:
