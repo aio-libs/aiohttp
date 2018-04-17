@@ -290,7 +290,6 @@ class ClientSession:
                                          "with AUTH argument or credentials "
                                          "encoded in URL")
 
-                    url = url.with_fragment(None)
                     cookies = self._cookie_jar.filter_cookies(url)
 
                     if proxy is not None:

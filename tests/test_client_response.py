@@ -1018,3 +1018,18 @@ async def test_response_read_triggers_callback(loop, session):
         trace.send_response_chunk_received.call_args ==
         mock.call(response_body)
     )
+
+
+def test_response_real_url(loop, session):
+    url = URL('http://def-cl-resp.org/#urlfragment')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    assert response.url == url.with_fragment(None)
+    assert response.real_url == url
