@@ -251,6 +251,9 @@ The client session supports the context manager protocol for self closing.
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
+      :param int max_redirects: Maximum number of redirects to follow.
+                                ``10`` by default.
+
       :param bool compress: Set to ``True`` if request has to be compressed
          with deflate encoding. If `compress` can not be combined
          with a *Content-Encoding* and *Content-Length* headers.
@@ -501,7 +504,7 @@ The client session supports the context manager protocol for self closing.
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
-                             them close procedure has to be handled manually. 
+                             then close procedure has to be handled manually.
                              ``True`` by default
 
       :param bool autoping: automatically send *pong* on *ping*
@@ -514,7 +517,7 @@ The client session supports the context manager protocol for self closing.
                               reception.(optional)
 
       :param str origin: Origin header to send to server(optional)
-      
+
       :param dict headers: HTTP Headers to send with
                            the request (optional)
 
@@ -565,7 +568,7 @@ The client session supports the context manager protocol for self closing.
          authority channel, supported SSL options etc.
 
          .. versionadded:: 2.3
-         
+
          .. deprecated:: 3.0
 
             Use ``ssl=ssl_context``
@@ -1726,6 +1729,18 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
    .. versionadded:: 2.3
+
+
+.. class:: TooManyRedirects
+
+   Client was redirected too many times.
+
+   Maximum number of redirects can be configured by using
+   parameter ``max_redirects`` in :meth:`request<aiohttp.ClientSession.request>`.
+
+   Derived from :exc:`ClientResponseError`
+
+   .. versionadded:: 3.2
 
 Connection errors
 ^^^^^^^^^^^^^^^^^

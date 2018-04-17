@@ -93,6 +93,10 @@ class ClientHttpProxyError(ClientResponseError):
     """
 
 
+class TooManyRedirects(ClientResponseError):
+    """Client was redirected too many times."""
+
+
 class ClientConnectionError(ClientError):
     """Base class for client socket errors."""
 

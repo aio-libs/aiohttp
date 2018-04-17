@@ -16,6 +16,7 @@ from multidict import MultiDict
 import aiohttp
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
+from aiohttp.client_exceptions import TooManyRedirects
 from aiohttp.test_utils import unused_port
 
 
@@ -914,10 +915,11 @@ async def test_HTTP_302_max_redirects(aiohttp_client):
     app.router.add_get(r'/redirect/{count:\d+}', redirect)
     client = await aiohttp_client(app)
 
-    resp = await client.get('/redirect/5', max_redirects=2)
-    assert 302 == resp.status
-    assert 2 == len(resp.history)
-    resp.close()
+    with pytest.raises(TooManyRedirects) as ctx:
+        await client.get('/redirect/5', max_redirects=2)
+    assert 2 == len(ctx.value.history)
+    assert ctx.value.request_info.url.path == '/redirect/5'
+    assert ctx.value.request_info.method == 'GET'
 
 
 async def test_HTTP_200_GET_WITH_PARAMS(aiohttp_client):
