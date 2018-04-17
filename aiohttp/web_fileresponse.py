@@ -107,7 +107,8 @@ class FileResponse(StreamResponse):
 
         transport = request.transport
         if (transport.get_extra_info("sslcontext") or
-                transport.get_extra_info("socket") is None):
+                transport.get_extra_info("socket") is None or
+                self.compression):
             writer = await self._sendfile_fallback(request, fobj, count)
         else:
             writer = SendfileStreamWriter(
@@ -131,7 +132,7 @@ class FileResponse(StreamResponse):
         # fobj is transferred in chunks controlled by the
         # constructor's chunk_size argument.
 
-        writer = (await super().prepare(request))
+        writer = await super().prepare(request)
 
         chunk_size = self._chunk_size
 

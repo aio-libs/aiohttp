@@ -43,7 +43,7 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         self._keep_alive = None
         self._chunked = False
         self._compression = False
-        self._compression_force = False
+        self._compression_force = None
         self._cookies = SimpleCookie()
 
         self._req = None

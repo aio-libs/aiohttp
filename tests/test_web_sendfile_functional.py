@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import zlib
 
 import pytest
 
@@ -729,3 +730,25 @@ async def test_static_file_if_range_invalid_date(aiohttp_client,
     resp = await client.get('/', headers={'If-Range': lastmod})
     assert 200 == resp.status
     resp.close()
+
+
+async def test_static_file_compression(aiohttp_client, sender):
+    filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
+
+    async def handler(request):
+        ret = sender(filepath)
+        ret.enable_compression()
+        return ret
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app, auto_decompress=False)
+
+    resp = await client.get('/')
+    assert resp.status == 200
+    zcomp = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    expected_body = zcomp.compress(b'file content\n') + zcomp.flush()
+    assert expected_body == await resp.read()
+    assert 'application/octet-stream' == resp.headers['Content-Type']
+    assert resp.headers.get('Content-Encoding') == 'deflate'
+    await resp.release()
