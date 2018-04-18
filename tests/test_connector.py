@@ -1,6 +1,7 @@
 """Tests of http client with custom Connector"""
 
 import asyncio
+from collections import deque
 import gc
 import hashlib
 import os.path
@@ -319,7 +320,7 @@ def test_release_waiter(loop, key, key2):
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
     w2.done.return_value = False
-    conn._waiters[key] = [w1, w2]
+    conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert w1.set_result.called
     assert not w2.set_result.called
@@ -330,7 +331,7 @@ def test_release_waiter(loop, key, key2):
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = True
     w2.done.return_value = False
-    conn._waiters[key] = [w1, w2]
+    conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert not w1.set_result.called
     assert not w2.set_result.called
@@ -343,8 +344,8 @@ def test_release_waiter_per_host(loop, key, key2):
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
     w2.done.return_value = False
-    conn._waiters[key] = [w1]
-    conn._waiters[key2] = [w2]
+    conn._waiters[key] = deque([w1])
+    conn._waiters[key2] = deque([w2])
     conn._release_waiter()
     assert ((w1.set_result.called and not w2.set_result.called) or
             (not w1.set_result.called and w2.set_result.called))
