@@ -1,5 +1,6 @@
 import io
 import json
+import zlib
 from unittest import mock
 
 import pytest
@@ -798,20 +799,25 @@ async def test_writer_write(buf, stream, writer):
          b'--:--\r\n') == bytes(buf))
 
 
-@pytest.mark.parametrize('encoding,encoded', [
-    ('gzip', b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU(\xc9W'
-             b'\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00\r\n--:--'
-             b'\r\n'),
-    ('deflate', b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--\r\n'),
-    pytest.param(
-        'br', b'\x1b\r\x00\x00\xa4B\xf0\xaa\x10I\xcaT\t.\x0b\xf7\x01\r\n--:--'
-              b'\r\n',
-        marks=skip_if_no_brotli,
-    ),
+def decompress(encoding, data):
+    if encoding == 'gzip':
+        obj = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+        return obj.decompress(data) + obj.flush()
+    elif encoding == 'deflate':
+        obj = zlib.decompressobj(wbits=-zlib.MAX_WBITS)
+        return obj.decompress(data) + obj.flush()
+    elif encoding == 'br':
+        import brotli
+        return brotli.decompress(data)
+
+
+@pytest.mark.parametrize('encoding', [
+    'gzip',
+    'deflate',
+    pytest.param('br', marks=skip_if_no_brotli),
 ])
 async def test_writer_serialize_with_content_encoding(buf, stream,
-                                                      writer, encoding,
-                                                      encoded):
+                                                      writer, encoding):
     writer.append('Time to Relax!', {CONTENT_ENCODING: encoding})
     await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
@@ -819,7 +825,7 @@ async def test_writer_serialize_with_content_encoding(buf, stream,
     assert (b'--:\r\nContent-Encoding: %s\r\n'
             b'Content-Type: text/plain; charset=utf-8'
             % encoding.encode('ascii') == headers)
-    assert message == encoded
+    assert decompress(encoding, message.split(b'\r\n')[0]) == b'Time to Relax!'
 
 
 async def test_writer_serialize_with_content_encoding_identity(buf, stream,
