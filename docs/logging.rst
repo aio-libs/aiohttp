@@ -31,8 +31,8 @@ Access logs
 Access log by default is switched on and uses ``'aiohttp.access'``
 logger name.
 
-The log may be controlled by :meth:`aiohttp.web.Application.make_handler` call.
-.. deprecated:: 3.2
+The log may be controlled by :meth:`aiohttp.web.AppRunner / aiohttp.web.run_app()` call.
+
 
 Pass *access_log* parameter with value of :class:`logging.Logger`
 instance to override default logger.
@@ -123,8 +123,8 @@ The log is enabled by default.
 
 To use different logger name please specify *logger* parameter
 (:class:`logging.Logger` instance) on performing
-:meth:`aiohttp.web.Application.make_handler` call.
-.. deprecated:: 3.2
+:meth:`aiohttp.web.AppRunner / aiohttp.web.run_app()` call.
+
 
 .. _access_logformat:
     http://docs.gunicorn.org/en/stable/settings.html#access-log-format

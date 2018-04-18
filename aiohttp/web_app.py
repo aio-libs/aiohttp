@@ -257,9 +257,11 @@ class Application(MutableMapping):
                      loop=None,
                      access_log_class=AccessLogger,
                      **kwargs):
-        warnings.warn("@make_handler is deprecated",
+
+        warnings.warn("Application.make_handler(...) is deprecated",
                       DeprecationWarning,
                       stacklevel=2)
+
         return self._make_handler(loop=loop,
                                   access_log_class=access_log_class,
                                   **kwargs)

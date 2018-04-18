@@ -96,6 +96,13 @@ def test_app_make_handler_access_log_class(loop, mocker):
                            loop=loop, debug=mock.ANY)
 
 
+def test_app_make_handler_raises_deprecation_warning(loop):
+    app = web.Application()
+
+    with pytest.warns(DeprecationWarning):
+        app.make_handler(loop=loop)
+
+
 async def test_app_register_on_finish():
     app = web.Application()
     cb1 = make_mocked_coro(None)
