@@ -8,9 +8,11 @@ import pytest
 from multidict import CIMultiDict
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
+from aiohttp.compression import ContentCoding
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
+from aiohttp.web import Response, StreamResponse, json_response
+from tests.conftest import skip_if_no_brotli
 
 
 def make_request(method, path, headers=CIMultiDict(),
@@ -341,7 +343,7 @@ async def test_force_compression_false_backwards_compat():
 async def test_compression_default_coding():
     req = make_request(
         'GET', '/',
-        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
+        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate, br'}))
     resp = StreamResponse()
     assert not resp.chunked
 
@@ -356,56 +358,55 @@ async def test_compression_default_coding():
     assert msg.filter is not None
 
 
-async def test_force_compression_deflate():
+async def test_client_accepts_brotli_but_server_does_not(monkeypatch):
+    monkeypatch.setattr('aiohttp.compression.brotli', None)
     req = make_request(
         'GET', '/',
-        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
+        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'br'}))
     resp = StreamResponse()
 
-    resp.enable_compression(ContentCoding.deflate)
+    resp.enable_compression()
     assert resp.compression
 
     msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with('deflate')
-    assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
+    msg.enable_compression.assert_not_called()
+    assert hdrs.CONTENT_ENCODING not in resp.headers
 
 
-async def test_force_compression_no_accept_deflate():
+@pytest.mark.parametrize('compression', [
+    ContentCoding.deflate,
+    ContentCoding.gzip,
+    pytest.param(ContentCoding.br, marks=skip_if_no_brotli),
+])
+async def test_force_compression(compression):
+    req = make_request(
+        'GET', '/',
+        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate, br'}))
+    resp = StreamResponse()
+
+    resp.enable_compression(compression)
+    assert resp.compression
+
+    msg = await resp.prepare(req)
+    msg.enable_compression.assert_called_with(compression.value)
+    assert compression.value == resp.headers.get(hdrs.CONTENT_ENCODING)
+
+
+@pytest.mark.parametrize('compression', [
+    ContentCoding.deflate,
+    ContentCoding.gzip,
+    pytest.param(ContentCoding.br, marks=skip_if_no_brotli)
+])
+async def test_force_compression_no_accept(compression):
     req = make_request('GET', '/')
     resp = StreamResponse()
 
-    resp.enable_compression(ContentCoding.deflate)
+    resp.enable_compression(compression)
     assert resp.compression
 
     msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with('deflate')
-    assert 'deflate' == resp.headers.get(hdrs.CONTENT_ENCODING)
-
-
-async def test_force_compression_gzip():
-    req = make_request(
-        'GET', '/',
-        headers=CIMultiDict({hdrs.ACCEPT_ENCODING: 'gzip, deflate'}))
-    resp = StreamResponse()
-
-    resp.enable_compression(ContentCoding.gzip)
-    assert resp.compression
-
-    msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with('gzip')
-    assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
-
-
-async def test_force_compression_no_accept_gzip():
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-
-    resp.enable_compression(ContentCoding.gzip)
-    assert resp.compression
-
-    msg = await resp.prepare(req)
-    msg.enable_compression.assert_called_with('gzip')
-    assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
+    msg.enable_compression.assert_called_with(compression.value)
+    assert compression.value == resp.headers.get(hdrs.CONTENT_ENCODING)
 
 
 async def test_change_content_length_if_compression_enabled():

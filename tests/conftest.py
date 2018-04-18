@@ -3,6 +3,8 @@ import tempfile
 import pytest
 from py import path
 
+import aiohttp.compression
+
 
 pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
 
@@ -15,3 +17,7 @@ def shorttmpdir():
     tmpdir = path.local(tempfile.mkdtemp())
     yield tmpdir
     tmpdir.remove(rec=1)
+
+
+skip_if_no_brotli = pytest.mark.skipif(aiohttp.compression.brotli is None,
+                                       reason='brotlipy not installed')

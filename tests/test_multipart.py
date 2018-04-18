@@ -1,6 +1,5 @@
 import io
 import json
-import zlib
 from unittest import mock
 
 import pytest
@@ -14,6 +13,7 @@ from aiohttp.multipart import MultipartResponseWrapper
 from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_coro
+from tests.conftest import skip_if_no_brotli
 
 
 BOUNDARY = b'--:'
@@ -276,31 +276,23 @@ class TestPartReader:
         assert b'.' * 100500 == result
         assert obj.at_eof()
 
-    async def test_read_with_content_encoding_gzip(self):
+    @pytest.mark.parametrize('encoding,encoded', [
+        ('gzip', b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU(\xc9'
+                 b'W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00\r\n'
+                 b'--:--'),
+        ('deflate', b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'),
+        pytest.param(
+            'br', b'\x1b\r\x00\x00\xa4B\xf0\xaa\x10I\xcaT\t.\x0b\xf7\x01\r\n'
+                  b'--:--',
+            marks=skip_if_no_brotli
+        ),
+        ('identity', b'Time to Relax!\r\n--:--')
+    ])
+    async def test_read_with_content_encoding(self, encoding, encoded):
         obj = aiohttp.BodyPartReader(
-            BOUNDARY, {CONTENT_ENCODING: 'gzip'},
-            Stream(b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
-                   b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
-                   b'\r\n--:--'))
-        result = await obj.read(decode=True)
-        assert b'Time to Relax!' == result
-
-    async def test_read_with_content_encoding_deflate(self):
-        obj = aiohttp.BodyPartReader(
-            BOUNDARY, {CONTENT_ENCODING: 'deflate'},
-            Stream(b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--'))
-        result = await obj.read(decode=True)
-        assert b'Time to Relax!' == result
-
-    async def test_read_with_content_encoding_identity(self):
-        thing = (b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
-                 b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
-                 b'\r\n')
-        obj = aiohttp.BodyPartReader(
-            BOUNDARY, {CONTENT_ENCODING: 'identity'},
-            Stream(thing + b'--:--'))
-        result = await obj.read(decode=True)
-        assert thing[:-2] == result
+            BOUNDARY, {CONTENT_ENCODING: encoding},
+            Stream(encoded))
+        assert b'Time to Relax!' == await obj.read(decode=True)
 
     async def test_read_with_content_encoding_unknown(self):
         obj = aiohttp.BodyPartReader(
@@ -806,32 +798,28 @@ async def test_writer_write(buf, stream, writer):
          b'--:--\r\n') == bytes(buf))
 
 
-async def test_writer_serialize_with_content_encoding_gzip(buf, stream,
-                                                           writer):
-    writer.append('Time to Relax!', {CONTENT_ENCODING: 'gzip'})
+@pytest.mark.parametrize('encoding,encoded', [
+    ('gzip', b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU(\xc9W'
+             b'\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00\r\n--:--'
+             b'\r\n'),
+    ('deflate', b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--\r\n'),
+    pytest.param(
+        'br', b'\x1b\r\x00\x00\xa4B\xf0\xaa\x10I\xcaT\t.\x0b\xf7\x01\r\n--:--'
+              b'\r\n',
+        marks=skip_if_no_brotli,
+    ),
+])
+async def test_writer_serialize_with_content_encoding(buf, stream,
+                                                      writer, encoding,
+                                                      encoded):
+    writer.append('Time to Relax!', {CONTENT_ENCODING: encoding})
     await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    assert (b'--:\r\nContent-Encoding: gzip\r\n'
-            b'Content-Type: text/plain; charset=utf-8' == headers)
-
-    decompressor = zlib.decompressobj(wbits=16+zlib.MAX_WBITS)
-    data = decompressor.decompress(message.split(b'\r\n')[0])
-    data += decompressor.flush()
-    assert b'Time to Relax!' == data
-
-
-async def test_writer_serialize_with_content_encoding_deflate(buf, stream,
-                                                              writer):
-    writer.append('Time to Relax!', {CONTENT_ENCODING: 'deflate'})
-    await writer.write(stream)
-    headers, message = bytes(buf).split(b'\r\n\r\n', 1)
-
-    assert (b'--:\r\nContent-Encoding: deflate\r\n'
-            b'Content-Type: text/plain; charset=utf-8' == headers)
-
-    thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--\r\n'
-    assert thing == message
+    assert (b'--:\r\nContent-Encoding: %s\r\n'
+            b'Content-Type: text/plain; charset=utf-8'
+            % encoding.encode('ascii') == headers)
+    assert message == encoded
 
 
 async def test_writer_serialize_with_content_encoding_identity(buf, stream,

@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict
 
-from .compression import decompress, get_compressor
+from .compression import ContentCoding, decompress, get_compressor
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
@@ -386,8 +386,6 @@ class BodyPartReader:
 
     def _decode_content(self, data):
         encoding = self.headers[CONTENT_ENCODING].lower()
-        if encoding == 'identity':
-            return data
         return decompress(encoding, data)
 
     def _decode_content_transfer(self, data):
@@ -721,7 +719,7 @@ class MultipartWriter(Payload):
 
         # compression
         encoding = payload.headers.get(CONTENT_ENCODING, '').lower()
-        if encoding and encoding not in ('deflate', 'gzip', 'identity'):
+        if encoding and encoding not in ContentCoding.values():
             raise RuntimeError('unknown content encoding: {}'.format(encoding))
         if encoding == 'identity':
             encoding = None
@@ -834,7 +832,7 @@ class MultipartPayloadWriter:
 
     async def write_eof(self):
         if self._compress is not None:
-            chunk = self._compress.flush()
+            chunk = self._compress.finish()
             if chunk:
                 self._compress = None
                 await self.write(chunk)

@@ -2676,6 +2676,13 @@ Constants
 
       *GZIP compression*
 
+   .. attribute:: br
+
+      *BROTLI compression*
+
+      Supported if  `brotlipy <https://github.com/python-hyper/brotlipy>`_
+      is installed.
+
    .. attribute:: identity
 
       *no compression*

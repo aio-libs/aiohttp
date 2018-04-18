@@ -158,8 +158,8 @@ You can also access the response body as bytes, for non-text requests::
 The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
-You can enable ``brotli`` transfer-encodings support,
-just install  `brotlipy <https://github.com/python-hyper/brotlipy>`_.
+``brotli`` transfer-encodings support is enabled if
+`brotlipy <https://github.com/python-hyper/brotlipy>`_ is installed.
 
 JSON Request
 ============

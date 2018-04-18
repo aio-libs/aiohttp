@@ -1,6 +1,5 @@
 import collections
 import datetime
-import enum
 import json
 import math
 import time
@@ -11,23 +10,12 @@ from http.cookies import SimpleCookie
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
-from .compression import get_compressor
+from .compression import ContentCoding, get_compressor
 from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
 
-__all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
-
-
-class ContentCoding(enum.Enum):
-    # The content codings that we have support for.
-    #
-    # Additional registered codings are listed at:
-    # https://www.iana.org/assignments/http-parameters/http-parameters.xhtml#content-coding
-    deflate = 'deflate'
-    gzip = 'gzip'
-    identity = 'identity'
-    br = 'br'
+__all__ = ('StreamResponse', 'Response', 'json_response')
 
 
 ############################################################
@@ -284,12 +272,10 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         if self._compression_force:
             self._do_start_compression(self._compression_force)
         else:
-            accept_encoding = request.headers.get(
-                hdrs.ACCEPT_ENCODING, '').lower()
-            for coding in ContentCoding:
-                if coding.value in accept_encoding:
-                    self._do_start_compression(coding)
-                    return
+            coding = ContentCoding.get_from_accept_encoding(
+                request.headers.get(hdrs.ACCEPT_ENCODING, ''))
+            if coding:
+                self._do_start_compression(coding)
 
     async def prepare(self, request):
         if self._eof_sent:
@@ -613,7 +599,7 @@ class Response(StreamResponse):
             # compress the whole body
             compressobj = get_compressor(coding.value)
             self._compressed_body = compressobj.compress(self._body) +\
-                compressobj.flush()
+                compressobj.finish()
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
             self._headers[hdrs.CONTENT_LENGTH] = \
                 str(len(self._compressed_body))

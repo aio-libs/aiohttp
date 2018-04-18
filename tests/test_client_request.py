@@ -21,6 +21,12 @@ from aiohttp.client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
 from aiohttp.test_utils import make_mocked_coro
 
 
+try:
+    import brotli
+except ImportError:
+    brotli = None
+
+
 @pytest.fixture
 def make_request(loop):
     request = None
@@ -261,7 +267,7 @@ def test_default_headers_useragent_custom(make_request):
 
 def test_skip_default_useragent_header(make_request):
     req = make_request('get', 'http://python.org/',
-                       skip_auto_headers=set([istr('user-agent')]))
+                       skip_auto_headers={istr('user-agent')})
 
     assert 'User-Agent' not in req.headers
 
@@ -272,7 +278,10 @@ def test_headers(make_request):
 
     assert 'CONTENT-TYPE' in req.headers
     assert req.headers['CONTENT-TYPE'] == 'text/plain'
-    assert req.headers['ACCEPT-ENCODING'] == 'gzip, deflate'
+    if brotli:
+        assert req.headers['ACCEPT-ENCODING'] == 'gzip, deflate, br'
+    else:
+        assert req.headers['ACCEPT-ENCODING'] == 'gzip, deflate'
 
 
 def test_headers_list(make_request):

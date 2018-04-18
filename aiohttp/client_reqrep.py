@@ -15,7 +15,7 @@ import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
-from . import hdrs, helpers, http, multipart, payload
+from . import compression, hdrs, helpers, http, multipart, payload
 from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL, ServerFingerprintMismatch)
@@ -152,7 +152,7 @@ class ClientRequest:
 
     DEFAULT_HEADERS = {
         hdrs.ACCEPT: '*/*',
-        hdrs.ACCEPT_ENCODING: 'gzip, deflate',
+        hdrs.ACCEPT_ENCODING: compression.DEFAULT_ACCEPT_ENCODING,
     }
 
     body = b''

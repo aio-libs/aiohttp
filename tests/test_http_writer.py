@@ -7,6 +7,13 @@ import pytest
 
 from aiohttp import http
 from aiohttp.test_utils import make_mocked_coro
+from tests.conftest import skip_if_no_brotli
+
+
+try:
+    import brotli
+except ImportError:
+    brotli = None
 
 
 @pytest.fixture
@@ -115,37 +122,68 @@ async def test_write_payload_chunked_filter_mutiple_chunks(
         b'2\r\na2\r\n0\r\n\r\n')
 
 
-compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
-COMPRESSED = b''.join([compressor.compress(b'data'), compressor.flush()])
+def compress(encoding, *chunks):
+    if encoding == 'gzip':
+        obj = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    elif encoding == 'deflate':
+        obj = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    elif encoding == 'br':
+        obj = brotli.Compressor()
+    else:
+        raise RuntimeError(encoding)
+    out = []
+    for chunk in chunks:
+        out.append(obj.compress(chunk))
+    if encoding == 'br':
+        out.append(obj.finish())
+    else:
+        out.append(obj.flush())
+    return out
 
 
-async def test_write_payload_deflate_compression(protocol, transport, loop):
+@pytest.mark.parametrize('compression', [
+    'deflate',
+    'gzip',
+    pytest.param('br', marks=skip_if_no_brotli)
+])
+async def test_write_payload_compression(protocol, transport, loop,
+                                         compression):
     write = transport.write = mock.Mock()
     msg = http.StreamWriter(protocol, transport, loop)
-    msg.enable_compression('deflate')
+    msg.enable_compression(compression)
     await msg.write(b'data')
     await msg.write_eof()
 
     chunks = [c[1][0] for c in list(write.mock_calls)]
     assert all(chunks)
     content = b''.join(chunks)
-    assert COMPRESSED == content.split(b'\r\n\r\n', 1)[-1]
+    expected_content = b''.join(compress(compression, b'data'))
+    assert expected_content == content.split(b'\r\n\r\n', 1)[-1]
 
 
-async def test_write_payload_deflate_and_chunked(
+@pytest.mark.parametrize('compression', [
+    'deflate',
+    'gzip',
+    pytest.param('br', marks=skip_if_no_brotli),
+])
+async def test_write_payload_compressed_and_chunked(
         buf,
         protocol,
         transport,
-        loop):
+        loop,
+        compression):
     msg = http.StreamWriter(protocol, transport, loop)
-    msg.enable_compression('deflate')
+    msg.enable_compression(compression)
     msg.enable_chunking()
 
     await msg.write(b'da')
     await msg.write(b'ta')
     await msg.write_eof()
 
-    assert b'6\r\nKI,I\x04\x00\r\n0\r\n\r\n' == buf
+    parts = [p for chunk in compress(compression, b'da', b'ta')
+             for p in [('%x' % len(chunk)).encode('ascii'), chunk]
+             if chunk]
+    assert b'\r\n'.join(parts) + b'\r\n0\r\n\r\n' == buf
 
 
 async def test_write_drain(protocol, transport, loop):

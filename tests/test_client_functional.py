@@ -14,6 +14,7 @@ from async_generator import async_generator, yield_
 from multidict import MultiDict
 
 import aiohttp
+import aiohttp.compression
 from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.test_utils import unused_port
@@ -1174,7 +1175,15 @@ async def test_POST_FILES(aiohttp_client, fname):
         resp.close()
 
 
-async def test_POST_FILES_DEFLATE(aiohttp_client, fname):
+SUPPORTED_CODINGS = [
+    c for c in aiohttp.compression.ContentCoding
+    if (c != aiohttp.compression.ContentCoding.br or
+        aiohttp.compression.brotli is not None)
+]
+
+
+@pytest.mark.parametrize('encoding', SUPPORTED_CODINGS)
+async def test_POST_FILES_compression(aiohttp_client, fname, encoding):
 
     async def handler(request):
         data = await request.post()
@@ -1194,7 +1203,7 @@ async def test_POST_FILES_DEFLATE(aiohttp_client, fname):
             '/',
             data={'some': f},
             chunked=True,
-            compress='deflate'
+            compress=encoding.value,
         )
         assert 200 == resp.status
         resp.close()
@@ -1608,12 +1617,13 @@ async def test_expect_continue(aiohttp_client):
     assert expect_called
 
 
-async def test_encoding_deflate(aiohttp_client):
+@pytest.mark.parametrize('encoding', SUPPORTED_CODINGS)
+async def test_encoding(aiohttp_client, encoding):
 
     async def handler(request):
         resp = web.Response(text='text')
         resp.enable_chunked_encoding()
-        resp.enable_compression(web.ContentCoding.deflate)
+        resp.enable_compression(encoding)
         return resp
 
     app = web.Application()
@@ -1627,11 +1637,12 @@ async def test_encoding_deflate(aiohttp_client):
     resp.close()
 
 
-async def test_encoding_deflate_nochunk(aiohttp_client):
+@pytest.mark.parametrize('encoding', SUPPORTED_CODINGS)
+async def test_compression_nochunk(aiohttp_client, encoding):
 
     async def handler(request):
         resp = web.Response(text='text')
-        resp.enable_compression(web.ContentCoding.deflate)
+        resp.enable_compression(encoding)
         return resp
 
     app = web.Application()
@@ -1645,30 +1656,12 @@ async def test_encoding_deflate_nochunk(aiohttp_client):
     resp.close()
 
 
-async def test_encoding_gzip(aiohttp_client):
-
-    async def handler(request):
-        resp = web.Response(text='text')
-        resp.enable_chunked_encoding()
-        resp.enable_compression(web.ContentCoding.gzip)
-        return resp
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    txt = await resp.text()
-    assert txt == 'text'
-    resp.close()
-
-
-async def test_encoding_gzip_write_by_chunks(aiohttp_client):
+@pytest.mark.parametrize('encoding', SUPPORTED_CODINGS)
+async def test_compression_write_by_chunks(aiohttp_client, encoding):
 
     async def handler(request):
         resp = web.StreamResponse()
-        resp.enable_compression(web.ContentCoding.gzip)
+        resp.enable_compression(encoding)
         await resp.prepare(request)
         await resp.write(b'0')
         await resp.write(b'0')
@@ -1682,24 +1675,6 @@ async def test_encoding_gzip_write_by_chunks(aiohttp_client):
     assert 200 == resp.status
     txt = await resp.text()
     assert txt == '00'
-    resp.close()
-
-
-async def test_encoding_gzip_nochunk(aiohttp_client):
-
-    async def handler(request):
-        resp = web.Response(text='text')
-        resp.enable_compression(web.ContentCoding.gzip)
-        return resp
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    txt = await resp.text()
-    assert txt == 'text'
     resp.close()
 
 

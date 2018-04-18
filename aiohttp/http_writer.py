@@ -110,7 +110,7 @@ class StreamWriter(AbstractStreamWriter):
             if chunk:
                 chunk = self._compress.compress(chunk)
 
-            chunk = chunk + self._compress.flush()
+            chunk = chunk + self._compress.finish()
             if chunk and self.chunked:
                 chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
                 chunk = chunk_len + chunk + b'\r\n0\r\n\r\n'

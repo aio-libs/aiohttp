@@ -11,12 +11,7 @@ import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.http_parser import (DeflateBuffer, HttpPayloadParser,
                                  HttpRequestParserPy, HttpResponseParserPy)
-
-
-try:
-    import brotli
-except ImportError:
-    brotli = None
+from tests.conftest import skip_if_no_brotli
 
 
 REQUEST_PARSERS = [HttpRequestParserPy]
@@ -299,7 +294,7 @@ def test_compression_gzip(parser):
     assert msg.compression == 'gzip'
 
 
-@pytest.mark.skipif(brotli is None, reason="brotli is not installed")
+@skip_if_no_brotli
 def test_compression_brotli(parser):
     text = (b'GET /test HTTP/1.1\r\n'
             b'content-encoding: br\r\n\r\n')
@@ -808,8 +803,9 @@ class TestParsePayload:
         assert p.done
         assert out.is_eof()
 
-    @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
+    @skip_if_no_brotli
     def test_http_payload_brotli(self, stream):
+        import brotli
         compressed = brotli.compress(b'brotli data')
         out = aiohttp.FlowControlDataQueue(stream)
         p = HttpPayloadParser(
