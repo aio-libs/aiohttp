@@ -484,7 +484,8 @@ class BaseConnector:
             return False
 
         waiter = waiters.popleft()
-        waiter.set_result(None)
+        if not waiter.done():
+            waiter.set_result(None)
 
         if not waiters:
             del self._waiters[key]
