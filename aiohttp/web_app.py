@@ -258,7 +258,8 @@ class Application(MutableMapping):
                      access_log_class=AccessLogger,
                      **kwargs):
 
-        warnings.warn("Application.make_handler(...) is deprecated",
+        warnings.warn("Application.make_handler(...) is deprecated, "
+                      "use AppRunner API instead",
                       DeprecationWarning,
                       stacklevel=2)
 
