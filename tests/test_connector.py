@@ -1,7 +1,6 @@
 """Tests of http client with custom Connector"""
 
 import asyncio
-from collections import deque
 import gc
 import hashlib
 import os.path
@@ -9,6 +8,7 @@ import platform
 import socket
 import ssl
 import uuid
+from collections import deque
 from unittest import mock
 
 import pytest
