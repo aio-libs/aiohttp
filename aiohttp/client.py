@@ -18,7 +18,8 @@ from . import connector as connector_mod
 from . import hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
-                                ServerTimeoutError, WSServerHandshakeError)
+                                ServerTimeoutError, TooManyRedirects,
+                                WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
 from .client_ws import ClientWebSocketResponse
@@ -289,7 +290,6 @@ class ClientSession:
                                          "with AUTH argument or credentials "
                                          "encoded in URL")
 
-                    url = url.with_fragment(None)
                     cookies = self._cookie_jar.filter_cookies(url)
 
                     if proxy is not None:
@@ -360,7 +360,8 @@ class ClientSession:
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
                             resp.close()
-                            break
+                            raise TooManyRedirects(
+                                history[0].request_info, tuple(history))
                         else:
                             resp.release()
 

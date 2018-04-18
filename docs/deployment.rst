@@ -280,6 +280,8 @@ In this case, we will use:
   many worker processes to use for handling requests. (See the
   documentation for recommendations on `How Many Workers?
   <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
+* you may also want to use the *'--accesslog'* flag to enable the access
+  log to be populated. (See :ref:`logging <gunicorn-accesslog>` for more information.)
 
 The custom worker subclass is defined in ``aiohttp.GunicornWebWorker``::
 

@@ -105,6 +105,14 @@ def test_request_info(make_request):
                                                    req.headers)
 
 
+def test_request_info_with_fragment(make_request):
+    req = make_request('get', 'http://python.org/#urlfragment')
+    assert req.request_info == aiohttp.RequestInfo(
+        URL('http://python.org/'),
+        'GET', req.headers,
+        URL('http://python.org/#urlfragment'))
+
+
 def test_version_err(make_request):
     with pytest.raises(ValueError):
         make_request('get', 'http://python.org/', version='1.c')
