@@ -1749,8 +1749,6 @@ async def test_cancelled_waiter(loop):
     req.connection_key = 'key'
     proto = mock.Mock()
 
-    i = 0
-
     async def create_connection(req, traces=None):
         await asyncio.sleep(1)
         return proto
