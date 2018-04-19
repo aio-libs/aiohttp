@@ -31,7 +31,9 @@ Access logs
 Access log by default is switched on and uses ``'aiohttp.access'``
 logger name.
 
-The log may be controlled by :meth:`aiohttp.web.Application.make_handler` call.
+The log may be controlled by :meth:`aiohttp.web.AppRunner` and 
+:func:`aiohttp.web.run_app`.
+
 
 Pass *access_log* parameter with value of :class:`logging.Logger`
 instance to override default logger.
@@ -132,9 +134,8 @@ given on web requests handling.
 
 The log is enabled by default.
 
-To use different logger name please specify *logger* parameter
-(:class:`logging.Logger` instance) on performing
-:meth:`aiohttp.web.Application.make_handler` call.
+To use different logger name please pass *logger* parameter
+(:class:`logging.Logger` instance) to :meth:`aiohttp.web.AppRunner` constructor.
 
 
 .. _access_logformat:

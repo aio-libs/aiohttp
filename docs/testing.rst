@@ -153,6 +153,7 @@ Pytest tooling has the following fixtures:
                   :meth:`aiohttp.web.Application.make_handler`
 
    .. versionchanged:: 3.0
+   .. deprecated:: 3.2
 
       The fixture was renamed from ``test_server`` to ``aiohttp_server``.
 
@@ -685,8 +686,8 @@ Test Client
 
    .. attribute:: app
 
-      An alias for :attr:`self.server.app`. return ``None`` if 
-      ``self.server`` is not :class:`TestServer` 
+      An alias for :attr:`self.server.app`. return ``None`` if
+      ``self.server`` is not :class:`TestServer`
       instance(e.g. :class:`RawTestServer` instance for test low-level server).
 
    .. attribute:: session
