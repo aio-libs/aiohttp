@@ -230,10 +230,10 @@ class Application(MutableMapping):
     def middlewares(self):
         return self._middlewares
 
-    def make_handler(self, *,
-                     loop=None,
-                     access_log_class=AccessLogger,
-                     **kwargs):
+    def _make_handler(self, *,
+                      loop=None,
+                      access_log_class=AccessLogger,
+                      **kwargs):
 
         if not issubclass(access_log_class, AbstractAccessLogger):
             raise TypeError(
@@ -252,6 +252,20 @@ class Application(MutableMapping):
         return Server(self._handle, request_factory=self._make_request,
                       access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
+
+    def make_handler(self, *,
+                     loop=None,
+                     access_log_class=AccessLogger,
+                     **kwargs):
+
+        warnings.warn("Application.make_handler(...) is deprecated, "
+                      "use AppRunner API instead",
+                      DeprecationWarning,
+                      stacklevel=2)
+
+        return self._make_handler(loop=loop,
+                                  access_log_class=access_log_class,
+                                  **kwargs)
 
     async def startup(self):
         """Causes on_startup signal

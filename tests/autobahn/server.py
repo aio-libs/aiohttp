@@ -34,7 +34,7 @@ async def main(loop):
     app = web.Application()
     app.router.add_route('GET', '/', wshandler)
 
-    handler = app.make_handler()
+    handler = app._make_handler()
     srv = await loop.create_server(handler, '127.0.0.1', 9001)
     print("Server started at http://127.0.0.1:9001")
     return app, srv, handler

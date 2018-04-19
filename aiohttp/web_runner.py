@@ -269,7 +269,7 @@ class AppRunner(BaseRunner):
         await self._app.startup()
         self._app.freeze()
 
-        return self._app.make_handler(loop=loop, **self._kwargs)
+        return self._app._make_handler(loop=loop, **self._kwargs)
 
     async def _cleanup_server(self):
         await self._app.cleanup()
