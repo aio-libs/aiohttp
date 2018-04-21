@@ -547,3 +547,48 @@ async def test_set_exception_cancelled(loop):
 
     with pytest.raises(asyncio.CancelledError):
         await fut
+
+
+# ----------- ChainedProps --------------------------
+
+def test_getitem():
+    d1 = {'a': 2, 'b': 3}
+    d2 = {'a': 1}
+    cp = helpers.ChainedProps([d1, d2])
+    assert cp['a'] == 2
+    assert cp['b'] == 3
+
+
+def test_getitem_not_found():
+    d = {'a': 1}
+    cp = helpers.ChainedProps([d])
+    with pytest.raises(KeyError):
+        cp['b']
+
+
+def test_get():
+    d1 = {'a': 2, 'b': 3}
+    d2 = {'a': 1}
+    cp = helpers.ChainedProps([d1, d2])
+    assert cp.get('a') == 2
+
+
+def test_get_default():
+    d1 = {'a': 2, 'b': 3}
+    d2 = {'a': 1}
+    cp = helpers.ChainedProps([d1, d2])
+    assert cp.get('c', 4) == 4
+
+
+def test_get_non_default():
+    d1 = {'a': 2, 'b': 3}
+    d2 = {'a': 1}
+    cp = helpers.ChainedProps([d1, d2])
+    assert cp.get('a', 4) == 2
+
+
+def test_len():
+    d1 = {'a': 2, 'b': 3}
+    d2 = {'a': 1}
+    cp = helpers.ChainedProps([d1, d2])
+    assert len(cp) == 2

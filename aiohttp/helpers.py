@@ -14,6 +14,7 @@ import sys
 import time
 import weakref
 from collections import namedtuple
+from collections.abc import Mapping
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
@@ -741,3 +742,42 @@ def set_result(fut, result):
 def set_exception(fut, exc):
     if not fut.done():
         fut.set_exception(exc)
+
+
+class ChainedProps(Mapping):
+    __slots__ = ('_maps',)
+
+    def __init__(self, maps):
+        self._maps = maps
+
+    def __getitem__(self, key):
+        for mapping in self._maps:
+            try:
+                return mapping[key]
+            except KeyError:
+                pass
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        return self[key] if key in self else default
+
+    def __len__(self):
+        # reuses stored hash values if possible
+        return len(set().union(*self._maps))
+
+    def __iter__(self):
+        d = {}
+        for mapping in reversed(self._maps):
+            # reuses stored hash values if possible
+            d.update(mapping)
+        return iter(d)
+
+    def __contains__(self, key):
+        return any(key in m for m in self._maps)
+
+    def __bool__(self):
+        return any(self._maps)
+
+    def __repr__(self):
+        content = ", ".join(map(repr, self._maps))
+        return 'ChainedProps({})'.format(content)
