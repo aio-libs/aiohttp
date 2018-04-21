@@ -7,6 +7,7 @@ import cgi
 import datetime
 import functools
 import inspect
+import json
 import netrc
 import os
 import re
@@ -741,3 +742,7 @@ def set_result(fut, result):
 def set_exception(fut, exc):
     if not fut.done():
         fut.set_exception(exc)
+
+def json_dumps(obj):
+    # Return the most compact serialisation.
+    return json.dumps(obj, ensure_ascii=False, allow_nan=False, separators=(',', ':'))

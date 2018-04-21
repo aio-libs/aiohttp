@@ -1,7 +1,6 @@
 import collections
 import datetime
 import enum
-import json
 import math
 import time
 import warnings
@@ -12,7 +11,7 @@ from http.cookies import SimpleCookie
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
-from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
+from .helpers import HeadersMixin, rfc822_formatted_time, sentinel, json_dumps
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
 
@@ -622,7 +621,7 @@ class Response(StreamResponse):
 
 def json_response(data=sentinel, *, text=None, body=None, status=200,
                   reason=None, headers=None, content_type='application/json',
-                  dumps=json.dumps):
+                  dumps=json_dumps):
     if data is not sentinel:
         if text or body:
             raise ValueError(

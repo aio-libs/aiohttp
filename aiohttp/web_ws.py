@@ -9,7 +9,7 @@ import attr
 from multidict import CIMultiDict
 
 from . import hdrs
-from .helpers import call_later, set_result
+from .helpers import call_later, set_result, json_dumps
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
                    WebSocketError, WebSocketReader, WebSocketWriter, WSMessage,
                    WSMsgType, ws_ext_gen, ws_ext_parse)
@@ -262,7 +262,7 @@ class WebSocketResponse(StreamResponse):
                             type(data))
         await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data, compress=None, *, dumps=json.dumps):
+    async def send_json(self, data, compress=None, *, dumps=json_dumps):
         await self.send_str(dumps(data), compress=compress)
 
     async def write_eof(self):

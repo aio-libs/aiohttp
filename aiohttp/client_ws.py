@@ -6,7 +6,7 @@ import json
 import async_timeout
 
 from .client_exceptions import ClientError
-from .helpers import call_later, set_result
+from .helpers import call_later, set_result, json_dumps
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
 from .streams import EofStream
@@ -127,7 +127,7 @@ class ClientWebSocketResponse:
                             type(data))
         await self._writer.send(data, binary=True, compress=compress)
 
-    async def send_json(self, data, compress=None, *, dumps=json.dumps):
+    async def send_json(self, data, compress=None, *, dumps=json_dumps):
         await self.send_str(dumps(data), compress=compress)
 
     async def close(self, *, code=1000, message=b''):

@@ -737,8 +737,7 @@ async def test_writer_serialize_io_chunk(buf, stream, writer):
 async def test_writer_serialize_json(buf, stream, writer):
     writer.append_json({'привет': 'мир'})
     await writer.write(stream)
-    assert (b'{"\\u043f\\u0440\\u0438\\u0432\\u0435\\u0442":'
-            b' "\\u043c\\u0438\\u0440"}' in buf)
+    assert '{"привет":"мир"}'.encode('utf-8') in buf
 
 
 async def test_writer_serialize_form(buf, stream, writer):
@@ -778,8 +777,8 @@ async def test_writer_write(buf, stream, writer):
 
          b'--:\r\n'
          b'Content-Type: application/json\r\n'
-         b'Content-Length: 18\r\n\r\n'
-         b'{"test": "passed"}'
+         b'Content-Length: 17\r\n\r\n'
+         b'{"test":"passed"}'
          b'\r\n'
 
          b'--:\r\n'

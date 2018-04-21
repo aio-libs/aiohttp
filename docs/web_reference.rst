@@ -1019,7 +1019,7 @@ WebSocketResponse
          The method is converted into :term:`coroutine`,
          *compress* parameter added.
 
-   .. comethod:: send_json(data, compress=None, *, dumps=json.dumps)
+   .. comethod:: send_json(data, compress=None, *, dumps=json_dumps)
 
       Send *data* to peer as JSON string.
 
@@ -1031,7 +1031,7 @@ WebSocketResponse
 
       :param callable dumps: any :term:`callable` that accepts an object and
                              returns a JSON string
-                             (:func:`json.dumps` by default).
+                             (:func:`json.dumps`-like by default).
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1178,11 +1178,11 @@ json_response
 .. function:: json_response([data], *, text=None, body=None, \
                             status=200, reason=None, headers=None, \
                             content_type='application/json', \
-                            dumps=json.dumps)
+                            dumps=json_dumps)
 
 Return :class:`Response` with predefined ``'application/json'``
 content type and *data* encoded by ``dumps`` parameter
-(:func:`json.dumps` by default).
+(:func:`json.dumps`-like by default).
 
 
 .. _aiohttp-web-app-and-router:
