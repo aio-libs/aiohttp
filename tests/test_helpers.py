@@ -551,66 +551,119 @@ async def test_set_exception_cancelled(loop):
 
 # ----------- ChainedProps --------------------------
 
-def test_getitem():
-    d1 = {'a': 2, 'b': 3}
-    d2 = {'a': 1}
-    cp = helpers.ChainedProps([d1, d2])
-    assert cp['a'] == 2
-    assert cp['b'] == 3
+class TestChainedProps:
+    def test_getitem(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert cp['a'] == 2
+        assert cp['b'] == 3
+
+    def test_getitem_not_found(self):
+        d = {'a': 1}
+        cp = helpers.ChainedProps([d])
+        with pytest.raises(KeyError):
+            cp['b']
+
+    def test_get(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert cp.get('a') == 2
+
+    def test_get_default(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert cp.get('c', 4) == 4
+
+    def test_get_non_default(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert cp.get('a', 4) == 2
+
+    def test_len(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert len(cp) == 2
+
+    def test_iter(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert set(cp) == {'a', 'b'}
+
+    def test_contains(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert 'a' in cp
+        assert 'b' in cp
+        assert 'c' not in cp
+
+    def test_bool(self):
+        assert helpers.ChainedProps([{'a': 1}])
+        assert not helpers.ChainedProps([{}, {}])
+        assert not helpers.ChainedProps([])
+
+    def test_repr(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainedProps([d1, d2])
+        assert "ChainedProps({'a': 2, 'b': 3}, {'a': 1})" == repr(cp)
 
 
-def test_getitem_not_found():
-    d = {'a': 1}
-    cp = helpers.ChainedProps([d])
-    with pytest.raises(KeyError):
-        cp['b']
+# ----------- Namespace --------------------------
 
 
-def test_get():
-    d1 = {'a': 2, 'b': 3}
-    d2 = {'a': 1}
-    cp = helpers.ChainedProps([d1, d2])
-    assert cp.get('a') == 2
+class TestNamespace:
+    def test_dir(self):
+        d = {'a': 1, 'b': 2}
+        ns = helpers.Namespace(d)
+        assert ['__class__',
+                '__delattr__',
+                '__dir__',
+                '__doc__',
+                '__eq__',
+                '__format__',
+                '__ge__',
+                '__getattr__',
+                '__getattribute__',
+                '__gt__',
+                '__hash__',
+                '__init__',
+                '__init_subclass__',
+                '__le__',
+                '__lt__',
+                '__module__',
+                '__ne__',
+                '__new__',
+                '__reduce__',
+                '__reduce_ex__',
+                '__repr__',
+                '__setattr__',
+                '__sizeof__',
+                '__slots__',
+                '__str__',
+                '__subclasshook__',
+                '_mapping',
+                'a',
+                'b'] == dir(ns)
 
+    def test_getattr_found(self):
+        d = {'a': 1, 'b': 2}
+        ns = helpers.Namespace(d)
+        assert 1 == ns.a
 
-def test_get_default():
-    d1 = {'a': 2, 'b': 3}
-    d2 = {'a': 1}
-    cp = helpers.ChainedProps([d1, d2])
-    assert cp.get('c', 4) == 4
+    def test_getattr_not_found(self):
+        d = {'a': 1, 'b': 2}
+        ns = helpers.Namespace(d)
+        with pytest.raises(AttributeError):
+            ns.c
 
-
-def test_get_non_default():
-    d1 = {'a': 2, 'b': 3}
-    d2 = {'a': 1}
-    cp = helpers.ChainedProps([d1, d2])
-    assert cp.get('a', 4) == 2
-
-
-def test_len():
-    d1 = {'a': 2, 'b': 3}
-    d2 = {'a': 1}
-    cp = helpers.ChainedProps([d1, d2])
-    assert len(cp) == 2
-
-
-def test_iter():
-    d1 = {'a': 2, 'b': 3}
-    d2 = {'a': 1}
-    cp = helpers.ChainedProps([d1, d2])
-    assert set(cp) == {'a', 'b'}
-
-
-def test_contains():
-    d1 = {'a': 2, 'b': 3}
-    d2 = {'a': 1}
-    cp = helpers.ChainedProps([d1, d2])
-    assert 'a' in cp
-    assert 'b' in cp
-    assert 'c' not in cp
-
-
-def test_bool():
-    assert helpers.ChainedProps([{'a': 1}])
-    assert not helpers.ChainedProps([{}, {}])
-    assert not helpers.ChainedProps([])
+    def test_repr(self):
+        d = {'a': 1, 'b': 2}
+        ns = helpers.Namespace(d)
+        assert 'Namespace(a=1, b=2)' == repr(ns)
