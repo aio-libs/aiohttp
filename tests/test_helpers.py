@@ -622,7 +622,7 @@ class TestNamespace:
     def test_dir(self):
         d = {'a': 1, 'b': 2}
         ns = helpers.Namespace(d)
-        assert ['__class__',
+        lst = ['__class__',
                 '__delattr__',
                 '__dir__',
                 '__doc__',
@@ -634,7 +634,6 @@ class TestNamespace:
                 '__gt__',
                 '__hash__',
                 '__init__',
-                '__init_subclass__',
                 '__le__',
                 '__lt__',
                 '__module__',
@@ -650,7 +649,12 @@ class TestNamespace:
                 '__subclasshook__',
                 '_mapping',
                 'a',
-                'b'] == dir(ns)
+                'b']
+        if helpers.PY_36:
+            lst.append('__init_subclass__')
+        lst.sort()
+
+        assert  == dir(ns)
 
     def test_getattr_found(self):
         d = {'a': 1, 'b': 2}
