@@ -783,7 +783,6 @@ class ChainedProps(Mapping):
         return 'ChainedProps({})'.format(content)
 
 
-
 class Namespace:
     __slots__ = ('_mapping')
 

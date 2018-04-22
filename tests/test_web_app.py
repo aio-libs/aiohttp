@@ -400,7 +400,7 @@ async def test_cleanup_ctx_multiple_yields():
     assert out == ['pre_1', 'post_1']
 
 
-async def test_subapp_chained_props_visibility(aiohttp_client):
+async def test_subapp_chained_config_dict_visibility(aiohttp_client):
 
     async def main_handler(request):
         assert request.config_dict['key1'] == 'val1'
@@ -429,7 +429,7 @@ async def test_subapp_chained_props_visibility(aiohttp_client):
     assert resp.status == 201
 
 
-async def test_subapp_chained_props_overriding(aiohttp_client):
+async def test_subapp_chained_config_dict_overriding(aiohttp_client):
 
     async def main_handler(request):
         assert request.config_dict['key'] == 'val1'
@@ -441,6 +441,63 @@ async def test_subapp_chained_props_overriding(aiohttp_client):
 
     async def sub_handler(request):
         assert request.config_dict['key'] == 'val2'
+        return web.Response(status=201)
+
+    sub = web.Application()
+    sub['key'] = 'val2'
+    sub.add_routes([web.get('/', sub_handler)])
+    root.add_subapp('/sub', sub)
+
+    client = await aiohttp_client(root)
+
+    resp = await client.get('/')
+    assert resp.status == 200
+    resp = await client.get('/sub/')
+    assert resp.status == 201
+
+
+async def test_subapp_chained_config_visibility(aiohttp_client):
+
+    async def main_handler(request):
+        assert request.config.key1 == 'val1'
+        with pytest.raises(AttributeError):
+            request.config.key2
+        return web.Response(status=200)
+
+    root = web.Application()
+    root['key1'] = 'val1'
+    root.add_routes([web.get('/', main_handler)])
+
+    async def sub_handler(request):
+        assert request.config.key1 == 'val1'
+        assert request.config.key2 == 'val2'
+        return web.Response(status=201)
+
+    sub = web.Application()
+    sub['key2'] = 'val2'
+    sub.add_routes([web.get('/', sub_handler)])
+    root.add_subapp('/sub', sub)
+
+    client = await aiohttp_client(root)
+
+    resp = await client.get('/')
+    assert resp.status == 200
+    resp = await client.get('/sub/')
+    assert resp.status == 201
+
+
+async def test_subapp_chained_config_overriding(aiohttp_client):
+
+    async def main_handler(request):
+        assert request.config.key == 'val1'
+        return web.Response(status=200)
+
+    root = web.Application()
+    root['key'] = 'val1'
+    root.add_routes([web.get('/', main_handler)])
+
+    async def sub_handler(request):
+        assert request.config.key == 'val2'
         return web.Response(status=201)
 
     sub = web.Application()
