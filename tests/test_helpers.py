@@ -592,3 +592,25 @@ def test_len():
     d2 = {'a': 1}
     cp = helpers.ChainedProps([d1, d2])
     assert len(cp) == 2
+
+
+def test_iter():
+    d1 = {'a': 2, 'b': 3}
+    d2 = {'a': 1}
+    cp = helpers.ChainedProps([d1, d2])
+    assert set(cp) == {'a', 'b'}
+
+
+def test_contains():
+    d1 = {'a': 2, 'b': 3}
+    d2 = {'a': 1}
+    cp = helpers.ChainedProps([d1, d2])
+    assert 'a' in cp
+    assert 'b' in cp
+    assert 'c' not in cp
+
+
+def test_bool():
+    assert helpers.ChainedProps([{'a': 1}])
+    assert not helpers.ChainedProps([{}, {}])
+    assert not helpers.ChainedProps([])
