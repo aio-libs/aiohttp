@@ -654,7 +654,7 @@ class TestNamespace:
             lst.append('__init_subclass__')
         lst.sort()
 
-        assert  == dir(ns)
+        assert lst == dir(ns)
 
     def test_getattr_found(self):
         d = {'a': 1, 'b': 2}
