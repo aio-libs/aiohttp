@@ -19,7 +19,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import (DEBUG, ChainedProps, HeadersMixin, Namespace, reify,
+from .helpers import (DEBUG, ChainMapProxy, HeadersMixin, Namespace, reify,
                       sentinel)
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
@@ -671,7 +671,7 @@ class Request(BaseRequest):
         app = self.app
         idx = lst.index(app)
         sublist = list(reversed(lst[:idx + 1]))
-        return ChainedProps(sublist)
+        return ChainMapProxy(sublist)
 
     @property
     def config(self):

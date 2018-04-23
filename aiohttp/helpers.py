@@ -744,11 +744,15 @@ def set_exception(fut, exc):
         fut.set_exception(exc)
 
 
-class ChainedProps(Mapping):
+class ChainMapProxy(Mapping):
     __slots__ = ('_maps',)
 
     def __init__(self, maps):
         self._maps = tuple(maps)
+
+    def __init_subclass__(cls):
+        raise TypeError("Inheritance class {} from ChainMapProxy "
+                        "is forbidden".format(cls.__name__))
 
     def __getitem__(self, key):
         for mapping in self._maps:
@@ -780,7 +784,7 @@ class ChainedProps(Mapping):
 
     def __repr__(self):
         content = ", ".join(map(repr, self._maps))
-        return 'ChainedProps({})'.format(content)
+        return 'ChainMapProxy({})'.format(content)
 
 
 class Namespace:
