@@ -183,8 +183,6 @@ class BaseConnector:
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
-        # NOTE: this is not a true FIFO because the true order is lost amongst
-        #       the dictionary keys
         self._waiters = defaultdict(deque)
 
         self._loop = loop
