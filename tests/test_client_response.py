@@ -1055,13 +1055,6 @@ def test_response_links_comma_separated(loop, session):
         )
     ])
     assert (
-        response.raw_links ==
-        ({'url': 'http://example.com/page/1.html',
-          'rel': 'next'},
-         {'url': 'http://example.com/',
-          'rel': 'home'})
-    )
-    assert (
         response.links ==
         {'next':
          {'url': URL('http://example.com/page/1.html'),
@@ -1095,13 +1088,6 @@ def test_response_links_multiple_headers(loop, session):
         )
     ])
     assert (
-        response.raw_links ==
-        ({'url': 'http://example.com/page/1.html',
-          'rel': 'next'},
-         {'url': 'http://example.com/',
-          'rel': 'home'})
-    )
-    assert (
         response.links ==
         {'next':
          {'url': URL('http://example.com/page/1.html'),
@@ -1131,13 +1117,61 @@ def test_response_links_no_rel(loop, session):
         )
     ])
     assert (
-        response.raw_links ==
-        ({'url': 'http://example.com/'}, )
-    )
-    assert (
         response.links ==
         {
             'http://example.com/':
             {'url': URL('http://example.com/')}
         }
+    )
+
+
+def test_response_links_quoted(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict([
+        (
+            "Link",
+            '<http://example.com/>; rel="home-page"'
+        ),
+    ])
+    assert (
+        response.links ==
+        {'home-page':
+         {'url': URL('http://example.com/'),
+          'rel': 'home-page'}
+         }
+    )
+
+
+def test_response_links_relative(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict([
+        (
+            "Link",
+            '</relative/path>; rel=rel'
+        ),
+    ])
+    assert (
+        response.links ==
+        {'rel':
+         {'url': URL('http://def-cl-resp.org/relative/path'),
+          'rel': 'rel'}
+         }
     )

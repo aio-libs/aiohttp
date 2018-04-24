@@ -257,60 +257,6 @@ def parse_mimetype(mimetype):
                     parameters=params)
 
 
-def parse_header_links(value):
-    """Parses Link header.
-
-    value is a Link HTTP Header value.
-
-    Returns a list of links as dicts.
-
-    Example:
-
-    >>> parse_header_links(
-    ...     '''<http://example.com/front.jpeg>; rel=front; type="image/jpeg",
-    ...     <http://example.com/back.jpeg>; rel=back; type="image/jpeg"''')
-    ({'rel': 'front',
-      'type': 'image/jpeg',
-      'url': 'http://example.com/front.jpeg'},
-     {'rel': 'back',
-      'type': 'image/jpeg',
-      'url': 'http://example.com/back.jpeg'})
-
-    """
-
-    if not value:
-        return ()
-
-    replace_chars = ' \'"'
-
-    value = value.strip(replace_chars)
-
-    if not value:
-        return ()
-
-    links = []
-
-    for val in re.split(', *<', value):
-        try:
-            url, params = val.split(';', 1)
-        except ValueError:
-            url, params = val, ''
-
-        link = {'url': url.strip('<> \'"')}
-
-        for param in params.split(';'):
-            try:
-                key, value = param.split('=')
-            except ValueError:
-                break
-
-            link[key.strip(replace_chars)] = value.strip(replace_chars)
-
-        links.append(link)
-
-    return tuple(links)
-
-
 def guess_filename(obj, default=None):
     name = getattr(obj, 'name', None)
     if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
