@@ -103,6 +103,7 @@ Jeroen van der Heijden
 Jesus Cea
 Jinkyu Yi
 Joel Watts
+John Feusi
 Jon Nabozny
 Joongi Kim
 Josep Cugat
