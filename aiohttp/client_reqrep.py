@@ -20,8 +20,8 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL, ServerFingerprintMismatch)
 from .formdata import FormData
-from .helpers import (PY_36, HeadersMixin, TimerNoop, noop, reify, set_result,
-                      parse_header_links)
+from .helpers import (PY_36, HeadersMixin, TimerNoop, noop, parse_header_links,
+                      reify, set_result)
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
 

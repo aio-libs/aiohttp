@@ -1100,12 +1100,16 @@ Response object
    .. attribute:: raw_links
 
       Link HTTP headers of response parsed into a sequence of dictionaries
-      with `url` key for link uri itself.
+      with `url` key for link url itself.
+
+      .. versionadded:: 3.2
 
    .. attribute:: links
 
       :attr:`raw_links` additionally parsed into a dict with `rel` or `url`
       keys and `url` parsed into :class:`yarl.URL` object.
+
+      .. versionadded:: 3.2
 
    .. attribute:: content_type
 

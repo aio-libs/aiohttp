@@ -6,8 +6,8 @@ import sys
 from unittest import mock
 
 import pytest
-from yarl import URL
 from multidict import CIMultiDict
+from yarl import URL
 
 import aiohttp
 from aiohttp import http
