@@ -20,7 +20,8 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL, ServerFingerprintMismatch)
 from .formdata import FormData
-from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
+from .helpers import (PY_36, HeadersMixin, TimerNoop, noop, reify, set_result,
+                      parse_header_links)
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
 
@@ -686,6 +687,22 @@ class ClientResponse(HeadersMixin):
     def history(self):
         """A sequence of of responses, if redirects occurred."""
         return self._history
+
+    @property
+    def raw_links(self):
+        links = ", ".join(self.headers.getall("link", []))
+        return parse_header_links(links)
+
+    @property
+    def links(self):
+        links = {}
+        for link in self.raw_links:
+            key = link.get("rel") or link.get("url")
+            link["url"] = URL(link["url"])
+            links[key] = link
+        return links
+
+
 
     async def start(self, connection, read_until_eof=False):
         """Start response processing."""
