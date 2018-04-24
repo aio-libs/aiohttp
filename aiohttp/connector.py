@@ -399,11 +399,11 @@ class BaseConnector:
                 #  removed when it's notified
                 try:
                     waiters.remove(fut)
-
-                    if not waiters:
-                        del self._waiters[key]
                 except ValueError:  # fut may no longer be in list
                     pass
+
+                if not waiters:
+                    del self._waiters[key]
 
                 raise
 
