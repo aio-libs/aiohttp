@@ -53,7 +53,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinxcontrib.asyncio',
-    'sphinxcontrib.asyncio',
     'sphinxcontrib.blockdiag',
 ]
 
