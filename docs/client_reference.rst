@@ -1097,6 +1097,16 @@ Response object
       Unmodified HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
 
+   .. attribute:: raw_links
+
+      Link HTTP headers of response parsed into a sequence of dictionaries
+      with `url` key for link uri itself.
+
+   .. attribute:: links
+
+      :attr:`raw_links` additionally parsed into a dict with `rel` or `url`
+      keys and `url` parsed into :class:`yarl.URL` object.
+
    .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.

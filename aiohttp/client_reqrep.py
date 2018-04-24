@@ -702,8 +702,6 @@ class ClientResponse(HeadersMixin):
             links[key] = link
         return links
 
-
-
     async def start(self, connection, read_until_eof=False):
         """Start response processing."""
         self._closed = False
