@@ -547,3 +547,77 @@ async def test_set_exception_cancelled(loop):
 
     with pytest.raises(asyncio.CancelledError):
         await fut
+
+
+# ----------- ChainMapProxy --------------------------
+
+class TestChainMapProxy:
+    @pytest.mark.skipif(not helpers.PY_36,
+                        reason="Requires Python 3.6+")
+    def test_inheritance(self):
+        with pytest.raises(TypeError):
+            class A(helpers.ChainMapProxy):
+                pass
+
+    def test_getitem(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp['a'] == 2
+        assert cp['b'] == 3
+
+    def test_getitem_not_found(self):
+        d = {'a': 1}
+        cp = helpers.ChainMapProxy([d])
+        with pytest.raises(KeyError):
+            cp['b']
+
+    def test_get(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp.get('a') == 2
+
+    def test_get_default(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp.get('c', 4) == 4
+
+    def test_get_non_default(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp.get('a', 4) == 2
+
+    def test_len(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert len(cp) == 2
+
+    def test_iter(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert set(cp) == {'a', 'b'}
+
+    def test_contains(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert 'a' in cp
+        assert 'b' in cp
+        assert 'c' not in cp
+
+    def test_bool(self):
+        assert helpers.ChainMapProxy([{'a': 1}])
+        assert not helpers.ChainMapProxy([{}, {}])
+        assert not helpers.ChainMapProxy([])
+
+    def test_repr(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        expected = "ChainMapProxy({!r}, {!r})".format(d1, d2)
+        assert expected == repr(cp)

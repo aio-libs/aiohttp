@@ -16,4 +16,5 @@ Miscellaneous API Shared between Client And Server.
    multipart_reference
    streams
    signals
+   structures
    websocket_utilities

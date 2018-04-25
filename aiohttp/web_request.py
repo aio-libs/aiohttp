@@ -19,7 +19,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import DEBUG, HeadersMixin, reify, sentinel
+from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
@@ -663,6 +663,14 @@ class Request(BaseRequest):
     def app(self):
         """Application instance."""
         return self._match_info.current_app
+
+    @property
+    def config_dict(self):
+        lst = self._match_info.apps
+        app = self.app
+        idx = lst.index(app)
+        sublist = list(reversed(lst[:idx + 1]))
+        return ChainMapProxy(sublist)
 
     async def _prepare_hook(self, response):
         match_info = self._match_info
