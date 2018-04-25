@@ -9,7 +9,7 @@ Common data structures
 .. currentmodule:: aiohttp
 
 
-Commond data stuctures used by *aiohttp* internally.
+Common data structures used by *aiohttp* internally.
 
 
 FrozenList
@@ -44,7 +44,7 @@ ChainMapProxy
 
 An *immutable* version of :class:`collections.ChainMap`.  Internally
 the proxy is a list of mappings (dictionaries), if the requested key
-is not prosent in the first mapping the second is looked up and so on.
+is not present in the first mapping the second is looked up and so on.
 
 The class supports :class:`collections.abc.Mapping` interface.
 
