@@ -19,8 +19,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import (DEBUG, ChainMapProxy, HeadersMixin, Namespace, reify,
-                      sentinel)
+from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
