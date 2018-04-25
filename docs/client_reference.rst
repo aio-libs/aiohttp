@@ -1097,17 +1097,13 @@ Response object
       Unmodified HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
 
-   .. attribute:: raw_links
-
-      Link HTTP headers of response parsed into a sequence of dictionaries
-      with `url` key for link url itself.
-
-      .. versionadded:: 3.2
-
    .. attribute:: links
 
-      :attr:`raw_links` additionally parsed into a dict with `rel` or `url`
-      keys and `url` parsed into :class:`yarl.URL` object.
+      Link HTTP header parsed into a :class:`~multidict.MultiDictProxy`.
+
+      For each link, key is link param `rel` when it exists, or link url as
+      :class:`str` otherwise, and value is :class:`~multidict.MultiDictProxy`
+      of link params and url at key `url` as :class:`~yarl.URL` instance.
 
       .. versionadded:: 3.2
 
