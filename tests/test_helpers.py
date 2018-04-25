@@ -619,7 +619,8 @@ class TestChainMapProxy:
         d1 = {'a': 2, 'b': 3}
         d2 = {'a': 1}
         cp = helpers.ChainMapProxy([d1, d2])
-        assert "ChainMapProxy({'a': 2, 'b': 3}, {'a': 1})" == repr(cp)
+        expected = "ChainMapProxy({!r}, {!r})".format(d1, d2)
+        assert expected == repr(cp)
 
 
 # ----------- Namespace --------------------------
