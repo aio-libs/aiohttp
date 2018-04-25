@@ -30,7 +30,9 @@ extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
                         define_macros=[('HTTP_PARSER_STRICT', 0)],
                         ),
               Extension('aiohttp._frozenlist',
-                        ['aiohttp/_frozenlist' + ext])]
+                        ['aiohttp/_frozenlist' + ext]),
+              Extension('aiohttp._http_writer',
+                        ['aiohttp/_http_writer' + ext])]
 
 
 if USE_CYTHON:
