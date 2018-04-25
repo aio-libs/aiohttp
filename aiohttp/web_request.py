@@ -673,10 +673,6 @@ class Request(BaseRequest):
         sublist = list(reversed(lst[:idx + 1]))
         return ChainMapProxy(sublist)
 
-    @property
-    def config(self):
-        return Namespace(self.config_dict)
-
     async def _prepare_hook(self, response):
         match_info = self._match_info
         if match_info is None:

@@ -785,24 +785,3 @@ class ChainMapProxy(Mapping):
     def __repr__(self):
         content = ", ".join(map(repr, self._maps))
         return 'ChainMapProxy({})'.format(content)
-
-
-class Namespace:
-    __slots__ = ('_mapping')
-
-    def __init__(self, mapping):
-        self._mapping = mapping
-
-    def __dir__(self):
-        return dir(self.__class__) + list(self._mapping.keys())
-
-    def __getattr__(self, name):
-        try:
-            return self._mapping[name]
-        except KeyError:
-            raise AttributeError(name)
-
-    def __repr__(self):
-        content = ", ".join('{}={!r}'.format(k, v)
-                            for k, v in self._mapping.items())
-        return 'Namespace({})'.format(content)
