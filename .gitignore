@@ -27,6 +27,8 @@ aiohttp/_websocket.c
 aiohttp/_websocket.html
 aiohttp/_http_parser.c
 aiohttp/_http_parser.html
+aiohttp/_http_writer.c
+aiohttp/_http_writer.html
 bin
 build
 htmlcov
