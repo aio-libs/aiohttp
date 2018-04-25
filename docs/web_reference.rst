@@ -489,12 +489,23 @@ and :ref:`aiohttp-web-signals` handlers.
       An :class:`Application` instance used to call :ref:`request handler
       <aiohttp-web-handler>`, Read-only property.
 
+   .. attribute:: config_dict
+
+      A :class:`ChainMapProxy` instance for mapping all properties
+      from the current application returned by :attr:`app` property
+      and all its parents.
+
+      .. seealso:: :ref:`aiohttp-web-data-sharing-app-config`
+
+      .. versionadded:: 3.2
+
    .. note::
 
       You should never create the :class:`Request` instance manually
       -- :mod:`aiohttp.web` does it for you. But
       :meth:`~BaseRequest.clone` may be used for cloning *modified*
       request copy with changed *path*, *method* etc.
+
 
 
 
