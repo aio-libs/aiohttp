@@ -491,7 +491,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: config_dict
 
-      A :class:`ChainMapProxy` instance for mapping all properties
+      A :class:`aiohttp.ChainMapProxy` instance for mapping all properties
       from the current application returned by :attr:`app` property
       and all its parents.
 
