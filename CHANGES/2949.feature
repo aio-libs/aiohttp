@@ -1,0 +1,1 @@
+Add ``request.config_dict`` for exposing nested applications data.
