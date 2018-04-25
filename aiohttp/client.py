@@ -52,8 +52,8 @@ class ClientSession:
         '_source_traceback', '_connector',
         'requote_redirect_url', '_loop', '_cookie_jar',
         '_connector_owner', '_default_auth',
-        '_version', '_json_serialize', '_read_timeout',
-        '_conn_timeout', '_raise_for_status', '_auto_decompress',
+        '_version', '_json_serialize',
+        '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
         '_ws_response_class', '_trace_configs'])
@@ -71,6 +71,7 @@ class ClientSession:
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
+                 timeout=sentinel,
                  auto_decompress=True, trust_env=False,
                  trace_configs=None):
 
@@ -117,9 +118,13 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        self._read_timeout = (read_timeout if read_timeout is not sentinel
-                              else DEFAULT_TIMEOUT)
         self._conn_timeout = conn_timeout
+        if timeout is not sentinel:
+            self._timeout = timeout
+        if read_timeout is sentinel:
+            read_timeout = DEFAULT_TIMEOUT
+        self._timeout = RequestTimeouts(read_timeout=read_timeout,
+                                        connect_timeout=conn_timeout)
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env

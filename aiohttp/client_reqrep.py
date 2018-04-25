@@ -39,6 +39,27 @@ except ImportError:  # pragma: no cover
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
 
 
+@attr.s(frozen=True, slots=True)
+class RequestTimeouts:
+    read_timeout = attr.ib(type=float, default=None)
+    connect_timeout = attr.ib(type=float, default=None)
+
+    total_timeout = attr.ib(type=float, default=None)
+    pool_queue_timeout = attr.ib(type=float, default=None)
+    dns_resolution_timeout = attr.ib(type=float, default=None)
+    socket_connect_timeout = attr.ib(type=float, default=None)
+    connection_acquiring_timeout = attr.ib(type=float, default=None)
+    new_connection_timeout = attr.ib(type=float, default=None)
+    http_header_timeout = attr.ib(type=float, default=None)
+    response_body_timeout = attr.ib(type=float, default=None)
+
+    # to create a timeout specific for a single request, either
+    # - create a completely new one to overwrite the default
+    # - or use http://www.attrs.org/en/stable/api.html#attr.evolve
+    # to overwrite the defaults
+
+
+
 json_re = re.compile('^application/(?:[\w.+-]+?\+)?json')
 
 
