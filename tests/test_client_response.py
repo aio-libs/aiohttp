@@ -1175,3 +1175,18 @@ def test_response_links_relative(loop, session):
           'rel': 'rel'}
          }
     )
+
+
+def test_response_links_empty(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict()
+    assert response.links == {}
