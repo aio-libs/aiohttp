@@ -31,7 +31,7 @@ from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
-__all__ = ('BasicAuth',)
+__all__ = ('BasicAuth', 'ChainMapProxy')
 
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
