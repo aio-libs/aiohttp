@@ -687,6 +687,37 @@ class ClientResponse(HeadersMixin):
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
+    @property
+    def links(self):
+        links_str = ", ".join(self.headers.getall("link", []))
+
+        links = MultiDict()
+
+        if not links_str:
+            return MultiDictProxy(links)
+
+        for val in re.split(r",(?=\s*<)", links_str):
+            url, params = re.match(r"\s*<(.*)>(.*)", val).groups()
+            params = params.split(";")[1:]
+
+            link = MultiDict()
+
+            for param in params:
+                key, _, value, _ = re.match(
+                    r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$",
+                    param, re.M
+                ).groups()
+
+                link.add(key, value)
+
+            key = link.get("rel", url)
+
+            link.add("url", self.url.join(URL(url)))
+
+            links.add(key, MultiDictProxy(link))
+
+        return MultiDictProxy(links)
+
     async def start(self, connection, read_until_eof=False):
         """Start response processing."""
         self._closed = False
