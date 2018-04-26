@@ -495,7 +495,7 @@ class ClientRequest:
                 path += '?' + self.url.raw_query_string
 
         writer = StreamWriter(
-            conn.protocol, conn.transport, self.loop,
+            conn.protocol, self.loop,
             on_chunk_sent=self._on_chunk_request_sent
         )
 
