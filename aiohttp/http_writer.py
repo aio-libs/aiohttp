@@ -5,6 +5,7 @@ import collections
 import zlib
 
 from .abc import AbstractStreamWriter
+from .helpers import NO_EXTENSIONS
 
 
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
@@ -93,13 +94,11 @@ class StreamWriter(AbstractStreamWriter):
                 self.buffer_size = 0
                 await self.drain()
 
-    async def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
+    async def write_headers(self, status_line, headers):
         """Write request/response status and headers."""
         # status + headers
-        headers = status_line + ''.join(
-            [k + SEP + v + END for k, v in headers.items()])
-        headers = headers.encode('utf-8') + b'\r\n'
-        self._write(headers)
+        buf = _serialize_headers(status_line, headers)
+        self._write(buf)
 
     async def write_eof(self, chunk=b''):
         if self._eof:
@@ -142,3 +141,19 @@ class StreamWriter(AbstractStreamWriter):
         """
         if self._protocol.transport is not None:
             await self._protocol._drain_helper()
+
+
+def _py_serialize_headers(status_line, headers):
+    headers = status_line + ''.join(
+        [k + ': ' + v + '\r\n' for k, v in headers.items()])
+    return headers.encode('utf-8') + b'\r\n'
+
+
+_serialize_headers = _py_serialize_headers
+
+try:
+    from _http_writer import _serialize_headers as _c_serialize_headers
+    if not NO_EXTENSIONS:  # pragma: no cover
+        _serialize_headers = _c_serialize_headers
+except ImportError:
+    pass
