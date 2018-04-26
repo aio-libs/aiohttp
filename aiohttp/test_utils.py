@@ -504,11 +504,12 @@ def make_mocked_request(method, path, headers=None, *,
     if app is None:
         app = _create_app_mock()
 
-    if protocol is sentinel:
-        protocol = mock.Mock()
-
     if transport is sentinel:
         transport = _create_transport(sslcontext)
+
+    if protocol is sentinel:
+        protocol = mock.Mock()
+        protocol.transport = transport
 
     if writer is sentinel:
         writer = mock.Mock()
