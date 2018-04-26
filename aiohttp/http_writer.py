@@ -17,9 +17,9 @@ HttpVersion11 = HttpVersion(1, 1)
 
 class StreamWriter(AbstractStreamWriter):
 
-    def __init__(self, protocol, transport, loop, on_chunk_sent=None):
+    def __init__(self, protocol, loop, on_chunk_sent=None):
         self._protocol = protocol
-        self._transport = transport
+        self._transport = protocol.transport
 
         self.loop = loop
         self.length = None
