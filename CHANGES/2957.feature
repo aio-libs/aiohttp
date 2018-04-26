@@ -1,0 +1,1 @@
+Speed up HTTP headers serialization, server microbenchmark runs 5% faster now.
