@@ -8,6 +8,7 @@ import platform
 import socket
 import ssl
 import uuid
+from collections import deque
 from unittest import mock
 
 import pytest
@@ -40,8 +41,8 @@ def ssl_key():
 
 
 @pytest.fixture
-def unix_sockname(tmpdir):
-    sock_path = tmpdir / 'socket.sock'
+def unix_sockname(shorttmpdir):
+    sock_path = shorttmpdir / 'socket.sock'
     return str(sock_path)
 
 
@@ -90,7 +91,7 @@ async def test_del_with_scheduled_cleanup(loop):
     loop.set_debug(True)
     conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=0.01)
     transp = mock.Mock()
-    conn._conns['a'] = [(transp, 'proto', 123)]
+    conn._conns['a'] = [(transp, 123)]
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
@@ -115,7 +116,7 @@ async def test_del_with_scheduled_cleanup(loop):
 def test_del_with_closed_loop(loop):
     conn = aiohttp.BaseConnector(loop=loop)
     transp = mock.Mock()
-    conn._conns['a'] = [(transp, 'proto', 123)]
+    conn._conns['a'] = [(transp, 123)]
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
@@ -319,7 +320,7 @@ def test_release_waiter(loop, key, key2):
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
     w2.done.return_value = False
-    conn._waiters[key] = [w1, w2]
+    conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert w1.set_result.called
     assert not w2.set_result.called
@@ -330,7 +331,7 @@ def test_release_waiter(loop, key, key2):
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = True
     w2.done.return_value = False
-    conn._waiters[key] = [w1, w2]
+    conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert not w1.set_result.called
     assert not w2.set_result.called
@@ -343,8 +344,8 @@ def test_release_waiter_per_host(loop, key, key2):
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
     w2.done.return_value = False
-    conn._waiters[key] = [w1]
-    conn._waiters[key2] = [w2]
+    conn._waiters[key] = deque([w1])
+    conn._waiters[key2] = deque([w2])
     conn._release_waiter()
     assert ((w1.set_result.called and not w2.set_result.called) or
             (not w1.set_result.called and w2.set_result.called))
@@ -960,7 +961,9 @@ async def test_connect_tracing(loop):
     conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
-    await conn.connect(req, traces=traces)
+    conn2 = await conn.connect(req, traces=traces)
+    conn2.release()
+
     on_connection_create_start.assert_called_with(
         session,
         trace_config_ctx,
@@ -1411,7 +1414,8 @@ async def test_connect_reuseconn_tracing(loop, key):
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._conns[key] = [(proto, loop.time())]
-    await conn.connect(req, traces=traces)
+    conn2 = await conn.connect(req, traces=traces)
+    conn2.release()
 
     on_connection_reuseconn.assert_called_with(
         session,
@@ -1736,6 +1740,29 @@ async def test_error_on_connection(loop):
     assert ret._key == 'key'
     assert ret.protocol == proto
     assert proto in conn._acquired
+    ret.release()
+
+
+async def test_cancelled_waiter(loop):
+    conn = aiohttp.BaseConnector(limit=1, loop=loop)
+    req = mock.Mock()
+    req.connection_key = 'key'
+    proto = mock.Mock()
+
+    async def create_connection(req, traces=None):
+        await asyncio.sleep(1)
+        return proto
+
+    conn._create_connection = create_connection
+
+    conn._acquired.add(proto)
+
+    conn2 = loop.create_task(conn.connect(req))
+    await asyncio.sleep(0, loop=loop)
+    conn2.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await conn2
 
 
 async def test_error_on_connection_with_cancelled_waiter(loop):
@@ -1785,6 +1812,7 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
     assert ret._key == 'key'
     assert ret.protocol == proto
     assert proto in conn._acquired
+    ret.release()
 
 
 async def test_tcp_connector(aiohttp_client, loop):
