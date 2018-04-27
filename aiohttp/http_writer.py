@@ -144,7 +144,7 @@ class StreamWriter(AbstractStreamWriter):
 
 
 def _py_serialize_headers(status_line, headers):
-    headers = status_line + ''.join(
+    headers = status_line + '\r\n' + ''.join(
         [k + ': ' + v + '\r\n' for k, v in headers.items()])
     return headers.encode('utf-8') + b'\r\n'
 
@@ -152,7 +152,7 @@ def _py_serialize_headers(status_line, headers):
 _serialize_headers = _py_serialize_headers
 
 try:
-    from _http_writer import _serialize_headers as _c_serialize_headers
+    from ._http_writer import _serialize_headers as _c_serialize_headers
     if not NO_EXTENSIONS:  # pragma: no cover
         _serialize_headers = _c_serialize_headers
 except ImportError:
