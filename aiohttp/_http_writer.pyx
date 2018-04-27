@@ -4,10 +4,14 @@ from cpython.exc cimport PyErr_NoMemory
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 
 from cpython.bytes cimport PyBytes_FromStringAndSize
+from cpython.object cimport PyObject_Str
 
+from multidict import istr
 
 DEF BUF_SIZE = 16 * 1024  # 16KiB
 cdef char BUFFER[BUF_SIZE]
+
+cdef object _istr = istr
 
 
 # ----------------- writer ---------------------------
@@ -96,10 +100,22 @@ cdef inline int _write_str(Writer* writer, str s):
 
 # --------------- _serialize_headers ----------------------
 
+cdef str to_str(object s):
+    typ = type(s)
+    if typ is str:
+        return <str>s
+    elif typ is _istr:
+        return PyObject_Str(s)
+    elif not isinstance(s, str):
+        raise TypeError("Cannot serialize non-str key {!r}".format(s))
+    else:
+        return str(s)
+
+
 def _serialize_headers(str status_line, headers):
     cdef Writer writer
-    cdef str key
-    cdef str val
+    cdef object key
+    cdef object val
     cdef bytes ret
 
     _init_writer(&writer)
@@ -113,13 +129,13 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            if _write_str(&writer, key) < 0:
+            if _write_str(&writer, to_str(key)) < 0:
                 raise
             if _write_byte(&writer, ':') < 0:
                 raise
             if _write_byte(&writer, ' ') < 0:
                 raise
-            if _write_str(&writer, val) < 0:
+            if _write_str(&writer, to_str(val)) < 0:
                 raise
             if _write_byte(&writer, '\r') < 0:
                 raise

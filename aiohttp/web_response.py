@@ -362,7 +362,7 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
                     headers[CONNECTION] = 'close'
 
         # status line
-        status_line = 'HTTP/{}.{} {} {}\r\n'.format(
+        status_line = 'HTTP/{}.{} {} {}'.format(
             version[0], version[1], self._status, self._reason)
         await writer.write_headers(status_line, headers)
 
