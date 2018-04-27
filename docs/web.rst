@@ -11,7 +11,7 @@ The page contains all information about aiohttp Server API:
 .. toctree::
    :name: server
 
-   Tutorial <tutorial>
+   Tutorial <https://demos.aiohttp.org>
    Quickstart <web_quickstart>
    Advanced Usage <web_advanced>
    Low Level <web_lowlevel>
