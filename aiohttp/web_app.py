@@ -309,7 +309,10 @@ class Application(MutableMapping):
 
     async def _handle(self, request):
         match_info = await self._router.resolve(request)
-        assert isinstance(match_info, AbstractMatchInfo), match_info
+        if DEBUG:
+            if not isinstance(match_info, AbstractMatchInfo):
+                raise TypeError("match_info should be AbstractMAtchInfo "
+                                "instance, not {!r}".format(match_info))
         match_info.add_app(self)
 
         if __debug__:
@@ -335,13 +338,15 @@ class Application(MutableMapping):
 
             resp = await handler(request)
 
-        assert isinstance(resp, StreamResponse), \
-            ("Handler {!r} should return response instance, "
-             "got {!r} [middlewares {!r}]").format(
-                 match_info.handler, type(resp),
-                 [middleware
-                  for app in match_info.apps
-                  for middleware in app.middlewares])
+        if DEBUG:
+            if not isinstance(resp, StreamResponse):
+                msg = ("Handler {!r} should return response instance, "
+                       "got {!r} [middlewares {!r}]").format(
+                           match_info.handler, type(resp),
+                           [middleware
+                            for app in match_info.apps
+                            for middleware in app.middlewares])
+                raise TypeError(msg)
         return resp
 
     def __call__(self):

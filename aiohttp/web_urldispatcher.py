@@ -18,6 +18,7 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
+from .helpers import DEBUG
 from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
@@ -191,9 +192,11 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     @contextmanager
     def set_current_app(self, app):
-        assert app in self._apps, (
-            "Expected one of the following apps {!r}, got {!r}"
-            .format(self._apps, app))
+        if DEBUG:
+            if app not in self._apps:
+                raise RuntimeError(
+                    "Expected one of the following apps {!r}, got {!r}"
+                    .format(self._apps, app))
         prev = self._current_app
         self._current_app = app
         try:
