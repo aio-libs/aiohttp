@@ -299,8 +299,8 @@ def test_release_waiter(loop, key, key2):
     w.done.return_value = False
     conn._waiters[key].append(w)
     conn._release_waiter()
-    assert len(conn._waiters) == 1
-    assert not w.done.called
+    assert len(conn._waiters) == 0
+    assert w.done.called
     conn.close()
 
     # release first available
@@ -334,7 +334,7 @@ def test_release_waiter(loop, key, key2):
     conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert not w1.set_result.called
-    assert not w2.set_result.called
+    assert w2.set_result.called
     conn.close()
 
 
