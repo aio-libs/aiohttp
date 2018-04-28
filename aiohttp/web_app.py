@@ -315,8 +315,7 @@ class Application(MutableMapping):
                                 "instance, not {!r}".format(match_info))
         match_info.add_app(self)
 
-        if __debug__:
-            match_info.freeze()
+        match_info.freeze()
 
         resp = None
         request._match_info = match_info
