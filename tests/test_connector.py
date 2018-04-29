@@ -292,7 +292,7 @@ def test_release_already_closed(loop):
     assert not conn._release_acquired.called
 
 
-def test_release_waiter(loop, key, key2):
+def test_release_waiter_no_limit(loop, key, key2):
     # limit is 0
     conn = aiohttp.BaseConnector(limit=0, loop=loop)
     w = mock.Mock()
@@ -303,7 +303,8 @@ def test_release_waiter(loop, key, key2):
     assert w.done.called
     conn.close()
 
-    # release first available
+
+def test_release_waiter_first_available(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
@@ -315,7 +316,8 @@ def test_release_waiter(loop, key, key2):
             not w1.set_result.called and w2.set_result.called)
     conn.close()
 
-    # limited available
+
+def test_release_waiter_release_first(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
@@ -326,7 +328,8 @@ def test_release_waiter(loop, key, key2):
     assert not w2.set_result.called
     conn.close()
 
-    # limited available
+
+def test_release_waiter_skip_done_waiter(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = True
@@ -349,6 +352,19 @@ def test_release_waiter_per_host(loop, key, key2):
     conn._release_waiter()
     assert ((w1.set_result.called and not w2.set_result.called) or
             (not w1.set_result.called and w2.set_result.called))
+    conn.close()
+
+
+def test_release_waiter_no_available(loop, key, key2):
+    # limit is 0
+    conn = aiohttp.BaseConnector(limit=0, loop=loop)
+    w = mock.Mock()
+    w.done.return_value = False
+    conn._waiters[key].append(w)
+    conn._available_connections = mock.Mock(return_value=0)
+    conn._release_waiter()
+    assert len(conn._waiters) == 1
+    assert not w.done.called
     conn.close()
 
 

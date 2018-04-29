@@ -414,11 +414,8 @@ class BaseConnector:
                 except ValueError:  # fut may no longer be in list
                     pass
 
-                try:
-                    if not self._waiters[key]:
-                        del self._waiters[key]
-                except KeyError:
-                    pass
+                if key in self._waiters and not self._waiters[key]:
+                    del self._waiters[key]
 
                 raise e
 
