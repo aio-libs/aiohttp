@@ -767,12 +767,12 @@ class TCPConnector(BaseConnector):
     def _check_ssl(self, ssl_ctx):
         if isinstance(ssl_ctx, ssl.SSLContext):
             return ssl_ctx
-        if (isinstance(ssl_ctx, Fingerprint) and \
-            isinstance(ssl_ctx.ssl_context, ssl.SSLContext)):
+        if (isinstance(ssl_ctx, Fingerprint) and
+                isinstance(ssl_ctx.ssl_context, ssl.SSLContext)):
             return ssl_ctx.ssl_context
 
         # not verified or fingerprinted
-        return self._make_ssl_context(False)            
+        return self._make_ssl_context(False)
 
     def _get_ssl_context(self, req):
         """Logic to get the correct SSL context
