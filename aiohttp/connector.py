@@ -793,8 +793,8 @@ class TCPConnector(BaseConnector):
             def check_ssl(ssl_ctx):
                 if isinstance(ssl_ctx, ssl.SSLContext):
                     return ssl_ctx
-                if isinstance(ssl_ctx, Fingerprint)
-                   and isinstance(ssl_ctx.ssl_context, ssl.SSLContext):
+                if isinstance(ssl_ctx, Fingerprint) and \
+                   isinstance(ssl_ctx.ssl_context, ssl.SSLContext):
                     return ssl_ctx.ssl_context
 
                 # not verified or fingerprinted
