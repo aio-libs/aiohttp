@@ -1,8 +1,10 @@
 import asyncio
 import contextlib
 import gc
+import json
 import re
 from http.cookies import SimpleCookie
+from io import BytesIO
 from unittest import mock
 
 import pytest
@@ -14,7 +16,7 @@ from aiohttp import hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import PY_36
+from aiohttp.helpers import DEBUG, PY_36
 
 
 @pytest.fixture
@@ -369,12 +371,50 @@ async def test_reraise_os_error(create_session):
         # return self.transport, self.protocol
         return mock.Mock()
     session._connector._create_connection = create_connection
+    session._connector._release = mock.Mock()
 
     with pytest.raises(aiohttp.ClientOSError) as ctx:
         await session.request('get', 'http://example.com')
     e = ctx.value
     assert e.errno == err.errno
     assert e.strerror == err.strerror
+
+
+async def test_close_conn_on_error(create_session):
+    class UnexpectedException(BaseException):
+        pass
+
+    err = UnexpectedException("permission error")
+    req = mock.Mock()
+    req_factory = mock.Mock(return_value=req)
+    req.send = mock.Mock(side_effect=err)
+    session = create_session(request_class=req_factory)
+
+    connections = []
+    original_connect = session._connector.connect
+
+    async def connect(req, traces=None):
+        conn = await original_connect(req, traces=traces)
+        connections.append(conn)
+        return conn
+
+    async def create_connection(req, traces=None):
+        # return self.transport, self.protocol
+        conn = mock.Mock()
+        return conn
+
+    session._connector.connect = connect
+    session._connector._create_connection = create_connection
+    session._connector._release = mock.Mock()
+
+    with pytest.raises(UnexpectedException):
+        async with session.request('get', 'http://example.com') as resp:
+            await resp.text()
+
+    # normally called during garbage collection.  triggers an exception
+    # if the connection wasn't already closed
+    for c in connections:
+        c.__del__()
 
 
 async def test_cookie_jar_usage(loop, aiohttp_client):
@@ -457,33 +497,47 @@ def test_client_session_implicit_loop_warn():
 
 async def test_request_tracing(loop, aiohttp_client):
     async def handler(request):
-        return web.Response()
+        return web.json_response({'ok': True})
 
     app = web.Application()
-    app.router.add_get('/', handler)
+    app.router.add_post('/', handler)
 
     trace_config_ctx = mock.Mock()
     trace_request_ctx = {}
+    body = 'This is request body'
+    gathered_req_body = BytesIO()
+    gathered_res_body = BytesIO()
     on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+
+    async def on_request_chunk_sent(session, context, params):
+        gathered_req_body.write(params.chunk)
+
+    async def on_response_chunk_received(session, context, params):
+        gathered_res_body.write(params.chunk)
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
     )
     trace_config.on_request_start.append(on_request_start)
     trace_config.on_request_end.append(on_request_end)
+    trace_config.on_request_chunk_sent.append(on_request_chunk_sent)
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
     trace_config.on_request_redirect.append(on_request_redirect)
 
     session = await aiohttp_client(app, trace_configs=[trace_config])
 
-    async with session.get('/', trace_request_ctx=trace_request_ctx) as resp:
+    async with session.post(
+            '/', data=body, trace_request_ctx=trace_request_ctx) as resp:
+
+        await resp.json()
 
         on_request_start.assert_called_once_with(
             session.session,
             trace_config_ctx,
             aiohttp.TraceRequestStartParams(
-                hdrs.METH_GET,
+                hdrs.METH_POST,
                 session.make_url('/'),
                 CIMultiDict()
             )
@@ -493,13 +547,16 @@ async def test_request_tracing(loop, aiohttp_client):
             session.session,
             trace_config_ctx,
             aiohttp.TraceRequestEndParams(
-                hdrs.METH_GET,
+                hdrs.METH_POST,
                 session.make_url('/'),
                 CIMultiDict(),
                 resp
             )
         )
         assert not on_request_redirect.called
+        assert gathered_req_body.getvalue() == body.encode('utf8')
+        assert gathered_res_body.getvalue() == json.dumps(
+            {'ok': True}).encode('utf8')
 
 
 async def test_request_tracing_exception(loop):
@@ -583,6 +640,8 @@ def test_client_session_inheritance():
             pass
 
 
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
 def test_client_session_custom_attr(loop):
     session = ClientSession(loop=loop)
     with pytest.warns(DeprecationWarning):

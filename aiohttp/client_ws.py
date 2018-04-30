@@ -9,6 +9,7 @@ from .client_exceptions import ClientError
 from .helpers import call_later, set_result
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
+from .streams import EofStream
 
 
 class ClientWebSocketResponse:
@@ -33,7 +34,7 @@ class ClientWebSocketResponse:
         self._heartbeat = heartbeat
         self._heartbeat_cb = None
         if heartbeat is not None:
-            self._pong_heartbeat = heartbeat/2.0
+            self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb = None
         self._loop = loop
         self._waiting = None
@@ -61,7 +62,10 @@ class ClientWebSocketResponse:
 
     def _send_heartbeat(self):
         if self._heartbeat is not None and not self._closed:
-            self._writer.ping()
+            # fire-and-forget a task is not perfect but maybe ok for
+            # sending ping. Otherwise we need a long-living heartbeat
+            # task in the class.
+            self._loop.create_task(self._writer.ping())
 
             if self._pong_response_cb is not None:
                 self._pong_response_cb.cancel()
@@ -137,7 +141,7 @@ class ClientWebSocketResponse:
             self._cancel_heartbeat()
             self._closed = True
             try:
-                self._writer.close(code, message)
+                await self._writer.close(code, message)
             except asyncio.CancelledError:
                 self._close_code = 1006
                 self._response.close()
@@ -200,6 +204,10 @@ class ClientWebSocketResponse:
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._close_code = 1006
                 raise
+            except EofStream:
+                self._close_code = 1000
+                await self.close()
+                return WSMessage(WSMsgType.CLOSED, None, None)
             except ClientError:
                 self._closed = True
                 self._close_code = 1006

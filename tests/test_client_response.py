@@ -2,14 +2,18 @@
 """Tests for aiohttp/client.py"""
 
 import gc
+import sys
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
 from aiohttp import http
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
+from aiohttp.helpers import TimerNoop
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -21,8 +25,14 @@ async def test_http_processing_error(session):
     loop = mock.Mock()
     request_info = mock.Mock()
     response = ClientResponse(
-        'get', URL('http://del-cl-resp.org'), request_info=request_info)
-    response._post_init(loop, session)
+        'get', URL('http://del-cl-resp.org'), request_info=request_info,
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=loop,
+        session=session)
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
 
@@ -39,8 +49,15 @@ async def test_http_processing_error(session):
 
 def test_del(session):
     loop = mock.Mock()
-    response = ClientResponse('get', URL('http://del-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://del-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
 
@@ -57,8 +74,15 @@ def test_del(session):
 
 
 def test_close(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     response._closed = False
     response._connection = mock.Mock()
     response.close()
@@ -69,23 +93,43 @@ def test_close(loop, session):
 
 def test_wait_for_100_1(loop, session):
     response = ClientResponse(
-        'get', URL('http://python.org'), continue100=object())
-    response._post_init(loop, session)
+        'get', URL('http://python.org'), continue100=object(),
+        request_info=mock.Mock(),
+        writer=mock.Mock(),
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=loop,
+        session=session)
     assert response._continue is not None
     response.close()
 
 
 def test_wait_for_100_2(loop, session):
     response = ClientResponse(
-        'get', URL('http://python.org'))
-    response._post_init(loop, session)
+        'get', URL('http://python.org'),
+        request_info=mock.Mock(),
+        continue100=None,
+        writer=mock.Mock(),
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=loop,
+        session=session)
     assert response._continue is None
     response.close()
 
 
 def test_repr(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     response.status = 200
     response.reason = 'Ok'
     assert '<ClientResponse(http://def-cl-resp.org) [200 Ok]>'\
@@ -93,27 +137,58 @@ def test_repr(loop, session):
 
 
 def test_repr_non_ascii_url():
-    response = ClientResponse('get', URL('http://fake-host.org/\u03bb'))
+    response = ClientResponse('get', URL('http://fake-host.org/\u03bb'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     assert "<ClientResponse(http://fake-host.org/%CE%BB) [None None]>"\
         in repr(response)
 
 
 def test_repr_non_ascii_reason():
-    response = ClientResponse('get', URL('http://fake-host.org/path'))
+    response = ClientResponse('get', URL('http://fake-host.org/path'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.reason = '\u03bb'
     assert "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>"\
         in repr(response)
 
 
 def test_url_obj_deprecated():
-    response = ClientResponse('get', URL('http://fake-host.org/'))
+    response = ClientResponse('get', URL('http://fake-host.org/'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     with pytest.warns(DeprecationWarning):
         response.url_obj
 
 
 async def test_read_and_release_connection(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -128,8 +203,15 @@ async def test_read_and_release_connection(loop, session):
 
 
 async def test_read_and_release_connection_with_error(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     content = response.content = mock.Mock()
     content.read.return_value = loop.create_future()
     content.read.return_value.set_exception(ValueError)
@@ -140,8 +222,15 @@ async def test_read_and_release_connection_with_error(loop, session):
 
 
 async def test_release(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     fut = loop.create_future()
     fut.set_result(b'')
     content = response.content = mock.Mock()
@@ -151,13 +240,22 @@ async def test_release(loop, session):
     assert response._connection is None
 
 
+@pytest.mark.skipif(sys.implementation.name != 'cpython',
+                    reason="Other implementations has different GC strategies")
 async def test_release_on_del(loop, session):
     connection = mock.Mock()
     connection.protocol.upgraded = False
 
     def run(conn):
-        response = ClientResponse('get', URL('http://def-cl-resp.org'))
-        response._post_init(loop, session)
+        response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                                  request_info=mock.Mock(),
+                                  writer=mock.Mock(),
+                                  continue100=None,
+                                  timer=TimerNoop(),
+                                  auto_decompress=True,
+                                  traces=[],
+                                  loop=loop,
+                                  session=session)
         response._closed = False
         response._connection = conn
 
@@ -167,8 +265,15 @@ async def test_release_on_del(loop, session):
 
 
 async def test_response_eof(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     response._closed = False
     conn = response._connection = mock.Mock()
     conn.protocol.upgraded = False
@@ -179,8 +284,15 @@ async def test_response_eof(loop, session):
 
 
 async def test_response_eof_upgraded(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     conn = response._connection = mock.Mock()
     conn.protocol.upgraded = True
@@ -191,8 +303,15 @@ async def test_response_eof_upgraded(loop, session):
 
 
 async def test_response_eof_after_connection_detach(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     response._closed = False
     conn = response._connection = mock.Mock()
     conn.protocol = None
@@ -203,8 +322,15 @@ async def test_response_eof_after_connection_detach(loop, session):
 
 
 async def test_text(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -222,8 +348,15 @@ async def test_text(loop, session):
 
 
 async def test_text_bad_encoding(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -244,8 +377,15 @@ async def test_text_bad_encoding(loop, session):
 
 
 async def test_text_custom_encoding(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -265,8 +405,15 @@ async def test_text_custom_encoding(loop, session):
 
 
 async def test_text_detect_encoding(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -284,8 +431,15 @@ async def test_text_detect_encoding(loop, session):
 
 
 async def test_text_detect_encoding_if_invalid_charset(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -304,8 +458,15 @@ async def test_text_detect_encoding_if_invalid_charset(loop, session):
 
 
 async def test_text_after_read(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -323,8 +484,15 @@ async def test_text_after_read(loop, session):
 
 
 async def test_json(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -341,12 +509,72 @@ async def test_json(loop, session):
     assert response._connection is None
 
 
+async def test_json_extended_content_type(loop, session):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {
+        'Content-Type':
+            'application/this.is-1_content+subtype+json;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    res = await response.json()
+    assert res == {'тест': 'пройден'}
+    assert response._connection is None
+
+
+async def test_json_custom_content_type(loop, session):
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
+        fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
+        return fut
+
+    response.headers = {
+        'Content-Type': 'custom/type;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    res = await response.json(content_type='custom/type')
+    assert res == {'тест': 'пройден'}
+    assert response._connection is None
+
+
 async def test_json_custom_loader(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     response.headers = {
         'Content-Type': 'application/json;charset=cp1251'}
-    response._content = b'data'
+    response._body = b'data'
 
     def custom(content):
         return content + '-custom'
@@ -356,11 +584,18 @@ async def test_json_custom_loader(loop, session):
 
 
 async def test_json_invalid_content_type(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     response.headers = {
         'Content-Type': 'data/octet-stream'}
-    response._content = b''
+    response._body = b''
 
     with pytest.raises(aiohttp.ContentTypeError) as info:
         await response.json()
@@ -369,19 +604,33 @@ async def test_json_invalid_content_type(loop, session):
 
 
 async def test_json_no_content(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
     response.headers = {
         'Content-Type': 'data/octet-stream'}
-    response._content = b''
+    response._body = b''
 
     res = await response.json(content_type=None)
     assert res is None
 
 
 async def test_json_override_encoding(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     def side_effect(*args, **kwargs):
         fut = loop.create_future()
@@ -400,20 +649,16 @@ async def test_json_override_encoding(loop, session):
     assert not response.get_encoding.called
 
 
-@pytest.mark.xfail
-def test_override_flow_control(loop, session):
-    class MyResponse(ClientResponse):
-        flow_control_class = aiohttp.StreamReader
-    response = MyResponse('get', URL('http://my-cl-resp.org'))
-    response._post_init(loop, session)
-    response._connection = mock.Mock()
-    assert isinstance(response.content, aiohttp.StreamReader)
-    response.close()
-
-
 def test_get_encoding_unknown(loop, session):
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
-    response._post_init(loop, session)
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
 
     response.headers = {'Content-Type': 'application/json'}
     with mock.patch('aiohttp.client_reqrep.chardet') as m_chardet:
@@ -422,64 +667,136 @@ def test_get_encoding_unknown(loop, session):
 
 
 def test_raise_for_status_2xx():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.status = 200
     response.reason = 'OK'
     response.raise_for_status()  # should not raise
 
 
 def test_raise_for_status_4xx():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.status = 409
     response.reason = 'CONFLICT'
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
-    assert str(cm.value.code) == '409'
+    assert str(cm.value.status) == '409'
     assert str(cm.value.message) == "CONFLICT"
 
 
 def test_resp_host():
-    response = ClientResponse('get', URL('http://del-cl-resp.org'))
+    response = ClientResponse('get', URL('http://del-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     assert 'del-cl-resp.org' == response.host
 
 
 def test_content_type():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {'Content-Type': 'application/json;charset=cp1251'}
 
     assert 'application/json' == response.content_type
 
 
 def test_content_type_no_header():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {}
 
     assert 'application/octet-stream' == response.content_type
 
 
 def test_charset():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {'Content-Type': 'application/json;charset=cp1251'}
 
     assert 'cp1251' == response.charset
 
 
 def test_charset_no_header():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {}
 
     assert response.charset is None
 
 
 def test_charset_no_charset():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {'Content-Type': 'application/json'}
 
     assert response.charset is None
 
 
 def test_content_disposition_full():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {'Content-Disposition':
                         'attachment; filename="archive.tar.gz"; foo=bar'}
 
@@ -491,7 +808,15 @@ def test_content_disposition_full():
 
 
 def test_content_disposition_no_parameters():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {'Content-Disposition': 'attachment'}
 
     assert 'attachment' == response.content_disposition.type
@@ -500,14 +825,30 @@ def test_content_disposition_no_parameters():
 
 
 def test_content_disposition_no_header():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {}
 
     assert response.content_disposition is None
 
 
 def test_content_disposition_cache():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'))
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
     response.headers = {'Content-Disposition': 'attachment'}
     cd = response.content_disposition
     ClientResponse.headers = {'Content-Disposition': 'spam'}
@@ -523,19 +864,18 @@ def test_response_request_info():
             url,
             'get',
             headers
-        )
+        ),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock()
     )
     assert url == response.request_info.url
     assert 'get' == response.request_info.method
     assert headers == response.request_info.headers
-
-
-def test_response_request_info_empty():
-    url = 'http://def-cl-resp.org'
-    response = ClientResponse(
-        'get', URL(url),
-    )
-    assert response.request_info is None
 
 
 def test_request_info_in_exception():
@@ -548,7 +888,14 @@ def test_request_info_in_exception():
             url,
             'get',
             headers
-        )
+        ),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock()
     )
     response.status = 409
     response.reason = 'CONFLICT'
@@ -567,7 +914,14 @@ def test_no_redirect_history_in_exception():
             url,
             'get',
             headers
-        )
+        ),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock()
     )
     response.status = 409
     response.reason = 'CONFLICT'
@@ -590,7 +944,14 @@ def test_redirect_history_in_exception():
             url,
             'get',
             headers
-        )
+        ),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock()
     )
     response.status = 409
     response.reason = 'CONFLICT'
@@ -602,7 +963,14 @@ def test_redirect_history_in_exception():
             url,
             'get',
             headers
-        )
+        ),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        auto_decompress=True,
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock()
     )
 
     hist_response.headers = hist_headers
@@ -613,3 +981,212 @@ def test_redirect_history_in_exception():
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
     assert [hist_response] == cm.value.history
+
+
+async def test_response_read_triggers_callback(loop, session):
+    trace = mock.Mock()
+    trace.send_response_chunk_received = make_mocked_coro()
+    response_body = b'This is response'
+
+    response = ClientResponse(
+        'get', URL('http://def-cl-resp.org'),
+        request_info=mock.Mock,
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        auto_decompress=True,
+        loop=loop,
+        session=session,
+        traces=[trace]
+    )
+
+    def side_effect(*args, **kwargs):
+        fut = loop.create_future()
+        fut.set_result(response_body)
+        return fut
+
+    response.headers = {
+        'Content-Type': 'application/json;charset=cp1251'}
+    content = response.content = mock.Mock()
+    content.read.side_effect = side_effect
+
+    res = await response.read()
+    assert res == response_body
+    assert response._connection is None
+
+    assert trace.send_response_chunk_received.called
+    assert (
+        trace.send_response_chunk_received.call_args ==
+        mock.call(response_body)
+    )
+
+
+def test_response_real_url(loop, session):
+    url = URL('http://def-cl-resp.org/#urlfragment')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    assert response.url == url.with_fragment(None)
+    assert response.real_url == url
+
+
+def test_response_links_comma_separated(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict([
+        (
+            "Link",
+            ('<http://example.com/page/1.html>; rel=next, '
+             '<http://example.com/>; rel=home')
+        )
+    ])
+    assert (
+        response.links ==
+        {'next':
+         {'url': URL('http://example.com/page/1.html'),
+          'rel': 'next'},
+         'home':
+         {'url': URL('http://example.com/'),
+          'rel': 'home'}
+         }
+    )
+
+
+def test_response_links_multiple_headers(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict([
+        (
+            "Link",
+            '<http://example.com/page/1.html>; rel=next'
+        ),
+        (
+            "Link",
+            '<http://example.com/>; rel=home'
+        )
+    ])
+    assert (
+        response.links ==
+        {'next':
+         {'url': URL('http://example.com/page/1.html'),
+          'rel': 'next'},
+         'home':
+         {'url': URL('http://example.com/'),
+          'rel': 'home'}
+         }
+    )
+
+
+def test_response_links_no_rel(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict([
+        (
+            "Link",
+            '<http://example.com/>'
+        )
+    ])
+    assert (
+        response.links ==
+        {
+            'http://example.com/':
+            {'url': URL('http://example.com/')}
+        }
+    )
+
+
+def test_response_links_quoted(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict([
+        (
+            "Link",
+            '<http://example.com/>; rel="home-page"'
+        ),
+    ])
+    assert (
+        response.links ==
+        {'home-page':
+         {'url': URL('http://example.com/'),
+          'rel': 'home-page'}
+         }
+    )
+
+
+def test_response_links_relative(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict([
+        (
+            "Link",
+            '</relative/path>; rel=rel'
+        ),
+    ])
+    assert (
+        response.links ==
+        {'rel':
+         {'url': URL('http://def-cl-resp.org/relative/path'),
+          'rel': 'rel'}
+         }
+    )
+
+
+def test_response_links_empty(loop, session):
+    url = URL('http://def-cl-resp.org/')
+    response = ClientResponse('get', url,
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              auto_decompress=True,
+                              traces=[],
+                              loop=loop,
+                              session=session)
+    response.headers = CIMultiDict()
+    assert response.links == {}

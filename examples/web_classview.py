@@ -3,17 +3,16 @@
 """
 
 
-import asyncio
 import functools
 import json
 
-from aiohttp.web import Application, Response, View, json_response, run_app
+from aiohttp import web
 
 
-class MyView(View):
+class MyView(web.View):
 
     async def get(self):
-        return json_response({
+        return web.json_response({
             'method': 'get',
             'args': dict(self.request.GET),
             'headers': dict(self.request.headers),
@@ -21,7 +20,7 @@ class MyView(View):
 
     async def post(self):
         data = await self.request.post()
-        return json_response({
+        return web.json_response({
             'method': 'post',
             'args': dict(self.request.GET),
             'data': dict(data),
@@ -45,17 +44,15 @@ async def index(request):
         </body>
       </html>
     """
-    return Response(text=txt, content_type='text/html')
+    return web.Response(text=txt, content_type='text/html')
 
 
-async def init(loop):
-    app = Application(loop=loop)
+def init():
+    app = web.Application()
     app.router.add_get('/', index)
     app.router.add_get('/get', MyView)
     app.router.add_post('/post', MyView)
     return app
 
 
-loop = asyncio.get_event_loop()
-app = loop.run_until_complete(init(loop))
-run_app(app)
+web.run_app(init())

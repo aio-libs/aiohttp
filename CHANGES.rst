@@ -14,129 +14,109 @@ Changelog
 
 .. towncrier release notes start
 
-3.0.0 (2018-02-12)
+3.1.3 (2018-04-12)
 ==================
+
+- Fix cancellation broadcast during DNS resolve (`#2910 <https://github.com/aio-libs/aiohttp/pull/2910>`_)
+
+
+3.1.2 (2018-04-05)
+==================
+
+- Make ``LineTooLong`` exception more detailed about actual data size (`#2863 <https://github.com/aio-libs/aiohttp/pull/2863>`_)
+- Call ``on_chunk_sent`` when write_eof takes as a param the last chunk (`#2909 <https://github.com/aio-libs/aiohttp/pull/2909>`_)
+
+
+3.1.1 (2018-03-27)
+==================
+
+- Support *asynchronous iterators* (and *asynchronous generators* as
+  well) in both client and server API as request / response BODY
+  payloads. (`#2802 <https://github.com/aio-libs/aiohttp/pull/2802>`_)
+
+
+3.1.0 (2018-03-21)
+==================
+
+Welcome to aiohttp 3.1 release.
+
+This is an *incremental* release, fully backward compatible with *aiohttp 3.0*.
+
+But we have added several new features.
+
+The most visible one is ``app.add_routes()`` (an alias for existing
+``app.router.add_routes()``. The addition is very important because
+all *aiohttp* docs now uses ``app.add_routes()`` call in code
+snippets. All your existing code still do register routes / resource
+without any warning but you've got the idea for a favorite way: noisy
+``app.router.add_get()`` is replaced by ``app.add_routes()``.
+
+The library does not make a preference between decorators::
+
+   routes = web.RouteTableDef()
+
+   @routes.get('/')
+   async def hello(request):
+       return web.Response(text="Hello, world")
+
+   app.add_routes(routes)
+
+and route tables as a list::
+
+   async def hello(request):
+       return web.Response(text="Hello, world")
+
+   app.add_routes([web.get('/', hello)])
+
+Both ways are equal, user may decide basing on own code taste.
+
+Also we have a lot of minor features, bug fixes and documentation
+updates, see below.
 
 Features
 --------
 
-- Speed up the `PayloadWriter.write` method for large request bodies. (#2126)
-- StreamResponse and Response are now MutableMappings. (#2246)
-- ClientSession publishes a set of signals to track the HTTP request execution.
-  (#2313)
-- Content-Disposition fast access in ClientResponse (#2455)
-- Added support to Flask-style decorators with class-based Views. (#2472)
-- Signal handlers (registered callbacks) should be coroutines. (#2480)
-- Support ``async with test_client.ws_connect(...)`` (#2525)
-- Introduce *site* and *application runner* as underlying API for `web.run_app`
-  implementation. (#2530)
-- Only quote multipart boundary when necessary and sanitize input (#2544)
-- Make the `aiohttp.ClientResponse.get_encoding` method public with the
-  processing of invalid charset while detecting content encoding. (#2549)
-- Add optional configurable per message compression for
-  `ClientWebSocketResponse` and `WebSocketResponse`. (#2551)
-- Add hysteresis to `StreamReader` to prevent flipping between paused and
-  resumed states too often. (#2555)
-- Support `.netrc` by `trust_env` (#2581)
-- Avoid to create a new resource when adding a route with the same name and
-  path of the last added resource (#2586)
-- `MultipartWriter.boundary` is `str` now. (#2589)
-- Allow a custom port to be used by `TestServer` (and associated pytest
-  fixtures) (#2613)
-- Add param access_log_class to web.run_app function (#2615)
-- Add ``ssl`` parameter to client API (#2626)
-- Fixes performance issue introduced by #2577. When there are no middlewares
-  installed by the user, no additional and useless code is executed. (#2629)
-- Rename PayloadWriter to StreamWriter (#2654)
-- New options *reuse_port*, *reuse_address* are added to `run_app` and
-  `TCPSite`. (#2679)
-- Use custom classes to pass client signals parameters (#2686)
-- Use ``attrs`` library for data classes, replace `namedtuple`. (#2690)
-- Pytest fixtures renaming, add ``aiohttp_`` prefix (#2578)
-- Add ``aiohttp-`` prefix for ``pytest-aiohttp`` command line
-  parameters (#2578)
+- Relax JSON content-type checking in the ``ClientResponse.json()`` to allow
+  "application/xxx+json" instead of strict "application/json". (`#2206 <https://github.com/aio-libs/aiohttp/pull/2206>`_)
+- Bump C HTTP parser to version 2.8 (`#2730 <https://github.com/aio-libs/aiohttp/pull/2730>`_)
+- Accept a coroutine as an application factory in ``web.run_app`` and gunicorn
+  worker. (`#2739 <https://github.com/aio-libs/aiohttp/pull/2739>`_)
+- Implement application cleanup context (``app.cleanup_ctx`` property). (`#2747 <https://github.com/aio-libs/aiohttp/pull/2747>`_)
+- Make ``writer.write_headers`` a coroutine. (`#2762 <https://github.com/aio-libs/aiohttp/pull/2762>`_)
+- Add tracking signals for getting request/response bodies. (`#2767 <https://github.com/aio-libs/aiohttp/pull/2767>`_)
+- Deprecate ClientResponseError.code in favor of .status to keep similarity
+  with response classes. (`#2781 <https://github.com/aio-libs/aiohttp/pull/2781>`_)
+- Implement ``app.add_routes()`` method. (`#2787 <https://github.com/aio-libs/aiohttp/pull/2787>`_)
+- Implement ``web.static()`` and ``RouteTableDef.static()`` API. (`#2795 <https://github.com/aio-libs/aiohttp/pull/2795>`_)
+- Install a test event loop as default by ``asyncio.set_event_loop()``. The
+  change affects aiohttp test utils but backward compatibility is not broken
+  for 99.99% of use cases. (`#2804 <https://github.com/aio-libs/aiohttp/pull/2804>`_)
+- Refactor ``ClientResponse`` constructor: make logically required constructor
+  arguments mandatory, drop ``_post_init()`` method. (`#2820 <https://github.com/aio-libs/aiohttp/pull/2820>`_)
+- Use ``app.add_routes()`` in server docs everywhere (`#2830 <https://github.com/aio-libs/aiohttp/pull/2830>`_)
+- Websockets refactoring, all websocket writer methods are converted into
+  coroutines. (`#2836 <https://github.com/aio-libs/aiohttp/pull/2836>`_)
+- Provide ``Content-Range`` header for ``Range`` requests (`#2844 <https://github.com/aio-libs/aiohttp/pull/2844>`_)
+
 
 Bugfixes
 --------
 
-- Correctly process upgrade request from server to HTTP2. ``aiohttp`` does not
-  support HTTP2 yet, the protocol is not upgraded but response is handled
-  correctly. (#2277)
-- Fix ClientConnectorSSLError and ClientProxyConnectionError for proxy
-  connector (#2408)
-- Fix connector convert OSError to ClientConnectorError (#2423)
-- Fix connection attempts for multiple dns hosts (#2424)
-- Fix writing to closed transport by raising `asyncio.CancelledError` (#2499)
-- Fix warning in `ClientSession.__del__` by stopping to try to close it.
-  (#2523)
-- Fixed race-condition for iterating addresses from the DNSCache. (#2620)
-- Fix default value of `access_log_format` argument in `web.run_app` (#2649)
-- Freeze sub-application on adding to parent app (#2656)
-- Do percent encoding for `.url_for()` parameters (#2668)
-- Correctly process request start time and multiple request/response
-  headers in access log extra (#2641)
+- Fix websocket client return EofStream. (`#2784 <https://github.com/aio-libs/aiohttp/pull/2784>`_)
+- Fix websocket demo. (`#2789 <https://github.com/aio-libs/aiohttp/pull/2789>`_)
+- Property ``BaseRequest.http_range`` now returns a python-like slice when
+  requesting the tail of the range. It's now indicated by a negative value in
+  ``range.start`` rather then in ``range.stop`` (`#2805 <https://github.com/aio-libs/aiohttp/pull/2805>`_)
+- Close a connection if an unexpected exception occurs while sending a request
+  (`#2827 <https://github.com/aio-libs/aiohttp/pull/2827>`_)
+- Fix firing DNS tracing events. (`#2841 <https://github.com/aio-libs/aiohttp/pull/2841>`_)
+
 
 Improved Documentation
 ----------------------
 
-- Improve tutorial docs, using `literalinclude` to link to the actual files.
-  (#2396)
-- Small improvement docs: better example for file uploads. (#2401)
-- Rename `from_env` to `trust_env` in client reference. (#2451)
-- ﻿Fixed mistype in `Proxy Support` section where `trust_env` parameter was
-  used in `session.get("http://python.org", trust_env=True)` method instead of
-  aiohttp.ClientSession constructor as follows:
-  `aiohttp.ClientSession(trust_env=True)`. (#2688)
-- Fix issue with unittest example not compiling in testing docs. (#2717)
-
-Deprecations and Removals
--------------------------
-
-- Simplify HTTP pipelining implementation (#2109)
-- Drop `StreamReaderPayload` and `DataQueuePayload`. (#2257)
-- Drop `md5` and `sha1` finger-prints (#2267)
-- Drop WSMessage.tp (#2321)
-- Drop Python 3.4 and Python 3.5.0, 3.5.1, 3.5.2. Minimal supported Python
-  versions are 3.5.3 and 3.6.0. `yield from` is gone, use `async/await` syntax.
-  (#2343)
-- Drop `aiohttp.Timeout` and use `async_timeout.timeout` instead. (#2348)
-- Drop `resolve` param from TCPConnector. (#2377)
-- Add DeprecationWarning for returning HTTPException (#2415)
-- `send_str()`, `send_bytes()`, `send_json()`, `ping()` and `pong()` are
-  genuine async functions now. (#2475)
-- Drop undocumented `app.on_pre_signal` and `app.on_post_signal`. Signal
-  handlers should be coroutines, support for regular functions is dropped.
-  (#2480)
-- `StreamResponse.drain()` is not a part of public API anymore, just use `await
-  StreamResponse.write()`. `StreamResponse.write` is converted to async
-  function. (#2483)
-- Drop deprecated `slow_request_timeout` param and `**kwargs`` from
-  `RequestHandler`. (#2500)
-- Drop deprecated `resource.url()`. (#2501)
-- Remove `%u` and `%l` format specifiers from access log format. (#2506)
-- Drop deprecated `request.GET` property. (#2547)
-- Simplify stream classes: drop `ChunksQueue` and `FlowControlChunksQueue`,
-  merge `FlowControlStreamReader` functionality into `StreamReader`, drop
-  `FlowControlStreamReader` name. (#2555)
-- Do not create a new resource on `router.add_get(..., allow_head=True)`
-  (#2585)
-- Drop access to TCP tuning options from PayloadWriter and Response classes
-  (#2604)
-- Drop deprecated `encoding` parameter from client API (#2606)
-- Deprecate ``verify_ssl``, ``ssl_context`` and ``fingerprint`` parameters in
-  client API (#2626)
-- Get rid of the legacy class StreamWriter. (#2651)
-- Forbid non-strings in `resource.url_for()` parameters. (#2668)
-- Deprecate inheritance from ``ClientSession`` and ``web.Application`` and
-  custom user attributes for ``ClientSession``, ``web.Request`` and
-  ``web.Application`` (#2691)
-- Drop `resp = await aiohttp.request(...)` syntax for sake of `async with
-  aiohttp.request(...) as resp:`. (#2540)
-- Forbid synchronous context managers for `ClientSession` and test
-  server/client. (#2362)
-
-
-Misc
-----
-
-- #2552
+- Document behavior when cchardet detects encodings that are unknown to Python.
+  (`#2732 <https://github.com/aio-libs/aiohttp/pull/2732>`_)
+- Add diagrams for tracing request life style. (`#2748 <https://github.com/aio-libs/aiohttp/pull/2748>`_)
+- Drop removed functionality for passing ``StreamReader`` as data at client
+  side. (`#2793 <https://github.com/aio-libs/aiohttp/pull/2793>`_)

@@ -10,6 +10,10 @@ from setuptools import Extension, setup
 from setuptools.command.test import test as TestCommand
 
 
+if sys.version_info < (3, 5, 3):
+    raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
+
+
 try:
     from Cython.Build import cythonize
     USE_CYTHON = True
@@ -26,7 +30,9 @@ extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
                         define_macros=[('HTTP_PARSER_STRICT', 0)],
                         ),
               Extension('aiohttp._frozenlist',
-                        ['aiohttp/_frozenlist' + ext])]
+                        ['aiohttp/_frozenlist' + ext]),
+              Extension('aiohttp._http_writer',
+                        ['aiohttp/_http_writer' + ext])]
 
 
 if USE_CYTHON:
@@ -64,7 +70,7 @@ except IndexError:
     raise RuntimeError('Unable to determine version.')
 
 
-install_requires = ['attrs>=17.4.0', 'chardet>=2.0,<4.0',
+install_requires = ['attrs>=17.3.0', 'chardet>=2.0,<4.0',
                     'multidict>=4.0,<5.0',
                     'async_timeout>=1.2,<3.0',
                     'yarl>=1.0,<2.0']
@@ -86,7 +92,7 @@ class PyTest(TestCommand):
         raise SystemExit(errno)
 
 
-tests_require = install_requires + ['pytest', 'gunicorn', 'pytest-timeout']
+tests_require = install_requires + ['pytest', 'gunicorn', 'pytest-timeout', 'async-generator']
 
 
 args = dict(

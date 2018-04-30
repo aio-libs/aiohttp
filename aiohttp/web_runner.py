@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 
 from yarl import URL
 
+from .web_app import Application
+
 
 __all__ = ('TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
            'AppRunner', 'ServerRunner', 'GracefulExit')
@@ -55,7 +57,7 @@ class BaseSite(ABC):
 
 
 class TCPSite(BaseSite):
-    __slots__ = ('_host', '_port')
+    __slots__ = ('_host', '_port', '_reuse_address', '_reuse_port')
 
     def __init__(self, runner, host=None, port=None, *,
                  shutdown_timeout=60.0, ssl_context=None,
@@ -248,6 +250,9 @@ class AppRunner(BaseRunner):
 
     def __init__(self, app, *, handle_signals=False, **kwargs):
         super().__init__(handle_signals=handle_signals, **kwargs)
+        if not isinstance(app, Application):
+            raise TypeError("The first argument should be web.Application "
+                            "instance, got {!r}".format(app))
         self._app = app
 
     @property
@@ -264,7 +269,7 @@ class AppRunner(BaseRunner):
         await self._app.startup()
         self._app.freeze()
 
-        return self._app.make_handler(loop=loop, **self._kwargs)
+        return self._app._make_handler(loop=loop, **self._kwargs)
 
     async def _cleanup_server(self):
         await self._app.cleanup()

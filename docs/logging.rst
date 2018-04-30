@@ -31,7 +31,9 @@ Access logs
 Access log by default is switched on and uses ``'aiohttp.access'``
 logger name.
 
-The log may be controlled by :meth:`aiohttp.web.Application.make_handler` call.
+The log may be controlled by :meth:`aiohttp.web.AppRunner` and 
+:func:`aiohttp.web.run_app`.
+
 
 Pass *access_log* parameter with value of :class:`logging.Logger`
 instance to override default logger.
@@ -102,14 +104,26 @@ Example of drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
                            f'"{request.method} {request.path} '
                            f'done in {time}s: {response.status}')
 
-.. note::
 
-   When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
-   :ref:`deployment <aiohttp-deployment-gunicorn>` its default access log format
-   will be automatically replaced with the default aiohttp's access log format.
+.. _gunicorn-accesslog:
 
-   If Gunicorn's option access_logformat_ is
-   specified explicitly it should use aiohttp's format specification.
+Gunicorn access logs
+^^^^^^^^^^^^^^^^^^^^
+When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
+:ref:`deployment <aiohttp-deployment-gunicorn>` its default access log format
+will be automatically replaced with the default aiohttp's access log format.
+
+If Gunicorn's option access_logformat_ is
+specified explicitly it should use aiohttp's format specification.
+
+Gunicorn access log works only if accesslog_ is specified explicitly in your
+config or as a command line option.
+This configuration can be either a path or ``'-'``. If the application uses
+a custom logging setup intercepting the ``'gunicorn.access'`` logger,
+accesslog_ should be set to ``'-'`` to prevent Gunicorn to create an empty
+access log file upon every startup.
+
+
 
 
 Error logs
@@ -120,10 +134,12 @@ given on web requests handling.
 
 The log is enabled by default.
 
-To use different logger name please specify *logger* parameter
-(:class:`logging.Logger` instance) on performing
-:meth:`aiohttp.web.Application.make_handler` call.
+To use different logger name please pass *logger* parameter
+(:class:`logging.Logger` instance) to :meth:`aiohttp.web.AppRunner` constructor.
 
 
 .. _access_logformat:
     http://docs.gunicorn.org/en/stable/settings.html#access-log-format
+
+.. _accesslog:
+    http://docs.gunicorn.org/en/stable/settings.html#accesslog

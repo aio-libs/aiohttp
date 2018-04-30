@@ -23,6 +23,8 @@ awaitable
 backend
 backends
 Backport
+Backporting
+backport
 backports
 BaseEventLoop
 basename
@@ -31,6 +33,7 @@ BodyPartReader
 botocore
 Bugfixes
 builtin
+bugfix
 BytesIO
 cchardet
 cChardet
@@ -87,6 +90,7 @@ epoll
 Facebook
 facto
 fallback
+fallbacks
 filename
 finalizers
 frontend
@@ -95,7 +99,6 @@ gethostbyname
 github
 google
 gunicorn
-Gunicorn
 gunicorn’s
 gzipped
 hackish
@@ -165,6 +168,7 @@ Nikolay
 noop
 nowait
 OAuth
+Online
 optimizations
 os
 outcoming
@@ -217,8 +221,10 @@ request’s
 Request’s
 requote
 requoting
+resolvehost
 resolvers
 reusage
+reuseconn
 Runit
 sa
 Satisfiable
@@ -267,6 +273,7 @@ unittest
 Unittest
 unix
 unsets
+unstripped
 upstr
 url
 urldispatcher
@@ -291,3 +298,4 @@ WSMessage
 WSMsgType
 wss
 www
+xxx

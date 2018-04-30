@@ -251,6 +251,9 @@ The client session supports the context manager protocol for self closing.
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
+      :param int max_redirects: Maximum number of redirects to follow.
+                                ``10`` by default.
+
       :param bool compress: Set to ``True`` if request has to be compressed
          with deflate encoding. If `compress` can not be combined
          with a *Content-Encoding* and *Content-Length* headers.
@@ -331,7 +334,8 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 2.3
 
       :param trace_request_ctx: Object used to give as a kw param for each new
-        :class:`TraceConfig` object instantiated, used to give information to the
+        :class:`TraceConfig` object instantiated,
+        used to give information to the
         tracers that is only available at request time.
 
          .. versionadded:: 3.0
@@ -473,6 +477,7 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
+                            headers=None, \
                             proxy=None, proxy_auth=None, ssl=None, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
@@ -499,18 +504,22 @@ The client session supports the context manager protocol for self closing.
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
-                             them close procedure has to be handled manually
+                             then close procedure has to be handled manually.
+                             ``True`` by default
 
       :param bool autoping: automatically send *pong* on *ping*
-                            message from server
+                            message from server. ``True`` by default
 
       :param float heartbeat: Send *ping* message every *heartbeat*
                               seconds and wait *pong* response, if
                               *pong* response is not received then
                               close connection. The timer is reset on any data
-                              reception.
+                              reception.(optional)
 
-      :param str origin: Origin header to send to server
+      :param str origin: Origin header to send to server(optional)
+
+      :param dict headers: HTTP Headers to send with
+                           the request (optional)
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
@@ -560,14 +569,14 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
+         .. deprecated:: 3.0
+
+            Use ``ssl=ssl_context``
+
       :param dict proxy_headers: HTTP headers to send to the proxy if the
          parameter proxy has been provided.
 
          .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=ssl_context``
 
       :param int compress: Enable Per-Message Compress Extension support.
                            0 for disable, 9 to 15 for window bit support.
@@ -673,7 +682,8 @@ certification chaining.
       import aiohttp
 
       async def fetch():
-          async with aiohttp.request('GET', 'http://python.org/') as resp:
+          async with aiohttp.request('GET',
+                  'http://python.org/') as resp:
               assert resp.status == 200
               print(await resp.text())
 
@@ -900,7 +910,7 @@ TCPConnector
    :param bool force_close: close underlying sockets after
                             connection releasing (optional).
 
-   :param tuple enable_cleanup_closed: Some ssl servers do not properly complete
+   :param bool enable_cleanup_closed: Some ssl servers do not properly complete
       SSL shutdown process, in that case asyncio leaks SSL connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
@@ -1049,6 +1059,12 @@ Response object
 
       URL of request (:class:`~yarl.URL`).
 
+   .. attribute:: real_url
+
+      Unmodified URL of request (:class:`~yarl.URL`).
+
+      .. versionadded:: 3.2
+
    .. attribute:: connection
 
       :class:`Connection` used for handling response.
@@ -1080,6 +1096,16 @@ Response object
 
       Unmodified HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
+
+   .. attribute:: links
+
+      Link HTTP header parsed into a :class:`~multidict.MultiDictProxy`.
+
+      For each link, key is link param `rel` when it exists, or link url as
+      :class:`str` otherwise, and value is :class:`~multidict.MultiDictProxy`
+      of link params and url at key `url` as :class:`~yarl.URL` instance.
+
+      .. versionadded:: 3.2
 
    .. attribute:: content_type
 
@@ -1202,6 +1228,12 @@ Response object
       :param str encoding: text encoding used for *BODY* decoding, or
                            ``None`` for encoding autodetection
                            (default).
+
+                           By the standard JSON encoding should be
+                           ``UTF-8`` but practice beats purity: some
+                           servers return non-UTF
+                           responses. Autodetection works pretty fine
+                           anyway.
 
       :param callable loads: :func:`callable` used for loading *JSON*
                              data, :func:`json.loads` by default.
@@ -1437,6 +1469,12 @@ RequestInfo
 
       HTTP headers for request, :class:`multidict.CIMultiDict` instance.
 
+   .. attribute:: real_url
+
+      Requested *url* with URL fragment unstripped, :class:`yarl.URL` instance.
+
+      .. versionadded:: 3.2
+
 
 BasicAuth
 ^^^^^^^^^
@@ -1666,9 +1704,9 @@ Response errors
       Instance of :class:`RequestInfo` object, contains information
       about request.
 
-   .. attribute:: code
+   .. attribute:: status
 
-      HTTP status code of response (:class:`int`), e.g. ``200``.
+      HTTP status code of response (:class:`int`), e.g. ``400``.
 
    .. attribute:: message
 
@@ -1684,6 +1722,12 @@ Response errors
 
       A :class:`tuple` of :class:`ClientResponse` objects used for
       handle redirection responses.
+
+   .. attribute:: code
+
+      HTTP status code of response (:class:`int`), e.g. ``400``.
+
+      .. deprecated:: 3.1
 
 
 .. class:: WSServerHandshakeError
@@ -1707,6 +1751,18 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
    .. versionadded:: 2.3
+
+
+.. class:: TooManyRedirects
+
+   Client was redirected too many times.
+
+   Maximum number of redirects can be configured by using
+   parameter ``max_redirects`` in :meth:`request<aiohttp.ClientSession.request>`.
+
+   Derived from :exc:`ClientResponseError`
+
+   .. versionadded:: 3.2
 
 Connection errors
 ^^^^^^^^^^^^^^^^^
@@ -1732,15 +1788,15 @@ Connection errors
 
 .. class:: ClientProxyConnectionError
 
-   Derived from :exc:`ClientConnectonError`
+   Derived from :exc:`ClientConnectorError`
 
 .. class:: ServerConnectionError
 
-   Derived from :exc:`ClientConnectonError`
+   Derived from :exc:`ClientConnectionError`
 
 .. class:: ClientSSLError
 
-   Derived from :exc:`ClientConnectonError`
+   Derived from :exc:`ClientConnectorError`
 
 .. class:: ClientConnectorSSLError
 
@@ -1758,7 +1814,7 @@ Connection errors
 
    Server disconnected.
 
-   Derived from :exc:`ServerDisconnectonError`
+   Derived from :exc:`ServerDisconnectionError`
 
    .. attribute:: message
 
@@ -1769,13 +1825,13 @@ Connection errors
 
    Server operation timeout: read timeout, etc.
 
-   Derived from :exc:`ServerConnectonError` and :exc:`asyncio.TimeoutError`
+   Derived from :exc:`ServerConnectionError` and :exc:`asyncio.TimeoutError`
 
 .. class:: ServerFingerprintMismatch
 
    Server fingerprint mismatch.
 
-   Derived from :exc:`ServerConnectonError`
+   Derived from :exc:`ServerConnectionError`
 
 
 Hierarchy of exceptions

@@ -14,6 +14,7 @@ import sys
 import time
 import weakref
 from collections import namedtuple
+from collections.abc import Mapping
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
@@ -30,17 +31,25 @@ from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
-__all__ = ('BasicAuth',)
+__all__ = ('BasicAuth', 'ChainMapProxy')
 
 PY_36 = sys.version_info >= (3, 6)
+PY_37 = sys.version_info >= (3, 7)
 
-if sys.version_info < (3, 7):
+if not PY_37:
     import idna_ssl
     idna_ssl.patch_match_hostname()
 
 
 sentinel = object()
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
+
+# N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
+# for compatibility with older versions
+DEBUG = (getattr(sys.flags, 'dev_mode', False) or
+         (not sys.flags.ignore_environment and
+          bool(os.environ.get('PYTHONASYNCIODEBUG'))))
+
 
 CHAR = set(chr(i) for i in range(0, 128))
 CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
@@ -51,6 +60,8 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 coroutines = asyncio.coroutines
 old_debug = coroutines._DEBUG
+
+# prevent "coroutine noop was never awaited" warning.
 coroutines._DEBUG = False
 
 
@@ -183,8 +194,12 @@ def current_task(loop=None):
     if loop is None:
         loop = asyncio.get_event_loop()
 
-    task = asyncio.Task.current_task(loop=loop)
+    if PY_37:
+        task = asyncio.current_task(loop=loop)
+    else:
+        task = asyncio.Task.current_task(loop=loop)
     if task is None:
+        # this should be removed, tokio must use register_task and family API
         if hasattr(loop, 'current_task'):
             task = loop.current_task()
 
@@ -346,7 +361,7 @@ class AccessLogger(AbstractAccessLogger):
 
         All known atoms will be replaced with %s
         Also methods for formatting of those atoms will be added to
-        _methods in apropriate order
+        _methods in appropriate order
 
         For example we have log_format = "%a %t"
         This format will be translated to "%s %s"
@@ -727,3 +742,46 @@ def set_result(fut, result):
 def set_exception(fut, exc):
     if not fut.done():
         fut.set_exception(exc)
+
+
+class ChainMapProxy(Mapping):
+    __slots__ = ('_maps',)
+
+    def __init__(self, maps):
+        self._maps = tuple(maps)
+
+    def __init_subclass__(cls):
+        raise TypeError("Inheritance class {} from ChainMapProxy "
+                        "is forbidden".format(cls.__name__))
+
+    def __getitem__(self, key):
+        for mapping in self._maps:
+            try:
+                return mapping[key]
+            except KeyError:
+                pass
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        return self[key] if key in self else default
+
+    def __len__(self):
+        # reuses stored hash values if possible
+        return len(set().union(*self._maps))
+
+    def __iter__(self):
+        d = {}
+        for mapping in reversed(self._maps):
+            # reuses stored hash values if possible
+            d.update(mapping)
+        return iter(d)
+
+    def __contains__(self, key):
+        return any(key in m for m in self._maps)
+
+    def __bool__(self):
+        return any(self._maps)
+
+    def __repr__(self):
+        content = ", ".join(map(repr, self._maps))
+        return 'ChainMapProxy({})'.format(content)

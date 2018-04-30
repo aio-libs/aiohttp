@@ -268,7 +268,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
          Use :meth:`can_read_body` instead.
 
- .. attribute:: content_type
+   .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
 
@@ -328,6 +328,28 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns :class:`datetime.datetime` or ``None`` if
       *If-Modified-Since* header is absent or is not a valid
       HTTP date.
+
+   .. attribute:: if_unmodified_since
+
+      Read-only property that returns the date specified in the
+      *If-Unmodified-Since* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Unmodified-Since* header is absent or is not a valid
+      HTTP date.
+
+      .. versionadded:: 3.1
+
+   .. attribute:: if_range
+
+      Read-only property that returns the date specified in the
+      *If-Range* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Range* header is absent or is not a valid
+      HTTP date.
+
+      .. versionadded:: 3.1
 
    .. method:: clone(*, method=..., rel_url=..., headers=...)
 
@@ -467,12 +489,23 @@ and :ref:`aiohttp-web-signals` handlers.
       An :class:`Application` instance used to call :ref:`request handler
       <aiohttp-web-handler>`, Read-only property.
 
+   .. attribute:: config_dict
+
+      A :class:`aiohttp.ChainMapProxy` instance for mapping all properties
+      from the current application returned by :attr:`app` property
+      and all its parents.
+
+      .. seealso:: :ref:`aiohttp-web-data-sharing-app-config`
+
+      .. versionadded:: 3.2
+
    .. note::
 
       You should never create the :class:`Request` instance manually
       -- :mod:`aiohttp.web` does it for you. But
       :meth:`~BaseRequest.clone` may be used for cloning *modified*
       request copy with changed *path*, *method* etc.
+
 
 
 
@@ -502,8 +535,8 @@ The common case for sending an answer from
 :ref:`web-handler<aiohttp-web-handler>` is returning a
 :class:`Response` instance::
 
-   def handler(request):
-       return Response("All right!")
+   async def handler(request):
+       return Response(text="All right!")
 
 Response classes are :obj:`dict` like objects,
 allowing them to be used for :ref:`sharing
@@ -769,8 +802,8 @@ StreamResponse
 Response
 ^^^^^^^^
 
-.. class:: Response(*, status=200, headers=None, content_type=None, \
-                    charset=None, body=None, text=None)
+.. class:: Response(*, body=None, status=200, reason=None, text=None, \
+   headers=None, content_type=None, charset=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -862,7 +895,7 @@ WebSocketResponse
                                  operations.  Default value is None
                                  (no timeout for receive operation)
 
-   :param float compress: Enable per-message deflate extension support.
+   :param bool compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
 
    The class supports ``async for`` statement for iterating over
@@ -966,7 +999,7 @@ WebSocketResponse
 
       :param int compress: sets specific level of compression for
                            single message,
-                           ``None`` for not overriding per-socket setting.                           
+                           ``None`` for not overriding per-socket setting.
 
       :raise RuntimeError: if connection is not started or closing
 
@@ -1027,7 +1060,7 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      It is save to call `close()` from different task.
+      It is safe to call `close()` from different task.
 
       :param int code: closing code
 
@@ -1218,8 +1251,9 @@ duplicated like one using :meth:`Application.copy`.
    :param handler_args: dict-like object that overrides keyword arguments of
                         :meth:`Application.make_handler`
 
-   :param client_max_size: client's maximum size in a request, in bytes. If a POST
-                           request exceeds this value, it raises an
+   :param client_max_size: client's maximum size in a request, in
+                           bytes.  If a POST request exceeds this
+                           value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
 
    :param loop: event loop
@@ -1273,7 +1307,7 @@ duplicated like one using :meth:`Application.copy`.
           async def on_startup(app):
               pass
 
-      .. seealso:: :ref:`aiohttp-web-background-tasks`.
+      .. seealso:: :ref:`aiohttp-web-signals`.
 
    .. attribute:: on_shutdown
 
@@ -1307,7 +1341,48 @@ duplicated like one using :meth:`Application.copy`.
           async def on_cleanup(app):
               pass
 
-      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+      .. seealso:: :ref:`aiohttp-web-signals` and :attr:`on_shutdown`.
+
+   .. attribute:: cleanup_ctx
+
+      A list of *context generators* for *startup*/*cleanup* handling.
+
+      Signal handlers should have the following signature::
+
+          async def context(app):
+              # do startup stuff
+              yield
+              # do cleanup
+
+      .. versionadded:: 3.1
+
+      .. seealso:: :ref:`aiohttp-web-cleanup-ctx`.
+
+   .. method:: add_subapp(prefix, subapp)
+
+      Register nested sub-application under given path *prefix*.
+
+      In resolving process if request's path starts with *prefix* then
+      further resolving is passed to *subapp*.
+
+      :param str prefix: path's prefix for the resource.
+
+      :param Application subapp: nested application attached under *prefix*.
+
+      :returns: a :class:`PrefixedSubAppResource` instance.
+
+   .. method:: add_routes(routes_table)
+
+      Register route definitions from *routes_table*.
+
+      The table is a :class:`list` of :class:`RouteDef` items or
+      :class:`RouteTableDef`.
+
+      The method is a shortcut for
+      ``app.router.add_routes(routes_table)``, see also
+      :meth:`UrlDispatcher.add_routes`.
+
+      .. versionadded:: 3.1
 
    .. method:: make_handler(loop=None, **kwargs)
 
@@ -1555,7 +1630,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_view(path, handler, **kwargs)
 
       Shortcut for adding a class-based view handler. Calls the \
-      :meth:`add_routre` with ``method`` equals to ``'*'``.
+      :meth:`add_route` with ``method`` equals to ``'*'``.
 
       .. versionadded:: 3.0
 
@@ -1618,19 +1693,6 @@ Router is any object that implements :class:`AbstractRouter` interface.
 
 
       :returns: new :class:`StaticRoute` instance.
-
-   .. method:: add_subapp(prefix, subapp)
-
-      Register nested sub-application under given path *prefix*.
-
-      In resolving process if request's path starts with *prefix* then
-      further resolving is passed to *subapp*.
-
-      :param str prefix: path's prefix for the resource.
-
-      :param Application subapp: nested application attached under *prefix*.
-
-      :returns: a :class:`PrefixedSubAppResource` instance.
 
    .. comethod:: resolve(request)
 
@@ -1761,13 +1823,10 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
-   .. comethod:: resolve(method, path)
+   .. comethod:: resolve(request)
 
       Resolve resource by finding appropriate :term:`web-handler` for
       ``(method, path)`` combination.
-
-      :param str method: requested HTTP method.
-      :param str path: *path* part of request.
 
       :return: (*match_info*, *allowed_methods*) pair.
 
@@ -1964,8 +2023,8 @@ and *405 Method Not Allowed*.
 .. _aiohttp-web-route-def:
 
 
-RouteDef
-^^^^^^^^
+RouteDef and StaticDef
+^^^^^^^^^^^^^^^^^^^^^^
 
 Route definition, a description for not registered yet route.
 
@@ -1988,10 +2047,32 @@ The definition is created by functions like :func:`get` or
    app.router.add_routes([web.get('/get', handle_get),
                           web.post('/post', handle_post),
 
+.. class:: AbstractRouteDef
+
+   A base class for route definitions.
+
+   Inherited from :class:`abc.ABC`.
+
+   .. versionadded:: 3.1
+
+   .. method:: register(router)
+
+      Register itself into :class:`UrlDispatcher`.
+
+      Abstract method, should be overridden by subclasses.
+
 
 .. class:: RouteDef
 
-   A definition for not added yet route.
+   A definition of not registered yet route.
+
+   Implements :class:`AbstractRouteDef`.
+
+   .. versionadded:: 2.3
+
+   .. versionchanged:: 3.1
+
+      The class implements :class:`AbstractRouteDef` interface.
 
    .. attribute:: method
 
@@ -2011,7 +2092,30 @@ The definition is created by functions like :func:`get` or
 
       A :class:`dict` of additional arguments.
 
-   .. versionadded:: 2.3
+
+.. class:: StaticDef
+
+   A definition of static file resource.
+
+   Implements :class:`AbstractRouteDef`.
+
+   .. versionadded:: 3.1
+
+   .. attribute:: prefix
+
+      A prefix used for static file handling, e.g. ``/static``.
+
+   .. attribute:: path
+
+      File system directory to serve, :class:`str` or
+      :class:`pathlib.Path`
+      (e.g. ``'/home/web-service/path/to/static'``.
+
+   .. attribute:: kwargs
+
+      A :class:`dict` of additional arguments, see
+      :meth:`UrlDispatcher.add_static` for a list of supported
+      options.
 
 
 .. function:: get(path, handler, *, name=None, allow_head=True, \
@@ -2064,12 +2168,26 @@ The definition is created by functions like :func:`get` or
 
    .. versionadded:: 3.0
 
+.. function:: static(prefix, path, *, name=None, expect_handler=None, \
+                     chunk_size=256*1024, \
+                     show_index=False, follow_symlinks=False, \
+                     append_version=False)
+
+   Return :class:`StaticDef` for processing static files.
+
+   See :meth:`UrlDispatcher.add_static` for information
+   about supported parameters.
+
+   .. versionadded:: 3.1
+
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
-   Return :class:`RouteDef` for processing ``POST`` requests. See
-   :meth:`UrlDispatcher.add_route` for information about parameters.
+   Return :class:`RouteDef` for processing requests that decided by
+   ``method``. See :meth:`UrlDispatcher.add_route` for information
+   about parameters.
 
    .. versionadded:: 2.3
+
 
 .. _aiohttp-web-route-table-def:
 
@@ -2111,6 +2229,8 @@ A routes table definition used for describing routes by decorators
    In addition to all standard :class:`list` methods the class
    provides also methods like ``get()`` and ``post()`` for adding new
    route definition.
+
+   .. versionadded:: 2.3
 
    .. decoratormethod:: get(path, *, allow_head=True, \
                             name=None, expect_handler=None)
@@ -2158,6 +2278,19 @@ A routes table definition used for describing routes by decorators
 
       .. versionadded:: 3.0
 
+   .. method:: static(prefix, path, *, name=None, expect_handler=None, \
+                      chunk_size=256*1024, \
+                      show_index=False, follow_symlinks=False, \
+                      append_version=False)
+
+
+      Add a new :class:`StaticDef` item for registering static files processor.
+
+      See :meth:`UrlDispatcher.add_static` for information about
+      supported parameters.
+
+      .. versionadded:: 3.1
+
    .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
 
       Add a new :class:`RouteDef` item for registering a web-handler
@@ -2165,7 +2298,6 @@ A routes table definition used for describing routes by decorators
 
       See :meth:`UrlDispatcher.add_route` for information about parameters.
 
-   .. versionadded:: 2.3
 
 MatchInfo
 ^^^^^^^^^
@@ -2464,7 +2596,8 @@ Utilities
    handled on the same event loop. See :doc:`deployment` for ways of
    distributing work for increased performance.
 
-   :param app: :class:`Application` instance to run
+   :param app: :class:`Application` instance to run or a *coroutine*
+               that returns an application.
 
    :param str host: TCP/IP host or a sequence of hosts for HTTP server.
                     Default is ``'0.0.0.0'`` if *port* has been specified
@@ -2532,9 +2665,12 @@ Utilities
    .. versionadded:: 3.0
 
       Support *access_log_class* parameter.
-      
+
       Support *reuse_address*, *reuse_port* parameter.
 
+   .. versionadded:: 3.1
+
+      Accept a coroutine as *app* parameter.
 
 Constants
 ---------
@@ -2551,7 +2687,7 @@ Constants
 
       *GZIP compression*
 
-.. attribute:: identity
+   .. attribute:: identity
 
       *no compression*
 
@@ -2565,8 +2701,8 @@ Normalize path middleware
 .. function:: normalize_path_middleware(*, \
                                         append_slash=True, merge_slashes=True)
 
-  Middleware that normalizes the path of a request. By normalizing
-  it means:
+  Middleware factory which produces a middleware that normalizes
+  the path of a request. By normalizing it means:
 
       - Add a trailing slash to the path.
       - Double slashes are replaced by one.

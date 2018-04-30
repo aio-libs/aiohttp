@@ -8,6 +8,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
+from aiohttp.test_utils import RawTestServer as _RawTestServer
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
 from aiohttp.test_utils import (loop_context, make_mocked_request,
@@ -214,6 +215,23 @@ async def test_test_client_props(loop):
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        assert client.app is not None
+    assert client.port is None
+
+
+async def test_test_client_raw_server_props(loop):
+
+    async def hello(request):
+        return web.Response(body=_hello_world_bytes)
+
+    client = _TestClient(_RawTestServer(hello, host='127.0.0.1', loop=loop),
+                         loop=loop)
+    assert client.host == '127.0.0.1'
+    assert client.port is None
+    async with client:
+        assert isinstance(client.port, int)
+        assert client.server is not None
+        assert client.app is None
     assert client.port is None
 
 
@@ -228,8 +246,11 @@ async def test_test_server_context_manager(loop):
 
 
 def test_client_unsupported_arg():
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as e:
         _TestClient('string')
+
+    assert str(e.value) == \
+        "server must be TestServer instance, found type: <class 'str'>"
 
 
 async def test_server_make_url_yarl_compatibility(loop):

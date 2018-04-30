@@ -19,7 +19,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs, multipart
-from .helpers import HeadersMixin, reify, sentinel
+from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
 from .web_exceptions import HTTPRequestEntityTooLarge
 
@@ -388,19 +388,41 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """A sequence of pars for all headers."""
         return self._message.raw_headers
 
+    @staticmethod
+    def _http_date(_date_str):
+        """Process a date string, return a datetime object
+        """
+        if _date_str is not None:
+            timetuple = parsedate(_date_str)
+            if timetuple is not None:
+                return datetime.datetime(*timetuple[:6],
+                                         tzinfo=datetime.timezone.utc)
+        return None
+
     @reify
     def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
         """The value of If-Modified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        httpdate = self.headers.get(_IF_MODIFIED_SINCE)
-        if httpdate is not None:
-            timetuple = parsedate(httpdate)
-            if timetuple is not None:
-                return datetime.datetime(*timetuple[:6],
-                                         tzinfo=datetime.timezone.utc)
-        return None
+        return self._http_date(self.headers.get(_IF_MODIFIED_SINCE))
+
+    @reify
+    def if_unmodified_since(self,
+                            _IF_UNMODIFIED_SINCE=hdrs.IF_UNMODIFIED_SINCE):
+        """The value of If-Unmodified-Since HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        return self._http_date(self.headers.get(_IF_UNMODIFIED_SINCE))
+
+    @reify
+    def if_range(self, _IF_RANGE=hdrs.IF_RANGE):
+        """The value of If-Range HTTP header, or None.
+
+        This header is represented as a `datetime` object.
+        """
+        return self._http_date(self.headers.get(_IF_RANGE))
 
     @property
     def keep_alive(self):
@@ -432,14 +454,15 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                 pattern = r'^bytes=(\d*)-(\d*)$'
                 start, end = re.findall(pattern, rng)[0]
             except IndexError:  # pattern was not found in header
-                raise ValueError("range not in acceptible format")
+                raise ValueError("range not in acceptable format")
 
             end = int(end) if end else None
             start = int(start) if start else None
 
             if start is None and end is not None:
                 # end with no start is to return tail of content
-                end = -end
+                start = -end
+                end = None
 
             if start is not None and end is not None:
                 # end is inclusive in range header, exclusive for slice
@@ -450,6 +473,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
             if start is end is None:  # No valid range supplied
                 raise ValueError('No start or end of range specified')
+
         return slice(start, end, 1)
 
     @property
@@ -608,14 +632,15 @@ class Request(BaseRequest):
         # or information about traversal lookup
         self._match_info = None  # initialized after route resolving
 
-    def __setattr__(self, name, val):
-        if name not in self.ATTRS:
-            warnings.warn("Setting custom {}.{} attribute "
-                          "is discouraged".format(self.__class__.__name__,
-                                                  name),
-                          DeprecationWarning,
-                          stacklevel=2)
-        super().__setattr__(name, val)
+    if DEBUG:
+        def __setattr__(self, name, val):
+            if name not in self.ATTRS:
+                warnings.warn("Setting custom {}.{} attribute "
+                              "is discouraged".format(self.__class__.__name__,
+                                                      name),
+                              DeprecationWarning,
+                              stacklevel=2)
+            super().__setattr__(name, val)
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel, scheme=sentinel, host=sentinel,
@@ -638,6 +663,14 @@ class Request(BaseRequest):
     def app(self):
         """Application instance."""
         return self._match_info.current_app
+
+    @property
+    def config_dict(self):
+        lst = self._match_info.apps
+        app = self.app
+        idx = lst.index(app)
+        sublist = list(reversed(lst[:idx + 1]))
+        return ChainMapProxy(sublist)
 
     async def _prepare_hook(self, response):
         match_info = self._match_info

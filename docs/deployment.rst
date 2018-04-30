@@ -234,7 +234,7 @@ name this file *my_app_module.py*::
 
    from aiohttp import web
 
-   def index(request):
+   async def index(request):
        return web.Response(text="Welcome home!")
 
 
@@ -242,15 +242,33 @@ name this file *my_app_module.py*::
    my_web_app.router.add_get('/', index)
 
 
+Application factory
+-------------------
+
+As an option an entry point could be a coroutine that accepts no
+parameters and returns an application instance::
+
+   from aiohttp import web
+
+   async def index(request):
+       return web.Response(text="Welcome home!")
+
+
+   async def my_web_app():
+       app = web.Application()
+       app.router.add_get('/', index)
+       return app
+
+
 Start Gunicorn
 --------------
 
 When `Running Gunicorn
 <http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name
-of the module, i.e. *my_app_module*, and the name of the app,
-i.e. *my_web_app*, along with other `Gunicorn Settings
-<http://docs.gunicorn.org/en/latest/settings.html>`_ provided as
-command line flags or in your config file.
+of the module, i.e. *my_app_module*, and the name of the app or
+application factory, i.e. *my_web_app*, along with other `Gunicorn
+Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided
+as command line flags or in your config file.
 
 In this case, we will use:
 
@@ -262,6 +280,8 @@ In this case, we will use:
   many worker processes to use for handling requests. (See the
   documentation for recommendations on `How Many Workers?
   <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
+* you may also want to use the *'--accesslog'* flag to enable the access
+  log to be populated. (See :ref:`logging <gunicorn-accesslog>` for more information.)
 
 The custom worker subclass is defined in ``aiohttp.GunicornWebWorker``::
 

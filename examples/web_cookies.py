@@ -2,7 +2,6 @@
 """Example for aiohttp.web basic server with cookies.
 """
 
-import asyncio
 from pprint import pformat
 
 from aiohttp import web
@@ -36,7 +35,7 @@ async def logout(request):
     return resp
 
 
-async def init(loop):
+def init(loop):
     app = web.Application(loop=loop)
     app.router.add_get('/', root)
     app.router.add_get('/login', login)
@@ -44,6 +43,4 @@ async def init(loop):
     return app
 
 
-loop = asyncio.get_event_loop()
-app = loop.run_until_complete(init(loop))
-web.run_app(app)
+web.run_app(init())

@@ -5,7 +5,7 @@ import collections
 import zlib
 
 from .abc import AbstractStreamWriter
-from .helpers import noop
+from .helpers import NO_EXTENSIONS
 
 
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
@@ -17,9 +17,9 @@ HttpVersion11 = HttpVersion(1, 1)
 
 class StreamWriter(AbstractStreamWriter):
 
-    def __init__(self, protocol, transport, loop):
+    def __init__(self, protocol, loop, on_chunk_sent=None):
         self._protocol = protocol
-        self._transport = transport
+        self._transport = protocol.transport
 
         self.loop = loop
         self.length = None
@@ -30,6 +30,8 @@ class StreamWriter(AbstractStreamWriter):
         self._eof = False
         self._compress = None
         self._drain_waiter = None
+
+        self._on_chunk_sent = on_chunk_sent
 
     @property
     def transport(self):
@@ -56,17 +58,20 @@ class StreamWriter(AbstractStreamWriter):
             raise asyncio.CancelledError('Cannot write to closing transport')
         self._transport.write(chunk)
 
-    def write(self, chunk, *, drain=True, LIMIT=64*1024):
+    async def write(self, chunk, *, drain=True, LIMIT=0x10000):
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
         writer can't be used after write_eof() method being called.
         write() return drain future.
         """
+        if self._on_chunk_sent is not None:
+            await self._on_chunk_sent(chunk)
+
         if self._compress is not None:
             chunk = self._compress.compress(chunk)
             if not chunk:
-                return noop()
+                return
 
         if self.length is not None:
             chunk_len = len(chunk)
@@ -76,7 +81,7 @@ class StreamWriter(AbstractStreamWriter):
                 chunk = chunk[:self.length]
                 self.length = 0
                 if not chunk:
-                    return noop()
+                    return
 
         if chunk:
             if self.chunked:
@@ -87,21 +92,20 @@ class StreamWriter(AbstractStreamWriter):
 
             if self.buffer_size > LIMIT and drain:
                 self.buffer_size = 0
-                return self.drain()
+                await self.drain()
 
-        return noop()
-
-    def write_headers(self, status_line, headers, SEP=': ', END='\r\n'):
+    async def write_headers(self, status_line, headers):
         """Write request/response status and headers."""
         # status + headers
-        headers = status_line + ''.join(
-            [k + SEP + v + END for k, v in headers.items()])
-        headers = headers.encode('utf-8') + b'\r\n'
-        self._write(headers)
+        buf = _serialize_headers(status_line, headers)
+        self._write(buf)
 
     async def write_eof(self, chunk=b''):
         if self._eof:
             return
+
+        if chunk and self._on_chunk_sent is not None:
+            await self._on_chunk_sent(chunk)
 
         if self._compress:
             if chunk:
@@ -137,3 +141,19 @@ class StreamWriter(AbstractStreamWriter):
         """
         if self._protocol.transport is not None:
             await self._protocol._drain_helper()
+
+
+def _py_serialize_headers(status_line, headers):
+    headers = status_line + '\r\n' + ''.join(
+        [k + ': ' + v + '\r\n' for k, v in headers.items()])
+    return headers.encode('utf-8') + b'\r\n'
+
+
+_serialize_headers = _py_serialize_headers
+
+try:
+    from ._http_writer import _serialize_headers as _c_serialize_headers
+    if not NO_EXTENSIONS:  # pragma: no cover
+        _serialize_headers = _c_serialize_headers
+except ImportError:
+    pass

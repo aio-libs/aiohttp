@@ -159,7 +159,7 @@ class TestClient:
 
     def __init__(self, server, *, cookie_jar=None, loop=None, **kwargs):
         if not isinstance(server, BaseTestServer):
-            raise TypeError("server must be web.Application TestServer "
+            raise TypeError("server must be TestServer "
                             "instance, found type: %r" % type(server))
         self._server = server
         self._loop = loop
@@ -186,6 +186,10 @@ class TestClient:
     @property
     def server(self):
         return self._server
+
+    @property
+    def app(self):
+        return getattr(self._server, "app", None)
 
     @property
     def session(self):
@@ -410,7 +414,7 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     once they are done with the loop.
     """
     loop = loop_factory()
-    asyncio.set_event_loop(None)
+    asyncio.set_event_loop(loop)
     if sys.platform != "win32":
         policy = asyncio.get_event_loop_policy()
         watcher = asyncio.SafeChildWatcher()
@@ -463,7 +467,6 @@ def make_mocked_request(method, path, headers=None, *,
                         version=HttpVersion(1, 1), closing=False,
                         app=None,
                         writer=sentinel,
-                        payload_writer=sentinel,
                         protocol=sentinel,
                         transport=sentinel,
                         payload=sentinel,
@@ -501,21 +504,20 @@ def make_mocked_request(method, path, headers=None, *,
     if app is None:
         app = _create_app_mock()
 
-    if protocol is sentinel:
-        protocol = mock.Mock()
-
     if transport is sentinel:
         transport = _create_transport(sslcontext)
 
+    if protocol is sentinel:
+        protocol = mock.Mock()
+        protocol.transport = transport
+
     if writer is sentinel:
         writer = mock.Mock()
+        writer.write_headers = make_mocked_coro(None)
+        writer.write = make_mocked_coro(None)
+        writer.write_eof = make_mocked_coro(None)
+        writer.drain = make_mocked_coro(None)
         writer.transport = transport
-
-    if payload_writer is sentinel:
-        payload_writer = mock.Mock()
-        payload_writer.write = make_mocked_coro(None)
-        payload_writer.write_eof = make_mocked_coro(None)
-        payload_writer.drain = make_mocked_coro(None)
 
     protocol.transport = transport
     protocol.writer = writer
@@ -524,7 +526,7 @@ def make_mocked_request(method, path, headers=None, *,
         payload = mock.Mock()
 
     req = Request(message, payload,
-                  protocol, payload_writer, task, loop,
+                  protocol, writer, task, loop,
                   client_max_size=client_max_size)
 
     match_info = UrlMappingMatchInfo(

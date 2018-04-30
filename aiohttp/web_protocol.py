@@ -20,7 +20,7 @@ from .web_request import BaseRequest
 from .web_response import Response
 
 
-__all__ = ('RequestHandler', 'RequestPayloadError')
+__all__ = ('RequestHandler', 'RequestPayloadError', 'PayloadAccessError')
 
 ERROR = http.RawRequestMessage(
     'UNKNOWN', '/', http.HttpVersion10, {},
@@ -29,6 +29,10 @@ ERROR = http.RawRequestMessage(
 
 class RequestPayloadError(Exception):
     """Payload parsing error."""
+
+
+class PayloadAccessError(Exception):
+    """Payload was accesed after responce was sent."""
 
 
 class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
@@ -233,25 +237,30 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # something happened during parsing
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        StreamWriter(self, self.transport, self._loop),
+                        StreamWriter(self, self._loop),
                         400, exc, exc.message))
                 self.close()
             except Exception as exc:
                 # 500: internal error
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        StreamWriter(self, self.transport, self._loop),
+                        StreamWriter(self, self._loop),
                         500, exc))
                 self.close()
             else:
-                for (msg, payload) in messages:
-                    self._request_count += 1
-                    self._messages.append((msg, payload))
+                if messages:
+                    # sometimes the parser returns no messages
+                    for (msg, payload) in messages:
+                        self._request_count += 1
+                        self._messages.append((msg, payload))
 
-                if self._waiter:
-                    self._waiter.set_result(None)
+                    waiter = self._waiter
+                    if waiter is not None:
+                        if not waiter.done():
+                            # don't set result twice
+                            waiter.set_result(None)
 
-                self._upgraded = upgraded
+                self._upgrade = upgraded
                 if upgraded and tail:
                     self._message_tail = tail
 
@@ -368,7 +377,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 now = loop.time()
 
             manager.requests_count += 1
-            writer = StreamWriter(self, self.transport, loop)
+            writer = StreamWriter(self, loop)
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:
@@ -427,6 +436,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     if not payload.is_eof() and not self._force_close:
                         self.log_debug('Uncompleted request.')
                         self.close()
+
+                payload.set_exception(PayloadAccessError())
 
             except asyncio.CancelledError:
                 self.log_debug('Ignored premature client disconnection ')

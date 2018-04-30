@@ -18,15 +18,16 @@ from . import connector as connector_mod
 from . import hdrs, http, payload
 from .client_exceptions import *  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
-                                ServerTimeoutError, WSServerHandshakeError)
+                                ServerTimeoutError, TooManyRedirects,
+                                WSServerHandshakeError)
 from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
 from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_36, CeilTimeout, TimeoutHandle, proxies_from_env,
-                      sentinel, strip_auth_from_url)
+from .helpers import (DEBUG, PY_36, CeilTimeout, TimeoutHandle,
+                      proxies_from_env, sentinel, strip_auth_from_url)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -149,13 +150,14 @@ class ClientSession:
                       DeprecationWarning,
                       stacklevel=2)
 
-    def __setattr__(self, name, val):
-        if name not in self.ATTRS:
-            warnings.warn("Setting custom ClientSession.{} attribute "
-                          "is discouraged".format(name),
-                          DeprecationWarning,
-                          stacklevel=2)
-        super().__setattr__(name, val)
+    if DEBUG:
+        def __setattr__(self, name, val):
+            if name not in self.ATTRS:
+                warnings.warn("Setting custom ClientSession.{} attribute "
+                              "is discouraged".format(name),
+                              DeprecationWarning,
+                              stacklevel=2)
+            super().__setattr__(name, val)
 
     def __del__(self, _warnings=warnings):
         if not self.closed:
@@ -288,7 +290,6 @@ class ClientSession:
                                          "with AUTH argument or credentials "
                                          "encoded in URL")
 
-                    url = url.with_fragment(None)
                     cookies = self._cookie_jar.filter_cookies(url)
 
                     if proxy is not None:
@@ -309,7 +310,7 @@ class ClientSession:
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
                         session=self, auto_decompress=self._auto_decompress,
-                        ssl=ssl, proxy_headers=proxy_headers)
+                        ssl=ssl, proxy_headers=proxy_headers, traces=traces)
 
                     # connection timeout
                     try:
@@ -326,11 +327,14 @@ class ClientSession:
                     tcp_nodelay(conn.transport, True)
                     tcp_cork(conn.transport, False)
                     try:
-                        resp = req.send(conn)
                         try:
-                            await resp.start(conn, read_until_eof)
+                            resp = await req.send(conn)
+                            try:
+                                await resp.start(conn, read_until_eof)
+                            except BaseException:
+                                resp.close()
+                                raise
                         except BaseException:
-                            resp.close()
                             conn.close()
                             raise
                     except ClientError:
@@ -356,7 +360,8 @@ class ClientSession:
                         history.append(resp)
                         if max_redirects and redirects >= max_redirects:
                             resp.close()
-                            break
+                            raise TooManyRedirects(
+                                history[0].request_info, tuple(history))
                         else:
                             resp.release()
 
@@ -541,7 +546,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid response status',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.UPGRADE, '').lower() != 'websocket':
@@ -549,7 +554,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid upgrade header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             if resp.headers.get(hdrs.CONNECTION, '').lower() != 'upgrade':
@@ -557,7 +562,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid connection header',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # key calculation
@@ -569,7 +574,7 @@ class ClientSession:
                     resp.request_info,
                     resp.history,
                     message='Invalid challenge response',
-                    code=resp.status,
+                    status=resp.status,
                     headers=resp.headers)
 
             # websocket protocol
@@ -596,7 +601,7 @@ class ClientSession:
                             resp.request_info,
                             resp.history,
                             message=exc.args[0],
-                            code=resp.status,
+                            status=resp.status,
                             headers=resp.headers)
                 else:
                     compress = 0

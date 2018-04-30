@@ -19,7 +19,8 @@ Key Features
 
 - Supports both :ref:`aiohttp-client` and :ref:`HTTP Server <aiohttp-web>`.
 - Supports both :ref:`Server WebSockets <aiohttp-web-websockets>` and
-  :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box.
+  :ref:`Client WebSockets <aiohttp-client-websockets>` out-of-the-box
+  without the Callback Hell.
 - Web-server has :ref:`aiohttp-web-middlewares`,
   :ref:`aiohttp-web-signals` and pluggable routing.
 
@@ -54,12 +55,10 @@ Client example::
 
     import aiohttp
     import asyncio
-    import async_timeout
 
     async def fetch(session, url):
-        async with async_timeout.timeout(10):
-            async with session.get(url) as response:
-                return await response.text()
+        async with session.get(url) as response:
+            return await response.text()
 
     async def main():
         async with aiohttp.ClientSession() as session:
@@ -79,8 +78,8 @@ Server example::
         return web.Response(text=text)
 
     app = web.Application()
-    app.router.add_get('/', handle)
-    app.router.add_get('/{name}', handle)
+    app.add_routes([web.get('/', handle),
+                    web.get('/{name}', handle)])
 
     web.run_app(app)
 

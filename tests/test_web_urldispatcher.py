@@ -1,5 +1,6 @@
 import functools
 import os
+import pathlib
 import shutil
 import tempfile
 from unittest import mock
@@ -274,10 +275,10 @@ async def test_access_special_resource(tmp_dir_path, aiohttp_client):
 
         # Request the root of the static directory.
         r = await client.get('/special')
-        assert r.status == 404
+        assert r.status == 403
 
 
-async def test_partialy_applied_handler(aiohttp_client):
+async def test_partially_applied_handler(aiohttp_client):
     app = web.Application()
 
     async def handler(data, request):
@@ -467,3 +468,17 @@ async def test_web_view(aiohttp_client):
     r = await client.put("/a")
     assert r.status == 405
     await r.release()
+
+
+async def test_static_absolute_url(aiohttp_client, tmpdir):
+    # requested url is an absolute name like
+    # /static/\\machine_name\c$ or /static/D:\path
+    # where the static dir is totally different
+    app = web.Application()
+    fname = tmpdir / 'file.txt'
+    fname.write_text('sample text', 'ascii')
+    here = pathlib.Path(__file__).parent
+    app.router.add_static('/static', here)
+    client = await aiohttp_client(app)
+    resp = await client.get('/static/' + str(fname))
+    assert resp.status == 403

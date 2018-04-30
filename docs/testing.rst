@@ -153,6 +153,7 @@ Pytest tooling has the following fixtures:
                   :meth:`aiohttp.web.Application.make_handler`
 
    .. versionchanged:: 3.0
+   .. deprecated:: 3.2
 
       The fixture was renamed from ``test_server`` to ``aiohttp_server``.
 
@@ -258,9 +259,9 @@ functionality, the AioHTTPTestCase is provided::
         # tests that are asynchronous
         @unittest_run_loop
         async def test_example(self):
-            request = await self.client.request("GET", "/")
-            assert request.status == 200
-            text = await request.text()
+            resp = await self.client.request("GET", "/")
+            assert resp.status == 200
+            text = await resp.text()
             assert "Hello, world" in text
 
         # a vanilla example
@@ -449,13 +450,13 @@ conditions that hard to reproduce on real server::
    :type app: aiohttp.web.Application
 
    :param writer: object for managing outcoming data
-   :type wirter: aiohttp.streams.StreamWriter
+   :type writer: aiohttp.StreamWriter
 
    :param transport: asyncio transport instance
    :type transport: asyncio.transports.Transport
 
    :param payload: raw payload reader object
-   :type  payload: aiohttp.streams.FlowControlStreamReader
+   :type  payload: aiohttp.StreamReader
 
    :param sslcontext: ssl.SSLContext object, for HTTPS connection
    :type sslcontext: ssl.SSLContext
@@ -478,14 +479,14 @@ Framework Agnostic Utilities
 
 High level test creation::
 
-    from aiohttp.test_utils import TestClient, loop_context
+    from aiohttp.test_utils import TestClient, TestServer, loop_context
     from aiohttp import request
 
     # loop_context is provided as a utility. You can use any
     # asyncio.BaseEventLoop class in it's place.
     with loop_context() as loop:
         app = _create_example_app()
-        with TestClient(app, loop=loop) as client:
+        with TestClient(TestServer(app), loop=loop) as client:
 
             async def test_get_route():
                 nonlocal client
@@ -500,11 +501,11 @@ High level test creation::
 If it's preferred to handle the creation / teardown on a more granular
 basis, the TestClient object can be used directly::
 
-    from aiohttp.test_utils import TestClient
+    from aiohttp.test_utils import TestClient, TestServer
 
     with loop_context() as loop:
         app = _create_example_app()
-        client = TestClient(app, loop=loop)
+        client = TestClient(TestSever(app), loop=loop)
         loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 
@@ -521,73 +522,6 @@ basis, the TestClient object can be used directly::
 A full list of the utilities provided can be found at the
 :data:`api reference <aiohttp.test_utils>`
 
-Writing testable services
--------------------------
-
-Some libraries like motor, aioes and others depend on the asyncio loop for
-executing the code. When running your normal program, these libraries pick
-the main event loop by doing ``asyncio.get_event_loop``. The problem during
-testing is that there is no main loop assigned because an independent
-loop for each test is created without assigning it as the main one.
-
-This raises a problem when those libraries try to find it. Luckily, the ones
-that are well written, allow passing the loop explicitly. Let's have a look
-at the aioes client signature::
-
-  def __init__(self, endpoints, *, loop=None, **kwargs)
-
-As you can see, there is an optional ``loop`` kwarg. Of course, we are not
-going to test directly the aioes client but our service that depends on it
-will. So, if we want our ``AioESService`` to be easily testable, we should
-define it as follows::
-
-  import asyncio
-
-  from aioes import Elasticsearch
-
-
-  class AioESService:
-
-      def __init__(self, loop=None):
-          self.es = Elasticsearch(["127.0.0.1:9200"], loop=loop)
-
-      async def get_info(self):
-          cluster_info = await self.es.info()
-          print(cluster_info)
-
-  if __name__ == "__main__":
-      client = AioESService()
-      loop = asyncio.get_event_loop()
-      loop.run_until_complete(client.get_info())
-
-
-Note that it is accepting an optional ``loop`` kwarg. For the normal flow of
-execution it won't affect because we can still call the service without passing
-the loop explicitly having a main loop available. The problem comes when you
-try to do a test like::
-
-  import pytest
-
-  from main import AioESService
-
-
-  class TestAioESService:
-
-      async def test_get_info(self):
-          cluster_info = await AioESService().get_info()
-          assert isinstance(cluster_info, dict)
-
-If you try to run the test, it will fail with a similar error::
-
-  ...
-  RuntimeError: There is no current event loop in thread 'MainThread'.
-
-
-If you check the stack trace, you will see aioes is complaining that there is
-no current event loop in the main thread. Pass explicit loop to solve it.
-
-If you rely on code which works with *implicit* loops only you may try
-to use hackish approach from :ref:`FAQ <aiohttp_faq_tests_and_implicit_loop>`.
 
 Testing API Reference
 ---------------------
@@ -717,10 +651,9 @@ Test Client
    :param app_or_server: :class:`BaseTestServer` instance for making
                          client requests to it.
 
-                         If the parameter is
-                         :class:`aiohttp.web.Application` the tool
-                         creates :class:`TestServer` implicitly for
-                         serving the application.
+                         In order to pass a :class:`aiohttp.web.Application`
+                         you need to convert it first to :class:`TestServer`
+                         first with ``TestServer(app)``.
 
    :param cookie_jar: an optional :class:`aiohttp.CookieJar` instance,
                       may be useful with ``CookieJar(unsafe=True)``
@@ -750,6 +683,12 @@ Test Client
 
       :class:`BaseTestServer` test server instance used in conjunction
       with client.
+
+   .. attribute:: app
+
+      An alias for :attr:`self.server.app`. return ``None`` if
+      ``self.server`` is not :class:`TestServer`
+      instance(e.g. :class:`RawTestServer` instance for test low-level server).
 
    .. attribute:: session
 
@@ -854,6 +793,20 @@ Utilities
 
    The caller should also call teardown_test_loop, once they are done
    with the loop.
+
+   .. note::
+
+      As side effect the function changes asyncio *default loop* by
+      :func:`asyncio.set_event_loop` call.
+
+      Previous default loop is not restored.
+
+      It should not be a problem for test suite: every test expects a
+      new test loop instance anyway.
+
+   .. versionchanged:: 3.1
+
+      The function installs a created event loop as *default*.
 
 .. function:: teardown_test_loop(loop)
 

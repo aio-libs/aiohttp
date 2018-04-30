@@ -474,6 +474,23 @@ async def test_lingering_timeout(
     transport.close.assert_called_with()
 
 
+async def test_handle_payload_access_error(
+    make_srv, loop, transport, request_handler
+):
+    srv = make_srv(lingering_time=0)
+    srv.connection_made(transport)
+    srv.data_received(
+        b'POST /test HTTP/1.1\r\n'
+        b'Content-Length: 9\r\n\r\n'
+        b'some data'
+    )
+    # start request_handler task
+    await asyncio.sleep(0, loop=loop)
+
+    with pytest.raises(web.PayloadAccessError):
+        await request_handler.call_args[0][0].content.read()
+
+
 def test_handle_cancel(make_srv, loop, transport):
     log = mock.Mock()
 
@@ -797,3 +814,23 @@ def test__process_keepalive_force_close(loop, srv):
     with mock.patch.object(loop, "call_at") as call_at_patched:
         srv._process_keepalive()
         assert not call_at_patched.called
+
+
+def test_two_data_received_without_waking_up_start_task(srv, loop):
+    # make a chance to srv.start() method start waiting for srv._waiter
+    loop.run_until_complete(asyncio.sleep(0.01))
+    assert srv._waiter is not None
+
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n'
+        b'Host: ex.com\r\n'
+        b'Content-Length: 1\r\n\r\n'
+        b'a')
+    srv.data_received(
+        b'GET / HTTP/1.1\r\n'
+        b'Host: ex.com\r\n'
+        b'Content-Length: 1\r\n\r\n'
+        b'b')
+
+    assert len(srv._messages) == 2
+    assert srv._waiter.done()

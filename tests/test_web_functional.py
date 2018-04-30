@@ -2,10 +2,12 @@ import asyncio
 import io
 import json
 import pathlib
+import socket
 import zlib
 from unittest import mock
 
 import pytest
+from async_generator import async_generator, yield_
 from multidict import MultiDict
 from yarl import URL
 
@@ -460,7 +462,7 @@ async def test_100_continue_custom(aiohttp_client):
         nonlocal expect_received
         expect_received = True
         if request.version == HttpVersion11:
-            request.transport.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     form = FormData()
     form.add_field('name', b'123',
@@ -487,7 +489,7 @@ async def test_100_continue_custom_response(aiohttp_client):
             if auth_err:
                 raise web.HTTPForbidden()
 
-            request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+            await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
     form = FormData()
     form.add_field('name', b'123',
@@ -729,6 +731,36 @@ async def test_get_with_empty_arg_with_equal(aiohttp_client):
     assert 200 == resp.status
 
 
+async def test_response_with_async_gen(aiohttp_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    data_size = len(data)
+
+    @async_generator
+    async def stream(f_name):
+        with f_name.open('rb') as f:
+            data = f.read(100)
+            while data:
+                await yield_(data)
+                data = f.read(100)
+
+    async def handler(request):
+        headers = {'Content-Length': str(data_size)}
+        return web.Response(body=stream(fname), headers=headers)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    resp_data = await resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+
+
 async def test_response_with_streamer(aiohttp_client, fname):
 
     with fname.open('rb') as f:
@@ -736,17 +768,48 @@ async def test_response_with_streamer(aiohttp_client, fname):
 
     data_size = len(data)
 
-    @aiohttp.streamer
-    def stream(writer, f_name):
-        with f_name.open('rb') as f:
-            data = f.read(100)
-            while data:
-                yield from writer.write(data)
+    with pytest.warns(DeprecationWarning):
+        @aiohttp.streamer
+        async def stream(writer, f_name):
+            with f_name.open('rb') as f:
                 data = f.read(100)
+                while data:
+                    await writer.write(data)
+                    data = f.read(100)
 
     async def handler(request):
         headers = {'Content-Length': str(data_size)}
         return web.Response(body=stream(fname), headers=headers)
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    resp_data = await resp.read()
+    assert resp_data == data
+    assert resp.headers.get('Content-Length') == str(len(resp_data))
+
+
+async def test_response_with_async_gen_no_params(aiohttp_client, fname):
+
+    with fname.open('rb') as f:
+        data = f.read()
+
+    data_size = len(data)
+
+    @async_generator
+    async def stream():
+        with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                await yield_(data)
+                data = f.read(100)
+
+    async def handler(request):
+        headers = {'Content-Length': str(data_size)}
+        return web.Response(body=stream(), headers=headers)
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -766,13 +829,14 @@ async def test_response_with_streamer_no_params(aiohttp_client, fname):
 
     data_size = len(data)
 
-    @aiohttp.streamer
-    def stream(writer):
-        with fname.open('rb') as f:
-            data = f.read(100)
-            while data:
-                yield from writer.write(data)
+    with pytest.warns(DeprecationWarning):
+        @aiohttp.streamer
+        async def stream(writer):
+            with fname.open('rb') as f:
                 data = f.read(100)
+                while data:
+                    await writer.write(data)
+                    data = f.read(100)
 
     async def handler(request):
         headers = {'Content-Length': str(data_size)}
@@ -1638,10 +1702,14 @@ async def test_iter_any(aiohttp_server):
             assert resp.status == 200
 
 
-async def test_request_tracing(aiohttp_client):
+async def test_request_tracing(aiohttp_server):
 
     on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_dns_resolvehost_start = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock()))
+    on_dns_resolvehost_end = mock.Mock(
+        side_effect=asyncio.coroutine(mock.Mock()))
     on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_connection_create_start = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock()))
@@ -1663,20 +1731,50 @@ async def test_request_tracing(aiohttp_client):
         on_connection_create_start)
     trace_config.on_connection_create_end.append(
         on_connection_create_end)
+    trace_config.on_dns_resolvehost_start.append(
+        on_dns_resolvehost_start)
+    trace_config.on_dns_resolvehost_end.append(
+        on_dns_resolvehost_end)
 
     app = web.Application()
     app.router.add_get('/redirector', redirector)
     app.router.add_get('/redirected', redirected)
+    server = await aiohttp_server(app)
 
-    client = await aiohttp_client(app, trace_configs=[trace_config])
+    class FakeResolver:
+        _LOCAL_HOST = {0: '127.0.0.1',
+                       socket.AF_INET: '127.0.0.1'}
 
-    await client.get('/redirector', data="foo")
+        def __init__(self, fakes):
+            """fakes -- dns -> port dict"""
+            self._fakes = fakes
+            self._resolver = aiohttp.DefaultResolver()
+
+        async def resolve(self, host, port=0, family=socket.AF_INET):
+            fake_port = self._fakes.get(host)
+            if fake_port is not None:
+                return [{'hostname': host,
+                         'host': self._LOCAL_HOST[family], 'port': fake_port,
+                         'family': socket.AF_INET, 'proto': 0,
+                         'flags': socket.AI_NUMERICHOST}]
+            else:
+                return await self._resolver.resolve(host, port, family)
+
+    resolver = FakeResolver({'example.com': server.port})
+    connector = aiohttp.TCPConnector(resolver=resolver)
+    client = aiohttp.ClientSession(connector=connector,
+                                   trace_configs=[trace_config])
+
+    await client.get('http://example.com/redirector', data="foo")
 
     assert on_request_start.called
     assert on_request_end.called
+    assert on_dns_resolvehost_start.called
+    assert on_dns_resolvehost_end.called
     assert on_request_redirect.called
     assert on_connection_create_start.called
     assert on_connection_create_end.called
+    await client.close()
 
 
 async def test_return_http_exception_deprecated(aiohttp_client):
@@ -1708,3 +1806,16 @@ async def test_request_path(aiohttp_client):
     assert 200 == resp.status
     txt = await resp.text()
     assert 'OK' == txt
+
+
+async def test_app_add_routes(aiohttp_client):
+
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.get('/get', handler)])
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/get')
+    assert resp.status == 200

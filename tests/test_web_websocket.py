@@ -6,6 +6,7 @@ from multidict import CIMultiDict
 
 from aiohttp import WSMessage, WSMsgType, signals
 from aiohttp.log import ws_logger
+from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
 from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
@@ -22,16 +23,6 @@ def app(loop):
 
 
 @pytest.fixture
-def writer(loop):
-    writer = mock.Mock()
-    writer.drain.return_value = loop.create_future()
-    writer.drain.return_value.set_result(None)
-    writer.write_eof.return_value = loop.create_future()
-    writer.write_eof.return_value.set_result(None)
-    return writer
-
-
-@pytest.fixture
 def protocol():
     ret = mock.Mock()
     ret.set_parser.return_value = ret
@@ -39,7 +30,7 @@ def protocol():
 
 
 @pytest.fixture
-def make_request(app, protocol, writer):
+def make_request(app, protocol):
     def maker(method, path, headers=None, protocols=False):
         if headers is None:
             headers = CIMultiDict(
@@ -54,7 +45,7 @@ def make_request(app, protocol, writer):
 
         return make_mocked_request(
             method, path, headers,
-            app=app, protocol=protocol, payload_writer=writer,
+            app=app, protocol=protocol,
             loop=app.loop)
 
     return maker
@@ -301,7 +292,7 @@ async def test_pong_closed(make_request, mocker):
     assert ws_logger.warning.called
 
 
-async def test_close_idempotent(make_request, writer):
+async def test_close_idempotent(make_request):
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     await ws.prepare(req)
@@ -348,6 +339,25 @@ async def test_write_eof_idempotent(make_request):
     await ws.write_eof()
     await ws.write_eof()
     await ws.write_eof()
+
+
+async def test_receive_eofstream_in_reader(make_request, loop):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+
+    ws._reader = mock.Mock()
+    exc = EofStream()
+    res = loop.create_future()
+    res.set_exception(exc)
+    ws._reader.read = make_mocked_coro(res)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSED
+    assert ws.closed
 
 
 async def test_receive_exc_in_reader(make_request, loop):

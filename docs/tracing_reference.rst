@@ -11,6 +11,116 @@ A reference for client tracing API.
 
 .. seealso:: :ref:`aiohttp-client-tracing` for tracing usage instructions.
 
+
+Request life cycle
+------------------
+
+A request goes through the following stages and corresponding fallbacks.
+
+
+Overview
+^^^^^^^^
+
+.. blockdiag::
+   :desctable:
+
+
+   blockdiag {
+     orientation = portrait;
+
+     start[shape=beginpoint, description="on_request_start"];
+     redirect[description="on_request_redirect"];
+     end[shape=endpoint, description="on_request_end"];
+     exception[shape=flowchart.terminator, description="on_request_exception"];
+
+     acquire_connection[description="Connection acquiring"];
+     headers_received;
+     headers_sent;
+     chunk_sent[description="on_request_chunk_sent"];
+     chunk_received[description="on_response_chunk_received"];
+
+     start -> acquire_connection;
+     acquire_connection -> headers_sent;
+     headers_sent -> headers_received;
+     headers_sent -> chunk_sent;
+     chunk_sent -> chunk_sent;
+     chunk_sent -> headers_received;
+     headers_received -> chunk_received;
+     chunk_received -> chunk_received;
+     chunk_received -> end;
+     headers_received -> redirect;
+     headers_received -> end;
+     redirect -> headers_sent;
+     chunk_received -> exception;
+     chunk_sent -> exception;
+     headers_sent -> exception;
+
+   }
+
+
+Connection acquiring
+^^^^^^^^^^^^^^^^^^^^
+
+.. blockdiag::
+   :desctable:
+
+   blockdiag {
+     orientation = portrait;
+
+     begin[shape=beginpoint];
+     end[shape=endpoint];
+     exception[shape=flowchart.terminator, description="Exception raised"];
+
+     queued_start[description="on_connection_queued_start"];
+     queued_end[description="on_connection_queued_end"];
+     create_start[description="on_connection_create_start"];
+     create_end[description="on_connection_create_end"];
+     reuseconn[description="on_connection_reuseconn"];
+
+     resolve_dns[description="DNS resolving"];
+     sock_connect[description="Connection establishment"];
+
+     begin -> reuseconn;
+     begin -> create_start;
+     create_start -> resolve_dns;
+     resolve_dns -> exception;
+     resolve_dns -> sock_connect;
+     sock_connect -> exception;
+     sock_connect -> create_end -> end;
+     begin -> queued_start;
+     queued_start -> queued_end;
+     queued_end -> reuseconn;
+     queued_end -> create_start;
+     reuseconn -> end;
+
+   }
+
+DNS resolving
+^^^^^^^^^^^^^
+
+.. blockdiag::
+   :desctable:
+
+   blockdiag {
+     orientation = portrait;
+
+     begin[shape=beginpoint];
+     end[shape=endpoint];
+     exception[shape=flowchart.terminator, description="Exception raised"];
+
+     resolve_start[description="on_dns_resolvehost_start"];
+     resolve_end[description="on_dns_resolvehost_end"];
+     cache_hit[description="on_dns_cache_hit"];
+     cache_miss[description="on_dns_cache_miss"];
+
+     begin -> cache_hit -> end;
+     begin -> cache_miss -> resolve_start;
+     resolve_start -> resolve_end -> end;
+     resolve_start -> exception;
+
+   }
+
+
 TraceConfig
 -----------
 
@@ -46,6 +156,26 @@ TraceConfig
       when a request starts.
 
       ``params`` is :class:`aiohttp.TraceRequestStartParams` instance.
+
+   .. attribute:: on_request_chunk_sent
+
+
+      Property that gives access to the signals that will be executed
+      when a chunk of request body is sent.
+
+      ``params`` is :class:`aiohttp.TraceRequestChunkSentParams` instance.
+
+      .. versionadded:: 3.1
+
+   .. attribute:: on_response_chunk_received
+
+
+      Property that gives access to the signals that will be executed
+      when a chunk of response body is received.
+
+      ``params`` is :class:`aiohttp.TraceResponseChunkReceivedParams` instance.
+
+      .. versionadded:: 3.1
 
    .. attribute:: on_request_redirect
 
@@ -158,6 +288,35 @@ TraceRequestStartParams
    .. attribute:: headers
 
        Headers that will be used for the request, can be mutated.
+
+
+TraceRequestChunkSentParams
+---------------------------
+
+.. class:: TraceRequestChunkSentParams
+
+   .. versionadded:: 3.1
+
+   See :attr:`TraceConfig.on_request_chunk_sent` for details.
+
+   .. attribute:: chunk
+
+       Bytes of chunk sent
+
+
+TraceResponseChunkSentParams
+----------------------------
+
+.. class:: TraceResponseChunkSentParams
+
+   .. versionadded:: 3.1
+
+   See :attr:`TraceConfig.on_response_chunk_received` for details.
+
+   .. attribute:: chunk
+
+       Bytes of chunk received
+
 
 TraceRequestEndParams
 ---------------------
