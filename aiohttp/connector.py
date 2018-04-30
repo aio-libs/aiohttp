@@ -775,24 +775,22 @@ class TCPConnector(BaseConnector):
         if req.is_ssl():
             if ssl is None:  # pragma: no cover
                 raise RuntimeError('SSL is not supported.')
-            sslcontext = req.ssl
-            if isinstance(sslcontext, ssl.SSLContext):
-                return sslcontext
-            if isinstance(sslcontext, Fingerprint) and (sslcontext.ssl_context is not None) and isinstance(
-                    sslcontext.ssl_context, ssl.SSLContext):
-                return sslcontext.ssl_context
-            if sslcontext is not None:
+
+            def check_ssl(ssl_ctx):
+                if isinstance(ssl_ctx, ssl.SSLContext):
+                    return ssl_ctx
+                if isinstance(ssl_ctx, Fingerprint) and isinstance(ssl_ctx.ssl_context, ssl.SSLContext):
+                    return ssl_ctx.ssl_context
+
                 # not verified or fingerprinted
                 return self._make_ssl_context(False)
-            sslcontext = self._ssl
-            if isinstance(sslcontext, ssl.SSLContext):
-                return sslcontext
-            if isinstance(sslcontext, Fingerprint) and (sslcontext.ssl_context is not None) and isinstance(
-                    sslcontext.ssl_context, ssl.SSLContext):
-                return sslcontext.ssl_context
-            if sslcontext is not None:
-                # not verified or fingerprinted
-                return self._make_ssl_context(False)
+
+            if req.ssl is not None:
+                return check_ssl(req.ssl)
+
+            if self._ssl is not None:
+                return check_ssl(self._ssl)
+
             return self._make_ssl_context(True)
         else:
             return None
