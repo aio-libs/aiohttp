@@ -774,7 +774,8 @@ class TCPConnector(BaseConnector):
 
             for both we first check the following:
             1. if it an instance of ssl.SSLContext, use it
-            2. if it an instance of aiohttp.Fingerprint, has a specified ssl_context which is also a ssl.SSLContext
+            2. if it an instance of aiohttp.Fingerprint,
+                has a specified ssl_context which is also a ssl.SSLContext
                 instance, use it
             3. fallback to a newly generated SSL Context without verification
 
@@ -792,7 +793,8 @@ class TCPConnector(BaseConnector):
             def check_ssl(ssl_ctx):
                 if isinstance(ssl_ctx, ssl.SSLContext):
                     return ssl_ctx
-                if isinstance(ssl_ctx, Fingerprint) and isinstance(ssl_ctx.ssl_context, ssl.SSLContext):
+                if isinstance(ssl_ctx, Fingerprint)
+                   and isinstance(ssl_ctx.ssl_context, ssl.SSLContext):
                     return ssl_ctx.ssl_context
 
                 # not verified or fingerprinted
