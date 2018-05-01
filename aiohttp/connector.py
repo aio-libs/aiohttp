@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import random
 import sys
 import traceback
 import warnings
@@ -494,8 +495,15 @@ class BaseConnector:
         Iterates over all waiters till found one that is not finsihed and
         belongs to a host that has available connections.
         """
+        if not self._waiters:
+            return
 
-        for key in list(self._waiters.keys()):
+        # Having the dict keys ordered this avoids to iterate
+        # at the same order at each call.
+        queues = list(self._waiters.keys())
+        random.shuffle(queues)
+
+        for key in queues:
             if self._available_connections(key) < 1:
                 continue
 
