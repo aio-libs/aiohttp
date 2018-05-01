@@ -14,6 +14,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import (FormData, HttpVersion10, HttpVersion11, TraceConfig,
                      multipart, web)
+from aiohttp.helpers import DEBUG
 
 
 try:
@@ -66,6 +67,8 @@ async def test_simple_get_with_text(aiohttp_client):
     assert 'OK' == txt
 
 
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is enabled in debug mode only")
 async def test_handler_returns_not_response(aiohttp_server, aiohttp_client):
     logger = mock.Mock()
 
