@@ -309,7 +309,7 @@ class Application(MutableMapping):
 
     async def _handle(self, request):
         match_info = await self._router.resolve(request)
-        if DEBUG:
+        if DEBUG:  # pragma: no cover
             if not isinstance(match_info, AbstractMatchInfo):
                 raise TypeError("match_info should be AbstractMAtchInfo "
                                 "instance, not {!r}".format(match_info))

@@ -192,7 +192,7 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     @contextmanager
     def set_current_app(self, app):
-        if DEBUG:
+        if DEBUG:  # pragma: no cover
             if app not in self._apps:
                 raise RuntimeError(
                     "Expected one of the following apps {!r}, got {!r}"
