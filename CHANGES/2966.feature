@@ -1,0 +1,1 @@
+Apply assertions in debug mode only
