@@ -1,0 +1,1 @@
+Replace multipart writer `.serialize()` method with `.write()` in documentation.
