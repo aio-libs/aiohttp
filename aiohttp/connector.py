@@ -415,7 +415,7 @@ class BaseConnector:
                 except ValueError:  # fut may no longer be in list
                     pass
 
-                if key in self._waiters and not self._waiters[key]:
+                if not waiters:
                     del self._waiters[key]
 
                 raise e
@@ -507,20 +507,20 @@ class BaseConnector:
             if self._available_connections(key) < 1:
                 continue
 
-            found = False
             waiters = self._waiters[key]
 
-            while waiters and not found:
+            while waiters:
                 waiter = waiters.popleft()
                 if not waiter.done():
                     waiter.set_result(None)
-                    found = True
+
+                    if not waiters:
+                        del self._waiters[key]
+
+                    return
 
             if not waiters:
                 del self._waiters[key]
-
-            if found:
-                return
 
     def _release_acquired(self, key, proto):
         if self._closed:
