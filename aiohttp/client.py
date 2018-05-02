@@ -10,6 +10,7 @@ import traceback
 import warnings
 from collections.abc import Coroutine
 
+import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
@@ -21,7 +22,8 @@ from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, TooManyRedirects,
                                 WSServerHandshakeError)
 from .client_reqrep import *  # noqa
-from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
+from .client_reqrep import (ClientRequest, ClientResponse, ClientTimeout,
+                            _merge_ssl_params)
 from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
@@ -41,8 +43,8 @@ __all__ = (client_exceptions.__all__ +  # noqa
            ('ClientSession', 'ClientWebSocketResponse', 'request'))
 
 
-# 5 Minute default read and connect timeout
-DEFAULT_TIMEOUT = 5 * 60
+# 5 Minute default read timeout
+DEFAULT_TIMEOUT = ClientTimeout(total=5*60)
 
 
 class ClientSession:
@@ -118,13 +120,26 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        self._conn_timeout = conn_timeout
         if timeout is not sentinel:
             self._timeout = timeout
-        if read_timeout is sentinel:
-            read_timeout = DEFAULT_TIMEOUT
-        self._timeout = RequestTimeouts(read_timeout=read_timeout,
-                                        connect_timeout=conn_timeout)
+        else:
+            self._timeout = DEFAULT_TIMEOUT
+            if read_timeout is not sentinel:
+                if timeout is not sentinel:
+                    raise ValueError("read_timeout and timeout parameters "
+                                     "conflict, please setup "
+                                     "timeout.read")
+                else:
+                    self._timeout = attr.evolve(self._timeout,
+                                                total=read_timeout)
+            if conn_timeout is not None:
+                if timeout is not sentinel:
+                    raise ValueError("conn_timeout and timeout parameters "
+                                     "conflict, please setup "
+                                     "timeout.connect")
+                else:
+                    self._timeout = attr.evolve(self._timeout,
+                                                connect=conn_timeout)
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -249,11 +264,14 @@ class ClientSession:
             except ValueError:
                 raise InvalidURL(proxy)
 
+        if timeout is sentinel:
+            timeout = self._timeout
+        else:
+            if not isinstance(timeout, ClientTimeout):
+                timeout = ClientTimeout(total=timeout)
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(
-            self._loop,
-            timeout if timeout is not sentinel else self._read_timeout)
+        tm = TimeoutHandle(self._loop, timeout.total)
         handle = tm.start()
 
         traces = [
@@ -319,7 +337,8 @@ class ClientSession:
 
                     # connection timeout
                     try:
-                        with CeilTimeout(self._conn_timeout, loop=self._loop):
+                        with CeilTimeout(self._timeout.connect,
+                                         loop=self._loop):
                             conn = await self._connector.connect(
                                 req,
                                 traces=traces
