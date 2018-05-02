@@ -911,8 +911,8 @@ Handling error pages
 --------------------
 
 Pages like *404 Not Found* and *500 Internal Error* could be handled
-by custom middleware, see :ref:`aiohttp-tutorial-middlewares` for
-details.
+by custom middleware, see :ref:`polls demo <aiohttp-demos-polls-middlewares>`
+for example.
 
 .. _aiohttp-web-forwarded-support:
 

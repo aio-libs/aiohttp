@@ -75,7 +75,10 @@ intersphinx_mapping = {
     'aiohttpremotes':
         ('https://aiohttp-remotes.readthedocs.io/en/stable/', None),
     'aiohttpsession':
-        ('https://aiohttp-session.readthedocs.io/en/stable/', None)}
+        ('https://aiohttp-session.readthedocs.io/en/stable/', None),
+    'aiohttpdemos':
+        ('https://aiohttp-demos.readthedocs.io/en/latest/', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
