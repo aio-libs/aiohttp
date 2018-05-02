@@ -63,6 +63,32 @@ def unix_server(loop, unix_sockname):
         loop.run_until_complete(runner.cleanup())
 
 
+def test_connection_del(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    loop.set_debug(1)
+    conn = Connection(connector, key, protocol, loop=loop)
+    exc_handler = mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    connector._release.assert_called_with(
+        key,
+        protocol,
+        should_close=True
+    )
+    msg = {
+        'message': mock.ANY,
+        'client_connection': mock.ANY,
+        'source_traceback': mock.ANY
+    }
+    exc_handler.assert_called_with(loop, msg)
+
+
 def test_del(loop):
     conn = aiohttp.BaseConnector(loop=loop)
     proto = mock.Mock(should_close=False)
