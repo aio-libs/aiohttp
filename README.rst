@@ -108,6 +108,13 @@ Documentation
 
 https://aiohttp.readthedocs.io/
 
+
+Demos
+=====
+
+https://github.com/aio-libs/aiohttp-demos
+
+
 External links
 ==============
 

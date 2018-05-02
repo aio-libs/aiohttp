@@ -516,7 +516,7 @@ class ClientRequest:
                 path += '?' + self.url.raw_query_string
 
         writer = StreamWriter(
-            conn.protocol, conn.transport, self.loop,
+            conn.protocol, self.loop,
             on_chunk_sent=self._on_chunk_request_sent
         )
 
@@ -546,7 +546,7 @@ class ClientRequest:
             self.headers[hdrs.CONNECTION] = connection
 
         # status + headers
-        status_line = '{0} {1} HTTP/{2[0]}.{2[1]}\r\n'.format(
+        status_line = '{0} {1} HTTP/{2[0]}.{2[1]}'.format(
             self.method, path, self.version)
         await writer.write_headers(status_line, self.headers)
 
@@ -707,6 +707,37 @@ class ClientResponse(HeadersMixin):
     def history(self):
         """A sequence of of responses, if redirects occurred."""
         return self._history
+
+    @property
+    def links(self):
+        links_str = ", ".join(self.headers.getall("link", []))
+
+        links = MultiDict()
+
+        if not links_str:
+            return MultiDictProxy(links)
+
+        for val in re.split(r",(?=\s*<)", links_str):
+            url, params = re.match(r"\s*<(.*)>(.*)", val).groups()
+            params = params.split(";")[1:]
+
+            link = MultiDict()
+
+            for param in params:
+                key, _, value, _ = re.match(
+                    r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$",
+                    param, re.M
+                ).groups()
+
+                link.add(key, value)
+
+            key = link.get("rel", url)
+
+            link.add("url", self.url.join(URL(url)))
+
+            links.add(key, MultiDictProxy(link))
+
+        return MultiDictProxy(links)
 
     async def start(self, connection, read_until_eof=False):
         """Start response processing."""

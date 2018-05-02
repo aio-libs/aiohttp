@@ -7,12 +7,11 @@ chardet==3.0.4
 coverage==4.5.1
 cython==0.28.2
 flake8==3.5.0
-gunicorn==19.7.1
+gunicorn==19.8.0
 isort==4.3.4
-pip==10.0.0
 pyflakes==1.6.0
 multidict==4.1.0
-pytest==3.5.0
+pytest==3.5.1
 pytest-cov==2.5.1
 pytest-mock==1.9.0
 pytest-xdist==1.22.2

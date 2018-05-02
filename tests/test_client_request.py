@@ -41,8 +41,9 @@ def buf():
 
 
 @pytest.fixture
-def protocol(loop):
+def protocol(loop, transport):
     protocol = mock.Mock()
+    protocol.transport = transport
     protocol._drain_helper.return_value = loop.create_future()
     protocol._drain_helper.return_value.set_result(None)
     return protocol

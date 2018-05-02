@@ -96,7 +96,7 @@ internal data structures and could terminate them gracefully::
    app.router.add_get('/', handler)
 
 All not finished jobs will be terminated on
-:attr:`aiohttp.web.Application.on_cleanup` signal.
+:attr:`Application.on_cleanup` signal.
 
 To prevent cancellation of the whole :term:`web-handler` use
 ``@atomic`` decorator::
@@ -306,7 +306,7 @@ handling every incoming request.
 .. warning::
 
    Parallel reads from websocket are forbidden, there is no
-   possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
+   possibility to call :meth:`WebSocketResponse.receive`
    from two tasks.
 
    See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
@@ -321,12 +321,18 @@ Data Sharing aka No Singletons Please
 :mod:`aiohttp.web` discourages the use of *global variables*, aka *singletons*.
 Every variable should have its own context that is *not global*.
 
-So, :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
+So, :class:`Application` and :class:`Request`
 support a :class:`collections.abc.MutableMapping` interface (i.e. they are
 dict-like objects), allowing them to be used as data stores.
 
+
+.. _aiohttp-web-data-sharing-app-config:
+
+Application's config
+^^^^^^^^^^^^^^^^^^^^
+
 For storing *global-like* variables, feel free to save them in an
-:class:`~.Application` instance::
+:class:`Application` instance::
 
     app['my_private_key'] = data
 
@@ -335,8 +341,24 @@ and get it back in the :term:`web-handler`::
     async def handler(request):
         data = request.app['my_private_key']
 
-Variables that are only needed for the lifetime of a :class:`~.Request`, can be
-stored in a :class:`~.Request`::
+In case of :ref:`nested applications
+<aiohttp-web-nested-applications>` the desired lookup strategy could
+be the following:
+
+1. Search the key in the current nested application.
+2. If the key is not found continue searching in the parent application(s).
+
+For this please use :attr:`Request.config_dict` read-only property::
+
+    async def handler(request):
+        data = request.config_dict['my_private_key']
+
+
+Request's storage
+^^^^^^^^^^^^^^^^^
+
+Variables that are only needed for the lifetime of a :class:`Request`, can be
+stored in a :class:`Request`::
 
     async def handler(request):
       request['my_private_key'] = "data"
@@ -346,7 +368,10 @@ This is mostly useful for :ref:`aiohttp-web-middlewares` and
 :ref:`aiohttp-web-signals` handlers to store data for further processing by the
 next handlers in the chain.
 
-:class:`aiohttp.web.StreamResponse` and :class:`aiohttp.web.Response` objects
+Response's storage
+^^^^^^^^^^^^^^^^^^
+
+:class:`StreamResponse` and :class:`Response` objects
 also support :class:`collections.abc.MutableMapping` interface. This is useful
 when you want to share data with signals and middlewares once all the work in
 the handler is done::
@@ -356,6 +381,9 @@ the handler is done::
       response['my_metric'] = 123
       return response
 
+
+Naming hint
+^^^^^^^^^^^
 
 To avoid clashing with other *aiohttp* users and third-party libraries, please
 choose a unique key name for storing data.
@@ -392,8 +420,8 @@ response. For example, here's a simple *middleware* which appends
 Every *middleware* should accept two parameters, a :class:`request
 <Request>` instance and a *handler*, and return the response or raise
 an exception. If the exception is not an instance of
-:exc:`aiohttp.web.HTTPException` it is converted to ``500``
-:exc:`aiohttp.web.HTTPInternalServerError` after processing the
+:exc:`HTTPException` it is converted to ``500``
+:exc:`HTTPInternalServerError` after processing the
 middlewares chain.
 
 .. warning::
@@ -507,10 +535,10 @@ has been prepared, they can't customize a :class:`Response` **while** it's
 being prepared. For this :mod:`aiohttp.web` provides *signals*.
 
 For example, a middleware can only change HTTP headers for *unprepared*
-responses (see :meth:`~aiohttp.web.StreamResponse.prepare`), but sometimes we
+responses (see :meth:`StreamResponse.prepare`), but sometimes we
 need a hook for changing HTTP headers for streamed responses and WebSockets.
 This can be accomplished by subscribing to the
-:attr:`~aiohttp.web.Application.on_response_prepare` signal::
+:attr:`Application.on_response_prepare` signal::
 
     async def on_prepare(request, response):
         response.headers['My-Header'] = 'value'
@@ -518,8 +546,8 @@ This can be accomplished by subscribing to the
     app.on_response_prepare.append(on_prepare)
 
 
-Additionally, the :attr:`~aiohttp.web.Application.on_startup` and
-:attr:`~aiohttp.web.Application.on_cleanup` signals can be subscribed to for
+Additionally, the :attr:`Application.on_startup` and
+:attr:`Application.on_cleanup` signals can be subscribed to for
 application component setup and tear down accordingly.
 
 The following example will properly initialize and dispose an aiopg connection
@@ -621,7 +649,7 @@ toolbar URLs are served by prefix like ``/admin``.
 
 Thus we'll create a totally separate application named ``admin`` and
 connect it to main app with prefix by
-:meth:`~aiohttp.web.Application.add_subapp`::
+:meth:`Application.add_subapp`::
 
    admin = web.Application()
    # setup admin routes, signals and middlewares
@@ -635,13 +663,13 @@ It means that if URL is ``'/admin/something'`` middlewares from
 the call chain.
 
 The same is going for
-:attr:`~aiohttp.web.Application.on_response_prepare` signal -- the
+:attr:`Application.on_response_prepare` signal -- the
 signal is delivered to both top level ``app`` and ``admin`` if
 processing URL is routed to ``admin`` sub-application.
 
-Common signals like :attr:`~aiohttp.web.Application.on_startup`,
-:attr:`~aiohttp.web.Application.on_shutdown` and
-:attr:`~aiohttp.web.Application.on_cleanup` are delivered to all
+Common signals like :attr:`Application.on_startup`,
+:attr:`Application.on_shutdown` and
+:attr:`Application.on_cleanup` are delivered to all
 registered sub-applications. The passed parameter is sub-application
 instance, not top-level application.
 
@@ -883,8 +911,8 @@ Handling error pages
 --------------------
 
 Pages like *404 Not Found* and *500 Internal Error* could be handled
-by custom middleware, see :ref:`aiohttp-tutorial-middlewares` for
-details.
+by custom middleware, see :ref:`polls demo <aiohttp-demos-polls-middlewares>`
+for example.
 
 .. _aiohttp-web-forwarded-support:
 
@@ -895,8 +923,8 @@ As discussed in :ref:`aiohttp-deployment` the preferable way is
 deploying *aiohttp* web server behind a *Reverse Proxy Server* like
 :term:`nginx` for production usage.
 
-In this way properties like :attr:`~BaseRequest.scheme`
-:attr:`~BaseRequest.host` and :attr:`~BaseRequest.remote` are
+In this way properties like :attr:`BaseRequest.scheme`
+:attr:`BaseRequest.host` and :attr:`BaseRequest.remote` are
 incorrect.
 
 Real values should be given from proxy server, usually either
@@ -910,9 +938,9 @@ headers too, pushing non-trusted data values.
 That's why *aiohttp server* should setup *forwarded* headers in custom
 middleware in tight conjunction with *reverse proxy configuration*.
 
-For changing :attr:`~BaseRequest.scheme` :attr:`~BaseRequest.host` and
-:attr:`~BaseRequest.remote` the middleware might use
-:meth:`~BaseRequest.clone`.
+For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host` and
+:attr:`BaseRequest.remote` the middleware might use
+:meth:`BaseRequest.clone`.
 
 .. seealso::
 
