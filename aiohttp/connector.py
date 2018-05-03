@@ -415,10 +415,10 @@ class BaseConnector:
                 except ValueError:  # fut may no longer be in list
                     pass
 
+                raise e
+            finally:
                 if not waiters:
                     del self._waiters[key]
-
-                raise e
 
             if traces:
                 for trace in traces:
@@ -508,19 +508,11 @@ class BaseConnector:
                 continue
 
             waiters = self._waiters[key]
-
             while waiters:
                 waiter = waiters.popleft()
                 if not waiter.done():
                     waiter.set_result(None)
-
-                    if not waiters:
-                        del self._waiters[key]
-
                     return
-
-            if not waiters:
-                del self._waiters[key]
 
     def _release_acquired(self, key, proto):
         if self._closed:

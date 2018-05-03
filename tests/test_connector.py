@@ -325,7 +325,7 @@ def test_release_waiter_no_limit(loop, key, key2):
     w.done.return_value = False
     conn._waiters[key].append(w)
     conn._release_waiter()
-    assert len(conn._waiters) == 0
+    assert len(conn._waiters[key]) == 0
     assert w.done.called
     conn.close()
 
