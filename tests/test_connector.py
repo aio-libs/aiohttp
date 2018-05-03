@@ -1672,6 +1672,48 @@ async def test_connect_with_limit_concurrent(loop):
     assert max_connections == num_connections
 
 
+async def test_connect_waiters_cleanup(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._available_connections = mock.Mock(return_value=0)
+
+    t = loop.create_task(conn.connect(req))
+
+    await asyncio.sleep(0, loop=loop)
+    assert conn._waiters.keys()
+
+    t.cancel()
+    await asyncio.sleep(0, loop=loop)
+    assert not conn._waiters.keys()
+
+
+async def test_connect_waiters_cleanup_key_error(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._available_connections = mock.Mock(return_value=0)
+
+    t = loop.create_task(conn.connect(req))
+
+    await asyncio.sleep(0, loop=loop)
+    assert conn._waiters.keys()
+
+    # we delete the entry explicitly before the
+    # canceled connection grabs the loop again, we
+    # must expect a none failure termination
+    conn._waiters.clear()
+    t.cancel()
+    await asyncio.sleep(0, loop=loop)
+    assert not conn._waiters.keys() == []
+
+
 async def test_close_with_acquired_connection(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True

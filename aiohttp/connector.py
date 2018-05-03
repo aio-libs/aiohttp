@@ -418,7 +418,11 @@ class BaseConnector:
                 raise e
             finally:
                 if not waiters:
-                    del self._waiters[key]
+                    try:
+                        del self._waiters[key]
+                    except KeyError:
+                        # the key was evicted before.
+                        pass
 
             if traces:
                 for trace in traces:
