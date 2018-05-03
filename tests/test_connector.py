@@ -96,7 +96,7 @@ def test_connection_detach(loop):
     conn = Connection(connector, key, protocol, loop=loop)
     conn._notify_release = mock.Mock()
     conn.detach()
-    conn._notify_release.assert_called()
+    assert conn._notify_release.called
     connector._release_acquired.assert_called_with(protocol)
 
 
