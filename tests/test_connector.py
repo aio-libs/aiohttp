@@ -89,6 +89,17 @@ def test_connection_del(loop):
     exc_handler.assert_called_with(loop, msg)
 
 
+def test_connection_detach(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    conn = Connection(connector, key, protocol, loop=loop)
+    conn._notify_release = mock.Mock()
+    conn.detach()
+    conn._notify_release.assert_called()
+    connector._release_acquired.assert_called_with(protocol)
+
+
 def test_del(loop):
     conn = aiohttp.BaseConnector(loop=loop)
     proto = mock.Mock(should_close=False)
