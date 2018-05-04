@@ -59,10 +59,19 @@ class AsyncResolver(AbstractResolver):
         self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
 
     async def resolve(self, host, port=0, family=socket.AF_INET):
+        hosts = await self._resolve(host, port, family)
+
+        if not hosts:
+            raise OSError("DNS lookup failed")
+
+        hosts.sort(key=itemgetter('family'))
+        return hosts
+
+    async def _resolve(self, host, port, family):
         try:
             resolver = self._resolver.gethostbyname
         except AttributeError:
-            hosts = await self._resolve_with_query(host, port, family)
+            return await self._resolve_with_query(host, port, family)
         else:
             try:
                 resp = await resolver(host, family)
@@ -78,12 +87,7 @@ class AsyncResolver(AbstractResolver):
                      'host': address, 'port': port,
                      'family': family, 'proto': 0,
                      'flags': socket.AI_NUMERICHOST})
-
-        if not hosts:
-            raise OSError("DNS lookup failed")
-
-        hosts.sort(key=itemgetter('family'))
-        return hosts
+            return hosts
 
     async def _resolve_with_query(self, host, port, family):
         if family == socket.AF_INET6:
