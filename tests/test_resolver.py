@@ -1,7 +1,7 @@
 import asyncio
 import ipaddress
 import socket
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
 
@@ -215,3 +215,35 @@ def test_default_resolver():
     # else:
     #     assert DefaultResolver is ThreadedResolver
     assert DefaultResolver is ThreadedResolver
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_INET6'),
+                    reason="IPv6 is required")
+async def test_sync_resolver_multiple_families(loop):
+    resolver = ThreadedResolver(loop=loop)
+    hosts = await resolver.resolve('localhost', 80, 0)
+    assert hosts == [{'family': socket.AF_INET,
+                      'flags': ANY,
+                      'host': '127.0.0.1',
+                      'hostname': 'localhost',
+                      'port': 80,
+                      'proto': ANY}]
+
+
+@pytest.mark.skipif(not hasattr(socket, 'AF_INET6'),
+                    reason="IPv6 is required")
+async def test_async_resolver_multiple_families(loop):
+    resolver = AsyncResolver(loop=loop)
+    hosts = await resolver.resolve('localhost', 80, 0)
+    assert hosts == [{'family': socket.AF_INET,
+                      'flags': 4,
+                      'host': '127.0.0.1',
+                      'hostname': 'localhost',
+                      'port': 80,
+                      'proto': ANY},
+                     {'family': socket.AF_INET6,
+                      'flags': ANY,
+                      'host': '::1',
+                      'hostname': 'localhost',
+                      'port': 80,
+                      'proto': ANY}]
