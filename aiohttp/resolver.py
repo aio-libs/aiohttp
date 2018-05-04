@@ -58,10 +58,6 @@ class AsyncResolver(AbstractResolver):
         self._loop = loop
         self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
 
-        if not hasattr(self._resolver, 'gethostbyname'):
-            # aiodns 1.1 is not available, fallback to DNSResolver.query
-            self.resolve = self._resolve_with_query
-
     async def resolve(self, host, port=0, family=socket.AF_INET):
         try:
             resolver = self._resolver.gethostbyname
