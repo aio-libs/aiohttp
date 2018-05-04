@@ -1,5 +1,6 @@
 import asyncio
 import socket
+from operator import itemgetter
 
 from .abc import AbstractResolver
 
@@ -37,6 +38,7 @@ class ThreadedResolver(AbstractResolver):
                  'family': family, 'proto': proto,
                  'flags': socket.AI_NUMERICHOST})
 
+        hosts.sort(key=itemgetter('family'))
         return hosts
 
     async def close(self):
@@ -62,24 +64,32 @@ class AsyncResolver(AbstractResolver):
 
     async def resolve(self, host, port=0, family=socket.AF_INET):
         try:
-            resp = await self._resolver.gethostbyname(host, family)
-        except aiodns.error.DNSError as exc:
-            msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
-            raise OSError(msg) from exc
-        hosts = []
-        for address in resp.addresses:
-            hosts.append(
-                {'hostname': host,
-                 'host': address, 'port': port,
-                 'family': family, 'proto': 0,
-                 'flags': socket.AI_NUMERICHOST})
+            resolver = self._resolver.gethostbyname
+        except AttributeError:
+            hosts = await self._resolve_with_query(host, port, family)
+        else:
+            try:
+                resp = await resolver(host, family)
+            except aiodns.error.DNSError as exc:
+                msg = (exc.args[1]
+                       if len(exc.args) >= 1
+                       else "DNS lookup failed")
+                raise OSError(msg) from exc
+            hosts = []
+            for address in resp.addresses:
+                hosts.append(
+                    {'hostname': host,
+                     'host': address, 'port': port,
+                     'family': family, 'proto': 0,
+                     'flags': socket.AI_NUMERICHOST})
 
         if not hosts:
             raise OSError("DNS lookup failed")
 
+        hosts.sort(key=itemgetter('family'))
         return hosts
 
-    async def _resolve_with_query(self, host, port=0, family=socket.AF_INET):
+    async def _resolve_with_query(self, host, port, family):
         if family == socket.AF_INET6:
             qtype = 'AAAA'
         else:
@@ -98,10 +108,6 @@ class AsyncResolver(AbstractResolver):
                  'host': rr.host, 'port': port,
                  'family': family, 'proto': 0,
                  'flags': socket.AI_NUMERICHOST})
-
-        if not hosts:
-            raise OSError("DNS lookup failed")
-
         return hosts
 
     async def close(self):
