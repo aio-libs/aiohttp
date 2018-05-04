@@ -67,6 +67,7 @@ def test_connection_del(loop):
     connector = mock.Mock()
     key = mock.Mock()
     protocol = mock.Mock()
+    loop.set_debug(0)
     conn = Connection(connector, key, protocol, loop=loop)
     exc_handler = mock.Mock()
     loop.set_exception_handler(exc_handler)
