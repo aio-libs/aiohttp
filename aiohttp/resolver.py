@@ -1,6 +1,5 @@
 import asyncio
 import socket
-from operator import itemgetter
 
 from .abc import AbstractResolver
 
@@ -27,6 +26,15 @@ class ThreadedResolver(AbstractResolver):
         self._loop = loop
 
     async def resolve(self, host, port=0, family=socket.AF_INET):
+        if family == 0:
+            hosts = await self._resolve(host, port, family=socket.AF_INET)
+            hosts.extend(await self._resolve(
+                host, port, family=socket.AF_INET6))
+        else:
+            hosts = await self._resolve(host, port, family=family)
+        return hosts
+
+    async def _resolve(self, host, port=0, family=socket.AF_INET):
         infos = await self._loop.getaddrinfo(
             host, port, type=socket.SOCK_STREAM, family=family)
 
@@ -37,8 +45,6 @@ class ThreadedResolver(AbstractResolver):
                  'host': address[0], 'port': address[1],
                  'family': family, 'proto': proto,
                  'flags': socket.AI_NUMERICHOST})
-
-        hosts.sort(key=itemgetter('family'))
         return hosts
 
     async def close(self):

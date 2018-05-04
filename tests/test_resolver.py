@@ -223,8 +223,14 @@ async def test_sync_resolver_multiple_families(loop):
     resolver = ThreadedResolver(loop=loop)
     hosts = await resolver.resolve('localhost', 80, 0)
     assert hosts == [{'family': socket.AF_INET,
-                      'flags': ANY,
+                      'flags': 4,
                       'host': '127.0.0.1',
+                      'hostname': 'localhost',
+                      'port': 80,
+                      'proto': ANY},
+                     {'family': socket.AF_INET6,
+                      'flags': ANY,
+                      'host': '::1',
                       'hostname': 'localhost',
                       'port': 80,
                       'proto': ANY}]
