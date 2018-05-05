@@ -354,7 +354,7 @@ def test_run_app_custom_backlog_unix(patched_loop):
 def test_run_app_http_unix_socket(patched_loop, shorttmpdir):
     app = web.Application()
 
-    sock_path = str(shorttmpdir.join('socket.sock'))
+    sock_path = str(shorttmpdir / 'socket.sock')
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(app, path=sock_path, print=printer)
 
@@ -367,7 +367,7 @@ def test_run_app_http_unix_socket(patched_loop, shorttmpdir):
 def test_run_app_https_unix_socket(patched_loop, shorttmpdir):
     app = web.Application()
 
-    sock_path = str(shorttmpdir.join('socket.sock'))
+    sock_path = str(shorttmpdir / 'socket.sock')
     ssl_context = ssl.create_default_context()
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(app, path=sock_path, ssl_context=ssl_context, print=printer)
