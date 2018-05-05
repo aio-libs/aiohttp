@@ -27,7 +27,7 @@ class ThreadedResolver(AbstractResolver):
         self._loop = loop
 
     async def resolve(self, host, port=0, family=socket.AF_INET):
-        if family == 0:
+        if family == socket.AF_UNSPEC:
             hosts = await self._resolve(host, port, family=socket.AF_INET)
             hosts.extend(await self._resolve(
                 host, port, family=socket.AF_INET6))
@@ -66,7 +66,7 @@ class AsyncResolver(AbstractResolver):
         self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
 
     async def resolve(self, host, port=0, family=socket.AF_INET):
-        if family == 0:
+        if family == socket.AF_UNSPEC:
             hosts = await self._resolve(host, port, socket.AF_INET)
             with suppress(OSError):
                 hosts.extend(await self._resolve(host, port, socket.AF_INET6))
