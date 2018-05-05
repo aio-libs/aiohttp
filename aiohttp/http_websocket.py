@@ -138,7 +138,7 @@ if NO_EXTENSIONS:
     _websocket_mask = _websocket_mask_python
 else:
     try:
-        from ._websocket import _websocket_mask_cython
+        from ._websocket import _websocket_mask_cython  # type: ignore
         _websocket_mask = _websocket_mask_cython
     except ImportError:  # pragma: no cover
         _websocket_mask = _websocket_mask_python
