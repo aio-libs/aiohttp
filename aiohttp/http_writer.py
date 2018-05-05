@@ -152,7 +152,8 @@ def _py_serialize_headers(status_line, headers):
 _serialize_headers = _py_serialize_headers
 
 try:
-    from ._http_writer import _serialize_headers as _c_serialize_headers
+    import aiohttp._http_writer as _http_writer  # type: ignore
+    _c_serialize_headers = _http_writer._serialize_headers
     if not NO_EXTENSIONS:  # pragma: no cover
         _serialize_headers = _c_serialize_headers
 except ImportError:

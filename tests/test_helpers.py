@@ -6,6 +6,7 @@ import tempfile
 from unittest import mock
 
 import pytest
+from multidict import MultiDict
 from yarl import URL
 
 from aiohttp import helpers
@@ -15,25 +16,23 @@ from aiohttp.abc import AbstractAccessLogger
 # ------------------- parse_mimetype ----------------------------------
 
 @pytest.mark.parametrize('mimetype, expected', [
-    ('', helpers.MimeType('', '', '', {})),
-    ('*', helpers.MimeType('*', '*', '', {})),
-    ('application/json', helpers.MimeType('application', 'json', '', {})),
-    (
-        'application/json;  charset=utf-8',
-        helpers.MimeType('application', 'json', '', {'charset': 'utf-8'})
-    ),
-    (
-        '''application/json; charset=utf-8;''',
-        helpers.MimeType('application', 'json', '', {'charset': 'utf-8'})
-    ),
-    (
-        'ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
-        helpers.MimeType('application', 'json', '', {'charset': 'UTF-8'})
-    ),
+    ('', helpers.MimeType('', '', '', MultiDict())),
+    ('*', helpers.MimeType('*', '*', '', MultiDict())),
+    ('application/json',
+     helpers.MimeType('application', 'json', '', MultiDict())),
+    ('application/json;  charset=utf-8',
+     helpers.MimeType('application', 'json', '',
+                      MultiDict({'charset': 'utf-8'}))),
+    ('''application/json; charset=utf-8;''',
+     helpers.MimeType('application', 'json', '',
+                      MultiDict({'charset': 'utf-8'}))),
+    ('ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
+     helpers.MimeType('application', 'json', '',
+                      MultiDict({'charset': 'UTF-8'}))),
     ('application/rss+xml',
-     helpers.MimeType('application', 'rss', 'xml', {})),
+     helpers.MimeType('application', 'rss', 'xml', MultiDict())),
     ('text/plain;base64',
-     helpers.MimeType('text', 'plain', '', {'base64': ''}))
+     helpers.MimeType('text', 'plain', '', MultiDict({'base64': ''})))
 ])
 def test_parse_mimetype(mimetype, expected):
     result = helpers.parse_mimetype(mimetype)
