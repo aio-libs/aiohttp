@@ -67,6 +67,6 @@ PyFrozenList = FrozenList
 try:
     from aiohttp._frozenlist import FrozenList as CFrozenList  # type: ignore
     if not NO_EXTENSIONS:
-        FrozenList = CFrozenList
+        FrozenList = CFrozenList  # type: ignore
 except ImportError:  # pragma: no cover
-    FrozenList = None
+    pass

@@ -28,7 +28,7 @@ from .resolver import DefaultResolver
 try:
     import ssl
 except ImportError:  # pragma: no cover
-    ssl = None
+    ssl = None  # type: ignore
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
