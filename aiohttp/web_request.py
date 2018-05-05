@@ -441,13 +441,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             {key: val.value for key, val in parsed.items()})
 
     @property
-    def http_range(self, *, _RANGE=hdrs.RANGE):
+    def http_range(self):
         """The content of Range HTTP header.
 
         Return a slice instance.
 
         """
-        rng = self._headers.get(_RANGE)
+        rng = self._headers.get(hdrs.RANGE)
         start, end = None, None
         if rng is not None:
             try:

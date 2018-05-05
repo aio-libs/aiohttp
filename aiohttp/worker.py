@@ -18,7 +18,7 @@ from .helpers import AccessLogger, set_result
 try:
     import ssl
 except ImportError:  # pragma: no cover
-    ssl = None
+    ssl = None  # type: ignore
 
 
 __all__ = ('GunicornWebWorker',

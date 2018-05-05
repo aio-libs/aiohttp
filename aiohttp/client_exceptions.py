@@ -7,7 +7,7 @@ import warnings
 try:
     import ssl
 except ImportError:  # pragma: no cover
-    ssl = None
+    ssl = None  # type: ignore
 
 
 __all__ = (
@@ -203,24 +203,24 @@ class ClientSSLError(ClientConnectorError):
 
 
 if ssl is not None:
-    certificate_errors = (ssl.CertificateError,)
-    certificate_errors_bases = (ClientSSLError, ssl.CertificateError,)
+    cert_errors = (ssl.CertificateError,)
+    cert_errors_bases = (ClientSSLError, ssl.CertificateError,)
 
     ssl_errors = (ssl.SSLError,)
     ssl_error_bases = (ClientSSLError, ssl.SSLError)
 else:  # pragma: no cover
-    certificate_errors = tuple()
-    certificate_errors_bases = (ClientSSLError, ValueError,)
+    cert_errors = tuple()
+    cert_errors_bases = (ClientSSLError, ValueError,)
 
     ssl_errors = tuple()
     ssl_error_bases = (ClientSSLError,)
 
 
-class ClientConnectorSSLError(*ssl_error_bases):
+class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore
     """Response ssl error."""
 
 
-class ClientConnectorCertificateError(*certificate_errors_bases):
+class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
     """Response certificate error."""
 
     def __init__(self, connection_key, certificate_error):
