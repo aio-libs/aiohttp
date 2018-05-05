@@ -1,4 +1,5 @@
 setuptools-git==1.2
+mypy==0.600
 
 -r doc.txt
 -r ci-wheel.txt
