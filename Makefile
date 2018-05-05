@@ -114,4 +114,7 @@ install:
 	@pip install -U pip
 	@pip install -Ur requirements/dev.txt
 
+mypy:
+	mypy aiohttp tests
+
 .PHONY: all build flake test vtest cov clean doc
