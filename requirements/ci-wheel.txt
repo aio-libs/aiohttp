@@ -1,6 +1,6 @@
 aiodns==1.1.1
 async-generator==1.9
-async-timeout==2.0.1
+async-timeout==3.0.0
 attrs==17.4.0
 brotlipy==0.7.0
 cchardet==2.1.1
