@@ -3,6 +3,7 @@
 import asyncio
 import collections
 import zlib
+from typing import Any, Awaitable, Callable  # noqa
 
 from .abc import AbstractStreamWriter
 from .helpers import NO_EXTENSIONS
@@ -17,7 +18,10 @@ HttpVersion11 = HttpVersion(1, 1)
 
 class StreamWriter(AbstractStreamWriter):
 
-    def __init__(self, protocol, loop, on_chunk_sent=None):
+    def __init__(self,
+                 protocol: asyncio.Protocol,
+                 loop: asyncio.AbstractEventLoop,
+                 on_chunk_sent: Callable[[], Awaitable[None]]=None) -> None:
         self._protocol = protocol
         self._transport = protocol.transport
 
@@ -28,23 +32,23 @@ class StreamWriter(AbstractStreamWriter):
         self.output_size = 0
 
         self._eof = False
-        self._compress = None
+        self._compress = None  # type: Any
         self._drain_waiter = None
 
         self._on_chunk_sent = on_chunk_sent
 
     @property
-    def transport(self):
+    def transport(self) -> asyncio.Transport:
         return self._transport
 
     @property
-    def protocol(self):
+    def protocol(self) -> asyncio.Protocol:
         return self._protocol
 
-    def enable_chunking(self):
+    def enable_chunking(self) -> None:
         self.chunked = True
 
-    def enable_compression(self, encoding='deflate'):
+    def enable_compression(self, encoding: str='deflate'):
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
         self._compress = zlib.compressobj(wbits=zlib_mode)
