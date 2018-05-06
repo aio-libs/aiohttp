@@ -7,7 +7,7 @@ import cgi
 import datetime
 import functools
 import inspect
-import netrc  # type: ignore
+import netrc
 import os
 import re
 import sys
