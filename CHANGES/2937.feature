@@ -1,1 +1,0 @@
-Speed up connector limiting
