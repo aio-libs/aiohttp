@@ -2549,3 +2549,35 @@ async def test_async_payload_generator(aiohttp_client):
 
     resp = await client.post('/', data=gen())
     assert resp.status == 200
+
+
+async def test_read_from_closed_response(aiohttp_client):
+    async def handler(request):
+        return web.Response(body=b'data')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get('/') as resp:
+        assert resp.status == 200
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await resp.read()
+
+
+async def test_read_from_closed_content(aiohttp_client):
+    async def handler(request):
+        return web.Response(body=b'data')
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    client = await aiohttp_client(app)
+
+    async with client.get('/') as resp:
+        assert resp.status == 200
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await resp.content.readline()
