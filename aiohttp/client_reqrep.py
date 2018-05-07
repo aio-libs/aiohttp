@@ -577,6 +577,7 @@ class ClientResponse(HeadersMixin):
     # setted up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
     _closed = True  # to allow __del__ for non-initialized properly response
+    _released = False
 
     def __init__(self, method, url, *,
                  writer, continue100, timer,
@@ -795,6 +796,8 @@ class ClientResponse(HeadersMixin):
         return self._closed
 
     def close(self):
+        if not self._released:
+            self._notify_content()
         if self._closed:
             return
 
@@ -806,9 +809,10 @@ class ClientResponse(HeadersMixin):
             self._connection.close()
             self._connection = None
         self._cleanup_writer()
-        self._notify_content()
 
     def release(self):
+        if not self._released:
+            self._notify_content()
         if self._closed:
             return noop()
 
@@ -818,7 +822,6 @@ class ClientResponse(HeadersMixin):
             self._connection = None
 
         self._cleanup_writer()
-        self._notify_content()
         return noop()
 
     def raise_for_status(self):
@@ -838,9 +841,10 @@ class ClientResponse(HeadersMixin):
 
     def _notify_content(self):
         content = self.content
-        if content and content.exception() is None and not content.is_eof():
+        if content and content.exception() is None:
             content.set_exception(
                 ClientConnectionError('Connection closed'))
+        self._released = True
 
     async def wait_for_close(self):
         if self._writer is not None:
@@ -860,6 +864,8 @@ class ClientResponse(HeadersMixin):
             except BaseException:
                 self.close()
                 raise
+        elif self._released:
+            raise ClientConnectionError('Connection closed')
 
         return self._body
 
