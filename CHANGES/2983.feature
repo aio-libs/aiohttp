@@ -1,1 +1,1 @@
-Disable reading response BODY after release
+Forbid reading response BODY after release
