@@ -1,4 +1,4 @@
-attrs==17.4.0
+attrs==18.1.0
 async-generator==1.9
 async-timeout==3.0.0
 brotlipy==0.7.0
