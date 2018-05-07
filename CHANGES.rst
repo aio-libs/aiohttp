@@ -39,7 +39,7 @@ Bugfixes
 
 - expose property `app` for TestClient (`#2891 <https://github.com/aio-libs/aiohttp/pull/2891>`_)
 - Call on_chunk_sent when write_eof takes as a param the last chunk (`#2909 <https://github.com/aio-libs/aiohttp/pull/2909>`_)
-- A closing bracket was added to __repr__ of resources (`#2935 <https://github.com/aio-libs/aiohttp/pull/2935>`_)
+- A closing bracket was added to `__repr__` of resources (`#2935 <https://github.com/aio-libs/aiohttp/pull/2935>`_)
 - Fix compression of FileResponse (`#2942 <https://github.com/aio-libs/aiohttp/pull/2942>`_)
 - Fixes some bugs in the limit connection feature (`#2964 <https://github.com/aio-libs/aiohttp/pull/2964>`_)
 
