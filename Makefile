@@ -10,15 +10,13 @@ isort:
 	isort -rc aiohttp
 	isort -rc tests
 	isort -rc examples
-	isort -rc demos
 
 flake: .flake
 
 .flake: .install-deps $(shell find aiohttp -type f) \
                       $(shell find tests -type f) \
-                      $(shell find examples -type f) \
-                      $(shell find demos -type f)
-	@flake8 aiohttp examples tests demos
+                      $(shell find examples -type f)
+	@flake8 aiohttp examples tests
 	python setup.py check -rms
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
