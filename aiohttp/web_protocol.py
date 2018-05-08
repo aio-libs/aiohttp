@@ -10,6 +10,7 @@ from html import escape as html_escape
 import yarl
 
 from . import helpers, http
+from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout
 from .http import HttpProcessingError, HttpRequestParser, StreamWriter
 from .log import access_logger, server_logger
@@ -35,7 +36,7 @@ class PayloadAccessError(Exception):
     """Payload was accesed after responce was sent."""
 
 
-class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
+class RequestHandler(BaseProtocol):
     """HTTP protocol implementation.
 
     RequestHandler handles incoming HTTP request. It reads request line,
@@ -93,8 +94,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         super().__init__(loop=loop)
 
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
-
         self._manager = manager
         self._request_handler = manager.request_handler
         self._request_factory = manager.request_factory
@@ -121,7 +120,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             max_headers=max_headers,
             payload_exception=RequestPayloadError)
 
-        self.transport = None
         self._reading_paused = False
 
         self.logger = logger
@@ -177,8 +175,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.transport = transport
-
         if self._tcp_keepalive:
             tcp_keepalive(transport)
 
@@ -196,7 +192,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._request_factory = None
         self._request_handler = None
         self._request_parser = None
-        self.transport = None
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()

@@ -1,21 +1,19 @@
-import asyncio
-import asyncio.streams
 from contextlib import suppress
 
+from .base_protocol import BaseProtocol
 from .client_exceptions import (ClientOSError, ClientPayloadError,
                                 ServerDisconnectedError)
 from .http import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue
 
 
-class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
+class ResponseHandler(BaseProtocol, DataQueue):
     """Helper class to adapt between Protocol and StreamReader."""
 
     def __init__(self, *, loop=None):
-        asyncio.streams.FlowControlMixin.__init__(self, loop=loop)
+        BaseProtocol.__init__(self, loop=loop)
         DataQueue.__init__(self, loop=loop)
 
-        self.transport = None
         self._should_close = False
 
         self._message = None
@@ -56,9 +54,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
     def is_connected(self):
         return self.transport is not None
 
-    def connection_made(self, transport):
-        self.transport = transport
-
     def connection_lost(self, exc):
         if self._payload_parser is not None:
             with suppress(Exception):
@@ -81,7 +76,6 @@ class ResponseHandler(DataQueue, asyncio.streams.FlowControlMixin):
             # we do it anyway below
             self.set_exception(exc)
 
-        self.transport = None
         self._should_close = True
         self._parser = None
         self._message = None
