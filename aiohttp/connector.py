@@ -272,7 +272,8 @@ class BaseConnector:
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.close()
-                            if key[-1] and not self._cleanup_closed_disabled:
+                            if (key.is_ssl and
+                                    not self._cleanup_closed_disabled):
                                 self._cleanup_closed_transports.append(
                                     transport)
                         else:
@@ -482,7 +483,7 @@ class BaseConnector:
                 if t1 - t0 > self._keepalive_timeout:
                     transport = proto.close()
                     # only for SSL transports
-                    if key[-1] and not self._cleanup_closed_disabled:
+                    if key.is_ssl and not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transport)
                 else:
                     if not conns:
@@ -546,7 +547,7 @@ class BaseConnector:
         if should_close or protocol.should_close:
             transport = protocol.close()
 
-            if key[-1] and not self._cleanup_closed_disabled:
+            if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
         else:
             conns = self._conns.get(key)
