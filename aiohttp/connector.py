@@ -10,6 +10,8 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 
+import attr
+
 from . import hdrs, helpers
 from .client_exceptions import (ClientConnectionError,
                                 ClientConnectorCertificateError,
@@ -919,7 +921,10 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = (req.host, req.port, req.ssl)
+            key = attr.evolve(req.connection_key,
+                              proxy=None,
+                              proxy_auth=None,
+                              proxy_headers_hash=None)
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
             try:

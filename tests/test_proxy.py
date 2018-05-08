@@ -363,6 +363,42 @@ class TestProxy(unittest.TestCase):
         self.loop.run_until_complete(req.close())
 
     @mock.patch('aiohttp.connector.ClientRequest')
+    def test_https_connect_resp_start_error(self, ClientRequestMock):
+        proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
+                                  loop=self.loop)
+        ClientRequestMock.return_value = proxy_req
+
+        proxy_resp = ClientResponse('get', URL('http://proxy.example.com'),
+                                    request_info=mock.Mock(),
+                                    writer=mock.Mock(),
+                                    continue100=None,
+                                    timer=TimerNoop(),
+                                    auto_decompress=True,
+                                    traces=[],
+                                    loop=self.loop,
+                                    session=mock.Mock())
+        proxy_req.send = make_mocked_coro(proxy_resp)
+        proxy_resp.start = make_mocked_coro(
+            raise_exception=OSError("error message"))
+
+        connector = aiohttp.TCPConnector(loop=self.loop)
+        connector._resolve_host = make_mocked_coro(
+            [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
+              'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
+
+        tr, proto = mock.Mock(), mock.Mock()
+        tr.get_extra_info.return_value = None
+        self.loop.create_connection = make_mocked_coro((tr, proto))
+
+        req = ClientRequest(
+            'GET', URL('https://www.python.org'),
+            proxy=URL('http://proxy.example.com'),
+            loop=self.loop,
+        )
+        with self.assertRaisesRegex(OSError, "error message"):
+            self.loop.run_until_complete(connector._create_connection(req))
+
+    @mock.patch('aiohttp.connector.ClientRequest')
     def test_request_port(self, ClientRequestMock):
         proxy_req = ClientRequest('GET', URL('http://proxy.example.com'),
                                   loop=self.loop)

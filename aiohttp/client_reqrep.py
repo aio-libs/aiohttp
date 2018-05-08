@@ -145,7 +145,7 @@ class ConnectionKey:
     ssl = attr.ib()  # SSLContext or None
     proxy = attr.ib()  # URL or None
     proxy_auth = attr.ib()  # BasicAuth
-    proxy_headers_hash = attr.ib()  # hash(CIMultiDict)
+    proxy_headers_hash = attr.ib(type=int)  # hash(CIMultiDict)
 
 
 def _is_expected_content_type(response_content_type, expected_content_type):
