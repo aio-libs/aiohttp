@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import random
 import sys
 import traceback
 import warnings
@@ -359,9 +360,14 @@ class BaseConnector:
         """
         return self._closed
 
-    async def connect(self, req, traces=None):
-        """Get from pool or create new connection."""
-        key = req.connection_key
+    def _available_connections(self, key):
+        """
+        Return number of available connections taking into account
+        the limit, limit_per_host and the connection key.
+
+        If it returns less than 1 means that there is no connections
+        availables.
+        """
 
         if self._limit:
             # total calc available connections
@@ -380,6 +386,13 @@ class BaseConnector:
         else:
             available = 1
 
+        return available
+
+    async def connect(self, req, traces=None):
+        """Get from pool or create new connection."""
+        key = req.connection_key
+        available = self._available_connections(key)
+
         # Wait if there are no available connections.
         if available <= 0:
             fut = self._loop.create_future()
@@ -394,7 +407,7 @@ class BaseConnector:
 
             try:
                 await fut
-            except BaseException:
+            except BaseException as e:
                 # remove a waiter even if it was cancelled, normally it's
                 #  removed when it's notified
                 try:
@@ -402,10 +415,14 @@ class BaseConnector:
                 except ValueError:  # fut may no longer be in list
                     pass
 
+                raise e
+            finally:
                 if not waiters:
-                    del self._waiters[key]
-
-                raise
+                    try:
+                        del self._waiters[key]
+                    except KeyError:
+                        # the key was evicted before.
+                        pass
 
             if traces:
                 for trace in traces:
@@ -430,12 +447,12 @@ class BaseConnector:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
             except BaseException:
-                # signal to waiter
-                if key in self._waiters:
-                    waiters = self._waiters[key]
-                    self._release_key_waiter(key, waiters)
+                if not self._closed:
+                    self._acquired.remove(placeholder)
+                    self._drop_acquired_per_host(key, placeholder)
+                    self._release_waiter()
                 raise
-            finally:
+            else:
                 if not self._closed:
                     self._acquired.remove(placeholder)
                     self._drop_acquired_per_host(key, placeholder)
@@ -477,35 +494,29 @@ class BaseConnector:
         del self._conns[key]
         return None
 
-    def _release_key_waiter(self, key, waiters):
-        if not waiters:
-            return False
-
-        waiter = waiters.popleft()
-        if not waiter.done():
-            waiter.set_result(None)
-
-        if not waiters:
-            del self._waiters[key]
-
-        return True
-
     def _release_waiter(self):
-        # always release only one waiter
+        """
+        Iterates over all waiters till found one that is not finsihed and
+        belongs to a host that has available connections.
+        """
+        if not self._waiters:
+            return
 
-        if self._limit:
-            # if we have limit and we have available
-            if self._limit - len(self._acquired) > 0:
-                for key, waiters in self._waiters.items():
-                    if self._release_key_waiter(key, waiters):
-                        break
+        # Having the dict keys ordered this avoids to iterate
+        # at the same order at each call.
+        queues = list(self._waiters.keys())
+        random.shuffle(queues)
 
-        elif self._limit_per_host:
-            # if we have dont have limit but have limit per host
-            # then release first available
-            for key, waiters in self._waiters.items():
-                if self._release_key_waiter(key, waiters):
-                    break
+        for key in queues:
+            if self._available_connections(key) < 1:
+                continue
+
+            waiters = self._waiters[key]
+            while waiters:
+                waiter = waiters.popleft()
+                if not waiter.done():
+                    waiter.set_result(None)
+                    return
 
     def _release_acquired(self, key, proto):
         if self._closed:

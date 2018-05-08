@@ -1,0 +1,1 @@
+Forbid reading response BODY after release

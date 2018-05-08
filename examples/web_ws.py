@@ -19,6 +19,8 @@ async def wshandler(request):
 
     await resp.prepare(request)
 
+    await resp.send_str('Welcome!!!')
+
     try:
         print('Someone joined.')
         for ws in request.app['sockets']:

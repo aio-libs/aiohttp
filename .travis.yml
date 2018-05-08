@@ -144,7 +144,7 @@ jobs:
     env:
     - flake8
     script:
-    - flake8 aiohttp examples tests demos
+    - flake8 aiohttp examples tests
 
   - <<: *_lint_base
     env:

@@ -63,6 +63,81 @@ def unix_server(loop, unix_sockname):
         loop.run_until_complete(runner.cleanup())
 
 
+def test_connection_del(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    loop.set_debug(0)
+    conn = Connection(connector, key, protocol, loop=loop)
+    exc_handler = mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    connector._release.assert_called_with(
+        key,
+        protocol,
+        should_close=True
+    )
+    msg = {
+        'message': mock.ANY,
+        'client_connection': mock.ANY,
+    }
+    exc_handler.assert_called_with(loop, msg)
+
+
+def test_connection_del_loop_debug(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    loop.set_debug(1)
+    conn = Connection(connector, key, protocol, loop=loop)
+    exc_handler = mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    msg = {
+        'message': mock.ANY,
+        'client_connection': mock.ANY,
+        'source_traceback': mock.ANY
+    }
+    exc_handler.assert_called_with(loop, msg)
+
+
+def test_connection_del_loop_closed(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    loop.set_debug(1)
+    conn = Connection(connector, key, protocol, loop=loop)
+    exc_handler = mock.Mock()
+    loop.set_exception_handler(exc_handler)
+    loop.close()
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    assert not connector._release.called
+    assert not exc_handler.called
+
+
+def test_connection_detach(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    conn = Connection(connector, key, protocol, loop=loop)
+    conn._notify_release = mock.Mock()
+    conn.detach()
+    assert conn._notify_release.called
+    connector._release_acquired.assert_called_with(protocol)
+
+
 def test_del(loop):
     conn = aiohttp.BaseConnector(loop=loop)
     proto = mock.Mock(should_close=False)
@@ -292,18 +367,19 @@ def test_release_already_closed(loop):
     assert not conn._release_acquired.called
 
 
-def test_release_waiter(loop, key, key2):
+def test_release_waiter_no_limit(loop, key, key2):
     # limit is 0
     conn = aiohttp.BaseConnector(limit=0, loop=loop)
     w = mock.Mock()
     w.done.return_value = False
     conn._waiters[key].append(w)
     conn._release_waiter()
-    assert len(conn._waiters) == 1
-    assert not w.done.called
+    assert len(conn._waiters[key]) == 0
+    assert w.done.called
     conn.close()
 
-    # release first available
+
+def test_release_waiter_first_available(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
@@ -315,7 +391,8 @@ def test_release_waiter(loop, key, key2):
             not w1.set_result.called and w2.set_result.called)
     conn.close()
 
-    # limited available
+
+def test_release_waiter_release_first(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
@@ -326,7 +403,8 @@ def test_release_waiter(loop, key, key2):
     assert not w2.set_result.called
     conn.close()
 
-    # limited available
+
+def test_release_waiter_skip_done_waiter(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = True
@@ -334,7 +412,7 @@ def test_release_waiter(loop, key, key2):
     conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert not w1.set_result.called
-    assert not w2.set_result.called
+    assert w2.set_result.called
     conn.close()
 
 
@@ -349,6 +427,19 @@ def test_release_waiter_per_host(loop, key, key2):
     conn._release_waiter()
     assert ((w1.set_result.called and not w2.set_result.called) or
             (not w1.set_result.called and w2.set_result.called))
+    conn.close()
+
+
+def test_release_waiter_no_available(loop, key, key2):
+    # limit is 0
+    conn = aiohttp.BaseConnector(limit=0, loop=loop)
+    w = mock.Mock()
+    w.done.return_value = False
+    conn._waiters[key].append(w)
+    conn._available_connections = mock.Mock(return_value=0)
+    conn._release_waiter()
+    assert len(conn._waiters) == 1
+    assert not w.done.called
     conn.close()
 
 
@@ -1628,6 +1719,48 @@ async def test_connect_with_limit_concurrent(loop):
     conn.close()
 
     assert max_connections == num_connections
+
+
+async def test_connect_waiters_cleanup(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._available_connections = mock.Mock(return_value=0)
+
+    t = loop.create_task(conn.connect(req))
+
+    await asyncio.sleep(0, loop=loop)
+    assert conn._waiters.keys()
+
+    t.cancel()
+    await asyncio.sleep(0, loop=loop)
+    assert not conn._waiters.keys()
+
+
+async def test_connect_waiters_cleanup_key_error(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._available_connections = mock.Mock(return_value=0)
+
+    t = loop.create_task(conn.connect(req))
+
+    await asyncio.sleep(0, loop=loop)
+    assert conn._waiters.keys()
+
+    # we delete the entry explicitly before the
+    # canceled connection grabs the loop again, we
+    # must expect a none failure termination
+    conn._waiters.clear()
+    t.cancel()
+    await asyncio.sleep(0, loop=loop)
+    assert not conn._waiters.keys() == []
 
 
 async def test_close_with_acquired_connection(loop):

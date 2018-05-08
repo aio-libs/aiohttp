@@ -386,8 +386,6 @@ class ClientSession:
                             resp.close()
                             raise TooManyRedirects(
                                 history[0].request_info, tuple(history))
-                        else:
-                            resp.release()
 
                         # For 301 and 302, mimic IE, now changed in RFC
                         # https://github.com/kennethreitz/requests/pull/269
@@ -405,6 +403,10 @@ class ClientSession:
                         if r_url is None:
                             # see github.com/aio-libs/aiohttp/issues/2022
                             break
+                        else:
+                            # reading from correct redirection
+                            # response is forbidden
+                            resp.release()
 
                         try:
                             r_url = URL(
