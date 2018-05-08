@@ -131,6 +131,9 @@ class ResponseHandler(BaseProtocol, DataQueue):
             data, self._tail = self._tail, b''
             self.data_received(data)
 
+    def set_read_timeout(self, timeout):
+        pass
+
     def data_received(self, data):
         if not data:
             return

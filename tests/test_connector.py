@@ -15,7 +15,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
-from aiohttp import client, web
+from aiohttp import ClientTimeout, client, web
 from aiohttp.client import ClientRequest
 from aiohttp.connector import Connection, _DNSCacheTable
 from aiohttp.test_utils import make_mocked_coro, unused_port
@@ -477,7 +477,8 @@ def test__drop_acquire_per_host3(loop):
 
 
 async def test_tcp_connector_certificate_error(loop):
-    req = ClientRequest('GET', URL('https://127.0.0.1:443'), loop=loop)
+    req = ClientRequest('GET', URL('https://127.0.0.1:443'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     async def certificate_error(*args, **kwargs):
         raise ssl.CertificateError
@@ -510,7 +511,8 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
 
     req = ClientRequest('GET', URL('https://mocked.host'),
                         ssl=aiohttp.Fingerprint(fingerprint),
-                        loop=loop)
+                        loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     async def _resolve_host(host, port, traces=None):
         return [{
@@ -549,7 +551,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
 
         if ip == ip4:
             fingerprint_error = True
-            tr, pr = mock.Mock(), None
+            tr, pr = mock.Mock(), mock.Mock()
 
             def get_extra_info(param):
                 if param == 'sslcontext':
@@ -570,7 +572,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
 
         if ip == ip5:
             connected = True
-            tr, pr = mock.Mock(), None
+            tr, pr = mock.Mock(), mock.Mock()
 
             def get_extra_info(param):
                 if param == 'sslcontext':
@@ -931,6 +933,7 @@ def test_dns_error(loop):
     req = ClientRequest(
         'GET', URL('http://www.python.org'),
         loop=loop,
+        timeout=ClientTimeout(sock_read=None)
     )
     with pytest.raises(aiohttp.ClientConnectorError):
         loop.run_until_complete(connector.connect(req))
@@ -1001,7 +1004,8 @@ async def test_connect(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop)
     key = ('host', 80, False)
@@ -1045,7 +1049,8 @@ async def test_connect_tracing(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop)
     conn._create_connection = mock.Mock()
@@ -1072,7 +1077,8 @@ async def test_close_during_connect(loop):
     proto.is_connected.return_value = True
 
     fut = loop.create_future()
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop)
     conn._create_connection = mock.Mock()
@@ -1376,7 +1382,8 @@ async def test_connect_with_limit(loop, key):
 
     req = ClientRequest('GET', URL('http://localhost1:80'),
                         loop=loop,
-                        response_class=mock.Mock())
+                        response_class=mock.Mock(),
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._conns[key] = [(proto, loop.time())]
@@ -1442,7 +1449,8 @@ async def test_connect_queued_operation_tracing(loop, key):
 
     req = ClientRequest('GET', URL('http://localhost1:80'),
                         loop=loop,
-                        response_class=mock.Mock())
+                        response_class=mock.Mock(),
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._conns[key] = [(proto, loop.time())]
@@ -1501,7 +1509,8 @@ async def test_connect_reuseconn_tracing(loop, key):
 
     req = ClientRequest('GET', URL('http://localhost1:80'),
                         loop=loop,
-                        response_class=mock.Mock())
+                        response_class=mock.Mock(),
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._conns[key] = [(proto, loop.time())]
@@ -1520,7 +1529,8 @@ async def test_connect_with_limit_and_limit_per_host(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1000, limit_per_host=1)
     conn._conns[key] = [(proto, loop.time())]
@@ -1554,7 +1564,8 @@ async def test_connect_with_no_limit_and_limit_per_host(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=0, limit_per_host=1)
     conn._conns[key] = [(proto, loop.time())]
@@ -1586,7 +1597,8 @@ async def test_connect_with_no_limits(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=0, limit_per_host=0)
     conn._conns[key] = [(proto, loop.time())]
@@ -1619,7 +1631,8 @@ async def test_connect_with_limit_cancelled(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     key = ('host', 80, False)
@@ -1665,7 +1678,8 @@ async def test_connect_with_limit_concurrent(loop):
     proto.should_close = False
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     max_connections = 2
     num_connections = 0
@@ -1725,7 +1739,8 @@ async def test_connect_waiters_cleanup(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._available_connections = mock.Mock(return_value=0)
@@ -1744,7 +1759,8 @@ async def test_connect_waiters_cleanup_key_error(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._available_connections = mock.Mock(return_value=0)
@@ -1767,7 +1783,8 @@ async def test_close_with_acquired_connection(loop):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop,
+                        timeout=ClientTimeout(sock_read=None))
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     key = ('host', 80, False)
@@ -1969,7 +1986,7 @@ def test_unix_connector_not_found(loop):
     req = ClientRequest(
         'GET', URL('http://www.python.org'),
         loop=loop,
-    )
+        timeout=ClientTimeout(sock_read=None))
     with pytest.raises(aiohttp.ClientConnectorError):
         loop.run_until_complete(connector.connect(req))
 
@@ -1984,6 +2001,7 @@ def test_unix_connector_permission(loop):
     req = ClientRequest(
         'GET', URL('http://www.python.org'),
         loop=loop,
+        timeout=ClientTimeout(sock_read=None)
     )
     with pytest.raises(aiohttp.ClientConnectorError):
         loop.run_until_complete(connector.connect(req))
@@ -2001,7 +2019,8 @@ async def test_resolver_not_called_with_address_is_ip(loop):
     req = ClientRequest('GET',
                         URL('http://127.0.0.1:{}'.format(unused_port())),
                         loop=loop,
-                        response_class=mock.Mock())
+                        response_class=mock.Mock(),
+                        timeout=ClientTimeout(sock_read=None))
 
     with pytest.raises(OSError):
         await connector.connect(req)

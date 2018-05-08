@@ -204,7 +204,8 @@ class ClientRequest:
                  timer=None, session=None, auto_decompress=True,
                  ssl=None,
                  proxy_headers=None,
-                 traces=None):
+                 traces=None,
+                 timeout=None):
 
         if loop is None:
             loop = asyncio.get_event_loop()
@@ -248,6 +249,7 @@ class ClientRequest:
         if traces is None:
             traces = []
         self._traces = traces
+        self._timeout = timeout
 
     def is_ssl(self):
         return self.url.scheme in ('https', 'wss')

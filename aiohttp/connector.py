@@ -467,6 +467,7 @@ class BaseConnector:
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
+        proto.set_read_timeout(req._timeout.sock_read)
         return Connection(self, key, proto, self._loop)
 
     def _get(self, key):
@@ -537,6 +538,8 @@ class BaseConnector:
         if self._closed:
             # acquired connection is already released on connector closing
             return
+
+        protocol.set_read_timeout(None)
 
         self._release_acquired(key, protocol)
 
