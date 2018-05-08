@@ -6,6 +6,7 @@ import zlib
 from typing import Any, Awaitable, Callable  # noqa
 
 from .abc import AbstractStreamWriter
+from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 
 
@@ -19,7 +20,7 @@ HttpVersion11 = HttpVersion(1, 1)
 class StreamWriter(AbstractStreamWriter):
 
     def __init__(self,
-                 protocol: asyncio.Protocol,
+                 protocol: BaseProtocol,
                  loop: asyncio.AbstractEventLoop,
                  on_chunk_sent: Callable[[], Awaitable[None]]=None) -> None:
         self._protocol = protocol
@@ -42,7 +43,7 @@ class StreamWriter(AbstractStreamWriter):
         return self._transport
 
     @property
-    def protocol(self) -> asyncio.Protocol:
+    def protocol(self) -> BaseProtocol:
         return self._protocol
 
     def enable_chunking(self) -> None:
