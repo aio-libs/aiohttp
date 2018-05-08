@@ -1,4 +1,4 @@
-attrs==17.4.0
+attrs==18.1.0
 async-generator==1.9
 async-timeout==3.0.0
 brotlipy==0.7.0
@@ -7,13 +7,13 @@ chardet==3.0.4
 coverage==4.5.1
 cython==0.28.2
 flake8==3.5.0
-gunicorn==19.8.0
+gunicorn==19.8.1
 isort==4.3.4
 pyflakes==1.6.0
-multidict==4.2.0
+multidict==4.3.1
 pytest==3.5.1
 pytest-cov==2.5.1
-pytest-mock==1.9.0
+pytest-mock==1.10.0
 pytest-xdist==1.22.2
 towncrier==17.8.0
 tox==3.0.0
