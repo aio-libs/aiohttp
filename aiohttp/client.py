@@ -332,9 +332,8 @@ class ClientSession:
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
-                        session=self, auto_decompress=self._auto_decompress,
-                        ssl=ssl, proxy_headers=proxy_headers, traces=traces,
-                        timeout=timeout)
+                        session=self,
+                        ssl=ssl, proxy_headers=proxy_headers, traces=traces)
 
                     # connection timeout
                     try:
@@ -351,11 +350,19 @@ class ClientSession:
 
                     tcp_nodelay(conn.transport, True)
                     tcp_cork(conn.transport, False)
+
+                    conn.protocol.set_response_params(
+                        timer=timer,
+                        skip_payload=method.upper() == 'HEAD',
+                        read_until_eof=read_until_eof,
+                        auto_decompress=self._auto_decompress,
+                        read_timeout=timeout.sock_read)
+
                     try:
                         try:
                             resp = await req.send(conn)
                             try:
-                                await resp.start(conn, read_until_eof)
+                                await resp.start(conn)
                             except BaseException:
                                 resp.close()
                                 raise

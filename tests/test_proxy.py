@@ -8,7 +8,6 @@ from unittest import mock
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientTimeout
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
 from aiohttp.helpers import TimerNoop
 from aiohttp.test_utils import make_mocked_coro
@@ -41,7 +40,6 @@ class TestProxy(unittest.TestCase):
             'GET', URL('http://www.python.org'),
             proxy=URL('http://proxy.example.com'),
             loop=self.loop,
-            timeout=ClientTimeout(sock_read=None)
         )
         self.assertEqual(str(req.proxy), 'http://proxy.example.com')
 
@@ -72,8 +70,7 @@ class TestProxy(unittest.TestCase):
             'GET', URL('http://www.python.org'),
             proxy=URL('http://proxy.example.com'),
             proxy_headers={'Foo': 'Bar'},
-            loop=self.loop,
-            timeout=ClientTimeout(sock_read=None))
+            loop=self.loop)
         self.assertEqual(str(req.proxy), 'http://proxy.example.com')
 
         # mock all the things!
@@ -154,7 +151,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -197,7 +193,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -246,7 +241,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -295,7 +289,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -335,7 +328,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -376,7 +368,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -450,7 +441,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -501,7 +491,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())

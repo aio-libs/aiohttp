@@ -29,7 +29,6 @@ async def test_http_processing_error(session):
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=loop,
         session=session)
@@ -54,7 +53,6 @@ def test_del(session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -79,7 +77,6 @@ def test_close(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -97,7 +94,6 @@ def test_wait_for_100_1(loop, session):
         request_info=mock.Mock(),
         writer=mock.Mock(),
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=loop,
         session=session)
@@ -112,7 +108,6 @@ def test_wait_for_100_2(loop, session):
         continue100=None,
         writer=mock.Mock(),
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=loop,
         session=session)
@@ -126,7 +121,6 @@ def test_repr(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -142,7 +136,6 @@ def test_repr_non_ascii_url():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -156,7 +149,6 @@ def test_repr_non_ascii_reason():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -171,7 +163,6 @@ def test_url_obj_deprecated():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -185,7 +176,6 @@ async def test_read_and_release_connection(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -208,7 +198,6 @@ async def test_read_and_release_connection_with_error(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -227,7 +216,6 @@ async def test_release(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -252,7 +240,6 @@ async def test_release_on_del(loop, session):
                                   writer=mock.Mock(),
                                   continue100=None,
                                   timer=TimerNoop(),
-                                  auto_decompress=True,
                                   traces=[],
                                   loop=loop,
                                   session=session)
@@ -270,7 +257,6 @@ async def test_response_eof(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -289,7 +275,6 @@ async def test_response_eof_upgraded(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -308,7 +293,6 @@ async def test_response_eof_after_connection_detach(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -327,7 +311,6 @@ async def test_text(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -353,7 +336,6 @@ async def test_text_bad_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -382,7 +364,6 @@ async def test_text_custom_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -410,7 +391,6 @@ async def test_text_detect_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -436,7 +416,6 @@ async def test_text_detect_encoding_if_invalid_charset(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -463,7 +442,6 @@ async def test_text_after_read(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -489,7 +467,6 @@ async def test_json(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -515,7 +492,6 @@ async def test_json_extended_content_type(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -542,7 +518,6 @@ async def test_json_custom_content_type(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -568,7 +543,6 @@ async def test_json_custom_loader(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -589,7 +563,6 @@ async def test_json_invalid_content_type(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -609,7 +582,6 @@ async def test_json_no_content(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -627,7 +599,6 @@ async def test_json_override_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -655,7 +626,6 @@ def test_get_encoding_unknown(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -672,7 +642,6 @@ def test_raise_for_status_2xx():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -687,7 +656,6 @@ def test_raise_for_status_4xx():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -705,7 +673,6 @@ def test_resp_host():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -718,7 +685,6 @@ def test_content_type():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -733,7 +699,6 @@ def test_content_type_no_header():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -748,7 +713,6 @@ def test_charset():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -763,7 +727,6 @@ def test_charset_no_header():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -778,7 +741,6 @@ def test_charset_no_charset():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -793,7 +755,6 @@ def test_content_disposition_full():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -813,7 +774,6 @@ def test_content_disposition_no_parameters():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -830,7 +790,6 @@ def test_content_disposition_no_header():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -845,7 +804,6 @@ def test_content_disposition_cache():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -868,7 +826,6 @@ def test_response_request_info():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -892,7 +849,6 @@ def test_request_info_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -918,7 +874,6 @@ def test_no_redirect_history_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -948,7 +903,6 @@ def test_redirect_history_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -967,7 +921,6 @@ def test_redirect_history_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -994,7 +947,6 @@ async def test_response_read_triggers_callback(loop, session):
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         loop=loop,
         session=session,
         traces=[trace]
@@ -1028,7 +980,6 @@ def test_response_real_url(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -1043,7 +994,6 @@ def test_response_links_comma_separated(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -1073,7 +1023,6 @@ def test_response_links_multiple_headers(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -1106,7 +1055,6 @@ def test_response_links_no_rel(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -1132,7 +1080,6 @@ def test_response_links_quoted(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -1158,7 +1105,6 @@ def test_response_links_relative(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -1184,7 +1130,6 @@ def test_response_links_empty(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)

@@ -33,7 +33,7 @@ async def test_client_proto_bad_message(loop):
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
-    proto.set_response_params(read_until_eof=True)
+    proto.set_response_params()
 
     proto.data_received(b'HTTP\r\n\r\n')
     assert proto.should_close
@@ -71,11 +71,11 @@ async def test_client_protocol_readuntil_eof(loop):
                               continue100=None,
                               timer=TimerNoop(),
                               request_info=mock.Mock(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=mock.Mock())
-    await response.start(conn, read_until_eof=True)
+    proto.set_response_params()
+    await response.start(conn)
 
     assert not response.content.is_eof()
 

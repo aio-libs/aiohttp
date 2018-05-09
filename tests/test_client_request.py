@@ -1210,7 +1210,6 @@ async def test_custom_req_rep(loop):
                                        continue100=self._continue,
                                        timer=self._timer,
                                        request_info=self.request_info,
-                                       auto_decompress=self._auto_decompress,
                                        traces=self._traces,
                                        loop=self.loop,
                                        session=self._session)

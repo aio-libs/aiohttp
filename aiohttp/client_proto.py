@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import suppress
 
 from .base_protocol import BaseProtocol
@@ -28,6 +29,9 @@ class ResponseHandler(BaseProtocol, DataQueue):
         self._upgraded = False
         self._parser = None
 
+        self._read_timeout = None
+        self._read_timeout_handle = None
+
     @property
     def upgraded(self):
         return self._upgraded
@@ -55,6 +59,8 @@ class ResponseHandler(BaseProtocol, DataQueue):
         return self.transport is not None
 
     def connection_lost(self, exc):
+        self._drop_timeout()
+
         if self._payload_parser is not None:
             with suppress(Exception):
                 self._payload_parser.feed_eof()
@@ -86,7 +92,7 @@ class ResponseHandler(BaseProtocol, DataQueue):
         super().connection_lost(exc)
 
     def eof_received(self):
-        pass
+        self._drop_timeout()
 
     def pause_reading(self):
         if not self._reading_paused:
@@ -95,6 +101,7 @@ class ResponseHandler(BaseProtocol, DataQueue):
             except (AttributeError, NotImplementedError, RuntimeError):
                 pass
             self._reading_paused = True
+            self._drop_timeout()
 
     def resume_reading(self):
         if self._reading_paused:
@@ -103,14 +110,18 @@ class ResponseHandler(BaseProtocol, DataQueue):
             except (AttributeError, NotImplementedError, RuntimeError):
                 pass
             self._reading_paused = False
+            self._reschedule_timeout()
 
     def set_exception(self, exc):
         self._should_close = True
+        self._drop_timeout()
         super().set_exception(exc)
 
     def set_parser(self, parser, payload):
         self._payload = payload
         self._payload_parser = parser
+
+        self._drop_timeout()
 
         if self._tail:
             data, self._tail = self._tail, b''
@@ -119,8 +130,13 @@ class ResponseHandler(BaseProtocol, DataQueue):
     def set_response_params(self, *, timer=None,
                             skip_payload=False,
                             read_until_eof=False,
-                            auto_decompress=True):
+                            auto_decompress=True,
+                            read_timeout=None):
         self._skip_payload = skip_payload
+
+        self._read_timeout = read_timeout
+        self._reschedule_timeout()
+
         self._parser = HttpResponseParser(
             self, self._loop, timer=timer,
             payload_exception=ClientPayloadError,
@@ -131,8 +147,25 @@ class ResponseHandler(BaseProtocol, DataQueue):
             data, self._tail = self._tail, b''
             self.data_received(data)
 
-    def set_read_timeout(self, timeout):
-        pass
+    def _drop_timeout(self):
+        if self._read_timeout_handle is not None:
+            self._read_timeout_handle.cancel()
+            self._read_timeout_handle = None
+
+    def _reschedule_timeout(self):
+        timeout = self._read_timeout
+        if self._read_timeout_handle is not None:
+            self._read_timeout_handle.cancel()
+
+        if timeout:
+            self._read_timeout_handle = self._loop.call_later(
+                timeout, self._on_read_timeout)
+        else:
+            self._read_timeout_handle = None
+
+    def _on_read_timeout(self):
+        self.set_exception(
+            asyncio.TimeoutError("Timeout on reading data from socket"))
 
     def data_received(self, data):
         if not data:
@@ -160,6 +193,7 @@ class ResponseHandler(BaseProtocol, DataQueue):
                     self.transport.close()
                     # should_close is True after the call
                     self.set_exception(exc)
+                    self._drop_timeout()
                     return
 
                 self._upgraded = upgraded

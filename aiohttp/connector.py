@@ -467,7 +467,6 @@ class BaseConnector:
 
         self._acquired.add(proto)
         self._acquired_per_host[key].add(proto)
-        proto.set_read_timeout(req._timeout.sock_read)
         return Connection(self, key, proto, self._loop)
 
     def _get(self, key):
@@ -538,8 +537,6 @@ class BaseConnector:
         if self._closed:
             # acquired connection is already released on connector closing
             return
-
-        protocol.set_read_timeout(None)
 
         self._release_acquired(key, protocol)
 
@@ -925,7 +922,8 @@ class TCPConnector(BaseConnector):
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
             try:
-                resp = await proxy_resp.start(conn, True)
+                conn._protocol.set_response_params()
+                resp = await proxy_resp.start(conn)
             except BaseException:
                 proxy_resp.close()
                 conn.close()
