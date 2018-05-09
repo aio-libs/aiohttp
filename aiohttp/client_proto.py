@@ -193,11 +193,11 @@ class ResponseHandler(BaseProtocol, DataQueue):
                     self.transport.close()
                     # should_close is True after the call
                     self.set_exception(exc)
-                    self._drop_timeout()
                     return
 
                 self._upgraded = upgraded
 
+                payload = None
                 for message, payload in messages:
                     if message.should_close:
                         self._should_close = True
@@ -209,6 +209,15 @@ class ResponseHandler(BaseProtocol, DataQueue):
                         self.feed_data((message, EMPTY_PAYLOAD), 0)
                     else:
                         self.feed_data((message, payload), 0)
+                if payload is not None:
+                    # new message(s) was processed
+                    # register timeout handler unsubscribing
+                    # either on end-of-stream or immediatelly for
+                    # EMPTY_PAYLOAD
+                    if payload is not EMPTY_PAYLOAD:
+                        payload.on_eof(self._drop_timeout)
+                    else:
+                        self._drop_timeout()
 
                 if tail:
                     if upgraded:
