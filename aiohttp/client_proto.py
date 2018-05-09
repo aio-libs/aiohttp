@@ -17,7 +17,6 @@ class ResponseHandler(BaseProtocol, DataQueue):
 
         self._should_close = False
 
-        self._message = None
         self._payload = None
         self._skip_payload = False
         self._payload_parser = None
@@ -84,7 +83,6 @@ class ResponseHandler(BaseProtocol, DataQueue):
 
         self._should_close = True
         self._parser = None
-        self._message = None
         self._payload = None
         self._payload_parser = None
         self._reading_paused = False
@@ -202,7 +200,6 @@ class ResponseHandler(BaseProtocol, DataQueue):
                     if message.should_close:
                         self._should_close = True
 
-                    self._message = message
                     self._payload = payload
 
                     if self._skip_payload or message.code in (204, 304):
