@@ -74,7 +74,7 @@ async def test_client_protocol_readuntil_eof(loop):
                               traces=[],
                               loop=loop,
                               session=mock.Mock())
-    proto.set_response_params()
+    proto.set_response_params(read_until_eof=True)
     await response.start(conn)
 
     assert not response.content.is_eof()
