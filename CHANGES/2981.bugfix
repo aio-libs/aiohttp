@@ -1,0 +1,1 @@
+Don't reuse a connection with the same URL but different proxy/TLS settings
