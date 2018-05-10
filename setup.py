@@ -103,8 +103,11 @@ def read(f):
 NEEDS_PYTEST = {'pytest', 'test'}.intersection(sys.argv)
 pytest_runner = ['pytest-runner'] if NEEDS_PYTEST else []
 
-tests_require = ['pytest', 'gunicorn',
-                 'pytest-timeout', 'async-generator']
+tests_require = [
+    'pytest', 'gunicorn',
+    'pytest-timeout', 'async-generator',
+    'pytest-xdist',
+]
 
 
 args = dict(
