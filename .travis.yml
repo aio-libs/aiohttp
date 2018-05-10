@@ -125,8 +125,6 @@ _helpers:
   - *env_pyenv
   - *env_path
 
-# doesn't work on MacOSX out of the box -- the system has no Python installed
-# there's a workaround to use `language: generic` and install it, but it's slow
 os: linux
 
 jobs:
