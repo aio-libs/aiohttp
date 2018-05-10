@@ -18,7 +18,7 @@ Changelog
 ==================
 
 - Don't reuse a connection with the same URL but different proxy/TLS settings
-  (#2981)
+  (`#2981 <https://github.com/aio-libs/aiohttp/pull/2981>`_)
 
 
 3.2.0 (2018-05-06)
