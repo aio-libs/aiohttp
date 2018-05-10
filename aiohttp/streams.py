@@ -125,7 +125,7 @@ class StreamReader(AsyncStreamReaderMixin):
     def exception(self):
         return self._exception
 
-    def set_exception(self, exc):
+    def set_exception(self, exc) -> None:
         self._exception = exc
         self._eof_callbacks.clear()
 
@@ -139,7 +139,7 @@ class StreamReader(AsyncStreamReaderMixin):
             set_exception(waiter, exc)
             self._eof_waiter = None
 
-    def on_eof(self, callback):
+    def on_eof(self, callback) -> None:
         if self._eof:
             try:
                 callback()
@@ -148,7 +148,7 @@ class StreamReader(AsyncStreamReaderMixin):
         else:
             self._eof_callbacks.append(callback)
 
-    def feed_eof(self):
+    def feed_eof(self) -> None:
         self._eof = True
 
         waiter = self._waiter
@@ -169,15 +169,15 @@ class StreamReader(AsyncStreamReaderMixin):
 
         self._eof_callbacks.clear()
 
-    def is_eof(self):
+    def is_eof(self) -> bool:
         """Return True if  'feed_eof' was called."""
         return self._eof
 
-    def at_eof(self):
+    def at_eof(self) -> bool:
         """Return True if the buffer is empty and 'feed_eof' was called."""
         return self._eof and not self._buffer
 
-    async def wait_eof(self):
+    async def wait_eof(self) -> None:
         if self._eof:
             return
 
@@ -188,7 +188,7 @@ class StreamReader(AsyncStreamReaderMixin):
         finally:
             self._eof_waiter = None
 
-    def unread_data(self, data):
+    def unread_data(self, data) -> None:
         """ rollback reading some data from stream, inserting it to buffer head.
         """
         if not data:
@@ -203,7 +203,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof_counter = 0
 
     # TODO: size is ignored, remove the param later
-    def feed_data(self, data, size=0):
+    def feed_data(self, data, size: int = 0) -> None:
         assert not self._eof, 'feed_data after feed_eof'
 
         if not data:

@@ -49,12 +49,12 @@ class StreamWriter(AbstractStreamWriter):
     def enable_chunking(self) -> None:
         self.chunked = True
 
-    def enable_compression(self, encoding: str='deflate'):
+    def enable_compression(self, encoding: str='deflate') -> None:
         zlib_mode = (16 + zlib.MAX_WBITS
                      if encoding == 'gzip' else -zlib.MAX_WBITS)
         self._compress = zlib.compressobj(wbits=zlib_mode)
 
-    def _write(self, chunk):
+    def _write(self, chunk) -> None:
         size = len(chunk)
         self.buffer_size += size
         self.output_size += size
@@ -63,7 +63,7 @@ class StreamWriter(AbstractStreamWriter):
             raise asyncio.CancelledError('Cannot write to closing transport')
         self._transport.write(chunk)
 
-    async def write(self, chunk, *, drain=True, LIMIT=0x10000):
+    async def write(self, chunk, *, drain=True, LIMIT=0x10000) -> None:
         """Writes chunk of data to a stream.
 
         write_eof() indicates end of stream.
@@ -99,13 +99,13 @@ class StreamWriter(AbstractStreamWriter):
                 self.buffer_size = 0
                 await self.drain()
 
-    async def write_headers(self, status_line, headers):
+    async def write_headers(self, status_line, headers) -> None:
         """Write request/response status and headers."""
         # status + headers
         buf = _serialize_headers(status_line, headers)
         self._write(buf)
 
-    async def write_eof(self, chunk=b''):
+    async def write_eof(self, chunk=b'') -> None:
         if self._eof:
             return
 
@@ -136,7 +136,7 @@ class StreamWriter(AbstractStreamWriter):
         self._eof = True
         self._transport = None
 
-    async def drain(self):
+    async def drain(self) -> None:
         """Flush the write buffer.
 
         The intended use is to write
