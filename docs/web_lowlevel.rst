@@ -81,8 +81,8 @@ This *handler* is processed by ``server`` (:class:`Server` which acts
 as *protocol factory*).  Network communication is created by
 ``loop.create_server`` call to serve ``http://127.0.0.1:8080/``.
 
-The handler should process every request: ``GET``, ``POST``,
-Web-Socket for every *path*.
+The handler should process every request for every *path*, e.g.
+``GET``, ``POST``, Web-Socket.
 
 The example is very basic: it always return ``200 OK`` response, real
-life code should be much more complex.
+life code is much more complex usually.
