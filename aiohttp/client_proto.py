@@ -2,8 +2,7 @@ from contextlib import suppress
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (ClientOSError, ClientPayloadError,
-                                ServerDisconnectedError,
-                                ServerTimeoutError)
+                                ServerDisconnectedError, ServerTimeoutError)
 from .http import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue
 

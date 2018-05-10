@@ -22,8 +22,7 @@ from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, TooManyRedirects,
                                 WSServerHandshakeError)
 from .client_reqrep import *  # noqa
-from .client_reqrep import (ClientRequest, ClientResponse, ClientTimeout,
-                            _merge_ssl_params)
+from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
 from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import TCPConnector
@@ -40,7 +39,28 @@ from .tracing import Trace
 __all__ = (client_exceptions.__all__ +  # noqa
            client_reqrep.__all__ +  # noqa
            connector_mod.__all__ +  # noqa
-           ('ClientSession', 'ClientWebSocketResponse', 'request'))
+           ('ClientSession', 'ClientTimeout',
+            'ClientWebSocketResponse', 'request'))
+
+
+@attr.s(frozen=True, slots=True)
+class ClientTimeout:
+    total = attr.ib(type=float, default=None)
+    sock_read = attr.ib(type=float, default=None)
+    connect = attr.ib(type=float, default=None)
+
+    # pool_queue_timeout = attr.ib(type=float, default=None)
+    # dns_resolution_timeout = attr.ib(type=float, default=None)
+    # socket_connect_timeout = attr.ib(type=float, default=None)
+    # connection_acquiring_timeout = attr.ib(type=float, default=None)
+    # new_connection_timeout = attr.ib(type=float, default=None)
+    # http_header_timeout = attr.ib(type=float, default=None)
+    # response_body_timeout = attr.ib(type=float, default=None)
+
+    # to create a timeout specific for a single request, either
+    # - create a completely new one to overwrite the default
+    # - or use http://www.attrs.org/en/stable/api.html#attr.evolve
+    # to overwrite the defaults
 
 
 # 5 Minute default read timeout
