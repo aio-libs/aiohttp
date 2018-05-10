@@ -122,7 +122,6 @@ async def test_reschedule_timeout(loop):
     assert proto._read_timeout_handle is not h
 
 
-
 async def test_eof_received(loop):
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
