@@ -6,7 +6,6 @@ import re
 import sys
 import traceback
 import warnings
-from collections import namedtuple
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType
@@ -136,7 +135,17 @@ def _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint):
     return ssl
 
 
-ConnectionKey = namedtuple('ConnectionKey', ['host', 'port', 'ssl'])
+@attr.s(slots=True, frozen=True)
+class ConnectionKey:
+    # the key should contain an information about used proxy / TLS
+    # to prevent reusing wrong connections from a pool
+    host = attr.ib(type=str)
+    port = attr.ib(type=int)
+    is_ssl = attr.ib(type=bool)
+    ssl = attr.ib()  # SSLContext or None
+    proxy = attr.ib()  # URL or None
+    proxy_auth = attr.ib()  # BasicAuth
+    proxy_headers_hash = attr.ib(type=int)  # hash(CIMultiDict)
 
 
 def _is_expected_content_type(response_content_type, expected_content_type):
@@ -237,7 +246,14 @@ class ClientRequest:
 
     @property
     def connection_key(self):
-        return ConnectionKey(self.host, self.port, self.is_ssl())
+        proxy_headers = self.proxy_headers
+        if proxy_headers:
+            h = hash(tuple((k, v) for k, v in proxy_headers.items()))
+        else:
+            h = None
+        return ConnectionKey(self.host, self.port, self.is_ssl(),
+                             self.ssl,
+                             self.proxy, self.proxy_auth, h)
 
     @property
     def host(self):

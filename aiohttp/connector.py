@@ -10,6 +10,8 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 
+import attr
+
 from . import hdrs, helpers
 from .client_exceptions import (ClientConnectionError,
                                 ClientConnectorCertificateError,
@@ -272,7 +274,8 @@ class BaseConnector:
                     if proto.is_connected():
                         if use_time - deadline < 0:
                             transport = proto.close()
-                            if key[-1] and not self._cleanup_closed_disabled:
+                            if (key.is_ssl and
+                                    not self._cleanup_closed_disabled):
                                 self._cleanup_closed_transports.append(
                                     transport)
                         else:
@@ -482,7 +485,7 @@ class BaseConnector:
                 if t1 - t0 > self._keepalive_timeout:
                     transport = proto.close()
                     # only for SSL transports
-                    if key[-1] and not self._cleanup_closed_disabled:
+                    if key.is_ssl and not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transport)
                 else:
                     if not conns:
@@ -546,7 +549,7 @@ class BaseConnector:
         if should_close or protocol.should_close:
             transport = protocol.close()
 
-            if key[-1] and not self._cleanup_closed_disabled:
+            if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
         else:
             conns = self._conns.get(key)
@@ -918,7 +921,10 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = (req.host, req.port, req.ssl)
+            key = attr.evolve(req.connection_key,
+                              proxy=None,
+                              proxy_auth=None,
+                              proxy_headers_hash=None)
             conn = Connection(self, key, proto, self._loop)
             proxy_resp = await proxy_req.send(conn)
             try:
