@@ -1,9 +1,9 @@
-import asyncio
 from contextlib import suppress
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (ClientOSError, ClientPayloadError,
-                                ServerDisconnectedError)
+                                ServerDisconnectedError,
+                                ServerTimeoutError)
 from .http import HttpResponseParser
 from .streams import EMPTY_PAYLOAD, DataQueue
 
@@ -164,7 +164,7 @@ class ResponseHandler(BaseProtocol, DataQueue):
 
     def _on_read_timeout(self):
         self.set_exception(
-            asyncio.TimeoutError("Timeout on reading data from socket"))
+            ServerTimeoutError("Timeout on reading data from socket"))
 
     def data_received(self, data):
         if not data:
