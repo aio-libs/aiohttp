@@ -14,6 +14,13 @@ Changelog
 
 .. towncrier release notes start
 
+3.2.1 (2018-05-10)
+==================
+
+- Don't reuse a connection with the same URL but different proxy/TLS settings
+  (#2981)
+
+
 3.2.0 (2018-05-06)
 ==================
 
