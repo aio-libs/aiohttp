@@ -136,20 +136,20 @@ jobs:
   include:
   - <<: *_doc_base
     env:
-    - docs
+    - docs <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     script:
     - towncrier --yes
     - make doc-spelling
 
   - <<: *_lint_base
     env:
-    - flake8
+    - flake8 <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <=
     script:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
     env:
-    - dist setup check
+    - dist setup check <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/doc.txt
@@ -185,7 +185,7 @@ jobs:
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
     <<: *_reset_steps
-    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
+    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
     dist: trusty
     group: edge
     services:
