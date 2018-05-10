@@ -241,7 +241,7 @@ class ClientConnectorCertificateError(*certificate_errors_bases):
 
     @property
     def ssl(self):
-        return self._conn_key.ssl
+        return self._conn_key.is_ssl
 
     def __str__(self):
         return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} '
