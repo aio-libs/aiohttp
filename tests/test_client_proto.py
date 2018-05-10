@@ -96,3 +96,36 @@ async def test_empty_data(loop):
     proto.data_received(b'')
 
     # do nothing
+
+
+async def test_schedule_timeout(loop):
+    proto = ResponseHandler(loop=loop)
+    proto.set_response_params(read_timeout=1)
+    assert proto._read_timeout_handle is not None
+
+
+async def test_drop_timeout(loop):
+    proto = ResponseHandler(loop=loop)
+    proto.set_response_params(read_timeout=1)
+    assert proto._read_timeout_handle is not None
+    proto._drop_timeout()
+    assert proto._read_timeout_handle is None
+
+
+async def test_reschedule_timeout(loop):
+    proto = ResponseHandler(loop=loop)
+    proto.set_response_params(read_timeout=1)
+    assert proto._read_timeout_handle is not None
+    h = proto._read_timeout_handle
+    proto._reschedule_timeout()
+    assert proto._read_timeout_handle is not None
+    assert proto._read_timeout_handle is not h
+
+
+
+async def test_eof_received(loop):
+    proto = ResponseHandler(loop=loop)
+    proto.set_response_params(read_timeout=1)
+    assert proto._read_timeout_handle is not None
+    proto.eof_received()
+    assert proto._read_timeout_handle is None

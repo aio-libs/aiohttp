@@ -90,6 +90,7 @@ class ResponseHandler(BaseProtocol, DataQueue):
         super().connection_lost(exc)
 
     def eof_received(self):
+        # should call parser.feed_eof() most likely
         self._drop_timeout()
 
     def pause_reading(self):
