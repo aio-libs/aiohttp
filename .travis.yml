@@ -138,8 +138,13 @@ jobs:
     env:
     - docs <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
     script:
-    - towncrier --yes
     - make doc-spelling
+
+  - <<: *_doc_base
+    env:
+    - towncrier <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <=
+    script:
+    - towncrier --yes
 
   - <<: *_lint_base
     env:
