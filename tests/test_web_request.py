@@ -54,6 +54,7 @@ def test_ctor():
 
 
 def test_deprecated_message():
+    req = make_mocked_request('GET', '/path/to?a=1&b=2')
     with pytest.warns(DeprecationWarning):
         assert req.message == req._message
 
