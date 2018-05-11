@@ -110,7 +110,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     def clone(self, *, method=sentinel, rel_url=sentinel,
               headers=sentinel, scheme=sentinel, host=sentinel,
-              remote=sentinel):
+              remote=sentinel) -> 'BaseRequest':
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
@@ -183,7 +183,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url
 
     @property
-    def loop(self):
+    def loop(self) -> asyncio.AbstractEventLoop:
         return self._loop
 
     # MutableMapping API
@@ -206,7 +206,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ########
 
     @property
-    def secure(self):
+    def secure(self) -> bool:
         """A bool indicating if the request is handled with SSL."""
         return self.scheme == 'https'
 
@@ -271,7 +271,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return tuple(elems)
 
     @reify
-    def scheme(self):
+    def scheme(self) -> str:
         """A string representing the scheme of the request.
 
         Hostname is resolved in this order:
@@ -287,7 +287,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             return 'http'
 
     @property
-    def method(self):
+    def method(self) -> str:
         """Read only property for getting HTTP method.
 
         The value is upper-cased str like 'GET', 'POST', 'PUT' etc.
@@ -303,7 +303,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._version
 
     @reify
-    def host(self):
+    def host(self) -> str:
         """Hostname of the request.
 
         Hostname is resolved in this order:
@@ -319,7 +319,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             return socket.getfqdn()
 
     @reify
-    def remote(self):
+    def remote(self) -> str:
         """Remote IP of client initiated HTTP request.
 
         The IP is resolved in this order:
@@ -336,12 +336,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             return peername
 
     @reify
-    def url(self):
+    def url(self) -> URL:
         url = URL.build(scheme=self.scheme, host=self.host)
         return url.join(self._rel_url)
 
     @property
-    def path(self):
+    def path(self) -> str:
         """The URL including *PATH INFO* without the host or scheme.
 
         E.g., ``/app/blog``
@@ -349,7 +349,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.path
 
     @reify
-    def path_qs(self):
+    def path_qs(self) -> str:
         """The URL including PATH_INFO and the query string.
 
         E.g, /app/blog?id=10
@@ -357,7 +357,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return str(self._rel_url)
 
     @property
-    def raw_path(self):
+    def raw_path(self) -> str:
         """ The URL including raw *PATH INFO* without the host or scheme.
         Warning, the path is unquoted and may contains non valid URL characters
 
@@ -366,12 +366,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._message.path
 
     @property
-    def query(self):
+    def query(self) -> MultiDict:
         """A multidict with all the variables in the query string."""
         return self._rel_url.query
 
     @property
-    def query_string(self):
+    def query_string(self) -> str:
         """The query string in the URL.
 
         E.g., id=10
@@ -379,7 +379,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.query_string
 
     @property
-    def headers(self):
+    def headers(self) -> CIMultiDictProxy:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 

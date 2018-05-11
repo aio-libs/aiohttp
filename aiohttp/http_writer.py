@@ -1,8 +1,9 @@
 """Http related parsers and protocol."""
 
+import asyncio
 import collections
 import zlib
-from typing import Any, Awaitable, Callable  # noqa
+from typing import Any, Awaitable, Callable, Optional, Union  # noqa
 
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
@@ -16,12 +17,16 @@ HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
+_T_Data = Union[bytes, bytearray, memoryview]
+_T_OnChunkSent = Optional[Callable[[_T_Data], Awaitable[None]]]
+
+
 class StreamWriter(AbstractStreamWriter):
 
     def __init__(self,
                  protocol: BaseProtocol,
                  loop: asyncio.AbstractEventLoop,
-                 on_chunk_sent: Callable[[], Awaitable[None]]=None) -> None:
+                 on_chunk_sent: _T_OnChunkSent = None) -> None:
         self._protocol = protocol
         self._transport = protocol.transport
 
@@ -35,7 +40,7 @@ class StreamWriter(AbstractStreamWriter):
         self._compress = None  # type: Any
         self._drain_waiter = None
 
-        self._on_chunk_sent = on_chunk_sent
+        self._on_chunk_sent = on_chunk_sent  # type: _T_OnChunkSent
 
     @property
     def transport(self) -> asyncio.Transport:
