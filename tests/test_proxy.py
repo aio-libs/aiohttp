@@ -39,7 +39,7 @@ class TestProxy(unittest.TestCase):
         req = ClientRequest(
             'GET', URL('http://www.python.org'),
             proxy=URL('http://proxy.example.com'),
-            loop=self.loop
+            loop=self.loop,
         )
         self.assertEqual(str(req.proxy), 'http://proxy.example.com')
 
@@ -52,7 +52,8 @@ class TestProxy(unittest.TestCase):
         })
         self.loop.create_connection = make_mocked_coro(
             (proto.transport, proto))
-        conn = self.loop.run_until_complete(connector.connect(req))
+        conn = self.loop.run_until_complete(
+            connector.connect(req, None, aiohttp.ClientTimeout()))
         self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertIs(conn._protocol, proto)
         self.assertIs(conn.transport, proto.transport)
@@ -82,7 +83,8 @@ class TestProxy(unittest.TestCase):
         })
         self.loop.create_connection = make_mocked_coro(
             (proto.transport, proto))
-        conn = self.loop.run_until_complete(connector.connect(req))
+        conn = self.loop.run_until_complete(connector.connect(
+            req, None, aiohttp.ClientTimeout()))
         self.assertEqual(req.url, URL('http://www.python.org'))
         self.assertIs(conn._protocol, proto)
         self.assertIs(conn.transport, proto.transport)
@@ -118,7 +120,8 @@ class TestProxy(unittest.TestCase):
         )
         expected_headers = dict(req.headers)
         with self.assertRaises(aiohttp.ClientConnectorError):
-            self.loop.run_until_complete(connector.connect(req))
+            self.loop.run_until_complete(connector.connect(
+                req, None, aiohttp.ClientTimeout()))
         self.assertEqual(req.url.path, '/')
         self.assertEqual(dict(req.headers), expected_headers)
 
@@ -138,7 +141,8 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         with self.assertRaises(aiohttp.ClientProxyConnectionError):
-            self.loop.run_until_complete(connector.connect(req))
+            self.loop.run_until_complete(connector.connect(
+                req, None, aiohttp.ClientTimeout()))
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect(self, ClientRequestMock):
@@ -151,7 +155,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -171,7 +174,8 @@ class TestProxy(unittest.TestCase):
             proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
-        self.loop.run_until_complete(connector._create_connection(req))
+        self.loop.run_until_complete(
+            connector._create_connection(req, None, aiohttp.ClientTimeout()))
 
         self.assertEqual(req.url.path, '/')
         self.assertEqual(proxy_req.method, 'CONNECT')
@@ -194,7 +198,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -230,7 +233,8 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         with self.assertRaises(aiohttp.ClientConnectorCertificateError):
-            self.loop.run_until_complete(connector._create_connection(req))
+            self.loop.run_until_complete(connector._create_connection(
+                req, None, aiohttp.ClientTimeout()))
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_ssl_error(self, ClientRequestMock):
@@ -243,7 +247,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -279,7 +282,8 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         with self.assertRaises(aiohttp.ClientConnectorSSLError):
-            self.loop.run_until_complete(connector._create_connection(req))
+            self.loop.run_until_complete(connector._create_connection(
+                req, None, aiohttp.ClientTimeout()))
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_https_connect_runtime_error(self, ClientRequestMock):
@@ -292,7 +296,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -315,7 +318,8 @@ class TestProxy(unittest.TestCase):
         )
         with self.assertRaisesRegex(
                 RuntimeError, "Transport does not expose socket instance"):
-            self.loop.run_until_complete(connector._create_connection(req))
+            self.loop.run_until_complete(connector._create_connection(
+                req, None, aiohttp.ClientTimeout()))
 
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
@@ -332,7 +336,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -356,7 +359,8 @@ class TestProxy(unittest.TestCase):
         )
         with self.assertRaisesRegex(
                 aiohttp.ClientHttpProxyError, "400, message='bad request'"):
-            self.loop.run_until_complete(connector._create_connection(req))
+            self.loop.run_until_complete(connector._create_connection(
+                req, None, aiohttp.ClientTimeout()))
 
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
@@ -373,7 +377,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -396,7 +399,8 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         with self.assertRaisesRegex(OSError, "error message"):
-            self.loop.run_until_complete(connector._create_connection(req))
+            self.loop.run_until_complete(connector._create_connection(
+                req, None, aiohttp.ClientTimeout()))
 
     @mock.patch('aiohttp.connector.ClientRequest')
     def test_request_port(self, ClientRequestMock):
@@ -418,7 +422,8 @@ class TestProxy(unittest.TestCase):
             proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
-        self.loop.run_until_complete(connector._create_connection(req))
+        self.loop.run_until_complete(connector._create_connection(
+            req, None, aiohttp.ClientTimeout()))
         self.assertEqual(req.url, URL('http://localhost:1234/path'))
 
     def test_proxy_auth_property(self):
@@ -447,7 +452,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -467,7 +471,8 @@ class TestProxy(unittest.TestCase):
             proxy=URL('http://proxy.example.com'),
             loop=self.loop,
         )
-        self.loop.run_until_complete(connector._create_connection(req))
+        self.loop.run_until_complete(connector._create_connection(
+            req, None, aiohttp.ClientTimeout()))
 
         self.loop.create_connection.assert_called_with(
             mock.ANY,
@@ -498,7 +503,6 @@ class TestProxy(unittest.TestCase):
                                     writer=mock.Mock(),
                                     continue100=None,
                                     timer=TimerNoop(),
-                                    auto_decompress=True,
                                     traces=[],
                                     loop=self.loop,
                                     session=mock.Mock())
@@ -523,7 +527,8 @@ class TestProxy(unittest.TestCase):
         )
         self.assertNotIn('AUTHORIZATION', req.headers)
         self.assertNotIn('PROXY-AUTHORIZATION', req.headers)
-        self.loop.run_until_complete(connector._create_connection(req))
+        self.loop.run_until_complete(
+            connector._create_connection(req, None, aiohttp.ClientTimeout()))
 
         self.assertEqual(req.url.path, '/')
         self.assertNotIn('AUTHORIZATION', req.headers)
@@ -534,7 +539,7 @@ class TestProxy(unittest.TestCase):
         connector._resolve_host.assert_called_with(
             'proxy.example.com',
             80,
-            traces=None)
+            traces=mock.ANY)
 
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()

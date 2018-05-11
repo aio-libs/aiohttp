@@ -2598,3 +2598,18 @@ async def test_read_from_closed_content(aiohttp_client):
 
     with pytest.raises(aiohttp.ClientConnectionError):
         await resp.content.readline()
+
+
+async def test_read_timeout(aiohttp_client):
+    async def handler(request):
+        await asyncio.sleep(5)
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    with pytest.raises(aiohttp.ServerTimeoutError):
+        await client.get('/')
