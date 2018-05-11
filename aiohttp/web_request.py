@@ -162,9 +162,6 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def protocol(self):
-        # warnings.warn("Request.protocol is deprecated",
-        #               DeprecationWarning,
-        #               stacklevel=3)
         return self._protocol
 
     @property
