@@ -10,6 +10,7 @@ import traceback
 import warnings
 from collections.abc import Coroutine
 
+import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
@@ -38,11 +39,33 @@ from .tracing import Trace
 __all__ = (client_exceptions.__all__ +  # noqa
            client_reqrep.__all__ +  # noqa
            connector_mod.__all__ +  # noqa
-           ('ClientSession', 'ClientWebSocketResponse', 'request'))
+           ('ClientSession', 'ClientTimeout',
+            'ClientWebSocketResponse', 'request'))
 
 
-# 5 Minute default read and connect timeout
-DEFAULT_TIMEOUT = 5 * 60
+@attr.s(frozen=True, slots=True)
+class ClientTimeout:
+    total = attr.ib(type=float, default=None)
+    connect = attr.ib(type=float, default=None)
+    sock_read = attr.ib(type=float, default=None)
+    sock_connect = attr.ib(type=float, default=None)
+
+    # pool_queue_timeout = attr.ib(type=float, default=None)
+    # dns_resolution_timeout = attr.ib(type=float, default=None)
+    # socket_connect_timeout = attr.ib(type=float, default=None)
+    # connection_acquiring_timeout = attr.ib(type=float, default=None)
+    # new_connection_timeout = attr.ib(type=float, default=None)
+    # http_header_timeout = attr.ib(type=float, default=None)
+    # response_body_timeout = attr.ib(type=float, default=None)
+
+    # to create a timeout specific for a single request, either
+    # - create a completely new one to overwrite the default
+    # - or use http://www.attrs.org/en/stable/api.html#attr.evolve
+    # to overwrite the defaults
+
+
+# 5 Minute default read timeout
+DEFAULT_TIMEOUT = ClientTimeout(total=5*60)
 
 
 class ClientSession:
@@ -52,8 +75,8 @@ class ClientSession:
         '_source_traceback', '_connector',
         'requote_redirect_url', '_loop', '_cookie_jar',
         '_connector_owner', '_default_auth',
-        '_version', '_json_serialize', '_read_timeout',
-        '_conn_timeout', '_raise_for_status', '_auto_decompress',
+        '_version', '_json_serialize',
+        '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
         '_ws_response_class', '_trace_configs'])
@@ -71,6 +94,7 @@ class ClientSession:
                  version=http.HttpVersion11,
                  cookie_jar=None, connector_owner=True, raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
+                 timeout=sentinel,
                  auto_decompress=True, trust_env=False,
                  trace_configs=None):
 
@@ -117,9 +141,26 @@ class ClientSession:
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
-        self._read_timeout = (read_timeout if read_timeout is not sentinel
-                              else DEFAULT_TIMEOUT)
-        self._conn_timeout = conn_timeout
+        if timeout is not sentinel:
+            self._timeout = timeout
+        else:
+            self._timeout = DEFAULT_TIMEOUT
+            if read_timeout is not sentinel:
+                if timeout is not sentinel:
+                    raise ValueError("read_timeout and timeout parameters "
+                                     "conflict, please setup "
+                                     "timeout.read")
+                else:
+                    self._timeout = attr.evolve(self._timeout,
+                                                total=read_timeout)
+            if conn_timeout is not None:
+                if timeout is not sentinel:
+                    raise ValueError("conn_timeout and timeout parameters "
+                                     "conflict, please setup "
+                                     "timeout.connect")
+                else:
+                    self._timeout = attr.evolve(self._timeout,
+                                                connect=conn_timeout)
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -244,11 +285,14 @@ class ClientSession:
             except ValueError:
                 raise InvalidURL(proxy)
 
+        if timeout is sentinel:
+            timeout = self._timeout
+        else:
+            if not isinstance(timeout, ClientTimeout):
+                timeout = ClientTimeout(total=timeout)
         # timeout is cumulative for all request operations
         # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(
-            self._loop,
-            timeout if timeout is not sentinel else self._read_timeout)
+        tm = TimeoutHandle(self._loop, timeout.total)
         handle = tm.start()
 
         traces = [
@@ -309,15 +353,17 @@ class ClientSession:
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy, proxy_auth=proxy_auth, timer=timer,
-                        session=self, auto_decompress=self._auto_decompress,
+                        session=self,
                         ssl=ssl, proxy_headers=proxy_headers, traces=traces)
 
                     # connection timeout
                     try:
-                        with CeilTimeout(self._conn_timeout, loop=self._loop):
+                        with CeilTimeout(self._timeout.connect,
+                                         loop=self._loop):
                             conn = await self._connector.connect(
                                 req,
-                                traces=traces
+                                traces=traces,
+                                timeout=timeout
                             )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(
@@ -326,11 +372,19 @@ class ClientSession:
 
                     tcp_nodelay(conn.transport, True)
                     tcp_cork(conn.transport, False)
+
+                    conn.protocol.set_response_params(
+                        timer=timer,
+                        skip_payload=method.upper() == 'HEAD',
+                        read_until_eof=read_until_eof,
+                        auto_decompress=self._auto_decompress,
+                        read_timeout=timeout.sock_read)
+
                     try:
                         try:
                             resp = await req.send(conn)
                             try:
-                                await resp.start(conn, read_until_eof)
+                                await resp.start(conn)
                             except BaseException:
                                 resp.close()
                                 raise

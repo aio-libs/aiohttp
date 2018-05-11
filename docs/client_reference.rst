@@ -45,6 +45,7 @@ The client session supports the context manager protocol for self closing.
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
+                         timeout=sentinel, \
                          raise_for_status=False, \
                          connector_owner=True, \
                          auto_decompress=True, proxies=None)
@@ -113,15 +114,26 @@ The client session supports the context manager protocol for self closing.
       Automatically call :meth:`ClientResponse.raise_for_status()` for
       each response, ``False`` by default.
 
-      .. versionadded:: 2.0
+   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+                   total timeout by default.
+
+      .. versionadded:: 3.3
 
    :param float read_timeout: Request operations timeout. ``read_timeout`` is
       cumulative for all request operations (request, redirects, responses,
       data consuming). By default, the read timeout is 5*60 seconds.
       Use ``None`` or ``0`` to disable timeout checks.
 
+      .. deprecated:: 3.3
+
+         Use ``timeout`` parameter instead.
+
    :param float conn_timeout: timeout for connection establishing
       (optional). Values ``0`` or ``None`` mean no timeout.
+
+      .. deprecated:: 3.3
+
+         Use ``timeout`` parameter instead.
 
    :param bool connector_owner:
 
@@ -197,7 +209,7 @@ The client session supports the context manager protocol for self closing.
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
-                         timeout=5*60, ssl=None, \
+                         timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None)
       :async-with:
@@ -278,8 +290,15 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
-      :param int timeout: override the session's timeout
-                          (``read_timeout``) for IO operations.
+      :param int timeout: override the session's timeout.
+
+         .. versionchanged:: 3.3
+
+            The parameter is :class:`ClientTimeout` instance,
+            :class:`float` is still supported for sake of backward
+            compatibility.
+
+            If :class:`float` is passed it is a *total* timeout.
 
       :param ssl: SSL validation mode. ``None`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -1449,12 +1468,53 @@ Utilities
 ---------
 
 
+ClientTimeout
+^^^^^^^^^^^^^
+
+.. class:: ClientTimeout(*, total=None, connect=None, \
+                         sock_connect, sock_read=None)
+
+   A data class for client timeout settings.
+
+   .. attribute:: total
+
+      Total timeout for the whole request.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: connect
+
+      Total timeout for acquiring a connection from pool.  The time
+      consists connection establishment for a new connection or
+      waiting for a free connection from a pool if pool connection
+      limits are exceeded.
+
+      For pure socket connection establishment time use
+      :attr:`sock_connect`.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: sock_connect
+
+      A timeout for connecting to a peer for a new connection, not
+      given from a pool.  See also :attr:`connect`.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: sock_read
+
+      A timeout for reading a portion of data from a peer.
+
+      :class:`float`, ``None`` by default.
+
+   .. versionadded:: 3.3
+
 RequestInfo
 ^^^^^^^^^^^
 
 .. class:: RequestInfo()
 
-   A namedtuple with request URL and headers from :class:`ClientRequest`
+   A data class with request URL and headers from :class:`ClientRequest`
    object, available as :attr:`ClientResponse.request_info` attribute.
 
    .. attribute:: url
