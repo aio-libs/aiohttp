@@ -952,7 +952,7 @@ WebSocketResponse
       Read-only property, close code from peer. It is set to ``None`` on
       opened connection.
 
-   .. attribute:: protocol
+   .. attribute:: ws_protocol
 
       Websocket *subprotocol* chosen after :meth:`start` call.
 
