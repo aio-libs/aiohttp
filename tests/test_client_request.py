@@ -1218,7 +1218,7 @@ async def test_custom_req_rep(loop):
             called = True
             return resp
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
         return mock.Mock()
     connector = BaseConnector(loop=loop)

@@ -48,6 +48,7 @@ class ClientTimeout:
     total = attr.ib(type=float, default=None)
     connect = attr.ib(type=float, default=None)
     sock_read = attr.ib(type=float, default=None)
+    sock_connect = attr.ib(type=float, default=None)
 
     # pool_queue_timeout = attr.ib(type=float, default=None)
     # dns_resolution_timeout = attr.ib(type=float, default=None)
@@ -361,7 +362,8 @@ class ClientSession:
                                          loop=self._loop):
                             conn = await self._connector.connect(
                                 req,
-                                traces=traces
+                                traces=traces,
+                                timeout=timeout
                             )
                     except asyncio.TimeoutError as exc:
                         raise ServerTimeoutError(

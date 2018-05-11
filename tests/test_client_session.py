@@ -367,7 +367,7 @@ async def test_reraise_os_error(create_session):
     req.send = mock.Mock(side_effect=err)
     session = create_session(request_class=req_factory)
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
         return mock.Mock()
     session._connector._create_connection = create_connection
@@ -393,12 +393,12 @@ async def test_close_conn_on_error(create_session):
     connections = []
     original_connect = session._connector.connect
 
-    async def connect(req, traces=None):
-        conn = await original_connect(req, traces=traces)
+    async def connect(req, traces, timeout):
+        conn = await original_connect(req, traces, timeout)
         connections.append(conn)
         return conn
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
         conn = mock.Mock()
         return conn

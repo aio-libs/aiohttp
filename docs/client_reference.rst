@@ -1471,7 +1471,8 @@ Utilities
 ClientTimeout
 ^^^^^^^^^^^^^
 
-.. class:: ClientTimeout(*, total=None, connect=None, sock_read=None)
+.. class:: ClientTimeout(*, total=None, connect=None, \
+                         sock_connect, sock_read=None)
 
    A data class for client timeout settings.
 
@@ -1483,7 +1484,20 @@ ClientTimeout
 
    .. attribute:: connect
 
-      A timeout for connecting to a peer.
+      Total timeout for acquiring a connection from pool.  The time
+      consists connection establishment for a new connection or
+      waiting for a free connection from a pool if pool connection
+      limits are exceeded.
+
+      For pure socket connection establishment time use
+      :attr:`sock_connect`.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: sock_connect
+
+      A timeout for connecting to a peer for a new connection, not
+      given from a pool.  See also :attr:`connect`.
 
       :class:`float`, ``None`` by default.
 
