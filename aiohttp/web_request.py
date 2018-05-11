@@ -176,6 +176,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @property
     def message(self):
+        warnings.warn("Request.message is deprecated",
+                      DeprecationWarning,
+                      stacklevel=3)
         return self._message
 
     @property
