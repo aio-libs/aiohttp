@@ -29,7 +29,6 @@ def test_ctor():
     assert 'a=1&b=2' == req.query_string
     assert CIMultiDict() == req.headers
     assert () == req.raw_headers
-    assert req.message == req._message
 
     get = req.query
     assert MultiDict([('a', '1'), ('b', '2')]) == get
@@ -52,6 +51,11 @@ def test_ctor():
     assert req.headers == headers
     assert req.raw_headers == ((b'FOO', b'bar'),)
     assert req.task is req._task
+
+
+def test_deprecated_message():
+    with pytest.warns(DeprecationWarning):
+        assert req.message == req._message
 
 
 def test_doubleslashes():
