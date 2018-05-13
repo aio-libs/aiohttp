@@ -582,8 +582,8 @@ class ClientResponse(HeadersMixin):
     reason = None   # Reason-Phrase
 
     content = None  # Payload stream
-    headers = None  # Response headers, CIMultiDictProxy
-    raw_headers = None  # Response raw headers, a sequence of pairs
+    _headers = None  # Response headers, CIMultiDictProxy
+    _raw_headers = None  # Response raw headers, a sequence of pairs
 
     _connection = None  # current connection
     _reader = None     # input stream
@@ -600,7 +600,6 @@ class ClientResponse(HeadersMixin):
         assert isinstance(url, URL)
 
         self.method = method
-        self.headers = None
         self.cookies = SimpleCookie()
 
         self._real_url = url
@@ -619,29 +618,33 @@ class ClientResponse(HeadersMixin):
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-    @property
+    @reify
     def url(self):
         return self._url
 
-    @property
+    @reify
     def url_obj(self):
         warnings.warn(
             "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
         return self._url
 
-    @property
+    @reify
     def real_url(self):
         return self._real_url
 
-    @property
+    @reify
     def host(self):
         return self._url.host
 
-    @property
-    def _headers(self):
-        return self.headers
+    @reify
+    def headers(self):
+        return self._headers
 
-    @property
+    @reify
+    def raw_headers(self):
+        return self._raw_headers
+
+    @reify
     def request_info(self):
         return self._request_info
 
@@ -696,12 +699,12 @@ class ClientResponse(HeadersMixin):
     def connection(self):
         return self._connection
 
-    @property
+    @reify
     def history(self):
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
-    @property
+    @reify
     def links(self):
         links_str = ", ".join(self.headers.getall("link", []))
 
@@ -766,8 +769,8 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
 
         # headers
-        self.headers = CIMultiDictProxy(message.headers)
-        self.raw_headers = tuple(message.raw_headers)
+        self._headers = CIMultiDictProxy(message.headers)
+        self._raw_headers = tuple(message.raw_headers)
 
         # payload
         self.content = payload
