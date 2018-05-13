@@ -1195,7 +1195,7 @@ async def test_custom_req_rep(loop):
             conn = connection
             self.status = 123
             self.reason = 'Test OK'
-            self.headers = CIMultiDictProxy(CIMultiDict())
+            self._headers = CIMultiDictProxy(CIMultiDict())
             self.cookies = SimpleCookie()
             return
 
