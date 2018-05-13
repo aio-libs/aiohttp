@@ -510,6 +510,15 @@ class reify:
         raise AttributeError("reified property is read-only")
 
 
+reify_py = reify
+
+try:
+    from ._helpers import reify as reify_c
+    if not NO_EXTENSIONS:
+        reify = reify_c
+except ImportError:
+    pass
+
 _ipv4_pattern = (r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
                  r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
 _ipv6_pattern = (

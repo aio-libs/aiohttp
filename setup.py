@@ -31,6 +31,8 @@ extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
                         ),
               Extension('aiohttp._frozenlist',
                         ['aiohttp/_frozenlist' + ext]),
+              Extension('aiohttp._helpers',
+                        ['aiohttp/_helpers' + ext]),
               Extension('aiohttp._http_writer',
                         ['aiohttp/_http_writer' + ext])]
 
