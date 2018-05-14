@@ -241,14 +241,16 @@ def test_logger_abc():
     mock_logger.info.assert_called_with('request response 1')
 
 
-class TestReify:
+class ReifyMixin:
+
+    reify = NotImplemented
 
     def test_reify(self):
         class A:
             def __init__(self):
                 self._cache = {}
 
-            @helpers.reify
+            @self.reify
             def prop(self):
                 return 1
 
@@ -260,12 +262,12 @@ class TestReify:
             def __init__(self):
                 self._cache = {}
 
-            @helpers.reify
+            @self.reify
             def prop(self):
                 """Docstring."""
                 return 1
 
-        assert isinstance(A.prop, helpers.reify)
+        assert isinstance(A.prop, self.reify)
         assert 'Docstring.' == A.prop.__doc__
 
     def test_reify_assignment(self):
@@ -273,7 +275,7 @@ class TestReify:
             def __init__(self):
                 self._cache = {}
 
-            @helpers.reify
+            @self.reify
             def prop(self):
                 return 1
 
@@ -281,6 +283,14 @@ class TestReify:
 
         with pytest.raises(AttributeError):
             a.prop = 123
+
+
+class TestPyReify(ReifyMixin):
+    reify = helpers.reify_py
+
+
+class TestCReify(ReifyMixin):
+    reify = helpers.reify_c
 
 # ----------------------------------- is_ip_address() ----------------------
 

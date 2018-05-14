@@ -66,6 +66,7 @@ ctor
 Ctrl
 Cython
 cythonized
+Cythonize
 de
 deduplicate
 # de-facto:
