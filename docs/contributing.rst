@@ -69,11 +69,12 @@ After that please install libraries required for development:
    $ pip install -r requirements/dev.txt
 
 .. note::
+
   If you plan to use ``pdb`` or ``ipdb`` within the test suite, execute:
 
-.. code-block:: shell
+  .. code-block:: shell
 
-    $ py.test tests -s
+     $ py.test tests -s
 
   command to run the tests with disabled output capturing.
 

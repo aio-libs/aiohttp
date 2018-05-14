@@ -1,5 +1,5 @@
-Who use aiohttp?
-================
+Who uses aiohttp?
+=================
 
 The list of *aiohttp* users: both libraries, big projects and web sites.
 
