@@ -174,18 +174,18 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def writer(self):
         return self._payload_writer
 
-    @property
+    @reify
     def message(self):
         warnings.warn("Request.message is deprecated",
                       DeprecationWarning,
                       stacklevel=3)
         return self._message
 
-    @property
+    @reify
     def rel_url(self):
         return self._rel_url
 
-    @property
+    @reify
     def loop(self):
         return self._loop
 
@@ -208,7 +208,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     ########
 
-    @property
+    @reify
     def secure(self):
         """A bool indicating if the request is handled with SSL."""
         return self.scheme == 'https'
@@ -289,7 +289,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         else:
             return 'http'
 
-    @property
+    @reify
     def method(self):
         """Read only property for getting HTTP method.
 
@@ -297,7 +297,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._method
 
-    @property
+    @reify
     def version(self):
         """Read only property for getting HTTP version of request.
 
@@ -343,7 +343,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         url = URL.build(scheme=self.scheme, host=self.host)
         return url.join(self._rel_url)
 
-    @property
+    @reify
     def path(self):
         """The URL including *PATH INFO* without the host or scheme.
 
@@ -359,7 +359,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return str(self._rel_url)
 
-    @property
+    @reify
     def raw_path(self):
         """ The URL including raw *PATH INFO* without the host or scheme.
         Warning, the path is unquoted and may contains non valid URL characters
@@ -368,12 +368,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._message.path
 
-    @property
+    @reify
     def query(self):
         """A multidict with all the variables in the query string."""
         return self._rel_url.query
 
-    @property
+    @reify
     def query_string(self):
         """The query string in the URL.
 
@@ -381,12 +381,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._rel_url.query_string
 
-    @property
+    @reify
     def headers(self):
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
-    @property
+    @reify
     def raw_headers(self):
         """A sequence of pars for all headers."""
         return self._message.raw_headers
@@ -427,7 +427,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._http_date(self.headers.get(_IF_RANGE))
 
-    @property
+    @reify
     def keep_alive(self):
         """Is keepalive enabled by client?"""
         return not self._message.should_close
@@ -443,7 +443,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
 
-    @property
+    @reify
     def http_range(self, *, _RANGE=hdrs.RANGE):
         """The content of Range HTTP header.
 
@@ -479,7 +479,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         return slice(start, end, 1)
 
-    @property
+    @reify
     def content(self):
         """Return raw payload stream."""
         return self._payload
@@ -497,7 +497,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return True if request's HTTP BODY can be read, False otherwise."""
         return not self._payload.at_eof()
 
-    @property
+    @reify
     def body_exists(self):
         """Return True if request has HTTP BODY, False otherwise."""
         return type(self._payload) is not EmptyStreamReader
@@ -657,7 +657,7 @@ class Request(BaseRequest):
         ret._match_info = self._match_info
         return ret
 
-    @property
+    @reify
     def match_info(self):
         """Result of route resolving."""
         return self._match_info
