@@ -18,7 +18,7 @@ pytest-xdist==1.22.2
 towncrier==17.8.0
 tox==3.0.0
 twine==1.11.0
-yarl==1.2.3
+yarl==1.2.4
 
 # Using PEP 508 env markers to control dependency on runtimes:
 aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on windows
