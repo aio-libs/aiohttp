@@ -136,25 +136,25 @@ jobs:
   include:
   - <<: *_doc_base
     env:
-    - docs <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
+    - TARGET=docs
     script:
     - make doc-spelling
 
   - <<: *_doc_base
     env:
-    - towncrier <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <=
+    - TARGET=towncrier
     script:
     - towncrier --yes
 
   - <<: *_lint_base
     env:
-    - flake8 <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <=
+    - TARGET=flake8
     script:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
     env:
-    - dist setup check <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- =
+    - TARGET="dist setup check"
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/doc.txt
