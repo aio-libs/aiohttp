@@ -143,8 +143,6 @@ The client session supports the context manager protocol for self closing.
       connection pool between sessions without sharing session state:
       cookies etc.
 
-      .. versionadded:: 2.1
-
    :param bool auto_decompress: Automatically decompress response body
 
       .. versionadded:: 2.3
@@ -796,8 +794,6 @@ BaseConnector
 
       Close all opened connections.
 
-      .. versionadded:: 2.0
-
    .. comethod:: connect(request)
 
       Get a free connection from pool or create new one if connection
@@ -885,8 +881,6 @@ TCPConnector
       addresses related to a specific HOST can change after a specific time. Use
       this option to keep the DNS cache updated refreshing each entry after N
       seconds.
-
-      .. versionadded:: 2.0.8
 
    :param int limit: total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
