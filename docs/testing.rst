@@ -43,7 +43,7 @@ The module is a **provisional**.
 But for :mod:`aiohttp.test_tools` the deprecation period could be reduced.
 
 Moreover we may break *backward compatibility* without *deprecation
-peroid* for some very strong reason.
+period* for some very strong reason.
 
 
 The Test Client and Servers
