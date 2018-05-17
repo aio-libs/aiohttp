@@ -9,8 +9,8 @@ Async http client/server framework
 
 |
 
-.. image:: https://travis-ci.org/aio-libs/aiohttp.svg?branch=master
-   :target:  https://travis-ci.org/aio-libs/aiohttp
+.. image:: https://travis-ci.com/aio-libs/aiohttp.svg?branch=master
+   :target:  https://travis-ci.com/aio-libs/aiohttp
    :align: right
    :alt: Travis status for master branch
 
