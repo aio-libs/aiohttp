@@ -14,7 +14,7 @@ install:
 build: false
 
 test_script:
-  - "tools/build.cmd %PYTHON%\\python.exe setup.py test"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pytest tests"
 
 after_test:
   - "tools/build.cmd %PYTHON%\\python.exe setup.py sdist bdist_wheel"

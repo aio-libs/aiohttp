@@ -1,3 +1,5 @@
+version: "= 0"
+
 sudo: false
 
 language: python
@@ -123,8 +125,6 @@ _helpers:
   - *env_pyenv
   - *env_path
 
-# doesn't work on MacOSX out of the box -- the system has no Python installed
-# there's a workaround to use `language: generic` and install it, but it's slow
 os: linux
 
 jobs:
@@ -136,20 +136,25 @@ jobs:
   include:
   - <<: *_doc_base
     env:
-    - docs
+    - TARGET=docs
+    script:
+    - make doc-spelling
+
+  - <<: *_doc_base
+    env:
+    - TARGET=towncrier
     script:
     - towncrier --yes
-    - make doc-spelling
 
   - <<: *_lint_base
     env:
-    - flake8
+    - TARGET=flake8
     script:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
     env:
-    - dist setup check
+    - TARGET="dist setup check"
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/doc.txt
@@ -185,7 +190,7 @@ jobs:
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
     <<: *_reset_steps
-    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
+    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
     dist: trusty
     group: edge
     services:

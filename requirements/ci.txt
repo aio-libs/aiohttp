@@ -1,5 +1,5 @@
 setuptools-git==1.2
-mypy==0.600
+mypy==0.600; implementation_name=="cpython"
 
 -r doc.txt
 -r ci-wheel.txt

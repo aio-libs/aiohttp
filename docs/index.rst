@@ -110,7 +110,7 @@ Please feel free to file an issue on the `bug tracker
 <https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Travis <https://travis-ci.org/aio-libs/aiohttp>`_ for
+The library uses `Travis <https://travis-ci.com/aio-libs/aiohttp>`_ for
 Continuous Integration.
 
 
