@@ -1,0 +1,1 @@
+Turn ``vendor/http-parser`` into a submodule, developers will be able to pull changes from upstream more easily.

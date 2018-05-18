@@ -12,7 +12,7 @@ I hope everybody knows how to work with git and github nowadays :)
 
 Workflow is pretty straightforward:
 
-  1. Clone the GitHub_ repo
+  1. Clone the GitHub_ repo using ``--recurse-submodules`` argument
 
   2. Make a change
 
