@@ -10,7 +10,7 @@ import unittest
 from abc import ABC, abstractmethod
 from unittest import mock
 
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
@@ -489,11 +489,11 @@ def make_mocked_request(method, path, headers=None, *,
         closing = True
 
     if headers:
-        headers = CIMultiDict(headers)
+        headers = CIMultiDictProxy(CIMultiDict(headers))
         raw_hdrs = tuple(
             (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items())
     else:
-        headers = CIMultiDict()
+        headers = CIMultiDictProxy(CIMultiDict())
         raw_hdrs = ()
 
     chunked = 'chunked' in headers.get(hdrs.TRANSFER_ENCODING, '').lower()
