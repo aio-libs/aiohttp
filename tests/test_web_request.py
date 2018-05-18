@@ -296,6 +296,21 @@ def test_single_forwarded_header():
     assert req.forwarded[0]['proto'] == 'identifier'
 
 
+@pytest.mark.parametrize(
+    "forward_for_in, forward_for_out",
+    [
+        ("1.2.3.4:1234", "1.2.3.4:1234"),
+        ("1.2.3.4", "1.2.3.4"),
+        ('"[2001:db8:cafe::17]:1234"', '[2001:db8:cafe::17]:1234'),
+        ('"[2001:db8:cafe::17]"', '[2001:db8:cafe::17]'),
+    ])
+def test_forwarded_node_identifier(forward_for_in, forward_for_out):
+    header = 'for={}'.format(forward_for_in)
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded == ({'for': forward_for_out},)
+
+
 def test_single_forwarded_header_camelcase():
     header = 'bY=identifier;fOr=identifier;HOst=identifier;pRoTO=identifier'
     req = make_mocked_request('GET', '/',
