@@ -21,8 +21,7 @@ script:
 - make cov-ci-run
 
 after_success:
- # - codecov
- - bash <(curl -s https://codecov.io/bash)
+ - codecov
 
 _helpers:
 - &_mainstream_python_base
