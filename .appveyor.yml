@@ -8,6 +8,9 @@ environment:
     - PYTHON: "C:\\Python36-x64"
 
 install:
+  # Ensure the Git Submoduldes have been pulled down too
+  - git submodule update --init --recursive
+
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U pip wheel setuptools"
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
