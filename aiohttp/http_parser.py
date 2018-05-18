@@ -4,7 +4,7 @@ import string
 import zlib
 from enum import IntEnum
 
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 from . import hdrs
@@ -324,6 +324,7 @@ class HttpParser:
         upgrade = False
         chunked = False
         raw_headers = tuple(raw_headers)
+        headers = CIMultiDictProxy(headers)
 
         # keep-alive
         conn = headers.get(hdrs.CONNECTION)
@@ -385,8 +386,8 @@ class HttpRequestParserPy(HttpParser):
             raise BadStatusLine(version)
 
         # read headers
-        headers, raw_headers, \
-            close, compression, upgrade, chunked = self.parse_headers(lines)
+        (headers, raw_headers,
+         close, compression, upgrade, chunked) = self.parse_headers(lines)
 
         if close is None:  # then the headers weren't set in the request
             if version <= HttpVersion10:  # HTTP 1.0 must asks to not close
@@ -438,8 +439,8 @@ class HttpResponseParserPy(HttpParser):
             raise BadStatusLine(line)
 
         # read headers
-        headers, raw_headers, \
-            close, compression, upgrade, chunked = self.parse_headers(lines)
+        (headers, raw_headers,
+         close, compression, upgrade, chunked) = self.parse_headers(lines)
 
         if close is None:
             close = version <= HttpVersion10
