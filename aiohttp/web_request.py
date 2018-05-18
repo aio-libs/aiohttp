@@ -52,7 +52,7 @@ _QUOTED_STRING = r'"(?:{quoted_pair}|{qdtext})*"'.format(
     qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR)
 
 _FORWARDED_PAIR = (
-    r'({token})=({token}|{quoted_string})'.format(
+    r'({token})=({token}|{quoted_string})(:\d{{1,4}})?'.format(
         token=_TOKEN,
         quoted_string=_QUOTED_STRING))
 
@@ -247,11 +247,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         # bad syntax here, skip to next comma
                         pos = field_value.find(',', pos)
                     else:
-                        (name, value) = match.groups()
+                        name, value, port = match.groups()
                         if value[0] == '"':
                             # quoted string: remove quotes and unescape
                             value = _QUOTED_PAIR_REPLACE_RE.sub(r'\1',
                                                                 value[1:-1])
+                        if port:
+                            value += port
                         elem[name.lower()] = value
                         pos += len(match.group(0))
                         need_separator = True
