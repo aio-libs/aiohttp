@@ -7,7 +7,7 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
 
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 from aiohttp import hdrs
@@ -53,7 +53,7 @@ cdef class HttpParser:
         bytearray   _buf
         str     _path
         str     _reason
-        list    _headers
+        object  _headers
         list    _raw_headers
         bint    _upgraded
         list    _messages
@@ -132,7 +132,7 @@ cdef class HttpParser:
             value = self._header_value
 
             self._header_name = self._header_value = None
-            self._headers.append((name, value))
+            self._headers.add(name, value)
 
             raw_name = self._raw_header_name
             raw_value = self._raw_header_value
@@ -174,7 +174,7 @@ cdef class HttpParser:
         chunked = bool(self._cparser.flags & cparser.F_CHUNKED)
 
         raw_headers = tuple(self._raw_headers)
-        headers = CIMultiDict(self._headers)
+        headers = CIMultiDictProxy(self._headers)
 
         if upgrade or self._cparser.method == 5: # cparser.CONNECT:
             self._upgraded = True
@@ -356,7 +356,7 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
 
     pyparser._started = True
-    pyparser._headers = []
+    pyparser._headers = CIMultiDict()
     pyparser._raw_headers = []
     pyparser._buf.clear()
     pyparser._path = None
