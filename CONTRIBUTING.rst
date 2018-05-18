@@ -18,7 +18,7 @@ Workflow is pretty straightforward:
 
   3. Make sure all tests passed
 
-  4. Add a file into ``CHANGES`` folder.
+  4. Add a file into ``CHANGES`` folder (`Changelog update`_).
 
   5. Commit changes to own aiohttp clone
 
@@ -27,7 +27,10 @@ Workflow is pretty straightforward:
   7. Optionally make backport Pull Request(s) for landing a bug fix
      into released aiohttp versions.
 
+.. end-of-common-part-inclusion-marker-do-not-remove
+
 Please open https://docs.aiohttp.org/en/stable/contributing.html
 documentation page for getting detailed information about all steps.
 
 .. _GitHub: https://github.com/aio-libs/aiohttp
+.. _Changelog update: https://docs.aiohttp.org/en/stable/contributing.html#changelog-update
