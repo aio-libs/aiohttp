@@ -131,7 +131,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             dct['url'] = rel_url
             dct['path'] = str(rel_url)
         if headers is not sentinel:
-            dct['headers'] = CIMultiDict(headers)
+            # a copy semantic
+            dct['headers'] = CIMultiDictProxy(CIMultiDict(headers))
             dct['raw_headers'] = tuple((k.encode('utf-8'), v.encode('utf-8'))
                                        for k, v in headers.items())
 

@@ -2,7 +2,7 @@ import gzip
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
@@ -170,7 +170,7 @@ def test_make_mocked_request(headers):
     assert req.method == "GET"
     assert req.path == "/"
     assert isinstance(req, web.Request)
-    assert isinstance(req.headers, CIMultiDict)
+    assert isinstance(req.headers, CIMultiDictProxy)
 
 
 def test_make_mocked_request_sslcontext():

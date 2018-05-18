@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 from async_generator import async_generator, yield_
-from multidict import MultiDict
+from multidict import CIMultiDictProxy, MultiDict
 from yarl import URL
 
 import aiohttp
@@ -1814,6 +1814,20 @@ async def test_request_path(aiohttp_client):
 async def test_app_add_routes(aiohttp_client):
 
     async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.add_routes([web.get('/get', handler)])
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/get')
+    assert resp.status == 200
+
+
+async def test_request_headers_type(aiohttp_client):
+
+    async def handler(request):
+        assert isinstance(request.headers, CIMultiDictProxy)
         return web.Response()
 
     app = web.Application()
