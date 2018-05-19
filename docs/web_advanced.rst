@@ -783,6 +783,16 @@ The simple startup code for serving HTTP site on ``'localhost'``, port
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
 
+TCPSite now also allows passing an already existing loop as follows::
+
+    loop = asyncio.get_event_loop()
+    app = web.Application(loop=loop, debug=True)
+    app.router.add_get('/', index)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 8080, loop=loop)
+    await site.start()
+
 To stop serving call :meth:`AppRunner.cleanup`::
 
     await runner.cleanup()
