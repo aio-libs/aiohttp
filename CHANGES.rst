@@ -14,6 +14,37 @@ Changelog
 
 .. towncrier release notes start
 
+3.3.0a0 (2018-05-19)
+====================
+
+Features
+--------
+
+- Raise ``ConnectionResetError`` instead of ``CancelledError`` on trying to
+  write to a closed stream. (#2499)
+- Implement ``ClientTimeout`` class and support socket read timeout. (#2768)
+- Forbid reading response BODY after release (#2983)
+- Implement base protocol class to avoid a dependency from internal
+  ``asyncio.streams.FlowControlMixin`` (#2986)
+- Cythonize ``@helpers.reify``, 5% boost on macro benchmark (#2995)
+- Optimize HTTP parser (#3015)
+
+
+Bugfixes
+--------
+
+- Don't reuse a connection with the same URL but different proxy/TLS settings
+  (#2981)
+- When parsing the Forwarded header, the optional port number is now preserved.
+  (#3009)
+
+
+Misc
+----
+
+- #3008, #3011
+
+
 3.2.1 (2018-05-10)
 ==================
 

@@ -62,9 +62,12 @@ class TCPSite(BaseSite):
     def __init__(self, runner, host=None, port=None, *,
                  shutdown_timeout=60.0, ssl_context=None,
                  backlog=128, reuse_address=None,
-                 reuse_port=None):
+                 reuse_port=None, loop=None):
         super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self.loop = loop
         if host is None:
             host = "0.0.0.0"
         self._host = host
@@ -81,8 +84,7 @@ class TCPSite(BaseSite):
 
     async def start(self):
         await super().start()
-        loop = asyncio.get_event_loop()
-        self._server = await loop.create_server(
+        self._server = await self.loop.create_server(
             self._runner.server, self._host, self._port,
             ssl=self._ssl_context, backlog=self._backlog,
             reuse_address=self._reuse_address,
