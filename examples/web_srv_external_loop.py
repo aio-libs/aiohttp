@@ -46,6 +46,7 @@ class LoopTester(object):
             self.counter += 1
             await asyncio.sleep(1)
 
+
 if __name__ == '__main__':
     import logging
 
@@ -58,9 +59,8 @@ if __name__ == '__main__':
         loop.run_forever()
     except KeyboardInterrupt:
         tasks = asyncio.gather(
-                    *asyncio.Task.all_tasks(loop=loop),
-                    loop=loop,
-                    return_exceptions=True)
+            *asyncio.Task.all_tasks(loop=loop),
+            loop=loop,
+            return_exceptions=True)
         tasks.add_done_callback(lambda t: loop.stop())
         tasks.cancel()
-
