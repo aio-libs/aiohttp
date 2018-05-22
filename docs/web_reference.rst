@@ -1208,10 +1208,8 @@ Application
 Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
-supported urls in *router* and create a *server socket* with
-:class:`~aiohttp.web.Server` as a *protocol
-factory*. *Server* could be constructed with
-:meth:`Application.make_handler`.
+supported urls in *router* and pass it to :func:`aiohttp.web.run_app`
+or :class:`aiohttp.web.AppRunner`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
