@@ -37,6 +37,9 @@ class Application(MutableMapping):
                  debug=...):
         if router is None:
             router = UrlDispatcher()
+        else:
+            warnings.warn("router argument is deprecated", DeprecationWarning,
+                          stacklevel=2)
         assert isinstance(router, AbstractRouter), router
 
         if loop is not None:
