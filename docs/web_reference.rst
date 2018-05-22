@@ -1245,6 +1245,11 @@ duplicated like one using :meth:`Application.copy`.
                   creates :class:`UrlDispatcher` by default if
                   *router* is ``None``.
 
+      .. deprecated:: 3.3
+
+         The custom routers support is deprecated, the parameter will
+         be removed in 4.0.
+
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
 
