@@ -132,7 +132,8 @@ async def test_app_register_coro(loop):
 
 def test_non_default_router():
     router = mock.Mock(spec=AbstractRouter)
-    app = web.Application(router=router)
+    with pytest.warns(DeprecationWarning):
+        app = web.Application(router=router)
     assert router is app.router
 
 

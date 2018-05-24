@@ -311,7 +311,8 @@ async def test_412_is_returned(aiohttp_client):
         async def resolve(self, request):
             raise web.HTTPPreconditionFailed()
 
-    app = web.Application(router=MyRouter())
+    with pytest.warns(DeprecationWarning):
+        app = web.Application(router=MyRouter())
 
     client = await aiohttp_client(app)
 
