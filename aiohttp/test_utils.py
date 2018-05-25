@@ -20,8 +20,18 @@ from . import ClientSession, hdrs
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import (AppRunner, Request, Server, ServerRunner, TCPSite,
+from .web import (AppRunner, Request, Server, ServerRunner, SockSite,
                   UrlMappingMatchInfo)
+
+
+def get_unused_port_socket(host):
+    return get_port_socket(host, 0)
+
+
+def get_port_socket(host, port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((host, port))
+    return s
 
 
 def unused_port() -> int:
@@ -52,10 +62,12 @@ class BaseTestServer(ABC):
         self.runner = await self._make_runner(**kwargs)
         await self.runner.setup()
         if not self.port:
-            self.port = unused_port()
-        site = TCPSite(self.runner, host=self.host, port=self.port,
-                       ssl_context=self._ssl)
+            self.port = 0
+        _sock = get_port_socket(self.host, self.port)
+        self.host, self.port = _sock.getsockname()[:2]
+        site = SockSite(self.runner, sock=_sock, ssl_context=self._ssl)
         await site.start()
+        self.port = site._server.sockets[0].getsockname()[1]
         if self.scheme is sentinel:
             if self._ssl:
                 scheme = 'https'
