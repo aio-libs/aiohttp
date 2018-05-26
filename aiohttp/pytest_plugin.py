@@ -1,7 +1,7 @@
 import asyncio
-import collections
 import contextlib
 import warnings
+from collections.abc import Callable
 
 import pytest
 
@@ -292,8 +292,8 @@ def aiohttp_client(loop):
 
     async def go(__param, *args, server_kwargs=None, **kwargs):
 
-        if isinstance(__param, collections.Callable) and \
-                not isinstance(__param, (Application, BaseTestServer)):
+        if (isinstance(__param, Callable) and
+                not isinstance(__param, (Application, BaseTestServer))):
             __param = __param(loop, *args, **kwargs)
             kwargs = {}
         else:
