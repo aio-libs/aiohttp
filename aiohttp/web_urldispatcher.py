@@ -45,6 +45,15 @@ class AbstractResource(Sized, Iterable):
     def name(self):
         return self._name
 
+    @property
+    @abc.abstractmethod
+    def canonical(self):
+        """Exposes the resource's canonical path.
+
+        For example '/foo/bar/{name}'
+
+        """
+
     @abc.abstractmethod  # pragma: no branch
     def url_for(self, **kwargs):
         """Construct url for resource with additional params."""
@@ -300,6 +309,10 @@ class PlainResource(Resource):
         assert not path or path.startswith('/')
         self._path = path
 
+    @property
+    def canonical(self):
+        return self._path
+
     def freeze(self):
         if not self._path:
             self._path = '/'
@@ -373,6 +386,10 @@ class DynamicResource(Resource):
         self._pattern = compiled
         self._formatter = formatter
 
+    @property
+    def canonical(self):
+        return self._formatter
+
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
         assert not prefix.endswith('/')
@@ -413,6 +430,10 @@ class PrefixResource(AbstractResource):
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
         self._prefix = URL.build(path=prefix).raw_path
+
+    @property
+    def canonical(self):
+        return self._prefix
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
