@@ -1,0 +1,1 @@
+Enable logging when ``aiohttp.web`` is used as a program

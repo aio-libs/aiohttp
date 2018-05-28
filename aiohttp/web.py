@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import socket
 import sys
 from argparse import ArgumentParser
@@ -176,6 +177,8 @@ def main(argv):
     if args.path is not None and not hasattr(socket, 'AF_UNIX'):
         arg_parser.error("file system paths not supported by your operating"
                          " environment")
+
+    logging.basicConfig(level=logging.DEBUG)
 
     app = func(extra_argv)
     run_app(app, host=args.hostname, port=args.port, path=args.path)
