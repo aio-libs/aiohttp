@@ -835,7 +835,7 @@ Signal handler may look like::
     from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
-        for ws in app['websockets']:
+        for ws in set(app['websockets']):
             await ws.close(code=WSCloseCode.GOING_AWAY,
                            message='Server shutdown')
 
