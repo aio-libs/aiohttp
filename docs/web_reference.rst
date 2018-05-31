@@ -840,7 +840,7 @@ Response
       Assigning :class:`str` to :attr:`body` will make the :attr:`body`
       type of :class:`aiohttp.payload.StringPayload`, which tries to encode
       the given data based on *Content-Type* HTTP header, while defaulting
-      to `utf-8`.
+      to ``UTF-8``.
 
       Resetting :attr:`body` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
