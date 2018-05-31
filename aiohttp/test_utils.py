@@ -417,7 +417,8 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     try:
         module = loop.__class__.__module__
         skip_watcher = 'uvloop' in module
-    except AttributeError:
+    except AttributeError:  # pragma: no cover
+        # Just in case
         skip_watcher = True
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
