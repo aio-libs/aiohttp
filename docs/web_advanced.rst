@@ -763,7 +763,7 @@ Application runners
 :func:`run_app` provides a simple *blocking* API for running an
 :class:`Application`.
 
-For starting the application *asynchronously* on serving on multiple
+For starting the application *asynchronously* or serving on multiple
 HOST/PORT :class:`AppRunner` exists.
 
 The simple startup code for serving HTTP site on ``'localhost'``, port
