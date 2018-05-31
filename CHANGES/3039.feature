@@ -1,0 +1,1 @@
+Use ``bytearray`` instead of a list of ``bytes`` in websocket reader. It improves websocket message reading a little.
