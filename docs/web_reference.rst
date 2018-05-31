@@ -860,7 +860,7 @@ WebSocketResponse
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
-                             protocols=(), compress=True)
+                             protocols=(), compress=True, max_msg_size=4194304)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -897,6 +897,12 @@ WebSocketResponse
 
    :param bool compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
+
+   :param int max_msg_size: maximum size of read websocket message, 4
+                            MB by default. To disable the size limit use ``0``.
+
+      .. versionadded:: 3.3
+
 
    The class supports ``async for`` statement for iterating over
    incoming messages::
