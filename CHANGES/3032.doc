@@ -1,0 +1,1 @@
+Document that signal handlers should be async functions since aiohttp 3.0
