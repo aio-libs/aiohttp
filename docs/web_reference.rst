@@ -2458,6 +2458,14 @@ application on specific TCP or Unix socket, e.g.::
       Low-level web :class:`Server` for handling HTTP requests,
       read-only attribute.
 
+   .. attribute:: addresses
+
+      A  :class:`list` of served sockets addresses.
+
+      See :meth:`socket.getsockname` for items type.
+
+      .. versionadded:: 3.3
+
    .. attribute:: sites
 
       A read-only :class:`set` of served sites (:class:`TCPSite` /
