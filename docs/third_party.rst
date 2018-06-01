@@ -219,4 +219,4 @@ period ask to raise the status.
   An asyncio ORM on top of SQLAlchemy core, delivered with an aiohttp extension.
 
 - `aiohttp-apispec <https://github.com/maximdanilchenko/aiohttp-apispec>`_
-  Build and document REST APIs with aiohttp and apispec.
+  Build and document REST APIs with ``aiohttp`` and ``apispec``.
