@@ -14,60 +14,55 @@ Changelog
 
 .. towncrier release notes start
 
-3.2.1 (2018-05-10)
-==================
-
-- Don't reuse a connection with the same URL but different proxy/TLS settings
-  (`#2981 <https://github.com/aio-libs/aiohttp/pull/2981>`_)
-
-
-3.2.0 (2018-05-06)
+3.3.0 (2018-06-01)
 ==================
 
 Features
 --------
 
-- Raise ``TooManyRedirects`` exception when client gets redirected too many
-  times instead of returning last response. (`#2631 <https://github.com/aio-libs/aiohttp/pull/2631>`_)
-- Extract route definitions into separate ``web_routedef.py`` file (`#2876 <https://github.com/aio-libs/aiohttp/pull/2876>`_)
-- Raise an exception on request body reading after sending response. (`#2895 <https://github.com/aio-libs/aiohttp/pull/2895>`_)
-- ClientResponse and RequestInfo now have real_url property, which is request
-  url without fragment part being stripped (`#2925 <https://github.com/aio-libs/aiohttp/pull/2925>`_)
-- Speed up connector limiting (`#2937 <https://github.com/aio-libs/aiohttp/pull/2937>`_)
-- Added and links property for ClientResponse object (`#2948 <https://github.com/aio-libs/aiohttp/pull/2948>`_)
-- Add ``request.config_dict`` for exposing nested applications data. (`#2949 <https://github.com/aio-libs/aiohttp/pull/2949>`_)
-- Speed up HTTP headers serialization, server micro-benchmark runs 5% faster
-  now. (`#2957 <https://github.com/aio-libs/aiohttp/pull/2957>`_)
-- Apply assertions in debug mode only (`#2966 <https://github.com/aio-libs/aiohttp/pull/2966>`_)
+- Raise ``ConnectionResetError`` instead of ``CancelledError`` on trying to
+  write to a closed stream. (`#2499 <https://github.com/aio-libs/aiohttp/pull/2499>`_)
+- Implement ``ClientTimeout`` class and support socket read timeout. (`#2768 <https://github.com/aio-libs/aiohttp/pull/2768>`_)
+- Enable logging when ``aiohttp.web`` is used as a program (`#2956 <https://github.com/aio-libs/aiohttp/pull/2956>`_)
+- Add canonical property to resources (`#2968 <https://github.com/aio-libs/aiohttp/pull/2968>`_)
+- Forbid reading response BODY after release (`#2983 <https://github.com/aio-libs/aiohttp/pull/2983>`_)
+- Implement base protocol class to avoid a dependency from internal
+  ``asyncio.streams.FlowControlMixin`` (`#2986 <https://github.com/aio-libs/aiohttp/pull/2986>`_)
+- Cythonize ``@helpers.reify``, 5% boost on macro benchmark (`#2995 <https://github.com/aio-libs/aiohttp/pull/2995>`_)
+- Optimize HTTP parser (`#3015 <https://github.com/aio-libs/aiohttp/pull/3015>`_)
+- Implement ``runner.addresses`` property. (`#3036 <https://github.com/aio-libs/aiohttp/pull/3036>`_)
+- Use ``bytearray`` instead of a list of ``bytes`` in websocket reader. It
+  improves websocket message reading a little. (`#3039 <https://github.com/aio-libs/aiohttp/pull/3039>`_)
+- Remove heartbeat on closing connection on keepalive timeout. The used hack
+  violates HTTP protocol. (`#3041 <https://github.com/aio-libs/aiohttp/pull/3041>`_)
+- Limit websocket message size on reading to 4 MB by default. (`#3045 <https://github.com/aio-libs/aiohttp/pull/3045>`_)
 
 
 Bugfixes
 --------
 
-- expose property `app` for TestClient (`#2891 <https://github.com/aio-libs/aiohttp/pull/2891>`_)
-- Call on_chunk_sent when write_eof takes as a param the last chunk (`#2909 <https://github.com/aio-libs/aiohttp/pull/2909>`_)
-- A closing bracket was added to `__repr__` of resources (`#2935 <https://github.com/aio-libs/aiohttp/pull/2935>`_)
-- Fix compression of FileResponse (`#2942 <https://github.com/aio-libs/aiohttp/pull/2942>`_)
-- Fixes some bugs in the limit connection feature (`#2964 <https://github.com/aio-libs/aiohttp/pull/2964>`_)
+- Don't reuse a connection with the same URL but different proxy/TLS settings
+  (`#2981 <https://github.com/aio-libs/aiohttp/pull/2981>`_)
+- When parsing the Forwarded header, the optional port number is now preserved.
+  (`#3009 <https://github.com/aio-libs/aiohttp/pull/3009>`_)
 
 
 Improved Documentation
 ----------------------
 
-- Drop ``async_timeout`` usage from documentation for client API in favor of
-  ``timeout`` parameter. (`#2865 <https://github.com/aio-libs/aiohttp/pull/2865>`_)
-- Improve Gunicorn logging documentation (`#2921 <https://github.com/aio-libs/aiohttp/pull/2921>`_)
-- Replace multipart writer `.serialize()` method with `.write()` in
-  documentation. (`#2965 <https://github.com/aio-libs/aiohttp/pull/2965>`_)
+- Make Change Log more visible in docs (`#3029 <https://github.com/aio-libs/aiohttp/pull/3029>`_)
+- Make style and grammar improvements on the FAQ page. (`#3030 <https://github.com/aio-libs/aiohttp/pull/3030>`_)
+- Document that signal handlers should be async functions since aiohttp 3.0
+  (`#3032 <https://github.com/aio-libs/aiohttp/pull/3032>`_)
 
 
 Deprecations and Removals
 -------------------------
 
-- Deprecate Application.make_handler() (`#2938 <https://github.com/aio-libs/aiohttp/pull/2938>`_)
+- Deprecate custom application's router. (`#3021 <https://github.com/aio-libs/aiohttp/pull/3021>`_)
 
 
 Misc
 ----
 
-- #2958
+- #3008, #3011

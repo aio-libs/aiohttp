@@ -1,1 +1,0 @@
-Limit websocket message size on reading to 4 MB by default.
