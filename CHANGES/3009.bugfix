@@ -1,1 +1,0 @@
-When parsing the Forwarded header, the optional port number is now preserved.
