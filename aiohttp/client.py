@@ -519,7 +519,8 @@ class ClientSession:
                    fingerprint=None,
                    ssl_context=None,
                    proxy_headers=None,
-                   compress=0):
+                   compress=0,
+                   max_msg_size=4*1024*1024):
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
@@ -539,7 +540,8 @@ class ClientSession:
                              fingerprint=fingerprint,
                              ssl_context=ssl_context,
                              proxy_headers=proxy_headers,
-                             compress=compress))
+                             compress=compress,
+                             max_msg_size=max_msg_size))
 
     async def _ws_connect(self, url, *,
                           protocols=(),
@@ -558,7 +560,8 @@ class ClientSession:
                           fingerprint=None,
                           ssl_context=None,
                           proxy_headers=None,
-                          compress=0):
+                          compress=0,
+                          max_msg_size=4*1024*1024):
 
         if headers is None:
             headers = CIMultiDict()
@@ -667,7 +670,7 @@ class ClientSession:
             transport = resp.connection.transport
             reader = FlowControlDataQueue(
                 proto, limit=2 ** 16, loop=self._loop)
-            proto.set_parser(WebSocketReader(reader), reader)
+            proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
             tcp_nodelay(transport, True)
             writer = WebSocketWriter(
                 proto, transport, use_mask=True,

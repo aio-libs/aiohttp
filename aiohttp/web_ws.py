@@ -38,7 +38,7 @@ class WebSocketResponse(StreamResponse):
     def __init__(self, *,
                  timeout=10.0, receive_timeout=None,
                  autoclose=True, autoping=True, heartbeat=None,
-                 protocols=(), compress=True):
+                 protocols=(), compress=True, max_msg_size=4*1024*1024):
         super().__init__(status=101)
         self._protocols = protocols
         self._ws_protocol = None
@@ -61,6 +61,7 @@ class WebSocketResponse(StreamResponse):
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb = None
         self._compress = compress
+        self._max_msg_size = max_msg_size
 
     def _cancel_heartbeat(self):
         if self._pong_response_cb is not None:
@@ -203,7 +204,7 @@ class WebSocketResponse(StreamResponse):
         self._reader = FlowControlDataQueue(
             request._protocol, limit=2 ** 16, loop=self._loop)
         request.protocol.set_parser(WebSocketReader(
-            self._reader, compress=self._compress))
+            self._reader, self._max_msg_size, compress=self._compress))
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 
