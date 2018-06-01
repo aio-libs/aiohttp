@@ -169,13 +169,13 @@ def pytest_generate_tests(metafunc):
         return
 
     loops = metafunc.config.option.aiohttp_loop
-    avail_factories = {'pyloop': asyncio.new_event_loop}
+    avail_factories = {'pyloop': asyncio.DefaultEventLoopPolicy}
 
     if uvloop is not None:  # pragma: no cover
-        avail_factories['uvloop'] = uvloop.new_event_loop
+        avail_factories['uvloop'] = uvloop.EventLoopPolicy
 
     if tokio is not None:  # pragma: no cover
-        avail_factories['tokio'] = tokio.new_event_loop
+        avail_factories['tokio'] = tokio.EventLoopPolicy
 
     if loops == 'all':
         loops = 'pyloop,uvloop?,tokio?'
@@ -200,7 +200,9 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture
 def loop(loop_factory, fast, loop_debug):
     """Return an instance of the event loop."""
-    with loop_context(loop_factory, fast=fast) as _loop:
+    policy = loop_factory()
+    asyncio.set_event_loop_policy(policy)
+    with loop_context(fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
         asyncio.set_event_loop(_loop)
