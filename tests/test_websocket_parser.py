@@ -1,5 +1,6 @@
 import random
 import struct
+import zlib
 from unittest import mock
 
 import pytest
@@ -7,13 +8,20 @@ import pytest
 import aiohttp
 from aiohttp import http_websocket
 from aiohttp.http import WebSocketError, WSCloseCode, WSMessage, WSMsgType
-from aiohttp.http_websocket import (PACK_CLOSE_CODE, PACK_LEN1, PACK_LEN2,
-                                    PACK_LEN3, WebSocketReader,
-                                    _websocket_mask)
+from aiohttp.http_websocket import (_WS_DEFLATE_TRAILING, PACK_CLOSE_CODE,
+                                    PACK_LEN1, PACK_LEN2, PACK_LEN3,
+                                    WebSocketReader, _websocket_mask)
 
 
-def build_frame(message, opcode, use_mask=False, noheader=False, is_fin=True):
+def build_frame(message, opcode, use_mask=False, noheader=False, is_fin=True,
+                compress=False):
     """Send a frame over the websocket with message as its payload."""
+    if compress:
+        compressobj = zlib.compressobj(wbits=-9)
+        message = compressobj.compress(message)
+        message = message + compressobj.flush(zlib.Z_SYNC_FLUSH)
+        if message.endswith(_WS_DEFLATE_TRAILING):
+            message = message[:-4]
     msg_length = len(message)
     if use_mask:  # pragma: no cover
         mask_bit = 0x80
@@ -24,6 +32,9 @@ def build_frame(message, opcode, use_mask=False, noheader=False, is_fin=True):
         header_first_byte = 0x80 | opcode
     else:
         header_first_byte = opcode
+
+    if compress:
+        header_first_byte |= 0x40
 
     if msg_length < 126:
         header = PACK_LEN1(
@@ -67,7 +78,7 @@ def out(loop):
 
 @pytest.fixture()
 def parser(out):
-    return WebSocketReader(out)
+    return WebSocketReader(out, 4*1024*1024)
 
 
 def test_parse_frame(parser):
@@ -444,16 +455,35 @@ def test_parse_compress_error_frame(parser):
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
-@pytest.fixture()
-def parser_no_compress(out):
-    return WebSocketReader(out, compress=False)
-
-
-def test_parse_no_compress_frame_single(parser_no_compress):
-
+def test_parse_no_compress_frame_single():
+    parser_no_compress = WebSocketReader(out, 0, compress=False)
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress.parse_frame(struct.pack(
             '!BB', 0b11000001, 0b00000001))
         parser_no_compress.parse_frame(b'1')
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
+def test_msg_too_large(out):
+    parser = WebSocketReader(out, 256, compress=False)
+    data = build_frame(b'text'*256, WSMsgType.TEXT)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(data)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_msg_too_large_not_fin(out):
+    parser = WebSocketReader(out, 256, compress=False)
+    data = build_frame(b'text'*256, WSMsgType.TEXT, is_fin=False)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(data)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_compressed_msg_too_large(out):
+    parser = WebSocketReader(out, 256, compress=True)
+    data = build_frame(b'aaa'*256, WSMsgType.TEXT, compress=True)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(data)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG

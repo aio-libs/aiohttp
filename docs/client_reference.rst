@@ -498,7 +498,7 @@ The client session supports the context manager protocol for self closing.
                             proxy=None, proxy_auth=None, ssl=None, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
-                            compress=0)
+                            compress=0, max_msg_size=4194304)
       :async-with:
       :coroutine:
 
@@ -600,6 +600,12 @@ The client session supports the context manager protocol for self closing.
                            Default value is 0.
 
          .. versionadded:: 2.3
+
+      :param int max_msg_size: maximum size of read websocket message,
+                               4 MB by default. To disable the size
+                               limit use ``0``.
+
+         .. versionadded:: 3.3
 
 
    .. comethod:: close()
