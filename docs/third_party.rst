@@ -217,3 +217,6 @@ period ask to raise the status.
 
 - `GINO <https://github.com/fantix/gino>`_
   An asyncio ORM on top of SQLAlchemy core, delivered with an aiohttp extension.
+
+- `aiohttp-apispec <https://github.com/maximdanilchenko/aiohttp-apispec>`_
+  Build and document REST APIs with ``aiohttp`` and ``apispec``.
