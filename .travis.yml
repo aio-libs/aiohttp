@@ -98,7 +98,7 @@ _helpers:
   script: skip
   after_success: []
   env:
-  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
+  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel=
   - &env_py36 PYTHON_VERSION=3.6.3
   - *env_pyenv
   - *env_path
@@ -110,7 +110,7 @@ _helpers:
   <<: *osx_pypi_deploy_base_1011
   osx_image: xcode8.1
   env:
-  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel
+  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
   - *env_py36
   - *env_pyenv
   - *env_path
@@ -118,7 +118,7 @@ _helpers:
   <<: *osx_pypi_deploy_base_1011
   osx_image: xcode6.4
   env:
-  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel
+  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
   - *env_py36
   - *env_pyenv
   - *env_path
@@ -152,7 +152,7 @@ jobs:
 
   - <<: *_lint_base
     env:
-    - TARGET="dist setup check"
+    - TARGET="'dist setup check'"
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/doc.txt
