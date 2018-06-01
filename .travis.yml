@@ -78,7 +78,7 @@ _helpers:
     skip_cleanup: true
     user: andrew.svetlov
     password:
-      secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
+      secure: "hDmXxl0B4okvls3g4tnVYb38ggfRU2L7ZOwG/U4I4aNopiKUTm3UzxEYsxEQhZ+qJHE0CyUKQH9AF3s2SSY9OJIhRthxVPKy0PinBziEMJiJFcN3tb4DFR4aiwzrVM/N0Z/66l4UQZuy6sxKM4m9s4skDh8kkhMImG2yrXhA9+o="
     # Although Travis CI instructs `setup.py` to build source distribution,
     # which is default value for distribution option (`distribution: sdist`),
     # it will also upload all wheels we've previously built in manylinux1
@@ -203,7 +203,7 @@ jobs:
       skip_cleanup: true
       user: andrew.svetlov
       password:
-        secure: "Fn5RaVoU66e7609jKgJ8yMYyuxvPj+4lmg6cFh6hEv7dyp6UbHXxBUJKAeU3VS2I0L/IrC73Z/389J4B8aYcQAlk25WbN6TTtUa1d6Uu/4MZISdvNYtvFotqwcZR47ZcfA8n3IHjZezJbbAWy0flDLGR+3tDVSHP/E5r5GgB3Ok="
+        secure: "hDmXxl0B4okvls3g4tnVYb38ggfRU2L7ZOwG/U4I4aNopiKUTm3UzxEYsxEQhZ+qJHE0CyUKQH9AF3s2SSY9OJIhRthxVPKy0PinBziEMJiJFcN3tb4DFR4aiwzrVM/N0Z/66l4UQZuy6sxKM4m9s4skDh8kkhMImG2yrXhA9+o="
       # Although Travis CI instructs `setup.py` to build source distribution,
       # which is default value for distribution option (`distribution: sdist`),
       # it will also upload all wheels we've previously built in manylinux1
