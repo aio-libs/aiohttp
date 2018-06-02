@@ -79,9 +79,9 @@ _helpers:
     user: aio-libs-bot
     password:
       # Encrypted without --pro:
-      secure: VmKntdS/VLcAmvbYACnbkYlup5jmNud9pcueaOpJDuOrVDcIOjPXlpULovaYwEeai98Bfj/rKyTr3vB5WmFnzrhfZAzgPSZqVIxpOC02Vp3LfZQh+wwEaRqnP+4YOXwKK0FAqOSLvsr6torK1zhyD4Jzq/GZwfPX4iX9PiZIz68=
+      # secure: VmKntdS/VLcAmvbYACnbkYlup5jmNud9pcueaOpJDuOrVDcIOjPXlpULovaYwEeai98Bfj/rKyTr3vB5WmFnzrhfZAzgPSZqVIxpOC02Vp3LfZQh+wwEaRqnP+4YOXwKK0FAqOSLvsr6torK1zhyD4Jzq/GZwfPX4iX9PiZIz68=
       # Encrypted with --pro:
-      # secure: j7LMTbx4wS4qsR4HAlHLx6dD/dstNreMgq1cGemgbvaHR1TwuyVzDxavdrxpiPXjnOCud/nz+H6YAISw6RPkWc4Arb6E1rUeGHeGVcbAvZ4yx5kviwEdQBHHR+y5dKV82uSiz/jr6NRfv8Hshjc0BplWDmM8MzOKIkUSNOlphfGWYR/lSA0GO6CkasVif7PRVvFATI64sI7oBWgErhCPvYLamQoufQX5eC0BqdwKjamQwCtaUYskqebkL/9NGmIibXcprBuYaF3Bil+bgpzRYI2+lLmnuWsCfWnIyL6vDCUMxTloOPqBtp6zKIX37oOJz9SwLG2oxKTOHcIpm0f97q/h1/ZgVCAEjZyvByl2nUXK7xt3YuLjGnCdgVdpVtY8MGsIkxnz0x8yq55MBWpeKC2NM1js18EJzQe9GG7OFtXGIDKzlUCxwp3KLyzQMqeFdm4/hOk9390f97mTwP73cPKTp8NdLkoiNFi6Z456g92uKdEWq/79TtY9m+kxb7xkKNQH943HgCaq9HJd9oakcZd9GabX5Ff8RdSH0IhjvkMaFhmIc2d2jCOCI6Rwt7KP/dZCQPTZhtGWw4SHTsTsmHs+462J4eUt/2FSdU1ZtPSm57zIjFR1ksA99GO8axj+TSrMoXZNLfOarxuFwgTVoL2Ln5yfWMwYQyUfry3/KcE=
+      secure: j7LMTbx4wS4qsR4HAlHLx6dD/dstNreMgq1cGemgbvaHR1TwuyVzDxavdrxpiPXjnOCud/nz+H6YAISw6RPkWc4Arb6E1rUeGHeGVcbAvZ4yx5kviwEdQBHHR+y5dKV82uSiz/jr6NRfv8Hshjc0BplWDmM8MzOKIkUSNOlphfGWYR/lSA0GO6CkasVif7PRVvFATI64sI7oBWgErhCPvYLamQoufQX5eC0BqdwKjamQwCtaUYskqebkL/9NGmIibXcprBuYaF3Bil+bgpzRYI2+lLmnuWsCfWnIyL6vDCUMxTloOPqBtp6zKIX37oOJz9SwLG2oxKTOHcIpm0f97q/h1/ZgVCAEjZyvByl2nUXK7xt3YuLjGnCdgVdpVtY8MGsIkxnz0x8yq55MBWpeKC2NM1js18EJzQe9GG7OFtXGIDKzlUCxwp3KLyzQMqeFdm4/hOk9390f97mTwP73cPKTp8NdLkoiNFi6Z456g92uKdEWq/79TtY9m+kxb7xkKNQH943HgCaq9HJd9oakcZd9GabX5Ff8RdSH0IhjvkMaFhmIc2d2jCOCI6Rwt7KP/dZCQPTZhtGWw4SHTsTsmHs+462J4eUt/2FSdU1ZtPSm57zIjFR1ksA99GO8axj+TSrMoXZNLfOarxuFwgTVoL2Ln5yfWMwYQyUfry3/KcE=
     # Although Travis CI instructs `setup.py` to build source distribution,
     # which is default value for distribution option (`distribution: sdist`),
     # it will also upload all wheels we've previously built in manylinux1
