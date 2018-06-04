@@ -76,9 +76,10 @@ _helpers:
     # `skip_cleanup: true` is required to preserve binary wheels, built
     # inside of manylinux1 docker container during `script` step above.
     skip_cleanup: true
-    user: andrew.svetlov
+    user: aio-libs-bot
     password:
-      secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
+      # Encrypted with `travis encrypt -r aio-libs/aiohttp --api-endpoint 'https://api.travis-ci.com/'`:
+      secure: bWF8GkGmjxfisMx+LqOmZgf9EXPT4yBMhiIbN+rU5gs53PJJyn1r287c5zEijnIHlpQaJVwWJ9ZFl1n34y37P1yvhlz0M6esr5K10B9fJ6nkUoAivtOWARcHLQ3bC+WGC/V9S0v0pZ11qFuSNzJzFZqfRabRw0H8muVWGhuBuYp97EdJWCdSNpXqsj2Ts8ytPMYv+5m3iPgXq833svFbWRjZ+HgX8HwvF2lo+ej+tsFJNACbQmj+eQDGlWQZzP2s4/3grHivd2retpqfW1cYgZaZX68/UB2ghsCtkxhcNpGaM8I/n3udAHkPSqz3MC2FJL0RdkyvQ8UZkcmcisQxz0voQM25995BHGWktwpDh7BxFtGJishXV7hiFz9zVOZLM9u5AzIO4hoN770SsZDewWdhzowXPYT8DXiHVg+roEkszg8FeBmisx1cw34CK9H0iLUSQ9EF2vuz8T4bqEpbT6Fyta90wZTvJ7GpJ4yXJXR6VAvLgiX4zXeFdx/4aViz3UzkDJ06qieRuZJWfQ9u2lDxJfqHEVy5IxM5iACagP1XayJiVIN0uFRxNElxTlCMope6ICCOu9fhcGnF15XNw5YpFPYYvph3JU1vC8cYw7ypg8LQGryp1fNM9SXWaGTiV+J/yvsynFiXX6QiyGOwSBIJ9XjZEfRd8i9HaGHw2cw=
     # Although Travis CI instructs `setup.py` to build source distribution,
     # which is default value for distribution option (`distribution: sdist`),
     # it will also upload all wheels we've previously built in manylinux1
@@ -98,7 +99,7 @@ _helpers:
   script: skip
   after_success: []
   env:
-  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
+  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel=
   - &env_py36 PYTHON_VERSION=3.6.3
   - *env_pyenv
   - *env_path
@@ -110,7 +111,7 @@ _helpers:
   <<: *osx_pypi_deploy_base_1011
   osx_image: xcode8.1
   env:
-  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel
+  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
   - *env_py36
   - *env_pyenv
   - *env_path
@@ -118,7 +119,7 @@ _helpers:
   <<: *osx_pypi_deploy_base_1011
   osx_image: xcode6.4
   env:
-  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel
+  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
   - *env_py36
   - *env_pyenv
   - *env_path
@@ -152,7 +153,7 @@ jobs:
 
   - <<: *_lint_base
     env:
-    - TARGET="dist setup check"
+    - TARGET="'dist setup check'"
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/doc.txt
@@ -197,25 +198,7 @@ jobs:
     - ./tools/run_docker.sh "aiohttp"
     - pip install -r requirements/ci.txt  # to compile *.c files by Cython
     deploy:
-      provider: pypi
-      # `skip_cleanup: true` is required to preserve binary wheels, built
-      # inside of manylinux1 docker container during `script` step above.
-      skip_cleanup: true
-      user: andrew.svetlov
-      password:
-        secure: "Fn5RaVoU66e7609jKgJ8yMYyuxvPj+4lmg6cFh6hEv7dyp6UbHXxBUJKAeU3VS2I0L/IrC73Z/389J4B8aYcQAlk25WbN6TTtUa1d6Uu/4MZISdvNYtvFotqwcZR47ZcfA8n3IHjZezJbbAWy0flDLGR+3tDVSHP/E5r5GgB3Ok="
-      # Although Travis CI instructs `setup.py` to build source distribution,
-      # which is default value for distribution option (`distribution: sdist`),
-      # it will also upload all wheels we've previously built in manylinux1
-      # docker container using `twine upload -r pypi dist/*` command.
-      # Also since commit https://github.com/travis-ci/dpl/commit/90b5e39
-      # it is default that Travis PYPI provider has `skip_upload_docs: true`
-      # set by default.
-      # Besides above, we don't do cleanup of `dist/*`, because it's being done
-      # by Travis CI PYPI deployment provider after upload, unconditionally.
-      on:
-        tags: true
-        all_branches: true
+      <<: *deploy_step
 
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
     # OS X 10.10, Python 3.5
