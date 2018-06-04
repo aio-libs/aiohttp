@@ -236,11 +236,12 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
 
-    def __init__(self, queue, compress=True):
+    def __init__(self, queue, max_msg_size, compress=True):
         self.queue = queue
+        self._max_msg_size = max_msg_size
 
         self._exc = None
-        self._partial = []
+        self._partial = bytearray()
         self._state = WSParserState.READ_HEADER
 
         self._opcode = None
@@ -319,7 +320,13 @@ class WebSocketReader:
                     # got partial frame payload
                     if opcode != WSMsgType.CONTINUATION:
                         self._opcode = opcode
-                    self._partial.append(payload)
+                    self._partial.extend(payload)
+                    if (self._max_msg_size and
+                            len(self._partial) >= self._max_msg_size):
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            "Message size {} exceeds limit {}".format(
+                                len(self._partial), self._max_msg_size))
                 else:
                     # previous frame was non finished
                     # we should get continuation opcode
@@ -334,15 +341,29 @@ class WebSocketReader:
                         opcode = self._opcode
                         self._opcode = None
 
-                    self._partial.append(payload)
-
-                    payload_merged = b''.join(self._partial)
+                    self._partial.extend(payload)
+                    if (self._max_msg_size and
+                            len(self._partial) >= self._max_msg_size):
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            "Message size {} exceeds limit {}".format(
+                                len(self._partial), self._max_msg_size))
 
                     # Decompress process must to be done after all packets
                     # received.
                     if compressed:
+                        self._partial.extend(_WS_DEFLATE_TRAILING)
                         payload_merged = self._decompressobj.decompress(
-                            payload_merged + _WS_DEFLATE_TRAILING)
+                            self._partial, self._max_msg_size)
+                        if self._decompressobj.unconsumed_tail:
+                            left = len(self._decompressobj.unconsumed_tail)
+                            raise WebSocketError(
+                                WSCloseCode.MESSAGE_TOO_BIG,
+                                "Decompressed message size exceeds limit {}".
+                                format(self._max_msg_size + left,
+                                       self._max_msg_size))
+                    else:
+                        payload_merged = bytes(self._partial)
 
                     self._partial.clear()
 

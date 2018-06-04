@@ -575,17 +575,8 @@ engine::
 Signal handlers should not return a value but may modify incoming mutable
 parameters.
 
-Signal handlers will be run sequentially, in order they were added. If handler
-is asynchronous, it will be awaited before calling next one.
-
-.. warning::
-
-   Signals API has provisional status, meaning it may be changed in future
-   releases.
-
-   Signal subscription and sending will most likely be the same, but signal
-   object creation is subject to change. As long as you are not creating new
-   signals, but simply reusing existing ones, you will not be affected.
+Signal handlers will be run sequentially, in order they were
+added. All handlers must be asynchronous since *aiohttp* 3.0.
 
 .. _aiohttp-web-cleanup-ctx:
 
@@ -772,7 +763,7 @@ Application runners
 :func:`run_app` provides a simple *blocking* API for running an
 :class:`Application`.
 
-For starting the application *asynchronously* on serving on multiple
+For starting the application *asynchronously* or serving on multiple
 HOST/PORT :class:`AppRunner` exists.
 
 The simple startup code for serving HTTP site on ``'localhost'``, port
@@ -835,7 +826,7 @@ Signal handler may look like::
     from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
-        for ws in app['websockets']:
+        for ws in set(app['websockets']):
             await ws.close(code=WSCloseCode.GOING_AWAY,
                            message='Server shutdown')
 

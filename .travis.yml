@@ -1,3 +1,5 @@
+version: "= 0"
+
 sudo: false
 
 language: python
@@ -5,7 +7,6 @@ language: python
 python:
 - 3.5
 - &mainstream_python 3.6
-- 3.6-dev
 - nightly
 - &pypy3 pypy3.5
 
@@ -19,7 +20,7 @@ script:
 - make cov-ci-run
 
 after_success:
-- codecov
+ - codecov
 
 _helpers:
 - &_mainstream_python_base
@@ -122,8 +123,6 @@ _helpers:
   - *env_pyenv
   - *env_path
 
-# doesn't work on MacOSX out of the box -- the system has no Python installed
-# there's a workaround to use `language: generic` and install it, but it's slow
 os: linux
 
 jobs:
@@ -135,20 +134,25 @@ jobs:
   include:
   - <<: *_doc_base
     env:
-    - docs
+    - TARGET=docs
+    script:
+    - make doc-spelling
+
+  - <<: *_doc_base
+    env:
+    - TARGET=towncrier
     script:
     - towncrier --yes
-    - make doc-spelling
 
   - <<: *_lint_base
     env:
-    - flake8
+    - TARGET=flake8
     script:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
     env:
-    - dist setup check
+    - TARGET="dist setup check"
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/doc.txt
@@ -184,7 +188,7 @@ jobs:
   # Build and deploy manylinux1 binary wheels and source distribution
   - <<: *generic_deploy_base
     <<: *_reset_steps
-    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution
+    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
     dist: trusty
     group: edge
     services:
@@ -199,7 +203,7 @@ jobs:
       skip_cleanup: true
       user: andrew.svetlov
       password:
-        secure: ZQKbdPT9BlNqP5CTbWRQyeyig7Bpf7wsnYVQIQPOZc9Ec74A+dsbagstR1sPkAO+d+5PN0pZMovvmU7OQhSVPAnJ74nsN90/fL4ux3kqYecMbevv0rJg20hMXSSkwMEIpjUsMdMjJvZAcaKytGWmKL0qAlOJHhixd1pBbWyuIUE=
+        secure: "Fn5RaVoU66e7609jKgJ8yMYyuxvPj+4lmg6cFh6hEv7dyp6UbHXxBUJKAeU3VS2I0L/IrC73Z/389J4B8aYcQAlk25WbN6TTtUa1d6Uu/4MZISdvNYtvFotqwcZR47ZcfA8n3IHjZezJbbAWy0flDLGR+3tDVSHP/E5r5GgB3Ok="
       # Although Travis CI instructs `setup.py` to build source distribution,
       # which is default value for distribution option (`distribution: sdist`),
       # it will also upload all wheels we've previously built in manylinux1

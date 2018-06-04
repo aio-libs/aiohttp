@@ -10,7 +10,7 @@ import unittest
 from abc import ABC, abstractmethod
 from unittest import mock
 
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
@@ -414,8 +414,14 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     once they are done with the loop.
     """
     loop = loop_factory()
+    try:
+        module = loop.__class__.__module__
+        skip_watcher = 'uvloop' in module
+    except AttributeError:  # pragma: no cover
+        # Just in case
+        skip_watcher = True
     asyncio.set_event_loop(loop)
-    if sys.platform != "win32":
+    if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
         watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
@@ -489,11 +495,11 @@ def make_mocked_request(method, path, headers=None, *,
         closing = True
 
     if headers:
-        headers = CIMultiDict(headers)
+        headers = CIMultiDictProxy(CIMultiDict(headers))
         raw_hdrs = tuple(
             (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items())
     else:
-        headers = CIMultiDict()
+        headers = CIMultiDictProxy(CIMultiDict())
         raw_hdrs = ()
 
     chunked = 'chunked' in headers.get(hdrs.TRANSFER_ENCODING, '').lower()

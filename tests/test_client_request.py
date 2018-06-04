@@ -1195,7 +1195,7 @@ async def test_custom_req_rep(loop):
             conn = connection
             self.status = 123
             self.reason = 'Test OK'
-            self.headers = CIMultiDictProxy(CIMultiDict())
+            self._headers = CIMultiDictProxy(CIMultiDict())
             self.cookies = SimpleCookie()
             return
 
@@ -1210,7 +1210,6 @@ async def test_custom_req_rep(loop):
                                        continue100=self._continue,
                                        timer=self._timer,
                                        request_info=self.request_info,
-                                       auto_decompress=self._auto_decompress,
                                        traces=self._traces,
                                        loop=self.loop,
                                        session=self._session)
@@ -1219,7 +1218,7 @@ async def test_custom_req_rep(loop):
             called = True
             return resp
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
         return mock.Mock()
     connector = BaseConnector(loop=loop)

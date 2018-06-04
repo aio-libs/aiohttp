@@ -611,6 +611,45 @@ The handler should be registered as HTTP GET processor::
 
     app.add_routes([web.get('/ws', websocket_handler)])
 
+.. _aiohttp-web-redirects:
+
+Redirects
+---------
+
+To redirect user to another endpoint - raise :class:`HTTPFound` with
+an absolute URL, relative URL or view name (the argument from router)::
+
+    raise web.HTTPFound('/redirect')
+
+The following example shows redirect to view named 'login' in routes::
+
+    async def handler(request):
+        location = request.app.router['login'].url_for()
+        raise web.HTTPFound(location=location)
+
+    router.add_get('/handler', handler)
+    router.add_get('/login', login_handler, name='login')
+
+Example with login validation::
+
+    @aiohttp_jinja2.template('login.html')
+    async def login(request):
+
+        if request.method == 'POST':
+            form = await request.post()
+            error = validate_login(form)
+            if error:
+                return {'error': error}
+            else:
+                # login form is valid
+                location = request.app.router['index'].url_for()
+                raise web.HTTPFound(location=location)
+
+        return {}
+
+    app.router.add_get('/', index, name='index')
+    app.router.add_get('/login', login, name='login')
+    app.router.add_post('/login', login, name='login')
 
 .. _aiohttp-web-exceptions:
 

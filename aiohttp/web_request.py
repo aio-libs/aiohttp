@@ -52,7 +52,7 @@ _QUOTED_STRING = r'"(?:{quoted_pair}|{qdtext})*"'.format(
     qdtext=_QDTEXT, quoted_pair=_QUOTED_PAIR)
 
 _FORWARDED_PAIR = (
-    r'({token})=({token}|{quoted_string})'.format(
+    r'({token})=({token}|{quoted_string})(:\d{{1,4}})?'.format(
         token=_TOKEN,
         quoted_string=_QUOTED_STRING))
 
@@ -131,7 +131,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             dct['url'] = rel_url
             dct['path'] = str(rel_url)
         if headers is not sentinel:
-            dct['headers'] = CIMultiDict(headers)
+            # a copy semantic
+            dct['headers'] = CIMultiDictProxy(CIMultiDict(headers))
             dct['raw_headers'] = tuple((k.encode('utf-8'), v.encode('utf-8'))
                                        for k, v in headers.items())
 
@@ -174,15 +175,18 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     def writer(self):
         return self._payload_writer
 
-    @property
+    @reify
     def message(self):
+        warnings.warn("Request.message is deprecated",
+                      DeprecationWarning,
+                      stacklevel=3)
         return self._message
 
-    @property
+    @reify
     def rel_url(self):
         return self._rel_url
 
-    @property
+    @reify
     def loop(self) -> asyncio.AbstractEventLoop:
         return self._loop
 
@@ -205,7 +209,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     ########
 
-    @property
+    @reify
     def secure(self) -> bool:
         """A bool indicating if the request is handled with SSL."""
         return self.scheme == 'https'
@@ -244,11 +248,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         # bad syntax here, skip to next comma
                         pos = field_value.find(',', pos)
                     else:
-                        (name, value) = match.groups()
+                        name, value, port = match.groups()
                         if value[0] == '"':
                             # quoted string: remove quotes and unescape
                             value = _QUOTED_PAIR_REPLACE_RE.sub(r'\1',
                                                                 value[1:-1])
+                        if port:
+                            value += port
                         elem[name.lower()] = value
                         pos += len(match.group(0))
                         need_separator = True
@@ -286,7 +292,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         else:
             return 'http'
 
-    @property
+    @reify
     def method(self) -> str:
         """Read only property for getting HTTP method.
 
@@ -294,7 +300,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._method
 
-    @property
+    @reify
     def version(self):
         """Read only property for getting HTTP version of request.
 
@@ -340,7 +346,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         url = URL.build(scheme=self.scheme, host=self.host)
         return url.join(self._rel_url)
 
-    @property
+    @reify
     def path(self) -> str:
         """The URL including *PATH INFO* without the host or scheme.
 
@@ -356,7 +362,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return str(self._rel_url)
 
-    @property
+    @reify
     def raw_path(self) -> str:
         """ The URL including raw *PATH INFO* without the host or scheme.
         Warning, the path is unquoted and may contains non valid URL characters
@@ -365,12 +371,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._message.path
 
-    @property
+    @reify
     def query(self) -> MultiDict:
         """A multidict with all the variables in the query string."""
         return self._rel_url.query
 
-    @property
+    @reify
     def query_string(self) -> str:
         """The query string in the URL.
 
@@ -378,12 +384,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._rel_url.query_string
 
-    @property
+    @reify
     def headers(self) -> CIMultiDictProxy:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
-    @property
+    @reify
     def raw_headers(self):
         """A sequence of pars for all headers."""
         return self._message.raw_headers
@@ -424,7 +430,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """
         return self._http_date(self.headers.get(_IF_RANGE))
 
-    @property
+    @reify
     def keep_alive(self):
         """Is keepalive enabled by client?"""
         return not self._message.should_close
@@ -440,7 +446,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
 
-    @property
+    @reify
     def http_range(self):
         """The content of Range HTTP header.
 
@@ -476,7 +482,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         return slice(start, end, 1)
 
-    @property
+    @reify
     def content(self):
         """Return raw payload stream."""
         return self._payload
@@ -494,7 +500,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return True if request's HTTP BODY can be read, False otherwise."""
         return not self._payload.at_eof()
 
-    @property
+    @reify
     def body_exists(self):
         """Return True if request has HTTP BODY, False otherwise."""
         return type(self._payload) is not EmptyStreamReader
@@ -654,7 +660,7 @@ class Request(BaseRequest):
         ret._match_info = self._match_info
         return ret
 
-    @property
+    @reify
     def match_info(self):
         """Result of route resolving."""
         return self._match_info

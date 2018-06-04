@@ -29,7 +29,6 @@ async def test_http_processing_error(session):
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=loop,
         session=session)
@@ -54,7 +53,6 @@ def test_del(session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -79,7 +77,6 @@ def test_close(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -97,7 +94,6 @@ def test_wait_for_100_1(loop, session):
         request_info=mock.Mock(),
         writer=mock.Mock(),
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=loop,
         session=session)
@@ -112,7 +108,6 @@ def test_wait_for_100_2(loop, session):
         continue100=None,
         writer=mock.Mock(),
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=loop,
         session=session)
@@ -126,7 +121,6 @@ def test_repr(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -142,7 +136,6 @@ def test_repr_non_ascii_url():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -156,7 +149,6 @@ def test_repr_non_ascii_reason():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -171,7 +163,6 @@ def test_url_obj_deprecated():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -185,7 +176,6 @@ async def test_read_and_release_connection(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -208,7 +198,6 @@ async def test_read_and_release_connection_with_error(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -227,7 +216,6 @@ async def test_release(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -252,7 +240,6 @@ async def test_release_on_del(loop, session):
                                   writer=mock.Mock(),
                                   continue100=None,
                                   timer=TimerNoop(),
-                                  auto_decompress=True,
                                   traces=[],
                                   loop=loop,
                                   session=session)
@@ -270,7 +257,6 @@ async def test_response_eof(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -289,7 +275,6 @@ async def test_response_eof_upgraded(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -308,7 +293,6 @@ async def test_response_eof_after_connection_detach(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -327,7 +311,6 @@ async def test_text(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -337,7 +320,7 @@ async def test_text(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json;charset=cp1251'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -353,7 +336,6 @@ async def test_text_bad_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -364,7 +346,7 @@ async def test_text_bad_encoding(loop, session):
         return fut
 
     # lie about the encoding
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json;charset=utf-8'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -382,7 +364,6 @@ async def test_text_custom_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -392,7 +373,7 @@ async def test_text_custom_encoding(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -410,7 +391,6 @@ async def test_text_detect_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -420,7 +400,7 @@ async def test_text_detect_encoding(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {'Content-Type': 'text/plain'}
+    response._headers = {'Content-Type': 'text/plain'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -436,7 +416,6 @@ async def test_text_detect_encoding_if_invalid_charset(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -446,7 +425,7 @@ async def test_text_detect_encoding_if_invalid_charset(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {'Content-Type': 'text/plain;charset=invalid'}
+    response._headers = {'Content-Type': 'text/plain;charset=invalid'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
 
@@ -463,7 +442,6 @@ async def test_text_after_read(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -473,7 +451,7 @@ async def test_text_after_read(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json;charset=cp1251'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -489,7 +467,6 @@ async def test_json(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -499,7 +476,7 @@ async def test_json(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json;charset=cp1251'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -515,7 +492,6 @@ async def test_json_extended_content_type(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -525,7 +501,7 @@ async def test_json_extended_content_type(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type':
             'application/this.is-1_content+subtype+json;charset=cp1251'}
     content = response.content = mock.Mock()
@@ -542,7 +518,6 @@ async def test_json_custom_content_type(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -552,7 +527,7 @@ async def test_json_custom_content_type(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type': 'custom/type;charset=cp1251'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -568,11 +543,10 @@ async def test_json_custom_loader(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json;charset=cp1251'}
     response._body = b'data'
 
@@ -589,11 +563,10 @@ async def test_json_invalid_content_type(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = {
+    response._headers = {
         'Content-Type': 'data/octet-stream'}
     response._body = b''
 
@@ -609,11 +582,10 @@ async def test_json_no_content(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = {
+    response._headers = {
         'Content-Type': 'data/octet-stream'}
     response._body = b''
 
@@ -627,7 +599,6 @@ async def test_json_override_encoding(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -637,7 +608,7 @@ async def test_json_override_encoding(loop, session):
         fut.set_result('{"тест": "пройден"}'.encode('cp1251'))
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json;charset=utf8'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -655,12 +626,11 @@ def test_get_encoding_unknown(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
 
-    response.headers = {'Content-Type': 'application/json'}
+    response._headers = {'Content-Type': 'application/json'}
     with mock.patch('aiohttp.client_reqrep.chardet') as m_chardet:
         m_chardet.detect.return_value = {'encoding': None}
         assert response.get_encoding() == 'utf-8'
@@ -672,7 +642,6 @@ def test_raise_for_status_2xx():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -687,7 +656,6 @@ def test_raise_for_status_4xx():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -705,7 +673,6 @@ def test_resp_host():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
@@ -718,11 +685,10 @@ def test_content_type():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response._headers = {'Content-Type': 'application/json;charset=cp1251'}
 
     assert 'application/json' == response.content_type
 
@@ -733,11 +699,10 @@ def test_content_type_no_header():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {}
+    response._headers = {}
 
     assert 'application/octet-stream' == response.content_type
 
@@ -748,11 +713,10 @@ def test_charset():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {'Content-Type': 'application/json;charset=cp1251'}
+    response._headers = {'Content-Type': 'application/json;charset=cp1251'}
 
     assert 'cp1251' == response.charset
 
@@ -763,11 +727,10 @@ def test_charset_no_header():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {}
+    response._headers = {}
 
     assert response.charset is None
 
@@ -778,11 +741,10 @@ def test_charset_no_charset():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {'Content-Type': 'application/json'}
+    response._headers = {'Content-Type': 'application/json'}
 
     assert response.charset is None
 
@@ -793,12 +755,11 @@ def test_content_disposition_full():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {'Content-Disposition':
-                        'attachment; filename="archive.tar.gz"; foo=bar'}
+    response._headers = {'Content-Disposition':
+                         'attachment; filename="archive.tar.gz"; foo=bar'}
 
     assert 'attachment' == response.content_disposition.type
     assert 'bar' == response.content_disposition.parameters["foo"]
@@ -813,11 +774,10 @@ def test_content_disposition_no_parameters():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {'Content-Disposition': 'attachment'}
+    response._headers = {'Content-Disposition': 'attachment'}
 
     assert 'attachment' == response.content_disposition.type
     assert response.content_disposition.filename is None
@@ -830,29 +790,12 @@ def test_content_disposition_no_header():
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=mock.Mock(),
                               session=mock.Mock())
-    response.headers = {}
+    response._headers = {}
 
     assert response.content_disposition is None
-
-
-def test_content_disposition_cache():
-    response = ClientResponse('get', URL('http://def-cl-resp.org'),
-                              request_info=mock.Mock(),
-                              writer=mock.Mock(),
-                              continue100=None,
-                              timer=TimerNoop(),
-                              auto_decompress=True,
-                              traces=[],
-                              loop=mock.Mock(),
-                              session=mock.Mock())
-    response.headers = {'Content-Disposition': 'attachment'}
-    cd = response.content_disposition
-    ClientResponse.headers = {'Content-Disposition': 'spam'}
-    assert cd is response.content_disposition
 
 
 def test_response_request_info():
@@ -868,7 +811,6 @@ def test_response_request_info():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -892,7 +834,6 @@ def test_request_info_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -918,7 +859,6 @@ def test_no_redirect_history_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -948,7 +888,6 @@ def test_redirect_history_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
@@ -967,13 +906,12 @@ def test_redirect_history_in_exception():
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock()
     )
 
-    hist_response.headers = hist_headers
+    hist_response._headers = hist_headers
     hist_response.status = 301
     hist_response.reason = 'REDIRECT'
 
@@ -994,7 +932,6 @@ async def test_response_read_triggers_callback(loop, session):
         writer=mock.Mock(),
         continue100=None,
         timer=TimerNoop(),
-        auto_decompress=True,
         loop=loop,
         session=session,
         traces=[trace]
@@ -1005,7 +942,7 @@ async def test_response_read_triggers_callback(loop, session):
         fut.set_result(response_body)
         return fut
 
-    response.headers = {
+    response._headers = {
         'Content-Type': 'application/json;charset=cp1251'}
     content = response.content = mock.Mock()
     content.read.side_effect = side_effect
@@ -1028,7 +965,6 @@ def test_response_real_url(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
@@ -1043,11 +979,10 @@ def test_response_links_comma_separated(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = CIMultiDict([
+    response._headers = CIMultiDict([
         (
             "Link",
             ('<http://example.com/page/1.html>; rel=next, '
@@ -1073,11 +1008,10 @@ def test_response_links_multiple_headers(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = CIMultiDict([
+    response._headers = CIMultiDict([
         (
             "Link",
             '<http://example.com/page/1.html>; rel=next'
@@ -1106,11 +1040,10 @@ def test_response_links_no_rel(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = CIMultiDict([
+    response._headers = CIMultiDict([
         (
             "Link",
             '<http://example.com/>'
@@ -1132,11 +1065,10 @@ def test_response_links_quoted(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = CIMultiDict([
+    response._headers = CIMultiDict([
         (
             "Link",
             '<http://example.com/>; rel="home-page"'
@@ -1158,11 +1090,10 @@ def test_response_links_relative(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = CIMultiDict([
+    response._headers = CIMultiDict([
         (
             "Link",
             '</relative/path>; rel=rel'
@@ -1184,9 +1115,8 @@ def test_response_links_empty(loop, session):
                               writer=mock.Mock(),
                               continue100=None,
                               timer=TimerNoop(),
-                              auto_decompress=True,
                               traces=[],
                               loop=loop,
                               session=session)
-    response.headers = CIMultiDict()
+    response._headers = CIMultiDict()
     assert response.links == {}

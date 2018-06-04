@@ -1,5 +1,6 @@
 #!/bin/bash
-set -e
+
+set -euo pipefail
 
 package_name="$1"
 if [ -z "$package_name" ]
@@ -35,3 +36,5 @@ do
 
     dock_ext_args=""  # Reset docker args, just in case
 done
+
+set +u

@@ -836,6 +836,11 @@ Response
 
       Setting :attr:`body` also recalculates
       :attr:`~StreamResponse.content_length` value.
+      
+      Assigning :class:`str` to :attr:`body` will make the :attr:`body`
+      type of :class:`aiohttp.payload.StringPayload`, which tries to encode
+      the given data based on *Content-Type* HTTP header, while defaulting
+      to ``UTF-8``.
 
       Resetting :attr:`body` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
@@ -860,7 +865,7 @@ WebSocketResponse
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
-                             protocols=(), compress=True)
+                             protocols=(), compress=True, max_msg_size=4194304)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -897,6 +902,12 @@ WebSocketResponse
 
    :param bool compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
+
+   :param int max_msg_size: maximum size of read websocket message, 4
+                            MB by default. To disable the size limit use ``0``.
+
+      .. versionadded:: 3.3
+
 
    The class supports ``async for`` statement for iterating over
    incoming messages::
@@ -952,7 +963,7 @@ WebSocketResponse
       Read-only property, close code from peer. It is set to ``None`` on
       opened connection.
 
-   .. attribute:: protocol
+   .. attribute:: ws_protocol
 
       Websocket *subprotocol* chosen after :meth:`start` call.
 
@@ -1208,10 +1219,8 @@ Application
 Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
-supported urls in *router* and create a *server socket* with
-:class:`~aiohttp.web.Server` as a *protocol
-factory*. *Server* could be constructed with
-:meth:`Application.make_handler`.
+supported urls in *router* and pass it to :func:`aiohttp.web.run_app`
+or :class:`aiohttp.web.AppRunner`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
@@ -1244,6 +1253,11 @@ duplicated like one using :meth:`Application.copy`.
    :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
                   *router* is ``None``.
+
+      .. deprecated:: 3.3
+
+         The custom routers support is deprecated, the parameter will
+         be removed in 4.0.
 
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
@@ -1823,6 +1837,13 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. For example
+      ``/path/to`` or ``/path/{to}``
+
+      .. versionadded:: 3.3
+
    .. comethod:: resolve(request)
 
       Resolve resource by finding appropriate :term:`web-handler` for
@@ -1886,6 +1907,12 @@ Resource classes hierarchy::
    The class corresponds to resources with plain-text matching,
    ``'/path/to'`` for example.
 
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the path
+      used to create the PlainResource. For example ``/path/to``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for()
 
@@ -1900,6 +1927,13 @@ Resource classes hierarchy::
    :ref:`variable <aiohttp-web-variable-handler>` matching,
    e.g. ``'/path/{to}/{param}'`` etc.
 
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the
+      formatter obtained from the path used to create the DynamicResource.
+      For example, from a path ``/get/{num:^\d+}``, it returns ``/get/{num}``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for(**params)
 
@@ -1917,6 +1951,13 @@ Resource classes hierarchy::
 
    The class corresponds to resources for :ref:`static file serving
    <aiohttp-web-static-file-handling>`.
+
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the prefix
+      used to create the StaticResource. For example ``/prefix``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for(filename, append_version=None)
 
@@ -1944,6 +1985,14 @@ Resource classes hierarchy::
 
    A resource for serving nested applications. The class instance is
    returned by :class:`~aiohttp.web.Application.add_subapp` call.
+
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the
+      prefix used to create the PrefixedSubAppResource.
+      For example ``/prefix``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for(**kwargs)
 
@@ -2419,6 +2468,14 @@ application on specific TCP or Unix socket, e.g.::
 
       Low-level web :class:`Server` for handling HTTP requests,
       read-only attribute.
+
+   .. attribute:: addresses
+
+      A  :class:`list` of served sockets addresses.
+
+      See :meth:`socket.getsockname` for items type.
+
+      .. versionadded:: 3.3
 
    .. attribute:: sites
 

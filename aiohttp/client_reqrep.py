@@ -189,7 +189,7 @@ class ClientRequest:
                  chunked=None, expect100=False,
                  loop=None, response_class=None,
                  proxy=None, proxy_auth=None,
-                 timer=None, session=None, auto_decompress=True,
+                 timer=None, session=None,
                  ssl=None,
                  proxy_headers=None,
                  traces=None):
@@ -214,7 +214,6 @@ class ClientRequest:
         self.length = None
         self.response_class = response_class or ClientResponse
         self._timer = timer if timer is not None else TimerNoop()
-        self._auto_decompress = auto_decompress
         self._ssl = ssl
 
         if loop.get_debug():
@@ -551,7 +550,6 @@ class ClientRequest:
             self.method, self.original_url,
             writer=self._writer, continue100=self._continue, timer=self._timer,
             request_info=self.request_info,
-            auto_decompress=self._auto_decompress,
             traces=self._traces,
             loop=self.loop,
             session=self._session
@@ -584,8 +582,8 @@ class ClientResponse(HeadersMixin):
     reason = None   # Reason-Phrase
 
     content = None  # Payload stream
-    headers = None  # Response headers, CIMultiDictProxy
-    raw_headers = None  # Response raw headers, a sequence of pairs
+    _headers = None  # Response headers, CIMultiDictProxy
+    _raw_headers = None  # Response raw headers, a sequence of pairs
 
     _connection = None  # current connection
     _reader = None     # input stream
@@ -597,12 +595,11 @@ class ClientResponse(HeadersMixin):
 
     def __init__(self, method, url, *,
                  writer, continue100, timer,
-                 request_info, auto_decompress,
+                 request_info,
                  traces, loop, session):
         assert isinstance(url, URL)
 
         self.method = method
-        self.headers = None
         self.cookies = SimpleCookie()
 
         self._real_url = url
@@ -614,7 +611,6 @@ class ClientResponse(HeadersMixin):
         self._history = ()
         self._request_info = request_info
         self._timer = timer if timer is not None else TimerNoop()
-        self._auto_decompress = auto_decompress  # True by default
         self._cache = {}  # required for @reify method decorator
         self._traces = traces
         self._loop = loop
@@ -622,29 +618,33 @@ class ClientResponse(HeadersMixin):
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-    @property
+    @reify
     def url(self):
         return self._url
 
-    @property
+    @reify
     def url_obj(self):
         warnings.warn(
             "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
         return self._url
 
-    @property
+    @reify
     def real_url(self):
         return self._real_url
 
-    @property
+    @reify
     def host(self):
         return self._url.host
 
-    @property
-    def _headers(self):
-        return self.headers
+    @reify
+    def headers(self):
+        return self._headers
 
-    @property
+    @reify
+    def raw_headers(self):
+        return self._raw_headers
+
+    @reify
     def request_info(self):
         return self._request_info
 
@@ -699,12 +699,12 @@ class ClientResponse(HeadersMixin):
     def connection(self):
         return self._connection
 
-    @property
+    @reify
     def history(self):
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
-    @property
+    @reify
     def links(self):
         links_str = ", ".join(self.headers.getall("link", []))
 
@@ -735,23 +735,17 @@ class ClientResponse(HeadersMixin):
 
         return MultiDictProxy(links)
 
-    async def start(self, connection, read_until_eof=False):
+    async def start(self, connection):
         """Start response processing."""
         self._closed = False
         self._protocol = connection.protocol
         self._connection = connection
 
-        connection.protocol.set_response_params(
-            timer=self._timer,
-            skip_payload=self.method.lower() == 'head',
-            read_until_eof=read_until_eof,
-            auto_decompress=self._auto_decompress)
-
         with self._timer:
             while True:
                 # read response
                 try:
-                    (message, payload) = await self._protocol.read()
+                    message, payload = await self._protocol.read()
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info, self.history,
@@ -775,8 +769,8 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
 
         # headers
-        self.headers = CIMultiDictProxy(message.headers)
-        self.raw_headers = tuple(message.raw_headers)
+        self._headers = message.headers  # type is CIMultiDictProxy
+        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
 
         # payload
         self.content = payload

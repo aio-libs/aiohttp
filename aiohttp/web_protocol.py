@@ -286,14 +286,12 @@ class RequestHandler(BaseProtocol):
         if self._waiter:
             self._waiter.cancel()
 
-    def force_close(self, send_last_heartbeat=False):
+    def force_close(self):
         """Force close connection"""
         self._force_close = True
         if self._waiter:
             self._waiter.cancel()
         if self.transport is not None:
-            if send_last_heartbeat:
-                self.transport.write(b"\r\n")
             self.transport.close()
             self.transport = None
 
@@ -317,7 +315,7 @@ class RequestHandler(BaseProtocol):
         # handler in idle state
         if self._waiter:
             if self._loop.time() > next:
-                self.force_close(send_last_heartbeat=True)
+                self.force_close()
                 return
 
         # not all request handlers are done,

@@ -368,9 +368,7 @@ parameter and returns :class:`ClientWebSocketResponse`, with that
 object you can communicate with websocket server using response's
 methods::
 
-   session = aiohttp.ClientSession()
    async with session.ws_connect('http://example.org/ws') as ws:
-
        async for msg in ws:
            if msg.type == aiohttp.WSMsgType.TEXT:
                if msg.data == 'close cmd':
@@ -378,8 +376,6 @@ methods::
                    break
                else:
                    await ws.send_str(msg.data + '/answer')
-           elif msg.type == aiohttp.WSMsgType.CLOSED:
-               break
            elif msg.type == aiohttp.WSMsgType.ERROR:
                break
 
@@ -394,16 +390,40 @@ multiple writer tasks which can only send data asynchronously (by
 Timeouts
 ========
 
-By default all IO operations have 5min timeout. The timeout may be
-overridden by passing ``timeout`` parameter into
-:meth:`ClientSession.get` and family::
+Timeout settings a stored in :class:`ClientTimeout` data structure.
 
-    async with session.get('https://github.com', timeout=60) as r:
+By default *aiohttp* uses a *total* 5min timeout, it means that the
+whole operation should finish in 5 minutes.
+
+The value could be overridden by *timeout* parameter for the session::
+
+    timeout = aiohttp.ClientTimeout(total=60)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         ...
 
-``None`` or ``0`` disables timeout check.
+Timeout could be overridden for a request like :meth:`ClientSession.get`::
 
-.. note::
+    async with session.get(url, timeout=timeout) as resp:
+        ...
 
-   Timeout is cumulative time, it includes all operations like sending request,
-   redirects, response parsing, consuming response, etc.
+Supported :class:`ClientTimeout` fields are:
+
+   ``total``
+
+      The whole operation time including connection
+      establishment, request sending and response reading.
+
+   ``connect``
+
+      The maximum time for connection establishment.
+
+   ``sock_read``
+
+      The maximum allowed timeout for period between reading a new
+      data portion from a peer.
+
+All fields a floats, ``None`` or ``0`` disables a particular timeout check.
+
+Thus the default timeout is::
+
+   aiohttp.ClientTimeout(total=5*60, connect=None, sock_read=None)

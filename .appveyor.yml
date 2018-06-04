@@ -8,13 +8,16 @@ environment:
     - PYTHON: "C:\\Python36-x64"
 
 install:
+  # Ensure the Git Submoduldes have been pulled down too
+  - git submodule update --init --recursive
+
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U pip wheel setuptools"
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 build: false
 
 test_script:
-  - "tools/build.cmd %PYTHON%\\python.exe setup.py test"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pytest tests"
 
 after_test:
   - "tools/build.cmd %PYTHON%\\python.exe setup.py sdist bdist_wheel"

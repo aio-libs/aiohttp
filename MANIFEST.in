@@ -10,7 +10,5 @@ graft tests
 global-exclude *.pyc
 global-exclude *.pyd
 global-exclude *.so
-exclude aiohttp/_frozenlist.html
-exclude aiohttp/_http_parser.html
-exclude aiohttp/_websocket.html
+exclude aiohttp/*.html
 prune docs/_build
