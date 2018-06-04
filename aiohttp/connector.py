@@ -820,7 +820,7 @@ class TCPConnector(BaseConnector):
         try:
             with CeilTimeout(timeout.sock_connect):
                 return await self._loop.create_connection(*args, **kwargs)
-        except certificate_errors as exc:
+        except cert_errors as exc:
             raise ClientConnectorCertificateError(
                 req.connection_key, exc) from exc
         except ssl_errors as exc:
