@@ -14,6 +14,15 @@ Changelog
 
 .. towncrier release notes start
 
+3.3.1 (2018-06-05)
+==================
+
+- Fix ``sock_read`` timeout. (`#3053 <https://github.com/aio-libs/aiohttp/pull/3053>`_)
+- When using a server-request body as the ``data=`` argument of a client request,
+  iterate over the content with ``readany`` instead of ``readline`` to avoid ``Line
+  too long`` errors. (`#3054 <https://github.com/aio-libs/aiohttp/pull/3054>`_)
+
+
 3.3.0 (2018-06-01)
 ==================
 
