@@ -51,6 +51,7 @@ class ResponseHandler(BaseProtocol, DataQueue):
             transport.close()
             self.transport = None
             self._payload = None
+            self._drop_timeout()
         return transport
 
     def is_connected(self):
@@ -162,8 +163,10 @@ class ResponseHandler(BaseProtocol, DataQueue):
             self._read_timeout_handle = None
 
     def _on_read_timeout(self):
-        self.set_exception(
-            ServerTimeoutError("Timeout on reading data from socket"))
+        exc = ServerTimeoutError("Timeout on reading data from socket")
+        self.set_exception(exc)
+        if self._payload is not None:
+            self._payload.set_exception(exc)
 
     def data_received(self, data):
         if not data:

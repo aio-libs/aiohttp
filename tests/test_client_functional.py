@@ -2613,3 +2613,22 @@ async def test_read_timeout(aiohttp_client):
 
     with pytest.raises(aiohttp.ServerTimeoutError):
         await client.get('/')
+
+
+async def test_read_timeout_on_prepared_response(aiohttp_client):
+    async def handler(request):
+        resp = aiohttp.web.StreamResponse()
+        await resp.prepare(request)
+        await asyncio.sleep(5)
+        await resp.drain()
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    with pytest.raises(aiohttp.ServerTimeoutError):
+        async with await client.get('/') as resp:
+            await resp.read()
