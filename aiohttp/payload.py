@@ -13,7 +13,7 @@ from multidict import CIMultiDict
 from . import hdrs
 from .helpers import (PY_36, content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
-from .streams import DEFAULT_LIMIT
+from .streams import DEFAULT_LIMIT, StreamReader
 
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
@@ -325,6 +325,12 @@ class AsyncIterablePayload(Payload):
             self._iter = None
 
 
+class StreamReaderPayload(AsyncIterablePayload):
+
+    def __init__(self, value, *args, **kwargs):
+        super().__init__(value.iter_any(), *args, **kwargs)
+
+
 PAYLOAD_REGISTRY = PayloadRegistry()
 PAYLOAD_REGISTRY.register(BytesPayload, (bytes, bytearray, memoryview))
 PAYLOAD_REGISTRY.register(StringPayload, str)
@@ -334,6 +340,7 @@ PAYLOAD_REGISTRY.register(BytesIOPayload, io.BytesIO)
 PAYLOAD_REGISTRY.register(
     BufferedReaderPayload, (io.BufferedReader, io.BufferedRandom))
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
+PAYLOAD_REGISTRY.register(StreamReaderPayload, StreamReader)
 # try_last for giving a chance to more specialized async interables like
 # multidict.BodyPartReaderPayload override the default
 PAYLOAD_REGISTRY.register(AsyncIterablePayload, AsyncIterable,
