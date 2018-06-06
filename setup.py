@@ -63,7 +63,7 @@ with codecs.open(os.path.join(os.path.abspath(os.path.dirname(
 
 
 install_requires = ['chardet', 'multidict>=4.0.0',
-                    'async_timeout>=1.2.0', 'yarl>=1.0.0']
+                    'async_timeout>=1.2.0,<3.0.0', 'yarl>=1.0.0']
 
 
 if sys.version_info < (3, 7):
