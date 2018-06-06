@@ -386,6 +386,7 @@ multiple writer tasks which can only send data asynchronously (by
 ``await ws.send_str('data')`` for example).
 
 
+.. _aiohttp-client-timeouts:
 
 Timeouts
 ========
