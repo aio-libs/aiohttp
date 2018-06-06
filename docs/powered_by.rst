@@ -34,4 +34,4 @@ make a Pull Request!
 * `Escargot <https://escargot.log1p.xyz>`_ - Chat server
 * `Prom.ua <https://prom.ua/>`_ - Online trading platform
 * `globo.com <https://www.globo.com/>`_ - (some parts) Brazilian largest media portal 
-* `Glose <https://www.glose.com/>`_ - Social reader for EBooks
+* `Glose <https://www.glose.com/>`_ - Social reader for E-Books
