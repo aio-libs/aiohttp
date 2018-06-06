@@ -161,7 +161,7 @@ async def test_auto_header_user_agent(aiohttp_client):
     client = await aiohttp_client(app)
 
     resp = await client.get('/')
-    assert 200, resp.status
+    assert 200 == resp.status
 
 
 async def test_skip_auto_headers_user_agent(aiohttp_client):
