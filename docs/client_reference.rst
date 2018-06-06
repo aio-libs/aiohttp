@@ -1476,6 +1476,8 @@ ClientTimeout
 
    A data class for client timeout settings.
 
+   See :ref:`aiohttp-client-timeouts` for usage examples.
+
    .. attribute:: total
 
       Total timeout for the whole request.
