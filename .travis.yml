@@ -76,6 +76,11 @@ _helpers:
     # `skip_cleanup: true` is required to preserve binary wheels, built
     # inside of manylinux1 docker container during `script` step above.
     skip_cleanup: true
+    # `skip-existing: true` is required to skip uploading dists, already
+    # present in PYPI instead of failing the whole process.
+    # This happenes when other CI (AppVeyor etc.) has already uploaded
+    # the very same dist (usually sdist).
+    skip-existing: true
     user: aio-libs-bot
     password:
       # Encrypted with `travis encrypt -r aio-libs/aiohttp --api-endpoint 'https://api.travis-ci.com/'`:
