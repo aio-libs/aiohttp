@@ -715,7 +715,7 @@ Test Client
       Routes a request to tested http server.
 
       The interface is identical to
-      :meth:`asyncio.ClientSession.request`, except the loop kwarg is
+      :meth:`aiohttp.ClientSession.request`, except the loop kwarg is
       overridden by the instance used by the test server.
 
    .. comethod:: get(path, *args, **kwargs)
