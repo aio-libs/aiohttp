@@ -28,7 +28,7 @@ artifacts:
 deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username andrew.svetlov --password $env:PYPI_PASSWD"
+          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload --skip-existing dist/* --username andrew.svetlov --password $env:PYPI_PASSWD"
       }
 
 #notifications:
