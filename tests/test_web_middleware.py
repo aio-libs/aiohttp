@@ -86,6 +86,8 @@ def cli(loop, aiohttp_client):
             'GET', '/resource1/a/b', handler)
         app.router.add_route(
             'GET', '/resource2/a/b/', handler)
+        app.router.add_route(
+            'GET', '/resource2/a/b%2Fc/', handler)
         app.middlewares.extend(extra_middlewares)
         return aiohttp_client(app, server_kwargs={'skip_url_asserts': True})
     return wrapper
@@ -101,7 +103,9 @@ class TestNormalizePathMiddleware:
         ('/resource1?p1=1&p2=2', 200),
         ('/resource1/?p1=1&p2=2', 404),
         ('/resource2?p1=1&p2=2', 200),
-        ('/resource2/?p1=1&p2=2', 200)
+        ('/resource2/?p1=1&p2=2', 200),
+        ('/resource2/a/b%2Fc', 200),
+        ('/resource2/a/b%2Fc/', 200)
     ])
     async def test_add_trailing_when_necessary(
             self, path, status, cli):
@@ -120,7 +124,9 @@ class TestNormalizePathMiddleware:
         ('/resource1?p1=1&p2=2', 200),
         ('/resource1/?p1=1&p2=2', 404),
         ('/resource2?p1=1&p2=2', 404),
-        ('/resource2/?p1=1&p2=2', 200)
+        ('/resource2/?p1=1&p2=2', 200),
+        ('/resource2/a/b%2Fc', 404),
+        ('/resource2/a/b%2Fc/', 200)
     ])
     async def test_no_trailing_slash_when_disabled(
             self, path, status, cli):
