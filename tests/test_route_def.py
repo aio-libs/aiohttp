@@ -42,6 +42,19 @@ def test_head(router):
     assert str(route.url_for()) == '/'
 
 
+def test_options(router):
+    async def handler(request):
+        pass
+
+    router.add_routes([web.options('/', handler)])
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.handler is handler
+    assert route.method == 'OPTIONS'
+    assert str(route.url_for()) == '/'
+
+
 def test_post(router):
     async def handler(request):
         pass

@@ -1,0 +1,1 @@
+fix `UrlDispatcher` has no attribute `add_options`, add `web.options`
