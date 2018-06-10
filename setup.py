@@ -119,7 +119,7 @@ args = dict(
     url='https://github.com/aio-libs/aiohttp',
     project_urls={
         'Chat: Gitter': 'https://gitter.im/aio-libs/Lobby',
-        'CI: AppVeyor': 'https://ci.appveyor.com/project/asvetlov/aiohttp',  # FIXME: move under aio-libs/* slug
+        'CI: AppVeyor': 'https://ci.appveyor.com/project/aio-libs/aiohttp',
         'CI: Circle': 'https://circleci.com/gh/aio-libs/aiohttp',
         'CI: Shippable': 'https://app.shippable.com/github/aio-libs/aiohttp',
         'CI: Travis': 'https://travis-ci.com/aio-libs/aiohttp',
