@@ -45,6 +45,9 @@ class ResponseHandler(BaseProtocol, DataQueue):
                 self._payload_parser is not None or
                 len(self) or self._tail)
 
+    def force_close(self):
+        self._should_close = True
+
     def close(self):
         transport = self.transport
         if transport is not None:
