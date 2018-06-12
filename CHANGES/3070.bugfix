@@ -1,0 +1,2 @@
+Many HTTP proxies has buggy keepalive support.
+Let's not reuse connection but close it after processing every response.
