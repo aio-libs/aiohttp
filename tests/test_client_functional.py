@@ -2032,6 +2032,33 @@ async def test_raise_for_status(aiohttp_client):
         await client.get('/')
 
 
+async def test_raise_for_status_per_request(aiohttp_client):
+
+    async def handler_redirect(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler_redirect)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get('/', raise_for_status=True)
+
+
+async def test_raise_for_status_disable_per_request(aiohttp_client):
+
+    async def handler_redirect(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler_redirect)
+    client = await aiohttp_client(app, raise_for_status=True)
+
+    resp = await client.get('/', raise_for_status=False)
+    assert 400 == resp.status
+    resp.close()
+
+
 async def test_invalid_idna():
     session = aiohttp.ClientSession()
     try:
