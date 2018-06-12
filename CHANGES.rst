@@ -17,11 +17,10 @@ Changelog
 3.3.2 (2018-06-12)
 ==================
 
-Bugfixes
---------
-
 - Many HTTP proxies has buggy keepalive support. Let's not reuse connection but
   close it after processing every response. (#3070)
+
+- Provide vendor source files in tarball (#3076)
 
 
 3.3.1 (2018-06-05)
