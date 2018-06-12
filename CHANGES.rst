@@ -14,6 +14,16 @@ Changelog
 
 .. towncrier release notes start
 
+3.3.2 (2018-06-12)
+==================
+
+Bugfixes
+--------
+
+- Many HTTP proxies has buggy keepalive support. Let's not reuse connection but
+  close it after processing every response. (#3070)
+
+
 3.3.1 (2018-06-05)
 ==================
 
