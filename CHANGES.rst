@@ -18,9 +18,9 @@ Changelog
 ==================
 
 - Many HTTP proxies has buggy keepalive support. Let's not reuse connection but
-  close it after processing every response. (#3070)
+  close it after processing every response. (`#3070 <https://github.com/aio-libs/aiohttp/pull/3070>`_)
 
-- Provide vendor source files in tarball (#3076)
+- Provide vendor source files in tarball (`#3076 <https://github.com/aio-libs/aiohttp/pull/3076>`_)
 
 
 3.3.1 (2018-06-05)
