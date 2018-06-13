@@ -332,3 +332,68 @@ operations::
 A :class:`aiohttp.web.Response` object must be returned. This is
 required by aiohttp web contracts, even though the response
 already been sent.
+
+
+Why is creating a ClientSession outside of an event loop dangerous?
+-------------------------------------------------------------------
+
+Short answer is: life-cycle of all asyncio objects should be shorter
+than life-chicle of event loop.
+
+Full explanation is longer.  All asyncio object should be correctly
+finished/disconnected/closed before event loop shutdown.  Otherwise
+user can get unexpected behavior. In the best case it is a warning
+about unclosed resource, in the worst case the program just hangs,
+awaiting for coroutine is never resumed etc.
+
+Consider the following code from ``mod.py``::
+
+    import aiohttp
+
+    session = aiohttp.ClientSession()
+
+    async def fetch(url):
+        async with session.get(url) as resp:
+            return await resp.text()
+
+The session grabs current event loop instance and stores it in a
+private variable.
+
+The main module imports the module and installs ``uvloop`` (an
+alternative fast event loop implementation).
+
+``main.py``::
+
+    import asyncio
+    import uvloop
+    import mod
+
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    asyncio.run(main())
+
+The code is broken: ``session`` is bound to default ``asyncio`` loop
+on import time but the loop is changed **after the import** by
+``set_event_loop()``.  As result ``fetch()`` call hangs.
+
+
+To avoid import dependency hell *aiohttp* encourages creation of
+``ClientSession`` from async function.  The same policy works for
+``web.Application`` too.
+
+Another use case is unit test writing.  Very many test libraries
+(*aiohttp test tools* first) creates a new loop instance for every
+test function execution.  It's done for sake of tests isolation.
+Otherwise pending activity (timers, network packets etc.) from
+previous test may interfere with current one producing very cryptic
+and unstable test failure.
+
+Note: *class variables* are hidden globals actually. The following
+code has the same problem as ``mod.py`` example, ``session`` variable
+is the hidden global object::
+
+    class A:
+        session = aiohttp.ClientSession()
+
+        async def fetch(self, url):
+            async with session.get(url) as resp:
+                return await resp.text()
