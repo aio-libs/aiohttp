@@ -1,0 +1,2 @@
+Prevent double closing when client connection is released before the
+last ``data_received()`` callback.

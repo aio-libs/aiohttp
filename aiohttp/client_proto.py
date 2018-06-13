@@ -194,7 +194,11 @@ class ResponseHandler(BaseProtocol, DataQueue):
                 try:
                     messages, upgraded, tail = self._parser.feed_data(data)
                 except BaseException as exc:
-                    self.transport.close()
+                    if self.transport is not None:
+                        # connection.release() could be called BEFORE
+                        # data_received(), the transport is already
+                        # closed in this case
+                        self.transport.close()
                     # should_close is True after the call
                     self.set_exception(exc)
                     return
