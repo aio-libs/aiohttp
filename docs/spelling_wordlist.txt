@@ -270,6 +270,7 @@ tuples
 UI
 un
 unawaited
+unclosed
 unicode
 unittest
 Unittest
