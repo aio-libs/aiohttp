@@ -338,7 +338,7 @@ Why is creating a ClientSession outside of an event loop dangerous?
 -------------------------------------------------------------------
 
 Short answer is: life-cycle of all asyncio objects should be shorter
-than life-chicle of event loop.
+than life-cycle of event loop.
 
 Full explanation is longer.  All asyncio object should be correctly
 finished/disconnected/closed before event loop shutdown.  Otherwise
