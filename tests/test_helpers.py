@@ -289,8 +289,9 @@ class TestPyReify(ReifyMixin):
     reify = helpers.reify_py
 
 
-class TestCReify(ReifyMixin):
-    reify = helpers.reify_c
+if not helpers.NO_EXTENSIONS:
+    class TestCReify(ReifyMixin):
+        reify = helpers.reify_c
 
 # ----------------------------------- is_ip_address() ----------------------
 
