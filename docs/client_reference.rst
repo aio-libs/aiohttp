@@ -121,8 +121,10 @@ The client session supports the context manager protocol for self closing.
           async with resp:
               assert resp.status == 200
 
-      Set this parameter to ``True`` if you need ``raise_for_status`` for most of cases
-      and override ``raise_for_status`` for those requests where you need to handle responses with status 400 or higher
+      Set the parameter to ``True`` if you need ``raise_for_status`` 
+      for most of cases but override ``raise_for_status`` 
+      for those requests where 
+      you need to handle responses with status 400 or higher.
 
    :param timeout: a :class:`ClientTimeout` settings structure, 5min
                    total timeout by default.
