@@ -231,6 +231,7 @@ class ClientSession:
                        compress=None,
                        chunked=None,
                        expect100=False,
+                       raise_for_status=None,
                        read_until_eof=True,
                        proxy=None,
                        proxy_auth=None,
@@ -465,7 +466,9 @@ class ClientSession:
                     break
 
             # check response status
-            if self._raise_for_status:
+            if raise_for_status is None:
+                raise_for_status = self._raise_for_status
+            if raise_for_status:
                 resp.raise_for_status()
 
             # register connection
