@@ -316,7 +316,7 @@ class TestPyReify(ReifyMixin):
     reify = helpers.reify_py
 
 
-if not helpers.NO_EXTENSIONS:
+if not helpers.NO_EXTENSIONS and not IS_PYPY:
     class TestCReify(ReifyMixin):
         reify = helpers.reify_c
 
