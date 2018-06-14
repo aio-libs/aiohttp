@@ -1,3 +1,4 @@
+import platform
 import sys
 
 import pytest
@@ -8,6 +9,9 @@ pytest_plugins = 'pytester'
 CONFTEST = '''
 pytest_plugins = 'aiohttp.pytest_plugin'
 '''
+
+
+IS_PYPY = platform.python_implementation() == 'PyPy'
 
 
 def test_aiohttp_plugin(testdir):
@@ -147,6 +151,10 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     result.assert_outcomes(passed=12)
 
 
+@pytest.mark.skip(
+    IS_PYPY,
+    'Under PyPy "coroutine \'foobar\' was never awaited" does not happen',
+)
 def test_warning_checks(testdir):
     testdir.makepyfile("""\
 
