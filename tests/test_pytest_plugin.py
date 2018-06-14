@@ -1,3 +1,4 @@
+import os
 import platform
 import sys
 
@@ -151,10 +152,6 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     result.assert_outcomes(passed=12)
 
 
-@pytest.mark.skip(
-    IS_PYPY,
-    'Under PyPy "coroutine \'foobar\' was never awaited" does not happen',
-)
 def test_warning_checks(testdir):
     testdir.makepyfile("""\
 
@@ -171,7 +168,13 @@ async def test_bad():
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '-s', '-W',
                                'default', '--aiohttp-loop=pyloop')
-    result.assert_outcomes(passed=1, failed=1)
+    expected_outcomes = (
+        {'failed': 0, 'passed': 2}
+        if IS_PYPY and bool(os.environ.get('PYTHONASYNCIODEBUG'))
+        else {'failed': 1, 'passed': 1}
+    )
+    """Under PyPy "coroutine 'foobar' was never awaited" does not happen."""
+    result.assert_outcomes(**expected_outcomes)
 
 
 def test_aiohttp_plugin_async_fixture(testdir, capsys):
