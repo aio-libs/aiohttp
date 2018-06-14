@@ -295,6 +295,7 @@ The client session supports the context manager protocol for self closing.
                                     response if set to ``True``.
                                     If set to ``None`` value from ``ClientSession`` will be used.
                                     ``None`` by default (optional).
+
           .. versionadded:: 3.4 
 
       :param bool read_until_eof: Read response until EOF if response
