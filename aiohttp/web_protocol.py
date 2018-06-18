@@ -1,6 +1,5 @@
 import asyncio
 import asyncio.streams
-import http.server
 import traceback
 import warnings
 from collections import deque
@@ -9,10 +8,11 @@ from html import escape as html_escape
 
 import yarl
 
-from . import helpers, http
+from . import helpers
 from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout
-from .http import HttpProcessingError, HttpRequestParser, StreamWriter
+from .http import (HttpProcessingError, HttpRequestParser, HttpVersion10,
+                   RawRequestMessage, StreamWriter)
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD
 from .tcp_helpers import tcp_cork, tcp_keepalive, tcp_nodelay
@@ -23,8 +23,8 @@ from .web_response import Response
 
 __all__ = ('RequestHandler', 'RequestPayloadError', 'PayloadAccessError')
 
-ERROR = http.RawRequestMessage(
-    'UNKNOWN', '/', http.HttpVersion10, {},
+ERROR = RawRequestMessage(
+    'UNKNOWN', '/', HttpVersion10, {},
     {}, True, False, False, False, yarl.URL('/'))
 
 

@@ -12,6 +12,7 @@ import warnings
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
+from typing import Optional
 from urllib.parse import parse_qsl
 
 import attr
@@ -325,7 +326,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             return socket.getfqdn()
 
     @reify
-    def remote(self) -> str:
+    def remote(self) -> Optional[str]:
         """Remote IP of client initiated HTTP request.
 
         The IP is resolved in this order:
