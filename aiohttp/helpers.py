@@ -14,11 +14,11 @@ import sys
 import time
 import weakref
 from collections import namedtuple
-from collections.abc import Mapping
+from collections.abc import Mapping as ABCMapping
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple  # noqa
+from typing import Any, Dict, List, Optional, Tuple  # noqa
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -42,7 +42,7 @@ if not PY_37:
     idna_ssl.patch_match_hostname()
 
 
-sentinel = object()
+sentinel = object()  # type: Any
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))  # type: bool
 
 # N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
@@ -755,7 +755,7 @@ def set_exception(fut, exc):
         fut.set_exception(exc)
 
 
-class ChainMapProxy(Mapping):
+class ChainMapProxy(ABCMapping):
     __slots__ = ('_maps',)
 
     def __init__(self, maps):

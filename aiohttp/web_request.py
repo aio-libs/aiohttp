@@ -12,7 +12,7 @@ import warnings
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
-from typing import Optional
+from typing import Any, Dict, Mapping, Optional, Tuple  # noqa
 from urllib.parse import parse_qsl
 
 import attr
@@ -22,6 +22,7 @@ from yarl import URL
 from . import hdrs, multipart
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader
+from .typedefs import LooseHeaders, RawHeaders, StrOrURL
 from .web_exceptions import HTTPRequestEntityTooLarge
 
 
@@ -109,9 +110,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         if remote is not None:
             self._cache['remote'] = remote
 
-    def clone(self, *, method=sentinel, rel_url=sentinel,
-              headers=sentinel, scheme=sentinel, host=sentinel,
-              remote=sentinel) -> 'BaseRequest':
+    def clone(self, *, method: str=sentinel, rel_url: StrOrURL=sentinel,
+              headers: LooseHeaders=sentinel, scheme: str=sentinel,
+              host: str=sentinel,
+              remote: str=sentinel) -> 'BaseRequest':
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
@@ -124,13 +126,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             raise RuntimeError("Cannot clone request "
                                "after reading it's content")
 
-        dct = {}
+        dct = {}  # type: Dict[str, Any]
         if method is not sentinel:
             dct['method'] = method
         if rel_url is not sentinel:
-            rel_url = URL(rel_url)
-            dct['url'] = rel_url
-            dct['path'] = str(rel_url)
+            new_url = URL(rel_url)
+            dct['url'] = new_url
+            dct['path'] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
             dct['headers'] = CIMultiDictProxy(CIMultiDict(headers))
@@ -184,7 +186,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._message
 
     @reify
-    def rel_url(self):
+    def rel_url(self) -> URL:
         return self._rel_url
 
     @reify
@@ -302,7 +304,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._method
 
     @reify
-    def version(self):
+    def version(self) -> Tuple[int, int]:
         """Read only property for getting HTTP version of request.
 
         Returns aiohttp.protocol.HttpVersion instance.
@@ -391,12 +393,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._headers
 
     @reify
-    def raw_headers(self):
+    def raw_headers(self) -> RawHeaders:
         """A sequence of pars for all headers."""
         return self._message.raw_headers
 
     @staticmethod
-    def _http_date(_date_str):
+    def _http_date(_date_str) -> Optional[datetime.datetime]:
         """Process a date string, return a datetime object
         """
         if _date_str is not None:
@@ -407,43 +409,42 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return None
 
     @reify
-    def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
+    def if_modified_since(self) -> Optional[datetime.datetime]:
         """The value of If-Modified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(_IF_MODIFIED_SINCE))
+        return self._http_date(self.headers.get(hdrs.IF_MODIFIED_SINCE))
 
     @reify
-    def if_unmodified_since(self,
-                            _IF_UNMODIFIED_SINCE=hdrs.IF_UNMODIFIED_SINCE):
+    def if_unmodified_since(self) -> Optional[datetime.datetime]:
         """The value of If-Unmodified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(_IF_UNMODIFIED_SINCE))
+        return self._http_date(self.headers.get(hdrs.IF_UNMODIFIED_SINCE))
 
     @reify
-    def if_range(self, _IF_RANGE=hdrs.IF_RANGE):
+    def if_range(self) -> Optional[datetime.datetime]:
         """The value of If-Range HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(_IF_RANGE))
+        return self._http_date(self.headers.get(hdrs.IF_RANGE))
 
     @reify
-    def keep_alive(self):
+    def keep_alive(self) -> bool:
         """Is keepalive enabled by client?"""
         return not self._message.should_close
 
     @reify
-    def cookies(self):
+    def cookies(self) -> Mapping[str, str]:
         """Return request cookies.
 
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, '')
-        parsed = SimpleCookie(raw)
+        parsed = SimpleCookie(raw)  # type: ignore
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
 
