@@ -352,7 +352,7 @@ class HttpParser:
         return headers, raw_headers, close_conn, encoding, upgrade, chunked
 
 
-class HttpRequestParserPy(HttpParser):
+class HttpRequestParser(HttpParser):
     """Read request status line. Exception .http_exceptions.BadStatusLine
     could be raised in case of any errors in status line.
     Returns RawRequestMessage.
@@ -400,7 +400,7 @@ class HttpRequestParserPy(HttpParser):
             close, compression, upgrade, chunked, URL(path))
 
 
-class HttpResponseParserPy(HttpParser):
+class HttpResponseParser(HttpParser):
     """Read response status line and headers.
 
     BadStatusLine could be raised in case of any errors in status line.
@@ -674,12 +674,13 @@ class DeflateBuffer:
         self.out.end_http_chunk_receiving()
 
 
-HttpRequestParser = HttpRequestParserPy
-HttpResponseParser = HttpResponseParserPy
+HttpRequestParserPy = HttpRequestParser
+HttpResponseParserPy = HttpResponseParser
 try:
-    from ._http_parser import HttpRequestParserC, HttpResponseParserC
+    from ._http_parser import (HttpRequestParser as HttpRequestParserC,  # type: ignore  # noqa
+                               HttpResponseParser as HttpResponseParserC)
     if not NO_EXTENSIONS:  # pragma: no cover
-        HttpRequestParser = HttpRequestParserC
-        HttpResponseParser = HttpResponseParserC
+        HttpRequestParser = HttpRequestParserC  # type: ignore
+        HttpResponseParser = HttpResponseParserC  # type: ignore
 except ImportError:  # pragma: no cover
     pass

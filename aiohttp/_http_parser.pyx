@@ -308,7 +308,7 @@ cdef class HttpParser:
             return messages, False, b''
 
 
-cdef class HttpRequestParserC(HttpParser):
+cdef class HttpRequestParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
@@ -335,7 +335,7 @@ cdef class HttpRequestParserC(HttpParser):
          self._buf.clear()
 
 
-cdef class HttpResponseParserC(HttpParser):
+cdef class HttpResponseParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,

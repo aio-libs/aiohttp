@@ -43,13 +43,13 @@ class BaseTestWorker:
         self.wsgi = web.Application()
 
 
-class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
+class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):  # type: ignore  # noqa
     pass
 
 
 PARAMS = [AsyncioWorker]
 if uvloop is not None:
-    class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
+    class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):  # type: ignore  # noqa
         pass
 
     PARAMS.append(UvloopWorker)

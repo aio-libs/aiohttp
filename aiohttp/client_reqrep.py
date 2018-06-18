@@ -27,7 +27,7 @@ from .log import client_logger
 try:
     import ssl
 except ImportError:  # pragma: no cover
-    ssl = None
+    ssl = None  # type: ignore
 
 try:
     import cchardet as chardet

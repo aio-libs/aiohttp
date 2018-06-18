@@ -20,7 +20,7 @@ from aiohttp.helpers import DEBUG
 try:
     import ssl
 except ImportError:
-    ssl = False
+    ssl = None  # type: ignore
 
 
 @pytest.fixture

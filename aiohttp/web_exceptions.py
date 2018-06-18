@@ -71,7 +71,7 @@ class HTTPException(Response, Exception):
     # You should set in subclasses:
     # status = 200
 
-    status_code = None
+    status_code = -1
     empty_body = False
 
     def __init__(self, *, headers=None, reason=None,

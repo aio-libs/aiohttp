@@ -4,6 +4,7 @@ __version__ = '3.4.0a0'
 
 from . import hdrs  # noqa
 from .client import *  # noqa
+from .client import ClientSession, ServerFingerprintMismatch  # noqa
 from .cookiejar import *  # noqa
 from .formdata import *  # noqa
 from .helpers import *  # noqa
@@ -21,7 +22,7 @@ try:
     from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
     workers = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 except ImportError:  # pragma: no cover
-    workers = ()
+    workers = ()  # type: ignore
 
 
 __all__ = (client.__all__ +  # noqa

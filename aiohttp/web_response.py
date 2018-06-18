@@ -237,12 +237,12 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         self._generate_content_type_header()
 
     @property
-    def last_modified(self, _LAST_MODIFIED=hdrs.LAST_MODIFIED):
+    def last_modified(self):
         """The value of Last-Modified HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        httpdate = self.headers.get(_LAST_MODIFIED)
+        httpdate = self.headers.get(hdrs.LAST_MODIFIED)
         if httpdate is not None:
             timetuple = parsedate(httpdate)
             if timetuple is not None:

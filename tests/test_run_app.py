@@ -21,7 +21,7 @@ _has_unix_domain_socks = hasattr(socket, 'AF_UNIX')
 if _has_unix_domain_socks:
     _abstract_path_sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
-        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode('ascii'))
+        _abstract_path_sock.bind(b"\x00" + uuid4().hex.encode('ascii'))  # type: ignore  # noqa
     except FileNotFoundError:
         _abstract_path_failed = True
     else:
@@ -137,7 +137,7 @@ mock_server_default_8989 = [
 ]
 mock_socket = mock.Mock(getsockname=lambda: ('mock-socket', 123))
 mixed_bindings_tests = (
-    (
+    (  # type: ignore
         "Nothing Specified",
         {},
         [mock.call(mock.ANY, '0.0.0.0', 8080, ssl=None, backlog=128,
@@ -354,7 +354,7 @@ def test_run_app_custom_backlog_unix(patched_loop):
 def test_run_app_http_unix_socket(patched_loop, shorttmpdir):
     app = web.Application()
 
-    sock_path = str(shorttmpdir.join('socket.sock'))
+    sock_path = str(shorttmpdir / 'socket.sock')
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(app, path=sock_path, print=printer)
 
@@ -367,7 +367,7 @@ def test_run_app_http_unix_socket(patched_loop, shorttmpdir):
 def test_run_app_https_unix_socket(patched_loop, shorttmpdir):
     app = web.Application()
 
-    sock_path = str(shorttmpdir.join('socket.sock'))
+    sock_path = str(shorttmpdir / 'socket.sock')
     ssl_context = ssl.create_default_context()
     printer = mock.Mock(wraps=stopper(patched_loop))
     web.run_app(app, path=sock_path, ssl_context=ssl_context, print=printer)

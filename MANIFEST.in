@@ -8,6 +8,7 @@ graft docs
 graft examples
 graft tests
 recursive-include vendor *
+global-include aiohttp *.pyi
 global-exclude *.pyc
 global-exclude *.pyd
 global-exclude *.so

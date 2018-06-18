@@ -4,15 +4,8 @@ from functools import total_ordering
 from .helpers import NO_EXTENSIONS
 
 
-if not NO_EXTENSIONS:
-    try:
-        from aiohttp._frozenlist import FrozenList
-    except ImportError:  # pragma: no cover
-        FrozenList = None
-
-
 @total_ordering
-class PyFrozenList(MutableSequence):
+class FrozenList(MutableSequence):
 
     __slots__ = ('_frozen', '_items')
 
@@ -69,5 +62,11 @@ class PyFrozenList(MutableSequence):
                                                       self._items)
 
 
-if NO_EXTENSIONS or FrozenList is None:
-    FrozenList = PyFrozenList
+PyFrozenList = FrozenList
+
+try:
+    from aiohttp._frozenlist import FrozenList as CFrozenList  # type: ignore
+    if not NO_EXTENSIONS:
+        FrozenList = CFrozenList  # type: ignore
+except ImportError:  # pragma: no cover
+    pass

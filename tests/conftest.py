@@ -1,7 +1,8 @@
+import pathlib
+import shutil
 import tempfile
 
 import pytest
-from py import path
 
 
 pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
@@ -12,6 +13,6 @@ def shorttmpdir():
     """Provides a temporary directory with a shorter file system path than the
     tmpdir fixture.
     """
-    tmpdir = path.local(tempfile.mkdtemp())
+    tmpdir = pathlib.Path(tempfile.mkdtemp())
     yield tmpdir
-    tmpdir.remove(rec=1)
+    shutil.rmtree(tmpdir, ignore_errors=True)
