@@ -647,6 +647,7 @@ def test_rudimentary_transport(srv, loop):
 async def test_close(srv, loop, transport):
     transport.close.side_effect = partial(srv.connection_lost, None)
     srv.connection_made(transport)
+    await asyncio.sleep(0, loop=loop)
 
     srv.handle_request = mock.Mock()
     srv.handle_request.side_effect = helpers.noop

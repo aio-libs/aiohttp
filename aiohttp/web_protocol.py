@@ -109,7 +109,7 @@ class RequestHandler(BaseProtocol):
 
         self._waiter = None
         self._error_handler = None
-        self._task_handler = self._loop.create_task(self.start())
+        self._task_handler = None
 
         self._upgrade = False
         self._payload_parser = None
@@ -158,14 +158,16 @@ class RequestHandler(BaseProtocol):
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             with CeilTimeout(timeout, loop=self._loop):
-                if self._error_handler and not self._error_handler.done():
+                if (self._error_handler is not None and
+                        not self._error_handler.done()):
                     await self._error_handler
 
-                if self._task_handler and not self._task_handler.done():
+                if (self._task_handler is not None and
+                        not self._task_handler.done()):
                     await self._task_handler
 
         # force-close non-idle handler
-        if self._task_handler:
+        if self._task_handler is not None:
             self._task_handler.cancel()
 
         if self.transport is not None:
@@ -180,6 +182,7 @@ class RequestHandler(BaseProtocol):
 
         tcp_cork(transport, False)
         tcp_nodelay(transport, True)
+        self._task_handler = self._loop.create_task(self.start())
         self._manager.connection_made(self, transport)
 
     def connection_lost(self, exc):
@@ -196,7 +199,7 @@ class RequestHandler(BaseProtocol):
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._task_handler:
+        if self._task_handler is not None:
             self._task_handler.cancel()
 
         if self._error_handler is not None:
