@@ -28,7 +28,7 @@ flake: .flake
 check_changes:
 	@./tools/check_changes.py
 
-.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes
+.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
 	@pip install -e .
 	@touch .develop
 
@@ -112,7 +112,7 @@ install:
 	@pip install -U pip
 	@pip install -Ur requirements/dev.txt
 
-mypy:
+mypy: .flake
 	mypy aiohttp tests
 
 .PHONY: all build flake test vtest cov clean doc
