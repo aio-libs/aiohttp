@@ -5,6 +5,7 @@ from yarl import URL
 
 
 #  type helpers
+Byteish = Union[bytes, bytearray, memoryview]
 LooseHeaders = Union[Mapping, CIMultiDict, CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
