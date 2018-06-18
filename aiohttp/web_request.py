@@ -12,7 +12,7 @@ import warnings
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
-from typing import Any, Dict, Mapping, Optional, Tuple  # noqa
+from typing import Any, Dict, Mapping, Optional, Tuple, cast  # noqa
 from urllib.parse import parse_qsl
 
 import attr
@@ -21,12 +21,15 @@ from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
-from .streams import EmptyStreamReader
-from .typedefs import LooseHeaders, RawHeaders, StrOrURL
+from .streams import EmptyStreamReader, StreamReader
+from .typedefs import JSONDecoder, LooseHeaders, RawHeaders, StrOrURL
 from .web_exceptions import HTTPRequestEntityTooLarge
 
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
+
+
+DEFAULT_JSON_DECODER = json.loads
 
 
 @attr.s(frozen=True, slots=True)
@@ -388,7 +391,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> CIMultiDictProxy:
+    def headers(self) -> CIMultiDictProxy[str]:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
@@ -485,12 +488,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return slice(start, end, 1)
 
     @reify
-    def content(self):
+    def content(self) -> StreamReader:
         """Return raw payload stream."""
         return self._payload
 
     @property
-    def has_body(self):
+    def has_body(self) -> bool:
         """Return True if request's HTTP BODY can be read, False otherwise."""
         warnings.warn(
             "Deprecated, use .can_read_body #2005",
@@ -498,16 +501,16 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return not self._payload.at_eof()
 
     @property
-    def can_read_body(self):
+    def can_read_body(self) -> bool:
         """Return True if request's HTTP BODY can be read, False otherwise."""
         return not self._payload.at_eof()
 
     @reify
-    def body_exists(self):
+    def body_exists(self) -> bool:
         """Return True if request has HTTP BODY, False otherwise."""
         return type(self._payload) is not EmptyStreamReader
 
-    async def release(self):
+    async def release(self) -> None:
         """Release request.
 
         Eat unread part of HTTP BODY if present.
@@ -515,7 +518,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         while not self._payload.at_eof():
             await self._payload.readany()
 
-    async def read(self):
+    async def read(self) -> bytes:
         """Read request body if present.
 
         Returns bytes object with full request content.
@@ -533,13 +536,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._read_bytes = bytes(body)
         return self._read_bytes
 
-    async def text(self):
+    async def text(self) -> str:
         """Return BODY as text using encoding from .charset."""
         bytes_body = await self.read()
         encoding = self.charset or 'utf-8'
         return bytes_body.decode(encoding)
 
-    async def json(self, *, loads=json.loads):
+    async def json(self, *, loads: JSONDecoder=DEFAULT_JSON_DECODER) -> Any:
         """Return BODY as JSON."""
         body = await self.text()
         return loads(body)
@@ -548,7 +551,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return async iterator to process BODY as multipart."""
         return reader(self._headers, self._payload)
 
-    async def post(self):
+    async def post(self) -> MultiDictProxy[Any]:
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -563,7 +566,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out = MultiDict()
+        out = MultiDict()  # type: MultiDict[Any]
 
         if content_type == 'multipart/form-data':
             multipart = await self.multipart()
@@ -589,7 +592,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     tmp.seek(0)
 
                     ff = FileField(field.name, field.filename,
-                                   tmp, content_type, field.headers)
+                                   cast(io.BufferedReader, tmp),
+                                   content_type, field.headers)
                     out.add(field.name, ff)
                 else:
                     value = await field.read(decode=True)
@@ -633,7 +637,7 @@ class Request(BaseRequest):
 
     ATTRS = BaseRequest.ATTRS | frozenset(['_match_info'])
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         # matchdict, route_name, handler
@@ -650,17 +654,19 @@ class Request(BaseRequest):
                               stacklevel=2)
             super().__setattr__(name, val)
 
-    def clone(self, *, method=sentinel, rel_url=sentinel,
-              headers=sentinel, scheme=sentinel, host=sentinel,
-              remote=sentinel):
+    def clone(self, *, method: str=sentinel, rel_url:
+              StrOrURL=sentinel, headers: LooseHeaders=sentinel,
+              scheme: str=sentinel, host: str=sentinel, remote:
+              str=sentinel) -> 'Request':
         ret = super().clone(method=method,
                             rel_url=rel_url,
                             headers=headers,
                             scheme=scheme,
                             host=host,
                             remote=remote)
-        ret._match_info = self._match_info
-        return ret
+        new_ret = cast(Request, ret)
+        new_ret._match_info = self._match_info
+        return new_ret
 
     @reify
     def match_info(self):
