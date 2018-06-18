@@ -12,6 +12,7 @@ import warnings
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
+from typing import Any, Dict, Mapping, Optional, Tuple, cast  # noqa
 from urllib.parse import parse_qsl
 
 import attr
@@ -20,11 +21,16 @@ from yarl import URL
 
 from . import hdrs, multipart
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
-from .streams import EmptyStreamReader
+from .streams import EmptyStreamReader, StreamReader
+from .typedefs import JSONDecoder, LooseHeaders, RawHeaders, StrOrURL
 from .web_exceptions import HTTPRequestEntityTooLarge
+from .web_urldispatcher import UrlMappingMatchInfo
 
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
+
+
+DEFAULT_JSON_DECODER = json.loads
 
 
 @attr.s(frozen=True, slots=True)
@@ -108,9 +114,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         if remote is not None:
             self._cache['remote'] = remote
 
-    def clone(self, *, method=sentinel, rel_url=sentinel,
-              headers=sentinel, scheme=sentinel, host=sentinel,
-              remote=sentinel):
+    def clone(self, *, method: str=sentinel, rel_url: StrOrURL=sentinel,
+              headers: LooseHeaders=sentinel, scheme: str=sentinel,
+              host: str=sentinel,
+              remote: str=sentinel) -> 'BaseRequest':
         """Clone itself with replacement some attributes.
 
         Creates and returns a new instance of Request object. If no parameters
@@ -123,13 +130,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             raise RuntimeError("Cannot clone request "
                                "after reading it's content")
 
-        dct = {}
+        dct = {}  # type: Dict[str, Any]
         if method is not sentinel:
             dct['method'] = method
         if rel_url is not sentinel:
-            rel_url = URL(rel_url)
-            dct['url'] = rel_url
-            dct['path'] = str(rel_url)
+            new_url = URL(rel_url)
+            dct['url'] = new_url
+            dct['path'] = str(new_url)
         if headers is not sentinel:
             # a copy semantic
             dct['headers'] = CIMultiDictProxy(CIMultiDict(headers))
@@ -183,11 +190,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._message
 
     @reify
-    def rel_url(self):
+    def rel_url(self) -> URL:
         return self._rel_url
 
     @reify
-    def loop(self):
+    def loop(self) -> asyncio.AbstractEventLoop:
         return self._loop
 
     # MutableMapping API
@@ -210,7 +217,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ########
 
     @reify
-    def secure(self):
+    def secure(self) -> bool:
         """A bool indicating if the request is handled with SSL."""
         return self.scheme == 'https'
 
@@ -277,7 +284,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return tuple(elems)
 
     @reify
-    def scheme(self):
+    def scheme(self) -> str:
         """A string representing the scheme of the request.
 
         Hostname is resolved in this order:
@@ -293,7 +300,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             return 'http'
 
     @reify
-    def method(self):
+    def method(self) -> str:
         """Read only property for getting HTTP method.
 
         The value is upper-cased str like 'GET', 'POST', 'PUT' etc.
@@ -301,7 +308,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._method
 
     @reify
-    def version(self):
+    def version(self) -> Tuple[int, int]:
         """Read only property for getting HTTP version of request.
 
         Returns aiohttp.protocol.HttpVersion instance.
@@ -309,7 +316,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._version
 
     @reify
-    def host(self):
+    def host(self) -> str:
         """Hostname of the request.
 
         Hostname is resolved in this order:
@@ -325,7 +332,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             return socket.getfqdn()
 
     @reify
-    def remote(self):
+    def remote(self) -> Optional[str]:
         """Remote IP of client initiated HTTP request.
 
         The IP is resolved in this order:
@@ -342,12 +349,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             return peername
 
     @reify
-    def url(self):
+    def url(self) -> URL:
         url = URL.build(scheme=self.scheme, host=self.host)
         return url.join(self._rel_url)
 
     @reify
-    def path(self):
+    def path(self) -> str:
         """The URL including *PATH INFO* without the host or scheme.
 
         E.g., ``/app/blog``
@@ -355,7 +362,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.path
 
     @reify
-    def path_qs(self):
+    def path_qs(self) -> str:
         """The URL including PATH_INFO and the query string.
 
         E.g, /app/blog?id=10
@@ -363,7 +370,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return str(self._rel_url)
 
     @reify
-    def raw_path(self):
+    def raw_path(self) -> str:
         """ The URL including raw *PATH INFO* without the host or scheme.
         Warning, the path is unquoted and may contains non valid URL characters
 
@@ -372,12 +379,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._message.path
 
     @reify
-    def query(self):
+    def query(self) -> MultiDict:
         """A multidict with all the variables in the query string."""
         return self._rel_url.query
 
     @reify
-    def query_string(self):
+    def query_string(self) -> str:
         """The query string in the URL.
 
         E.g., id=10
@@ -385,17 +392,17 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self):
+    def headers(self) -> CIMultiDictProxy:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
     @reify
-    def raw_headers(self):
+    def raw_headers(self) -> RawHeaders:
         """A sequence of pars for all headers."""
         return self._message.raw_headers
 
     @staticmethod
-    def _http_date(_date_str):
+    def _http_date(_date_str) -> Optional[datetime.datetime]:
         """Process a date string, return a datetime object
         """
         if _date_str is not None:
@@ -406,54 +413,53 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return None
 
     @reify
-    def if_modified_since(self, _IF_MODIFIED_SINCE=hdrs.IF_MODIFIED_SINCE):
+    def if_modified_since(self) -> Optional[datetime.datetime]:
         """The value of If-Modified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(_IF_MODIFIED_SINCE))
+        return self._http_date(self.headers.get(hdrs.IF_MODIFIED_SINCE))
 
     @reify
-    def if_unmodified_since(self,
-                            _IF_UNMODIFIED_SINCE=hdrs.IF_UNMODIFIED_SINCE):
+    def if_unmodified_since(self) -> Optional[datetime.datetime]:
         """The value of If-Unmodified-Since HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(_IF_UNMODIFIED_SINCE))
+        return self._http_date(self.headers.get(hdrs.IF_UNMODIFIED_SINCE))
 
     @reify
-    def if_range(self, _IF_RANGE=hdrs.IF_RANGE):
+    def if_range(self) -> Optional[datetime.datetime]:
         """The value of If-Range HTTP header, or None.
 
         This header is represented as a `datetime` object.
         """
-        return self._http_date(self.headers.get(_IF_RANGE))
+        return self._http_date(self.headers.get(hdrs.IF_RANGE))
 
     @reify
-    def keep_alive(self):
+    def keep_alive(self) -> bool:
         """Is keepalive enabled by client?"""
         return not self._message.should_close
 
     @reify
-    def cookies(self):
+    def cookies(self) -> Mapping[str, str]:
         """Return request cookies.
 
         A read-only dictionary-like object.
         """
         raw = self.headers.get(hdrs.COOKIE, '')
-        parsed = SimpleCookie(raw)
+        parsed = SimpleCookie(raw)  # type: ignore
         return MappingProxyType(
             {key: val.value for key, val in parsed.items()})
 
     @reify
-    def http_range(self, *, _RANGE=hdrs.RANGE):
+    def http_range(self):
         """The content of Range HTTP header.
 
         Return a slice instance.
 
         """
-        rng = self._headers.get(_RANGE)
+        rng = self._headers.get(hdrs.RANGE)
         start, end = None, None
         if rng is not None:
             try:
@@ -483,12 +489,12 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return slice(start, end, 1)
 
     @reify
-    def content(self):
+    def content(self) -> StreamReader:
         """Return raw payload stream."""
         return self._payload
 
     @property
-    def has_body(self):
+    def has_body(self) -> bool:
         """Return True if request's HTTP BODY can be read, False otherwise."""
         warnings.warn(
             "Deprecated, use .can_read_body #2005",
@@ -496,16 +502,16 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return not self._payload.at_eof()
 
     @property
-    def can_read_body(self):
+    def can_read_body(self) -> bool:
         """Return True if request's HTTP BODY can be read, False otherwise."""
         return not self._payload.at_eof()
 
     @reify
-    def body_exists(self):
+    def body_exists(self) -> bool:
         """Return True if request has HTTP BODY, False otherwise."""
         return type(self._payload) is not EmptyStreamReader
 
-    async def release(self):
+    async def release(self) -> None:
         """Release request.
 
         Eat unread part of HTTP BODY if present.
@@ -513,7 +519,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         while not self._payload.at_eof():
             await self._payload.readany()
 
-    async def read(self):
+    async def read(self) -> bytes:
         """Read request body if present.
 
         Returns bytes object with full request content.
@@ -531,13 +537,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._read_bytes = bytes(body)
         return self._read_bytes
 
-    async def text(self):
+    async def text(self) -> str:
         """Return BODY as text using encoding from .charset."""
         bytes_body = await self.read()
         encoding = self.charset or 'utf-8'
         return bytes_body.decode(encoding)
 
-    async def json(self, *, loads=json.loads):
+    async def json(self, *, loads: JSONDecoder=DEFAULT_JSON_DECODER) -> Any:
         """Return BODY as JSON."""
         body = await self.text()
         return loads(body)
@@ -546,7 +552,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return async iterator to process BODY as multipart."""
         return reader(self._headers, self._payload)
 
-    async def post(self):
+    async def post(self) -> MultiDictProxy:
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -561,7 +567,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out = MultiDict()
+        out = MultiDict()  # type: MultiDict
 
         if content_type == 'multipart/form-data':
             multipart = await self.multipart()
@@ -587,7 +593,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     tmp.seek(0)
 
                     ff = FileField(field.name, field.filename,
-                                   tmp, content_type, field.headers)
+                                   cast(io.BufferedReader, tmp),
+                                   content_type, field.headers)
                     out.add(field.name, ff)
                 else:
                     value = await field.read(decode=True)
@@ -631,12 +638,14 @@ class Request(BaseRequest):
 
     ATTRS = BaseRequest.ATTRS | frozenset(['_match_info'])
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         # matchdict, route_name, handler
         # or information about traversal lookup
-        self._match_info = None  # initialized after route resolving
+
+        # initialized after route resolving
+        self._match_info = None  # type: Optional[UrlMappingMatchInfo]
 
     if DEBUG:
         def __setattr__(self, name, val):
@@ -648,31 +657,39 @@ class Request(BaseRequest):
                               stacklevel=2)
             super().__setattr__(name, val)
 
-    def clone(self, *, method=sentinel, rel_url=sentinel,
-              headers=sentinel, scheme=sentinel, host=sentinel,
-              remote=sentinel):
+    def clone(self, *, method: str=sentinel, rel_url:
+              StrOrURL=sentinel, headers: LooseHeaders=sentinel,
+              scheme: str=sentinel, host: str=sentinel, remote:
+              str=sentinel) -> 'Request':
         ret = super().clone(method=method,
                             rel_url=rel_url,
                             headers=headers,
                             scheme=scheme,
                             host=host,
                             remote=remote)
-        ret._match_info = self._match_info
-        return ret
+        new_ret = cast(Request, ret)
+        new_ret._match_info = self._match_info
+        return new_ret
 
     @reify
-    def match_info(self):
+    def match_info(self) -> Optional[UrlMappingMatchInfo]:
         """Result of route resolving."""
         return self._match_info
 
     @property
     def app(self):
         """Application instance."""
-        return self._match_info.current_app
+        match_info = self._match_info
+        if match_info is None:
+            return None
+        return match_info.current_app
 
     @property
-    def config_dict(self):
-        lst = self._match_info.apps
+    def config_dict(self) -> ChainMapProxy:
+        match_info = self._match_info
+        if match_info is None:
+            return ChainMapProxy([])
+        lst = match_info.apps
         app = self.app
         idx = lst.index(app)
         sublist = list(reversed(lst[:idx + 1]))
