@@ -24,6 +24,7 @@ from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import JSONDecoder, LooseHeaders, RawHeaders, StrOrURL
 from .web_exceptions import HTTPRequestEntityTooLarge
+from .web_urldispatcher import UrlMappingMatchInfo
 
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
@@ -391,7 +392,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return self._rel_url.query_string
 
     @reify
-    def headers(self) -> CIMultiDictProxy[str]:
+    def headers(self) -> CIMultiDictProxy:
         """A case-insensitive multidict proxy with all headers."""
         return self._headers
 
@@ -551,7 +552,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return async iterator to process BODY as multipart."""
         return reader(self._headers, self._payload)
 
-    async def post(self) -> MultiDictProxy[Any]:
+    async def post(self) -> MultiDictProxy:
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -566,7 +567,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out = MultiDict()  # type: MultiDict[Any]
+        out = MultiDict()  # type: MultiDict
 
         if content_type == 'multipart/form-data':
             multipart = await self.multipart()
@@ -642,7 +643,9 @@ class Request(BaseRequest):
 
         # matchdict, route_name, handler
         # or information about traversal lookup
-        self._match_info = None  # initialized after route resolving
+
+        # initialized after route resolving
+        self._match_info = None  # type: Optional[UrlMappingMatchInfo]
 
     if DEBUG:
         def __setattr__(self, name, val):
@@ -669,18 +672,24 @@ class Request(BaseRequest):
         return new_ret
 
     @reify
-    def match_info(self):
+    def match_info(self) -> Optional[UrlMappingMatchInfo]:
         """Result of route resolving."""
         return self._match_info
 
     @property
     def app(self):
         """Application instance."""
-        return self._match_info.current_app
+        match_info = self._match_info
+        if match_info is None:
+            return None
+        return match_info.current_app
 
     @property
-    def config_dict(self):
-        lst = self._match_info.apps
+    def config_dict(self) -> ChainMapProxy:
+        match_info = self._match_info
+        if match_info is None:
+            return ChainMapProxy([])
+        lst = match_info.apps
         app = self.app
         idx = lst.index(app)
         sublist = list(reversed(lst[:idx + 1]))

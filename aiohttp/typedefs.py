@@ -7,6 +7,6 @@ from yarl import URL
 #  type helpers
 Byteish = Union[bytes, bytearray, memoryview]
 JSONDecoder = Callable[[str], Any]
-LooseHeaders = Union[Mapping, CIMultiDict[str], CIMultiDictProxy[str]]
+LooseHeaders = Union[Mapping, CIMultiDict, CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
