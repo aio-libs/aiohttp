@@ -208,7 +208,7 @@ class TestClient:
     async def request(self, method, path, *args, **kwargs):
         """Routes a request to tested http server.
 
-        The interface is identical to asyncio.ClientSession.request,
+        The interface is identical to aiohttp.ClientSession.request,
         except the loop kwarg is overridden by the instance used by the
         test server.
 

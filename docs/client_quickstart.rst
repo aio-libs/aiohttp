@@ -386,6 +386,7 @@ multiple writer tasks which can only send data asynchronously (by
 ``await ws.send_str('data')`` for example).
 
 
+.. _aiohttp-client-timeouts:
 
 Timeouts
 ========
@@ -415,7 +416,15 @@ Supported :class:`ClientTimeout` fields are:
 
    ``connect``
 
-      The maximum time for connection establishment.
+      Total timeout for acquiring a connection from pool.  The time
+      consists connection establishment for a new connection or
+      waiting for a free connection from a pool if pool connection
+      limits are exceeded.
+
+   ``sock_connect``
+
+      A timeout for connecting to a peer for a new connection, not
+      given from a pool.
 
    ``sock_read``
 
@@ -426,4 +435,5 @@ All fields a floats, ``None`` or ``0`` disables a particular timeout check.
 
 Thus the default timeout is::
 
-   aiohttp.ClientTimeout(total=5*60, connect=None, sock_read=None)
+   aiohttp.ClientTimeout(total=5*60, connect=None,
+                         sock_connect=None, sock_read=None)

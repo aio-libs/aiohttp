@@ -906,6 +906,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
+    def add_options(self, path, handler, **kwargs):
+        """
+        Shortcut for add_route with method OPTIONS
+        """
+        return self.add_route(hdrs.METH_OPTIONS, path, handler, **kwargs)
+
     def add_get(self, path, handler, *, name=None, allow_head=True, **kwargs):
         """
         Shortcut for add_route with method GET, if allow_head is true another

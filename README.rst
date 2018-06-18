@@ -10,9 +10,14 @@ Async http client/server framework
 |
 
 .. image:: https://travis-ci.com/aio-libs/aiohttp.svg?branch=master
-   :target:  https://travis-ci.com/aio-libs/aiohttp
+   :target: https://travis-ci.com/aio-libs/aiohttp
    :align: right
    :alt: Travis status for master branch
+
+.. image:: https://ci.appveyor.com/api/projects/status/tnddy9k6pphl8w7k/branch/master?svg=true
+   :target: https://ci.appveyor.com/project/aio-libs/aiohttp
+   :align: right
+   :alt: AppVeyor status for master branch
 
 .. image:: https://codecov.io/gh/aio-libs/aiohttp/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/aio-libs/aiohttp

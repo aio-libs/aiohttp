@@ -895,6 +895,11 @@ class TCPConnector(BaseConnector):
         transport, proto = await self._create_direct_connection(
             proxy_req, [], timeout, client_error=ClientProxyConnectionError)
 
+        # Many HTTP proxies has buggy keepalive support.  Let's not
+        # reuse connection but close it after processing every
+        # response.
+        proto.force_close()
+
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:
             if not req.is_ssl():

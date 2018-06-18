@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import gc
 import os
+import platform
 import tempfile
 from unittest import mock
 
@@ -11,6 +12,9 @@ from yarl import URL
 
 from aiohttp import helpers
 from aiohttp.abc import AbstractAccessLogger
+
+
+IS_PYPY = platform.python_implementation() == 'PyPy'
 
 
 # ------------------- parse_mimetype ----------------------------------
@@ -123,6 +127,29 @@ def test_access_logger_format():
     assert expected == access_logger._log_format
 
 
+@pytest.mark.skip(
+    IS_PYPY,
+    """
+    Because of patching :py:class:`datetime.datetime`, under PyPy it
+    fails in :py:func:`isinstance` call in
+    :py:meth:`datetime.datetime.__sub__` (called from
+    :py:meth:`aiohttp.helpers.AccessLogger._format_t`):
+
+    *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
+
+    (Pdb) from datetime import datetime
+    (Pdb) isinstance(now, datetime)
+    *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
+    (Pdb) datetime.__class__
+    <class 'unittest.mock.MagicMock'>
+    (Pdb) isinstance(now, datetime.__class__)
+    False
+
+    Ref: https://bitbucket.org/pypy/pypy/issues/1187/call-to-isinstance-in-__sub__-self-other
+    Ref: https://github.com/celery/celery/issues/811
+    Ref: https://stackoverflow.com/a/46102240/595220
+    """,  # noqa: E501
+)
 def test_access_logger_atoms(mocker):
     utcnow = datetime.datetime(1843, 1, 1, 0, 30)
     mock_datetime = mocker.patch("aiohttp.helpers.datetime.datetime")
@@ -288,8 +315,9 @@ class TestPyReify(ReifyMixin):
     reify = helpers.reify_py
 
 
-class TestCReify(ReifyMixin):
-    reify = helpers.reify_c
+if not helpers.NO_EXTENSIONS and not IS_PYPY:
+    class TestCReify(ReifyMixin):
+        reify = helpers.reify_c
 
 # ----------------------------------- is_ip_address() ----------------------
 

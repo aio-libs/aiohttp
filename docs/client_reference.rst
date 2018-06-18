@@ -114,6 +114,18 @@ The client session supports the context manager protocol for self closing.
       Automatically call :meth:`ClientResponse.raise_for_status()` for
       each response, ``False`` by default.
 
+      This parameter can be overridden when you making a request, e.g.::
+
+          client_session = aiohttp.ClientSession(raise_for_status=True)
+          resp = await client_session.get(url, raise_for_status=False)
+          async with resp:
+              assert resp.status == 200
+
+      Set the parameter to ``True`` if you need ``raise_for_status``
+      for most of cases but override ``raise_for_status`` for those
+      requests where you need to handle responses with status 400 or
+      higher.
+
    :param timeout: a :class:`ClientTimeout` settings structure, 5min
                    total timeout by default.
 
@@ -205,7 +217,7 @@ The client session supports the context manager protocol for self closing.
                          headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
                          max_redirects=10,\
-                         compress=None, chunked=None, expect100=False,\
+                         compress=None, chunked=None, expect100=False, raise_for_status=None,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
@@ -278,6 +290,13 @@ The client session supports the context manager protocol for self closing.
 
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
+
+      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status()` for
+                                    response if set to ``True``.
+                                    If set to ``None`` value from ``ClientSession`` will be used.
+                                    ``None`` by default (optional).
+
+          .. versionadded:: 3.4
 
       :param bool read_until_eof: Read response until EOF if response
                                   does not have Content-Length header.
@@ -639,7 +658,7 @@ certification chaining.
                         allow_redirects=True, max_redirects=10, \
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
-                        compress=None, chunked=None, expect100=False, \
+                        compress=None, chunked=None, expect100=False, raise_for_status=None, \
                         connector=None, loop=None,\
                         read_until_eof=True)
 
@@ -683,6 +702,15 @@ certification chaining.
 
    :param bool expect100: Expect 100-continue response from server.
                           ``False`` by default (optional).
+
+   :param bool raise_for_status: Automatically call
+                                 :meth:`ClientResponse.raise_for_status()`
+                                 for response if set to ``True``.  If
+                                 set to ``None`` value from
+                                 ``ClientSession`` will be used.
+                                 ``None`` by default (optional).
+
+      .. versionadded:: 3.4
 
    :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
       instance to support connection pooling.
@@ -1475,6 +1503,8 @@ ClientTimeout
                          sock_connect, sock_read=None)
 
    A data class for client timeout settings.
+
+   See :ref:`aiohttp-client-timeouts` for usage examples.
 
    .. attribute:: total
 
