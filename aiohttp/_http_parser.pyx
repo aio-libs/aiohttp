@@ -27,6 +27,9 @@ from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
 cimport cython
 from . cimport _cparser as cparser
 
+cdef extern from "Python.h":
+    int PyByteArray_Resize(object, Py_ssize_t) except -1
+
 
 __all__ = ('HttpRequestParserC', 'HttpResponseMessageC')
 
@@ -345,8 +348,7 @@ cdef class HttpRequestParser(HttpParser):
                                         py_buf.len)
              finally:
                  PyBuffer_Release(&py_buf)
-         # del self._buf[:]
-         self._buf.clear()
+         PyByteArray_Resize(self._buf, 0)
 
 
 cdef class HttpResponseParser(HttpParser):
@@ -363,8 +365,7 @@ cdef class HttpResponseParser(HttpParser):
     cdef object _on_status_complete(self):
         if self._buf:
             self._reason = self._buf.decode('utf-8', 'surrogateescape')
-            # del self._buf[:]
-            self._buf.clear()
+            PyByteArray_Resize(self._buf, 0)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
@@ -373,9 +374,8 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     pyparser._started = True
     pyparser._headers = CIMultiDict()
     # del pyparser._raw_headers[:]
-    # del pyparser._buf[:]
     pyparser._raw_headers = []
-    pyparser._buf.clear()
+    PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
     pyparser._reason = None
     return 0
