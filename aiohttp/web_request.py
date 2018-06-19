@@ -2,7 +2,6 @@ import asyncio
 import collections
 import datetime
 import io
-import json
 import re
 import socket
 import string
@@ -22,15 +21,13 @@ from yarl import URL
 from . import hdrs, multipart
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .streams import EmptyStreamReader, StreamReader
-from .typedefs import JSONDecoder, LooseHeaders, RawHeaders, StrOrURL
+from .typedefs import (DEFAULT_JSON_DECODER, JSONDecoder, LooseHeaders,
+                       RawHeaders, StrOrURL)
 from .web_exceptions import HTTPRequestEntityTooLarge
 from .web_urldispatcher import UrlMappingMatchInfo
 
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
-
-
-DEFAULT_JSON_DECODER = json.loads
 
 
 @attr.s(frozen=True, slots=True)
