@@ -400,7 +400,7 @@ class RequestHandler(BaseProtocol):
                     resp = self.handle_error(request, 500, exc)
                 else:
                     # Deprecation warning (See #2415)
-                    if isinstance(resp, HTTPException):
+                    if getattr(resp, '__http_exception__', False):
                         warnings.warn(
                             "returning HTTPException object is deprecated "
                             "(#2415) and will be removed, "

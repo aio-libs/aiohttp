@@ -74,6 +74,8 @@ class HTTPException(Response, Exception):
     status_code = -1
     empty_body = False
 
+    __http_exception__ = True
+
     def __init__(self, *, headers=None, reason=None,
                  body=None, text=None, content_type=None):
         Response.__init__(self, status=self.status_code,
