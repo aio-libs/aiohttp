@@ -4,7 +4,6 @@ import json
 import pathlib
 import socket
 import zlib
-from tempfile import NamedTemporaryFile
 from unittest import mock
 
 import pytest
@@ -1567,7 +1566,7 @@ async def test_response_with_bodypart(aiohttp_client):
                     {'name': 'file', 'filename': 'file', 'filename*': 'file'})
 
 
-async def test_response_with_bodypart_named(aiohttp_client):
+async def test_response_with_bodypart_named(aiohttp_client, tmpdir):
 
     async def handler(request):
         reader = await request.multipart()
@@ -1578,11 +1577,10 @@ async def test_response_with_bodypart_named(aiohttp_client):
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with NamedTemporaryFile(suffix='.testing') as f:
-        f.write(b'test')
-        f.flush()
-        data = {'file': open(f.name, 'rb')}
-        resp = await client.post('/', data=data)
+    f = tmpdir.join('foobar.txt')
+    f.write_text('test', encoding='utf8')
+    data = {'file': open(str(f), 'rb')}
+    resp = await client.post('/', data=data)
 
     assert 200 == resp.status
     body = await resp.read()
@@ -1590,10 +1588,9 @@ async def test_response_with_bodypart_named(aiohttp_client):
 
     disp = multipart.parse_content_disposition(
         resp.headers['content-disposition'])
-    filename = f.name.rsplit('/', 1)[-1]
     assert disp == (
         'attachment',
-        {'name': 'file', 'filename': filename, 'filename*': filename}
+        {'name': 'file', 'filename': 'foobar.txt', 'filename*': 'foobar.txt'}
     )
 
 
