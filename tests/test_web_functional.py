@@ -1451,7 +1451,8 @@ async def test_app_max_client_size(aiohttp_client):
         resp = await client.post('/', data=data)
     assert 413 == resp.status
     resp_text = await resp.text()
-    assert 'Request Entity Too Large' in resp_text
+    assert 'Maximum request body size 1048576 exceeded, ' \
+           'actual body size 1048591' in resp_text
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client):
@@ -1476,7 +1477,8 @@ async def test_app_max_client_size_adjusted(aiohttp_client):
         resp = await client.post('/', data=too_large_data)
     assert 413 == resp.status
     resp_text = await resp.text()
-    assert 'Request Entity Too Large' in resp_text
+    assert 'Maximum request body size 2097152 exceeded, ' \
+           'actual body size 2097166' in resp_text
 
 
 async def test_app_max_client_size_none(aiohttp_client):
@@ -1518,6 +1520,9 @@ async def test_post_max_client_size(aiohttp_client):
     resp = await client.post('/', data=data)
 
     assert 413 == resp.status
+    resp_text = await resp.text()
+    assert 'Maximum request body size 10 exceeded, ' \
+           'actual body size 1024' in resp_text
 
 
 async def test_post_max_client_size_for_file(aiohttp_client):

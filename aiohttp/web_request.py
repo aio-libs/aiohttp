@@ -529,9 +529,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
             while True:
                 chunk = await self._payload.readany()
                 body.extend(chunk)
-                if self._client_max_size \
-                        and len(body) >= self._client_max_size:
-                    raise HTTPRequestEntityTooLarge
+                if self._client_max_size:
+                    body_size = len(body)
+                    if body_size >= self._client_max_size:
+                        raise HTTPRequestEntityTooLarge(
+                            max_size=self._client_max_size,
+                            actual_size=body_size
+                        )
                 if not chunk:
                     break
             self._read_bytes = bytes(body)
@@ -571,11 +575,11 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         if content_type == 'multipart/form-data':
             multipart = await self.multipart()
+            max_size = self._client_max_size
 
             field = await multipart.next()
             while field is not None:
                 size = 0
-                max_size = self._client_max_size
                 content_type = field.headers.get(hdrs.CONTENT_TYPE)
 
                 if field.filename:
@@ -587,7 +591,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         tmp.write(chunk)
                         size += len(chunk)
                         if 0 < max_size < size:
-                            raise HTTPRequestEntityTooLarge
+                            raise HTTPRequestEntityTooLarge(
+                                max_size=max_size, actual_size=size)
                         chunk = await field.read_chunk(size=2**16)
                     tmp.seek(0)
 
@@ -604,7 +609,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     out.add(field.name, value)
                     size += len(value)
                     if 0 < max_size < size:
-                        raise HTTPRequestEntityTooLarge
+                        raise HTTPRequestEntityTooLarge(
+                            max_size=max_size, actual_size=size)
 
                 field = await multipart.next()
         else:
