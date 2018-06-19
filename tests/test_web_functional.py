@@ -1565,6 +1565,56 @@ async def test_response_with_bodypart(aiohttp_client):
                     {'name': 'file', 'filename': 'file', 'filename*': 'file'})
 
 
+async def test_response_with_bodypart_named(aiohttp_client, tmpdir):
+
+    async def handler(request):
+        reader = await request.multipart()
+        part = await reader.next()
+        return web.Response(body=part)
+
+    app = web.Application(client_max_size=2)
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    f = tmpdir.join('foobar.txt')
+    f.write_text('test', encoding='utf8')
+    data = {'file': open(str(f), 'rb')}
+    resp = await client.post('/', data=data)
+
+    assert 200 == resp.status
+    body = await resp.read()
+    assert body == b'test'
+
+    disp = multipart.parse_content_disposition(
+        resp.headers['content-disposition'])
+    assert disp == (
+        'attachment',
+        {'name': 'file', 'filename': 'foobar.txt', 'filename*': 'foobar.txt'}
+    )
+
+
+async def test_response_with_bodypart_invalid_name(aiohttp_client):
+
+    async def handler(request):
+        reader = await request.multipart()
+        part = await reader.next()
+        return web.Response(body=part)
+
+    app = web.Application(client_max_size=2)
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    with aiohttp.MultipartWriter() as mpwriter:
+        mpwriter.append(b'test')
+        resp = await client.post('/', data=mpwriter)
+
+    assert 200 == resp.status
+    body = await resp.read()
+    assert body == b'test'
+
+    assert 'content-disposition' not in resp.headers
+
+
 async def test_request_clone(aiohttp_client):
 
     async def handler(request):
