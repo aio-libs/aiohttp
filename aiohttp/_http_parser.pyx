@@ -7,25 +7,43 @@ from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
 
-from multidict import CIMultiDict, CIMultiDictProxy
-from yarl import URL
+from multidict import (CIMultiDict as _CIMultiDict,
+                       CIMultiDictProxy as _CIMultiDictProxy)
+from yarl import URL as _URL
 
 from aiohttp import hdrs
 from .http_exceptions import (
     BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError,
     PayloadEncodingError, ContentLengthError, TransferEncodingError)
-from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
-from .http_parser import RawRequestMessage, RawResponseMessage, DeflateBuffer
-from .streams import EMPTY_PAYLOAD, StreamReader
+from .http_writer import (HttpVersion as _HttpVersion,
+                          HttpVersion10 as _HttpVersion10,
+                          HttpVersion11 as _HttpVersion11)
+from .http_parser import (RawRequestMessage as _RawRequestMessage,
+                          RawResponseMessage as _RawResponseMessage,
+                          DeflateBuffer as _DeflateBuffer)
+from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
+                      StreamReader as _StreamReader)
 
 cimport cython
 from . cimport _cparser as cparser
 
 
-__all__ = ('HttpRequestParserC', 'HttpResponseMessageC', 'parse_url')
+__all__ = ('HttpRequestParserC', 'HttpResponseMessageC')
 
-
+cdef object URL = _URL
 cdef object URL_build = URL.build
+cdef object CIMultiDict = _CIMultiDict
+cdef object CIMultiDictProxy = _CIMultiDictProxy
+cdef object HttpVersion = _HttpVersion
+cdef object HttpVersion10 = _HttpVersion10
+cdef object HttpVersion11 = _HttpVersion11
+cdef object SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
+cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
+cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
+cdef object StreamReader = _StreamReader
+cdef object RawRequestMessage = _RawRequestMessage
+cdef object RawResponseMessage = _RawResponseMessage
+cdef object DeflateBuffer = _DeflateBuffer
 
 @cython.internal
 cdef class HttpParser:
@@ -84,7 +102,7 @@ cdef class HttpParser:
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
-                   response_with_body=True, auto_decompress=True):
+                   bint response_with_body=True, bint auto_decompress=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -160,12 +178,7 @@ cdef class HttpParser:
             self._header_value += val
             self._raw_header_value += raw_val
 
-    cdef _on_headers_complete(self,
-                              ENCODING='utf-8',
-                              ENCODING_ERR='surrogateescape',
-                              CONTENT_ENCODING=hdrs.CONTENT_ENCODING,
-                              SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1,
-                              SUPPORTED=('gzip', 'deflate', 'br')):
+    cdef _on_headers_complete(self):
         self._process_header()
 
         method = cparser.http_method_str(<cparser.http_method> self._cparser.method)
@@ -187,12 +200,12 @@ cdef class HttpParser:
         enc = headers.get(CONTENT_ENCODING)
         if enc:
             enc = enc.lower()
-            if enc in SUPPORTED:
+            if enc in ('gzip', 'deflate', 'br'):
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             msg = RawRequestMessage(
-                method.decode(ENCODING, ENCODING_ERR), self._path,
+                method.decode('utf-8', 'surrogateescape'), self._path,
                 self.http_version(), headers, raw_headers,
                 should_close, encoding, upgrade, chunked, self._url)
         else:
@@ -313,7 +326,7 @@ cdef class HttpRequestParser(HttpParser):
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 response_with_body=True, read_until_eof=False):
+                 bint response_with_body=True, bint read_until_eof=False):
          self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
                     max_line_size, max_headers, max_field_size,
                     payload_exception, response_with_body)
@@ -332,6 +345,7 @@ cdef class HttpRequestParser(HttpParser):
                                         py_buf.len)
              finally:
                  PyBuffer_Release(&py_buf)
+         # del self._buf[:]
          self._buf.clear()
 
 
@@ -349,6 +363,7 @@ cdef class HttpResponseParser(HttpParser):
     cdef object _on_status_complete(self):
         if self._buf:
             self._reason = self._buf.decode('utf-8', 'surrogateescape')
+            # del self._buf[:]
             self._buf.clear()
 
 
@@ -357,6 +372,8 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
 
     pyparser._started = True
     pyparser._headers = CIMultiDict()
+    # del pyparser._raw_headers[:]
+    # del pyparser._buf[:]
     pyparser._raw_headers = []
     pyparser._buf.clear()
     pyparser._path = None
@@ -529,20 +546,7 @@ cdef parser_error_from_errno(cparser.http_errno errno):
     return cls(desc.decode('latin-1'))
 
 
-def parse_url(url):
-    cdef:
-        Py_buffer py_buf
-        char* buf_data
-
-    PyObject_GetBuffer(url, &py_buf, PyBUF_SIMPLE)
-    try:
-        buf_data = <char*>py_buf.buf
-        return _parse_url(buf_data, py_buf.len)
-    finally:
-        PyBuffer_Release(&py_buf)
-
-
-def _parse_url(char* buf_data, size_t length):
+cdef _parse_url(char* buf_data, size_t length):
     cdef:
         cparser.http_parser_url* parsed
         int res
