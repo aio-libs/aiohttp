@@ -592,7 +592,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         size += len(chunk)
                         if 0 < max_size < size:
                             raise HTTPRequestEntityTooLarge(
-                                max_size=max_size, actual_size=size)
+                                max_size=max_size,
+                                actual_size=size
+                            )
                         chunk = await field.read_chunk(size=2**16)
                     tmp.seek(0)
 
@@ -610,7 +612,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     size += len(value)
                     if 0 < max_size < size:
                         raise HTTPRequestEntityTooLarge(
-                            max_size=max_size, actual_size=size)
+                            max_size=max_size,
+                            actual_size=size
+                        )
 
                 field = await multipart.next()
         else:
