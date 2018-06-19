@@ -354,8 +354,8 @@ cdef class HttpResponseParser(HttpParser):
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 response_with_body=True, read_until_eof=False,
-                 auto_decompress=True):
+                 bint response_with_body=True, bint read_until_eof=False,
+                 bint auto_decompress=True):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, auto_decompress)
@@ -544,6 +544,19 @@ cdef parser_error_from_errno(cparser.http_errno errno):
         cls = BadHttpMessage
 
     return cls(desc.decode('latin-1'))
+
+
+def parse_url(url):
+    cdef:
+        Py_buffer py_buf
+        char* buf_data
+
+    PyObject_GetBuffer(url, &py_buf, PyBUF_SIMPLE)
+    try:
+        buf_data = <char*>py_buf.buf
+        return _parse_url(buf_data, py_buf.len)
+    finally:
+        PyBuffer_Release(&py_buf)
 
 
 cdef _parse_url(char* buf_data, size_t length):
