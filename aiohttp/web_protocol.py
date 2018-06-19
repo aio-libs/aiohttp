@@ -75,9 +75,16 @@ class RequestHandler(BaseProtocol):
     :param int max_headers: Optional maximum header size
 
     """
-    _request_count = 0
-    _keepalive = False  # keep transport open
     KEEPALIVE_RESCHEDULE_DELAY = 1
+
+    __slots__ = ('_request_count', '_keep_alive', '_manager',
+                 '_request_handler', '_request_factory', '_tcp_keepalive',
+                 '_keepalive_time', '_keepalive_handle', '_keepalive_timeout',
+                 '_lingering_time', '_messages', '_message_tail',
+                 '_waiter', '_error_handler', '_task_handler',
+                 '_upgrade', '_payload_parser', '_request_parser',
+                 '_reading_paused', 'logger', 'debug', 'access_log',
+                 'access_logger', '_close', '_force_close')
 
     def __init__(self, manager, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
@@ -94,6 +101,8 @@ class RequestHandler(BaseProtocol):
 
         super().__init__(loop=loop)
 
+        self._request_count = 0
+        self._keepalive = False
         self._manager = manager
         self._request_handler = manager.request_handler
         self._request_factory = manager.request_factory
