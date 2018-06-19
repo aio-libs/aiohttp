@@ -253,6 +253,14 @@ class HTTPPreconditionFailed(HTTPClientError):
 class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
 
+    def __init__(self, max_size, actual_size, **kwargs):
+        kwargs.setdefault(
+            'text',
+            'Maximum request body size {} exceeded, '
+            'actual body size {}'.format(max_size, actual_size)
+        )
+        super().__init__(**kwargs)
+
 
 class HTTPRequestURITooLong(HTTPClientError):
     status_code = 414
