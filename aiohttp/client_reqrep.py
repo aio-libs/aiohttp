@@ -1,7 +1,6 @@
 import asyncio
 import codecs
 import io
-import json
 import re
 import sys
 import traceback
@@ -9,6 +8,7 @@ import warnings
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType
+from typing import Any, Optional, Tuple
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -22,6 +22,8 @@ from .formdata import FormData
 from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
+from .streams import StreamReader  # noqa
+from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
 
 try:
@@ -578,15 +580,14 @@ class ClientResponse(HeadersMixin):
 
     # from the Status-Line of the response
     version = None  # HTTP-Version
-    status = None   # Status-Code
+    status = None   # type: int  # Status-Code
     reason = None   # Reason-Phrase
 
-    content = None  # Payload stream
-    _headers = None  # Response headers, CIMultiDictProxy
-    _raw_headers = None  # Response raw headers, a sequence of pairs
+    content = None  # type: StreamReader  # Payload stream
+    _headers = None  # type: CIMultiDictProxy  # Response headers
+    _raw_headers = None  # type: RawHeaders  # Response raw headers
 
     _connection = None  # current connection
-    _reader = None     # input stream
     _source_traceback = None
     # setted up by ClientRequest after ClientResponse object creation
     # post-init stage allows to not change ctor signature
@@ -604,7 +605,7 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None)
-        self._body = None
+        self._body = None  # type: bytes
         self._writer = writer
         self._continue = continue100  # None by default
         self._closed = True
@@ -619,37 +620,37 @@ class ClientResponse(HeadersMixin):
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     @reify
-    def url(self):
+    def url(self) -> URL:
         return self._url
 
     @reify
-    def url_obj(self):
+    def url_obj(self) -> URL:
         warnings.warn(
             "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
         return self._url
 
     @reify
-    def real_url(self):
+    def real_url(self) -> URL:
         return self._real_url
 
     @reify
-    def host(self):
+    def host(self) -> str:
         return self._url.host
 
     @reify
-    def headers(self):
+    def headers(self) -> CIMultiDictProxy:
         return self._headers
 
     @reify
-    def raw_headers(self):
+    def raw_headers(self) -> RawHeaders:
         return self._raw_headers
 
     @reify
-    def request_info(self):
+    def request_info(self) -> RequestInfo:
         return self._request_info
 
     @reify
-    def content_disposition(self):
+    def content_disposition(self) -> Optional[ContentDisposition]:
         raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
         if raw is None:
             return None
@@ -700,30 +701,38 @@ class ClientResponse(HeadersMixin):
         return self._connection
 
     @reify
-    def history(self):
+    def history(self) -> Tuple['ClientResponse', ...]:
         """A sequence of of responses, if redirects occurred."""
         return self._history
 
     @reify
-    def links(self):
+    def links(self) -> MultiDictProxy:
         links_str = ", ".join(self.headers.getall("link", []))
 
-        links = MultiDict()
+        links = MultiDict()  # type: MultiDict
 
         if not links_str:
             return MultiDictProxy(links)
 
         for val in re.split(r",(?=\s*<)", links_str):
-            url, params = re.match(r"\s*<(.*)>(.*)", val).groups()
-            params = params.split(";")[1:]
+            match = re.match(r"\s*<(.*)>(.*)", val)
+            if match is None:  # pragma: no cover
+                # the check exists to suppress mypy error
+                continue
+            url, params_str = match.groups()
+            params = params_str.split(";")[1:]
 
-            link = MultiDict()
+            link = MultiDict()  # type: MultiDict
 
             for param in params:
-                key, _, value, _ = re.match(
+                match = re.match(
                     r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$",
                     param, re.M
-                ).groups()
+                )
+                if match is None:  # pragma: no cover
+                    # the check exists to suppress mypy error
+                    continue
+                key, _, value, _ = match.groups()
 
                 link.add(key, value)
 
@@ -802,10 +811,10 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._closed
 
-    def close(self):
+    def close(self) -> None:
         if not self._released:
             self._notify_content()
         if self._closed:
@@ -820,7 +829,7 @@ class ClientResponse(HeadersMixin):
             self._connection = None
         self._cleanup_writer()
 
-    def release(self):
+    def release(self) -> Any:
         if not self._released:
             self._notify_content()
         if self._closed:
@@ -834,7 +843,7 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
         return noop()
 
-    def raise_for_status(self):
+    def raise_for_status(self) -> None:
         if 400 <= self.status:
             raise ClientResponseError(
                 self.request_info,
@@ -856,7 +865,7 @@ class ClientResponse(HeadersMixin):
                 ClientConnectionError('Connection closed'))
         self._released = True
 
-    async def wait_for_close(self):
+    async def wait_for_close(self) -> None:
         if self._writer is not None:
             try:
                 await self._writer
@@ -864,7 +873,7 @@ class ClientResponse(HeadersMixin):
                 self._writer = None
         self.release()
 
-    async def read(self):
+    async def read(self) -> bytes:
         """Read response payload."""
         if self._body is None:
             try:
@@ -879,7 +888,7 @@ class ClientResponse(HeadersMixin):
 
         return self._body
 
-    def get_encoding(self):
+    def get_encoding(self) -> str:
         ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
         mimetype = helpers.parse_mimetype(ctype)
 
@@ -900,7 +909,8 @@ class ClientResponse(HeadersMixin):
 
         return encoding
 
-    async def text(self, encoding=None, errors='strict'):
+    async def text(self,
+                   encoding: Optional[str]=None, errors: str='strict') -> str:
         """Read response payload and decode."""
         if self._body is None:
             await self.read()
@@ -910,8 +920,9 @@ class ClientResponse(HeadersMixin):
 
         return self._body.decode(encoding, errors=errors)
 
-    async def json(self, *, encoding=None, loads=json.loads,
-                   content_type='application/json'):
+    async def json(self, *, encoding: str=None,
+                   loads: JSONDecoder=DEFAULT_JSON_DECODER,
+                   content_type: Optional[str]='application/json') -> Any:
         """Read and decodes JSON response."""
         if self._body is None:
             await self.read()
@@ -935,7 +946,7 @@ class ClientResponse(HeadersMixin):
 
         return loads(stripped.decode(encoding))
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> 'ClientResponse':
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
