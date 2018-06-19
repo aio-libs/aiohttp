@@ -1,0 +1,1 @@
+Add type hints to HTTP client
