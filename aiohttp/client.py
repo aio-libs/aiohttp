@@ -9,7 +9,7 @@ import sys
 import traceback
 import warnings
 from collections.abc import Coroutine as CoroutineABC
-from typing import Any, Generator, NoReturn, Optional, Tuple
+from typing import Any, Generator, Optional, Tuple
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
@@ -817,7 +817,7 @@ class ClientSession:
         """
         self._connector = None
 
-    def __enter__(self) -> NoReturn:
+    def __enter__(self):
         raise TypeError("Use async with instead")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
