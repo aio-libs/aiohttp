@@ -587,8 +587,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         tmp.write(chunk)
                         size += len(chunk)
                         if 0 < max_size < size:
-                            raise ValueError(
-                                'Maximum request body size exceeded')
+                            raise HTTPRequestEntityTooLarge
                         chunk = await field.read_chunk(size=2**16)
                     tmp.seek(0)
 
@@ -605,8 +604,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                     out.add(field.name, value)
                     size += len(value)
                     if 0 < max_size < size:
-                        raise ValueError(
-                            'Maximum request body size exceeded')
+                        raise HTTPRequestEntityTooLarge
 
                 field = await multipart.next()
         else:

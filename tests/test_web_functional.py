@@ -1507,30 +1507,24 @@ async def test_app_max_client_size_none(aiohttp_client):
 async def test_post_max_client_size(aiohttp_client):
 
     async def handler(request):
-        try:
-            await request.post()
-        except ValueError:
-            return web.Response()
-        raise web.HTTPBadRequest()
+        await request.post()
+        return web.Response()
 
     app = web.Application(client_max_size=10)
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    data = {"long_string": 1024 * 'x', 'file': io.BytesIO(b'test')}
+    data = {'long_string': 1024 * 'x', 'file': io.BytesIO(b'test')}
     resp = await client.post('/', data=data)
 
-    assert 200 == resp.status
+    assert 413 == resp.status
 
 
 async def test_post_max_client_size_for_file(aiohttp_client):
 
     async def handler(request):
-        try:
-            await request.post()
-        except ValueError:
-            return web.Response()
-        raise web.HTTPBadRequest()
+        await request.post()
+        return web.Response()
 
     app = web.Application(client_max_size=2)
     app.router.add_post('/', handler)
@@ -1539,7 +1533,7 @@ async def test_post_max_client_size_for_file(aiohttp_client):
     data = {'file': io.BytesIO(b'test')}
     resp = await client.post('/', data=data)
 
-    assert 200 == resp.status
+    assert 413 == resp.status
 
 
 async def test_response_with_bodypart(aiohttp_client):
