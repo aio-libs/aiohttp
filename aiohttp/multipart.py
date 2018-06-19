@@ -444,7 +444,7 @@ class BodyPartReaderPayload(Payload):
         if value.name is not None:
             params['name'] = value.name
         if value.filename is not None:
-            params['filename'] = value.name
+            params['filename'] = value.filename
 
         if params:
             self.set_content_disposition('attachment', **params)
