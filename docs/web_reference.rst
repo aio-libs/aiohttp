@@ -411,7 +411,7 @@ and :ref:`aiohttp-web-signals` handlers.
          :meth:`~Request.json` call will return the same value.
 
 
-   .. comethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+   .. comethod:: multipart()
 
       Returns :class:`aiohttp.multipart.MultipartReader` which processes
       incoming *multipart* request.
@@ -431,6 +431,10 @@ and :ref:`aiohttp-web-signals` handlers.
          more time.
 
       .. seealso:: :ref:`aiohttp-multipart`
+
+      .. versionchanged:: 3.4
+
+         Dropped *reader* parameter.
 
    .. comethod:: post()
 

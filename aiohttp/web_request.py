@@ -19,8 +19,9 @@ import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
 
-from . import hdrs, multipart
+from . import hdrs
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
+from .multipart import MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import JSONDecoder, LooseHeaders, RawHeaders, StrOrURL
 from .web_exceptions import HTTPRequestEntityTooLarge
@@ -548,9 +549,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         body = await self.text()
         return loads(body)
 
-    async def multipart(self, *, reader=multipart.MultipartReader):
+    async def multipart(self) -> MultipartReader:
         """Return async iterator to process BODY as multipart."""
-        return reader(self._headers, self._payload)
+        return MultipartReader(self._headers, self._payload)
 
     async def post(self) -> MultiDictProxy:
         """Return POST parameters."""
