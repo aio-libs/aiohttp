@@ -4,6 +4,7 @@
 #
 from __future__ import absolute_import, print_function
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from libc.string import memcpy
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
 
@@ -29,7 +30,8 @@ from . cimport _cparser as cparser
 
 cdef extern from "Python.h":
     int PyByteArray_Resize(object, Py_ssize_t) except -1
-
+    Py_ssize_t PyByteArray_Size(object) except -1
+    char* PyByteArray_AsString(object)
 
 __all__ = ('HttpRequestParserC', 'HttpResponseMessageC')
 
@@ -47,6 +49,16 @@ cdef object StreamReader = _StreamReader
 cdef object RawRequestMessage = _RawRequestMessage
 cdef object RawResponseMessage = _RawResponseMessage
 cdef object DeflateBuffer = _DeflateBuffer
+
+
+cdef object extend(object buf, char* at, size_t length):
+    cdef Py_ssize_t s
+    cdef char* ptr
+    s = PyByteArray_Size(buf)
+    PyByteArray_Resize(buf, s + length)
+    ptr = PyByteArray_AsString(buf)
+    memcpy(ptr + s, at, length)
+
 
 @cython.internal
 cdef class HttpParser:
@@ -388,6 +400,7 @@ cdef int cb_on_url(cparser.http_parser* parser,
         if length > pyparser._max_line_size:
             raise LineTooLong(
                 'Status line is too long', pyparser._max_line_size, length)
+        # extend(pyparser._buf, at, length)
         pyparser._buf.extend(at[:length])
     except BaseException as ex:
         pyparser._last_error = ex
