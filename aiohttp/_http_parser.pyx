@@ -4,7 +4,8 @@
 #
 from __future__ import absolute_import, print_function
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.string cimport memcpy, strncasecmp
+from libc.string cimport memcpy
+from posix.strings cimport strncasecmp
 from cpython cimport (PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE,
                       Py_buffer, PyBytes_AsString, PyBytes_AsStringAndSize)
 
