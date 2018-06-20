@@ -102,9 +102,6 @@ cdef class RawRequestMessage:
         return '<RawRequestMessage(' + sinfo + ')>'
 
     def _replace(self, **dct):
-        return self._replace_impl(dct)
-
-    cdef _replace_impl(self, dct):
         cdef RawRequestMessage ret
         ret = _new_request_message(self.method,
                                    self.path,
