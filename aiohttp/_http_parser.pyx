@@ -73,6 +73,20 @@ cdef bint is_content_encoding(bytes raw_name):
         return True
     return False
 
+DEF METHODS_COUNT = 34;
+
+cdef list _http_method = []
+
+for i in range(METHODS_COUNT):
+    _http_method.append(
+        cparser.http_method_str(<cparser.http_method> i).decode('ascii'))
+
+
+cdef str http_method_str(int i):
+    if i < METHODS_COUNT:
+        return _http_method[i]
+    else:
+        return "<unknown>"
 
 
 @cython.freelist(DEFAULT_FREELIST_SIZE)
@@ -379,7 +393,7 @@ cdef class HttpParser:
     cdef _on_headers_complete(self):
         self._process_header()
 
-        method = cparser.http_method_str(<cparser.http_method> self._cparser.method)
+        method = http_method_str(self._cparser.method)
         should_close = not cparser.http_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED
@@ -404,7 +418,7 @@ cdef class HttpParser:
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             msg = _new_request_message(
-                method.decode('utf-8', 'surrogateescape'), self._path,
+                method, self._path,
                 self.http_version(), headers, raw_headers,
                 should_close, encoding, upgrade, chunked, self._url)
         else:
@@ -569,7 +583,6 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
 
     pyparser._started = True
     pyparser._headers = CIMultiDict()
-    # del pyparser._raw_headers[:]
     pyparser._raw_headers = []
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
