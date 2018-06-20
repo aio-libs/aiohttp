@@ -5,7 +5,6 @@
 from __future__ import absolute_import, print_function
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from libc.string cimport memcpy
-from posix.strings cimport strncasecmp
 from cpython cimport (PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE,
                       Py_buffer, PyBytes_AsString, PyBytes_AsStringAndSize)
 
@@ -26,6 +25,8 @@ from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
 
 cimport cython
 from . cimport _cparser as cparser
+
+import re
 
 
 DEF DEFAULT_FREELIST_SIZE = 250
@@ -52,7 +53,7 @@ cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
 
 
-cdef object extend(object buf, char* at, size_t length):
+cdef inline object extend(object buf, char* at, size_t length):
     cdef Py_ssize_t s
     cdef char* ptr
     s = PyByteArray_Size(buf)
@@ -60,19 +61,6 @@ cdef object extend(object buf, char* at, size_t length):
     ptr = PyByteArray_AsString(buf)
     memcpy(ptr + s, at, length)
 
-
-cdef Py_ssize_t CONTENT_ENCODING_LEN = len(CONTENT_ENCODING)
-
-
-cdef bint is_content_encoding(bytes raw_name):
-    cdef Py_ssize_t size
-    cdef char* buf
-    PyBytes_AsStringAndSize(raw_name, &buf, &size)
-    if size != CONTENT_ENCODING_LEN:
-        return False
-    if strncasecmp(buf, "Content-Encoding", size) == 0:
-        return True
-    return False
 
 DEF METHODS_COUNT = 34;
 
@@ -83,11 +71,40 @@ for i in range(METHODS_COUNT):
         cparser.http_method_str(<cparser.http_method> i).decode('ascii'))
 
 
-cdef str http_method_str(int i):
+cdef inline str http_method_str(int i):
     if i < METHODS_COUNT:
         return _http_method[i]
     else:
         return "<unknown>"
+
+cdef list _headers
+cdef object _re
+
+
+cdef fill_headers():
+    global _headers
+    global _re
+    cdef list headers
+    cdef object h
+    cdef bytes b
+    headers = [getattr(hdrs, name)
+               for name in dir(hdrs)
+               if isinstance(getattr(hdrs, name), hdrs.istr)]
+    if len(headers) > 0x7f:
+        raise RuntimeError("Too many headers for table")
+
+    _headers = headers
+    b = b'|'.join(b'(' + h.encode('utf-8') + b')' for h in headers)
+    _re = re.compile(b, re.IGNORECASE)
+
+fill_headers()
+
+
+cdef inline object find_header(bytes raw_header):
+    m = _re.fullmatch(raw_header)
+    if m is None:
+        return raw_header.decode('utf-8', 'surrogateescape')
+    return _headers[m.lastindex - 1]
 
 
 @cython.freelist(DEFAULT_FREELIST_SIZE)
@@ -259,10 +276,8 @@ cdef class HttpParser:
         cparser.http_parser* _cparser
         cparser.http_parser_settings* _csettings
 
-        str _header_name
-        str _header_value
-        bytes _raw_header_name
-        bytes _raw_header_value
+        bytearray _raw_name
+        bytearray _raw_value
 
         object _protocol
         object _loop
@@ -328,10 +343,8 @@ cdef class HttpParser:
         self._payload_exception = payload_exception
         self._messages = []
 
-        self._header_name = None
-        self._header_value = None
-        self._raw_header_name = None
-        self._raw_header_value = None
+        self._raw_name = bytearray()
+        self._raw_value = bytearray()
 
         self._max_line_size = max_line_size
         self._max_headers = max_headers
@@ -355,41 +368,41 @@ cdef class HttpParser:
         self._last_error = None
 
     cdef _process_header(self):
-        if self._header_name is not None:
-            name = self._header_name
-            value = self._header_value
+        if self._raw_name:
+            raw_name = bytes(self._raw_name)
+            raw_value = bytes(self._raw_value)
 
-            self._header_name = self._header_value = None
+            name = find_header(raw_name)
+            value = raw_value.decode('utf-8', 'surrogateescape')
+
             self._headers.add(name, value)
 
-            raw_name = self._raw_header_name
-            raw_value = self._raw_header_value
-
-            if is_content_encoding(raw_name):
+            if name is CONTENT_ENCODING:
                 self._content_encoding = value
 
-            self._raw_header_name = self._raw_header_value = None
+            PyByteArray_Resize(self._raw_name, 0)
+            PyByteArray_Resize(self._raw_value, 0)
             self._raw_headers.append((raw_name, raw_value))
 
-    cdef _on_header_field(self, str field, bytes raw_field):
-        if self._header_value is not None:
+    cdef _on_header_field(self, char* at, size_t length):
+        cdef Py_ssize_t size
+        cdef char *buf
+        if self._raw_value:
             self._process_header()
-            self._header_value = None
 
-        if self._header_name is None:
-            self._header_name = field
-            self._raw_header_name = raw_field
-        else:
-            self._header_name += field
-            self._raw_header_name += raw_field
+        size = PyByteArray_Size(self._raw_name)
+        PyByteArray_Resize(self._raw_name, size + length)
+        buf = PyByteArray_AsString(self._raw_name)
+        memcpy(buf + size, at, length)
 
-    cdef _on_header_value(self, str val, bytes raw_val):
-        if self._header_value is None:
-            self._header_value = val
-            self._raw_header_value = raw_val
-        else:
-            self._header_value += val
-            self._raw_header_value += raw_val
+    cdef _on_header_value(self, char* at, size_t length):
+        cdef Py_ssize_t size
+        cdef char *buf
+
+        size = PyByteArray_Size(self._raw_value)
+        PyByteArray_Resize(self._raw_value, size + length)
+        buf = PyByteArray_AsString(self._raw_value)
+        memcpy(buf + size, at, length)
 
     cdef _on_headers_complete(self):
         self._process_header()
@@ -457,7 +470,7 @@ cdef class HttpParser:
     cdef object _on_status_complete(self):
         pass
 
-    cdef http_version(self):
+    cdef inline http_version(self):
         cdef cparser.http_parser* parser = self._cparser
 
         if parser.http_major == 1:
@@ -625,13 +638,14 @@ cdef int cb_on_status(cparser.http_parser* parser,
 cdef int cb_on_header_field(cparser.http_parser* parser,
                             const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
+    cdef Py_ssize_t size
     try:
         pyparser._on_status_complete()
-        if length > pyparser._max_field_size:
+        size = len(pyparser._raw_name) + length
+        if size > pyparser._max_field_size:
             raise LineTooLong(
-                'Header name is too long', pyparser._max_field_size, length)
-        pyparser._on_header_field(
-            at[:length].decode('utf-8', 'surrogateescape'), at[:length])
+                'Header name is too long', pyparser._max_field_size, size)
+        pyparser._on_header_field(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -642,17 +656,13 @@ cdef int cb_on_header_field(cparser.http_parser* parser,
 cdef int cb_on_header_value(cparser.http_parser* parser,
                             const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
+    cdef Py_ssize_t size
     try:
-        if pyparser._header_value is not None:
-            if len(pyparser._header_value) + length > pyparser._max_field_size:
-                raise LineTooLong(
-                    'Header value is too long', pyparser._max_field_size,
-                    len(pyparser._header_value) + length)
-        elif length > pyparser._max_field_size:
+        size = len(pyparser._raw_value) + length
+        if size > pyparser._max_field_size:
             raise LineTooLong(
-                'Header value is too long', pyparser._max_field_size, length)
-        pyparser._on_header_value(
-            at[:length].decode('utf-8', 'surrogateescape'), at[:length])
+                'Header value is too long', pyparser._max_field_size, size)
+        pyparser._on_header_value(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
