@@ -400,8 +400,7 @@ cdef int cb_on_url(cparser.http_parser* parser,
         if length > pyparser._max_line_size:
             raise LineTooLong(
                 'Status line is too long', pyparser._max_line_size, length)
-        # extend(pyparser._buf, at, length)
-        pyparser._buf.extend(at[:length])
+        extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -417,7 +416,7 @@ cdef int cb_on_status(cparser.http_parser* parser,
         if length > pyparser._max_line_size:
             raise LineTooLong(
                 'Status line is too long', pyparser._max_line_size, length)
-        pyparser._buf.extend(at[:length])
+        extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
