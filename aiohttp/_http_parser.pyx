@@ -4,7 +4,7 @@
 #
 from __future__ import absolute_import, print_function
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.string import memcpy
+from libc.string cimport memcpy
 from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
                      Py_buffer, PyBytes_AsString
 
@@ -19,21 +19,23 @@ from .http_exceptions import (
 from .http_writer import (HttpVersion as _HttpVersion,
                           HttpVersion10 as _HttpVersion10,
                           HttpVersion11 as _HttpVersion11)
-from .http_parser import (RawRequestMessage as _RawRequestMessage,
-                          RawResponseMessage as _RawResponseMessage,
-                          DeflateBuffer as _DeflateBuffer)
+from .http_parser import DeflateBuffer as _DeflateBuffer
 from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
                       StreamReader as _StreamReader)
 
 cimport cython
 from . cimport _cparser as cparser
 
+
+DEF DEFAULT_FREELIST_SIZE = 250
+
 cdef extern from "Python.h":
     int PyByteArray_Resize(object, Py_ssize_t) except -1
     Py_ssize_t PyByteArray_Size(object) except -1
     char* PyByteArray_AsString(object)
 
-__all__ = ('HttpRequestParserC', 'HttpResponseMessageC')
+__all__ = ('HttpRequestParser', 'HttpResponseParser',
+           'RawRequestMessage', 'RawResponseMessage')
 
 cdef object URL = _URL
 cdef object URL_build = URL.build
@@ -46,8 +48,6 @@ cdef object SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
 cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
-cdef object RawRequestMessage = _RawRequestMessage
-cdef object RawResponseMessage = _RawResponseMessage
 cdef object DeflateBuffer = _DeflateBuffer
 
 
@@ -58,6 +58,171 @@ cdef object extend(object buf, char* at, size_t length):
     PyByteArray_Resize(buf, s + length)
     ptr = PyByteArray_AsString(buf)
     memcpy(ptr + s, at, length)
+
+
+@cython.freelist(DEFAULT_FREELIST_SIZE)
+cdef class RawRequestMessage:
+    cdef readonly str method
+    cdef readonly str path
+    cdef readonly object version  # HttpVersion
+    cdef readonly object headers  # CIMultiDict
+    cdef readonly object raw_headers  # tuple
+    cdef readonly object should_close
+    cdef readonly object compression
+    cdef readonly object upgrade
+    cdef readonly object chunked
+    cdef readonly object url  # yarl.URL
+
+    def __init__(self, method, path, version, headers, raw_headers,
+                 should_close, compression, upgrade, chunked, url):
+        self.method = method
+        self.path = path
+        self.version = version
+        self.headers = headers
+        self.raw_headers = raw_headers
+        self.should_close = should_close
+        self.compression = compression
+        self.upgrade = upgrade
+        self.chunked = chunked
+        self.url = url
+
+    def __repr__(self):
+        info = []
+        info.append(("method", self.method))
+        info.append(("path", self.path))
+        info.append(("version", self.version))
+        info.append(("headers", self.headers))
+        info.append(("raw_headers", self.raw_headers))
+        info.append(("should_close", self.should_close))
+        info.append(("compression", self.compression))
+        info.append(("upgrade", self.upgrade))
+        info.append(("chunked", self.chunked))
+        info.append(("url", self.url))
+        sinfo = ', '.join(name + '=' + repr(val) for name, val in info)
+        return '<RawRequestMessage(' + sinfo + ')>'
+
+    def _replace(self, **dct):
+        return self._replace_impl(dct)
+
+    cdef _replace_impl(self, dct):
+        cdef RawRequestMessage ret
+        ret = _new_request_message(self.method,
+                                   self.path,
+                                   self.version,
+                                   self.headers,
+                                   self.raw_headers,
+                                   self.should_close,
+                                   self.compression,
+                                   self.upgrade,
+                                   self.chunked,
+                                   self.url)
+        if "method" in dct:
+            ret.method = dct["method"]
+        if "path" in dct:
+            ret.path = dct["path"]
+        if "version" in dct:
+            ret.version = dct["version"]
+        if "headers" in dct:
+            ret.headers = dct["headers"]
+        if "raw_headers" in dct:
+            ret.raw_headers = dct["raw_headers"]
+        if "should_close" in dct:
+            ret.should_close = dct["should_close"]
+        if "compression" in dct:
+            ret.compression = dct["compression"]
+        if "upgrade" in dct:
+            ret.upgrade = dct["upgrade"]
+        if "chunked" in dct:
+            ret.chunked = dct["chunked"]
+        if "url" in dct:
+            ret.url = dct["url"]
+        return ret
+
+cdef _new_request_message(str method,
+                           str path,
+                           object version,
+                           object headers,
+                           object raw_headers,
+                           bint should_close,
+                           object compression,
+                           bint upgrade,
+                           bint chunked,
+                           object url):
+    cdef RawRequestMessage ret
+    ret = RawRequestMessage.__new__(RawRequestMessage)
+    ret.method = method
+    ret.path = path
+    ret.version = version
+    ret.headers = headers
+    ret.raw_headers = raw_headers
+    ret.should_close = should_close
+    ret.compression = compression
+    ret.upgrade = upgrade
+    ret.chunked = chunked
+    ret.url = url
+    return ret
+
+
+@cython.freelist(DEFAULT_FREELIST_SIZE)
+cdef class RawResponseMessage:
+    cdef readonly object version  # HttpVersion
+    cdef readonly int code
+    cdef readonly str reason
+    cdef readonly object headers  # CIMultiDict
+    cdef readonly object raw_headers  # tuple
+    cdef readonly object should_close
+    cdef readonly object compression
+    cdef readonly object upgrade
+    cdef readonly object chunked
+
+    def __init__(self, version, code, reason, headers, raw_headers,
+                 should_close, compression, upgrade, chunked):
+        self.version = version
+        self.code = code
+        self.reason = reason
+        self.headers = headers
+        self.raw_headers = raw_headers
+        self.should_close = should_close
+        self.compression = compression
+        self.upgrade = upgrade
+        self.chunked = chunked
+
+    def __repr__(self):
+        info = []
+        info.append(("version", self.version))
+        info.append(("code", self.code))
+        info.append(("reason", self.reason))
+        info.append(("headers", self.headers))
+        info.append(("raw_headers", self.raw_headers))
+        info.append(("should_close", self.should_close))
+        info.append(("compression", self.compression))
+        info.append(("upgrade", self.upgrade))
+        info.append(("chunked", self.chunked))
+        sinfo = ', '.join(name + '=' + repr(val) for name, val in info)
+        return '<RawResponseMessage(' + sinfo + ')>'
+
+
+cdef _new_response_message(object version,
+                           int code,
+                           str reason,
+                           object headers,
+                           object raw_headers,
+                           bint should_close,
+                           object compression,
+                           bint upgrade,
+                           bint chunked):
+    cdef RawResponseMessage ret
+    ret = RawResponseMessage.__new__(RawResponseMessage)
+    ret.version = version
+    ret.code = code
+    ret.reason = reason
+    ret.headers = headers
+    ret.raw_headers = raw_headers
+    ret.should_close = should_close
+    ret.compression = compression
+    ret.upgrade = upgrade
+    ret.chunked = chunked
+    return ret
 
 
 @cython.internal
@@ -197,9 +362,9 @@ cdef class HttpParser:
         self._process_header()
 
         method = cparser.http_method_str(<cparser.http_method> self._cparser.method)
-        should_close = not bool(cparser.http_should_keep_alive(self._cparser))
-        upgrade = bool(self._cparser.upgrade)
-        chunked = bool(self._cparser.flags & cparser.F_CHUNKED)
+        should_close = not cparser.http_should_keep_alive(self._cparser)
+        upgrade = self._cparser.upgrade
+        chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(self._headers)
@@ -219,12 +384,12 @@ cdef class HttpParser:
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
-            msg = RawRequestMessage(
+            msg = _new_request_message(
                 method.decode('utf-8', 'surrogateescape'), self._path,
                 self.http_version(), headers, raw_headers,
                 should_close, encoding, upgrade, chunked, self._url)
         else:
-            msg = RawResponseMessage(
+            msg = _new_response_message(
                 self.http_version(), self._cparser.status_code, self._reason,
                 headers, raw_headers, should_close, encoding,
                 upgrade, chunked)
@@ -258,9 +423,7 @@ cdef class HttpParser:
     cdef object _on_status_complete(self):
         pass
 
-    ### Public API ###
-
-    def http_version(self):
+    cdef http_version(self):
         cdef cparser.http_parser* parser = self._cparser
 
         if parser.http_major == 1:
@@ -270,6 +433,8 @@ cdef class HttpParser:
                 return HttpVersion11
 
         return HttpVersion(parser.http_major, parser.http_minor)
+
+    ### Public API ###
 
     def feed_eof(self):
         cdef bytes desc
