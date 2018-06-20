@@ -4,9 +4,9 @@
 #
 from __future__ import absolute_import, print_function
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from libc.string cimport memcpy
-from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
-                     Py_buffer, PyBytes_AsString
+from libc.string cimport memcpy, strncasecmp
+from cpython cimport (PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE,
+                      Py_buffer, PyBytes_AsString, PyBytes_AsStringAndSize)
 
 from multidict import (CIMultiDict as _CIMultiDict,
                        CIMultiDictProxy as _CIMultiDictProxy)
@@ -58,6 +58,21 @@ cdef object extend(object buf, char* at, size_t length):
     PyByteArray_Resize(buf, s + length)
     ptr = PyByteArray_AsString(buf)
     memcpy(ptr + s, at, length)
+
+
+cdef Py_ssize_t CONTENT_ENCODING_LEN = len(CONTENT_ENCODING)
+
+
+cdef bint is_content_encoding(bytes raw_name):
+    cdef Py_ssize_t size
+    cdef char* buf
+    PyBytes_AsStringAndSize(raw_name, &buf, &size)
+    if size != CONTENT_ENCODING_LEN:
+        return False
+    if strncasecmp(buf, "Content-Encoding", size) == 0:
+        return True
+    return False
+
 
 
 @cython.freelist(DEFAULT_FREELIST_SIZE)
@@ -258,6 +273,8 @@ cdef class HttpParser:
         object  _last_error
         bint    _auto_decompress
 
+        str     _content_encoding
+
         Py_buffer py_buf
 
     def __cinit__(self):
@@ -307,6 +324,7 @@ cdef class HttpParser:
         self._response_with_body = response_with_body
         self._upgraded = False
         self._auto_decompress = auto_decompress
+        self._content_encoding = None
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
@@ -331,6 +349,9 @@ cdef class HttpParser:
 
             raw_name = self._raw_header_name
             raw_value = self._raw_header_value
+
+            if is_content_encoding(raw_name):
+                self._content_encoding = value
 
             self._raw_header_name = self._raw_header_value = None
             self._raw_headers.append((raw_name, raw_value))
@@ -374,8 +395,9 @@ cdef class HttpParser:
             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
         encoding = None
-        enc = headers.get(CONTENT_ENCODING)
-        if enc:
+        enc = self._content_encoding
+        if enc is not None:
+            self._content_encoding = None
             enc = enc.lower()
             if enc in ('gzip', 'deflate', 'br'):
                 encoding = enc
