@@ -24,10 +24,11 @@ from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
                       StreamReader as _StreamReader)
 
 cimport cython
-from . cimport _cparser as cparser
+from aiohttp cimport _cparser as cparser
 
-import re
+include "_headers.pxi"
 
+from aiohttp cimport _find_header
 
 DEF DEFAULT_FREELIST_SIZE = 250
 
@@ -53,7 +54,7 @@ cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
 
 
-cdef inline object extend(object buf, char* at, size_t length):
+cdef inline object extend(object buf, const char* at, size_t length):
     cdef Py_ssize_t s
     cdef char* ptr
     s = PyByteArray_Size(buf)
@@ -77,34 +78,15 @@ cdef inline str http_method_str(int i):
     else:
         return "<unknown>"
 
-cdef list _headers
-cdef object _re
-
-
-cdef fill_headers():
-    global _headers
-    global _re
-    cdef list headers
-    cdef object h
-    cdef bytes b
-    headers = [getattr(hdrs, name)
-               for name in dir(hdrs)
-               if isinstance(getattr(hdrs, name), hdrs.istr)]
-    if len(headers) > 0x7f:
-        raise RuntimeError("Too many headers for table")
-
-    _headers = headers
-    b = b'|'.join(b'(' + h.encode('utf-8') + b')' for h in headers)
-    _re = re.compile(b, re.IGNORECASE)
-
-fill_headers()
-
-
 cdef inline object find_header(bytes raw_header):
-    m = _re.fullmatch(raw_header)
-    if m is None:
+    cdef Py_ssize_t size
+    cdef char *buf
+    cdef int idx
+    PyBytes_AsStringAndSize(raw_header, &buf, &size)
+    idx = _find_header.find_header(buf, size)
+    if idx == -1:
         return raw_header.decode('utf-8', 'surrogateescape')
-    return _headers[m.lastindex - 1]
+    return headers[idx]
 
 
 @cython.freelist(DEFAULT_FREELIST_SIZE)
