@@ -60,18 +60,17 @@ BLOCK = """
     NEXT_CHAR();
     switch (ch) {{
 {cases}
-    default:
-        return -1;
+        default:
+            return -1;
     }}
 """
 
-CASE = """
-    case '{char}':
-        if (last) {{
-            return {index};
-        }}
-        goto {next};
-"""
+CASE = """\
+        case '{char}':
+            if (last) {{
+                return {index};
+            }}
+            goto {next};"""
 
 FOOTER = """
 missing:
