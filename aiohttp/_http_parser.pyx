@@ -74,7 +74,7 @@ for i in range(METHODS_COUNT):
 
 cdef inline str http_method_str(int i):
     if i < METHODS_COUNT:
-        return _http_method[i]
+        return <str>_http_method[i]
     else:
         return "<unknown>"
 
