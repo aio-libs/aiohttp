@@ -97,10 +97,11 @@ def gen_block(dct, prefix, used_blocks, out):
             index = headers.index(term)
         else:
             index = -1
-        case = CASE.format(char=k, index=index, next=next_prefix)
+        hi = k.upper()
+        case = CASE.format(char=hi, index=index, next=next_prefix)
         cases.append(case)
         lo = k.lower()
-        if lo != k:
+        if lo != hi:
             case = CASE.format(char=lo, index=index, next=next_prefix)
             cases.append(case)
     label = prefix if prefix else 'INITIAL'

@@ -299,11 +299,25 @@ A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto AC;
+
+
     case 'c':
         if (last) {
             return -1;
         }
         goto AC;
+
+
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto AG;
 
 
     case 'g':
@@ -313,11 +327,25 @@ A:
         goto AG;
 
 
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto AL;
+
+
     case 'l':
         if (last) {
             return -1;
         }
         goto AL;
+
+
+    case 'U':
+        if (last) {
+            return -1;
+        }
+        goto AU;
 
 
     case 'u':
@@ -334,6 +362,13 @@ AC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto ACC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -347,6 +382,13 @@ AC:
 ACC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCE;
+
 
     case 'e':
         if (last) {
@@ -362,11 +404,25 @@ ACCE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto ACCEP;
+
+
     case 'p':
         if (last) {
             return -1;
         }
         goto ACCEP;
+
+
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto ACCES;
 
 
     case 's':
@@ -382,6 +438,13 @@ ACCE:
 ACCEP:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 0;
+        }
+        goto ACCEPT;
+
 
     case 't':
         if (last) {
@@ -474,6 +537,13 @@ ACCEPT_C:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'H':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_CH;
+
+
     case 'h':
         if (last) {
             return -1;
@@ -487,6 +557,13 @@ ACCEPT_C:
 ACCEPT_CH:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_CHA;
+
 
     case 'a':
         if (last) {
@@ -502,6 +579,13 @@ ACCEPT_CHA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_CHAR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -515,6 +599,13 @@ ACCEPT_CHA:
 ACCEPT_CHAR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_CHARS;
+
 
     case 's':
         if (last) {
@@ -530,6 +621,13 @@ ACCEPT_CHARS:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_CHARSE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -543,6 +641,13 @@ ACCEPT_CHARS:
 ACCEPT_CHARSE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 1;
+        }
+        goto ACCEPT_CHARSET;
+
 
     case 't':
         if (last) {
@@ -566,6 +671,13 @@ ACCEPT_E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_EN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -579,6 +691,13 @@ ACCEPT_E:
 ACCEPT_EN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_ENC;
+
 
     case 'c':
         if (last) {
@@ -594,6 +713,13 @@ ACCEPT_ENC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_ENCO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -607,6 +733,13 @@ ACCEPT_ENC:
 ACCEPT_ENCO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_ENCOD;
+
 
     case 'd':
         if (last) {
@@ -622,6 +755,13 @@ ACCEPT_ENCOD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_ENCODI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -636,6 +776,13 @@ ACCEPT_ENCODI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_ENCODIN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -649,6 +796,13 @@ ACCEPT_ENCODI:
 ACCEPT_ENCODIN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return 2;
+        }
+        goto ACCEPT_ENCODING;
+
 
     case 'g':
         if (last) {
@@ -672,6 +826,13 @@ ACCEPT_L:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_LA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -685,6 +846,13 @@ ACCEPT_L:
 ACCEPT_LA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_LAN;
+
 
     case 'n':
         if (last) {
@@ -700,6 +868,13 @@ ACCEPT_LAN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_LANG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -713,6 +888,13 @@ ACCEPT_LAN:
 ACCEPT_LANG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'U':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_LANGU;
+
 
     case 'u':
         if (last) {
@@ -728,6 +910,13 @@ ACCEPT_LANGU:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_LANGUA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -742,6 +931,13 @@ ACCEPT_LANGUA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_LANGUAG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -755,6 +951,13 @@ ACCEPT_LANGUA:
 ACCEPT_LANGUAG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 3;
+        }
+        goto ACCEPT_LANGUAGE;
+
 
     case 'e':
         if (last) {
@@ -778,6 +981,13 @@ ACCEPT_R:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_RA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -791,6 +1001,13 @@ ACCEPT_R:
 ACCEPT_RA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_RAN;
+
 
     case 'n':
         if (last) {
@@ -806,6 +1023,13 @@ ACCEPT_RAN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_RANG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -820,6 +1044,13 @@ ACCEPT_RANG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCEPT_RANGE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -833,6 +1064,13 @@ ACCEPT_RANG:
 ACCEPT_RANGE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 4;
+        }
+        goto ACCEPT_RANGES;
+
 
     case 's':
         if (last) {
@@ -855,6 +1093,13 @@ ACCEPT_RANGES:
 ACCES:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS;
+
 
     case 's':
         if (last) {
@@ -905,6 +1150,13 @@ ACCESS_C:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -918,6 +1170,13 @@ ACCESS_C:
 ACCESS_CO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CON;
+
 
     case 'n':
         if (last) {
@@ -933,6 +1192,13 @@ ACCESS_CON:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -946,6 +1212,13 @@ ACCESS_CON:
 ACCESS_CONT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTR;
+
 
     case 'r':
         if (last) {
@@ -961,6 +1234,13 @@ ACCESS_CONTR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTRO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -974,6 +1254,13 @@ ACCESS_CONTR:
 ACCESS_CONTRO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL;
+
 
     case 'l':
         if (last) {
@@ -1066,6 +1353,13 @@ ACCESS_CONTROL_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_AL;
+
+
     case 'l':
         if (last) {
             return -1;
@@ -1079,6 +1373,13 @@ ACCESS_CONTROL_A:
 ACCESS_CONTROL_AL:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALL;
+
 
     case 'l':
         if (last) {
@@ -1094,6 +1395,13 @@ ACCESS_CONTROL_ALL:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -1107,6 +1415,13 @@ ACCESS_CONTROL_ALL:
 ACCESS_CONTROL_ALLO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'W':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW;
+
 
     case 'w':
         if (last) {
@@ -1199,6 +1514,13 @@ ACCESS_CONTROL_ALLOW_C:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -1212,6 +1534,13 @@ ACCESS_CONTROL_ALLOW_C:
 ACCESS_CONTROL_ALLOW_CR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CRE;
+
 
     case 'e':
         if (last) {
@@ -1227,6 +1556,13 @@ ACCESS_CONTROL_ALLOW_CRE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CRED;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -1240,6 +1576,13 @@ ACCESS_CONTROL_ALLOW_CRE:
 ACCESS_CONTROL_ALLOW_CRED:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CREDE;
+
 
     case 'e':
         if (last) {
@@ -1255,6 +1598,13 @@ ACCESS_CONTROL_ALLOW_CREDE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CREDEN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -1268,6 +1618,13 @@ ACCESS_CONTROL_ALLOW_CREDE:
 ACCESS_CONTROL_ALLOW_CREDEN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CREDENT;
+
 
     case 't':
         if (last) {
@@ -1283,6 +1640,13 @@ ACCESS_CONTROL_ALLOW_CREDENT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CREDENTI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -1296,6 +1660,13 @@ ACCESS_CONTROL_ALLOW_CREDENT:
 ACCESS_CONTROL_ALLOW_CREDENTI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CREDENTIA;
+
 
     case 'a':
         if (last) {
@@ -1311,6 +1682,13 @@ ACCESS_CONTROL_ALLOW_CREDENTIA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_CREDENTIAL;
+
+
     case 'l':
         if (last) {
             return -1;
@@ -1324,6 +1702,13 @@ ACCESS_CONTROL_ALLOW_CREDENTIA:
 ACCESS_CONTROL_ALLOW_CREDENTIAL:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 5;
+        }
+        goto ACCESS_CONTROL_ALLOW_CREDENTIALS;
+
 
     case 's':
         if (last) {
@@ -1347,6 +1732,13 @@ ACCESS_CONTROL_ALLOW_H:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_HE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -1360,6 +1752,13 @@ ACCESS_CONTROL_ALLOW_H:
 ACCESS_CONTROL_ALLOW_HE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_HEA;
+
 
     case 'a':
         if (last) {
@@ -1375,6 +1774,13 @@ ACCESS_CONTROL_ALLOW_HEA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_HEAD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -1388,6 +1794,13 @@ ACCESS_CONTROL_ALLOW_HEA:
 ACCESS_CONTROL_ALLOW_HEAD:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_HEADE;
+
 
     case 'e':
         if (last) {
@@ -1403,6 +1816,13 @@ ACCESS_CONTROL_ALLOW_HEADE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_HEADER;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -1416,6 +1836,13 @@ ACCESS_CONTROL_ALLOW_HEADE:
 ACCESS_CONTROL_ALLOW_HEADER:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 6;
+        }
+        goto ACCESS_CONTROL_ALLOW_HEADERS;
+
 
     case 's':
         if (last) {
@@ -1439,6 +1866,13 @@ ACCESS_CONTROL_ALLOW_M:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_ME;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -1452,6 +1886,13 @@ ACCESS_CONTROL_ALLOW_M:
 ACCESS_CONTROL_ALLOW_ME:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_MET;
+
 
     case 't':
         if (last) {
@@ -1467,6 +1908,13 @@ ACCESS_CONTROL_ALLOW_MET:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'H':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_METH;
+
+
     case 'h':
         if (last) {
             return -1;
@@ -1480,6 +1928,13 @@ ACCESS_CONTROL_ALLOW_MET:
 ACCESS_CONTROL_ALLOW_METH:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_METHO;
+
 
     case 'o':
         if (last) {
@@ -1495,6 +1950,13 @@ ACCESS_CONTROL_ALLOW_METHO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_METHOD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -1508,6 +1970,13 @@ ACCESS_CONTROL_ALLOW_METHO:
 ACCESS_CONTROL_ALLOW_METHOD:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 7;
+        }
+        goto ACCESS_CONTROL_ALLOW_METHODS;
+
 
     case 's':
         if (last) {
@@ -1531,6 +2000,13 @@ ACCESS_CONTROL_ALLOW_O:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_OR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -1544,6 +2020,13 @@ ACCESS_CONTROL_ALLOW_O:
 ACCESS_CONTROL_ALLOW_OR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_ORI;
+
 
     case 'i':
         if (last) {
@@ -1559,6 +2042,13 @@ ACCESS_CONTROL_ALLOW_ORI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_ORIG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -1573,6 +2063,13 @@ ACCESS_CONTROL_ALLOW_ORIG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_ALLOW_ORIGI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -1586,6 +2083,13 @@ ACCESS_CONTROL_ALLOW_ORIG:
 ACCESS_CONTROL_ALLOW_ORIGI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 8;
+        }
+        goto ACCESS_CONTROL_ALLOW_ORIGIN;
+
 
     case 'n':
         if (last) {
@@ -1609,6 +2113,13 @@ ACCESS_CONTROL_E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'X':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EX;
+
+
     case 'x':
         if (last) {
             return -1;
@@ -1622,6 +2133,13 @@ ACCESS_CONTROL_E:
 ACCESS_CONTROL_EX:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXP;
+
 
     case 'p':
         if (last) {
@@ -1637,6 +2155,13 @@ ACCESS_CONTROL_EXP:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -1651,6 +2176,13 @@ ACCESS_CONTROL_EXPO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPOS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -1664,6 +2196,13 @@ ACCESS_CONTROL_EXPO:
 ACCESS_CONTROL_EXPOS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPOSE;
+
 
     case 'e':
         if (last) {
@@ -1714,6 +2253,13 @@ ACCESS_CONTROL_EXPOSE_H:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPOSE_HE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -1727,6 +2273,13 @@ ACCESS_CONTROL_EXPOSE_H:
 ACCESS_CONTROL_EXPOSE_HE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPOSE_HEA;
+
 
     case 'a':
         if (last) {
@@ -1742,6 +2295,13 @@ ACCESS_CONTROL_EXPOSE_HEA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPOSE_HEAD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -1755,6 +2315,13 @@ ACCESS_CONTROL_EXPOSE_HEA:
 ACCESS_CONTROL_EXPOSE_HEAD:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPOSE_HEADE;
+
 
     case 'e':
         if (last) {
@@ -1770,6 +2337,13 @@ ACCESS_CONTROL_EXPOSE_HEADE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_EXPOSE_HEADER;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -1783,6 +2357,13 @@ ACCESS_CONTROL_EXPOSE_HEADE:
 ACCESS_CONTROL_EXPOSE_HEADER:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 9;
+        }
+        goto ACCESS_CONTROL_EXPOSE_HEADERS;
+
 
     case 's':
         if (last) {
@@ -1806,6 +2387,13 @@ ACCESS_CONTROL_M:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_MA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -1819,6 +2407,13 @@ ACCESS_CONTROL_M:
 ACCESS_CONTROL_MA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'X':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_MAX;
+
 
     case 'x':
         if (last) {
@@ -1869,6 +2464,13 @@ ACCESS_CONTROL_MAX_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_MAX_AG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -1882,6 +2484,13 @@ ACCESS_CONTROL_MAX_A:
 ACCESS_CONTROL_MAX_AG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 10;
+        }
+        goto ACCESS_CONTROL_MAX_AGE;
+
 
     case 'e':
         if (last) {
@@ -1905,6 +2514,13 @@ ACCESS_CONTROL_R:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_RE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -1918,6 +2534,13 @@ ACCESS_CONTROL_R:
 ACCESS_CONTROL_RE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'Q':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQ;
+
 
     case 'q':
         if (last) {
@@ -1933,6 +2556,13 @@ ACCESS_CONTROL_REQ:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'U':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQU;
+
+
     case 'u':
         if (last) {
             return -1;
@@ -1946,6 +2576,13 @@ ACCESS_CONTROL_REQ:
 ACCESS_CONTROL_REQU:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUE;
+
 
     case 'e':
         if (last) {
@@ -1961,6 +2598,13 @@ ACCESS_CONTROL_REQUE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUES;
+
+
     case 's':
         if (last) {
             return -1;
@@ -1974,6 +2618,13 @@ ACCESS_CONTROL_REQUE:
 ACCESS_CONTROL_REQUES:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST;
+
 
     case 't':
         if (last) {
@@ -2038,6 +2689,13 @@ ACCESS_CONTROL_REQUEST_H:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_HE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -2051,6 +2709,13 @@ ACCESS_CONTROL_REQUEST_H:
 ACCESS_CONTROL_REQUEST_HE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_HEA;
+
 
     case 'a':
         if (last) {
@@ -2066,6 +2731,13 @@ ACCESS_CONTROL_REQUEST_HEA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_HEAD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -2079,6 +2751,13 @@ ACCESS_CONTROL_REQUEST_HEA:
 ACCESS_CONTROL_REQUEST_HEAD:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_HEADE;
+
 
     case 'e':
         if (last) {
@@ -2094,6 +2773,13 @@ ACCESS_CONTROL_REQUEST_HEADE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_HEADER;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -2107,6 +2793,13 @@ ACCESS_CONTROL_REQUEST_HEADE:
 ACCESS_CONTROL_REQUEST_HEADER:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 11;
+        }
+        goto ACCESS_CONTROL_REQUEST_HEADERS;
+
 
     case 's':
         if (last) {
@@ -2130,6 +2823,13 @@ ACCESS_CONTROL_REQUEST_M:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_ME;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -2143,6 +2843,13 @@ ACCESS_CONTROL_REQUEST_M:
 ACCESS_CONTROL_REQUEST_ME:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_MET;
+
 
     case 't':
         if (last) {
@@ -2158,6 +2865,13 @@ ACCESS_CONTROL_REQUEST_MET:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'H':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_METH;
+
+
     case 'h':
         if (last) {
             return -1;
@@ -2172,6 +2886,13 @@ ACCESS_CONTROL_REQUEST_METH:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ACCESS_CONTROL_REQUEST_METHO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -2185,6 +2906,13 @@ ACCESS_CONTROL_REQUEST_METH:
 ACCESS_CONTROL_REQUEST_METHO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return 12;
+        }
+        goto ACCESS_CONTROL_REQUEST_METHOD;
+
 
     case 'd':
         if (last) {
@@ -2208,6 +2936,13 @@ AG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return 13;
+        }
+        goto AGE;
+
+
     case 'e':
         if (last) {
             return 13;
@@ -2230,6 +2965,13 @@ AL:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto ALL;
+
+
     case 'l':
         if (last) {
             return -1;
@@ -2244,6 +2986,13 @@ ALL:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto ALLO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -2257,6 +3006,13 @@ ALL:
 ALLO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'W':
+        if (last) {
+            return 14;
+        }
+        goto ALLOW;
+
 
     case 'w':
         if (last) {
@@ -2280,6 +3036,13 @@ AU:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto AUT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -2293,6 +3056,13 @@ AU:
 AUT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'H':
+        if (last) {
+            return -1;
+        }
+        goto AUTH;
+
 
     case 'h':
         if (last) {
@@ -2308,6 +3078,13 @@ AUTH:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto AUTHO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -2321,6 +3098,13 @@ AUTH:
 AUTHO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto AUTHOR;
+
 
     case 'r':
         if (last) {
@@ -2336,6 +3120,13 @@ AUTHOR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto AUTHORI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -2349,6 +3140,13 @@ AUTHOR:
 AUTHORI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'Z':
+        if (last) {
+            return -1;
+        }
+        goto AUTHORIZ;
+
 
     case 'z':
         if (last) {
@@ -2364,6 +3162,13 @@ AUTHORIZ:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto AUTHORIZA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -2377,6 +3182,13 @@ AUTHORIZ:
 AUTHORIZA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto AUTHORIZAT;
+
 
     case 't':
         if (last) {
@@ -2392,6 +3204,13 @@ AUTHORIZAT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto AUTHORIZATI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -2406,6 +3225,13 @@ AUTHORIZATI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto AUTHORIZATIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -2419,6 +3245,13 @@ AUTHORIZATI:
 AUTHORIZATIO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 15;
+        }
+        goto AUTHORIZATION;
+
 
     case 'n':
         if (last) {
@@ -2442,11 +3275,25 @@ C:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto CA;
+
+
     case 'a':
         if (last) {
             return -1;
         }
         goto CA;
+
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CO;
 
 
     case 'o':
@@ -2463,6 +3310,13 @@ CA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto CAC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -2477,6 +3331,13 @@ CAC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'H':
+        if (last) {
+            return -1;
+        }
+        goto CACH;
+
+
     case 'h':
         if (last) {
             return -1;
@@ -2490,6 +3351,13 @@ CAC:
 CACH:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto CACHE;
+
 
     case 'e':
         if (last) {
@@ -2540,6 +3408,13 @@ CACHE_C:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CACHE_CO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -2553,6 +3428,13 @@ CACHE_C:
 CACHE_CO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CACHE_CON;
+
 
     case 'n':
         if (last) {
@@ -2568,6 +3450,13 @@ CACHE_CON:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto CACHE_CONT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -2581,6 +3470,13 @@ CACHE_CON:
 CACHE_CONT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto CACHE_CONTR;
+
 
     case 'r':
         if (last) {
@@ -2596,6 +3492,13 @@ CACHE_CONTR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CACHE_CONTRO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -2609,6 +3512,13 @@ CACHE_CONTR:
 CACHE_CONTRO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'L':
+        if (last) {
+            return 16;
+        }
+        goto CACHE_CONTROL;
+
 
     case 'l':
         if (last) {
@@ -2632,11 +3542,25 @@ CO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CON;
+
+
     case 'n':
         if (last) {
             return -1;
         }
         goto CON;
+
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto COO;
 
 
     case 'o':
@@ -2653,11 +3577,25 @@ CON:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONN;
+
+
     case 'n':
         if (last) {
             return -1;
         }
         goto CONN;
+
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto CONT;
 
 
     case 't':
@@ -2674,6 +3612,13 @@ CONN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto CONNE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -2687,6 +3632,13 @@ CONN:
 CONNE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto CONNEC;
+
 
     case 'c':
         if (last) {
@@ -2702,6 +3654,13 @@ CONNEC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto CONNECT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -2715,6 +3674,13 @@ CONNEC:
 CONNECT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto CONNECTI;
+
 
     case 'i':
         if (last) {
@@ -2730,6 +3696,13 @@ CONNECTI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CONNECTIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -2743,6 +3716,13 @@ CONNECTI:
 CONNECTIO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 17;
+        }
+        goto CONNECTION;
+
 
     case 'n':
         if (last) {
@@ -2766,6 +3746,13 @@ CONT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto CONTE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -2780,6 +3767,13 @@ CONTE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTEN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -2793,6 +3787,13 @@ CONTE:
 CONTEN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT;
+
 
     case 't':
         if (last) {
@@ -2913,6 +3914,13 @@ CONTENT_D:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -2926,6 +3934,13 @@ CONTENT_D:
 CONTENT_DI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DIS;
+
 
     case 's':
         if (last) {
@@ -2941,6 +3956,13 @@ CONTENT_DIS:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DISP;
+
+
     case 'p':
         if (last) {
             return -1;
@@ -2954,6 +3976,13 @@ CONTENT_DIS:
 CONTENT_DISP:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DISPO;
+
 
     case 'o':
         if (last) {
@@ -2969,6 +3998,13 @@ CONTENT_DISPO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DISPOS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -2982,6 +4018,13 @@ CONTENT_DISPO:
 CONTENT_DISPOS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DISPOSI;
+
 
     case 'i':
         if (last) {
@@ -2997,6 +4040,13 @@ CONTENT_DISPOSI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DISPOSIT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -3010,6 +4060,13 @@ CONTENT_DISPOSI:
 CONTENT_DISPOSIT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DISPOSITI;
+
 
     case 'i':
         if (last) {
@@ -3025,6 +4082,13 @@ CONTENT_DISPOSITI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_DISPOSITIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -3038,6 +4102,13 @@ CONTENT_DISPOSITI:
 CONTENT_DISPOSITIO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 18;
+        }
+        goto CONTENT_DISPOSITION;
+
 
     case 'n':
         if (last) {
@@ -3061,6 +4132,13 @@ CONTENT_E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_EN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -3074,6 +4152,13 @@ CONTENT_E:
 CONTENT_EN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_ENC;
+
 
     case 'c':
         if (last) {
@@ -3089,6 +4174,13 @@ CONTENT_ENC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_ENCO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -3102,6 +4194,13 @@ CONTENT_ENC:
 CONTENT_ENCO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_ENCOD;
+
 
     case 'd':
         if (last) {
@@ -3117,6 +4216,13 @@ CONTENT_ENCOD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_ENCODI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -3131,6 +4237,13 @@ CONTENT_ENCODI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_ENCODIN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -3144,6 +4257,13 @@ CONTENT_ENCODI:
 CONTENT_ENCODIN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return 19;
+        }
+        goto CONTENT_ENCODING;
+
 
     case 'g':
         if (last) {
@@ -3167,6 +4287,13 @@ CONTENT_L:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -3174,11 +4301,25 @@ CONTENT_L:
         goto CONTENT_LA;
 
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LE;
+
+
     case 'e':
         if (last) {
             return -1;
         }
         goto CONTENT_LE;
+
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LO;
 
 
     case 'o':
@@ -3195,6 +4336,13 @@ CONTENT_LA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LAN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -3208,6 +4356,13 @@ CONTENT_LA:
 CONTENT_LAN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LANG;
+
 
     case 'g':
         if (last) {
@@ -3223,6 +4378,13 @@ CONTENT_LANG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'U':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LANGU;
+
+
     case 'u':
         if (last) {
             return -1;
@@ -3236,6 +4398,13 @@ CONTENT_LANG:
 CONTENT_LANGU:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LANGUA;
+
 
     case 'a':
         if (last) {
@@ -3251,6 +4420,13 @@ CONTENT_LANGUA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LANGUAG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -3264,6 +4440,13 @@ CONTENT_LANGUA:
 CONTENT_LANGUAG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 20;
+        }
+        goto CONTENT_LANGUAGE;
+
 
     case 'e':
         if (last) {
@@ -3287,6 +4470,13 @@ CONTENT_LE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LEN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -3300,6 +4490,13 @@ CONTENT_LE:
 CONTENT_LEN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LENG;
+
 
     case 'g':
         if (last) {
@@ -3315,6 +4512,13 @@ CONTENT_LENG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LENGT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -3328,6 +4532,13 @@ CONTENT_LENG:
 CONTENT_LENGT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'H':
+        if (last) {
+            return 21;
+        }
+        goto CONTENT_LENGTH;
+
 
     case 'h':
         if (last) {
@@ -3351,6 +4562,13 @@ CONTENT_LO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LOC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -3364,6 +4582,13 @@ CONTENT_LO:
 CONTENT_LOC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LOCA;
+
 
     case 'a':
         if (last) {
@@ -3379,6 +4604,13 @@ CONTENT_LOCA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LOCAT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -3392,6 +4624,13 @@ CONTENT_LOCA:
 CONTENT_LOCAT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LOCATI;
+
 
     case 'i':
         if (last) {
@@ -3407,6 +4646,13 @@ CONTENT_LOCATI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_LOCATIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -3420,6 +4666,13 @@ CONTENT_LOCATI:
 CONTENT_LOCATIO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 22;
+        }
+        goto CONTENT_LOCATION;
+
 
     case 'n':
         if (last) {
@@ -3442,6 +4695,13 @@ CONTENT_LOCATION:
 CONTENT_M:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_MD;
+
 
     case 'd':
         if (last) {
@@ -3479,6 +4739,13 @@ CONTENT_R:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_RA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -3492,6 +4759,13 @@ CONTENT_R:
 CONTENT_RA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_RAN;
+
 
     case 'n':
         if (last) {
@@ -3507,6 +4781,13 @@ CONTENT_RAN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_RANG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -3520,6 +4801,13 @@ CONTENT_RAN:
 CONTENT_RANG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 24;
+        }
+        goto CONTENT_RANGE;
+
 
     case 'e':
         if (last) {
@@ -3543,11 +4831,25 @@ CONTENT_T:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TR;
+
+
     case 'r':
         if (last) {
             return -1;
         }
         goto CONTENT_TR;
+
+
+    case 'Y':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TY;
 
 
     case 'y':
@@ -3564,6 +4866,13 @@ CONTENT_TR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -3577,6 +4886,13 @@ CONTENT_TR:
 CONTENT_TRA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRAN;
+
 
     case 'n':
         if (last) {
@@ -3592,6 +4908,13 @@ CONTENT_TRAN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -3605,6 +4928,13 @@ CONTENT_TRAN:
 CONTENT_TRANS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSF;
+
 
     case 'f':
         if (last) {
@@ -3620,6 +4950,13 @@ CONTENT_TRANSF:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -3633,6 +4970,13 @@ CONTENT_TRANSF:
 CONTENT_TRANSFE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFER;
+
 
     case 'r':
         if (last) {
@@ -3683,6 +5027,13 @@ CONTENT_TRANSFER_E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFER_EN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -3696,6 +5047,13 @@ CONTENT_TRANSFER_E:
 CONTENT_TRANSFER_EN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFER_ENC;
+
 
     case 'c':
         if (last) {
@@ -3711,6 +5069,13 @@ CONTENT_TRANSFER_ENC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFER_ENCO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -3724,6 +5089,13 @@ CONTENT_TRANSFER_ENC:
 CONTENT_TRANSFER_ENCO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFER_ENCOD;
+
 
     case 'd':
         if (last) {
@@ -3739,6 +5111,13 @@ CONTENT_TRANSFER_ENCOD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFER_ENCODI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -3753,6 +5132,13 @@ CONTENT_TRANSFER_ENCODI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TRANSFER_ENCODIN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -3766,6 +5152,13 @@ CONTENT_TRANSFER_ENCODI:
 CONTENT_TRANSFER_ENCODIN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return 25;
+        }
+        goto CONTENT_TRANSFER_ENCODING;
+
 
     case 'g':
         if (last) {
@@ -3789,6 +5182,13 @@ CONTENT_TY:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto CONTENT_TYP;
+
+
     case 'p':
         if (last) {
             return -1;
@@ -3802,6 +5202,13 @@ CONTENT_TY:
 CONTENT_TYP:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 26;
+        }
+        goto CONTENT_TYPE;
+
 
     case 'e':
         if (last) {
@@ -3825,6 +5232,13 @@ COO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'K':
+        if (last) {
+            return -1;
+        }
+        goto COOK;
+
+
     case 'k':
         if (last) {
             return -1;
@@ -3839,6 +5253,13 @@ COOK:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto COOKI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -3852,6 +5273,13 @@ COOK:
 COOKI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 27;
+        }
+        goto COOKIE;
+
 
     case 'e':
         if (last) {
@@ -3875,6 +5303,13 @@ D:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto DA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -3882,11 +5317,25 @@ D:
         goto DA;
 
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto DE;
+
+
     case 'e':
         if (last) {
             return -1;
         }
         goto DE;
+
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto DI;
 
 
     case 'i':
@@ -3903,6 +5352,13 @@ DA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto DAT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -3916,6 +5372,13 @@ DA:
 DAT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 28;
+        }
+        goto DATE;
+
 
     case 'e':
         if (last) {
@@ -3939,6 +5402,13 @@ DE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto DES;
+
+
     case 's':
         if (last) {
             return -1;
@@ -3952,6 +5422,13 @@ DE:
 DES:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto DEST;
+
 
     case 't':
         if (last) {
@@ -3967,6 +5444,13 @@ DEST:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto DESTI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -3980,6 +5464,13 @@ DEST:
 DESTI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto DESTIN;
+
 
     case 'n':
         if (last) {
@@ -3995,6 +5486,13 @@ DESTIN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto DESTINA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -4008,6 +5506,13 @@ DESTIN:
 DESTINA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto DESTINAT;
+
 
     case 't':
         if (last) {
@@ -4023,6 +5528,13 @@ DESTINAT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto DESTINATI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -4037,6 +5549,13 @@ DESTINATI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto DESTINATIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -4050,6 +5569,13 @@ DESTINATI:
 DESTINATIO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 29;
+        }
+        goto DESTINATION;
+
 
     case 'n':
         if (last) {
@@ -4073,6 +5599,13 @@ DI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto DIG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -4086,6 +5619,13 @@ DI:
 DIG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto DIGE;
+
 
     case 'e':
         if (last) {
@@ -4101,6 +5641,13 @@ DIGE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto DIGES;
+
+
     case 's':
         if (last) {
             return -1;
@@ -4114,6 +5661,13 @@ DIGE:
 DIGES:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 30;
+        }
+        goto DIGEST;
+
 
     case 't':
         if (last) {
@@ -4137,11 +5691,25 @@ E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto ET;
+
+
     case 't':
         if (last) {
             return -1;
         }
         goto ET;
+
+
+    case 'X':
+        if (last) {
+            return -1;
+        }
+        goto EX;
 
 
     case 'x':
@@ -4158,6 +5726,13 @@ ET:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto ETA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -4171,6 +5746,13 @@ ET:
 ETA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return 31;
+        }
+        goto ETAG;
+
 
     case 'g':
         if (last) {
@@ -4194,6 +5776,13 @@ EX:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto EXP;
+
+
     case 'p':
         if (last) {
             return -1;
@@ -4208,11 +5797,25 @@ EXP:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto EXPE;
+
+
     case 'e':
         if (last) {
             return -1;
         }
         goto EXPE;
+
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto EXPI;
 
 
     case 'i':
@@ -4229,6 +5832,13 @@ EXPE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto EXPEC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -4242,6 +5852,13 @@ EXPE:
 EXPEC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 32;
+        }
+        goto EXPECT;
+
 
     case 't':
         if (last) {
@@ -4265,6 +5882,13 @@ EXPI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto EXPIR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -4279,6 +5903,13 @@ EXPIR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto EXPIRE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -4292,6 +5923,13 @@ EXPIR:
 EXPIRE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 33;
+        }
+        goto EXPIRES;
+
 
     case 's':
         if (last) {
@@ -4315,11 +5953,25 @@ F:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto FO;
+
+
     case 'o':
         if (last) {
             return -1;
         }
         goto FO;
+
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto FR;
 
 
     case 'r':
@@ -4336,6 +5988,13 @@ FO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto FOR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -4349,6 +6008,13 @@ FO:
 FOR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'W':
+        if (last) {
+            return -1;
+        }
+        goto FORW;
+
 
     case 'w':
         if (last) {
@@ -4364,6 +6030,13 @@ FORW:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto FORWA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -4377,6 +6050,13 @@ FORW:
 FORWA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto FORWAR;
+
 
     case 'r':
         if (last) {
@@ -4392,6 +6072,13 @@ FORWAR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto FORWARD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -4406,6 +6093,13 @@ FORWARD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto FORWARDE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -4419,6 +6113,13 @@ FORWARD:
 FORWARDE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return 34;
+        }
+        goto FORWARDED;
+
 
     case 'd':
         if (last) {
@@ -4442,6 +6143,13 @@ FR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto FRO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -4455,6 +6163,13 @@ FR:
 FRO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'M':
+        if (last) {
+            return 35;
+        }
+        goto FROM;
+
 
     case 'm':
         if (last) {
@@ -4478,6 +6193,13 @@ H:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto HO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -4492,6 +6214,13 @@ HO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto HOS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -4505,6 +6234,13 @@ HO:
 HOS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 36;
+        }
+        goto HOST;
+
 
     case 't':
         if (last) {
@@ -4527,6 +6263,13 @@ HOST:
 I:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto IF;
+
 
     case 'f':
         if (last) {
@@ -4619,11 +6362,25 @@ IF_M:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto IF_MA;
+
+
     case 'a':
         if (last) {
             return -1;
         }
         goto IF_MA;
+
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto IF_MO;
 
 
     case 'o':
@@ -4640,6 +6397,13 @@ IF_MA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto IF_MAT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -4654,6 +6418,13 @@ IF_MAT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto IF_MATC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -4667,6 +6438,13 @@ IF_MAT:
 IF_MATC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'H':
+        if (last) {
+            return 37;
+        }
+        goto IF_MATCH;
+
 
     case 'h':
         if (last) {
@@ -4690,6 +6468,13 @@ IF_MO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto IF_MOD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -4703,6 +6488,13 @@ IF_MO:
 IF_MOD:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODI;
+
 
     case 'i':
         if (last) {
@@ -4718,6 +6510,13 @@ IF_MODI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODIF;
+
+
     case 'f':
         if (last) {
             return -1;
@@ -4731,6 +6530,13 @@ IF_MODI:
 IF_MODIF:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODIFI;
+
 
     case 'i':
         if (last) {
@@ -4746,6 +6552,13 @@ IF_MODIFI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODIFIE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -4759,6 +6572,13 @@ IF_MODIFI:
 IF_MODIFIE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODIFIED;
+
 
     case 'd':
         if (last) {
@@ -4809,6 +6629,13 @@ IF_MODIFIED_S:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODIFIED_SI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -4822,6 +6649,13 @@ IF_MODIFIED_S:
 IF_MODIFIED_SI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODIFIED_SIN;
+
 
     case 'n':
         if (last) {
@@ -4837,6 +6671,13 @@ IF_MODIFIED_SIN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto IF_MODIFIED_SINC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -4850,6 +6691,13 @@ IF_MODIFIED_SIN:
 IF_MODIFIED_SINC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 38;
+        }
+        goto IF_MODIFIED_SINCE;
+
 
     case 'e':
         if (last) {
@@ -4873,6 +6721,13 @@ IF_N:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto IF_NO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -4887,6 +6742,13 @@ IF_NO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto IF_NON;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -4900,6 +6762,13 @@ IF_NO:
 IF_NON:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto IF_NONE;
+
 
     case 'e':
         if (last) {
@@ -4950,6 +6819,13 @@ IF_NONE_M:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto IF_NONE_MA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -4963,6 +6839,13 @@ IF_NONE_M:
 IF_NONE_MA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto IF_NONE_MAT;
+
 
     case 't':
         if (last) {
@@ -4978,6 +6861,13 @@ IF_NONE_MAT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto IF_NONE_MATC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -4991,6 +6881,13 @@ IF_NONE_MAT:
 IF_NONE_MATC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'H':
+        if (last) {
+            return 39;
+        }
+        goto IF_NONE_MATCH;
+
 
     case 'h':
         if (last) {
@@ -5014,6 +6911,13 @@ IF_R:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto IF_RA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -5027,6 +6931,13 @@ IF_R:
 IF_RA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto IF_RAN;
+
 
     case 'n':
         if (last) {
@@ -5042,6 +6953,13 @@ IF_RAN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto IF_RANG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -5055,6 +6973,13 @@ IF_RAN:
 IF_RANG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 40;
+        }
+        goto IF_RANGE;
+
 
     case 'e':
         if (last) {
@@ -5078,6 +7003,13 @@ IF_U:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto IF_UN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -5091,6 +7023,13 @@ IF_U:
 IF_UN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'M':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNM;
+
 
     case 'm':
         if (last) {
@@ -5106,6 +7045,13 @@ IF_UNM:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -5119,6 +7065,13 @@ IF_UNM:
 IF_UNMO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMOD;
+
 
     case 'd':
         if (last) {
@@ -5134,6 +7087,13 @@ IF_UNMOD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -5147,6 +7107,13 @@ IF_UNMOD:
 IF_UNMODI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODIF;
+
 
     case 'f':
         if (last) {
@@ -5162,6 +7129,13 @@ IF_UNMODIF:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODIFI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -5176,6 +7150,13 @@ IF_UNMODIFI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODIFIE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -5189,6 +7170,13 @@ IF_UNMODIFI:
 IF_UNMODIFIE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODIFIED;
+
 
     case 'd':
         if (last) {
@@ -5239,6 +7227,13 @@ IF_UNMODIFIED_S:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODIFIED_SI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -5252,6 +7247,13 @@ IF_UNMODIFIED_S:
 IF_UNMODIFIED_SI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODIFIED_SIN;
+
 
     case 'n':
         if (last) {
@@ -5267,6 +7269,13 @@ IF_UNMODIFIED_SIN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto IF_UNMODIFIED_SINC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -5280,6 +7289,13 @@ IF_UNMODIFIED_SIN:
 IF_UNMODIFIED_SINC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 41;
+        }
+        goto IF_UNMODIFIED_SINCE;
+
 
     case 'e':
         if (last) {
@@ -5303,6 +7319,13 @@ K:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto KE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -5317,6 +7340,13 @@ KE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto KEE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -5330,6 +7360,13 @@ KE:
 KEE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto KEEP;
+
 
     case 'p':
         if (last) {
@@ -5380,6 +7417,13 @@ KEEP_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto KEEP_AL;
+
+
     case 'l':
         if (last) {
             return -1;
@@ -5393,6 +7437,13 @@ KEEP_A:
 KEEP_AL:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto KEEP_ALI;
+
 
     case 'i':
         if (last) {
@@ -5408,6 +7459,13 @@ KEEP_ALI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'V':
+        if (last) {
+            return -1;
+        }
+        goto KEEP_ALIV;
+
+
     case 'v':
         if (last) {
             return -1;
@@ -5421,6 +7479,13 @@ KEEP_ALI:
 KEEP_ALIV:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 42;
+        }
+        goto KEEP_ALIVE;
+
 
     case 'e':
         if (last) {
@@ -5444,6 +7509,13 @@ L:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto LA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -5451,11 +7523,25 @@ L:
         goto LA;
 
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto LI;
+
+
     case 'i':
         if (last) {
             return -1;
         }
         goto LI;
+
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto LO;
 
 
     case 'o':
@@ -5472,6 +7558,13 @@ LA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto LAS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -5485,6 +7578,13 @@ LA:
 LAS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto LAST;
+
 
     case 't':
         if (last) {
@@ -5549,6 +7649,13 @@ LAST_E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'V':
+        if (last) {
+            return -1;
+        }
+        goto LAST_EV;
+
+
     case 'v':
         if (last) {
             return -1;
@@ -5562,6 +7669,13 @@ LAST_E:
 LAST_EV:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto LAST_EVE;
+
 
     case 'e':
         if (last) {
@@ -5577,6 +7691,13 @@ LAST_EVE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto LAST_EVEN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -5590,6 +7711,13 @@ LAST_EVE:
 LAST_EVEN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto LAST_EVENT;
+
 
     case 't':
         if (last) {
@@ -5640,6 +7768,13 @@ LAST_EVENT_I:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return 43;
+        }
+        goto LAST_EVENT_ID;
+
+
     case 'd':
         if (last) {
             return 43;
@@ -5662,6 +7797,13 @@ LAST_M:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto LAST_MO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -5675,6 +7817,13 @@ LAST_M:
 LAST_MO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto LAST_MOD;
+
 
     case 'd':
         if (last) {
@@ -5690,6 +7839,13 @@ LAST_MOD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto LAST_MODI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -5703,6 +7859,13 @@ LAST_MOD:
 LAST_MODI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto LAST_MODIF;
+
 
     case 'f':
         if (last) {
@@ -5718,6 +7881,13 @@ LAST_MODIF:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto LAST_MODIFI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -5732,6 +7902,13 @@ LAST_MODIFI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto LAST_MODIFIE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -5745,6 +7922,13 @@ LAST_MODIFI:
 LAST_MODIFIE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return 44;
+        }
+        goto LAST_MODIFIED;
+
 
     case 'd':
         if (last) {
@@ -5768,6 +7952,13 @@ LI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto LIN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -5781,6 +7972,13 @@ LI:
 LIN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'K':
+        if (last) {
+            return 45;
+        }
+        goto LINK;
+
 
     case 'k':
         if (last) {
@@ -5804,6 +8002,13 @@ LO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto LOC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -5817,6 +8022,13 @@ LO:
 LOC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto LOCA;
+
 
     case 'a':
         if (last) {
@@ -5832,6 +8044,13 @@ LOCA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto LOCAT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -5845,6 +8064,13 @@ LOCA:
 LOCAT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto LOCATI;
+
 
     case 'i':
         if (last) {
@@ -5860,6 +8086,13 @@ LOCATI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto LOCATIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -5873,6 +8106,13 @@ LOCATI:
 LOCATIO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 46;
+        }
+        goto LOCATION;
+
 
     case 'n':
         if (last) {
@@ -5896,6 +8136,13 @@ M:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto MA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -5909,6 +8156,13 @@ M:
 MA:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'X':
+        if (last) {
+            return -1;
+        }
+        goto MAX;
+
 
     case 'x':
         if (last) {
@@ -5959,6 +8213,13 @@ MAX_F:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto MAX_FO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -5972,6 +8233,13 @@ MAX_F:
 MAX_FO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto MAX_FOR;
+
 
     case 'r':
         if (last) {
@@ -5987,6 +8255,13 @@ MAX_FOR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'W':
+        if (last) {
+            return -1;
+        }
+        goto MAX_FORW;
+
+
     case 'w':
         if (last) {
             return -1;
@@ -6000,6 +8275,13 @@ MAX_FOR:
 MAX_FORW:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto MAX_FORWA;
+
 
     case 'a':
         if (last) {
@@ -6015,6 +8297,13 @@ MAX_FORWA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto MAX_FORWAR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -6029,6 +8318,13 @@ MAX_FORWAR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto MAX_FORWARD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -6042,6 +8338,13 @@ MAX_FORWAR:
 MAX_FORWARD:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 47;
+        }
+        goto MAX_FORWARDS;
+
 
     case 's':
         if (last) {
@@ -6065,6 +8368,13 @@ O:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto OR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -6078,6 +8388,13 @@ O:
 OR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto ORI;
+
 
     case 'i':
         if (last) {
@@ -6093,6 +8410,13 @@ ORI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto ORIG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -6107,6 +8431,13 @@ ORIG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto ORIGI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -6120,6 +8451,13 @@ ORIG:
 ORIGI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 48;
+        }
+        goto ORIGIN;
+
 
     case 'n':
         if (last) {
@@ -6143,6 +8481,13 @@ P:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto PR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -6157,11 +8502,25 @@ PR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto PRA;
+
+
     case 'a':
         if (last) {
             return -1;
         }
         goto PRA;
+
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto PRO;
 
 
     case 'o':
@@ -6178,6 +8537,13 @@ PRA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto PRAG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -6192,6 +8558,13 @@ PRAG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'M':
+        if (last) {
+            return -1;
+        }
+        goto PRAGM;
+
+
     case 'm':
         if (last) {
             return -1;
@@ -6205,6 +8578,13 @@ PRAG:
 PRAGM:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return 49;
+        }
+        goto PRAGMA;
+
 
     case 'a':
         if (last) {
@@ -6228,6 +8608,13 @@ PRO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'X':
+        if (last) {
+            return -1;
+        }
+        goto PROX;
+
+
     case 'x':
         if (last) {
             return -1;
@@ -6241,6 +8628,13 @@ PRO:
 PROX:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'Y':
+        if (last) {
+            return -1;
+        }
+        goto PROXY;
+
 
     case 'y':
         if (last) {
@@ -6298,6 +8692,13 @@ PROXY_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'U':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AU;
+
+
     case 'u':
         if (last) {
             return -1;
@@ -6311,6 +8712,13 @@ PROXY_A:
 PROXY_AU:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUT;
+
 
     case 't':
         if (last) {
@@ -6326,6 +8734,13 @@ PROXY_AUT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'H':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTH;
+
+
     case 'h':
         if (last) {
             return -1;
@@ -6339,6 +8754,13 @@ PROXY_AUT:
 PROXY_AUTH:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTHE;
+
 
     case 'e':
         if (last) {
@@ -6354,6 +8776,13 @@ PROXY_AUTHE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTHEN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -6367,6 +8796,13 @@ PROXY_AUTHE:
 PROXY_AUTHEN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTHENT;
+
 
     case 't':
         if (last) {
@@ -6382,6 +8818,13 @@ PROXY_AUTHENT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTHENTI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -6395,6 +8838,13 @@ PROXY_AUTHENT:
 PROXY_AUTHENTI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTHENTIC;
+
 
     case 'c':
         if (last) {
@@ -6410,6 +8860,13 @@ PROXY_AUTHENTIC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTHENTICA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -6424,6 +8881,13 @@ PROXY_AUTHENTICA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto PROXY_AUTHENTICAT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -6437,6 +8901,13 @@ PROXY_AUTHENTICA:
 PROXY_AUTHENTICAT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 50;
+        }
+        goto PROXY_AUTHENTICATE;
+
 
     case 'e':
         if (last) {
@@ -6460,11 +8931,25 @@ R:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto RA;
+
+
     case 'a':
         if (last) {
             return -1;
         }
         goto RA;
+
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto RE;
 
 
     case 'e':
@@ -6481,6 +8966,13 @@ RA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto RAN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -6495,6 +8987,13 @@ RAN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto RANG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -6508,6 +9007,13 @@ RAN:
 RANG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 52;
+        }
+        goto RANGE;
+
 
     case 'e':
         if (last) {
@@ -6531,11 +9037,25 @@ RE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto REF;
+
+
     case 'f':
         if (last) {
             return -1;
         }
         goto REF;
+
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto RET;
 
 
     case 't':
@@ -6552,6 +9072,13 @@ REF:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto REFE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -6565,6 +9092,13 @@ REF:
 REFE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto REFER;
+
 
     case 'r':
         if (last) {
@@ -6580,6 +9114,13 @@ REFER:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto REFERE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -6593,6 +9134,13 @@ REFER:
 REFERE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return 53;
+        }
+        goto REFERER;
+
 
     case 'r':
         if (last) {
@@ -6616,6 +9164,13 @@ RET:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto RETR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -6629,6 +9184,13 @@ RET:
 RETR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'Y':
+        if (last) {
+            return -1;
+        }
+        goto RETRY;
+
 
     case 'y':
         if (last) {
@@ -6679,6 +9241,13 @@ RETRY_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto RETRY_AF;
+
+
     case 'f':
         if (last) {
             return -1;
@@ -6692,6 +9261,13 @@ RETRY_A:
 RETRY_AF:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto RETRY_AFT;
+
 
     case 't':
         if (last) {
@@ -6707,6 +9283,13 @@ RETRY_AFT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto RETRY_AFTE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -6720,6 +9303,13 @@ RETRY_AFT:
 RETRY_AFTE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return 54;
+        }
+        goto RETRY_AFTER;
+
 
     case 'r':
         if (last) {
@@ -6743,6 +9333,13 @@ S:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -6757,6 +9354,13 @@ SE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto SEC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -6764,11 +9368,25 @@ SE:
         goto SEC;
 
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto SER;
+
+
     case 'r':
         if (last) {
             return -1;
         }
         goto SER;
+
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto SET;
 
 
     case 't':
@@ -6820,6 +9438,13 @@ SEC_W:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -6833,6 +9458,13 @@ SEC_W:
 SEC_WE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'B':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEB;
+
 
     case 'b':
         if (last) {
@@ -6848,6 +9480,13 @@ SEC_WEB:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -6861,6 +9500,13 @@ SEC_WEB:
 SEC_WEBS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSO;
+
 
     case 'o':
         if (last) {
@@ -6876,6 +9522,13 @@ SEC_WEBSO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -6889,6 +9542,13 @@ SEC_WEBSO:
 SEC_WEBSOC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'K':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCK;
+
 
     case 'k':
         if (last) {
@@ -6904,6 +9564,13 @@ SEC_WEBSOCK:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -6917,6 +9584,13 @@ SEC_WEBSOCK:
 SEC_WEBSOCKE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET;
+
 
     case 't':
         if (last) {
@@ -7023,6 +9697,13 @@ SEC_WEBSOCKET_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_AC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -7036,6 +9717,13 @@ SEC_WEBSOCKET_A:
 SEC_WEBSOCKET_AC:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_ACC;
+
 
     case 'c':
         if (last) {
@@ -7051,6 +9739,13 @@ SEC_WEBSOCKET_ACC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_ACCE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -7065,6 +9760,13 @@ SEC_WEBSOCKET_ACCE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_ACCEP;
+
+
     case 'p':
         if (last) {
             return -1;
@@ -7078,6 +9780,13 @@ SEC_WEBSOCKET_ACCE:
 SEC_WEBSOCKET_ACCEP:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 55;
+        }
+        goto SEC_WEBSOCKET_ACCEPT;
+
 
     case 't':
         if (last) {
@@ -7101,6 +9810,13 @@ SEC_WEBSOCKET_E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'X':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EX;
+
+
     case 'x':
         if (last) {
             return -1;
@@ -7114,6 +9830,13 @@ SEC_WEBSOCKET_E:
 SEC_WEBSOCKET_EX:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EXT;
+
 
     case 't':
         if (last) {
@@ -7129,6 +9852,13 @@ SEC_WEBSOCKET_EXT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EXTE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -7142,6 +9872,13 @@ SEC_WEBSOCKET_EXT:
 SEC_WEBSOCKET_EXTE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EXTEN;
+
 
     case 'n':
         if (last) {
@@ -7157,6 +9894,13 @@ SEC_WEBSOCKET_EXTEN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EXTENS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -7170,6 +9914,13 @@ SEC_WEBSOCKET_EXTEN:
 SEC_WEBSOCKET_EXTENS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EXTENSI;
+
 
     case 'i':
         if (last) {
@@ -7185,6 +9936,13 @@ SEC_WEBSOCKET_EXTENSI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EXTENSIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -7199,6 +9957,13 @@ SEC_WEBSOCKET_EXTENSIO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_EXTENSION;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -7212,6 +9977,13 @@ SEC_WEBSOCKET_EXTENSIO:
 SEC_WEBSOCKET_EXTENSION:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return 56;
+        }
+        goto SEC_WEBSOCKET_EXTENSIONS;
+
 
     case 's':
         if (last) {
@@ -7235,6 +10007,13 @@ SEC_WEBSOCKET_K:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_KE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -7248,6 +10027,13 @@ SEC_WEBSOCKET_K:
 SEC_WEBSOCKET_KE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'Y':
+        if (last) {
+            return 57;
+        }
+        goto SEC_WEBSOCKET_KEY;
+
 
     case 'y':
         if (last) {
@@ -7285,6 +10071,13 @@ SEC_WEBSOCKET_P:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_PR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -7298,6 +10091,13 @@ SEC_WEBSOCKET_P:
 SEC_WEBSOCKET_PR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_PRO;
+
 
     case 'o':
         if (last) {
@@ -7313,6 +10113,13 @@ SEC_WEBSOCKET_PRO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_PROT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -7326,6 +10133,13 @@ SEC_WEBSOCKET_PRO:
 SEC_WEBSOCKET_PROT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_PROTO;
+
 
     case 'o':
         if (last) {
@@ -7341,6 +10155,13 @@ SEC_WEBSOCKET_PROTO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_PROTOC;
+
+
     case 'c':
         if (last) {
             return -1;
@@ -7355,6 +10176,13 @@ SEC_WEBSOCKET_PROTOC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_PROTOCO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -7368,6 +10196,13 @@ SEC_WEBSOCKET_PROTOC:
 SEC_WEBSOCKET_PROTOCO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'L':
+        if (last) {
+            return 59;
+        }
+        goto SEC_WEBSOCKET_PROTOCOL;
+
 
     case 'l':
         if (last) {
@@ -7391,6 +10226,13 @@ SEC_WEBSOCKET_V:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_VE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -7404,6 +10246,13 @@ SEC_WEBSOCKET_V:
 SEC_WEBSOCKET_VE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_VER;
+
 
     case 'r':
         if (last) {
@@ -7419,6 +10268,13 @@ SEC_WEBSOCKET_VER:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_VERS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -7432,6 +10288,13 @@ SEC_WEBSOCKET_VER:
 SEC_WEBSOCKET_VERS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_VERSI;
+
 
     case 'i':
         if (last) {
@@ -7447,6 +10310,13 @@ SEC_WEBSOCKET_VERSI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SEC_WEBSOCKET_VERSIO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -7460,6 +10330,13 @@ SEC_WEBSOCKET_VERSI:
 SEC_WEBSOCKET_VERSIO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'N':
+        if (last) {
+            return 60;
+        }
+        goto SEC_WEBSOCKET_VERSION;
+
 
     case 'n':
         if (last) {
@@ -7483,6 +10360,13 @@ SER:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'V':
+        if (last) {
+            return -1;
+        }
+        goto SERV;
+
+
     case 'v':
         if (last) {
             return -1;
@@ -7497,6 +10381,13 @@ SERV:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto SERVE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -7510,6 +10401,13 @@ SERV:
 SERVE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return 61;
+        }
+        goto SERVER;
+
 
     case 'r':
         if (last) {
@@ -7568,6 +10466,13 @@ SET_C:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SET_CO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -7581,6 +10486,13 @@ SET_C:
 SET_CO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto SET_COO;
+
 
     case 'o':
         if (last) {
@@ -7596,6 +10508,13 @@ SET_COO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'K':
+        if (last) {
+            return -1;
+        }
+        goto SET_COOK;
+
+
     case 'k':
         if (last) {
             return -1;
@@ -7610,6 +10529,13 @@ SET_COOK:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto SET_COOKI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -7623,6 +10549,13 @@ SET_COOK:
 SET_COOKI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 62;
+        }
+        goto SET_COOKIE;
+
 
     case 'e':
         if (last) {
@@ -7646,11 +10579,25 @@ T:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return 63;
+        }
+        goto TE;
+
+
     case 'e':
         if (last) {
             return 63;
         }
         goto TE;
+
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto TR;
 
 
     case 'r':
@@ -7675,6 +10622,13 @@ TR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto TRA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -7689,11 +10643,25 @@ TRA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto TRAI;
+
+
     case 'i':
         if (last) {
             return -1;
         }
         goto TRAI;
+
+
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto TRAN;
 
 
     case 'n':
@@ -7710,6 +10678,13 @@ TRAI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'L':
+        if (last) {
+            return -1;
+        }
+        goto TRAIL;
+
+
     case 'l':
         if (last) {
             return -1;
@@ -7724,6 +10699,13 @@ TRAIL:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto TRAILE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -7737,6 +10719,13 @@ TRAIL:
 TRAILE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return 64;
+        }
+        goto TRAILER;
+
 
     case 'r':
         if (last) {
@@ -7760,6 +10749,13 @@ TRAN:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto TRANS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -7773,6 +10769,13 @@ TRAN:
 TRANS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'F':
+        if (last) {
+            return -1;
+        }
+        goto TRANSF;
+
 
     case 'f':
         if (last) {
@@ -7788,6 +10791,13 @@ TRANSF:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -7801,6 +10811,13 @@ TRANSF:
 TRANSFE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFER;
+
 
     case 'r':
         if (last) {
@@ -7851,6 +10868,13 @@ TRANSFER_E:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFER_EN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -7864,6 +10888,13 @@ TRANSFER_E:
 TRANSFER_EN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFER_ENC;
+
 
     case 'c':
         if (last) {
@@ -7879,6 +10910,13 @@ TRANSFER_ENC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFER_ENCO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -7892,6 +10930,13 @@ TRANSFER_ENC:
 TRANSFER_ENCO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFER_ENCOD;
+
 
     case 'd':
         if (last) {
@@ -7907,6 +10952,13 @@ TRANSFER_ENCOD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFER_ENCODI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -7921,6 +10973,13 @@ TRANSFER_ENCODI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto TRANSFER_ENCODIN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -7934,6 +10993,13 @@ TRANSFER_ENCODI:
 TRANSFER_ENCODIN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return 65;
+        }
+        goto TRANSFER_ENCODING;
+
 
     case 'g':
         if (last) {
@@ -7957,6 +11023,13 @@ U:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'P':
+        if (last) {
+            return -1;
+        }
+        goto UP;
+
+
     case 'p':
         if (last) {
             return -1;
@@ -7964,11 +11037,25 @@ U:
         goto UP;
 
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto UR;
+
+
     case 'r':
         if (last) {
             return -1;
         }
         goto UR;
+
+
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto US;
 
 
     case 's':
@@ -7985,6 +11072,13 @@ UP:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto UPG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -7998,6 +11092,13 @@ UP:
 UPG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto UPGR;
+
 
     case 'r':
         if (last) {
@@ -8013,6 +11114,13 @@ UPGR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto UPGRA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -8027,6 +11135,13 @@ UPGRA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto UPGRAD;
+
+
     case 'd':
         if (last) {
             return -1;
@@ -8040,6 +11155,13 @@ UPGRA:
 UPGRAD:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 66;
+        }
+        goto UPGRADE;
+
 
     case 'e':
         if (last) {
@@ -8063,6 +11185,13 @@ UR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return 67;
+        }
+        goto URI;
+
+
     case 'i':
         if (last) {
             return 67;
@@ -8085,6 +11214,13 @@ US:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto USE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -8098,6 +11234,13 @@ US:
 USE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto USER;
+
 
     case 'r':
         if (last) {
@@ -8148,6 +11291,13 @@ USER_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto USER_AG;
+
+
     case 'g':
         if (last) {
             return -1;
@@ -8161,6 +11311,13 @@ USER_A:
 USER_AG:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto USER_AGE;
+
 
     case 'e':
         if (last) {
@@ -8176,6 +11333,13 @@ USER_AGE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto USER_AGEN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -8189,6 +11353,13 @@ USER_AGE:
 USER_AGEN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 68;
+        }
+        goto USER_AGENT;
+
 
     case 't':
         if (last) {
@@ -8212,11 +11383,25 @@ V:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto VA;
+
+
     case 'a':
         if (last) {
             return -1;
         }
         goto VA;
+
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto VI;
 
 
     case 'i':
@@ -8233,6 +11418,13 @@ VA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto VAR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -8246,6 +11438,13 @@ VA:
 VAR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'Y':
+        if (last) {
+            return 69;
+        }
+        goto VARY;
+
 
     case 'y':
         if (last) {
@@ -8269,6 +11468,13 @@ VI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return 70;
+        }
+        goto VIA;
+
+
     case 'a':
         if (last) {
             return 70;
@@ -8291,6 +11497,13 @@ W:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto WA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -8298,11 +11511,25 @@ W:
         goto WA;
 
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto WE;
+
+
     case 'e':
         if (last) {
             return -1;
         }
         goto WE;
+
+
+    case 'W':
+        if (last) {
+            return -1;
+        }
+        goto WW;
 
 
     case 'w':
@@ -8319,11 +11546,25 @@ WA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto WAN;
+
+
     case 'n':
         if (last) {
             return -1;
         }
         goto WAN;
+
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto WAR;
 
 
     case 'r':
@@ -8339,6 +11580,13 @@ WA:
 WAN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto WANT;
+
 
     case 't':
         if (last) {
@@ -8389,6 +11637,13 @@ WANT_D:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto WANT_DI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -8402,6 +11657,13 @@ WANT_D:
 WANT_DI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return -1;
+        }
+        goto WANT_DIG;
+
 
     case 'g':
         if (last) {
@@ -8417,6 +11679,13 @@ WANT_DIG:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto WANT_DIGE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -8431,6 +11700,13 @@ WANT_DIGE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto WANT_DIGES;
+
+
     case 's':
         if (last) {
             return -1;
@@ -8444,6 +11720,13 @@ WANT_DIGE:
 WANT_DIGES:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 71;
+        }
+        goto WANT_DIGEST;
+
 
     case 't':
         if (last) {
@@ -8467,6 +11750,13 @@ WAR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto WARN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -8480,6 +11770,13 @@ WAR:
 WARN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto WARNI;
+
 
     case 'i':
         if (last) {
@@ -8495,6 +11792,13 @@ WARNI:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto WARNIN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -8508,6 +11812,13 @@ WARNI:
 WARNIN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'G':
+        if (last) {
+            return 72;
+        }
+        goto WARNING;
+
 
     case 'g':
         if (last) {
@@ -8531,6 +11842,13 @@ WE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'B':
+        if (last) {
+            return -1;
+        }
+        goto WEB;
+
+
     case 'b':
         if (last) {
             return -1;
@@ -8544,6 +11862,13 @@ WE:
 WEB:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto WEBS;
+
 
     case 's':
         if (last) {
@@ -8559,6 +11884,13 @@ WEBS:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto WEBSO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -8572,6 +11904,13 @@ WEBS:
 WEBSO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto WEBSOC;
+
 
     case 'c':
         if (last) {
@@ -8587,6 +11926,13 @@ WEBSOC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'K':
+        if (last) {
+            return -1;
+        }
+        goto WEBSOCK;
+
+
     case 'k':
         if (last) {
             return -1;
@@ -8601,6 +11947,13 @@ WEBSOCK:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto WEBSOCKE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -8614,6 +11967,13 @@ WEBSOCK:
 WEBSOCKE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 73;
+        }
+        goto WEBSOCKET;
+
 
     case 't':
         if (last) {
@@ -8636,6 +11996,13 @@ WEBSOCKET:
 WW:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'W':
+        if (last) {
+            return -1;
+        }
+        goto WWW;
+
 
     case 'w':
         if (last) {
@@ -8686,6 +12053,13 @@ WWW_A:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'U':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AU;
+
+
     case 'u':
         if (last) {
             return -1;
@@ -8699,6 +12073,13 @@ WWW_A:
 WWW_AU:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUT;
+
 
     case 't':
         if (last) {
@@ -8714,6 +12095,13 @@ WWW_AUT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'H':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTH;
+
+
     case 'h':
         if (last) {
             return -1;
@@ -8727,6 +12115,13 @@ WWW_AUT:
 WWW_AUTH:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTHE;
+
 
     case 'e':
         if (last) {
@@ -8742,6 +12137,13 @@ WWW_AUTHE:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'N':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTHEN;
+
+
     case 'n':
         if (last) {
             return -1;
@@ -8755,6 +12157,13 @@ WWW_AUTHE:
 WWW_AUTHEN:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTHENT;
+
 
     case 't':
         if (last) {
@@ -8770,6 +12179,13 @@ WWW_AUTHENT:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'I':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTHENTI;
+
+
     case 'i':
         if (last) {
             return -1;
@@ -8783,6 +12199,13 @@ WWW_AUTHENT:
 WWW_AUTHENTI:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'C':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTHENTIC;
+
 
     case 'c':
         if (last) {
@@ -8798,6 +12221,13 @@ WWW_AUTHENTIC:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTHENTICA;
+
+
     case 'a':
         if (last) {
             return -1;
@@ -8812,6 +12242,13 @@ WWW_AUTHENTICA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto WWW_AUTHENTICAT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -8825,6 +12262,13 @@ WWW_AUTHENTICA:
 WWW_AUTHENTICAT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'E':
+        if (last) {
+            return 74;
+        }
+        goto WWW_AUTHENTICATE;
+
 
     case 'e':
         if (last) {
@@ -8883,6 +12327,13 @@ X_F:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto X_FO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -8896,6 +12347,13 @@ X_F:
 X_FO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto X_FOR;
+
 
     case 'r':
         if (last) {
@@ -8911,6 +12369,13 @@ X_FOR:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'W':
+        if (last) {
+            return -1;
+        }
+        goto X_FORW;
+
+
     case 'w':
         if (last) {
             return -1;
@@ -8924,6 +12389,13 @@ X_FOR:
 X_FORW:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'A':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWA;
+
 
     case 'a':
         if (last) {
@@ -8939,6 +12411,13 @@ X_FORWA:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWAR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -8952,6 +12431,13 @@ X_FORWA:
 X_FORWAR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARD;
+
 
     case 'd':
         if (last) {
@@ -8967,6 +12453,13 @@ X_FORWARD:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'E':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDE;
+
+
     case 'e':
         if (last) {
             return -1;
@@ -8980,6 +12473,13 @@ X_FORWARD:
 X_FORWARDE:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'D':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDED;
+
 
     case 'd':
         if (last) {
@@ -9058,6 +12558,13 @@ X_FORWARDED_F:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDED_FO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -9071,6 +12578,13 @@ X_FORWARDED_F:
 X_FORWARDED_FO:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'R':
+        if (last) {
+            return 75;
+        }
+        goto X_FORWARDED_FOR;
+
 
     case 'r':
         if (last) {
@@ -9094,6 +12608,13 @@ X_FORWARDED_H:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDED_HO;
+
+
     case 'o':
         if (last) {
             return -1;
@@ -9108,6 +12629,13 @@ X_FORWARDED_HO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'S':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDED_HOS;
+
+
     case 's':
         if (last) {
             return -1;
@@ -9121,6 +12649,13 @@ X_FORWARDED_HO:
 X_FORWARDED_HOS:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'T':
+        if (last) {
+            return 76;
+        }
+        goto X_FORWARDED_HOST;
+
 
     case 't':
         if (last) {
@@ -9144,6 +12679,13 @@ X_FORWARDED_P:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'R':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDED_PR;
+
+
     case 'r':
         if (last) {
             return -1;
@@ -9157,6 +12699,13 @@ X_FORWARDED_P:
 X_FORWARDED_PR:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDED_PRO;
+
 
     case 'o':
         if (last) {
@@ -9172,6 +12721,13 @@ X_FORWARDED_PRO:
     NEXT_CHAR();
     switch (ch) {
 
+    case 'T':
+        if (last) {
+            return -1;
+        }
+        goto X_FORWARDED_PROT;
+
+
     case 't':
         if (last) {
             return -1;
@@ -9185,6 +12741,13 @@ X_FORWARDED_PRO:
 X_FORWARDED_PROT:
     NEXT_CHAR();
     switch (ch) {
+
+    case 'O':
+        if (last) {
+            return 77;
+        }
+        goto X_FORWARDED_PROTO;
+
 
     case 'o':
         if (last) {
