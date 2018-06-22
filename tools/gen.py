@@ -75,15 +75,12 @@ CASE = """\
             }}
             goto {next};"""
 
-GOTO_MISSING = """\
-{label}:
-    goto migging;"""
-
 FOOTER = """
+{missing}
 missing:
     /* nothing found */
     return -1;
-}
+}}
 """
 
 def gen_prefix(prefix, k):
@@ -93,7 +90,7 @@ def gen_prefix(prefix, k):
         return prefix + k.upper()
 
 
-def gen_block(dct, prefix, used_blocks, out):
+def gen_block(dct, prefix, used_blocks, missing, out):
     cases = []
     for k, v in dct.items():
         if k is TERMINAL:
@@ -114,9 +111,9 @@ def gen_block(dct, prefix, used_blocks, out):
     label = prefix if prefix else 'INITIAL'
     if cases:
         block = BLOCK.format(label=label, cases='\n'.join(cases))
+        out.write(block)
     else:
-        block = GOTO_MISSING.format(label=label)
-    out.write(block)
+        missing.add(label)
     for k, v in dct.items():
         if not isinstance(v, defaultdict):
             continue
@@ -124,14 +121,16 @@ def gen_block(dct, prefix, used_blocks, out):
         if block_name in used_blocks:
             continue
         used_blocks.add(block_name)
-        gen_block(v, block_name, used_blocks, out)
+        gen_block(v, block_name, used_blocks, missing, out)
 
 
 def gen(dct):
     out = io.StringIO()
     out.write(HEADER)
-    gen_block(dct, '', set(), out)
-    out.write(FOOTER)
+    missing = set()
+    gen_block(dct, '', set(), missing, out)
+    missing_labels = '\n'.join(m + ':' for m in sorted(missing))
+    out.write(FOOTER.format(missing=missing_labels))
     return out
 
 

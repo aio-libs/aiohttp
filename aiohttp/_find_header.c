@@ -506,8 +506,7 @@ ACCEPT_CHARSE:
         default:
             return -1;
     }
-ACCEPT_CHARSET:
-    goto migging;
+
 ACCEPT_E:
     NEXT_CHAR();
     switch (ch) {
@@ -626,8 +625,7 @@ ACCEPT_ENCODIN:
         default:
             return -1;
     }
-ACCEPT_ENCODING:
-    goto migging;
+
 ACCEPT_L:
     NEXT_CHAR();
     switch (ch) {
@@ -746,8 +744,7 @@ ACCEPT_LANGUAG:
         default:
             return -1;
     }
-ACCEPT_LANGUAGE:
-    goto migging;
+
 ACCEPT_R:
     NEXT_CHAR();
     switch (ch) {
@@ -832,8 +829,7 @@ ACCEPT_RANGE:
         default:
             return -1;
     }
-ACCEPT_RANGES:
-    goto migging;
+
 ACCES:
     NEXT_CHAR();
     switch (ch) {
@@ -1337,8 +1333,7 @@ ACCESS_CONTROL_ALLOW_CREDENTIAL:
         default:
             return -1;
     }
-ACCESS_CONTROL_ALLOW_CREDENTIALS:
-    goto migging;
+
 ACCESS_CONTROL_ALLOW_H:
     NEXT_CHAR();
     switch (ch) {
@@ -1440,8 +1435,7 @@ ACCESS_CONTROL_ALLOW_HEADER:
         default:
             return -1;
     }
-ACCESS_CONTROL_ALLOW_HEADERS:
-    goto migging;
+
 ACCESS_CONTROL_ALLOW_M:
     NEXT_CHAR();
     switch (ch) {
@@ -1543,8 +1537,7 @@ ACCESS_CONTROL_ALLOW_METHOD:
         default:
             return -1;
     }
-ACCESS_CONTROL_ALLOW_METHODS:
-    goto migging;
+
 ACCESS_CONTROL_ALLOW_O:
     NEXT_CHAR();
     switch (ch) {
@@ -1629,8 +1622,7 @@ ACCESS_CONTROL_ALLOW_ORIGI:
         default:
             return -1;
     }
-ACCESS_CONTROL_ALLOW_ORIGIN:
-    goto migging;
+
 ACCESS_CONTROL_E:
     NEXT_CHAR();
     switch (ch) {
@@ -1846,8 +1838,7 @@ ACCESS_CONTROL_EXPOSE_HEADER:
         default:
             return -1;
     }
-ACCESS_CONTROL_EXPOSE_HEADERS:
-    goto migging;
+
 ACCESS_CONTROL_M:
     NEXT_CHAR();
     switch (ch) {
@@ -1944,8 +1935,7 @@ ACCESS_CONTROL_MAX_AG:
         default:
             return -1;
     }
-ACCESS_CONTROL_MAX_AGE:
-    goto migging;
+
 ACCESS_CONTROL_R:
     NEXT_CHAR();
     switch (ch) {
@@ -2188,8 +2178,7 @@ ACCESS_CONTROL_REQUEST_HEADER:
         default:
             return -1;
     }
-ACCESS_CONTROL_REQUEST_HEADERS:
-    goto migging;
+
 ACCESS_CONTROL_REQUEST_M:
     NEXT_CHAR();
     switch (ch) {
@@ -2274,8 +2263,7 @@ ACCESS_CONTROL_REQUEST_METHO:
         default:
             return -1;
     }
-ACCESS_CONTROL_REQUEST_METHOD:
-    goto migging;
+
 AG:
     NEXT_CHAR();
     switch (ch) {
@@ -2292,8 +2280,7 @@ AG:
         default:
             return -1;
     }
-AGE:
-    goto migging;
+
 AL:
     NEXT_CHAR();
     switch (ch) {
@@ -2344,8 +2331,7 @@ ALLO:
         default:
             return -1;
     }
-ALLOW:
-    goto migging;
+
 AU:
     NEXT_CHAR();
     switch (ch) {
@@ -2532,8 +2518,7 @@ AUTHORIZATIO:
         default:
             return -1;
     }
-AUTHORIZATION:
-    goto migging;
+
 C:
     NEXT_CHAR();
     switch (ch) {
@@ -2742,8 +2727,7 @@ CACHE_CONTRO:
         default:
             return -1;
     }
-CACHE_CONTROL:
-    goto migging;
+
 CO:
     NEXT_CHAR();
     switch (ch) {
@@ -2899,8 +2883,7 @@ CONNECTIO:
         default:
             return -1;
     }
-CONNECTION:
-    goto migging;
+
 CONT:
     NEXT_CHAR();
     switch (ch) {
@@ -3200,8 +3183,7 @@ CONTENT_DISPOSITIO:
         default:
             return -1;
     }
-CONTENT_DISPOSITION:
-    goto migging;
+
 CONTENT_E:
     NEXT_CHAR();
     switch (ch) {
@@ -3320,8 +3302,7 @@ CONTENT_ENCODIN:
         default:
             return -1;
     }
-CONTENT_ENCODING:
-    goto migging;
+
 CONTENT_L:
     NEXT_CHAR();
     switch (ch) {
@@ -3460,8 +3441,7 @@ CONTENT_LANGUAG:
         default:
             return -1;
     }
-CONTENT_LANGUAGE:
-    goto migging;
+
 CONTENT_LE:
     NEXT_CHAR();
     switch (ch) {
@@ -3529,8 +3509,7 @@ CONTENT_LENGT:
         default:
             return -1;
     }
-CONTENT_LENGTH:
-    goto migging;
+
 CONTENT_LO:
     NEXT_CHAR();
     switch (ch) {
@@ -3632,8 +3611,7 @@ CONTENT_LOCATIO:
         default:
             return -1;
     }
-CONTENT_LOCATION:
-    goto migging;
+
 CONTENT_M:
     NEXT_CHAR();
     switch (ch) {
@@ -3662,8 +3640,7 @@ CONTENT_MD:
         default:
             return -1;
     }
-CONTENT_MD5:
-    goto migging;
+
 CONTENT_R:
     NEXT_CHAR();
     switch (ch) {
@@ -3731,8 +3708,7 @@ CONTENT_RANG:
         default:
             return -1;
     }
-CONTENT_RANGE:
-    goto migging;
+
 CONTENT_T:
     NEXT_CHAR();
     switch (ch) {
@@ -4009,8 +3985,7 @@ CONTENT_TRANSFER_ENCODIN:
         default:
             return -1;
     }
-CONTENT_TRANSFER_ENCODING:
-    goto migging;
+
 CONTENT_TY:
     NEXT_CHAR();
     switch (ch) {
@@ -4044,8 +4019,7 @@ CONTENT_TYP:
         default:
             return -1;
     }
-CONTENT_TYPE:
-    goto migging;
+
 COO:
     NEXT_CHAR();
     switch (ch) {
@@ -4096,8 +4070,7 @@ COOKI:
         default:
             return -1;
     }
-COOKIE:
-    goto migging;
+
 D:
     NEXT_CHAR();
     switch (ch) {
@@ -4168,8 +4141,7 @@ DAT:
         default:
             return -1;
     }
-DATE:
-    goto migging;
+
 DE:
     NEXT_CHAR();
     switch (ch) {
@@ -4322,8 +4294,7 @@ DESTINATIO:
         default:
             return -1;
     }
-DESTINATION:
-    goto migging;
+
 DI:
     NEXT_CHAR();
     switch (ch) {
@@ -4391,8 +4362,7 @@ DIGES:
         default:
             return -1;
     }
-DIGEST:
-    goto migging;
+
 E:
     NEXT_CHAR();
     switch (ch) {
@@ -4453,8 +4423,7 @@ ETA:
         default:
             return -1;
     }
-ETAG:
-    goto migging;
+
 EX:
     NEXT_CHAR();
     switch (ch) {
@@ -4532,8 +4501,7 @@ EXPEC:
         default:
             return -1;
     }
-EXPECT:
-    goto migging;
+
 EXPI:
     NEXT_CHAR();
     switch (ch) {
@@ -4584,8 +4552,7 @@ EXPIRE:
         default:
             return -1;
     }
-EXPIRES:
-    goto migging;
+
 F:
     NEXT_CHAR();
     switch (ch) {
@@ -4731,8 +4698,7 @@ FORWARDE:
         default:
             return -1;
     }
-FORWARDED:
-    goto migging;
+
 FR:
     NEXT_CHAR();
     switch (ch) {
@@ -4766,8 +4732,7 @@ FRO:
         default:
             return -1;
     }
-FROM:
-    goto migging;
+
 H:
     NEXT_CHAR();
     switch (ch) {
@@ -4818,8 +4783,7 @@ HOS:
         default:
             return -1;
     }
-HOST:
-    goto migging;
+
 I:
     NEXT_CHAR();
     switch (ch) {
@@ -4973,8 +4937,7 @@ IF_MATC:
         default:
             return -1;
     }
-IF_MATCH:
-    goto migging;
+
 IF_MO:
     NEXT_CHAR();
     switch (ch) {
@@ -5173,8 +5136,7 @@ IF_MODIFIED_SINC:
         default:
             return -1;
     }
-IF_MODIFIED_SINCE:
-    goto migging;
+
 IF_N:
     NEXT_CHAR();
     switch (ch) {
@@ -5322,8 +5284,7 @@ IF_NONE_MATC:
         default:
             return -1;
     }
-IF_NONE_MATCH:
-    goto migging;
+
 IF_R:
     NEXT_CHAR();
     switch (ch) {
@@ -5391,8 +5352,7 @@ IF_RANG:
         default:
             return -1;
     }
-IF_RANGE:
-    goto migging;
+
 IF_U:
     NEXT_CHAR();
     switch (ch) {
@@ -5642,8 +5602,7 @@ IF_UNMODIFIED_SINC:
         default:
             return -1;
     }
-IF_UNMODIFIED_SINCE:
-    goto migging;
+
 K:
     NEXT_CHAR();
     switch (ch) {
@@ -5791,8 +5750,7 @@ KEEP_ALIV:
         default:
             return -1;
     }
-KEEP_ALIVE:
-    goto migging;
+
 L:
     NEXT_CHAR();
     switch (ch) {
@@ -6016,8 +5974,7 @@ LAST_EVENT_I:
         default:
             return -1;
     }
-LAST_EVENT_ID:
-    goto migging;
+
 LAST_M:
     NEXT_CHAR();
     switch (ch) {
@@ -6136,8 +6093,7 @@ LAST_MODIFIE:
         default:
             return -1;
     }
-LAST_MODIFIED:
-    goto migging;
+
 LI:
     NEXT_CHAR();
     switch (ch) {
@@ -6171,8 +6127,7 @@ LIN:
         default:
             return -1;
     }
-LINK:
-    goto migging;
+
 LO:
     NEXT_CHAR();
     switch (ch) {
@@ -6274,8 +6229,7 @@ LOCATIO:
         default:
             return -1;
     }
-LOCATION:
-    goto migging;
+
 M:
     NEXT_CHAR();
     switch (ch) {
@@ -6457,8 +6411,7 @@ MAX_FORWARD:
         default:
             return -1;
     }
-MAX_FORWARDS:
-    goto migging;
+
 O:
     NEXT_CHAR();
     switch (ch) {
@@ -6543,8 +6496,7 @@ ORIGI:
         default:
             return -1;
     }
-ORIGIN:
-    goto migging;
+
 P:
     NEXT_CHAR();
     switch (ch) {
@@ -6639,8 +6591,7 @@ PRAGM:
         default:
             return -1;
     }
-PRAGMA:
-    goto migging;
+
 PRO:
     NEXT_CHAR();
     switch (ch) {
@@ -6895,8 +6846,7 @@ PROXY_AUTHENTICAT:
         default:
             return -1;
     }
-PROXY_AUTHENTICATE:
-    goto migging;
+
 R:
     NEXT_CHAR();
     switch (ch) {
@@ -6974,8 +6924,7 @@ RANG:
         default:
             return -1;
     }
-RANGE:
-    goto migging;
+
 RE:
     NEXT_CHAR();
     switch (ch) {
@@ -7070,8 +7019,7 @@ REFERE:
         default:
             return -1;
     }
-REFERER:
-    goto migging;
+
 RET:
     NEXT_CHAR();
     switch (ch) {
@@ -7202,8 +7150,7 @@ RETRY_AFTE:
         default:
             return -1;
     }
-RETRY_AFTER:
-    goto migging;
+
 S:
     NEXT_CHAR();
     switch (ch) {
@@ -7576,8 +7523,7 @@ SEC_WEBSOCKET_ACCEP:
         default:
             return -1;
     }
-SEC_WEBSOCKET_ACCEPT:
-    goto migging;
+
 SEC_WEBSOCKET_E:
     NEXT_CHAR();
     switch (ch) {
@@ -7730,8 +7676,7 @@ SEC_WEBSOCKET_EXTENSION:
         default:
             return -1;
     }
-SEC_WEBSOCKET_EXTENSIONS:
-    goto migging;
+
 SEC_WEBSOCKET_K:
     NEXT_CHAR();
     switch (ch) {
@@ -7777,8 +7722,7 @@ SEC_WEBSOCKET_KEY:
         default:
             return -1;
     }
-SEC_WEBSOCKET_KEY1:
-    goto migging;
+
 SEC_WEBSOCKET_P:
     NEXT_CHAR();
     switch (ch) {
@@ -7897,8 +7841,7 @@ SEC_WEBSOCKET_PROTOCO:
         default:
             return -1;
     }
-SEC_WEBSOCKET_PROTOCOL:
-    goto migging;
+
 SEC_WEBSOCKET_V:
     NEXT_CHAR();
     switch (ch) {
@@ -8000,8 +7943,7 @@ SEC_WEBSOCKET_VERSIO:
         default:
             return -1;
     }
-SEC_WEBSOCKET_VERSION:
-    goto migging;
+
 SER:
     NEXT_CHAR();
     switch (ch) {
@@ -8052,8 +7994,7 @@ SERVE:
         default:
             return -1;
     }
-SERVER:
-    goto migging;
+
 SET:
     NEXT_CHAR();
     switch (ch) {
@@ -8167,8 +8108,7 @@ SET_COOKI:
         default:
             return -1;
     }
-SET_COOKIE:
-    goto migging;
+
 T:
     NEXT_CHAR();
     switch (ch) {
@@ -8195,8 +8135,7 @@ T:
         default:
             return -1;
     }
-TE:
-    goto migging;
+
 TR:
     NEXT_CHAR();
     switch (ch) {
@@ -8291,8 +8230,7 @@ TRAILE:
         default:
             return -1;
     }
-TRAILER:
-    goto migging;
+
 TRAN:
     NEXT_CHAR();
     switch (ch) {
@@ -8508,8 +8446,7 @@ TRANSFER_ENCODIN:
         default:
             return -1;
     }
-TRANSFER_ENCODING:
-    goto migging;
+
 U:
     NEXT_CHAR();
     switch (ch) {
@@ -8631,8 +8568,7 @@ UPGRAD:
         default:
             return -1;
     }
-UPGRADE:
-    goto migging;
+
 UR:
     NEXT_CHAR();
     switch (ch) {
@@ -8649,8 +8585,7 @@ UR:
         default:
             return -1;
     }
-URI:
-    goto migging;
+
 US:
     NEXT_CHAR();
     switch (ch) {
@@ -8781,8 +8716,7 @@ USER_AGEN:
         default:
             return -1;
     }
-USER_AGENT:
-    goto migging;
+
 V:
     NEXT_CHAR();
     switch (ch) {
@@ -8843,8 +8777,7 @@ VAR:
         default:
             return -1;
     }
-VARY:
-    goto migging;
+
 VI:
     NEXT_CHAR();
     switch (ch) {
@@ -8861,8 +8794,7 @@ VI:
         default:
             return -1;
     }
-VIA:
-    goto migging;
+
 W:
     NEXT_CHAR();
     switch (ch) {
@@ -9057,8 +8989,7 @@ WANT_DIGES:
         default:
             return -1;
     }
-WANT_DIGEST:
-    goto migging;
+
 WAR:
     NEXT_CHAR();
     switch (ch) {
@@ -9126,8 +9057,7 @@ WARNIN:
         default:
             return -1;
     }
-WARNING:
-    goto migging;
+
 WE:
     NEXT_CHAR();
     switch (ch) {
@@ -9246,8 +9176,7 @@ WEBSOCKE:
         default:
             return -1;
     }
-WEBSOCKET:
-    goto migging;
+
 WW:
     NEXT_CHAR();
     switch (ch) {
@@ -9480,8 +9409,7 @@ WWW_AUTHENTICAT:
         default:
             return -1;
     }
-WWW_AUTHENTICATE:
-    goto migging;
+
 X:
     NEXT_CHAR();
     switch (ch) {
@@ -9729,8 +9657,7 @@ X_FORWARDED_FO:
         default:
             return -1;
     }
-X_FORWARDED_FOR:
-    goto migging;
+
 X_FORWARDED_H:
     NEXT_CHAR();
     switch (ch) {
@@ -9781,8 +9708,7 @@ X_FORWARDED_HOS:
         default:
             return -1;
     }
-X_FORWARDED_HOST:
-    goto migging;
+
 X_FORWARDED_P:
     NEXT_CHAR();
     switch (ch) {
@@ -9850,8 +9776,82 @@ X_FORWARDED_PROT:
         default:
             return -1;
     }
+
+ACCEPT_CHARSET:
+ACCEPT_ENCODING:
+ACCEPT_LANGUAGE:
+ACCEPT_RANGES:
+ACCESS_CONTROL_ALLOW_CREDENTIALS:
+ACCESS_CONTROL_ALLOW_HEADERS:
+ACCESS_CONTROL_ALLOW_METHODS:
+ACCESS_CONTROL_ALLOW_ORIGIN:
+ACCESS_CONTROL_EXPOSE_HEADERS:
+ACCESS_CONTROL_MAX_AGE:
+ACCESS_CONTROL_REQUEST_HEADERS:
+ACCESS_CONTROL_REQUEST_METHOD:
+AGE:
+ALLOW:
+AUTHORIZATION:
+CACHE_CONTROL:
+CONNECTION:
+CONTENT_DISPOSITION:
+CONTENT_ENCODING:
+CONTENT_LANGUAGE:
+CONTENT_LENGTH:
+CONTENT_LOCATION:
+CONTENT_MD5:
+CONTENT_RANGE:
+CONTENT_TRANSFER_ENCODING:
+CONTENT_TYPE:
+COOKIE:
+DATE:
+DESTINATION:
+DIGEST:
+ETAG:
+EXPECT:
+EXPIRES:
+FORWARDED:
+FROM:
+HOST:
+IF_MATCH:
+IF_MODIFIED_SINCE:
+IF_NONE_MATCH:
+IF_RANGE:
+IF_UNMODIFIED_SINCE:
+KEEP_ALIVE:
+LAST_EVENT_ID:
+LAST_MODIFIED:
+LINK:
+LOCATION:
+MAX_FORWARDS:
+ORIGIN:
+PRAGMA:
+PROXY_AUTHENTICATE:
+RANGE:
+REFERER:
+RETRY_AFTER:
+SEC_WEBSOCKET_ACCEPT:
+SEC_WEBSOCKET_EXTENSIONS:
+SEC_WEBSOCKET_KEY1:
+SEC_WEBSOCKET_PROTOCOL:
+SEC_WEBSOCKET_VERSION:
+SERVER:
+SET_COOKIE:
+TE:
+TRAILER:
+TRANSFER_ENCODING:
+UPGRADE:
+URI:
+USER_AGENT:
+VARY:
+VIA:
+WANT_DIGEST:
+WARNING:
+WEBSOCKET:
+WWW_AUTHENTICATE:
+X_FORWARDED_FOR:
+X_FORWARDED_HOST:
 X_FORWARDED_PROTO:
-    goto migging;
 missing:
     /* nothing found */
     return -1;
