@@ -705,5 +705,5 @@ class Request(BaseRequest):
         match_info = self._match_info
         if match_info is None:
             return
-        for app in match_info.apps:
+        for app in match_info._apps:
             await app.on_response_prepare.send(self, response)

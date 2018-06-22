@@ -676,11 +676,18 @@ class DeflateBuffer:
 
 HttpRequestParserPy = HttpRequestParser
 HttpResponseParserPy = HttpResponseParser
+RawRequestMessagePy = RawRequestMessage
+RawResponseMessagePy = RawResponseMessage
+
 try:
-    from ._http_parser import (HttpRequestParser as HttpRequestParserC,  # type: ignore  # noqa
-                               HttpResponseParser as HttpResponseParserC)
     if not NO_EXTENSIONS:  # pragma: no cover
-        HttpRequestParser = HttpRequestParserC  # type: ignore
-        HttpResponseParser = HttpResponseParserC  # type: ignore
+        from ._http_parser import (HttpRequestParser,  # type: ignore  # noqa
+                                   HttpResponseParser,
+                                   RawRequestMessage,
+                                   RawResponseMessage)
+        HttpRequestParserC = HttpRequestParser
+        HttpResponseParserC = HttpResponseParser
+        RawRequestMessageC = RawRequestMessage
+        RawResponseMessageC = RawResponseMessage
 except ImportError:  # pragma: no cover
     pass
