@@ -220,3 +220,6 @@ period ask to raise the status.
 
 - `aiohttp-apispec <https://github.com/maximdanilchenko/aiohttp-apispec>`_
   Build and document REST APIs with ``aiohttp`` and ``apispec``.
+
+- `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
+  the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
