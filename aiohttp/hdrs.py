@@ -1,4 +1,8 @@
 """HTTP Headers constants."""
+
+# After changing the file content call ./tools/gen.py
+# to regenerate the headers parser
+
 from multidict import istr
 
 
