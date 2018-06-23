@@ -91,7 +91,7 @@ that case you can specify multiple values for each key::
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
                            params=params) as r:
-        expect == 'http://httpbin.org/get?key=value2&key=value1'
+        expect = 'http://httpbin.org/get?key=value2&key=value1'
         assert str(r.url) == expect
 
 You can also pass :class:`str` content as param, but beware -- content
