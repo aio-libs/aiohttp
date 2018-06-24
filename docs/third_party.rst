@@ -225,6 +225,6 @@ period ask to raise the status.
   the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
 
 - `asynapplicationinsights <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client 
-for `Azure Application Insights <https://azure.microsoft.com/en-us/services/application-insights/>`_
-implemented using ``aiohttp`` client, including a middleware for ``aiohttp`` servers to collect web apps
-telemetry.
+  for `Azure Application Insights <https://azure.microsoft.com/en-us/services/application-insights/>`_
+  implemented using ``aiohttp`` client, including a middleware for ``aiohttp`` servers to collect web apps
+  telemetry.
