@@ -195,6 +195,6 @@ Multipart reference
 
       Write body.
 
-      :param bool close_boundary: The boolean (:class:`bool`) that will emit
+      :param bool close_boundary: The (:class:`bool`) that will emit
                                   boundary closing. You may want to disable
                                   when streaming (multipart/x-mixed-replace)
