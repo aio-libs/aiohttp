@@ -157,7 +157,7 @@ Multipart reference
       Returns the next body part reader.
 
 
-.. class:: MultipartWriter(subtype='mixed', boundary=None)
+.. class:: MultipartWriter(subtype='mixed', boundary=None, close_boundary=True)
 
    Multipart body writer.
 
@@ -191,6 +191,10 @@ Multipart reference
 
       Size of the payload.
 
-   .. comethod:: write(writer)
+   .. comethod:: write(writer, close_boundary=True)
 
       Write body.
+
+      :param bool close_boundary: The boolean (:class:`bool`) that will emit
+                                  boundary closing. You may want to disable
+                                  when streaming (multipart/x-mixed-replace)
