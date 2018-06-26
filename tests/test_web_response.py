@@ -82,6 +82,14 @@ def test_stream_response_hashable():
     hash(StreamResponse())
 
 
+def test_stream_response_eq():
+    resp1 = StreamResponse()
+    resp2 = StreamResponse()
+
+    assert resp1 == resp1
+    assert not resp1 == resp2
+
+
 def test_stream_response_is_mutable_mapping():
     resp = StreamResponse()
     assert isinstance(resp, collections.MutableMapping)
