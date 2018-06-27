@@ -187,6 +187,27 @@ Please note, that on :meth:`MultipartWriter.write` all the file objects
 will be read until the end and there is no way to repeat a request without
 rewinding their pointers to the start.
 
+Example MJPEG Streaming ``multipart/x-mixed-replace``. By default
+:meth:`MultipartWriter.write` appends closing ``--boundary--`` and breaks your
+content. Providing `close_boundary = False` prevents this.::
+
+    my_boundary = 'some-boundary'
+    response = web.StreamResponse(
+        status=200,
+        reason='OK',
+        headers={
+            'Content-Type': 'multipart/x-mixed-replace;boundary=--%s' % my_boundary
+        }
+    )
+    while True:
+        frame = get_jpeg_frame()
+        with MultipartWriter('image/jpeg', boundary=my_boundary) as mpwriter:
+            mpwriter.append(frame, {
+                'Content-Type': 'image/jpeg'
+            })
+            await mpwriter.write(response, close_boundary=False)
+        await response.drain()
+
 Hacking Multipart
 -----------------
 

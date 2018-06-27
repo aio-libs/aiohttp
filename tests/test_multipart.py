@@ -806,6 +806,40 @@ async def test_writer_write(buf, stream, writer):
          b'--:--\r\n') == bytes(buf))
 
 
+async def test_writer_write_no_close_boundary(buf, stream):
+    writer = aiohttp.MultipartWriter(boundary=':')
+    writer.append('foo-bar-baz')
+    writer.append_json({'test': 'passed'})
+    writer.append_form({'test': 'passed'})
+    writer.append_form([('one', 1), ('two', 2)])
+    await writer.write(stream, close_boundary=False)
+
+    assert (
+        (b'--:\r\n'
+         b'Content-Type: text/plain; charset=utf-8\r\n'
+         b'Content-Length: 11\r\n\r\n'
+         b'foo-bar-baz'
+         b'\r\n'
+
+         b'--:\r\n'
+         b'Content-Type: application/json\r\n'
+         b'Content-Length: 18\r\n\r\n'
+         b'{"test": "passed"}'
+         b'\r\n'
+
+         b'--:\r\n'
+         b'Content-Type: application/x-www-form-urlencoded\r\n'
+         b'Content-Length: 11\r\n\r\n'
+         b'test=passed'
+         b'\r\n'
+
+         b'--:\r\n'
+         b'Content-Type: application/x-www-form-urlencoded\r\n'
+         b'Content-Length: 11\r\n\r\n'
+         b'one=1&two=2'
+         b'\r\n') == bytes(buf))
+
+
 async def test_writer_serialize_with_content_encoding_gzip(buf, stream,
                                                            writer):
     writer.append('Time to Relax!', {CONTENT_ENCODING: 'gzip'})
