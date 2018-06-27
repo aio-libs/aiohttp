@@ -796,7 +796,7 @@ class MultipartWriter(Payload):
         total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
         return total
 
-    async def write(self, writer):
+    async def write(self, writer, close_boundary=True):
         """Write body."""
         if not self._parts:
             return
@@ -818,7 +818,8 @@ class MultipartWriter(Payload):
 
             await writer.write(b'\r\n')
 
-        await writer.write(b'--' + self._boundary + b'--\r\n')
+        if close_boundary:
+            await writer.write(b'--' + self._boundary + b'--\r\n')
 
 
 class MultipartPayloadWriter:
