@@ -197,4 +197,8 @@ Multipart reference
 
       :param bool close_boundary: The (:class:`bool`) that will emit
                                   boundary closing. You may want to disable
-                                  when streaming (multipart/x-mixed-replace)
+                                  when streaming (``multipart/x-mixed-replace``)
+
+      .. versionadded:: 3.4
+         
+         Support ``close_boundary`` argument.
