@@ -72,14 +72,54 @@ except IndexError:
     raise RuntimeError('Unable to determine version.')
 
 
+def get_environment_marker_support_level():
+    """
+    Copied from https://github.com/pytest-dev/pytest/blob/master/setup.py
+
+    Tests how well setuptools supports PEP-426 environment marker.
+    The first known release to support it is 0.7 (and the earliest on PyPI seems to be 0.7.2
+    so we're using that), see: https://setuptools.readthedocs.io/en/latest/history.html#id350
+    The support is later enhanced to allow direct conditional inclusions inside install_requires,
+    which is now recommended by setuptools. It first appeared in 36.2.0, went broken with 36.2.1, and
+    again worked since 36.2.2, so we're using that. See:
+    https://setuptools.readthedocs.io/en/latest/history.html#v36-2-2
+    https://github.com/pypa/setuptools/issues/1099
+    References:
+    * https://wheel.readthedocs.io/en/latest/index.html#defining-conditional-dependencies
+    * https://www.python.org/dev/peps/pep-0426/#environment-markers
+    * https://setuptools.readthedocs.io/en/latest/setuptools.html#declaring-platform-specific-dependencies
+    """
+    try:
+        version = pkg_resources.parse_version(setuptools.__version__)
+        if version >= pkg_resources.parse_version("36.2.2"):
+            return 2
+        if version >= pkg_resources.parse_version("0.7.2"):
+            return 1
+    except Exception as exc:
+        sys.stderr.write("Could not test setuptool's version: %s\n" % exc)
+
+    # as of testing on 2018-05-26 fedora was on version 37* and debian was on version 33+
+    # we should consider erroring on those
+    return 0
+
+
 install_requires = [
     'attrs>=17.3.0',
     'chardet>=2.0,<4.0',
     'multidict>=4.0,<5.0',
     'async_timeout>=3.0,<4.0',
     'yarl>=1.0,<2.0',
-    'idna-ssl>=1.0;python_version<"3.7"',
 ]
+extras_require = {}
+
+environment_marker_support_level = get_environment_marker_support_level()
+if environment_marker_support_level >= 2:
+    install_requires.append('idna-ssl>=1.0;python_version<"3.7"')
+elif environment_marker_support_level == 1:
+    extras_require[':python_version<"3.7"'] = ["idna-ssl>=1.0"]
+else:
+    if sys.version_info < (3, 7):
+        install_requires.append("idna-ssl>=1.0")
 
 
 def read(f):
@@ -135,6 +175,7 @@ args = dict(
     python_requires='>=3.5.3',
     install_requires=install_requires,
     tests_require=tests_require,
+    extras_require=extras_require,
     setup_requires=pytest_runner,
     include_package_data=True,
     ext_modules=extensions,
