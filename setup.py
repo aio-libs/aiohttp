@@ -82,7 +82,7 @@ install_requires = [
 extras_require = {}
 
 setuptools_version_tuple = setuptools.__version__.split('.')
-setuptools_version = tuple(
+setuptools_version = (
     int(setuptools_version_tuple[0]),
     int(setuptools_version_tuple[1]),
     int(setuptools_version_tuple[2]),
