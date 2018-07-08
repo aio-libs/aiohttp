@@ -79,7 +79,6 @@ install_requires = [
     'async_timeout>=3.0,<4.0',
     'yarl>=1.0,<2.0',
 ]
-extras_require = {}
 
 setuptools_version_tuple = setuptools.__version__.split('.')
 setuptools_version = (
@@ -88,7 +87,7 @@ setuptools_version = (
     int(setuptools_version_tuple[2]),
 )
 
-if setuptools_version >= (36, 2, 2):
+if setuptools_version >= (21, 0, 0):
     install_requires.append('idna-ssl>=1.0;python_version<"3.7"')
 else:
     if sys.version_info < (3, 7):
@@ -148,7 +147,6 @@ args = dict(
     python_requires='>=3.5.3',
     install_requires=install_requires,
     tests_require=tests_require,
-    extras_require=extras_require,
     setup_requires=pytest_runner,
     include_package_data=True,
     ext_modules=extensions,
