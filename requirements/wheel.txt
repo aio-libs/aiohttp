@@ -1,3 +1,3 @@
 cython==0.28.4
-pytest==3.6.2
+pytest==3.6.3
 twine==1.11.0
