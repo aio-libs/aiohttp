@@ -1,1 +1,1 @@
-sphinxcontrib-spelling==4.1.0; platform_system!="Windows"  # We only use it in Travis CI
+sphinxcontrib-spelling==4.2.0; platform_system!="Windows"  # We only use it in Travis CI
