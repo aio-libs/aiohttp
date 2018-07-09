@@ -195,19 +195,10 @@ def proxies_from_env():
 
 
 def current_task(loop=None):
-    if loop is None:
-        loop = asyncio.get_event_loop()
-
     if PY_37:
-        task = asyncio.current_task(loop=loop)
+        return asyncio.current_task(loop=loop)
     else:
-        task = asyncio.Task.current_task(loop=loop)
-    if task is None:
-        # this should be removed, tokio must use register_task and family API
-        if hasattr(loop, 'current_task'):
-            task = loop.current_task()
-
-    return task
+        return asyncio.Task.current_task(loop=loop)
 
 
 def isasyncgenfunction(obj):

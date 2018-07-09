@@ -1,0 +1,1 @@
+Drop loop.current_task() in helpers.current_task()
