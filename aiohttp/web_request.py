@@ -634,6 +634,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         return "<{} {} {} >".format(self.__class__.__name__,
                                     self._method, ascii_encodable_path)
 
+    def __eq__(self, other):
+        return id(self) == id(other)
+
     @asyncio.coroutine
     def _prepare_hook(self, response):
         return
