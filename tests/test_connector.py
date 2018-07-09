@@ -16,6 +16,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import client, web
+from aiohttp import helpers
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import Connection, _DNSCacheTable
@@ -493,8 +494,14 @@ async def test_tcp_connector_certificate_error(loop):
     assert isinstance(ctx.value, ssl.CertificateError)
     assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
-    assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
-                              '[CertificateError: ()]')
+
+    if helpers.PY_37:
+        msg = ('Cannot connect to host 127.0.0.1:443 ssl:True '
+               '[SSLCertVerificationError: ()]')
+    else:
+        msg = ('Cannot connect to host 127.0.0.1:443 ssl:True '
+               '[CertificateError: ()]')
+    assert str(ctx.value) == msg
 
 
 async def test_tcp_connector_multiple_hosts_errors(loop):

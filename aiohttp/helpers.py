@@ -34,8 +34,8 @@ from .log import client_logger
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
 
-PY_36 = sys.version_info >= (3, 6)
-PY_37 = sys.version_info >= (3, 7)
+PY_36 = (3, 6) <= sys.version_info < (3, 7)
+PY_37 = (3, 7) <= sys.version_info < (3, 8)
 
 if not PY_37:
     import idna_ssl

@@ -427,7 +427,10 @@ def test_timer_context_cancelled():
             with ctx:
                 pass
 
-        assert m_asyncio.Task.current_task.return_value.cancel.called
+        if helpers.PY_37:
+            assert m_asyncio.current_task.return_value.cancel.called
+        else:
+            assert m_asyncio.Task.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop):
