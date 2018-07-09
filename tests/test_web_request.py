@@ -634,3 +634,10 @@ def test_remote_with_closed_transport():
     req = make_mocked_request('GET', '/')
     req._protocol = None
     assert req.remote is None
+
+
+def test_eq():
+    req1 = make_mocked_request('GET', '/path/to?a=1&b=2')
+    req2 = make_mocked_request('GET', '/path/to?a=1&b=2')
+    assert req1 != req2
+    assert req1 == req1
