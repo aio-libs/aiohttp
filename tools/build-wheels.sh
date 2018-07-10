@@ -6,7 +6,7 @@ fi
 set -euo pipefail
 # ref: https://coderwall.com/p/fkfaqq/safer-bash-scripts-with-set-euxo-pipefail
 
-PYTHON_VERSIONS="cp35-cp35m cp36-cp36m"
+PYTHON_VERSIONS="cp35-cp35m cp36-cp36m cp37-cp37m"
 
 # Avoid creation of __pycache__/*.py[c|o]
 export PYTHONDONTWRITEBYTECODE=1
