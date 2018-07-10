@@ -6,7 +6,6 @@ from distutils.command.build_ext import build_ext
 from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 
-import setuptools
 from setuptools import Extension, setup
 
 
@@ -78,20 +77,8 @@ install_requires = [
     'multidict>=4.0,<5.0',
     'async_timeout>=3.0,<4.0',
     'yarl>=1.0,<2.0',
+    'idna-ssl>=1.0; python_version<"3.7"',
 ]
-
-setuptools_version_tuple = setuptools.__version__.split('.')
-setuptools_version = (
-    int(setuptools_version_tuple[0]),
-    int(setuptools_version_tuple[1]),
-    int(setuptools_version_tuple[2]),
-)
-
-if setuptools_version >= (21, 0, 0):
-    install_requires.append('idna-ssl>=1.0;python_version<"3.7"')
-else:
-    if sys.version_info < (3, 7):
-        install_requires.append("idna-ssl>=1.0")
 
 
 def read(f):
