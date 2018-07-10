@@ -1,7 +1,6 @@
 version: "= 0"
 
 sudo: false
-dist: trusty
 
 language: python
 
@@ -136,7 +135,9 @@ os: linux
 jobs:
   fast_finish: true
   allow_failures:
-  - python: nightly
+  - python:
+    - 3.7-dev
+    - nightly
 
   include:
   - <<: *_doc_base
