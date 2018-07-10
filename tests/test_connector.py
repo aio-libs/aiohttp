@@ -19,6 +19,7 @@ from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import Connection, _DNSCacheTable
+from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
@@ -493,8 +494,6 @@ async def test_tcp_connector_certificate_error(loop):
     assert isinstance(ctx.value, ssl.CertificateError)
     assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
-    assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
-                              '[CertificateError: ()]')
 
 
 async def test_tcp_connector_multiple_hosts_errors(loop):
@@ -2021,12 +2020,19 @@ async def test_tcp_connector_raise_connector_ssl_error(aiohttp_server):
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url('/')
 
-    with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
-        print(url)
+    if PY_37:
+        err = aiohttp.ClientConnectorCertificateError
+    else:
+        err = aiohttp.ClientConnectorSSLError
+    with pytest.raises(err) as ctx:
         await session.get(url)
 
-    assert isinstance(ctx.value.os_error, ssl.SSLError)
-    assert isinstance(ctx.value, aiohttp.ClientSSLError)
+    if PY_37:
+        assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
+        assert isinstance(ctx.value.certificate_error, ssl.SSLError)
+    else:
+        assert isinstance(ctx.value, aiohttp.ClientSSLError)
+        assert isinstance(ctx.value.os_error, ssl.SSLError)
 
     await session.close()
 
