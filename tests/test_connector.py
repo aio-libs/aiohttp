@@ -493,9 +493,13 @@ async def test_tcp_connector_certificate_error(loop):
 
     assert isinstance(ctx.value, ssl.CertificateError)
     assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
+    if PY_37:
+        err_cls = 'SSLCertVerificationError'
+    else:
+        err_cls = 'CertificateError'
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
-    assert str(ctx.value).startswith('Cannot connect to host 127.0.0.1:443 '
-                                     'ssl:True')
+    assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
+                              '[{}: ()]'.format(err_cls))
 
 
 async def test_tcp_connector_multiple_hosts_errors(loop):
