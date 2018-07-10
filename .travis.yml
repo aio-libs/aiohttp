@@ -135,9 +135,8 @@ os: linux
 jobs:
   fast_finish: true
   allow_failures:
-  - python:
-    - 3.7-dev
-    - nightly
+  - python: 3.7-dev
+  - python: nightly
 
   include:
   - <<: *_doc_base
