@@ -1,0 +1,2 @@
+Add a new FAQ entry that clarifies that you should not reuse response
+objects in middleware functions.

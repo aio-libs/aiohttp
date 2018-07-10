@@ -334,6 +334,36 @@ required by aiohttp web contracts, even though the response
 already been sent.
 
 
+How do I make sure my custom middleware response will behave correctly?
+------------------------------------------------------------------------
+
+Sometimes your middleware handlers might need to send a custom response.
+This is just fine as long as you always create a new
+:class:`aiohttp.web.Response` object when required.
+
+The response object is a Finite State Machine. Once it has been dispatched
+by the server, it will reach its final state and cannot be used again.
+
+The following middleware will make the server hang, once it serves the second
+response::
+
+    from aiohttp import web
+
+    def misbehaved_middleware():
+        # don't do this!
+        cached = web.Response(status=200, text='Hi, I am cached!')
+
+        @web.middleware
+        async def middleware(request, handler):
+            # ignoring response for the sake of this example
+            _res = handler(request)
+            return cached
+
+        return middleware
+
+The rule of thumb is *one request, one response*.
+
+
 Why is creating a ClientSession outside of an event loop dangerous?
 -------------------------------------------------------------------
 
