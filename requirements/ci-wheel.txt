@@ -16,7 +16,7 @@ pytest-cov==2.5.1
 pytest-mock==1.10.0
 pytest-xdist==1.22.2
 towncrier==18.6.0
-tox==3.0.0
+tox==3.1.2
 twine==1.11.0
 yarl==1.2.6
 
