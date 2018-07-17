@@ -1,0 +1,1 @@
+Do not hang on `206 Partial Content` response with `Content-Encoding: gzip`

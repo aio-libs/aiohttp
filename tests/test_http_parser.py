@@ -902,7 +902,7 @@ class TestDeflateBuffer:
         assert [b'line'] == list(d for d, _ in buf._buffer)
         assert buf._eof
 
-    def test_feed_eof_err(self, stream):
+    def test_feed_eof_err_deflate(self, stream):
         buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
@@ -912,6 +912,28 @@ class TestDeflateBuffer:
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
+
+    def test_feed_eof_no_err_gzip(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
+        dbuf = DeflateBuffer(buf, 'gzip')
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b'line'] == list(d for d, _ in buf._buffer)
+
+    def test_feed_eof_no_err_brotli(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
+        dbuf = DeflateBuffer(buf, 'br')
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b'line'] == list(d for d, _ in buf._buffer)
 
     def test_empty_body(self, stream):
         buf = aiohttp.FlowControlDataQueue(stream)
