@@ -13,7 +13,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import codecs
+import io
 import os
 import re
 import sys
@@ -21,7 +21,7 @@ import sys
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(os.path.join(_docs_path,
                                              '..', 'aiohttp', '__init__.py'))
-with codecs.open(_version_path, 'r', 'latin1') as fp:
+with io.open(_version_path, 'r', encoding='latin1') as fp:
     try:
         _version_info = re.search(r"^__version__ = '"
                                   r"(?P<major>\d+)"
