@@ -2519,7 +2519,7 @@ application on specific TCP or Unix socket, e.g.::
 
 .. class:: TCPSite(runner, host=None, port=None, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
-                   backlog=128, reuse_address=None,
+                   backlog=128, reuse_address=None, \
                    reuse_port=None)
 
    Serve a runner on TCP socket.
