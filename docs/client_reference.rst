@@ -127,7 +127,7 @@ The client session supports the context manager protocol for self closing.
       higher.
 
    :param timeout: a :class:`ClientTimeout` settings structure, 5min
-                   total timeout by default.
+        total timeout by default.
 
       .. versionadded:: 3.3
 
@@ -155,16 +155,16 @@ The client session supports the context manager protocol for self closing.
       connection pool between sessions without sharing session state:
       cookies etc.
 
-   :param bool auto_decompress: Automatically decompress response body
+   :param bool auto_decompress: Automatically decompress response body,
+       ``True`` by default
 
       .. versionadded:: 2.3
 
    :param bool trust_env: Get proxies information from *HTTP_PROXY* /
-                         *HTTPS_PROXY* environment variables if the
-                         parameter is ``True`` (``False`` by default).
+      *HTTPS_PROXY* environment variables if the parameter is ``True``
+      (``False`` by default).
 
-                         Get proxy credentials from ``~/.netrc`` file if
-                         present.
+      Get proxy credentials from ``~/.netrc`` file if present.
 
       .. seealso::
 
