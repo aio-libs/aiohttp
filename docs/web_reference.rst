@@ -1407,10 +1407,10 @@ duplicated like one using :meth:`Application.copy`.
     Creates HTTP protocol factory for handling requests.
 
     :param loop: :ref:`event loop<asyncio-event-loop>` used
-                 for processing HTTP requests.
+      for processing HTTP requests.
 
-                 If param is ``None`` :func:`asyncio.get_event_loop`
-                 used for getting default event loop.
+      If param is ``None`` :func:`asyncio.get_event_loop`
+      used for getting default event loop.
 
        .. deprecated:: 2.0
 
@@ -1421,7 +1421,7 @@ duplicated like one using :meth:`Application.copy`.
       :data:`aiohttp.log.server_logger`.
     :param access_log: Custom logging object. Default:
       :data:`aiohttp.log.access_logger`.
-    :param access_log_class: class for `access_logger`. Default:
+    :param access_log_class: Class for `access_logger`. Default:
       :data:`aiohttp.helpers.AccessLogger`.
       Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
     :param str access_log_format: Access log format string. Default:
@@ -1433,9 +1433,9 @@ duplicated like one using :meth:`Application.copy`.
       ``8190``.
 
     :param float lingering_time: Maximum time during which the server
-       reads and ignores additional data coming from the client when
-       lingering close is on.  Use ``0`` to disable lingering on
-       server channel closing.
+      reads and ignores additional data coming from the client when
+      lingering close is on.  Use ``0`` to disable lingering on
+      server channel closing.
 
     :param float lingering_timeout: maximum waiting time for more
         client data to arrive when lingering close is in effect
