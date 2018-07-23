@@ -431,8 +431,7 @@ class RequestHandler(BaseProtocol):
                         with suppress(
                                 asyncio.TimeoutError, asyncio.CancelledError):
                             while not payload.is_eof() and now < end_t:
-                                timeout = min(end_t - now, lingering_time)
-                                with CeilTimeout(timeout, loop=loop):
+                                with CeilTimeout(end_t - now, loop=loop):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
