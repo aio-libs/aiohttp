@@ -1404,51 +1404,56 @@ duplicated like one using :meth:`Application.copy`.
 
    .. method:: make_handler(loop=None, **kwargs)
 
-    Creates HTTP protocol factory for handling requests.
+      Creates HTTP protocol factory for handling requests.
 
-    :param loop: :ref:`event loop<asyncio-event-loop>` used
-                 for processing HTTP requests.
+      :param loop: :ref:`event loop<asyncio-event-loop>` used
+                   for processing HTTP requests.
 
-                 If param is ``None`` :func:`asyncio.get_event_loop`
-                 used for getting default event loop.
+                   If param is ``None`` :func:`asyncio.get_event_loop`
+                   used for getting default event loop.
 
-       .. deprecated:: 2.0
+         .. deprecated:: 2.0
 
-    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
-    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
-      connection. Default: ``75`` seconds (NGINX's default value).
-    :param logger: Custom logger object. Default:
-      :data:`aiohttp.log.server_logger`.
-    :param access_log: Custom logging object. Default:
-      :data:`aiohttp.log.access_logger`.
-    :param access_log_class: class for `access_logger`. Default:
-      :data:`aiohttp.helpers.AccessLogger`.
-      Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
-    :param str access_log_format: Access log format string. Default:
-      :attr:`helpers.AccessLogger.LOG_FORMAT`.
-    :param int max_line_size: Optional maximum header line size. Default:
-      ``8190``.
-    :param int max_headers: Optional maximum header size. Default: ``32768``.
-    :param int max_field_size: Optional maximum header field size. Default:
-      ``8190``.
+      :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+      :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+        connection. Default: ``75`` seconds (NGINX's default value).
+      :param logger: Custom logger object. Default:
+        :data:`aiohttp.log.server_logger`.
+      :param access_log: Custom logging object. Default:
+        :data:`aiohttp.log.access_logger`.
+      :param access_log_class: class for `access_logger`. Default:
+        :data:`aiohttp.helpers.AccessLogger`.
+        Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
+      :param str access_log_format: Access log format string. Default:
+        :attr:`helpers.AccessLogger.LOG_FORMAT`.
+      :param int max_line_size: Optional maximum header line size. Default:
+        ``8190``.
+      :param int max_headers: Optional maximum header size. Default: ``32768``.
+      :param int max_field_size: Optional maximum header field size. Default:
+        ``8190``.
 
-    :param float lingering_time: maximum time during which the server
-       reads and ignore additional data coming from the client when
-       lingering close is on.  Use ``0`` for disabling lingering on
-       server channel closing.
+      :param float lingering_time: maximum time during which the server
+         reads and ignore additional data coming from the client when
+         lingering close is on.  Use ``0`` for disabling lingering on
+         server channel closing.
 
-    You should pass result of the method as *protocol_factory* to
-    :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
+      You should pass result of the method as *protocol_factory* to
+      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
-       loop = asyncio.get_event_loop()
+         loop = asyncio.get_event_loop()
 
-       app = Application()
+         app = Application()
 
-       # setup route table
-       # app.router.add_route(...)
+         # setup route table
+         # app.router.add_route(...)
 
-       await loop.create_server(app.make_handler(),
-                                '0.0.0.0', 8080)
+         await loop.create_server(app.make_handler(),
+                                  '0.0.0.0', 8080)
+
+      .. deprecated:: 3.3
+
+         The method is deprecated and will be removed in future
+         aiohttp versions.  Please use :ref:`aiohttp-web-app-runners` instead.
 
    .. comethod:: startup()
 
