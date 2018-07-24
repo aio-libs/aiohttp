@@ -146,24 +146,21 @@ class ClientSession:
         self._json_serialize = json_serialize
         if timeout is not sentinel:
             self._timeout = timeout
+            if read_timeout is not sentinel:
+                raise ValueError("read_timeout and timeout parameters "
+                                 "conflict, please setup "
+                                 "timeout.read")
+            if conn_timeout is not None:
+                raise ValueError("conn_timeout and timeout parameters "
+                                 "conflict, please setup "
+                                 "timeout.connect")
         else:
             self._timeout = DEFAULT_TIMEOUT
             if read_timeout is not sentinel:
-                if timeout is not sentinel:
-                    raise ValueError("read_timeout and timeout parameters "
-                                     "conflict, please setup "
-                                     "timeout.read")
-                else:
-                    self._timeout = attr.evolve(self._timeout,
-                                                total=read_timeout)
+                self._timeout = attr.evolve(self._timeout, total=read_timeout)
             if conn_timeout is not None:
-                if timeout is not sentinel:
-                    raise ValueError("conn_timeout and timeout parameters "
-                                     "conflict, please setup "
-                                     "timeout.connect")
-                else:
-                    self._timeout = attr.evolve(self._timeout,
-                                                connect=conn_timeout)
+                self._timeout = attr.evolve(self._timeout,
+                                            connect=conn_timeout)
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
