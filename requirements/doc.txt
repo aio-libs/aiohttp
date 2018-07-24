@@ -1,3 +1,4 @@
+-r ci.txt
 sphinx==1.7.6
 sphinxcontrib-asyncio==0.2.0
 pygments>=2.1
