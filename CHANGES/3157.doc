@@ -1,0 +1,2 @@
+Mention that ``app.make_handler`` is deprecated, recommend to use runners
+API instead.
