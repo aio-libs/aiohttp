@@ -1450,7 +1450,7 @@ duplicated like one using :meth:`Application.copy`.
          await loop.create_server(app.make_handler(),
                                   '0.0.0.0', 8080)
 
-      .. deprecated:: 3.3
+      .. deprecated:: 3.2
 
          The method is deprecated and will be removed in future
          aiohttp versions.  Please use :ref:`aiohttp-web-app-runners` instead.
