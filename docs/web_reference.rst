@@ -1437,9 +1437,6 @@ duplicated like one using :meth:`Application.copy`.
        lingering close is on.  Use ``0`` for disabling lingering on
        server channel closing.
 
-    :param float lingering_timeout: maximum waiting time for more
-        client data to arrive when lingering close is in effect
-
     You should pass result of the method as *protocol_factory* to
     :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
