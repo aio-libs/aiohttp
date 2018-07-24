@@ -1,6 +1,7 @@
 .. _aiohttp-3rd-party:
 
 Third-Party libraries
+
 =====================
 
 
@@ -207,7 +208,7 @@ period ask to raise the status.
   An aiohttp middleware for reporting errors to Sentry. Python 3.5+ is required.
 
 - `aiohttp-datadog <https://github.com/underyx/aiohttp-datadog>`_
-  An aiohttp middleware for reporting metrics to Datadog. Python 3.5+ is required.
+  An aiohttp middleware for reporting metrics to DataDog. Python 3.5+ is required.
 
 - `async-v20 <https://github.com/jamespeterschinner/async_v20>`_
   Asynchronous FOREX client for OANDA's v20 API. Python 3.6+
