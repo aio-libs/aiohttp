@@ -1,0 +1,1 @@
+Remove no longer existing lingering_timeout parameter of Application.make_handler from documentation.
