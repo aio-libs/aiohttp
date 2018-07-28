@@ -275,7 +275,7 @@ If you want to send JSON data::
 
 To send text with appropriate content-type just use ``text`` attribute ::
 
-    async with session.post(url, text='Тест') as resp:
+    async with session.post(url, data='Тест') as resp:
         ...
 
 POST a Multipart-Encoded File
