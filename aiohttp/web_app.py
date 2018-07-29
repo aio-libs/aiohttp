@@ -2,6 +2,7 @@ import asyncio
 import warnings
 from collections import MutableMapping
 from functools import partial
+from typing import Awaitable, Callable
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
@@ -17,6 +18,11 @@ from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
 
 
 __all__ = ('Application', 'CleanupError')
+
+
+_AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
+_RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
+                                     Awaitable[None]]]
 
 
 class Application(MutableMapping):
@@ -59,10 +65,10 @@ class Application(MutableMapping):
         self._frozen = False
         self._subapps = []
 
-        self._on_response_prepare = Signal(self)
-        self._on_startup = Signal(self)
-        self._on_shutdown = Signal(self)
-        self._on_cleanup = Signal(self)
+        self._on_response_prepare = Signal(self)  # type: _RespPrepareSignal
+        self._on_startup = Signal(self)  # type: _AppSignal
+        self._on_shutdown = Signal(self)  # type: _AppSignal
+        self._on_cleanup = Signal(self)  # type: _AppSignal
         self._cleanup_ctx = CleanupContext()
         self._on_startup.append(self._cleanup_ctx._on_startup)
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
@@ -135,10 +141,10 @@ class Application(MutableMapping):
             subapp._set_loop(loop)
 
     @property
-    def frozen(self):
+    def frozen(self) -> bool:
         return self._frozen
 
-    def freeze(self):
+    def freeze(self) -> None:
         if self._frozen:
             return
 
@@ -165,7 +171,7 @@ class Application(MutableMapping):
                 self._run_middlewares or subapp._run_middlewares
 
     @property
-    def debug(self):
+    def debug(self) -> bool:
         return self._debug
 
     def _reg_subapp_signals(self, subapp):
@@ -182,7 +188,7 @@ class Application(MutableMapping):
         reg_handler('on_shutdown')
         reg_handler('on_cleanup')
 
-    def add_subapp(self, prefix, subapp):
+    def add_subapp(self, prefix: str, subapp: 'Application'):
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
@@ -206,19 +212,19 @@ class Application(MutableMapping):
         self.router.add_routes(routes)
 
     @property
-    def on_response_prepare(self):
+    def on_response_prepare(self) -> _RespPrepareSignal:
         return self._on_response_prepare
 
     @property
-    def on_startup(self):
+    def on_startup(self) -> _AppSignal:
         return self._on_startup
 
     @property
-    def on_shutdown(self):
+    def on_shutdown(self) -> _AppSignal:
         return self._on_shutdown
 
     @property
-    def on_cleanup(self):
+    def on_cleanup(self) -> _AppSignal:
         return self._on_cleanup
 
     @property
@@ -226,7 +232,7 @@ class Application(MutableMapping):
         return self._cleanup_ctx
 
     @property
-    def router(self):
+    def router(self) -> UrlDispatcher:
         return self._router
 
     @property
@@ -270,21 +276,21 @@ class Application(MutableMapping):
                                   access_log_class=access_log_class,
                                   **kwargs)
 
-    async def startup(self):
+    async def startup(self) -> None:
         """Causes on_startup signal
 
         Should be called in the event loop along with the request handler.
         """
         await self.on_startup.send(self)
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Causes on_shutdown signal
 
         Should be called before cleanup()
         """
         await self.on_shutdown.send(self)
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Causes on_cleanup signal
 
         Should be called after shutdown()
