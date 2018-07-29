@@ -33,6 +33,7 @@ Andrew Svetlov
 Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
+Anton Patrushev
 Anton Zhdan-Pushkin
 Arthur Darcet
 Ben Bader
