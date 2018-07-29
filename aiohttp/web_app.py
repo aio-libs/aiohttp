@@ -47,7 +47,7 @@ class Application(MutableMapping):
                           stacklevel=2)
 
         self._debug = debug
-        self._router = router
+        self._router = router  # type: UrlDispatcher
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
