@@ -2,7 +2,7 @@ import asyncio
 import warnings
 from collections import MutableMapping
 from functools import partial
-from typing import Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
@@ -20,9 +20,14 @@ from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
 __all__ = ('Application', 'CleanupError')
 
 
-_AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
-_RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
-                                     Awaitable[None]]]
+if TYPE_CHECKING:
+    _AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
+    _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
+                                         Awaitable[None]]]
+else:
+    # No type checker mode, skip types
+    _AppSignal = Signal
+    _RespPrepareSignal = Signal
 
 
 class Application(MutableMapping):

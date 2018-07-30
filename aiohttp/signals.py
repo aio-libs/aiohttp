@@ -1,15 +1,10 @@
-from typing import Any, Generic, TypeVar
-
 from aiohttp.frozenlist import FrozenList
 
 
 __all__ = ('Signal',)
 
 
-_T = TypeVar('_T')
-
-
-class Signal(FrozenList[_T], Generic[_T]):
+class Signal(FrozenList):
     """Coroutine-based signal implementation.
 
     To connect a callback to a signal, use any list method.
@@ -20,7 +15,7 @@ class Signal(FrozenList[_T], Generic[_T]):
 
     __slots__ = ('_owner',)
 
-    def __init__(self, owner: Any) -> None:
+    def __init__(self, owner):
         super().__init__()
         self._owner = owner
 
@@ -29,7 +24,7 @@ class Signal(FrozenList[_T], Generic[_T]):
                                                            self.frozen,
                                                            list(self))
 
-    async def send(self, *args, **kwargs) -> None:
+    async def send(self, *args, **kwargs):
         """
         Sends data to all registered receivers.
         """

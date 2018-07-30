@@ -36,3 +36,7 @@ class FrozenList(MutableSequence[_T], Generic[_T]):
     def insert(self, pos: int, item: _T) -> None: ...
 
     def __repr__(self) -> str: ...
+
+
+# types for C accelerators are the same
+CFrozenList = PyFrozenList = FrozenList
