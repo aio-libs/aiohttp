@@ -20,7 +20,7 @@ from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
 __all__ = ('Application', 'CleanupError')
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no branch
     _AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
                                          Awaitable[None]]]
