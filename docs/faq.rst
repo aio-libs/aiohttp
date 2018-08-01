@@ -80,11 +80,11 @@ other resource you want to share between handlers.
 Why is Python 3.5.3 the lowest supported version?
 -------------------------------------------------
 
-Python 3.5.2 fixes the protocol for async iterators: ``__aiter()__`` is
+Python 3.5.2 fixes the protocol for async iterators: ``__aiter__()`` is
 not a coroutine but a regular function.
 
 Python 3.5.3 has a more important change: :func:`asyncio.get_event_loop`
-returns the running loop instance if called from a coroutine
+returns the running loop instance if called from a coroutine.
 Previously it returned a *default* loop, set by
 :func:`asyncio.set_event_loop`.
 
