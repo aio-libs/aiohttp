@@ -40,7 +40,7 @@ def pytest_fixture_setup(fixturedef):
     """
     Allow fixtures to be coroutines. Run coroutine fixtures in an event loop.
     """
-    func = fixturedef.func
+    func = getattr(fixturedef.func, '__wrapped__', fixturedef.func)
 
     if isasyncgenfunction(func):
         # async generator fixture
