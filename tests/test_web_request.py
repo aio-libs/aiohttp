@@ -636,6 +636,12 @@ def test_remote_with_closed_transport():
     assert req.remote is None
 
 
+def test_url_with_closed_transport():
+    req = make_mocked_request('GET', '/')
+    req._protocol = None
+    assert str(req.url).endswith('/')
+
+
 def test_eq():
     req1 = make_mocked_request('GET', '/path/to?a=1&b=2')
     req2 = make_mocked_request('GET', '/path/to?a=1&b=2')
