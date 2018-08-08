@@ -105,6 +105,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._client_max_size = client_max_size
         self._loop = loop
 
+        self._transport_sslcontext = self._protocol.transport.get_extra_info('sslcontext')
+        self._transport_peername = self._protocol.transport.get_extra_info('peername')
+
         if scheme is not None:
             self._cache['scheme'] = scheme
         if host is not None:
@@ -292,7 +295,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         'http' or 'https'.
         """
-        if self.transport.get_extra_info('sslcontext'):
+        if self._transport_sslcontext:
             return 'https'
         else:
             return 'http'
@@ -338,13 +341,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
-        if self.transport is None:
-            return None
-        peername = self.transport.get_extra_info('peername')
-        if isinstance(peername, (list, tuple)):
-            return peername[0]
+        if isinstance(self._transport_peername, (list, tuple)):
+            return self._transport_peername[0]
         else:
-            return peername
+            return self._transport_peername
 
     @reify
     def url(self) -> URL:

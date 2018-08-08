@@ -631,15 +631,23 @@ def test_request_custom_attr():
 
 
 def test_remote_with_closed_transport():
-    req = make_mocked_request('GET', '/')
+    transp = mock.Mock()
+    transp.get_extra_info.return_value = ('10.10.10.10', 1234)
+    req = make_mocked_request('GET', '/', transport=transp)
     req._protocol = None
-    assert req.remote is None
+    assert req.remote == '10.10.10.10'
 
 
-def test_url_with_closed_transport():
+def test_url_http_with_closed_transport():
     req = make_mocked_request('GET', '/')
     req._protocol = None
-    assert str(req.url).endswith('/')
+    assert str(req.url).startswith('http://')
+
+
+def test_url_https_with_closed_transport():
+    req = make_mocked_request('GET', '/', sslcontext=True)
+    req._protocol = None
+    assert str(req.url).startswith('https://')
 
 
 def test_eq():
