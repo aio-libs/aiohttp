@@ -105,8 +105,9 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._client_max_size = client_max_size
         self._loop = loop
 
-        self._transport_sslcontext = self._protocol.transport.get_extra_info('sslcontext')
-        self._transport_peername = self._protocol.transport.get_extra_info('peername')
+        transport = self._protocol.transport
+        self._transport_sslcontext = transport.get_extra_info('sslcontext')
+        self._transport_peername = transport.get_extra_info('peername')
 
         if scheme is not None:
             self._cache['scheme'] = scheme
