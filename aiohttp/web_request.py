@@ -78,7 +78,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ATTRS = HeadersMixin.ATTRS | frozenset([
         '_message', '_protocol', '_payload_writer', '_payload', '_headers',
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
-        '_state', '_cache', '_task', '_client_max_size', '_loop'])
+        '_state', '_cache', '_task', '_client_max_size', '_loop',
+        '_transport_sslcontext', '_transport_peername'])
 
     def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
