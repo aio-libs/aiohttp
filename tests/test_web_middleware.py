@@ -118,6 +118,27 @@ class TestNormalizePathMiddleware:
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1', 200),
+        ('/resource1/', 200),
+        ('/resource2', 404),
+        ('/resource2/', 200),
+        ('/resource1?p1=1&p2=2', 200),
+        ('/resource1/?p1=1&p2=2', 200),
+        ('/resource2?p1=1&p2=2', 404),
+        ('/resource2/?p1=1&p2=2', 200),
+        ('/resource2/a/b%2Fc', 404),
+        ('/resource2/a/b%2Fc/', 200)
+    ])
+    async def test_remove_trailing_when_necessary(self, path, status, cli):
+        extra_middlewares = [
+            web.normalize_path_middleware(
+                append_slash=False, remove_slash=True, merge_slashes=False)]
+        client = await cli(extra_middlewares)
+
+        resp = await client.get(path)
+        assert resp.status == status
+
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1', 200),
         ('/resource1/', 404),
         ('/resource2', 404),
         ('/resource2/', 200),
@@ -199,6 +220,52 @@ class TestNormalizePathMiddleware:
         client = await cli(extra_middlewares)
         resp = await client.get(path)
         assert resp.status == status
+
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1/a/b', 200),
+        ('/resource1/a/b/', 200),
+        ('//resource2//a//b', 404),
+        ('//resource2//a//b/', 200),
+        ('///resource1//a//b', 200),
+        ('///resource1//a//b/', 200),
+        ('/////resource1/a///b', 200),
+        ('/////resource1/a///b/', 200),
+        ('/////resource1/a///b///', 200),
+        ('/resource2/a/b', 404),
+        ('//resource2//a//b', 404),
+        ('//resource2//a//b/', 200),
+        ('///resource2//a//b', 404),
+        ('///resource2//a//b/', 200),
+        ('/////resource2/a///b', 404),
+        ('/////resource2/a///b/', 200),
+        ('/resource1/a/b?p=1', 200),
+        ('/resource1/a/b/?p=1', 200),
+        ('//resource2//a//b?p=1', 404),
+        ('//resource2//a//b/?p=1', 200),
+        ('///resource1//a//b?p=1', 200),
+        ('///resource1//a//b/?p=1', 200),
+        ('/////resource1/a///b?p=1', 200),
+        ('/////resource1/a///b/?p=1', 200),
+        ('/resource2/a/b?p=1', 404),
+        ('//resource2//a//b?p=1', 404),
+        ('//resource2//a//b/?p=1', 200),
+        ('///resource2//a//b?p=1', 404),
+        ('///resource2//a//b/?p=1', 200),
+        ('/////resource2/a///b?p=1', 404),
+        ('/////resource2/a///b/?p=1', 200)
+    ])
+    async def test_remove_and_merge_slash(self, path, status, cli):
+        extra_middlewares = [
+            web.normalize_path_middleware(
+                append_slash=False, remove_slash=True)]
+
+        client = await cli(extra_middlewares)
+        resp = await client.get(path)
+        assert resp.status == status
+
+    async def test_cannot_remove_and_add_slash(self):
+        with pytest.raises(AssertionError):
+            web.normalize_path_middleware(append_slash=True, remove_slash=True)
 
 
 async def test_old_style_middleware(loop, aiohttp_client):
