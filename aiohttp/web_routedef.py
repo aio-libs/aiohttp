@@ -6,9 +6,9 @@ import attr
 from . import hdrs
 
 
-__all__ = ('RouteDef', 'StaticDef', 'RouteTableDef', 'head', 'options', 'get',
-           'post', 'patch', 'put', 'delete', 'route', 'view',
-           'static')
+__all__ = ('AbstractRouteDef', 'RouteDef', 'StaticDef', 'RouteTableDef',
+           'head', 'options', 'get', 'post', 'patch', 'put', 'delete',
+           'route', 'view', 'static')
 
 
 class AbstractRouteDef(abc.ABC):
