@@ -43,7 +43,7 @@ _helpers:
   <<: *_lint_base
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/ci.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
+  - pip install -U -r requirements/doc.txt -r requirements/doc-spelling.txt
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:
