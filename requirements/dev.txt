@@ -1,5 +1,5 @@
 -r ci.txt
--r requirements/towncrier.txt
+-r towncrier.txt
 ipdb==0.11
 pytest-sugar==0.9.1
 ipython==6.5.0

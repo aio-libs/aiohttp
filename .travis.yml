@@ -160,6 +160,8 @@ jobs:
   - <<: *_lint_base
     env:
     - TARGET=flake8
+    install:
+    - pip install -r requirements/flake.txt
     script:
     - flake8 aiohttp examples tests
 
@@ -168,7 +170,7 @@ jobs:
     - TARGET="'dist setup check'"
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/doc.txt
+    - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
