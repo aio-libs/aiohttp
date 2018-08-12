@@ -12,12 +12,26 @@ from setuptools import Extension, setup
 if sys.version_info < (3, 5, 3):
     raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
 
+here = pathlib.Path(__file__).parent
 
 try:
     from Cython.Build import cythonize
     USE_CYTHON = True
 except ImportError:
     USE_CYTHON = False
+
+if (here / '.git').exists() and not USE_CYTHON:
+    print("Install cython when building from git clone")
+    print("pip install cython")
+    sys.exit(1)
+
+
+if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md'):
+    print("Install submodules when building from git clone")
+    print("git submodule init")
+    print("git submodule update")
+    sys.exit(2)
+
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
@@ -62,7 +76,6 @@ class ve_build_ext(build_ext):
             raise BuildFailed()
 
 
-here = pathlib.Path(__file__).parent
 
 txt = (here / 'aiohttp' / '__init__.py').read_text('utf-8')
 try:
