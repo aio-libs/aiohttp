@@ -152,6 +152,8 @@ jobs:
   - <<: *_doc_base
     env:
     - TARGET=towncrier
+    install:
+    - pip install -r requirements/towncrier.txt
     script:
     - towncrier --yes
 
