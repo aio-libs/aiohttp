@@ -153,6 +153,7 @@ jobs:
     env:
     - TARGET=towncrier
     install:
+    - *upgrade_python_toolset
     - pip install -r requirements/towncrier.txt
     script:
     - towncrier --yes
@@ -161,6 +162,7 @@ jobs:
     env:
     - TARGET=flake8
     install:
+    - *upgrade_python_toolset
     - pip install -r requirements/flake.txt
     script:
     - flake8 aiohttp examples tests
