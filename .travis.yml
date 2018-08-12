@@ -172,6 +172,7 @@ jobs:
     - TARGET="'dist setup check'"
     install:
     - *upgrade_python_toolset
+    - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
