@@ -28,8 +28,7 @@ if (here / '.git').exists() and not USE_CYTHON:
 
 if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md'):
     print("Install submodules when building from git clone")
-    print("git submodule init")
-    print("git submodule update")
+    print("git submodule update --init")
     sys.exit(2)
 
 
