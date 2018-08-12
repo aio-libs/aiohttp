@@ -8,6 +8,7 @@ import platform
 import socket
 import ssl
 import uuid
+from collections import deque
 from unittest import mock
 
 import pytest
@@ -15,8 +16,10 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import client, web
-from aiohttp.client import ClientRequest
+from aiohttp.client import ClientRequest, ClientTimeout
+from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import Connection, _DNSCacheTable
+from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
@@ -24,24 +27,24 @@ from aiohttp.tracing import Trace
 @pytest.fixture()
 def key():
     """Connection key"""
-    return ('localhost1', 80, False)
+    return ConnectionKey('localhost', 80, False, None, None, None, None)
 
 
 @pytest.fixture
 def key2():
     """Connection key"""
-    return ('localhost2', 80, False)
+    return ConnectionKey('localhost', 80, False, None, None, None, None)
 
 
 @pytest.fixture
 def ssl_key():
     """Connection key"""
-    return ('localhost', 80, True)
+    return ConnectionKey('localhost', 80, True, None, None, None, None)
 
 
 @pytest.fixture
-def unix_sockname(tmpdir):
-    sock_path = tmpdir / 'socket.sock'
+def unix_sockname(shorttmpdir):
+    sock_path = shorttmpdir / 'socket.sock'
     return str(sock_path)
 
 
@@ -60,6 +63,81 @@ def unix_server(loop, unix_sockname):
 
     for runner in runners:
         loop.run_until_complete(runner.cleanup())
+
+
+def test_connection_del(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    loop.set_debug(0)
+    conn = Connection(connector, key, protocol, loop=loop)
+    exc_handler = mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    connector._release.assert_called_with(
+        key,
+        protocol,
+        should_close=True
+    )
+    msg = {
+        'message': mock.ANY,
+        'client_connection': mock.ANY,
+    }
+    exc_handler.assert_called_with(loop, msg)
+
+
+def test_connection_del_loop_debug(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    loop.set_debug(1)
+    conn = Connection(connector, key, protocol, loop=loop)
+    exc_handler = mock.Mock()
+    loop.set_exception_handler(exc_handler)
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    msg = {
+        'message': mock.ANY,
+        'client_connection': mock.ANY,
+        'source_traceback': mock.ANY
+    }
+    exc_handler.assert_called_with(loop, msg)
+
+
+def test_connection_del_loop_closed(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    loop.set_debug(1)
+    conn = Connection(connector, key, protocol, loop=loop)
+    exc_handler = mock.Mock()
+    loop.set_exception_handler(exc_handler)
+    loop.close()
+
+    with pytest.warns(ResourceWarning):
+        del conn
+        gc.collect()
+
+    assert not connector._release.called
+    assert not exc_handler.called
+
+
+def test_connection_detach(loop):
+    connector = mock.Mock()
+    key = mock.Mock()
+    protocol = mock.Mock()
+    conn = Connection(connector, key, protocol, loop=loop)
+    conn._notify_release = mock.Mock()
+    conn.detach()
+    assert conn._notify_release.called
+    connector._release_acquired.assert_called_with(protocol)
 
 
 def test_del(loop):
@@ -90,7 +168,7 @@ async def test_del_with_scheduled_cleanup(loop):
     loop.set_debug(True)
     conn = aiohttp.BaseConnector(loop=loop, keepalive_timeout=0.01)
     transp = mock.Mock()
-    conn._conns['a'] = [(transp, 'proto', 123)]
+    conn._conns['a'] = [(transp, 123)]
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
@@ -115,7 +193,7 @@ async def test_del_with_scheduled_cleanup(loop):
 def test_del_with_closed_loop(loop):
     conn = aiohttp.BaseConnector(loop=loop)
     transp = mock.Mock()
-    conn._conns['a'] = [(transp, 'proto', 123)]
+    conn._conns['a'] = [(transp, 123)]
 
     conns_impl = conn._conns
     exc_handler = mock.Mock()
@@ -145,7 +223,7 @@ def test_del_empty_conector(loop):
 async def test_create_conn(loop):
     conn = aiohttp.BaseConnector(loop=loop)
     with pytest.raises(NotImplementedError):
-        await conn._create_connection(object())
+        await conn._create_connection(object(), [], object())
 
 
 def test_context_manager(loop):
@@ -190,22 +268,24 @@ def test_get(loop):
 
 def test_get_expired(loop):
     conn = aiohttp.BaseConnector(loop=loop)
-    assert conn._get(('localhost', 80, False)) is None
+    key = ConnectionKey('localhost', 80, False, None, None, None, None)
+    assert conn._get(key) is None
 
     proto = mock.Mock()
-    conn._conns[('localhost', 80, False)] = [(proto, loop.time() - 1000)]
-    assert conn._get(('localhost', 80, False)) is None
+    conn._conns[key] = [(proto, loop.time() - 1000)]
+    assert conn._get(key) is None
     assert not conn._conns
     conn.close()
 
 
 def test_get_expired_ssl(loop):
     conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
-    assert conn._get(('localhost', 80, True)) is None
+    key = ConnectionKey('localhost', 80, True, None, None, None, None)
+    assert conn._get(key) is None
 
     proto = mock.Mock()
-    conn._conns[('localhost', 80, True)] = [(proto, loop.time() - 1000)]
-    assert conn._get(('localhost', 80, True)) is None
+    conn._conns[key] = [(proto, loop.time() - 1000)]
+    assert conn._get(key) is None
     assert not conn._conns
     assert conn._cleanup_closed_transports == [proto.close.return_value]
     conn.close()
@@ -291,18 +371,19 @@ def test_release_already_closed(loop):
     assert not conn._release_acquired.called
 
 
-def test_release_waiter(loop, key, key2):
+def test_release_waiter_no_limit(loop, key, key2):
     # limit is 0
     conn = aiohttp.BaseConnector(limit=0, loop=loop)
     w = mock.Mock()
     w.done.return_value = False
     conn._waiters[key].append(w)
     conn._release_waiter()
-    assert len(conn._waiters) == 1
-    assert not w.done.called
+    assert len(conn._waiters[key]) == 0
+    assert w.done.called
     conn.close()
 
-    # release first available
+
+def test_release_waiter_first_available(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
@@ -314,26 +395,28 @@ def test_release_waiter(loop, key, key2):
             not w1.set_result.called and w2.set_result.called)
     conn.close()
 
-    # limited available
+
+def test_release_waiter_release_first(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
     w2.done.return_value = False
-    conn._waiters[key] = [w1, w2]
+    conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert w1.set_result.called
     assert not w2.set_result.called
     conn.close()
 
-    # limited available
+
+def test_release_waiter_skip_done_waiter(loop, key, key2):
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = True
     w2.done.return_value = False
-    conn._waiters[key] = [w1, w2]
+    conn._waiters[key] = deque([w1, w2])
     conn._release_waiter()
     assert not w1.set_result.called
-    assert not w2.set_result.called
+    assert w2.set_result.called
     conn.close()
 
 
@@ -343,19 +426,31 @@ def test_release_waiter_per_host(loop, key, key2):
     w1, w2 = mock.Mock(), mock.Mock()
     w1.done.return_value = False
     w2.done.return_value = False
-    conn._waiters[key] = [w1]
-    conn._waiters[key2] = [w2]
+    conn._waiters[key] = deque([w1])
+    conn._waiters[key2] = deque([w2])
     conn._release_waiter()
     assert ((w1.set_result.called and not w2.set_result.called) or
             (not w1.set_result.called and w2.set_result.called))
     conn.close()
 
 
-def test_release_close(loop):
+def test_release_waiter_no_available(loop, key, key2):
+    # limit is 0
+    conn = aiohttp.BaseConnector(limit=0, loop=loop)
+    w = mock.Mock()
+    w.done.return_value = False
+    conn._waiters[key].append(w)
+    conn._available_connections = mock.Mock(return_value=0)
+    conn._release_waiter()
+    assert len(conn._waiters) == 1
+    assert not w.done.called
+    conn.close()
+
+
+def test_release_close(loop, key):
     conn = aiohttp.BaseConnector(loop=loop)
     proto = mock.Mock(should_close=True)
 
-    key = ('localhost', 80, False)
     conn._acquired.add(proto)
     conn._release(key, proto)
     assert not conn._conns
@@ -394,13 +489,11 @@ async def test_tcp_connector_certificate_error(loop):
     conn._loop.create_connection = certificate_error
 
     with pytest.raises(aiohttp.ClientConnectorCertificateError) as ctx:
-        await conn.connect(req)
+        await conn.connect(req, [], ClientTimeout())
 
     assert isinstance(ctx.value, ssl.CertificateError)
     assert isinstance(ctx.value.certificate_error, ssl.CertificateError)
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
-    assert str(ctx.value) == ('Cannot connect to host 127.0.0.1:443 ssl:True '
-                              '[CertificateError: ()]')
 
 
 async def test_tcp_connector_multiple_hosts_errors(loop):
@@ -457,7 +550,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
 
         if ip == ip4:
             fingerprint_error = True
-            tr, pr = mock.Mock(), None
+            tr, pr = mock.Mock(), mock.Mock()
 
             def get_extra_info(param):
                 if param == 'sslcontext':
@@ -478,7 +571,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
 
         if ip == ip5:
             connected = True
-            tr, pr = mock.Mock(), None
+            tr, pr = mock.Mock(), mock.Mock()
 
             def get_extra_info(param):
                 if param == 'sslcontext':
@@ -498,7 +591,7 @@ async def test_tcp_connector_multiple_hosts_errors(loop):
 
     conn._loop.create_connection = create_connection
 
-    await conn.connect(req)
+    await conn.connect(req, [], ClientTimeout())
     assert ips == ips_tried
 
     assert os_error
@@ -838,10 +931,10 @@ def test_dns_error(loop):
 
     req = ClientRequest(
         'GET', URL('http://www.python.org'),
-        loop=loop,
-    )
+        loop=loop)
+
     with pytest.raises(aiohttp.ClientConnectorError):
-        loop.run_until_complete(connector.connect(req))
+        loop.run_until_complete(connector.connect(req, [], ClientTimeout()))
 
 
 def test_get_pop_empty_conns(loop):
@@ -854,11 +947,10 @@ def test_get_pop_empty_conns(loop):
     assert not conn._conns
 
 
-def test_release_close_do_not_add_to_pool(loop):
+def test_release_close_do_not_add_to_pool(loop, key):
     # see issue #473
     conn = aiohttp.BaseConnector(loop=loop)
 
-    key = ('127.0.0.1', 80, False)
     proto = mock.Mock(should_close=True)
 
     conn._acquired.add(proto)
@@ -866,8 +958,7 @@ def test_release_close_do_not_add_to_pool(loop):
     assert not conn._conns
 
 
-def test_release_close_do_not_delete_existing_connections(loop):
-    key = ('127.0.0.1', 80, False)
+def test_release_close_do_not_delete_existing_connections(loop, key):
     proto1 = mock.Mock()
 
     conn = aiohttp.BaseConnector(loop=loop)
@@ -895,30 +986,28 @@ def test_release_not_started(loop):
     conn.close()
 
 
-def test_release_not_opened(loop):
+def test_release_not_opened(loop, key):
     conn = aiohttp.BaseConnector(loop=loop)
 
     proto = mock.Mock()
-    key = ('localhost', 80, False)
     conn._acquired.add(proto)
     conn._release(key, proto)
     assert proto.close.called
 
 
-async def test_connect(loop):
+async def test_connect(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://localhost:80'), loop=loop)
 
     conn = aiohttp.BaseConnector(loop=loop)
-    key = ('host', 80, False)
     conn._conns[key] = [(proto, loop.time())]
     conn._create_connection = mock.Mock()
     conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
-    connection = await conn.connect(req)
+    connection = await conn.connect(req, [], ClientTimeout())
     assert not conn._create_connection.called
     assert connection._protocol is proto
     assert connection.transport is proto.transport
@@ -960,7 +1049,9 @@ async def test_connect_tracing(loop):
     conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
-    await conn.connect(req, traces=traces)
+    conn2 = await conn.connect(req, traces, ClientTimeout())
+    conn2.release()
+
     on_connection_create_start.assert_called_with(
         session,
         trace_config_ctx,
@@ -984,7 +1075,7 @@ async def test_close_during_connect(loop):
     conn._create_connection = mock.Mock()
     conn._create_connection.return_value = fut
 
-    task = loop.create_task(conn.connect(req))
+    task = loop.create_task(conn.connect(req, None, ClientTimeout()))
     await asyncio.sleep(0, loop=loop)
     conn.close()
 
@@ -1004,8 +1095,7 @@ def test_ctor_cleanup():
     assert conn._cleanup_closed_handle is not None
 
 
-def test_cleanup():
-    key = ('localhost', 80, False)
+def test_cleanup(key):
     testset = {
         key: [(mock.Mock(), 10),
               (mock.Mock(), 300)],
@@ -1025,10 +1115,9 @@ def test_cleanup():
     assert conn._cleanup_handle is not None
 
 
-def test_cleanup_close_ssl_transport():
+def test_cleanup_close_ssl_transport(ssl_key):
     proto = mock.Mock()
-    key = ('localhost', 80, True)
-    testset = {key: [(proto, 10)]}
+    testset = {ssl_key: [(proto, 10)]}
 
     loop = mock.Mock()
     loop.time.return_value = 300
@@ -1059,8 +1148,7 @@ def test_cleanup2():
     conn.close()
 
 
-def test_cleanup3():
-    key = ('localhost', 80, False)
+def test_cleanup3(key):
     testset = {key: [(mock.Mock(), 290.1),
                      (mock.Mock(), 305.1)]}
     testset[key][0][0].is_connected.return_value = True
@@ -1280,7 +1368,7 @@ async def test_connect_with_limit(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://localhost1:80'),
+    req = ClientRequest('GET', URL('http://localhost:80'),
                         loop=loop,
                         response_class=mock.Mock())
 
@@ -1290,7 +1378,7 @@ async def test_connect_with_limit(loop, key):
     conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
-    connection1 = await conn.connect(req)
+    connection1 = await conn.connect(req, None, ClientTimeout())
     assert connection1._protocol == proto
 
     assert 1 == len(conn._acquired)
@@ -1302,7 +1390,7 @@ async def test_connect_with_limit(loop, key):
 
     async def f():
         nonlocal acquired
-        connection2 = await conn.connect(req)
+        connection2 = await conn.connect(req, None, ClientTimeout())
         acquired = True
         assert 1 == len(conn._acquired)
         assert 1 == len(conn._acquired_per_host[key])
@@ -1356,13 +1444,10 @@ async def test_connect_queued_operation_tracing(loop, key):
     conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
-    connection1 = await conn.connect(req, traces=traces)
+    connection1 = await conn.connect(req, traces, ClientTimeout())
 
     async def f():
-        connection2 = await conn.connect(
-            req,
-            traces=traces
-        )
+        connection2 = await conn.connect(req, traces, ClientTimeout())
         on_connection_queued_start.assert_called_with(
             session,
             trace_config_ctx,
@@ -1405,13 +1490,14 @@ async def test_connect_reuseconn_tracing(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://localhost1:80'),
+    req = ClientRequest('GET', URL('http://localhost:80'),
                         loop=loop,
                         response_class=mock.Mock())
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1)
     conn._conns[key] = [(proto, loop.time())]
-    await conn.connect(req, traces=traces)
+    conn2 = await conn.connect(req, traces, ClientTimeout())
+    conn2.release()
 
     on_connection_reuseconn.assert_called_with(
         session,
@@ -1425,7 +1511,7 @@ async def test_connect_with_limit_and_limit_per_host(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://localhost:80'), loop=loop)
 
     conn = aiohttp.BaseConnector(loop=loop, limit=1000, limit_per_host=1)
     conn._conns[key] = [(proto, loop.time())]
@@ -1434,11 +1520,11 @@ async def test_connect_with_limit_and_limit_per_host(loop, key):
     conn._create_connection.return_value.set_result(proto)
 
     acquired = False
-    connection1 = await conn.connect(req)
+    connection1 = await conn.connect(req, None, ClientTimeout())
 
     async def f():
         nonlocal acquired
-        connection2 = await conn.connect(req)
+        connection2 = await conn.connect(req, None, ClientTimeout())
         acquired = True
         assert 1 == len(conn._acquired)
         assert 1 == len(conn._acquired_per_host[key])
@@ -1468,11 +1554,11 @@ async def test_connect_with_no_limit_and_limit_per_host(loop, key):
     conn._create_connection.return_value.set_result(proto)
 
     acquired = False
-    connection1 = await conn.connect(req)
+    connection1 = await conn.connect(req, None, ClientTimeout())
 
     async def f():
         nonlocal acquired
-        connection2 = await conn.connect(req)
+        connection2 = await conn.connect(req, None, ClientTimeout())
         acquired = True
         connection2.release()
 
@@ -1491,7 +1577,7 @@ async def test_connect_with_no_limits(loop, key):
     proto = mock.Mock()
     proto.is_connected.return_value = True
 
-    req = ClientRequest('GET', URL('http://localhost1:80'), loop=loop)
+    req = ClientRequest('GET', URL('http://localhost:80'), loop=loop)
 
     conn = aiohttp.BaseConnector(loop=loop, limit=0, limit_per_host=0)
     conn._conns[key] = [(proto, loop.time())]
@@ -1500,11 +1586,11 @@ async def test_connect_with_no_limits(loop, key):
     conn._create_connection.return_value.set_result(proto)
 
     acquired = False
-    connection1 = await conn.connect(req)
+    connection1 = await conn.connect(req, None, ClientTimeout())
 
     async def f():
         nonlocal acquired
-        connection2 = await conn.connect(req)
+        connection2 = await conn.connect(req, None, ClientTimeout())
         acquired = True
         assert 1 == len(conn._acquired)
         assert 1 == len(conn._acquired_per_host[key])
@@ -1533,7 +1619,7 @@ async def test_connect_with_limit_cancelled(loop):
     conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
-    connection = await conn.connect(req)
+    connection = await conn.connect(req, None, ClientTimeout())
     assert connection._protocol == proto
     assert connection.transport == proto.transport
 
@@ -1541,7 +1627,8 @@ async def test_connect_with_limit_cancelled(loop):
 
     with pytest.raises(asyncio.TimeoutError):
         # limit exhausted
-        await asyncio.wait_for(conn.connect(req), 0.01, loop=loop)
+        await asyncio.wait_for(conn.connect(req, None, ClientTimeout()),
+                               0.01, loop=loop)
     connection.close()
 
 
@@ -1556,7 +1643,7 @@ async def test_connect_with_capacity_release_waiters(loop):
 
         with pytest.raises(Exception):
             req = mock.Mock()
-            yield from conn.connect(req)
+            yield from conn.connect(req, None, ClientTimeout())
 
         assert not conn._waiters
 
@@ -1580,7 +1667,7 @@ async def test_connect_with_limit_concurrent(loop):
     # Use a real coroutine for _create_connection; a mock would mask
     # problems that only happen when the method yields.
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         nonlocal num_connections
         num_connections += 1
         await asyncio.sleep(0, loop=loop)
@@ -1611,7 +1698,7 @@ async def test_connect_with_limit_concurrent(loop):
             return
         num_requests += 1
         if not start:
-            connection = await conn.connect(req)
+            connection = await conn.connect(req, None, ClientTimeout())
             await asyncio.sleep(0, loop=loop)
             connection.release()
         tasks = [
@@ -1624,6 +1711,48 @@ async def test_connect_with_limit_concurrent(loop):
     conn.close()
 
     assert max_connections == num_connections
+
+
+async def test_connect_waiters_cleanup(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._available_connections = mock.Mock(return_value=0)
+
+    t = loop.create_task(conn.connect(req, None, ClientTimeout()))
+
+    await asyncio.sleep(0, loop=loop)
+    assert conn._waiters.keys()
+
+    t.cancel()
+    await asyncio.sleep(0, loop=loop)
+    assert not conn._waiters.keys()
+
+
+async def test_connect_waiters_cleanup_key_error(loop):
+    proto = mock.Mock()
+    proto.is_connected.return_value = True
+
+    req = ClientRequest('GET', URL('http://host:80'), loop=loop)
+
+    conn = aiohttp.BaseConnector(loop=loop, limit=1)
+    conn._available_connections = mock.Mock(return_value=0)
+
+    t = loop.create_task(conn.connect(req, None, ClientTimeout()))
+
+    await asyncio.sleep(0, loop=loop)
+    assert conn._waiters.keys()
+
+    # we delete the entry explicitly before the
+    # canceled connection grabs the loop again, we
+    # must expect a none failure termination
+    conn._waiters.clear()
+    t.cancel()
+    await asyncio.sleep(0, loop=loop)
+    assert not conn._waiters.keys() == []
 
 
 async def test_close_with_acquired_connection(loop):
@@ -1639,7 +1768,7 @@ async def test_close_with_acquired_connection(loop):
     conn._create_connection.return_value = loop.create_future()
     conn._create_connection.return_value.set_result(proto)
 
-    connection = await conn.connect(req)
+    connection = await conn.connect(req, None, ClientTimeout())
 
     assert 1 == len(conn._acquired)
     conn.close()
@@ -1697,18 +1826,18 @@ def test_force_close_and_explicit_keep_alive(loop):
     assert conn
 
 
-async def test_error_on_connection(loop):
+async def test_error_on_connection(loop, key):
     conn = aiohttp.BaseConnector(limit=1, loop=loop)
 
     req = mock.Mock()
-    req.connection_key = 'key'
+    req.connection_key = key
     proto = mock.Mock()
     i = 0
 
     fut = loop.create_future()
     exc = OSError()
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         nonlocal i
         i += 1
         if i == 1:
@@ -1719,30 +1848,53 @@ async def test_error_on_connection(loop):
 
     conn._create_connection = create_connection
 
-    t1 = loop.create_task(conn.connect(req))
-    t2 = loop.create_task(conn.connect(req))
+    t1 = loop.create_task(conn.connect(req, None, ClientTimeout()))
+    t2 = loop.create_task(conn.connect(req, None, ClientTimeout()))
     await asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()
-    assert len(conn._acquired_per_host['key']) == 1
+    assert len(conn._acquired_per_host[key]) == 1
 
     fut.set_result(None)
     with pytest.raises(OSError):
         await t1
 
     ret = await t2
-    assert len(conn._acquired_per_host['key']) == 1
+    assert len(conn._acquired_per_host[key]) == 1
 
-    assert ret._key == 'key'
+    assert ret._key == key
     assert ret.protocol == proto
     assert proto in conn._acquired
+    ret.release()
 
 
-async def test_error_on_connection_with_cancelled_waiter(loop):
+async def test_cancelled_waiter(loop):
+    conn = aiohttp.BaseConnector(limit=1, loop=loop)
+    req = mock.Mock()
+    req.connection_key = 'key'
+    proto = mock.Mock()
+
+    async def create_connection(req, traces=None):
+        await asyncio.sleep(1)
+        return proto
+
+    conn._create_connection = create_connection
+
+    conn._acquired.add(proto)
+
+    conn2 = loop.create_task(conn.connect(req, None, ClientTimeout()))
+    await asyncio.sleep(0, loop=loop)
+    conn2.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await conn2
+
+
+async def test_error_on_connection_with_cancelled_waiter(loop, key):
     conn = aiohttp.BaseConnector(limit=1, loop=loop)
 
     req = mock.Mock()
-    req.connection_key = 'key'
+    req.connection_key = key
     proto = mock.Mock()
     i = 0
 
@@ -1750,7 +1902,7 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
     fut2 = loop.create_future()
     exc = OSError()
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         nonlocal i
         i += 1
         if i == 1:
@@ -1763,13 +1915,13 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
 
     conn._create_connection = create_connection
 
-    t1 = loop.create_task(conn.connect(req))
-    t2 = loop.create_task(conn.connect(req))
-    t3 = loop.create_task(conn.connect(req))
+    t1 = loop.create_task(conn.connect(req, None, ClientTimeout()))
+    t2 = loop.create_task(conn.connect(req, None, ClientTimeout()))
+    t3 = loop.create_task(conn.connect(req, None, ClientTimeout()))
     await asyncio.sleep(0, loop=loop)
     assert not t1.done()
     assert not t2.done()
-    assert len(conn._acquired_per_host['key']) == 1
+    assert len(conn._acquired_per_host[key]) == 1
 
     fut1.set_result(None)
     fut2.cancel()
@@ -1780,11 +1932,12 @@ async def test_error_on_connection_with_cancelled_waiter(loop):
         await t2
 
     ret = await t3
-    assert len(conn._acquired_per_host['key']) == 1
+    assert len(conn._acquired_per_host[key]) == 1
 
-    assert ret._key == 'key'
+    assert ret._key == key
     assert ret.protocol == proto
     assert proto in conn._acquired
+    ret.release()
 
 
 async def test_tcp_connector(aiohttp_client, loop):
@@ -1807,10 +1960,9 @@ def test_unix_connector_not_found(loop):
 
     req = ClientRequest(
         'GET', URL('http://www.python.org'),
-        loop=loop,
-    )
+        loop=loop)
     with pytest.raises(aiohttp.ClientConnectorError):
-        loop.run_until_complete(connector.connect(req))
+        loop.run_until_complete(connector.connect(req, None, ClientTimeout()))
 
 
 @pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
@@ -1822,10 +1974,9 @@ def test_unix_connector_permission(loop):
 
     req = ClientRequest(
         'GET', URL('http://www.python.org'),
-        loop=loop,
-    )
+        loop=loop)
     with pytest.raises(aiohttp.ClientConnectorError):
-        loop.run_until_complete(connector.connect(req))
+        loop.run_until_complete(connector.connect(req, None, ClientTimeout()))
 
 
 def test_default_use_dns_cache(loop):
@@ -1843,7 +1994,7 @@ async def test_resolver_not_called_with_address_is_ip(loop):
                         response_class=mock.Mock())
 
     with pytest.raises(OSError):
-        await connector.connect(req)
+        await connector.connect(req, None, ClientTimeout())
 
     resolver.resolve.assert_not_called()
 
@@ -1869,12 +2020,19 @@ async def test_tcp_connector_raise_connector_ssl_error(aiohttp_server):
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url('/')
 
-    with pytest.raises(aiohttp.ClientConnectorSSLError) as ctx:
-        print(url)
+    if PY_37:
+        err = aiohttp.ClientConnectorCertificateError
+    else:
+        err = aiohttp.ClientConnectorSSLError
+    with pytest.raises(err) as ctx:
         await session.get(url)
 
-    assert isinstance(ctx.value.os_error, ssl.SSLError)
-    assert isinstance(ctx.value, aiohttp.ClientSSLError)
+    if PY_37:
+        assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
+        assert isinstance(ctx.value.certificate_error, ssl.SSLError)
+    else:
+        assert isinstance(ctx.value, aiohttp.ClientSSLError)
+        assert isinstance(ctx.value.os_error, ssl.SSLError)
 
     await session.close()
 

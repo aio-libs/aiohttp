@@ -1,12 +1,13 @@
 """HTTP related errors."""
 
 import asyncio
+import warnings
 
 
 try:
     import ssl
 except ImportError:  # pragma: no cover
-    ssl = None
+    ssl = None  # type: ignore
 
 
 __all__ = (
@@ -38,14 +39,41 @@ class ClientResponseError(ClientError):
     """
 
     def __init__(self, request_info, history, *,
-                 code=0, message='', headers=None):
+                 code=None, status=None, message='', headers=None):
         self.request_info = request_info
-        self.code = code
+        if code is not None:
+            if status is not None:
+                raise ValueError(
+                    "Both code and status arguments are provided; "
+                    "code is deprecated, use status instead")
+            warnings.warn("code argument is deprecated, use status instead",
+                          DeprecationWarning,
+                          stacklevel=2)
+        if status is not None:
+            self.status = status
+        elif code is not None:
+            self.status = code
+        else:
+            self.status = 0
         self.message = message
         self.headers = headers
         self.history = history
 
-        super().__init__("%s, message='%s'" % (code, message))
+        super().__init__("%s, message='%s'" % (self.status, message))
+
+    @property
+    def code(self):
+        warnings.warn("code property is deprecated, use status instead",
+                      DeprecationWarning,
+                      stacklevel=2)
+        return self.status
+
+    @code.setter
+    def code(self, value):
+        warnings.warn("code property is deprecated, use status instead",
+                      DeprecationWarning,
+                      stacklevel=2)
+        self.status = value
 
 
 class ContentTypeError(ClientResponseError):
@@ -63,6 +91,10 @@ class ClientHttpProxyError(ClientResponseError):
     proxy responds with status other than ``200 OK``
     on ``CONNECT`` request.
     """
+
+
+class TooManyRedirects(ClientResponseError):
+    """Client was redirected too many times."""
 
 
 class ClientConnectionError(ClientError):
@@ -171,24 +203,24 @@ class ClientSSLError(ClientConnectorError):
 
 
 if ssl is not None:
-    certificate_errors = (ssl.CertificateError,)
-    certificate_errors_bases = (ClientSSLError, ssl.CertificateError,)
+    cert_errors = (ssl.CertificateError,)
+    cert_errors_bases = (ClientSSLError, ssl.CertificateError,)
 
     ssl_errors = (ssl.SSLError,)
     ssl_error_bases = (ClientSSLError, ssl.SSLError)
 else:  # pragma: no cover
-    certificate_errors = tuple()
-    certificate_errors_bases = (ClientSSLError, ValueError,)
+    cert_errors = tuple()
+    cert_errors_bases = (ClientSSLError, ValueError,)
 
     ssl_errors = tuple()
     ssl_error_bases = (ClientSSLError,)
 
 
-class ClientConnectorSSLError(*ssl_error_bases):
+class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore
     """Response ssl error."""
 
 
-class ClientConnectorCertificateError(*certificate_errors_bases):
+class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
     """Response certificate error."""
 
     def __init__(self, connection_key, certificate_error):
@@ -209,7 +241,7 @@ class ClientConnectorCertificateError(*certificate_errors_bases):
 
     @property
     def ssl(self):
-        return self._conn_key.ssl
+        return self._conn_key.is_ssl
 
     def __str__(self):
         return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} '

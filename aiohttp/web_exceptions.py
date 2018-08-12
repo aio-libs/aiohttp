@@ -71,8 +71,10 @@ class HTTPException(Response, Exception):
     # You should set in subclasses:
     # status = 200
 
-    status_code = None
+    status_code = -1
     empty_body = False
+
+    __http_exception__ = True
 
     def __init__(self, *, headers=None, reason=None,
                  body=None, text=None, content_type=None):
@@ -82,6 +84,9 @@ class HTTPException(Response, Exception):
         Exception.__init__(self, self.reason)
         if self.body is None and not self.empty_body:
             self.text = "{}: {}".format(self.status, self.reason)
+
+    def __bool__(self):
+        return True
 
 
 class HTTPError(HTTPException):
@@ -252,6 +257,14 @@ class HTTPPreconditionFailed(HTTPClientError):
 
 class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
+
+    def __init__(self, max_size, actual_size, **kwargs):
+        kwargs.setdefault(
+            'text',
+            'Maximum request body size {} exceeded, '
+            'actual body size {}'.format(max_size, actual_size)
+        )
+        super().__init__(**kwargs)
 
 
 class HTTPRequestURITooLong(HTTPClientError):

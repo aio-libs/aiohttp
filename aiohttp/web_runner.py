@@ -148,11 +148,17 @@ class BaseRunner(ABC):
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None
-        self._sites = set()
+        self._sites = []
 
     @property
     def server(self):
         return self._server
+
+    @property
+    def addresses(self):
+        return [sock.getsockname()
+                for site in self._sites
+                for sock in site._server.sockets]
 
     @property
     def sites(self):
@@ -210,7 +216,7 @@ class BaseRunner(ABC):
         if site in self._sites:
             raise RuntimeError("Site {} is already registered in runner {}"
                                .format(site, self))
-        self._sites.add(site)
+        self._sites.append(site)
 
     def _check_site(self, site):
         if site not in self._sites:
@@ -269,7 +275,7 @@ class AppRunner(BaseRunner):
         await self._app.startup()
         self._app.freeze()
 
-        return self._app.make_handler(loop=loop, **self._kwargs)
+        return self._app._make_handler(loop=loop, **self._kwargs)
 
     async def _cleanup_server(self):
         await self._app.cleanup()

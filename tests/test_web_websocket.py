@@ -6,6 +6,7 @@ from multidict import CIMultiDict
 
 from aiohttp import WSMessage, WSMsgType, signals
 from aiohttp.log import ws_logger
+from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
 from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
@@ -338,6 +339,25 @@ async def test_write_eof_idempotent(make_request):
     await ws.write_eof()
     await ws.write_eof()
     await ws.write_eof()
+
+
+async def test_receive_eofstream_in_reader(make_request, loop):
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    await ws.prepare(req)
+
+    ws._reader = mock.Mock()
+    exc = EofStream()
+    res = loop.create_future()
+    res.set_exception(exc)
+    ws._reader.read = make_mocked_coro(res)
+    ws._payload_writer.drain = mock.Mock()
+    ws._payload_writer.drain.return_value = loop.create_future()
+    ws._payload_writer.drain.return_value.set_result(True)
+
+    msg = await ws.receive()
+    assert msg.type == WSMsgType.CLOSED
+    assert ws.closed
 
 
 async def test_receive_exc_in_reader(make_request, loop):

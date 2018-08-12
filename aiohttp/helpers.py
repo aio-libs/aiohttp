@@ -14,9 +14,11 @@ import sys
 import time
 import weakref
 from collections import namedtuple
+from collections.abc import Mapping as ABCMapping
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple  # noqa
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -30,17 +32,25 @@ from .abc import AbstractAccessLogger
 from .log import client_logger
 
 
-__all__ = ('BasicAuth',)
+__all__ = ('BasicAuth', 'ChainMapProxy')
 
 PY_36 = sys.version_info >= (3, 6)
+PY_37 = sys.version_info >= (3, 7)
 
-if sys.version_info < (3, 7):
+if not PY_37:
     import idna_ssl
     idna_ssl.patch_match_hostname()
 
 
-sentinel = object()
-NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))
+sentinel = object()  # type: Any
+NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))  # type: bool
+
+# N.B. sys.flags.dev_mode is available on Python 3.7+, use getattr
+# for compatibility with older versions
+DEBUG = (getattr(sys.flags, 'dev_mode', False) or
+         (not sys.flags.ignore_environment and
+          bool(os.environ.get('PYTHONASYNCIODEBUG'))))
+
 
 CHAR = set(chr(i) for i in range(0, 128))
 CTL = set(chr(i) for i in range(0, 32)) | {chr(127), }
@@ -50,8 +60,10 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
 coroutines = asyncio.coroutines
-old_debug = coroutines._DEBUG
-coroutines._DEBUG = False
+old_debug = coroutines._DEBUG  # type: ignore
+
+# prevent "coroutine noop was never awaited" warning.
+coroutines._DEBUG = False  # type: ignore
 
 
 @asyncio.coroutine
@@ -59,13 +71,15 @@ def noop(*args, **kwargs):
     return
 
 
-coroutines._DEBUG = old_debug
+coroutines._DEBUG = old_debug  # type: ignore
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     """Http basic authentication helper."""
 
-    def __new__(cls, login, password='', encoding='latin1'):
+    def __new__(cls, login: str,
+                password: str='',
+                encoding: str='latin1') -> 'BasicAuth':
         if login is None:
             raise ValueError('None is not allowed as login value')
 
@@ -79,7 +93,7 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         return super().__new__(cls, login, password, encoding)
 
     @classmethod
-    def decode(cls, auth_header, encoding='latin1'):
+    def decode(cls, auth_header: str, encoding: str='latin1') -> 'BasicAuth':
         """Create a BasicAuth object from an Authorization HTTP header."""
         split = auth_header.strip().split(' ')
         if len(split) == 2:
@@ -99,7 +113,8 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
         return cls(username, password, encoding=encoding)
 
     @classmethod
-    def from_url(cls, url, *, encoding='latin1'):
+    def from_url(cls, url: URL,
+                 *, encoding: str='latin1') -> Optional['BasicAuth']:
         """Create BasicAuth from url."""
         if not isinstance(url, URL):
             raise TypeError("url should be yarl.URL instance")
@@ -107,13 +122,13 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
             return None
         return cls(url.user, url.password or '', encoding=encoding)
 
-    def encode(self):
+    def encode(self) -> str:
         """Encode credentials."""
         creds = ('%s:%s' % (self.login, self.password)).encode(self.encoding)
         return 'Basic %s' % base64.b64encode(creds).decode(self.encoding)
 
 
-def strip_auth_from_url(url):
+def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
     auth = BasicAuth.from_url(url)
     if auth is None:
         return url, None
@@ -180,15 +195,10 @@ def proxies_from_env():
 
 
 def current_task(loop=None):
-    if loop is None:
-        loop = asyncio.get_event_loop()
-
-    task = asyncio.Task.current_task(loop=loop)
-    if task is None:
-        if hasattr(loop, 'current_task'):
-            task = loop.current_task()
-
-    return task
+    if PY_37:
+        return asyncio.current_task(loop=loop)
+    else:
+        return asyncio.Task.current_task(loop=loop)
 
 
 def isasyncgenfunction(obj):
@@ -278,6 +288,9 @@ def content_disposition_header(disptype, quote_fields=True, **params):
     return value
 
 
+KeyMethod = namedtuple('KeyMethod', 'key method')
+
+
 class AccessLogger(AbstractAccessLogger):
     """Helper object to log access.
 
@@ -321,9 +334,7 @@ class AccessLogger(AbstractAccessLogger):
     LOG_FORMAT = '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
     FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
     CLEANUP_RE = re.compile(r'(%[^s])')
-    _FORMAT_CACHE = {}
-
-    KeyMethod = namedtuple('KeyMethod', 'key method')
+    _FORMAT_CACHE = {}  # type: Dict[str, Tuple[str, List[KeyMethod]]]
 
     def __init__(self, logger, log_format=LOG_FORMAT):
         """Initialise the logger.
@@ -375,7 +386,7 @@ class AccessLogger(AbstractAccessLogger):
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
                 m = functools.partial(m, atom[1])
 
-            methods.append(self.KeyMethod(format_key, m))
+            methods.append(KeyMethod(format_key, m))
 
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
@@ -475,13 +486,10 @@ class reify:
 
     def __init__(self, wrapped):
         self.wrapped = wrapped
-        try:
-            self.__doc__ = wrapped.__doc__
-        except Exception:  # pragma: no cover
-            self.__doc__ = ""
+        self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst, owner, _sentinel=sentinel):
+    def __get__(self, inst, owner):
         try:
             try:
                 return inst._cache[self.name]
@@ -497,6 +505,15 @@ class reify:
     def __set__(self, inst, value):
         raise AttributeError("reified property is read-only")
 
+
+reify_py = reify
+
+try:
+    from ._helpers import reify as reify_c
+    if not NO_EXTENSIONS:
+        reify = reify_c  # type: ignore
+except ImportError:
+    pass
 
 _ipv4_pattern = (r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
                  r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
@@ -695,25 +712,25 @@ class HeadersMixin:
             self._content_type, self._content_dict = cgi.parse_header(raw)
 
     @property
-    def content_type(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
+    def content_type(self):
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(_CONTENT_TYPE)
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_type
 
     @property
-    def charset(self, *, _CONTENT_TYPE=hdrs.CONTENT_TYPE):
+    def charset(self):
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(_CONTENT_TYPE)
+        raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
         return self._content_dict.get('charset')
 
     @property
-    def content_length(self, *, _CONTENT_LENGTH=hdrs.CONTENT_LENGTH):
+    def content_length(self):
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(_CONTENT_LENGTH)
+        content_length = self._headers.get(hdrs.CONTENT_LENGTH)
 
         if content_length:
             return int(content_length)
@@ -727,3 +744,46 @@ def set_result(fut, result):
 def set_exception(fut, exc):
     if not fut.done():
         fut.set_exception(exc)
+
+
+class ChainMapProxy(ABCMapping):
+    __slots__ = ('_maps',)
+
+    def __init__(self, maps):
+        self._maps = tuple(maps)
+
+    def __init_subclass__(cls):
+        raise TypeError("Inheritance class {} from ChainMapProxy "
+                        "is forbidden".format(cls.__name__))
+
+    def __getitem__(self, key):
+        for mapping in self._maps:
+            try:
+                return mapping[key]
+            except KeyError:
+                pass
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        return self[key] if key in self else default
+
+    def __len__(self):
+        # reuses stored hash values if possible
+        return len(set().union(*self._maps))
+
+    def __iter__(self):
+        d = {}
+        for mapping in reversed(self._maps):
+            # reuses stored hash values if possible
+            d.update(mapping)
+        return iter(d)
+
+    def __contains__(self, key):
+        return any(key in m for m in self._maps)
+
+    def __bool__(self):
+        return any(self._maps)
+
+    def __repr__(self):
+        content = ", ".join(map(repr, self._maps))
+        return 'ChainMapProxy({})'.format(content)

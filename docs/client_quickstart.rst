@@ -1,7 +1,8 @@
 .. _aiohttp-client-quickstart:
 
-Client Quickstart
-=================
+===================
+ Client Quickstart
+===================
 
 .. currentmodule:: aiohttp
 
@@ -16,7 +17,7 @@ Let's get started with some simple examples.
 
 
 Make a Request
---------------
+==============
 
 Begin by importing the aiohttp module::
 
@@ -62,7 +63,7 @@ Other HTTP methods are available as well::
 
 
 Passing Parameters In URLs
---------------------------
+==========================
 
 You often want to send some sort of data in the URL's query string. If
 you were constructing the URL by hand, this data would be given as key/value
@@ -90,7 +91,7 @@ that case you can specify multiple values for each key::
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
                            params=params) as r:
-        expect == 'http://httpbin.org/get?key=value2&key=value1'
+        expect = 'http://httpbin.org/get?key=value2&key=value1'
         assert str(r.url) == expect
 
 You can also pass :class:`str` content as param, but beware -- content
@@ -123,7 +124,7 @@ is not encoded by library. Note that ``+`` is not encoded::
    Passing *params* overrides ``encoded=True``, never use both options.
 
 Response Content and Status Code
---------------------------------
+================================
 
 We can read the content of the server's response and it's status
 code. Consider the GitHub time-line again::
@@ -144,7 +145,7 @@ specify custom encoding for the :meth:`~ClientResponse.text` method::
 
 
 Binary Response Content
------------------------
+=======================
 
 You can also access the response body as bytes, for non-text requests::
 
@@ -161,7 +162,7 @@ You can enable ``brotli`` transfer-encodings support,
 just install  `brotlipy <https://github.com/python-hyper/brotlipy>`_.
 
 JSON Request
-------------
+============
 
 Any of session's request methods like :func:`request`,
 :meth:`ClientSession.get`, :meth:`ClientSesssion.post` etc. accept
@@ -188,7 +189,7 @@ parameter::
    incompatible.
 
 JSON Response Content
----------------------
+=====================
 
 There's also a built-in JSON decoder, in case you're dealing with JSON data::
 
@@ -207,7 +208,7 @@ decoder functions for the :meth:`~ClientResponse.json` call.
 
 
 Streaming Response Content
---------------------------
+==========================
 
 While methods :meth:`~ClientResponse.read`,
 :meth:`~ClientResponse.json` and :meth:`~ClientResponse.text` are very
@@ -237,7 +238,7 @@ It is not possible to use :meth:`~ClientResponse.read`,
 explicit reading from :attr:`~ClientResponse.content`.
 
 More complicated POST requests
-------------------------------
+==============================
 
 Typically, you want to send some form-encoded data -- much like an HTML form.
 To do this, simply pass a dictionary to the *data* argument. Your
@@ -274,11 +275,11 @@ If you want to send JSON data::
 
 To send text with appropriate content-type just use ``text`` attribute ::
 
-    async with session.post(url, text='Тест') as resp:
+    async with session.post(url, data='Тест') as resp:
         ...
 
 POST a Multipart-Encoded File
------------------------------
+=============================
 
 To upload Multipart-encoded files::
 
@@ -306,7 +307,7 @@ for supported format information.
 
 
 Streaming uploads
------------------
+=================
 
 :mod:`aiohttp` supports multiple types of streaming uploads, which allows you to
 send large files without reading them into memory.
@@ -317,15 +318,14 @@ As a simple case, simply provide a file-like object for your body::
        await session.post('http://httpbin.org/post', data=f)
 
 
-Or you can use :class:`aiohttp.streamer` decorator::
+Or you can use *asynchronous generator*::
 
-  @aiohttp.streamer
-  async def file_sender(writer, file_name=None):
-      with open(file_name, 'rb') as f:
-          chunk = f.read(2**16)
+  async def file_sender(file_name=None):
+      async with aiofiles.open(file_name, 'rb') as f:
+          chunk = await f.read(64*1024)
           while chunk:
-              await writer.write(chunk)
-              chunk = f.read(2**16)
+              yield chunk
+              chunk = await f.read(64*1024)
 
   # Then you can use file_sender as a data provider:
 
@@ -334,11 +334,31 @@ Or you can use :class:`aiohttp.streamer` decorator::
       print(await resp.text())
 
 
+Because the :attr:`~aiohttp.ClientResponse.content` attribute is a
+:class:`~aiohttp.StreamReader` (provides async iterator protocol), you
+can chain get and post requests together::
+
+   resp = await session.get('http://python.org')
+   await session.post('http://httpbin.org/post',
+                      data=resp.content)
+
+.. note::
+
+   Python 3.5 has no native support for asynchronous generators, use
+   ``async_generator`` library as workaround.
+
+.. deprecated:: 3.1
+
+   ``aiohttp`` still supports ``aiohttp.streamer`` decorator but this
+   approach is deprecated in favor of *asynchronous generators* as
+   shown above.
+
+
 .. _aiohttp-client-websockets:
 
 
 WebSockets
-----------
+==========
 
 :mod:`aiohttp` works with client websockets out-of-the-box.
 
@@ -348,9 +368,7 @@ parameter and returns :class:`ClientWebSocketResponse`, with that
 object you can communicate with websocket server using response's
 methods::
 
-   session = aiohttp.ClientSession()
    async with session.ws_connect('http://example.org/ws') as ws:
-
        async for msg in ws:
            if msg.type == aiohttp.WSMsgType.TEXT:
                if msg.data == 'close cmd':
@@ -358,8 +376,6 @@ methods::
                    break
                else:
                    await ws.send_str(msg.data + '/answer')
-           elif msg.type == aiohttp.WSMsgType.CLOSED:
-               break
            elif msg.type == aiohttp.WSMsgType.ERROR:
                break
 
@@ -370,31 +386,54 @@ multiple writer tasks which can only send data asynchronously (by
 ``await ws.send_str('data')`` for example).
 
 
+.. _aiohttp-client-timeouts:
 
 Timeouts
---------
+========
 
-By default all IO operations have 5min timeout. The timeout may be
-overridden by passing ``timeout`` parameter into
-:meth:`ClientSession.get` and family::
+Timeout settings a stored in :class:`ClientTimeout` data structure.
 
-    async with session.get('https://github.com', timeout=60) as r:
+By default *aiohttp* uses a *total* 5min timeout, it means that the
+whole operation should finish in 5 minutes.
+
+The value could be overridden by *timeout* parameter for the session::
+
+    timeout = aiohttp.ClientTimeout(total=60)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         ...
 
-``None`` or ``0`` disables timeout check.
+Timeout could be overridden for a request like :meth:`ClientSession.get`::
 
-The example wraps a client call in :func:`async_timeout.timeout` context
-manager, adding timeout for both connecting and response body
-reading procedures::
+    async with session.get(url, timeout=timeout) as resp:
+        ...
 
-    import async_timeout
+Supported :class:`ClientTimeout` fields are:
 
-    with async_timeout.timeout(0.001):
-        async with session.get('https://github.com') as r:
-            await r.text()
+   ``total``
 
+      The whole operation time including connection
+      establishment, request sending and response reading.
 
-.. note::
+   ``connect``
 
-   Timeout is cumulative time, it includes all operations like sending request,
-   redirects, response parsing, consuming response, etc.
+      Total timeout for acquiring a connection from pool.  The time
+      consists connection establishment for a new connection or
+      waiting for a free connection from a pool if pool connection
+      limits are exceeded.
+
+   ``sock_connect``
+
+      A timeout for connecting to a peer for a new connection, not
+      given from a pool.
+
+   ``sock_read``
+
+      The maximum allowed timeout for period between reading a new
+      data portion from a peer.
+
+All fields a floats, ``None`` or ``0`` disables a particular timeout check.
+
+Thus the default timeout is::
+
+   aiohttp.ClientTimeout(total=5*60, connect=None,
+                         sock_connect=None, sock_read=None)

@@ -12,11 +12,11 @@ from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import hdrs, web
+from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import PY_36
+from aiohttp.helpers import DEBUG, PY_36
 
 
 @pytest.fixture
@@ -367,16 +367,54 @@ async def test_reraise_os_error(create_session):
     req.send = mock.Mock(side_effect=err)
     session = create_session(request_class=req_factory)
 
-    async def create_connection(req, traces=None):
+    async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
         return mock.Mock()
     session._connector._create_connection = create_connection
+    session._connector._release = mock.Mock()
 
     with pytest.raises(aiohttp.ClientOSError) as ctx:
         await session.request('get', 'http://example.com')
     e = ctx.value
     assert e.errno == err.errno
     assert e.strerror == err.strerror
+
+
+async def test_close_conn_on_error(create_session):
+    class UnexpectedException(BaseException):
+        pass
+
+    err = UnexpectedException("permission error")
+    req = mock.Mock()
+    req_factory = mock.Mock(return_value=req)
+    req.send = mock.Mock(side_effect=err)
+    session = create_session(request_class=req_factory)
+
+    connections = []
+    original_connect = session._connector.connect
+
+    async def connect(req, traces, timeout):
+        conn = await original_connect(req, traces, timeout)
+        connections.append(conn)
+        return conn
+
+    async def create_connection(req, traces, timeout):
+        # return self.transport, self.protocol
+        conn = mock.Mock()
+        return conn
+
+    session._connector.connect = connect
+    session._connector._create_connection = create_connection
+    session._connector._release = mock.Mock()
+
+    with pytest.raises(UnexpectedException):
+        async with session.request('get', 'http://example.com') as resp:
+            await resp.text()
+
+    # normally called during garbage collection.  triggers an exception
+    # if the connection wasn't already closed
+    for c in connections:
+        c.__del__()
 
 
 async def test_cookie_jar_usage(loop, aiohttp_client):
@@ -602,7 +640,28 @@ def test_client_session_inheritance():
             pass
 
 
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
 def test_client_session_custom_attr(loop):
     session = ClientSession(loop=loop)
     with pytest.warns(DeprecationWarning):
         session.custom = None
+
+
+def test_client_session_timeout_args(loop):
+    session1 = ClientSession(loop=loop)
+    assert session1._timeout == client.DEFAULT_TIMEOUT
+
+    session2 = ClientSession(loop=loop, read_timeout=20*60, conn_timeout=30*60)
+    assert session2._timeout == client.ClientTimeout(total=20*60,
+                                                     connect=30*60)
+
+    with pytest.raises(ValueError):
+        ClientSession(loop=loop,
+                      timeout=client.ClientTimeout(total=10*60),
+                      read_timeout=20*60)
+
+    with pytest.raises(ValueError):
+        ClientSession(loop=loop,
+                      timeout=client.ClientTimeout(total=10 * 60),
+                      conn_timeout=30 * 60)

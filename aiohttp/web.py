@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import socket
 import sys
 from argparse import ArgumentParser
@@ -7,15 +8,16 @@ from importlib import import_module
 
 from . import (helpers, web_app, web_exceptions, web_fileresponse,
                web_middlewares, web_protocol, web_request, web_response,
-               web_runner, web_server, web_urldispatcher, web_ws)
+               web_routedef, web_runner, web_server, web_urldispatcher, web_ws)
 from .log import access_logger
-from .web_app import Application  # noqa
+from .web_app import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
 from .web_middlewares import *  # noqa
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
+from .web_routedef import *  # noqa
 from .web_runner import *  # noqa
 from .web_runner import AppRunner, GracefulExit, SockSite, TCPSite, UnixSite
 from .web_server import *  # noqa
@@ -28,6 +30,7 @@ __all__ = (web_protocol.__all__ +
            web_fileresponse.__all__ +
            web_request.__all__ +
            web_response.__all__ +
+           web_routedef.__all__ +
            web_exceptions.__all__ +
            web_urldispatcher.__all__ +
            web_ws.__all__ +
@@ -174,6 +177,8 @@ def main(argv):
     if args.path is not None and not hasattr(socket, 'AF_UNIX'):
         arg_parser.error("file system paths not supported by your operating"
                          " environment")
+
+    logging.basicConfig(level=logging.DEBUG)
 
     app = func(extra_argv)
     run_app(app, host=args.hostname, port=args.port, path=args.path)

@@ -9,7 +9,7 @@ import zlib
 from enum import IntEnum
 from struct import Struct
 
-from .helpers import NO_EXTENSIONS, noop
+from .helpers import NO_EXTENSIONS
 from .log import ws_logger
 
 
@@ -138,7 +138,7 @@ if NO_EXTENSIONS:
     _websocket_mask = _websocket_mask_python
 else:
     try:
-        from ._websocket import _websocket_mask_cython
+        from ._websocket import _websocket_mask_cython  # type: ignore
         _websocket_mask = _websocket_mask_cython
     except ImportError:  # pragma: no cover
         _websocket_mask = _websocket_mask_python
@@ -236,11 +236,12 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
 
-    def __init__(self, queue, compress=True):
+    def __init__(self, queue, max_msg_size, compress=True):
         self.queue = queue
+        self._max_msg_size = max_msg_size
 
         self._exc = None
-        self._partial = []
+        self._partial = bytearray()
         self._state = WSParserState.READ_HEADER
 
         self._opcode = None
@@ -319,7 +320,13 @@ class WebSocketReader:
                     # got partial frame payload
                     if opcode != WSMsgType.CONTINUATION:
                         self._opcode = opcode
-                    self._partial.append(payload)
+                    self._partial.extend(payload)
+                    if (self._max_msg_size and
+                            len(self._partial) >= self._max_msg_size):
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            "Message size {} exceeds limit {}".format(
+                                len(self._partial), self._max_msg_size))
                 else:
                     # previous frame was non finished
                     # we should get continuation opcode
@@ -334,15 +341,29 @@ class WebSocketReader:
                         opcode = self._opcode
                         self._opcode = None
 
-                    self._partial.append(payload)
-
-                    payload_merged = b''.join(self._partial)
+                    self._partial.extend(payload)
+                    if (self._max_msg_size and
+                            len(self._partial) >= self._max_msg_size):
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            "Message size {} exceeds limit {}".format(
+                                len(self._partial), self._max_msg_size))
 
                     # Decompress process must to be done after all packets
                     # received.
                     if compressed:
+                        self._partial.extend(_WS_DEFLATE_TRAILING)
                         payload_merged = self._decompressobj.decompress(
-                            payload_merged + _WS_DEFLATE_TRAILING)
+                            self._partial, self._max_msg_size)
+                        if self._decompressobj.unconsumed_tail:
+                            left = len(self._decompressobj.unconsumed_tail)
+                            raise WebSocketError(
+                                WSCloseCode.MESSAGE_TOO_BIG,
+                                "Decompressed message size exceeds limit {}".
+                                format(self._max_msg_size + left,
+                                       self._max_msg_size))
+                    else:
+                        payload_merged = bytes(self._partial)
 
                     self._partial.clear()
 
@@ -527,7 +548,7 @@ class WebSocketWriter:
         self._output_size = 0
         self._compressobj = None
 
-    def _send_frame(self, message, opcode, compress=None):
+    async def _send_frame(self, message, opcode, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if self._closing:
             ws_logger.warning('websocket connection is closing.')
@@ -585,37 +606,35 @@ class WebSocketWriter:
 
         if self._output_size > self._limit:
             self._output_size = 0
-            return self.protocol._drain_helper()
+            await self.protocol._drain_helper()
 
-        return noop()
-
-    def pong(self, message=b''):
+    async def pong(self, message=b''):
         """Send pong message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(message, WSMsgType.PONG)
+        return await self._send_frame(message, WSMsgType.PONG)
 
-    def ping(self, message=b''):
+    async def ping(self, message=b''):
         """Send ping message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
-        return self._send_frame(message, WSMsgType.PING)
+        return await self._send_frame(message, WSMsgType.PING)
 
-    def send(self, message, binary=False, compress=None):
+    async def send(self, message, binary=False, compress=None):
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         if binary:
-            return self._send_frame(message, WSMsgType.BINARY, compress)
+            return await self._send_frame(message, WSMsgType.BINARY, compress)
         else:
-            return self._send_frame(message, WSMsgType.TEXT, compress)
+            return await self._send_frame(message, WSMsgType.TEXT, compress)
 
-    def close(self, code=1000, message=b''):
+    async def close(self, code=1000, message=b''):
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode('utf-8')
         try:
-            return self._send_frame(
+            return await self._send_frame(
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE)
         finally:
             self._closing = True

@@ -1,6 +1,5 @@
 import asyncio
 import asyncio.streams
-import http.server
 import traceback
 import warnings
 from collections import deque
@@ -9,9 +8,11 @@ from html import escape as html_escape
 
 import yarl
 
-from . import helpers, http
+from . import helpers
+from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout
-from .http import HttpProcessingError, HttpRequestParser, StreamWriter
+from .http import (HttpProcessingError, HttpRequestParser, HttpVersion10,
+                   RawRequestMessage, StreamWriter)
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD
 from .tcp_helpers import tcp_cork, tcp_keepalive, tcp_nodelay
@@ -20,10 +21,10 @@ from .web_request import BaseRequest
 from .web_response import Response
 
 
-__all__ = ('RequestHandler', 'RequestPayloadError')
+__all__ = ('RequestHandler', 'RequestPayloadError', 'PayloadAccessError')
 
-ERROR = http.RawRequestMessage(
-    'UNKNOWN', '/', http.HttpVersion10, {},
+ERROR = RawRequestMessage(
+    'UNKNOWN', '/', HttpVersion10, {},
     {}, True, False, False, False, yarl.URL('/'))
 
 
@@ -31,7 +32,11 @@ class RequestPayloadError(Exception):
     """Payload parsing error."""
 
 
-class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
+class PayloadAccessError(Exception):
+    """Payload was accesed after responce was sent."""
+
+
+class RequestHandler(BaseProtocol):
     """HTTP protocol implementation.
 
     RequestHandler handles incoming HTTP request. It reads request line,
@@ -70,9 +75,16 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     :param int max_headers: Optional maximum header size
 
     """
-    _request_count = 0
-    _keepalive = False  # keep transport open
     KEEPALIVE_RESCHEDULE_DELAY = 1
+
+    __slots__ = ('_request_count', '_keep_alive', '_manager',
+                 '_request_handler', '_request_factory', '_tcp_keepalive',
+                 '_keepalive_time', '_keepalive_handle', '_keepalive_timeout',
+                 '_lingering_time', '_messages', '_message_tail',
+                 '_waiter', '_error_handler', '_task_handler',
+                 '_upgrade', '_payload_parser', '_request_parser',
+                 '_reading_paused', 'logger', 'debug', 'access_log',
+                 'access_logger', '_close', '_force_close')
 
     def __init__(self, manager, *, loop=None,
                  keepalive_timeout=75,  # NGINX default value is 75 secs
@@ -89,8 +101,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         super().__init__(loop=loop)
 
-        self._loop = loop if loop is not None else asyncio.get_event_loop()
-
+        self._request_count = 0
+        self._keepalive = False
         self._manager = manager
         self._request_handler = manager.request_handler
         self._request_factory = manager.request_factory
@@ -106,7 +118,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
 
         self._waiter = None
         self._error_handler = None
-        self._task_handler = self._loop.create_task(self.start())
+        self._task_handler = None
 
         self._upgrade = False
         self._payload_parser = None
@@ -117,7 +129,6 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             max_headers=max_headers,
             payload_exception=RequestPayloadError)
 
-        self.transport = None
         self._reading_paused = False
 
         self.logger = logger
@@ -156,14 +167,16 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         # wait for handlers
         with suppress(asyncio.CancelledError, asyncio.TimeoutError):
             with CeilTimeout(timeout, loop=self._loop):
-                if self._error_handler and not self._error_handler.done():
+                if (self._error_handler is not None and
+                        not self._error_handler.done()):
                     await self._error_handler
 
-                if self._task_handler and not self._task_handler.done():
+                if (self._task_handler is not None and
+                        not self._task_handler.done()):
                     await self._task_handler
 
         # force-close non-idle handler
-        if self._task_handler:
+        if self._task_handler is not None:
             self._task_handler.cancel()
 
         if self.transport is not None:
@@ -173,13 +186,12 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.transport = transport
-
         if self._tcp_keepalive:
             tcp_keepalive(transport)
 
         tcp_cork(transport, False)
         tcp_nodelay(transport, True)
+        self._task_handler = self._loop.create_task(self.start())
         self._manager.connection_made(self, transport)
 
     def connection_lost(self, exc):
@@ -192,12 +204,11 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         self._request_factory = None
         self._request_handler = None
         self._request_parser = None
-        self.transport = None
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
 
-        if self._task_handler:
+        if self._task_handler is not None:
             self._task_handler.cancel()
 
         if self._error_handler is not None:
@@ -233,14 +244,14 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 # something happened during parsing
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        StreamWriter(self, self.transport, self._loop),
+                        StreamWriter(self, self._loop),
                         400, exc, exc.message))
                 self.close()
             except Exception as exc:
                 # 500: internal error
                 self._error_handler = self._loop.create_task(
                     self.handle_parse_error(
-                        StreamWriter(self, self.transport, self._loop),
+                        StreamWriter(self, self._loop),
                         500, exc))
                 self.close()
             else:
@@ -287,14 +298,12 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         if self._waiter:
             self._waiter.cancel()
 
-    def force_close(self, send_last_heartbeat=False):
+    def force_close(self):
         """Force close connection"""
         self._force_close = True
         if self._waiter:
             self._waiter.cancel()
         if self.transport is not None:
-            if send_last_heartbeat:
-                self.transport.write(b"\r\n")
             self.transport.close()
             self.transport = None
 
@@ -318,7 +327,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
         # handler in idle state
         if self._waiter:
             if self._loop.time() > next:
-                self.force_close(send_last_heartbeat=True)
+                self.force_close()
                 return
 
         # not all request handlers are done,
@@ -373,7 +382,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                 now = loop.time()
 
             manager.requests_count += 1
-            writer = StreamWriter(self, self.transport, loop)
+            writer = StreamWriter(self, loop)
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:
@@ -391,7 +400,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     resp = self.handle_error(request, 500, exc)
                 else:
                     # Deprecation warning (See #2415)
-                    if isinstance(resp, HTTPException):
+                    if getattr(resp, '__http_exception__', False):
                         warnings.warn(
                             "returning HTTPException object is deprecated "
                             "(#2415) and will be removed, "
@@ -432,6 +441,8 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                     if not payload.is_eof() and not self._force_close:
                         self.log_debug('Uncompleted request.')
                         self.close()
+
+                payload.set_exception(PayloadAccessError())
 
             except asyncio.CancelledError:
                 self.log_debug('Ignored premature client disconnection ')

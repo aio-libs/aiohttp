@@ -55,12 +55,10 @@ Client example::
 
     import aiohttp
     import asyncio
-    import async_timeout
 
     async def fetch(session, url):
-        async with async_timeout.timeout(10):
-            async with session.get(url) as response:
-                return await response.text()
+        async with session.get(url) as response:
+            return await response.text()
 
     async def main():
         async with aiohttp.ClientSession() as session:
@@ -80,8 +78,8 @@ Server example::
         return web.Response(text=text)
 
     app = web.Application()
-    app.router.add_get('/', handle)
-    app.router.add_get('/{name}', handle)
+    app.add_routes([web.get('/', handle),
+                    web.get('/{name}', handle)])
 
     web.run_app(app)
 
@@ -100,7 +98,7 @@ changes.
 Tutorial
 ========
 
-:ref:`Polls tutorial <aiohttp-tutorial>`
+:ref:`Polls tutorial <aiohttp-demos-polls-beginning>`
 
 
 Source code
@@ -112,7 +110,7 @@ Please feel free to file an issue on the `bug tracker
 <https://github.com/aio-libs/aiohttp/issues>`_ if you have found a bug
 or have some suggestion in order to improve the library.
 
-The library uses `Travis <https://travis-ci.org/aio-libs/aiohttp>`_ for
+The library uses `Travis <https://travis-ci.com/aio-libs/aiohttp>`_ for
 Continuous Integration.
 
 
@@ -198,6 +196,7 @@ Table Of Contents
 
 .. toctree::
    :name: mastertoc
+   :maxdepth: 2
 
    client
    web

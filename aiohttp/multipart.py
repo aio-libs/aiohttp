@@ -14,7 +14,7 @@ from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HttpParser
-from .payload import (JsonPayload, LookupError, Payload, StringPayload,
+from .payload import (JsonPayload, LookupError, Order, Payload, StringPayload,
                       get_payload, payload_type)
 
 
@@ -434,7 +434,7 @@ class BodyPartReader:
         return content_disposition_filename(params, 'filename')
 
 
-@payload_type(BodyPartReader)
+@payload_type(BodyPartReader, order=Order.try_first)
 class BodyPartReaderPayload(Payload):
 
     def __init__(self, value, *args, **kwargs):
@@ -444,7 +444,7 @@ class BodyPartReaderPayload(Payload):
         if value.name is not None:
             params['name'] = value.name
         if value.filename is not None:
-            params['filename'] = value.name
+            params['filename'] = value.filename
 
         if params:
             self.set_content_disposition('attachment', **params)
@@ -796,7 +796,7 @@ class MultipartWriter(Payload):
         total += 2 + len(self._boundary) + 4  # b'--'+self._boundary+b'--\r\n'
         return total
 
-    async def write(self, writer):
+    async def write(self, writer, close_boundary=True):
         """Write body."""
         if not self._parts:
             return
@@ -818,7 +818,8 @@ class MultipartWriter(Payload):
 
             await writer.write(b'\r\n')
 
-        await writer.write(b'--' + self._boundary + b'--\r\n')
+        if close_boundary:
+            await writer.write(b'--' + self._boundary + b'--\r\n')
 
 
 class MultipartPayloadWriter:

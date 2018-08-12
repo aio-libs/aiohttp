@@ -43,7 +43,7 @@ The module is a **provisional**.
 But for :mod:`aiohttp.test_tools` the deprecation period could be reduced.
 
 Moreover we may break *backward compatibility* without *deprecation
-peroid* for some very strong reason.
+period* for some very strong reason.
 
 
 The Test Client and Servers
@@ -153,6 +153,7 @@ Pytest tooling has the following fixtures:
                   :meth:`aiohttp.web.Application.make_handler`
 
    .. versionchanged:: 3.0
+   .. deprecated:: 3.2
 
       The fixture was renamed from ``test_server`` to ``aiohttp_server``.
 
@@ -449,13 +450,13 @@ conditions that hard to reproduce on real server::
    :type app: aiohttp.web.Application
 
    :param writer: object for managing outcoming data
-   :type wirter: aiohttp.streams.StreamWriter
+   :type writer: aiohttp.StreamWriter
 
    :param transport: asyncio transport instance
    :type transport: asyncio.transports.Transport
 
    :param payload: raw payload reader object
-   :type  payload: aiohttp.streams.FlowControlStreamReader
+   :type  payload: aiohttp.StreamReader
 
    :param sslcontext: ssl.SSLContext object, for HTTPS connection
    :type sslcontext: ssl.SSLContext
@@ -478,14 +479,14 @@ Framework Agnostic Utilities
 
 High level test creation::
 
-    from aiohttp.test_utils import TestClient, loop_context
+    from aiohttp.test_utils import TestClient, TestServer, loop_context
     from aiohttp import request
 
     # loop_context is provided as a utility. You can use any
     # asyncio.BaseEventLoop class in it's place.
     with loop_context() as loop:
         app = _create_example_app()
-        with TestClient(app, loop=loop) as client:
+        with TestClient(TestServer(app), loop=loop) as client:
 
             async def test_get_route():
                 nonlocal client
@@ -500,11 +501,11 @@ High level test creation::
 If it's preferred to handle the creation / teardown on a more granular
 basis, the TestClient object can be used directly::
 
-    from aiohttp.test_utils import TestClient
+    from aiohttp.test_utils import TestClient, TestServer
 
     with loop_context() as loop:
         app = _create_example_app()
-        client = TestClient(app, loop=loop)
+        client = TestClient(TestSever(app), loop=loop)
         loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 
@@ -650,10 +651,9 @@ Test Client
    :param app_or_server: :class:`BaseTestServer` instance for making
                          client requests to it.
 
-                         If the parameter is
-                         :class:`aiohttp.web.Application` the tool
-                         creates :class:`TestServer` implicitly for
-                         serving the application.
+                         In order to pass a :class:`aiohttp.web.Application`
+                         you need to convert it first to :class:`TestServer`
+                         first with ``TestServer(app)``.
 
    :param cookie_jar: an optional :class:`aiohttp.CookieJar` instance,
                       may be useful with ``CookieJar(unsafe=True)``
@@ -684,6 +684,12 @@ Test Client
       :class:`BaseTestServer` test server instance used in conjunction
       with client.
 
+   .. attribute:: app
+
+      An alias for :attr:`self.server.app`. return ``None`` if
+      ``self.server`` is not :class:`TestServer`
+      instance(e.g. :class:`RawTestServer` instance for test low-level server).
+
    .. attribute:: session
 
       An internal :class:`aiohttp.ClientSession`.
@@ -709,7 +715,7 @@ Test Client
       Routes a request to tested http server.
 
       The interface is identical to
-      :meth:`asyncio.ClientSession.request`, except the loop kwarg is
+      :meth:`aiohttp.ClientSession.request`, except the loop kwarg is
       overridden by the instance used by the test server.
 
    .. comethod:: get(path, *args, **kwargs)

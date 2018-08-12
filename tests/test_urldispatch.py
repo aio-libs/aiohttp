@@ -11,8 +11,10 @@ import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
-from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource, DefaultRule,
-                                       Domain, MaskDomain, ResourceRoute,
+from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
+                                       Domain, DynamicResource,
+                                       MaskDomain, PlainResource,
+                                       ResourceRoute, StaticResource,
                                        SystemRoute, View,
                                        _default_expect_handler)
 
@@ -1212,3 +1214,36 @@ def test_deprecate_non_coroutine(router):
 
     with pytest.warns(DeprecationWarning):
         router.add_route('GET', '/handler', handler)
+
+
+def test_plain_resource_canonical():
+    canonical = '/plain/path'
+    res = PlainResource(path=canonical)
+    assert res.canonical == canonical
+
+
+def test_dynamic_resource_canonical():
+    canonicals = {
+        '/get/{name}': '/get/{name}',
+        '/get/{num:^\d+}': '/get/{num}',
+        r'/handler/{to:\d+}': r'/handler/{to}',
+        r'/{one}/{two:.+}': r'/{one}/{two}',
+    }
+    for pattern, canonical in canonicals.items():
+        res = DynamicResource(path=pattern)
+        assert res.canonical == canonical
+
+
+def test_static_resource_canonical():
+    prefix = '/prefix'
+    directory = str(os.path.dirname(aiohttp.__file__))
+    canonical = prefix
+    res = StaticResource(prefix=prefix, directory=directory)
+    assert res.canonical == canonical
+
+
+def test_prefixed_subapp_resource_canonical(app, loop):
+    canonical = '/prefix'
+    subapp = web.Application()
+    res = subapp.add_subapp(canonical, subapp)
+    assert res.canonical == canonical

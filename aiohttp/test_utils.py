@@ -10,7 +10,7 @@ import unittest
 from abc import ABC, abstractmethod
 from unittest import mock
 
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
@@ -159,7 +159,7 @@ class TestClient:
 
     def __init__(self, server, *, cookie_jar=None, loop=None, **kwargs):
         if not isinstance(server, BaseTestServer):
-            raise TypeError("server must be web.Application TestServer "
+            raise TypeError("server must be TestServer "
                             "instance, found type: %r" % type(server))
         self._server = server
         self._loop = loop
@@ -188,6 +188,10 @@ class TestClient:
         return self._server
 
     @property
+    def app(self):
+        return getattr(self._server, "app", None)
+
+    @property
     def session(self):
         """An internal aiohttp.ClientSession.
 
@@ -204,7 +208,7 @@ class TestClient:
     async def request(self, method, path, *args, **kwargs):
         """Routes a request to tested http server.
 
-        The interface is identical to asyncio.ClientSession.request,
+        The interface is identical to aiohttp.ClientSession.request,
         except the loop kwarg is overridden by the instance used by the
         test server.
 
@@ -410,8 +414,14 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     once they are done with the loop.
     """
     loop = loop_factory()
+    try:
+        module = loop.__class__.__module__
+        skip_watcher = 'uvloop' in module
+    except AttributeError:  # pragma: no cover
+        # Just in case
+        skip_watcher = True
     asyncio.set_event_loop(loop)
-    if sys.platform != "win32":
+    if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
         watcher = asyncio.SafeChildWatcher()
         watcher.attach_loop(loop)
@@ -485,11 +495,11 @@ def make_mocked_request(method, path, headers=None, *,
         closing = True
 
     if headers:
-        headers = CIMultiDict(headers)
+        headers = CIMultiDictProxy(CIMultiDict(headers))
         raw_hdrs = tuple(
             (k.encode('utf-8'), v.encode('utf-8')) for k, v in headers.items())
     else:
-        headers = CIMultiDict()
+        headers = CIMultiDictProxy(CIMultiDict())
         raw_hdrs = ()
 
     chunked = 'chunked' in headers.get(hdrs.TRANSFER_ENCODING, '').lower()
@@ -500,11 +510,12 @@ def make_mocked_request(method, path, headers=None, *,
     if app is None:
         app = _create_app_mock()
 
-    if protocol is sentinel:
-        protocol = mock.Mock()
-
     if transport is sentinel:
         transport = _create_transport(sslcontext)
+
+    if protocol is sentinel:
+        protocol = mock.Mock()
+        protocol.transport = transport
 
     if writer is sentinel:
         writer = mock.Mock()

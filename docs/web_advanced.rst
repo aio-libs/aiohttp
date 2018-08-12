@@ -6,6 +6,21 @@ Web Server Advanced
 .. currentmodule:: aiohttp.web
 
 
+Unicode support
+---------------
+
+*aiohttp* does :term:`requoting` of incoming request path.
+
+Unicode (non-ASCII) symbols are processed transparently on both *route
+adding* and *resolving* (internally everything is converted to
+:term:`percent-encoding` form by :term:`yarl` library).
+
+But in case of custom regular expressions for
+:ref:`aiohttp-web-variable-handler` please take care that URL is
+*percent encoded*: if you pass Unicode patterns they don't match to
+*requoted* path.
+
+
 Web Handler Cancellation
 ------------------------
 
@@ -43,7 +58,7 @@ For example the following snippet is not safe::
    async def handler(request):
        await asyncio.shield(write_to_redis(request))
        await asyncio.shield(write_to_postgres(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 Cancellation might be occurred just after saving data in REDIS,
 ``write_to_postgres`` will be not called.
@@ -53,7 +68,7 @@ spawned tasks::
 
    async def handler(request):
        request.loop.create_task(write_to_redis(request))
-       return web.Response('OK')
+       return web.Response(text='OK')
 
 In this case errors from ``write_to_redis`` are not awaited, it leads
 to many asyncio log messages *Future exception was never retrieved*
@@ -81,7 +96,7 @@ internal data structures and could terminate them gracefully::
    app.router.add_get('/', handler)
 
 All not finished jobs will be terminated on
-:attr:`aiohttp.web.Application.on_cleanup` signal.
+:attr:`Application.on_cleanup` signal.
 
 To prevent cancellation of the whole :term:`web-handler` use
 ``@atomic`` decorator::
@@ -103,8 +118,8 @@ It prevents all ``handler`` async function from cancellation,
 .. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
 
-Passing a coroutine to run_app
-------------------------------
+Passing a coroutine into run_app and Gunicorn
+---------------------------------------------
 
 :func:`run_app` accepts either application instance or a coroutine for
 making an application. The coroutine based approach allows to perform
@@ -169,7 +184,7 @@ The following example shows custom routing based on the *HTTP Accept* header::
        # do xml handling
 
    chooser = AcceptChooser()
-   app.router.add_get('/', chooser.do_route)
+   app.add_routes([web.get('/', chooser.do_route)])
 
    chooser.reg_acceptor('application/json', handle_json)
    chooser.reg_acceptor('application/xml', handle_xml)
@@ -190,21 +205,23 @@ But for development it's very convenient to handle static files by
 aiohttp server itself.
 
 To do it just register a new static route by
-:meth:`UrlDispatcher.add_static` call::
+:meth:`RouteTableDef.static` or :func:`static` calls::
 
-   app.router.add_static('/prefix', path_to_static_folder)
+   app.add_routes([web.static('/prefix', path_to_static_folder)])
+
+   routes.static('/prefix', path_to_static_folder)
 
 When a directory is accessed within a static route then the server responses
 to client with ``HTTP/403 Forbidden`` by default. Displaying folder index
 instead could be enabled with ``show_index`` parameter set to ``True``::
 
-   app.router.add_static('/prefix', path_to_static_folder, show_index=True)
+   web.static('/prefix', path_to_static_folder, show_index=True)
 
 When a symlink from the static directory is accessed, the server responses to
 client with ``HTTP/404 Not Found`` by default. To allow the server to follow
 symlinks, parameter ``follow_symlinks`` should be set to ``True``::
 
-   app.router.add_static('/prefix', path_to_static_folder, follow_symlinks=True)
+   web.static('/prefix', path_to_static_folder, follow_symlinks=True)
 
 When you want to enable cache busting,
 parameter ``append_version`` can be set to ``True``
@@ -215,7 +232,7 @@ The performance advantage of doing this is that we can tell the browser
 to cache these files indefinitely without worrying about the client not getting
 the latest version when the file changes::
 
-   app.router.add_static('/prefix', path_to_static_folder, append_version=True)
+   web.static('/prefix', path_to_static_folder, append_version=True)
 
 Template Rendering
 ------------------
@@ -237,11 +254,24 @@ After that you may use the template engine in your
 wrap your handlers with the  :func:`aiohttp_jinja2.template` decorator::
 
     @aiohttp_jinja2.template('tmpl.jinja2')
-    def handler(request):
+    async def handler(request):
         return {'name': 'Andrew', 'surname': 'Svetlov'}
 
 If you prefer the `Mako`_ template engine, please take a look at the
 `aiohttp_mako`_ library.
+
+.. warning::
+
+   :func:`aiohttp_jinja2.template` should be applied **before**
+   :meth:`RouteTableDef.get` decorator and family, e.g. it must be
+   the *first* (most *down* decorator in the chain)::
+
+
+      @routes.get('/path')
+      @aiohttp_jinja2.template('tmpl.jinja2')
+      async def handler(request):
+          return {'name': 'Andrew', 'surname': 'Svetlov'}
+
 
 .. _Mako: http://www.makotemplates.org/
 
@@ -276,7 +306,7 @@ handling every incoming request.
 .. warning::
 
    Parallel reads from websocket are forbidden, there is no
-   possibility to call :meth:`aiohttp.web.WebSocketResponse.receive`
+   possibility to call :meth:`WebSocketResponse.receive`
    from two tasks.
 
    See :ref:`FAQ section <aiohttp_faq_parallel_event_sources>` for
@@ -291,12 +321,18 @@ Data Sharing aka No Singletons Please
 :mod:`aiohttp.web` discourages the use of *global variables*, aka *singletons*.
 Every variable should have its own context that is *not global*.
 
-So, :class:`aiohttp.web.Application` and :class:`aiohttp.web.Request`
+So, :class:`Application` and :class:`Request`
 support a :class:`collections.abc.MutableMapping` interface (i.e. they are
 dict-like objects), allowing them to be used as data stores.
 
+
+.. _aiohttp-web-data-sharing-app-config:
+
+Application's config
+^^^^^^^^^^^^^^^^^^^^
+
 For storing *global-like* variables, feel free to save them in an
-:class:`~.Application` instance::
+:class:`Application` instance::
 
     app['my_private_key'] = data
 
@@ -305,8 +341,24 @@ and get it back in the :term:`web-handler`::
     async def handler(request):
         data = request.app['my_private_key']
 
-Variables that are only needed for the lifetime of a :class:`~.Request`, can be
-stored in a :class:`~.Request`::
+In case of :ref:`nested applications
+<aiohttp-web-nested-applications>` the desired lookup strategy could
+be the following:
+
+1. Search the key in the current nested application.
+2. If the key is not found continue searching in the parent application(s).
+
+For this please use :attr:`Request.config_dict` read-only property::
+
+    async def handler(request):
+        data = request.config_dict['my_private_key']
+
+
+Request's storage
+^^^^^^^^^^^^^^^^^
+
+Variables that are only needed for the lifetime of a :class:`Request`, can be
+stored in a :class:`Request`::
 
     async def handler(request):
       request['my_private_key'] = "data"
@@ -316,7 +368,10 @@ This is mostly useful for :ref:`aiohttp-web-middlewares` and
 :ref:`aiohttp-web-signals` handlers to store data for further processing by the
 next handlers in the chain.
 
-:class:`aiohttp.web.StreamResponse` and :class:`aiohttp.web.Response` objects
+Response's storage
+^^^^^^^^^^^^^^^^^^
+
+:class:`StreamResponse` and :class:`Response` objects
 also support :class:`collections.abc.MutableMapping` interface. This is useful
 when you want to share data with signals and middlewares once all the work in
 the handler is done::
@@ -326,6 +381,9 @@ the handler is done::
       response['my_metric'] = 123
       return response
 
+
+Naming hint
+^^^^^^^^^^^
 
 To avoid clashing with other *aiohttp* users and third-party libraries, please
 choose a unique key name for storing data.
@@ -362,8 +420,8 @@ response. For example, here's a simple *middleware* which appends
 Every *middleware* should accept two parameters, a :class:`request
 <Request>` instance and a *handler*, and return the response or raise
 an exception. If the exception is not an instance of
-:exc:`aiohttp.web.HTTPException` it is converted to ``500``
-:exc:`aiohttp.web.HTTPInternalServerError` after processing the
+:exc:`HTTPException` it is converted to ``500``
+:exc:`HTTPInternalServerError` after processing the
 middlewares chain.
 
 .. warning::
@@ -393,7 +451,7 @@ The following code demonstrates middlewares execution order::
 
    from aiohttp import web
 
-   def test(request):
+   async def test(request):
        print('Handler function called')
        return web.Response(text="Hello")
 
@@ -449,42 +507,22 @@ a JSON REST service::
     app = web.Application(middlewares=[error_middleware])
 
 
-Old Style Middleware
-^^^^^^^^^^^^^^^^^^^^
+Middleware Factory
+^^^^^^^^^^^^^^^^^^
 
-.. deprecated:: 2.3
+A *middleware factory* is a function that creates a middleware with passed arguments. For example, here's a trivial *middleware factory*::
 
-   Prior to *v2.3* middleware required an outer *middleware factory*
-   which returned the middleware coroutine. Since *v2.3* this is not
-   required; instead the ``@middleware`` decorator should
-   be used.
-
-Old style middleware (with an outer factory and no ``@middleware``
-decorator) is still supported. Furthermore, old and new style middleware
-can be mixed.
-
-A *middleware factory* is simply a coroutine that implements the logic of a
-*middleware*. For example, here's a trivial *middleware factory*::
-
-    async def middleware_factory(app, handler):
-        async def middleware_handler(request):
+    def middleware_factory(text):
+        @middleware
+        async def sample_middleware(request, handler):
             resp = await handler(request)
-            resp.text = resp.text + ' wink'
+            resp.text = resp.text + text
             return resp
-        return middleware_handler
+        return sample_middleware
 
-A *middleware factory* should accept two parameters, an
-:class:`app <Application>` instance and a *handler*, and return a new handler.
+Remember that contrary to regular middlewares you need the result of a middleware factory not the function itself. So when passing a middleware factory to an app you actually need to call it::
 
-.. note::
-
-   Both the outer *middleware_factory* coroutine and the inner
-   *middleware_handler* coroutine are called for every request handled.
-
-*Middleware factories* should return a new handler that has the same signature
-as a :ref:`request handler <aiohttp-web-handler>`. That is, it should accept a
-single :class:`Request` instance and return a :class:`Response`, or raise an
-exception.
+    app = web.Application(middlewares=[middleware_factory(' wink')])
 
 .. _aiohttp-web-signals:
 
@@ -497,10 +535,10 @@ has been prepared, they can't customize a :class:`Response` **while** it's
 being prepared. For this :mod:`aiohttp.web` provides *signals*.
 
 For example, a middleware can only change HTTP headers for *unprepared*
-responses (see :meth:`~aiohttp.web.StreamResponse.prepare`), but sometimes we
+responses (see :meth:`StreamResponse.prepare`), but sometimes we
 need a hook for changing HTTP headers for streamed responses and WebSockets.
 This can be accomplished by subscribing to the
-:attr:`~aiohttp.web.Application.on_response_prepare` signal::
+:attr:`Application.on_response_prepare` signal::
 
     async def on_prepare(request, response):
         response.headers['My-Header'] = 'value'
@@ -508,8 +546,8 @@ This can be accomplished by subscribing to the
     app.on_response_prepare.append(on_prepare)
 
 
-Additionally, the :attr:`~aiohttp.web.Application.on_startup` and
-:attr:`~aiohttp.web.Application.on_cleanup` signals can be subscribed to for
+Additionally, the :attr:`Application.on_startup` and
+:attr:`Application.on_cleanup` signals can be subscribed to for
 application component setup and tear down accordingly.
 
 The following example will properly initialize and dispose an aiopg connection
@@ -537,17 +575,55 @@ engine::
 Signal handlers should not return a value but may modify incoming mutable
 parameters.
 
-Signal handlers will be run sequentially, in order they were added. If handler
-is asynchronous, it will be awaited before calling next one.
+Signal handlers will be run sequentially, in order they were
+added. All handlers must be asynchronous since *aiohttp* 3.0.
 
-.. warning::
+.. _aiohttp-web-cleanup-ctx:
 
-   Signals API has provisional status, meaning it may be changed in future
-   releases.
+Cleanup Context
+---------------
 
-   Signal subscription and sending will most likely be the same, but signal
-   object creation is subject to change. As long as you are not creating new
-   signals, but simply reusing existing ones, you will not be affected.
+Bare :attr:`Application.on_startup` / :attr:`Application.on_cleanup`
+pair still has a pitfall: signals handlers are independent on each other.
+
+E.g. we have ``[create_pg, create_redis]`` in *startup* signal and
+``[dispose_pg, dispose_redis]`` in *cleanup*.
+
+If, for example, ``create_pg(app)`` call fails ``create_redis(app)``
+is not called. But on application cleanup both ``dispose_pg(app)`` and
+``dispose_redis(app)`` are still called: *cleanup signal* has no
+knowledge about startup/cleanup pairs and their execution state.
+
+
+The solution is :attr:`Application.cleanup_ctx` usage::
+
+    async def pg_engine(app):
+        app['pg_engine'] = await create_engine(
+            user='postgre',
+            database='postgre',
+            host='localhost',
+            port=5432,
+            password=''
+        )
+        yield
+        app['pg_engine'].close()
+        await app['pg_engine'].wait_closed()
+
+    app.cleanup_ctx.append(pg_engine)
+
+The attribute is a list of *asynchronous generators*, a code *before*
+``yield`` is an initialization stage (called on *startup*), a code
+*after* ``yield`` is executed on *cleanup*. The generator must have only
+one ``yield``.
+
+*aiohttp* guarantees that *cleanup code* is called if and only if
+*startup code* was successfully finished.
+
+Asynchronous generators are supported by Python 3.6+, on Python 3.5
+please use `async_generator <https://pypi.org/project/async_generator/>`_
+library.
+
+.. versionadded:: 3.1
 
 .. _aiohttp-web-nested-applications:
 
@@ -564,7 +640,7 @@ toolbar URLs are served by prefix like ``/admin``.
 
 Thus we'll create a totally separate application named ``admin`` and
 connect it to main app with prefix by
-:meth:`~aiohttp.web.Application.add_subapp`::
+:meth:`Application.add_subapp`::
 
    admin = web.Application()
    # setup admin routes, signals and middlewares
@@ -578,13 +654,13 @@ It means that if URL is ``'/admin/something'`` middlewares from
 the call chain.
 
 The same is going for
-:attr:`~aiohttp.web.Application.on_response_prepare` signal -- the
+:attr:`Application.on_response_prepare` signal -- the
 signal is delivered to both top level ``app`` and ``admin`` if
 processing URL is routed to ``admin`` sub-application.
 
-Common signals like :attr:`~aiohttp.web.Application.on_startup`,
-:attr:`~aiohttp.web.Application.on_shutdown` and
-:attr:`~aiohttp.web.Application.on_cleanup` are delivered to all
+Common signals like :attr:`Application.on_startup`,
+:attr:`Application.on_shutdown` and
+:attr:`Application.on_cleanup` are delivered to all
 registered sub-applications. The passed parameter is sub-application
 instance, not top-level application.
 
@@ -597,7 +673,7 @@ Url reversing for sub-applications should generate urls with proper prefix.
 But for getting URL sub-application's router should be used::
 
    admin = web.Application()
-   admin.router.add_get('/resource', handler, name='name')
+   admin.add_routes([web.get('/resource', handler, name='name')])
 
    app.add_subapp('/admin/', admin)
 
@@ -610,7 +686,7 @@ If main application should do URL reversing for sub-application it could
 use the following explicit technique::
 
    admin = web.Application()
-   admin.router.add_get('/resource', handler, name='name')
+   admin.add_routes([web.get('/resource', handler, name='name')])
 
    app.add_subapp('/admin/', admin)
    app['admin'] = admin
@@ -669,7 +745,7 @@ header::
        return web.Response(body=b"Hello, world")
 
    app = web.Application()
-   app.router.add_get('/', hello, expect_handler=check_auth)
+   app.add_routes([web.add_get('/', hello, expect_handler=check_auth)])
 
 .. _aiohttp-web-custom-resource:
 
@@ -687,7 +763,7 @@ Application runners
 :func:`run_app` provides a simple *blocking* API for running an
 :class:`Application`.
 
-For starting the application *asynchronously* on serving on multiple
+For starting the application *asynchronously* or serving on multiple
 HOST/PORT :class:`AppRunner` exists.
 
 The simple startup code for serving HTTP site on ``'localhost'``, port
@@ -726,26 +802,31 @@ Developer should keep a list of opened connections
 The following :term:`websocket` snippet shows an example for websocket
 handler::
 
+    from aiohttp import web
+    import weakref
+
     app = web.Application()
-    app['websockets'] = []
+    app['websockets'] = weakref.WeakSet()
 
     async def websocket_handler(request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
 
-        request.app['websockets'].append(ws)
+        request.app['websockets'].add(ws)
         try:
             async for msg in ws:
                 ...
         finally:
-            request.app['websockets'].remove(ws)
+            request.app['websockets'].discard(ws)
 
         return ws
 
 Signal handler may look like::
 
+    from aiohttp import WSCloseCode
+
     async def on_shutdown(app):
-        for ws in app['websockets']:
+        for ws in set(app['websockets']):
             await ws.close(code=WSCloseCode.GOING_AWAY,
                            message='Server shutdown')
 
@@ -821,8 +902,8 @@ Handling error pages
 --------------------
 
 Pages like *404 Not Found* and *500 Internal Error* could be handled
-by custom middleware, see :ref:`aiohttp-tutorial-middlewares` for
-details.
+by custom middleware, see :ref:`polls demo <aiohttp-demos-polls-middlewares>`
+for example.
 
 .. _aiohttp-web-forwarded-support:
 
@@ -833,8 +914,8 @@ As discussed in :ref:`aiohttp-deployment` the preferable way is
 deploying *aiohttp* web server behind a *Reverse Proxy Server* like
 :term:`nginx` for production usage.
 
-In this way properties like :attr:`~BaseRequest.scheme`
-:attr:`~BaseRequest.host` and :attr:`~BaseRequest.remote` are
+In this way properties like :attr:`BaseRequest.scheme`
+:attr:`BaseRequest.host` and :attr:`BaseRequest.remote` are
 incorrect.
 
 Real values should be given from proxy server, usually either
@@ -848,9 +929,9 @@ headers too, pushing non-trusted data values.
 That's why *aiohttp server* should setup *forwarded* headers in custom
 middleware in tight conjunction with *reverse proxy configuration*.
 
-For changing :attr:`~BaseRequest.scheme` :attr:`~BaseRequest.host` and
-:attr:`~BaseRequest.remote` the middleware might use
-:meth:`~BaseRequest.clone`.
+For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host` and
+:attr:`BaseRequest.remote` the middleware might use
+:meth:`BaseRequest.clone`.
 
 .. seealso::
 
@@ -881,20 +962,19 @@ Debug Toolbar
 debugging toolbar while you're developing an :mod:`aiohttp.web`
 application.
 
-Install it via ``pip``:
+Install it with ``pip``:
 
 .. code-block:: shell
 
     $ pip install aiohttp_debugtoolbar
 
 
-After that attach the :mod:`aiohttp_debugtoolbar` middleware to your
-:class:`aiohttp.web.Application` and call :func:`aiohttp_debugtoolbar.setup`::
+Just call :func:`aiohttp_debugtoolbar.setup`::
 
     import aiohttp_debugtoolbar
     from aiohttp_debugtoolbar import toolbar_middleware_factory
 
-    app = web.Application(middlewares=[toolbar_middleware_factory])
+    app = web.Application()
     aiohttp_debugtoolbar.setup(app)
 
 The toolbar is ready to use. Enjoy!!!
@@ -909,7 +989,7 @@ Dev Tools
 :mod:`aiohttp.web` applications.
 
 
-Install via ``pip``:
+Install with ``pip``:
 
 .. code-block:: shell
 

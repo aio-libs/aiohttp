@@ -6,7 +6,7 @@ from aiohttp.frozenlist import FrozenList, PyFrozenList
 
 
 class FrozenListMixin:
-    FrozenList = None
+    FrozenList = NotImplemented
 
     SKIP_METHODS = {'__abstractmethods__', '__slots__'}
 

@@ -8,18 +8,18 @@ import keyword
 import os
 import re
 import warnings
-from collections.abc import Container, Iterable, Sequence, Sized
+from collections.abc import Container, Iterable, Sized
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 
-import attr
 from yarl import URL
 
 from . import hdrs
 from .abc import (AbstractMatchInfo, AbstractRouter, AbstractRuleMatching,
                   AbstractView)
+from .helpers import DEBUG
 from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
                              HTTPMethodNotAllowed, HTTPNotFound)
@@ -30,37 +30,11 @@ from .web_response import Response
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
            'AbstractRoute', 'ResourceRoute',
-           'StaticResource', 'View', 'RouteDef', 'RouteTableDef',
-           'DefaultRule', 'Domain',
-           'head', 'get', 'post', 'patch', 'put', 'delete', 'route', 'view')
+           'StaticResource', 'View')
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
-
-
-@attr.s(frozen=True, repr=False, slots=True)
-class RouteDef:
-    method = attr.ib(type=str)
-    path = attr.ib(type=str)
-    handler = attr.ib()
-    kwargs = attr.ib()
-
-    def __repr__(self):
-        info = []
-        for name, value in sorted(self.kwargs.items()):
-            info.append(", {}={!r}".format(name, value))
-        return ("<RouteDef {method} {path} -> {handler.__name__!r}"
-                "{info}>".format(method=self.method, path=self.path,
-                                 handler=self.handler, info=''.join(info)))
-
-    def register(self, router):
-        if self.method in hdrs.METH_ALL:
-            reg = getattr(router, 'add_'+self.method.lower())
-            reg(self.path, self.handler, **self.kwargs)
-        else:
-            router.add_route(self.method, self.path, self.handler,
-                             **self.kwargs)
 
 
 class AbstractResource(Sized, Iterable):
@@ -71,6 +45,15 @@ class AbstractResource(Sized, Iterable):
     @property
     def name(self):
         return self._name
+
+    @property
+    @abc.abstractmethod
+    def canonical(self):
+        """Exposes the resource's canonical path.
+
+        For example '/foo/bar/{name}'
+
+        """
 
     @abc.abstractmethod  # pragma: no branch
     def url_for(self, **kwargs):
@@ -179,7 +162,7 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
     def __init__(self, match_dict, route):
         super().__init__(match_dict)
         self._route = route
-        self._apps = ()
+        self._apps = []
         self._current_app = None
         self._frozen = False
 
@@ -204,14 +187,14 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     @property
     def apps(self):
-        return self._apps
+        return tuple(self._apps)
 
     def add_app(self, app):
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
         if self._current_app is None:
             self._current_app = app
-        self._apps = (app,) + self._apps
+        self._apps.insert(0, app)
 
     @property
     def current_app(self):
@@ -219,9 +202,11 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
     @contextmanager
     def set_current_app(self, app):
-        assert app in self._apps, (
-            "Expected one of the following apps {!r}, got {!r}"
-            .format(self._apps, app))
+        if DEBUG:  # pragma: no cover
+            if app not in self._apps:
+                raise RuntimeError(
+                    "Expected one of the following apps {!r}, got {!r}"
+                    .format(self._apps, app))
         prev = self._current_app
         self._current_app = app
         try:
@@ -325,6 +310,10 @@ class PlainResource(Resource):
         assert not path or path.startswith('/')
         self._path = path
 
+    @property
+    def canonical(self):
+        return self._path
+
     def freeze(self):
         if not self._path:
             self._path = '/'
@@ -353,8 +342,8 @@ class PlainResource(Resource):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return "<PlainResource {name} {path}".format(name=name,
-                                                     path=self._path)
+        return "<PlainResource {name} {path}>".format(name=name,
+                                                      path=self._path)
 
 
 class DynamicResource(Resource):
@@ -398,6 +387,10 @@ class DynamicResource(Resource):
         self._pattern = compiled
         self._formatter = formatter
 
+    @property
+    def canonical(self):
+        return self._formatter
+
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
         assert not prefix.endswith('/')
@@ -427,7 +420,7 @@ class DynamicResource(Resource):
 
     def __repr__(self):
         name = "'" + self.name + "' " if self.name is not None else ""
-        return ("<DynamicResource {name} {formatter}"
+        return ("<DynamicResource {name} {formatter}>"
                 .format(name=name, formatter=self._formatter))
 
 
@@ -438,6 +431,10 @@ class PrefixResource(AbstractResource):
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
         self._prefix = URL.build(path=prefix).raw_path
+
+    @property
+    def canonical(self):
+        return self._prefix
 
     def add_prefix(self, prefix):
         assert prefix.startswith('/')
@@ -630,7 +627,7 @@ class StaticResource(PrefixResource):
 
     def __repr__(self):
         name = "'" + self.name + "'" if self.name is not None else ""
-        return "<StaticResource {name} {path} -> {directory!r}".format(
+        return "<StaticResource {name} {path} -> {directory!r}>".format(
             name=name, path=self._prefix, directory=self._directory)
 
 
@@ -1009,6 +1006,12 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
+    def add_options(self, path, handler, **kwargs):
+        """
+        Shortcut for add_route with method OPTIONS
+        """
+        return self.add_route(hdrs.METH_OPTIONS, path, handler, **kwargs)
+
     def add_get(self, path, handler, *, name=None, allow_head=True, **kwargs):
         """
         Shortcut for add_route with method GET, if allow_head is true another
@@ -1061,84 +1064,3 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         """
         for route_obj in routes:
             route_obj.register(self)
-
-
-def route(method, path, handler, **kwargs):
-    return RouteDef(method, path, handler, kwargs)
-
-
-def head(path, handler, **kwargs):
-    return route(hdrs.METH_HEAD, path, handler, **kwargs)
-
-
-def get(path, handler, *, name=None, allow_head=True, **kwargs):
-    return route(hdrs.METH_GET, path, handler, name=name,
-                 allow_head=allow_head, **kwargs)
-
-
-def post(path, handler, **kwargs):
-    return route(hdrs.METH_POST, path, handler, **kwargs)
-
-
-def put(path, handler, **kwargs):
-    return route(hdrs.METH_PUT, path, handler, **kwargs)
-
-
-def patch(path, handler, **kwargs):
-    return route(hdrs.METH_PATCH, path, handler, **kwargs)
-
-
-def delete(path, handler, **kwargs):
-    return route(hdrs.METH_DELETE, path, handler, **kwargs)
-
-
-def view(path, handler, **kwargs):
-    return route(hdrs.METH_ANY, path, handler, **kwargs)
-
-
-class RouteTableDef(Sequence):
-    """Route definition table"""
-    def __init__(self):
-        self._items = []
-
-    def __repr__(self):
-        return "<RouteTableDef count={}>".format(len(self._items))
-
-    def __getitem__(self, index):
-        return self._items[index]
-
-    def __iter__(self):
-        return iter(self._items)
-
-    def __len__(self):
-        return len(self._items)
-
-    def __contains__(self, item):
-        return item in self._items
-
-    def route(self, method, path, **kwargs):
-        def inner(handler):
-            self._items.append(RouteDef(method, path, handler, kwargs))
-            return handler
-        return inner
-
-    def head(self, path, **kwargs):
-        return self.route(hdrs.METH_HEAD, path, **kwargs)
-
-    def get(self, path, **kwargs):
-        return self.route(hdrs.METH_GET, path, **kwargs)
-
-    def post(self, path, **kwargs):
-        return self.route(hdrs.METH_POST, path, **kwargs)
-
-    def put(self, path, **kwargs):
-        return self.route(hdrs.METH_PUT, path, **kwargs)
-
-    def patch(self, path, **kwargs):
-        return self.route(hdrs.METH_PATCH, path, **kwargs)
-
-    def delete(self, path, **kwargs):
-        return self.route(hdrs.METH_DELETE, path, **kwargs)
-
-    def view(self, path, **kwargs):
-        return self.route(hdrs.METH_ANY, path, **kwargs)

@@ -1,3 +1,5 @@
+import os
+import platform
 import sys
 
 import pytest
@@ -8,6 +10,9 @@ pytest_plugins = 'pytester'
 CONFTEST = '''
 pytest_plugins = 'aiohttp.pytest_plugin'
 '''
+
+
+IS_PYPY = platform.python_implementation() == 'PyPy'
 
 
 def test_aiohttp_plugin(testdir):
@@ -163,7 +168,13 @@ async def test_bad():
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '-s', '-W',
                                'default', '--aiohttp-loop=pyloop')
-    result.assert_outcomes(passed=1, failed=1)
+    expected_outcomes = (
+        {'failed': 0, 'passed': 2}
+        if IS_PYPY and bool(os.environ.get('PYTHONASYNCIODEBUG'))
+        else {'failed': 1, 'passed': 1}
+    )
+    """Under PyPy "coroutine 'foobar' was never awaited" does not happen."""
+    result.assert_outcomes(**expected_outcomes)
 
 
 def test_aiohttp_plugin_async_fixture(testdir, capsys):

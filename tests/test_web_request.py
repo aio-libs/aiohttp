@@ -7,6 +7,7 @@ from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion
+from aiohttp.helpers import DEBUG
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPRequestEntityTooLarge
@@ -28,7 +29,6 @@ def test_ctor():
     assert 'a=1&b=2' == req.query_string
     assert CIMultiDict() == req.headers
     assert () == req.raw_headers
-    assert req.message == req._message
 
     get = req.query
     assert MultiDict([('a', '1'), ('b', '2')]) == get
@@ -51,6 +51,12 @@ def test_ctor():
     assert req.headers == headers
     assert req.raw_headers == ((b'FOO', b'bar'),)
     assert req.task is req._task
+
+
+def test_deprecated_message():
+    req = make_mocked_request('GET', '/path/to?a=1&b=2')
+    with pytest.warns(DeprecationWarning):
+        assert req.message == req._message
 
 
 def test_doubleslashes():
@@ -108,6 +114,58 @@ def test_content_length():
                               CIMultiDict([('CONTENT-LENGTH', '123')]))
 
     assert 123 == req.content_length
+
+
+def test_range_to_slice_head():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=0-499')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[:500]
+
+
+def test_range_to_slice_mid():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=500-999')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[500:1000]
+
+
+def test_range_to_slice_tail_start():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=9500-')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[-500:]
+
+
+def test_range_to_slice_tail_stop():
+    def bytes_gen(size):
+        for i in range(size):
+            yield i % 256
+    payload = bytearray(bytes_gen(10000))
+    req = make_mocked_request(
+        'GET', '/',
+        headers=CIMultiDict([('RANGE', 'bytes=-500')]),
+        payload=payload)
+    assert isinstance(req.http_range, slice)
+    assert req.content[req.http_range] == payload[-500:]
 
 
 def test_non_keepalive_on_http10():
@@ -236,6 +294,21 @@ def test_single_forwarded_header():
     assert req.forwarded[0]['for'] == 'identifier'
     assert req.forwarded[0]['host'] == 'identifier'
     assert req.forwarded[0]['proto'] == 'identifier'
+
+
+@pytest.mark.parametrize(
+    "forward_for_in, forward_for_out",
+    [
+        ("1.2.3.4:1234", "1.2.3.4:1234"),
+        ("1.2.3.4", "1.2.3.4"),
+        ('"[2001:db8:cafe::17]:1234"', '[2001:db8:cafe::17]:1234'),
+        ('"[2001:db8:cafe::17]"', '[2001:db8:cafe::17]'),
+    ])
+def test_forwarded_node_identifier(forward_for_in, forward_for_out):
+    header = 'for={}'.format(forward_for_in)
+    req = make_mocked_request('GET', '/',
+                              headers=CIMultiDict({'Forwarded': header}))
+    assert req.forwarded == ({'for': forward_for_out},)
 
 
 def test_single_forwarded_header_camelcase():
@@ -549,6 +622,8 @@ def test_clone_remote():
     assert req2.remote == '11.11.11.11'
 
 
+@pytest.mark.skipif(not DEBUG,
+                    reason="The check is applied in DEBUG mode only")
 def test_request_custom_attr():
     req = make_mocked_request('GET', '/')
     with pytest.warns(DeprecationWarning):
@@ -559,3 +634,10 @@ def test_remote_with_closed_transport():
     req = make_mocked_request('GET', '/')
     req._protocol = None
     assert req.remote is None
+
+
+def test_eq():
+    req1 = make_mocked_request('GET', '/path/to?a=1&b=2')
+    req2 = make_mocked_request('GET', '/path/to?a=1&b=2')
+    assert req1 != req2
+    assert req1 == req1

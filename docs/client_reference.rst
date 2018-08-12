@@ -45,6 +45,7 @@ The client session supports the context manager protocol for self closing.
                          version=aiohttp.HttpVersion11, \
                          cookie_jar=None, read_timeout=None, \
                          conn_timeout=None, \
+                         timeout=sentinel, \
                          raise_for_status=False, \
                          connector_owner=True, \
                          auto_decompress=True, proxies=None)
@@ -113,15 +114,38 @@ The client session supports the context manager protocol for self closing.
       Automatically call :meth:`ClientResponse.raise_for_status()` for
       each response, ``False`` by default.
 
-      .. versionadded:: 2.0
+      This parameter can be overridden when you making a request, e.g.::
+
+          client_session = aiohttp.ClientSession(raise_for_status=True)
+          resp = await client_session.get(url, raise_for_status=False)
+          async with resp:
+              assert resp.status == 200
+
+      Set the parameter to ``True`` if you need ``raise_for_status``
+      for most of cases but override ``raise_for_status`` for those
+      requests where you need to handle responses with status 400 or
+      higher.
+
+   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+        total timeout by default.
+
+      .. versionadded:: 3.3
 
    :param float read_timeout: Request operations timeout. ``read_timeout`` is
       cumulative for all request operations (request, redirects, responses,
       data consuming). By default, the read timeout is 5*60 seconds.
       Use ``None`` or ``0`` to disable timeout checks.
 
+      .. deprecated:: 3.3
+
+         Use ``timeout`` parameter instead.
+
    :param float conn_timeout: timeout for connection establishing
       (optional). Values ``0`` or ``None`` mean no timeout.
+
+      .. deprecated:: 3.3
+
+         Use ``timeout`` parameter instead.
 
    :param bool connector_owner:
 
@@ -131,18 +155,16 @@ The client session supports the context manager protocol for self closing.
       connection pool between sessions without sharing session state:
       cookies etc.
 
-      .. versionadded:: 2.1
-
-   :param bool auto_decompress: Automatically decompress response body
+   :param bool auto_decompress: Automatically decompress response body,
+       ``True`` by default
 
       .. versionadded:: 2.3
 
    :param bool trust_env: Get proxies information from *HTTP_PROXY* /
-                         *HTTPS_PROXY* environment variables if the
-                         parameter is ``True`` (``False`` by default).
+      *HTTPS_PROXY* environment variables if the parameter is ``True``
+      (``False`` by default).
 
-                         Get proxy credentials from ``~/.netrc`` file if
-                         present.
+      Get proxy credentials from ``~/.netrc`` file if present.
 
       .. seealso::
 
@@ -195,9 +217,9 @@ The client session supports the context manager protocol for self closing.
                          headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
                          max_redirects=10,\
-                         compress=None, chunked=None, expect100=False,\
+                         compress=None, chunked=None, expect100=False, raise_for_status=None,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
-                         timeout=5*60, ssl=None, \
+                         timeout=sentinel, ssl=None, \
                          verify_ssl=None, fingerprint=None, \
                          ssl_context=None, proxy_headers=None)
       :async-with:
@@ -251,6 +273,9 @@ The client session supports the context manager protocol for self closing.
       :param bool allow_redirects: If set to ``False``, do not follow redirects.
                                    ``True`` by default (optional).
 
+      :param int max_redirects: Maximum number of redirects to follow.
+                                ``10`` by default.
+
       :param bool compress: Set to ``True`` if request has to be compressed
          with deflate encoding. If `compress` can not be combined
          with a *Content-Encoding* and *Content-Length* headers.
@@ -266,6 +291,13 @@ The client session supports the context manager protocol for self closing.
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
 
+      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status()` for
+                                    response if set to ``True``.
+                                    If set to ``None`` value from ``ClientSession`` will be used.
+                                    ``None`` by default (optional).
+
+          .. versionadded:: 3.4
+
       :param bool read_until_eof: Read response until EOF if response
                                   does not have Content-Length header.
                                   ``True`` by default (optional).
@@ -275,8 +307,15 @@ The client session supports the context manager protocol for self closing.
       :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
                                            Basic Authorization (optional)
 
-      :param int timeout: override the session's timeout
-                          (``read_timeout``) for IO operations.
+      :param int timeout: override the session's timeout.
+
+         .. versionchanged:: 3.3
+
+            The parameter is :class:`ClientTimeout` instance,
+            :class:`float` is still supported for sake of backward
+            compatibility.
+
+            If :class:`float` is passed it is a *total* timeout.
 
       :param ssl: SSL validation mode. ``None`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -331,7 +370,8 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 2.3
 
       :param trace_request_ctx: Object used to give as a kw param for each new
-        :class:`TraceConfig` object instantiated, used to give information to the
+        :class:`TraceConfig` object instantiated,
+        used to give information to the
         tracers that is only available at request time.
 
          .. versionadded:: 3.0
@@ -473,10 +513,11 @@ The client session supports the context manager protocol for self closing.
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
+                            headers=None, \
                             proxy=None, proxy_auth=None, ssl=None, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
-                            compress=0)
+                            compress=0, max_msg_size=4194304)
       :async-with:
       :coroutine:
 
@@ -499,18 +540,22 @@ The client session supports the context manager protocol for self closing.
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
-                             them close procedure has to be handled manually
+                             then close procedure has to be handled manually.
+                             ``True`` by default
 
       :param bool autoping: automatically send *pong* on *ping*
-                            message from server
+                            message from server. ``True`` by default
 
       :param float heartbeat: Send *ping* message every *heartbeat*
                               seconds and wait *pong* response, if
                               *pong* response is not received then
                               close connection. The timer is reset on any data
-                              reception.
+                              reception.(optional)
 
-      :param str origin: Origin header to send to server
+      :param str origin: Origin header to send to server(optional)
+
+      :param dict headers: HTTP Headers to send with
+                           the request (optional)
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
@@ -560,20 +605,26 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 2.3
 
+         .. deprecated:: 3.0
+
+            Use ``ssl=ssl_context``
+
       :param dict proxy_headers: HTTP headers to send to the proxy if the
          parameter proxy has been provided.
 
          .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=ssl_context``
 
       :param int compress: Enable Per-Message Compress Extension support.
                            0 for disable, 9 to 15 for window bit support.
                            Default value is 0.
 
          .. versionadded:: 2.3
+
+      :param int max_msg_size: maximum size of read websocket message,
+                               4 MB by default. To disable the size
+                               limit use ``0``.
+
+         .. versionadded:: 3.3
 
 
    .. comethod:: close()
@@ -607,7 +658,7 @@ certification chaining.
                         allow_redirects=True, max_redirects=10, \
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
-                        compress=None, chunked=None, expect100=False, \
+                        compress=None, chunked=None, expect100=False, raise_for_status=None, \
                         connector=None, loop=None,\
                         read_until_eof=True)
 
@@ -651,6 +702,15 @@ certification chaining.
 
    :param bool expect100: Expect 100-continue response from server.
                           ``False`` by default (optional).
+
+   :param bool raise_for_status: Automatically call
+                                 :meth:`ClientResponse.raise_for_status()`
+                                 for response if set to ``True``.  If
+                                 set to ``None`` value from
+                                 ``ClientSession`` will be used.
+                                 ``None`` by default (optional).
+
+      .. versionadded:: 3.4
 
    :param aiohttp.connector.BaseConnector connector: BaseConnector sub-class
       instance to support connection pooling.
@@ -768,8 +828,6 @@ BaseConnector
 
       Close all opened connections.
 
-      .. versionadded:: 2.0
-
    .. comethod:: connect(request)
 
       Get a free connection from pool or create new one if connection
@@ -857,8 +915,6 @@ TCPConnector
       addresses related to a specific HOST can change after a specific time. Use
       this option to keep the DNS cache updated refreshing each entry after N
       seconds.
-
-      .. versionadded:: 2.0.8
 
    :param int limit: total number simultaneous connections. If *limit* is
                      ``None`` the connector has no limit (default: 100).
@@ -1050,6 +1106,12 @@ Response object
 
       URL of request (:class:`~yarl.URL`).
 
+   .. attribute:: real_url
+
+      Unmodified URL of request (:class:`~yarl.URL`).
+
+      .. versionadded:: 3.2
+
    .. attribute:: connection
 
       :class:`Connection` used for handling response.
@@ -1081,6 +1143,16 @@ Response object
 
       Unmodified HTTP headers of response as unconverted bytes, a sequence of
       ``(key, value)`` pairs.
+
+   .. attribute:: links
+
+      Link HTTP header parsed into a :class:`~multidict.MultiDictProxy`.
+
+      For each link, key is link param `rel` when it exists, or link url as
+      :class:`str` otherwise, and value is :class:`~multidict.MultiDictProxy`
+      of link params and url at key `url` as :class:`~yarl.URL` instance.
+
+      .. versionadded:: 3.2
 
    .. attribute:: content_type
 
@@ -1424,12 +1496,55 @@ Utilities
 ---------
 
 
+ClientTimeout
+^^^^^^^^^^^^^
+
+.. class:: ClientTimeout(*, total=None, connect=None, \
+                         sock_connect, sock_read=None)
+
+   A data class for client timeout settings.
+
+   See :ref:`aiohttp-client-timeouts` for usage examples.
+
+   .. attribute:: total
+
+      Total timeout for the whole request.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: connect
+
+      Total timeout for acquiring a connection from pool.  The time
+      consists connection establishment for a new connection or
+      waiting for a free connection from a pool if pool connection
+      limits are exceeded.
+
+      For pure socket connection establishment time use
+      :attr:`sock_connect`.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: sock_connect
+
+      A timeout for connecting to a peer for a new connection, not
+      given from a pool.  See also :attr:`connect`.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: sock_read
+
+      A timeout for reading a portion of data from a peer.
+
+      :class:`float`, ``None`` by default.
+
+   .. versionadded:: 3.3
+
 RequestInfo
 ^^^^^^^^^^^
 
 .. class:: RequestInfo()
 
-   A namedtuple with request URL and headers from :class:`ClientRequest`
+   A data class with request URL and headers from :class:`ClientRequest`
    object, available as :attr:`ClientResponse.request_info` attribute.
 
    .. attribute:: url
@@ -1443,6 +1558,12 @@ RequestInfo
    .. attribute:: headers
 
       HTTP headers for request, :class:`multidict.CIMultiDict` instance.
+
+   .. attribute:: real_url
+
+      Requested *url* with URL fragment unstripped, :class:`yarl.URL` instance.
+
+      .. versionadded:: 3.2
 
 
 BasicAuth
@@ -1673,9 +1794,9 @@ Response errors
       Instance of :class:`RequestInfo` object, contains information
       about request.
 
-   .. attribute:: code
+   .. attribute:: status
 
-      HTTP status code of response (:class:`int`), e.g. ``200``.
+      HTTP status code of response (:class:`int`), e.g. ``400``.
 
    .. attribute:: message
 
@@ -1691,6 +1812,12 @@ Response errors
 
       A :class:`tuple` of :class:`ClientResponse` objects used for
       handle redirection responses.
+
+   .. attribute:: code
+
+      HTTP status code of response (:class:`int`), e.g. ``400``.
+
+      .. deprecated:: 3.1
 
 
 .. class:: WSServerHandshakeError
@@ -1714,6 +1841,18 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
    .. versionadded:: 2.3
+
+
+.. class:: TooManyRedirects
+
+   Client was redirected too many times.
+
+   Maximum number of redirects can be configured by using
+   parameter ``max_redirects`` in :meth:`request<aiohttp.ClientSession.request>`.
+
+   Derived from :exc:`ClientResponseError`
+
+   .. versionadded:: 3.2
 
 Connection errors
 ^^^^^^^^^^^^^^^^^

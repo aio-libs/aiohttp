@@ -46,7 +46,7 @@ def writer(buf):
         buf.extend(chunk)
 
     async def write_headers(status_line, headers):
-        headers = status_line + ''.join(
+        headers = status_line + '\r\n' + ''.join(
             [k + ': ' + v + '\r\n' for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
         buf.extend(headers)
@@ -80,6 +80,14 @@ def test_stream_response_ctor():
 def test_stream_response_hashable():
     # should not raise exception
     hash(StreamResponse())
+
+
+def test_stream_response_eq():
+    resp1 = StreamResponse()
+    resp2 = StreamResponse()
+
+    assert resp1 == resp1
+    assert not resp1 == resp2
 
 
 def test_stream_response_is_mutable_mapping():

@@ -23,9 +23,9 @@ REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
 
 try:
-    from aiohttp import _http_parser
-    REQUEST_PARSERS.append(_http_parser.HttpRequestParserC)
-    RESPONSE_PARSERS.append(_http_parser.HttpResponseParserC)
+    from aiohttp.http_parser import HttpRequestParserC, HttpResponseParserC
+    REQUEST_PARSERS.append(HttpRequestParserC)
+    RESPONSE_PARSERS.append(HttpResponseParserC)
 except ImportError:  # pragma: no cover
     pass
 
@@ -38,7 +38,10 @@ def protocol():
 @pytest.fixture(params=REQUEST_PARSERS)
 def parser(loop, protocol, request):
     """Parser implementations"""
-    return request.param(protocol, loop, 8190, 32768, 8190)
+    return request.param(protocol, loop,
+                         max_line_size=8190,
+                         max_headers=32768,
+                         max_field_size=8190)
 
 
 @pytest.fixture(params=REQUEST_PARSERS)
@@ -50,7 +53,10 @@ def request_cls(request):
 @pytest.fixture(params=RESPONSE_PARSERS)
 def response(loop, protocol, request):
     """Parser implementations"""
-    return request.param(protocol, loop, 8190, 32768, 8190)
+    return request.param(protocol, loop,
+                         max_line_size=8190,
+                         max_headers=32768,
+                         max_field_size=8190)
 
 
 @pytest.fixture(params=RESPONSE_PARSERS)
@@ -358,30 +364,95 @@ def test_invalid_name(parser):
         parser.feed_data(text)
 
 
-def test_max_header_field_size(parser):
-    name = b'test' * 10 * 1024
+@pytest.mark.parametrize('size', [40960, 8191])
+def test_max_header_field_size(parser, size):
+    name = b't' * size
     text = (b'GET /test HTTP/1.1\r\n' + name + b':data\r\n\r\n')
 
-    with pytest.raises(http_exceptions.LineTooLong):
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
 
-def test_max_header_value_size(parser):
-    name = b'test' * 10 * 1024
+def test_max_header_field_size_under_limit(parser):
+    name = b't' * 8190
+    text = (b'GET /test HTTP/1.1\r\n' + name + b':data\r\n\r\n')
+
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict({name.decode(): 'data'})
+    assert msg.raw_headers == ((name, b'data'),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/test')
+
+
+@pytest.mark.parametrize('size', [40960, 8191])
+def test_max_header_value_size(parser, size):
+    name = b't' * size
     text = (b'GET /test HTTP/1.1\r\n'
             b'data:' + name + b'\r\n\r\n')
 
-    with pytest.raises(http_exceptions.LineTooLong):
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
 
 
-def test_max_header_value_size_continuation(parser):
-    name = b'test' * 10 * 1024
+def test_max_header_value_size_under_limit(parser):
+    value = b'A' * 8190
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'data:' + value + b'\r\n\r\n')
+
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict({'data': value.decode()})
+    assert msg.raw_headers == ((b'data', value),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/test')
+
+
+@pytest.mark.parametrize('size', [40965, 8191])
+def test_max_header_value_size_continuation(parser, size):
+    name = b'T' * (size - 5)
     text = (b'GET /test HTTP/1.1\r\n'
             b'data: test\r\n ' + name + b'\r\n\r\n')
 
-    with pytest.raises(http_exceptions.LineTooLong):
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(text)
+
+
+def test_max_header_value_size_continuation_under_limit(parser):
+    value = b'A' * 8185
+    text = (b'GET /test HTTP/1.1\r\n'
+            b'data: test\r\n ' + value + b'\r\n\r\n')
+
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict({'data': 'test ' + value.decode()})
+    assert msg.raw_headers == ((b'data', b'test ' + value),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/test')
 
 
 def test_http_request_parser(parser):
@@ -389,8 +460,16 @@ def test_http_request_parser(parser):
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
 
-    assert msg == ('GET', '/path', (1, 1), CIMultiDict(), (),
-                   False, None, False, False, URL('/path'))
+    assert msg.method == 'GET'
+    assert msg.path == '/path'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict()
+    assert msg.raw_headers == ()
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path')
 
 
 def test_http_request_bad_status_line(parser):
@@ -417,29 +496,46 @@ def test_http_request_parser_utf8(parser):
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
 
-    assert msg == ('GET', '/path', (1, 1),
-                   CIMultiDict([('X-TEST', 'тест')]),
-                   ((b'x-test', 'тест'.encode('utf-8')),),
-                   False, None, False, False, URL('/path'))
+    assert msg.method == 'GET'
+    assert msg.path == '/path'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict([('X-TEST', 'тест')])
+    assert msg.raw_headers == ((b'x-test', 'тест'.encode('utf-8')),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path')
 
 
 def test_http_request_parser_non_utf8(parser):
     text = 'GET /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('cp1251')
     msg = parser.feed_data(text)[0][0][0]
 
-    assert msg == ('GET', '/path', (1, 1),
-                   CIMultiDict([('X-TEST', 'тест'.encode('cp1251').decode(
-                       'utf-8', 'surrogateescape'))]),
-                   ((b'x-test', 'тест'.encode('cp1251')),),
-                   False, None, False, False, URL('/path'))
+    assert msg.method == 'GET'
+    assert msg.path == '/path'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict([('X-TEST', 'тест'.encode('cp1251')
+                                        .decode('utf8', 'surrogateescape'))])
+    assert msg.raw_headers == ((b'x-test', 'тест'.encode('cp1251')),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path')
 
 
 def test_http_request_parser_two_slashes(parser):
     text = b'GET //path HTTP/1.1\r\n\r\n'
     msg = parser.feed_data(text)[0][0][0]
 
-    assert msg[:-1] == ('GET', '//path', (1, 1), CIMultiDict(), (),
-                        False, None, False, False)
+    assert msg.method == 'GET'
+    assert msg.path == '//path'
+    assert msg.version == (1, 1)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
 
 
 def test_http_request_parser_bad_method(parser):
@@ -452,10 +548,32 @@ def test_http_request_parser_bad_version(parser):
         parser.feed_data(b'GET //get HT/11\r\n\r\n')
 
 
-def test_http_request_max_status_line(parser):
-    with pytest.raises(http_exceptions.LineTooLong):
+@pytest.mark.parametrize('size', [40965, 8191])
+def test_http_request_max_status_line(parser, size):
+    path = b't' * (size - 5)
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
         parser.feed_data(
-            b'GET /path' + b'test' * 10 * 1024 + b' HTTP/1.1\r\n\r\n')
+            b'GET /path' + path + b' HTTP/1.1\r\n\r\n')
+
+
+def test_http_request_max_status_line_under_limit(parser):
+    path = b't' * (8190 - 5)
+    messages, upgraded, tail = parser.feed_data(
+        b'GET /path' + path + b' HTTP/1.1\r\n\r\n')
+    msg = messages[0][0]
+
+    assert msg.method == 'GET'
+    assert msg.path == '/path' + path.decode()
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict()
+    assert msg.raw_headers == ()
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path' + path.decode())
 
 
 def test_http_response_parser_utf8(response):
@@ -474,10 +592,24 @@ def test_http_response_parser_utf8(response):
     assert not tail
 
 
-def test_http_response_parser_bad_status_line_too_long(response):
-    with pytest.raises(http_exceptions.LineTooLong):
+@pytest.mark.parametrize('size', [40962, 8191])
+def test_http_response_parser_bad_status_line_too_long(response, size):
+    reason = b't' * (size - 2)
+    match = ("400, message='Got more than 8190 bytes \({}\) when reading"
+             .format(size))
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
         response.feed_data(
-            b'HTTP/1.1 200 Ok' + b'test' * 10 * 1024 + b'\r\n\r\n')
+            b'HTTP/1.1 200 Ok' + reason + b'\r\n\r\n')
+
+
+def test_http_response_parser_status_line_under_limit(response):
+    reason = b'O' * 8190
+    messages, upgraded, tail = response.feed_data(
+        b'HTTP/1.1 200 ' + reason + b'\r\n\r\n')
+    msg = messages[0][0]
+    assert msg.version == (1, 1)
+    assert msg.code == 200
+    assert msg.reason == reason.decode()
 
 
 def test_http_response_parser_bad_version(response):
@@ -770,7 +902,7 @@ class TestDeflateBuffer:
         assert [b'line'] == list(d for d, _ in buf._buffer)
         assert buf._eof
 
-    def test_feed_eof_err(self, stream):
+    def test_feed_eof_err_deflate(self, stream):
         buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
@@ -780,6 +912,28 @@ class TestDeflateBuffer:
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
+
+    def test_feed_eof_no_err_gzip(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
+        dbuf = DeflateBuffer(buf, 'gzip')
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b'line'] == list(d for d, _ in buf._buffer)
+
+    def test_feed_eof_no_err_brotli(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
+        dbuf = DeflateBuffer(buf, 'br')
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b'line'] == list(d for d, _ in buf._buffer)
 
     def test_empty_body(self, stream):
         buf = aiohttp.FlowControlDataQueue(stream)

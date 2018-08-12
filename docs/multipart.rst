@@ -179,13 +179,34 @@ instance as :meth:`aiohttp.ClientSession.request` ``data`` argument::
 
     await session.post('http://example.com', data=mpwriter)
 
-Behind the scenes :meth:`MultipartWriter.serialize` will yield chunks of every
+Behind the scenes :meth:`MultipartWriter.write` will yield chunks of every
 part and if body part has `Content-Encoding` or `Content-Transfer-Encoding`
 they will be applied on streaming content.
 
-Please note, that on :meth:`MultipartWriter.serialize` all the file objects
+Please note, that on :meth:`MultipartWriter.write` all the file objects
 will be read until the end and there is no way to repeat a request without
 rewinding their pointers to the start.
+
+Example MJPEG Streaming ``multipart/x-mixed-replace``. By default
+:meth:`MultipartWriter.write` appends closing ``--boundary--`` and breaks your
+content. Providing `close_boundary = False` prevents this.::
+
+    my_boundary = 'some-boundary'
+    response = web.StreamResponse(
+        status=200,
+        reason='OK',
+        headers={
+            'Content-Type': 'multipart/x-mixed-replace;boundary=--%s' % my_boundary
+        }
+    )
+    while True:
+        frame = get_jpeg_frame()
+        with MultipartWriter('image/jpeg', boundary=my_boundary) as mpwriter:
+            mpwriter.append(frame, {
+                'Content-Type': 'image/jpeg'
+            })
+            await mpwriter.write(response, close_boundary=False)
+        await response.drain()
 
 Hacking Multipart
 -----------------
@@ -206,9 +227,17 @@ using chunked transfer encoding by default. To overcome this issue, you have
 to serialize a :class:`MultipartWriter` by our own in the way to calculate its
 size::
 
-    body = b''.join(mpwriter.serialize())
+    class Writer:
+        def __init__(self):
+            self.buffer = bytearray()
+
+        async def write(self, data):
+            self.buffer.extend(data)
+
+    writer = Writer()
+    mpwriter.writer(writer)
     await aiohttp.post('http://example.com',
-                       data=body, headers=mpwriter.headers)
+                       data=writer.buffer, headers=mpwriter.headers)
 
 Sometimes the server response may not be well formed: it may or may not
 contains nested parts. For instance, we request a resource which returns

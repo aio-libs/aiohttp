@@ -52,9 +52,9 @@ directly as shown above, but it is more convenient to use special keyword
 
     await session.post(url, json={'example': 'text'})
 
-The same for *text/plain*::
+For *text/plain* ::
 
-    await session.post(url, text='Привет, Мир!')
+    await session.post(url, data='Привет, Мир!')
 
 Custom Cookies
 --------------
@@ -215,13 +215,18 @@ Disabling content type validation for JSON responses
 ----------------------------------------------------
 
 The standard explicitly restricts JSON ``Content-Type`` HTTP header to
-``apllication/json``. Unfortunately some servers send wrong type like
-``text/html`` or custom one, e.g. ``application/vnd.custom-type+json``.
+``application/json`` or any extended form, e.g. ``application/vnd.custom-type+json``.
+Unfortunately, some servers send a wrong type, like ``text/html``.
 
-In this case there are two options:
+This can be worked around in two ways:
 
-1. Pass expected type explicitly: ``await resp.json(content_type='custom')``.
-2. Disable the check entirely: ``await resp.json(content_type=None)``.
+1. Pass the expected type explicitly (in this case checking will be strict, without the extended form support,
+   so ``custom/xxx+type`` won't be accepted):
+
+   ``await resp.json(content_type='custom/type')``.
+2. Disable the check entirely:
+
+   ``await resp.json(content_type=None)``.
 
 .. _aiohttp-client-tracing:
 

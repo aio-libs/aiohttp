@@ -1,0 +1,1 @@
+Make redirect with `normalize_path_middleware` work when using url encoded paths.

@@ -1,6 +1,7 @@
 import asyncio
 import platform
 import signal
+from unittest import mock
 
 import pytest
 
@@ -96,3 +97,17 @@ async def test_app_property(make_runner, app):
 def test_non_app():
     with pytest.raises(TypeError):
         web.AppRunner(object())
+
+
+@pytest.mark.skipif(platform.system() == "Windows",
+                    reason="Unix socket support is required")
+async def test_addresses(make_runner, shorttmpdir):
+    runner = make_runner()
+    await runner.setup()
+    tcp = web.TCPSite(runner)
+    await tcp.start()
+    path = str(shorttmpdir / 'tmp.sock')
+    unix = web.UnixSite(runner, path)
+    await unix.start()
+    addrs = runner.addresses
+    assert addrs == [('0.0.0.0', mock.ANY), path]

@@ -268,7 +268,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
          Use :meth:`can_read_body` instead.
 
- .. attribute:: content_type
+   .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
 
@@ -328,6 +328,28 @@ and :ref:`aiohttp-web-signals` handlers.
       Returns :class:`datetime.datetime` or ``None`` if
       *If-Modified-Since* header is absent or is not a valid
       HTTP date.
+
+   .. attribute:: if_unmodified_since
+
+      Read-only property that returns the date specified in the
+      *If-Unmodified-Since* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Unmodified-Since* header is absent or is not a valid
+      HTTP date.
+
+      .. versionadded:: 3.1
+
+   .. attribute:: if_range
+
+      Read-only property that returns the date specified in the
+      *If-Range* header.
+
+      Returns :class:`datetime.datetime` or ``None`` if
+      *If-Range* header is absent or is not a valid
+      HTTP date.
+
+      .. versionadded:: 3.1
 
    .. method:: clone(*, method=..., rel_url=..., headers=...)
 
@@ -389,7 +411,7 @@ and :ref:`aiohttp-web-signals` handlers.
          :meth:`~Request.json` call will return the same value.
 
 
-   .. comethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+   .. comethod:: multipart()
 
       Returns :class:`aiohttp.multipart.MultipartReader` which processes
       incoming *multipart* request.
@@ -409,6 +431,10 @@ and :ref:`aiohttp-web-signals` handlers.
          more time.
 
       .. seealso:: :ref:`aiohttp-multipart`
+
+      .. versionchanged:: 3.4
+
+         Dropped *reader* parameter.
 
    .. comethod:: post()
 
@@ -467,12 +493,23 @@ and :ref:`aiohttp-web-signals` handlers.
       An :class:`Application` instance used to call :ref:`request handler
       <aiohttp-web-handler>`, Read-only property.
 
+   .. attribute:: config_dict
+
+      A :class:`aiohttp.ChainMapProxy` instance for mapping all properties
+      from the current application returned by :attr:`app` property
+      and all its parents.
+
+      .. seealso:: :ref:`aiohttp-web-data-sharing-app-config`
+
+      .. versionadded:: 3.2
+
    .. note::
 
       You should never create the :class:`Request` instance manually
       -- :mod:`aiohttp.web` does it for you. But
       :meth:`~BaseRequest.clone` may be used for cloning *modified*
       request copy with changed *path*, *method* etc.
+
 
 
 
@@ -502,8 +539,8 @@ The common case for sending an answer from
 :ref:`web-handler<aiohttp-web-handler>` is returning a
 :class:`Response` instance::
 
-   def handler(request):
-       return Response("All right!")
+   async def handler(request):
+       return Response(text="All right!")
 
 Response classes are :obj:`dict` like objects,
 allowing them to be used for :ref:`sharing
@@ -803,6 +840,11 @@ Response
 
       Setting :attr:`body` also recalculates
       :attr:`~StreamResponse.content_length` value.
+      
+      Assigning :class:`str` to :attr:`body` will make the :attr:`body`
+      type of :class:`aiohttp.payload.StringPayload`, which tries to encode
+      the given data based on *Content-Type* HTTP header, while defaulting
+      to ``UTF-8``.
 
       Resetting :attr:`body` (assigning ``None``) sets
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
@@ -827,7 +869,7 @@ WebSocketResponse
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
-                             protocols=(), compress=True)
+                             protocols=(), compress=True, max_msg_size=4194304)
 
    Class for handling server-side websockets, inherited from
    :class:`StreamResponse`.
@@ -864,6 +906,12 @@ WebSocketResponse
 
    :param bool compress: Enable per-message deflate extension support.
                           False for disabled, default value is True.
+
+   :param int max_msg_size: maximum size of read websocket message, 4
+                            MB by default. To disable the size limit use ``0``.
+
+      .. versionadded:: 3.3
+
 
    The class supports ``async for`` statement for iterating over
    incoming messages::
@@ -919,7 +967,7 @@ WebSocketResponse
       Read-only property, close code from peer. It is set to ``None`` on
       opened connection.
 
-   .. attribute:: protocol
+   .. attribute:: ws_protocol
 
       Websocket *subprotocol* chosen after :meth:`start` call.
 
@@ -1027,7 +1075,7 @@ WebSocketResponse
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      It is save to call `close()` from different task.
+      It is safe to call `close()` from different task.
 
       :param int code: closing code
 
@@ -1175,10 +1223,8 @@ Application
 Application is a synonym for web-server.
 
 To get fully working example, you have to make *application*, register
-supported urls in *router* and create a *server socket* with
-:class:`~aiohttp.web.Server` as a *protocol
-factory*. *Server* could be constructed with
-:meth:`Application.make_handler`.
+supported urls in *router* and pass it to :func:`aiohttp.web.run_app`
+or :class:`aiohttp.web.AppRunner`.
 
 *Application* contains a *router* instance and a list of callbacks that
 will be called during application finishing.
@@ -1211,6 +1257,11 @@ duplicated like one using :meth:`Application.copy`.
    :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
                   creates :class:`UrlDispatcher` by default if
                   *router* is ``None``.
+
+      .. deprecated:: 3.3
+
+         The custom routers support is deprecated, the parameter will
+         be removed in 4.0.
 
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.
@@ -1274,7 +1325,7 @@ duplicated like one using :meth:`Application.copy`.
           async def on_startup(app):
               pass
 
-      .. seealso:: :ref:`aiohttp-web-background-tasks`.
+      .. seealso:: :ref:`aiohttp-web-signals`.
 
    .. attribute:: on_shutdown
 
@@ -1308,7 +1359,22 @@ duplicated like one using :meth:`Application.copy`.
           async def on_cleanup(app):
               pass
 
-      .. seealso:: :ref:`aiohttp-web-graceful-shutdown` and :attr:`on_shutdown`.
+      .. seealso:: :ref:`aiohttp-web-signals` and :attr:`on_shutdown`.
+
+   .. attribute:: cleanup_ctx
+
+      A list of *context generators* for *startup*/*cleanup* handling.
+
+      Signal handlers should have the following signature::
+
+          async def context(app):
+              # do startup stuff
+              yield
+              # do cleanup
+
+      .. versionadded:: 3.1
+
+      .. seealso:: :ref:`aiohttp-web-cleanup-ctx`.
 
    .. method:: add_subapp(prefix, subapp)
 
@@ -1353,54 +1419,56 @@ duplicated like one using :meth:`Application.copy`.
 
    .. method:: make_handler(loop=None, **kwargs)
 
-    Creates HTTP protocol factory for handling requests.
+      Creates HTTP protocol factory for handling requests.
 
-    :param loop: :ref:`event loop<asyncio-event-loop>` used
-                 for processing HTTP requests.
+      :param loop: :ref:`event loop<asyncio-event-loop>` used
+                   for processing HTTP requests.
 
-                 If param is ``None`` :func:`asyncio.get_event_loop`
-                 used for getting default event loop.
+                   If param is ``None`` :func:`asyncio.get_event_loop`
+                   used for getting default event loop.
 
-       .. deprecated:: 2.0
+         .. deprecated:: 2.0
 
-    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
-    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
-      connection. Default: ``75`` seconds (NGINX's default value).
-    :param logger: Custom logger object. Default:
-      :data:`aiohttp.log.server_logger`.
-    :param access_log: Custom logging object. Default:
-      :data:`aiohttp.log.access_logger`.
-    :param access_log_class: class for `access_logger`. Default:
-      :data:`aiohttp.helpers.AccessLogger`.
-      Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
-    :param str access_log_format: Access log format string. Default:
-      :attr:`helpers.AccessLogger.LOG_FORMAT`.
-    :param int max_line_size: Optional maximum header line size. Default:
-      ``8190``.
-    :param int max_headers: Optional maximum header size. Default: ``32768``.
-    :param int max_field_size: Optional maximum header field size. Default:
-      ``8190``.
+      :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+      :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+        connection. Default: ``75`` seconds (NGINX's default value).
+      :param logger: Custom logger object. Default:
+        :data:`aiohttp.log.server_logger`.
+      :param access_log: Custom logging object. Default:
+        :data:`aiohttp.log.access_logger`.
+      :param access_log_class: class for `access_logger`. Default:
+        :data:`aiohttp.helpers.AccessLogger`.
+        Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
+      :param str access_log_format: Access log format string. Default:
+        :attr:`helpers.AccessLogger.LOG_FORMAT`.
+      :param int max_line_size: Optional maximum header line size. Default:
+        ``8190``.
+      :param int max_headers: Optional maximum header size. Default: ``32768``.
+      :param int max_field_size: Optional maximum header field size. Default:
+        ``8190``.
 
-    :param float lingering_time: maximum time during which the server
-       reads and ignore additional data coming from the client when
-       lingering close is on.  Use ``0`` for disabling lingering on
-       server channel closing.
+      :param float lingering_time: maximum time during which the server
+         reads and ignore additional data coming from the client when
+         lingering close is on.  Use ``0`` for disabling lingering on
+         server channel closing.
 
-    :param float lingering_timeout: maximum waiting time for more
-        client data to arrive when lingering close is in effect
+      You should pass result of the method as *protocol_factory* to
+      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
-    You should pass result of the method as *protocol_factory* to
-    :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
+         loop = asyncio.get_event_loop()
 
-       loop = asyncio.get_event_loop()
+         app = Application()
 
-       app = Application()
+         # setup route table
+         # app.router.add_route(...)
 
-       # setup route table
-       # app.router.add_route(...)
+         await loop.create_server(app.make_handler(),
+                                  '0.0.0.0', 8080)
 
-       await loop.create_server(app.make_handler(),
-                                '0.0.0.0', 8080)
+      .. deprecated:: 3.2
+
+         The method is deprecated and will be removed in future
+         aiohttp versions.  Please use :ref:`aiohttp-web-app-runners` instead.
 
    .. comethod:: startup()
 
@@ -1597,7 +1665,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
    .. method:: add_view(path, handler, **kwargs)
 
       Shortcut for adding a class-based view handler. Calls the \
-      :meth:`add_routre` with ``method`` equals to ``'*'``.
+      :meth:`add_route` with ``method`` equals to ``'*'``.
 
       .. versionadded:: 3.0
 
@@ -1790,6 +1858,13 @@ Resource classes hierarchy::
 
       Read-only *name* of resource or ``None``.
 
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. For example
+      ``/path/to`` or ``/path/{to}``
+
+      .. versionadded:: 3.3
+
    .. comethod:: resolve(request)
 
       Resolve resource by finding appropriate :term:`web-handler` for
@@ -1853,6 +1928,12 @@ Resource classes hierarchy::
    The class corresponds to resources with plain-text matching,
    ``'/path/to'`` for example.
 
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the path
+      used to create the PlainResource. For example ``/path/to``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for()
 
@@ -1867,6 +1948,13 @@ Resource classes hierarchy::
    :ref:`variable <aiohttp-web-variable-handler>` matching,
    e.g. ``'/path/{to}/{param}'`` etc.
 
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the
+      formatter obtained from the path used to create the DynamicResource.
+      For example, from a path ``/get/{num:^\d+}``, it returns ``/get/{num}``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for(**params)
 
@@ -1884,6 +1972,13 @@ Resource classes hierarchy::
 
    The class corresponds to resources for :ref:`static file serving
    <aiohttp-web-static-file-handling>`.
+
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the prefix
+      used to create the StaticResource. For example ``/prefix``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for(filename, append_version=None)
 
@@ -1911,6 +2006,14 @@ Resource classes hierarchy::
 
    A resource for serving nested applications. The class instance is
    returned by :class:`~aiohttp.web.Application.add_subapp` call.
+
+   .. attribute:: canonical
+
+      Read-only *canonical path* associate with the resource. Returns the
+      prefix used to create the PrefixedSubAppResource.
+      For example ``/prefix``
+
+      .. versionadded:: 3.3
 
    .. method:: url_for(**kwargs)
 
@@ -1990,8 +2093,8 @@ and *405 Method Not Allowed*.
 .. _aiohttp-web-route-def:
 
 
-RouteDef
-^^^^^^^^
+RouteDef and StaticDef
+^^^^^^^^^^^^^^^^^^^^^^
 
 Route definition, a description for not registered yet route.
 
@@ -2014,10 +2117,32 @@ The definition is created by functions like :func:`get` or
    app.router.add_routes([web.get('/get', handle_get),
                           web.post('/post', handle_post),
 
+.. class:: AbstractRouteDef
+
+   A base class for route definitions.
+
+   Inherited from :class:`abc.ABC`.
+
+   .. versionadded:: 3.1
+
+   .. method:: register(router)
+
+      Register itself into :class:`UrlDispatcher`.
+
+      Abstract method, should be overridden by subclasses.
+
 
 .. class:: RouteDef
 
-   A definition for not added yet route.
+   A definition of not registered yet route.
+
+   Implements :class:`AbstractRouteDef`.
+
+   .. versionadded:: 2.3
+
+   .. versionchanged:: 3.1
+
+      The class implements :class:`AbstractRouteDef` interface.
 
    .. attribute:: method
 
@@ -2037,7 +2162,30 @@ The definition is created by functions like :func:`get` or
 
       A :class:`dict` of additional arguments.
 
-   .. versionadded:: 2.3
+
+.. class:: StaticDef
+
+   A definition of static file resource.
+
+   Implements :class:`AbstractRouteDef`.
+
+   .. versionadded:: 3.1
+
+   .. attribute:: prefix
+
+      A prefix used for static file handling, e.g. ``/static``.
+
+   .. attribute:: path
+
+      File system directory to serve, :class:`str` or
+      :class:`pathlib.Path`
+      (e.g. ``'/home/web-service/path/to/static'``.
+
+   .. attribute:: kwargs
+
+      A :class:`dict` of additional arguments, see
+      :meth:`UrlDispatcher.add_static` for a list of supported
+      options.
 
 
 .. function:: get(path, handler, *, name=None, allow_head=True, \
@@ -2090,6 +2238,18 @@ The definition is created by functions like :func:`get` or
 
    .. versionadded:: 3.0
 
+.. function:: static(prefix, path, *, name=None, expect_handler=None, \
+                     chunk_size=256*1024, \
+                     show_index=False, follow_symlinks=False, \
+                     append_version=False)
+
+   Return :class:`StaticDef` for processing static files.
+
+   See :meth:`UrlDispatcher.add_static` for information
+   about supported parameters.
+
+   .. versionadded:: 3.1
+
 .. function:: route(method, path, handler, *, name=None, expect_handler=None)
 
    Return :class:`RouteDef` for processing requests that decided by
@@ -2097,6 +2257,7 @@ The definition is created by functions like :func:`get` or
    about parameters.
 
    .. versionadded:: 2.3
+
 
 .. _aiohttp-web-route-table-def:
 
@@ -2138,6 +2299,8 @@ A routes table definition used for describing routes by decorators
    In addition to all standard :class:`list` methods the class
    provides also methods like ``get()`` and ``post()`` for adding new
    route definition.
+
+   .. versionadded:: 2.3
 
    .. decoratormethod:: get(path, *, allow_head=True, \
                             name=None, expect_handler=None)
@@ -2185,6 +2348,19 @@ A routes table definition used for describing routes by decorators
 
       .. versionadded:: 3.0
 
+   .. method:: static(prefix, path, *, name=None, expect_handler=None, \
+                      chunk_size=256*1024, \
+                      show_index=False, follow_symlinks=False, \
+                      append_version=False)
+
+
+      Add a new :class:`StaticDef` item for registering static files processor.
+
+      See :meth:`UrlDispatcher.add_static` for information about
+      supported parameters.
+
+      .. versionadded:: 3.1
+
    .. decoratormethod:: route(method, path, *, name=None, expect_handler=None)
 
       Add a new :class:`RouteDef` item for registering a web-handler
@@ -2192,7 +2368,6 @@ A routes table definition used for describing routes by decorators
 
       See :meth:`UrlDispatcher.add_route` for information about parameters.
 
-   .. versionadded:: 2.3
 
 MatchInfo
 ^^^^^^^^^
@@ -2315,6 +2490,14 @@ application on specific TCP or Unix socket, e.g.::
       Low-level web :class:`Server` for handling HTTP requests,
       read-only attribute.
 
+   .. attribute:: addresses
+
+      A  :class:`list` of served sockets addresses.
+
+      See :meth:`socket.getsockname` for items type.
+
+      .. versionadded:: 3.3
+
    .. attribute:: sites
 
       A read-only :class:`set` of served sites (:class:`TCPSite` /
@@ -2353,7 +2536,7 @@ application on specific TCP or Unix socket, e.g.::
 
 .. class:: TCPSite(runner, host=None, port=None, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
-                   backlog=128, reuse_address=None,
+                   backlog=128, reuse_address=None, \
                    reuse_port=None)
 
    Serve a runner on TCP socket.
@@ -2582,7 +2765,7 @@ Constants
 
       *GZIP compression*
 
-.. attribute:: identity
+   .. attribute:: identity
 
       *no compression*
 
@@ -2594,27 +2777,41 @@ Normalize path middleware
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: normalize_path_middleware(*, \
-                                        append_slash=True, merge_slashes=True)
+                                        append_slash=True, \
+                                        remove_slash=False, \
+                                        merge_slashes=True, \
+                                        redirect_class=HTTPMovedPermanently)
 
-  Middleware that normalizes the path of a request. By normalizing
-  it means:
+   Middleware factory which produces a middleware that normalizes
+   the path of a request. By normalizing it means:
 
-      - Add a trailing slash to the path.
-      - Double slashes are replaced by one.
+     - Add or remove a trailing slash to the path.
+     - Double slashes are replaced by one.
 
-  The middleware returns as soon as it finds a path that resolves
-  correctly. The order if all enabled is:
+   The middleware returns as soon as it finds a path that resolves
+   correctly. The order if both merge and append/remove are enabled is:
 
-    1. *merge_slashes*
-    2. *append_slash*
-    3. both *merge_slashes* and *append_slash*
+     1. *merge_slashes*
+     2. *append_slash* or *remove_slash*
+     3. both *merge_slashes* and *append_slash* or *remove_slash*
 
-  If the path resolves with at least one of those conditions, it will
-  redirect to the new path.
+   If the path resolves with at least one of those conditions, it will
+   redirect to the new path.
 
-  If *append_slash* is ``True`` append slash when needed. If a resource is
-  defined with trailing slash and the request comes without it, it will
-  append it automatically.
+   Only one of *append_slash* and *remove_slash* can be enabled. If both are
+   ``True`` the factory will raise an ``AssertionError``
 
-  If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
-  path into one.
+   If *append_slash* is ``True`` the middleware will append a slash when
+   needed. If a resource is defined with trailing slash and the request
+   comes without it, it will append it automatically.
+
+   If *remove_slash* is ``True``, *append_slash* must be ``False``. When enabled
+   the middleware will remove trailing slashes and redirect if the resource is
+   defined.
+
+   If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
+   path into one.
+
+   .. versionadded:: 3.4
+
+      Support for *remove_slash*

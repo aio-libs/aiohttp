@@ -2,38 +2,41 @@ import asyncio
 import datetime
 import gc
 import os
+import platform
 import tempfile
 from unittest import mock
 
 import pytest
+from multidict import MultiDict
 from yarl import URL
 
 from aiohttp import helpers
 from aiohttp.abc import AbstractAccessLogger
 
 
+IS_PYPY = platform.python_implementation() == 'PyPy'
+
+
 # ------------------- parse_mimetype ----------------------------------
 
 @pytest.mark.parametrize('mimetype, expected', [
-    ('', helpers.MimeType('', '', '', {})),
-    ('*', helpers.MimeType('*', '*', '', {})),
-    ('application/json', helpers.MimeType('application', 'json', '', {})),
-    (
-        'application/json;  charset=utf-8',
-        helpers.MimeType('application', 'json', '', {'charset': 'utf-8'})
-    ),
-    (
-        '''application/json; charset=utf-8;''',
-        helpers.MimeType('application', 'json', '', {'charset': 'utf-8'})
-    ),
-    (
-        'ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
-        helpers.MimeType('application', 'json', '', {'charset': 'UTF-8'})
-    ),
+    ('', helpers.MimeType('', '', '', MultiDict())),
+    ('*', helpers.MimeType('*', '*', '', MultiDict())),
+    ('application/json',
+     helpers.MimeType('application', 'json', '', MultiDict())),
+    ('application/json;  charset=utf-8',
+     helpers.MimeType('application', 'json', '',
+                      MultiDict({'charset': 'utf-8'}))),
+    ('''application/json; charset=utf-8;''',
+     helpers.MimeType('application', 'json', '',
+                      MultiDict({'charset': 'utf-8'}))),
+    ('ApPlIcAtIoN/JSON;ChaRseT="UTF-8"',
+     helpers.MimeType('application', 'json', '',
+                      MultiDict({'charset': 'UTF-8'}))),
     ('application/rss+xml',
-     helpers.MimeType('application', 'rss', 'xml', {})),
+     helpers.MimeType('application', 'rss', 'xml', MultiDict())),
     ('text/plain;base64',
-     helpers.MimeType('text', 'plain', '', {'base64': ''}))
+     helpers.MimeType('text', 'plain', '', MultiDict({'base64': ''})))
 ])
 def test_parse_mimetype(mimetype, expected):
     result = helpers.parse_mimetype(mimetype)
@@ -124,6 +127,29 @@ def test_access_logger_format():
     assert expected == access_logger._log_format
 
 
+@pytest.mark.skip(
+    IS_PYPY,
+    """
+    Because of patching :py:class:`datetime.datetime`, under PyPy it
+    fails in :py:func:`isinstance` call in
+    :py:meth:`datetime.datetime.__sub__` (called from
+    :py:meth:`aiohttp.helpers.AccessLogger._format_t`):
+
+    *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
+
+    (Pdb) from datetime import datetime
+    (Pdb) isinstance(now, datetime)
+    *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
+    (Pdb) datetime.__class__
+    <class 'unittest.mock.MagicMock'>
+    (Pdb) isinstance(now, datetime.__class__)
+    False
+
+    Ref: https://bitbucket.org/pypy/pypy/issues/1187/call-to-isinstance-in-__sub__-self-other
+    Ref: https://github.com/celery/celery/issues/811
+    Ref: https://stackoverflow.com/a/46102240/595220
+    """,  # noqa: E501
+)
 def test_access_logger_atoms(mocker):
     utcnow = datetime.datetime(1843, 1, 1, 0, 30)
     mock_datetime = mocker.patch("aiohttp.helpers.datetime.datetime")
@@ -241,14 +267,16 @@ def test_logger_abc():
     mock_logger.info.assert_called_with('request response 1')
 
 
-class TestReify:
+class ReifyMixin:
+
+    reify = NotImplemented
 
     def test_reify(self):
         class A:
             def __init__(self):
                 self._cache = {}
 
-            @helpers.reify
+            @self.reify
             def prop(self):
                 return 1
 
@@ -260,12 +288,12 @@ class TestReify:
             def __init__(self):
                 self._cache = {}
 
-            @helpers.reify
+            @self.reify
             def prop(self):
                 """Docstring."""
                 return 1
 
-        assert isinstance(A.prop, helpers.reify)
+        assert isinstance(A.prop, self.reify)
         assert 'Docstring.' == A.prop.__doc__
 
     def test_reify_assignment(self):
@@ -273,7 +301,7 @@ class TestReify:
             def __init__(self):
                 self._cache = {}
 
-            @helpers.reify
+            @self.reify
             def prop(self):
                 return 1
 
@@ -281,6 +309,15 @@ class TestReify:
 
         with pytest.raises(AttributeError):
             a.prop = 123
+
+
+class TestPyReify(ReifyMixin):
+    reify = helpers.reify_py
+
+
+if not helpers.NO_EXTENSIONS and not IS_PYPY:
+    class TestCReify(ReifyMixin):
+        reify = helpers.reify_c
 
 # ----------------------------------- is_ip_address() ----------------------
 
@@ -390,7 +427,10 @@ def test_timer_context_cancelled():
             with ctx:
                 pass
 
-        assert m_asyncio.Task.current_task.return_value.cancel.called
+        if helpers.PY_37:
+            assert m_asyncio.current_task.return_value.cancel.called
+        else:
+            assert m_asyncio.Task.current_task.return_value.cancel.called
 
 
 def test_timer_context_no_task(loop):
@@ -547,3 +587,77 @@ async def test_set_exception_cancelled(loop):
 
     with pytest.raises(asyncio.CancelledError):
         await fut
+
+
+# ----------- ChainMapProxy --------------------------
+
+class TestChainMapProxy:
+    @pytest.mark.skipif(not helpers.PY_36,
+                        reason="Requires Python 3.6+")
+    def test_inheritance(self):
+        with pytest.raises(TypeError):
+            class A(helpers.ChainMapProxy):
+                pass
+
+    def test_getitem(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp['a'] == 2
+        assert cp['b'] == 3
+
+    def test_getitem_not_found(self):
+        d = {'a': 1}
+        cp = helpers.ChainMapProxy([d])
+        with pytest.raises(KeyError):
+            cp['b']
+
+    def test_get(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp.get('a') == 2
+
+    def test_get_default(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp.get('c', 4) == 4
+
+    def test_get_non_default(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert cp.get('a', 4) == 2
+
+    def test_len(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert len(cp) == 2
+
+    def test_iter(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert set(cp) == {'a', 'b'}
+
+    def test_contains(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        assert 'a' in cp
+        assert 'b' in cp
+        assert 'c' not in cp
+
+    def test_bool(self):
+        assert helpers.ChainMapProxy([{'a': 1}])
+        assert not helpers.ChainMapProxy([{}, {}])
+        assert not helpers.ChainMapProxy([])
+
+    def test_repr(self):
+        d1 = {'a': 2, 'b': 3}
+        d2 = {'a': 1}
+        cp = helpers.ChainMapProxy([d1, d2])
+        expected = "ChainMapProxy({!r}, {!r})".format(d1, d2)
+        assert expected == repr(cp)

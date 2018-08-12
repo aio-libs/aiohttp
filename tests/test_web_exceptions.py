@@ -1,5 +1,6 @@
 import collections
 import re
+from traceback import format_exception
 from unittest import mock
 
 import pytest
@@ -25,7 +26,7 @@ def request(buf):
         return helpers.noop()
 
     async def write_headers(status_line, headers):
-        headers = status_line + ''.join(
+        headers = status_line + '\r\n' + ''.join(
             [k + ': ' + v + '\r\n' for k, v in headers.items()])
         headers = headers.encode('utf-8') + b'\r\n'
         buf.extend(headers)
@@ -172,3 +173,14 @@ def test_link_header_451(buf, request):
 
     assert 'http://warning.or.kr/' == resp.link
     assert '<http://warning.or.kr/>; rel="blocked-by"' == resp.headers['Link']
+
+
+def test_HTTPException_retains_cause():
+    with pytest.raises(web.HTTPException) as ei:
+        try:
+            raise Exception('CustomException')
+        except Exception as exc:
+            raise web.HTTPException() from exc
+    tb = ''.join(format_exception(ei.type, ei.value, ei.tb))
+    assert 'CustomException' in tb
+    assert 'direct cause' in tb

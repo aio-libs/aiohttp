@@ -42,6 +42,7 @@ Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bryce Drennan
 Carl George
 Cecile Tonglet
 Chien-Wei Huang
@@ -56,6 +57,7 @@ Dan Xu
 Daniel García
 Daniel Nelson
 Danny Song
+David Bibb
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
@@ -65,6 +67,7 @@ Dmitry Doroshev
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Kuznetsov
+Dmitriy Safonov
 Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
@@ -84,6 +87,7 @@ Georges Dubus
 Greg Holt
 Gregory Haynes
 Günther Jena
+Gustavo Carneiro
 Hu Bo
 Hugo Herter
 Hynek Schlawack
@@ -109,6 +113,7 @@ Julien Duponchelle
 Jungkook Park
 Junjie Tao
 Justas Trimailovas
+Justin Foo
 Justin Turner Arthur
 Kay Zheng
 Kimmo Parviainen-Jalanko
@@ -122,6 +127,7 @@ Lu Gong
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Luis Pedrosa
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
@@ -148,9 +154,11 @@ Panagiotis Kolokotronis
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
+Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
 Pawel Miech
+Pepe Osca
 Philipp A.
 Pieter van Beek
 Rafael Viotti
@@ -183,12 +191,15 @@ Thanos Lefteris
 Thijs Vermeir
 Thomas Grainger
 Tolga Tezel
+Trinh Hoang Nhu
+Vadim Suharnikov
 Vaibhav Sagar
 Vamsi Krishna Avula
 Vasiliy Faronov
 Vasyl Baran
 Victor Kovtun
 Vikas Kawadia
+Viktor Danyliuk
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
@@ -200,11 +211,14 @@ Vladyslav Bondar
 W. Trevor King
 Will McGugan
 Willem de Groot
+William Grzybowski
 Wilson Ong
 Wei Lin
 Weiwei Wang
+Yang Zhou
 Yannick Koechlin
 Yannick Péroux
+Ye Cao
 Yegor Roganov
 Young-Ho Cha
 Yuriy Shatrov

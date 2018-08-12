@@ -4,17 +4,18 @@ FAQ
 .. contents::
    :local:
 
-Are there any plans for @app.route decorator like in Flask?
------------------------------------------------------------
+Are there plans for an @app.route decorator like in Flask?
+----------------------------------------------------------
 
-We have it already (*aiohttp>=2.3* required):
+As of aiohttp 2.3, :class:`~aiohttp.web.RouteTableDef` provides an API
+similar to Flask's ``@app.route``. See
 :ref:`aiohttp-web-alternative-routes-definition`.
 
-The difference is: ``@app.route`` should have an ``app`` in module
-global namespace, which makes *circular import hell* easy.
+Unlike Flask's ``@app.route``, :class:`~aiohttp.web.RouteTableDef`
+does not require an ``app`` in the module namespace (which often leads
+to circular imports).
 
-*aiohttp* provides a :class:`~aiohttp.web.RouteTableDef` decoupled
- from an application instance::
+Instead, a :class:`~aiohttp.web.RouteTableDef` is decoupled from an application instance::
 
    routes = web.RouteTableDef()
 
@@ -30,36 +31,35 @@ global namespace, which makes *circular import hell* easy.
    app.router.add_routes(routes)
 
 
-Has aiohttp the Flask Blueprint or Django App concept?
-------------------------------------------------------
+Does aiohttp have a concept like Flask's "blueprint" or Django's "app"?
+-----------------------------------------------------------------------
 
-If you're planing to write big applications, maybe you must consider
-use nested applications. They acts as a Flask Blueprint or like the
-Django application concept.
+If you're writing a large application, you may want to consider
+using :ref:`nested applications <aiohttp-web-nested-applications>`, which
+are similar to Flask's "blueprints" or Django's "apps".
 
-Using nested application you can add sub-applications to the main application.
-
-see: :ref:`aiohttp-web-nested-applications`.
+See: :ref:`aiohttp-web-nested-applications`.
 
 
-How to create route that catches urls with given prefix?
----------------------------------------------------------
-Try something like::
+How do I create a route that matches urls with a given prefix?
+--------------------------------------------------------------
+
+You can do something like the following: ::
 
     app.router.add_route('*', '/path/to/{tail:.+}', sink_handler)
 
-Where first argument, star, means catch any possible method
-(*GET, POST, OPTIONS*, etc), second matching ``url`` with desired prefix,
-third -- handler.
+The first argument, ``*``,  matches any HTTP method
+(*GET, POST, OPTIONS*, etc). The second argument matches URLS with the desired prefix.
+The third argument is the handler function.
 
 
-Where to put my database connection so handlers can access it?
---------------------------------------------------------------
+Where do I put my database connection so handlers can access it?
+----------------------------------------------------------------
 
-:class:`aiohttp.web.Application` object supports :class:`dict`
-interface, and right place to store your database connections or any
-other resource you want to share between handlers. Take a look on
-following example::
+:class:`aiohttp.web.Application` object supports the :class:`dict`
+interface and provides a place to store your database connections or any
+other resource you want to share between handlers.
+::
 
     async def go(request):
         db = request.app['db']
@@ -77,71 +77,70 @@ following example::
         return app
 
 
-Why the minimal supported version is Python 3.5.3?
---------------------------------------------------
+Why is Python 3.5.3 the lowest supported version?
+-------------------------------------------------
 
-Python 3.5.2 has fixed protocol for async iterators: ``__aiter()__`` is
-not a coroutine but regular function.
+Python 3.5.2 fixes the protocol for async iterators: ``__aiter__()`` is
+not a coroutine but a regular function.
 
-Python 3.5.3 is even more important: :func:`asyncio.get_event_loop`
-returns the running loop instance if called from a coroutine
-(previously was returning a *default* one, set by
+Python 3.5.3 has a more important change: :func:`asyncio.get_event_loop`
+returns the running loop instance if called from a coroutine.
+Previously it returned a *default* loop, set by
 :func:`asyncio.set_event_loop`.
 
-The change is very crucial, in Python < 3.5.3
-:func:`asyncio.get_event_loop` was not reliable, thus user *was
-forced* to pass the event loop instance explicitly everywhere.
+Previous to Python 3.5.3,
+:func:`asyncio.get_event_loop` was not reliable, so users were
+forced to explicitly pass the event loop instance everywhere.
+If a future object were created for one event loop
+(e.g. the default loop) but a coroutine was run by another loop, the coroutine
+was never awaited. As a result, the task would hang.
 
-Otherwise if a future object was created for using one event loop
-(e.g. default) but a coroutine was run by other loop -- the coroutine
-was never awaited, task was *hung*.
-
-Keep in mind that every ``await`` expression internally either passed
-instantly or paused by waiting for a future.
+Keep in mind that every internal ``await`` expression either passed
+instantly or paused, waiting for a future.
 
 It's extremely important that all tasks (coroutine runners) and
-futures are using the same event loop.
+futures use the same event loop.
 
 
-How a middleware may store a data for using by web-handler later?
------------------------------------------------------------------
+How can middleware store data for web handlers to use?
+------------------------------------------------------
 
-:class:`aiohttp.web.Request` supports :class:`dict` interface as well
-as :class:`aiohttp.web.Application`.
+Both :class:`aiohttp.web.Request`  and :class:`aiohttp.web.Application`
+support the :class:`dict` interface.
 
-Just put data inside *request*::
+Therefore, data may be stored inside a request object. ::
 
    async def handler(request):
        request['unique_key'] = data
 
-See https://github.com/aio-libs/aiohttp_session code for inspiration,
-``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
-for saving request specific session info.
+See https://github.com/aio-libs/aiohttp_session code for an example.
+The ``aiohttp_session.get_session(request)`` method uses ``SESSION_KEY``
+for saving request-specific session information.
 
-As of aiohttp 3.0 all response objects are *dict-like* structures as
+As of aiohttp 3.0, all response objects are dict-like structures as
 well.
 
 
 .. _aiohttp_faq_parallel_event_sources:
 
-How to receive an incoming events from different sources in parallel?
----------------------------------------------------------------------
+Can a handler receive incoming events from different sources in parallel?
+-------------------------------------------------------------------------
 
-For example we have two event sources:
+Yes.
 
-   1. WebSocket for event from end user
+As an example, we may have two event sources:
 
-   2. Redis PubSub from receiving events from other parts of app for
-      sending them to user via websocket.
+   1. WebSocket for events from an end user
 
-The most native way to perform it is creation of separate task for
-pubsub handling.
+   2. Redis PubSub for events from other parts of the application
 
-Parallel :meth:`aiohttp.web.WebSocketResponse.receive` calls are forbidden, only
-the single task should perform websocket reading.
+The most native way to handle this is to create a separate task for
+PubSub handling.
 
-But other tasks may use the same websocket object for sending data to
-peer::
+Parallel :meth:`aiohttp.web.WebSocketResponse.receive` calls are forbidden;
+a single task should perform WebSocket reading.
+However, other tasks may use the same WebSocket object for sending data to
+peers. ::
 
     async def handler(request):
 
@@ -172,18 +171,17 @@ peer::
 
 .. _aiohttp_faq_terminating_websockets:
 
-How to programmatically close websocket server-side?
-----------------------------------------------------
+How do I programmatically close a WebSocket server-side?
+--------------------------------------------------------
+
+Let's say we have an application with two endpoints:
 
 
-For example we have an application with two endpoints:
+   1. ``/echo`` a WebSocket echo server that authenticates the user
+   2. ``/logout_user`` that, when invoked, closes all open
+      WebSockets for that user.
 
-
-   1. ``/echo`` a websocket echo server that authenticates the user somehow
-   2. ``/logout_user`` that when invoked needs to close all open
-      websockets for that user.
-
-One simple solution is keeping a shared registry of websocket
+One simple solution is to keep a shared registry of WebSocket
 responses for a user in the :class:`aiohttp.web.Application` instance
 and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
 ``/logout_user`` handler::
@@ -227,11 +225,11 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
         web.run_app(app, host='localhost', port=8080)
 
 
-How to make request from a specific IP address?
------------------------------------------------
+How do I make a request from a specific IP address?
+---------------------------------------------------
 
-If your system has several IP interfaces you may choose one which will
-be used used to bind socket locally::
+If your system has several IP interfaces, you may choose one which will
+be used used to bind a socket locally::
 
     conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0), loop=loop)
     async with aiohttp.ClientSession(connector=conn) as session:
@@ -240,18 +238,18 @@ be used used to bind socket locally::
 .. seealso:: :class:`aiohttp.TCPConnector` and ``local_addr`` parameter.
 
 
-API stability and deprecation policy
-------------------------------------
+What is the API stability and deprecation policy?
+-------------------------------------------------
 
-*aiohttp* follows strong [SemVer](https://semver.org/) schema.
+*aiohttp* follows strong `Semantic Versioning <https://semver.org>`_ (SemVer).
 
-Obsolete attributes and methods are marked as *deprecated* in
-documentation and raises :class:`DeprecationWarning` on usage.
+Obsolete attributes and methods are marked as *deprecated* in the
+documentation and raise :class:`DeprecationWarning` upon usage.
 
-Let's assume now we have aiohttp ``X.Y.Z`` where ``X`` is *major* version,
+Assume aiohttp ``X.Y.Z`` where ``X`` is major version,
 ``Y`` is minor version and ``Z`` is bugfix number.
 
-E.g. now the latest released version is ``aiohttp==3.0.6``.
+For example, if the latest released version is ``aiohttp==3.0.6``:
 
 ``3.0.7`` fixes some bugs but have no new features.
 
@@ -262,49 +260,170 @@ remove it, also all bug fixes from previous release are merged.
 **except** deprecations from the **last** ``3.Y`` release. These
 deprecations will be removed by ``5.0.0``.
 
-Unfortunately we have break the rules in case of found **security
-vulnerability**.
-
+Unfortunately we may have to break these rules when a **security
+vulnerability** is found.
 If a security problem cannot be fixed without breaking backward
-compatibility -- a bugfix release may do it. The probability for this
-is very low but shit happens, sorry.
+compatibility, a bugfix release may break compatibility. This is unlikely, but
+possible.
 
-All *backward incompatible* changes are explicitly marked in
-:ref:`CHANGES <aiohttp_changes>` chapter.
+All backward incompatible changes are explicitly marked in
+:ref:`the changelog <aiohttp_changes>`.
 
 
-How to enable gzip compression globally for the whole application?
-------------------------------------------------------------------
+How do I enable gzip compression globally for my entire application?
+--------------------------------------------------------------------
 
-It's impossible. Choosing what to compress and where don't apply such
-time consuming operation is very tricky matter.
+It's impossible. Choosing what to compress and what not to compress is
+is a tricky matter.
 
-If you need global compression -- write own custom middleware. Or
+If you need global compression, write a custom middleware. Or
 enable compression in NGINX (you are deploying aiohttp behind reverse
-proxy, is not it).
+proxy, right?).
 
 
-How to manage ClientSession inside web server?
-----------------------------------------------
+How do I manage a ClientSession within a web server?
+----------------------------------------------------
 
 :class:`aiohttp.ClientSession` should be created once for the lifetime
 of the server in order to benefit from connection pooling.
 
-Session saves cookies internally. If you don't need cookies processing
+Sessions save cookies internally. If you don't need cookie processing,
 use :class:`aiohttp.DummyCookieJar`. If you need separate cookies
-for different http calls but process them in logical chains use single
+for different http calls but process them in logical chains, use a single
 :class:`aiohttp.TCPConnector` with separate
-client session and ``own_connector=False``.
+client sessions and ``own_connector=False``.
 
 
-How to access db connection stored in app from subapplication?
---------------------------------------------------------------
+How do I access database connections from a subapplication?
+-----------------------------------------------------------
 
-Restricting access from subapplication to main (or outer) app is the
+Restricting access from subapplication to main (or outer) app is a
 deliberate choice.
 
-Subapplication is an isolated unit by design. If you need to share
-database object please do it explicitly::
+A subapplication is an isolated unit by design. If you need to share a
+database object, do it explicitly::
 
    subapp['db'] = mainapp['db']
    mainapp.add_subapp('/prefix', subapp)
+
+
+How do I perform operations in a request handler after sending the response?
+----------------------------------------------------------------------------
+
+Middlewares can be written to handle post-response operations, but
+they run after every request. You can explicitly send the response by
+calling :meth:`aiohttp.web.Response.write_eof`, which starts sending
+before the handler returns, giving you a chance to execute follow-up
+operations::
+
+    def ping_handler(request):
+        """Send PONG and increase DB counter."""
+
+        # explicitly send the response
+        resp = web.json_response({'message': 'PONG'})
+        await resp.prepare(request)
+        await resp.write_eof()
+
+        # increase the pong count
+        APP['db'].inc_pong()
+
+        return resp
+
+A :class:`aiohttp.web.Response` object must be returned. This is
+required by aiohttp web contracts, even though the response
+already been sent.
+
+
+How do I make sure my custom middleware response will behave correctly?
+------------------------------------------------------------------------
+
+Sometimes your middleware handlers might need to send a custom response.
+This is just fine as long as you always create a new
+:class:`aiohttp.web.Response` object when required.
+
+The response object is a Finite State Machine. Once it has been dispatched
+by the server, it will reach its final state and cannot be used again.
+
+The following middleware will make the server hang, once it serves the second
+response::
+
+    from aiohttp import web
+
+    def misbehaved_middleware():
+        # don't do this!
+        cached = web.Response(status=200, text='Hi, I am cached!')
+
+        @web.middleware
+        async def middleware(request, handler):
+            # ignoring response for the sake of this example
+            _res = handler(request)
+            return cached
+
+        return middleware
+
+The rule of thumb is *one request, one response*.
+
+
+Why is creating a ClientSession outside of an event loop dangerous?
+-------------------------------------------------------------------
+
+Short answer is: life-cycle of all asyncio objects should be shorter
+than life-cycle of event loop.
+
+Full explanation is longer.  All asyncio object should be correctly
+finished/disconnected/closed before event loop shutdown.  Otherwise
+user can get unexpected behavior. In the best case it is a warning
+about unclosed resource, in the worst case the program just hangs,
+awaiting for coroutine is never resumed etc.
+
+Consider the following code from ``mod.py``::
+
+    import aiohttp
+
+    session = aiohttp.ClientSession()
+
+    async def fetch(url):
+        async with session.get(url) as resp:
+            return await resp.text()
+
+The session grabs current event loop instance and stores it in a
+private variable.
+
+The main module imports the module and installs ``uvloop`` (an
+alternative fast event loop implementation).
+
+``main.py``::
+
+    import asyncio
+    import uvloop
+    import mod
+
+    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    asyncio.run(main())
+
+The code is broken: ``session`` is bound to default ``asyncio`` loop
+on import time but the loop is changed **after the import** by
+``set_event_loop()``.  As result ``fetch()`` call hangs.
+
+
+To avoid import dependency hell *aiohttp* encourages creation of
+``ClientSession`` from async function.  The same policy works for
+``web.Application`` too.
+
+Another use case is unit test writing.  Very many test libraries
+(*aiohttp test tools* first) creates a new loop instance for every
+test function execution.  It's done for sake of tests isolation.
+Otherwise pending activity (timers, network packets etc.) from
+previous test may interfere with current one producing very cryptic
+and unstable test failure.
+
+Note: *class variables* are hidden globals actually. The following
+code has the same problem as ``mod.py`` example, ``session`` variable
+is the hidden global object::
+
+    class A:
+        session = aiohttp.ClientSession()
+
+        async def fetch(self, url):
+            async with session.get(url) as resp:
+                return await resp.text()
