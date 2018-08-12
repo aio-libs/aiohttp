@@ -154,6 +154,8 @@ jobs:
     - TARGET=towncrier
     install:
     - *upgrade_python_toolset
+    - pip install -r requirements/cython.txt
+    - pip install -r requirements/ci.txt
     - pip install -r requirements/towncrier.txt
     script:
     - towncrier --yes
