@@ -22,13 +22,15 @@ except ImportError:
 
 if (here / '.git').exists() and not USE_CYTHON:
     print("Install cython when building from git clone", file=sys.stderr)
-    print("pip install cython", file=sys.stderr)
+    print("Hint:", file=sys.stderr)
+    print("  pip install cython", file=sys.stderr)
     sys.exit(1)
 
 
 if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md'):
     print("Install submodules when building from git clone", file=sys.stderr)
-    print("git submodule update --init", file=sys.stderr)
+    print("Hint:", file=sys.stderr)
+    print("  git submodule update --init", file=sys.stderr)
     sys.exit(2)
 
 
