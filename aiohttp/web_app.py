@@ -74,8 +74,7 @@ class Application(MutableMapping):
         self._on_startup = Signal(self)  # type: _AppSignal
         self._on_shutdown = Signal(self)  # type: _AppSignal
         self._on_cleanup = Signal(self)  # type: _AppSignal
-        self._cleanup_ctx = CleanupContext()
-        self._on_startup.append(self._cleanup_ctx._on_startup)
+        self._cleanup_ctx = CleanupContext(self._on_startup)
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
@@ -378,28 +377,49 @@ class CleanupError(RuntimeError):
 
 class CleanupContext(FrozenList):
 
-    def __init__(self):
-        super().__init__()
-        self._exits = []
+    class CleanupContextItem:
+        """
+        CleanupContext uses this class to wrap an asynchronous generator
+        before adding to itself.
+        """
 
-    async def _on_startup(self, app):
-        for cb in self:
-            it = cb(app).__aiter__()
+        def __init__(self, cb):
+            self._cb = cb
+            self._iterator_at_exit = None
+
+        async def enter(self, app):
+            it = self._cb(app).__aiter__()
             await it.__anext__()
-            self._exits.append(it)
+            self._iterator_at_exit = it
+
+        async def exit(self, app):
+            if self._iterator_at_exit is None:
+                return
+            try:
+                await self._iterator_at_exit.__anext__()
+            except StopAsyncIteration:
+                pass
+            else:
+                raise RuntimeError("{!r} has more than one 'yield'"
+                                   .format(self._iterator_at_exit))
+
+    def __init__(self, on_startup):
+        super().__init__()
+        self._on_startup = on_startup
+
+    def append(self, item):
+        cleanup_ctx_item = self.CleanupContextItem(item)
+        super().append(cleanup_ctx_item.exit)
+        self._on_startup.append(cleanup_ctx_item.enter)
 
     async def _on_cleanup(self, app):
         errors = []
-        for it in reversed(self._exits):
+        for cb in reversed(self):
             try:
-                await it.__anext__()
-            except StopAsyncIteration:
-                pass
+                await cb(app)
             except Exception as exc:
                 errors.append(exc)
-            else:
-                errors.append(RuntimeError("{!r} has more than one 'yield'"
-                                           .format(it)))
+
         if errors:
             if len(errors) == 1:
                 raise errors[0]

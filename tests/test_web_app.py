@@ -401,6 +401,43 @@ async def test_cleanup_ctx_multiple_yields():
     assert out == ['pre_1', 'post_1']
 
 
+async def test_mixe_cleanup_ctx_on_startup_and_on_cleanup():
+    app = web.Application()
+    out = []
+
+    def startup(num):
+        async def inner(app):
+            out.append('pre_' + str(num))
+        return inner
+
+    def cleanup(num):
+        async def inner(app):
+            out.append('post_' + str(num))
+        return inner
+
+    def cleanup_ctx(num):
+        @async_generator
+        async def inner(app):
+            out.append('pre_' + str(num))
+            await yield_(None)
+            out.append('post_' + str(num))
+        return inner
+
+    app.on_startup.append(startup(1))
+    app.cleanup_ctx.append(cleanup_ctx(2))
+    app.on_startup.append(startup(3))
+    app.cleanup_ctx.append(cleanup_ctx(4))
+    app.on_startup.append(startup(5))
+
+    app.freeze()
+    await app.startup()
+    assert out == ['pre_1', 'pre_2', 'pre_3', 'pre_4', 'pre_5']
+
+    del out[:]
+    await app.cleanup()
+    assert out == ['post_4', 'post_2']
+
+
 async def test_subapp_chained_config_dict_visibility(aiohttp_client):
 
     async def main_handler(request):

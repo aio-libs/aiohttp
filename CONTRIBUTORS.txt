@@ -198,6 +198,7 @@ Vamsi Krishna Avula
 Vasiliy Faronov
 Vasyl Baran
 Victor Kovtun
+Vincent Maillol
 Vikas Kawadia
 Viktor Danyliuk
 Vitalik Verhovodov

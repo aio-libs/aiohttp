@@ -619,6 +619,13 @@ one ``yield``.
 *aiohttp* guarantees that *cleanup code* is called if and only if
 *startup code* was successfully finished.
 
+*statup codes* are called in order of insertion. The order is preserved between
+callbacks in *cleanup* signal and *statup codes*.
+
+*cleanup codes* are called in reverse order of insertion before any
+callback in *cleanup* signal.
+
+
 Asynchronous generators are supported by Python 3.6+, on Python 3.5
 please use `async_generator <https://pypi.org/project/async_generator/>`_
 library.
