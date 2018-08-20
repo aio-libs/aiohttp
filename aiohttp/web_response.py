@@ -626,7 +626,8 @@ class Response(StreamResponse):
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
                          if coding.value == 'gzip' else -zlib.MAX_WBITS)
-            if len(self._body) > self._zlib_thread_size:
+            if self._zlib_thread_size is not None and \
+                    len(self._body) > self._zlib_thread_size:
                 await self._loop.run_in_executor(
                     None, self._compress_body, zlib_mode)
             else:
@@ -663,7 +664,8 @@ async def async_json_response(data=sentinel, *, text=None, body=None,
         else:
             if asyncio.iscoroutine(dumps):
                 text = await dumps(data)
-            elif len(data) > executor_body_size:
+            elif executor_body_size is not None and \
+                    len(data) > executor_body_size:
                 loop = asyncio.get_event_loop()
                 text = await loop.run_in_executor(None, dumps, data)
             else:
