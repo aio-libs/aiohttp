@@ -632,9 +632,6 @@ class Response(StreamResponse):
             else:
                 self._compress_body(zlib_mode)
 
-            compressobj = zlib.compressobj(wbits=zlib_mode)
-            self._compressed_body = compressobj.compress(self._body) + \
-                compressobj.flush()
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
             self._headers[hdrs.CONTENT_LENGTH] = \
                 str(len(self._compressed_body))

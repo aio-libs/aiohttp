@@ -1,5 +1,6 @@
 import collections
 import datetime
+import gzip
 import json
 import re
 from unittest import mock
@@ -11,7 +12,7 @@ from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import ContentCoding, Response, StreamResponse, \
-    json_response, async_json_response, _BODY_LENGTH_THREAD_CUTOFF
+    json_response, async_json_response
 
 
 def make_request(method, path, headers=CIMultiDict(),
@@ -415,6 +416,18 @@ async def test_force_compression_no_accept_gzip():
     msg = await resp.prepare(req)
     msg.enable_compression.assert_called_with('gzip')
     assert 'gzip' == resp.headers.get(hdrs.CONTENT_ENCODING)
+
+
+async def test_change_content_threaded_compression_enabled():
+    req = make_request('GET', '/')
+    body_thread_size = 1024
+    body = b'answer' * body_thread_size
+    resp = Response(body=body,
+                    zlib_thread_size=body_thread_size)
+    await resp.enable_compression(ContentCoding.gzip)
+
+    await resp.prepare(req)
+    assert gzip.decompress(resp._compressed_body) == body
 
 
 async def test_change_content_length_if_compression_enabled():
@@ -1111,8 +1124,10 @@ async def test_async_json_small_response():
 
 
 async def test_async_json_large_response():
-    text = 'ja' * _BODY_LENGTH_THREAD_CUTOFF
-    resp = await async_json_response(text=json.dumps(text))
+    cuttoff_length = 1024
+    text = 'ja' * cuttoff_length
+    resp = await async_json_response(text=json.dumps(text),
+                                     executor_body_size=cuttoff_length)
     assert resp.text == json.dumps(text)
 
 
