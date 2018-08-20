@@ -31,6 +31,7 @@ aiohttp/_http_parser.c
 aiohttp/_http_parser.html
 aiohttp/_http_writer.c
 aiohttp/_http_writer.html
+aiohttp/_headers.html
 bin
 build
 htmlcov

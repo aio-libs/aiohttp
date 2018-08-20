@@ -91,7 +91,7 @@ that case you can specify multiple values for each key::
     params = [('key', 'value1'), ('key', 'value2')]
     async with session.get('http://httpbin.org/get',
                            params=params) as r:
-        expect == 'http://httpbin.org/get?key=value2&key=value1'
+        expect = 'http://httpbin.org/get?key=value2&key=value1'
         assert str(r.url) == expect
 
 You can also pass :class:`str` content as param, but beware -- content
@@ -275,7 +275,7 @@ If you want to send JSON data::
 
 To send text with appropriate content-type just use ``text`` attribute ::
 
-    async with session.post(url, text='Тест') as resp:
+    async with session.post(url, data='Тест') as resp:
         ...
 
 POST a Multipart-Encoded File
@@ -386,6 +386,7 @@ multiple writer tasks which can only send data asynchronously (by
 ``await ws.send_str('data')`` for example).
 
 
+.. _aiohttp-client-timeouts:
 
 Timeouts
 ========
@@ -415,15 +416,24 @@ Supported :class:`ClientTimeout` fields are:
 
    ``connect``
 
-      The maximum time for connection establishment.
+      Total timeout for acquiring a connection from pool.  The time
+      consists connection establishment for a new connection or
+      waiting for a free connection from a pool if pool connection
+      limits are exceeded.
+
+   ``sock_connect``
+
+      A timeout for connecting to a peer for a new connection, not
+      given from a pool.
 
    ``sock_read``
 
       The maximum allowed timeout for period between reading a new
       data portion from a peer.
 
-All fields a floats, ``None`` or ``0`` disables a particular timeout check.
+All fields are floats, ``None`` or ``0`` disables a particular timeout check.
 
 Thus the default timeout is::
 
-   aiohttp.ClientTimeout(total=5*60, connect=None, sock_read=None)
+   aiohttp.ClientTimeout(total=5*60, connect=None,
+                         sock_connect=None, sock_read=None)

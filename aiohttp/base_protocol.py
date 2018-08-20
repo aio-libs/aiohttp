@@ -4,6 +4,9 @@ from .log import internal_logger
 
 
 class BaseProtocol(asyncio.Protocol):
+    __slots__ = ('_loop', '_paused', '_drain_waiter',
+                 '_connection_lost', 'transport')
+
     def __init__(self, loop=None):
         if loop is None:
             self._loop = asyncio.get_event_loop()

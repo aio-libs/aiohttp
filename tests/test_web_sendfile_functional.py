@@ -12,7 +12,7 @@ from aiohttp import web
 try:
     import ssl
 except ImportError:
-    ssl = False
+    ssl = None  # type: ignore
 
 
 @pytest.fixture(params=['sendfile', 'fallback'], ids=['sendfile', 'fallback'])

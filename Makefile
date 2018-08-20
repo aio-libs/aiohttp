@@ -28,7 +28,12 @@ flake: .flake
 check_changes:
 	@./tools/check_changes.py
 
-.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes
+mypy: .flake
+	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
+            mypy aiohttp tests; \
+	fi
+
+.develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
 	@pip install -e .
 	@touch .develop
 
@@ -111,8 +116,5 @@ doc-spelling:
 install:
 	@pip install -U pip
 	@pip install -Ur requirements/dev.txt
-
-mypy:
-	mypy aiohttp tests
 
 .PHONY: all build flake test vtest cov clean doc

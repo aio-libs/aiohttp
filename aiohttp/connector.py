@@ -18,7 +18,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ClientConnectorError, ClientConnectorSSLError,
                                 ClientHttpProxyError,
                                 ClientProxyConnectionError,
-                                ServerFingerprintMismatch, certificate_errors,
+                                ServerFingerprintMismatch, cert_errors,
                                 ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
@@ -30,7 +30,7 @@ from .resolver import DefaultResolver
 try:
     import ssl
 except ImportError:  # pragma: no cover
-    ssl = None
+    ssl = None  # type: ignore
 
 
 __all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
@@ -820,7 +820,7 @@ class TCPConnector(BaseConnector):
         try:
             with CeilTimeout(timeout.sock_connect):
                 return await self._loop.create_connection(*args, **kwargs)
-        except certificate_errors as exc:
+        except cert_errors as exc:
             raise ClientConnectorCertificateError(
                 req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -894,6 +894,11 @@ class TCPConnector(BaseConnector):
         # create connection to proxy server
         transport, proto = await self._create_direct_connection(
             proxy_req, [], timeout, client_error=ClientProxyConnectionError)
+
+        # Many HTTP proxies has buggy keepalive support.  Let's not
+        # reuse connection but close it after processing every
+        # response.
+        proto.force_close()
 
         auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
         if auth is not None:

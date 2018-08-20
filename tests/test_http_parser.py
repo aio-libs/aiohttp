@@ -23,9 +23,9 @@ REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
 
 try:
-    from aiohttp import _http_parser
-    REQUEST_PARSERS.append(_http_parser.HttpRequestParserC)
-    RESPONSE_PARSERS.append(_http_parser.HttpResponseParserC)
+    from aiohttp.http_parser import HttpRequestParserC, HttpResponseParserC
+    REQUEST_PARSERS.append(HttpRequestParserC)
+    RESPONSE_PARSERS.append(HttpResponseParserC)
 except ImportError:  # pragma: no cover
     pass
 
@@ -381,11 +381,16 @@ def test_max_header_field_size_under_limit(parser):
 
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
-    assert msg == (
-        'GET', '/test', (1, 1),
-        CIMultiDict({name.decode(): 'data'}),
-        ((name, b'data'),),
-        False, None, False, False, URL('/test'))
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict({name.decode(): 'data'})
+    assert msg.raw_headers == ((name, b'data'),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/test')
 
 
 @pytest.mark.parametrize('size', [40960, 8191])
@@ -407,11 +412,16 @@ def test_max_header_value_size_under_limit(parser):
 
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
-    assert msg == (
-        'GET', '/test', (1, 1),
-        CIMultiDict({'data': value.decode()}),
-        ((b'data', value),),
-        False, None, False, False, URL('/test'))
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict({'data': value.decode()})
+    assert msg.raw_headers == ((b'data', value),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/test')
 
 
 @pytest.mark.parametrize('size', [40965, 8191])
@@ -433,11 +443,16 @@ def test_max_header_value_size_continuation_under_limit(parser):
 
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
-    assert msg == (
-        'GET', '/test', (1, 1),
-        CIMultiDict({'data': 'test ' + value.decode()}),
-        ((b'data', b'test ' + value),),
-        False, None, False, False, URL('/test'))
+    assert msg.method == 'GET'
+    assert msg.path == '/test'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict({'data': 'test ' + value.decode()})
+    assert msg.raw_headers == ((b'data', b'test ' + value),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/test')
 
 
 def test_http_request_parser(parser):
@@ -445,8 +460,16 @@ def test_http_request_parser(parser):
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
 
-    assert msg == ('GET', '/path', (1, 1), CIMultiDict(), (),
-                   False, None, False, False, URL('/path'))
+    assert msg.method == 'GET'
+    assert msg.path == '/path'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict()
+    assert msg.raw_headers == ()
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path')
 
 
 def test_http_request_bad_status_line(parser):
@@ -473,29 +496,46 @@ def test_http_request_parser_utf8(parser):
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
 
-    assert msg == ('GET', '/path', (1, 1),
-                   CIMultiDict([('X-TEST', 'тест')]),
-                   ((b'x-test', 'тест'.encode('utf-8')),),
-                   False, None, False, False, URL('/path'))
+    assert msg.method == 'GET'
+    assert msg.path == '/path'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict([('X-TEST', 'тест')])
+    assert msg.raw_headers == ((b'x-test', 'тест'.encode('utf-8')),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path')
 
 
 def test_http_request_parser_non_utf8(parser):
     text = 'GET /path HTTP/1.1\r\nx-test:тест\r\n\r\n'.encode('cp1251')
     msg = parser.feed_data(text)[0][0][0]
 
-    assert msg == ('GET', '/path', (1, 1),
-                   CIMultiDict([('X-TEST', 'тест'.encode('cp1251').decode(
-                       'utf-8', 'surrogateescape'))]),
-                   ((b'x-test', 'тест'.encode('cp1251')),),
-                   False, None, False, False, URL('/path'))
+    assert msg.method == 'GET'
+    assert msg.path == '/path'
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict([('X-TEST', 'тест'.encode('cp1251')
+                                        .decode('utf8', 'surrogateescape'))])
+    assert msg.raw_headers == ((b'x-test', 'тест'.encode('cp1251')),)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path')
 
 
 def test_http_request_parser_two_slashes(parser):
     text = b'GET //path HTTP/1.1\r\n\r\n'
     msg = parser.feed_data(text)[0][0][0]
 
-    assert msg[:-1] == ('GET', '//path', (1, 1), CIMultiDict(), (),
-                        False, None, False, False)
+    assert msg.method == 'GET'
+    assert msg.path == '//path'
+    assert msg.version == (1, 1)
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
 
 
 def test_http_request_parser_bad_method(parser):
@@ -523,8 +563,17 @@ def test_http_request_max_status_line_under_limit(parser):
     messages, upgraded, tail = parser.feed_data(
         b'GET /path' + path + b' HTTP/1.1\r\n\r\n')
     msg = messages[0][0]
-    assert msg == ('GET', '/path' + path.decode(), (1, 1), CIMultiDict(), (),
-                   False, None, False, False, URL('/path' + path.decode()))
+
+    assert msg.method == 'GET'
+    assert msg.path == '/path' + path.decode()
+    assert msg.version == (1, 1)
+    assert msg.headers == CIMultiDict()
+    assert msg.raw_headers == ()
+    assert not msg.should_close
+    assert msg.compression is None
+    assert not msg.upgrade
+    assert not msg.chunked
+    assert msg.url == URL('/path' + path.decode())
 
 
 def test_http_response_parser_utf8(response):
@@ -853,7 +902,7 @@ class TestDeflateBuffer:
         assert [b'line'] == list(d for d, _ in buf._buffer)
         assert buf._eof
 
-    def test_feed_eof_err(self, stream):
+    def test_feed_eof_err_deflate(self, stream):
         buf = aiohttp.FlowControlDataQueue(stream)
         dbuf = DeflateBuffer(buf, 'deflate')
 
@@ -863,6 +912,28 @@ class TestDeflateBuffer:
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
+
+    def test_feed_eof_no_err_gzip(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
+        dbuf = DeflateBuffer(buf, 'gzip')
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b'line'] == list(d for d, _ in buf._buffer)
+
+    def test_feed_eof_no_err_brotli(self, stream):
+        buf = aiohttp.FlowControlDataQueue(stream)
+        dbuf = DeflateBuffer(buf, 'br')
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.flush.return_value = b'line'
+        dbuf.decompressor.eof = False
+
+        dbuf.feed_eof()
+        assert [b'line'] == list(d for d, _ in buf._buffer)
 
     def test_empty_body(self, stream):
         buf = aiohttp.FlowControlDataQueue(stream)

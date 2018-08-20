@@ -4,28 +4,252 @@
 #
 from __future__ import absolute_import, print_function
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
-from cpython cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE, \
-                     Py_buffer, PyBytes_AsString
+from libc.string cimport memcpy
+from cpython cimport (PyObject_GetBuffer, PyBuffer_Release, PyBUF_SIMPLE,
+                      Py_buffer, PyBytes_AsString, PyBytes_AsStringAndSize)
 
-from multidict import CIMultiDict, CIMultiDictProxy
-from yarl import URL
+from multidict import (CIMultiDict as _CIMultiDict,
+                       CIMultiDictProxy as _CIMultiDictProxy)
+from yarl import URL as _URL
 
 from aiohttp import hdrs
 from .http_exceptions import (
     BadHttpMessage, BadStatusLine, InvalidHeader, LineTooLong, InvalidURLError,
     PayloadEncodingError, ContentLengthError, TransferEncodingError)
-from .http_writer import HttpVersion, HttpVersion10, HttpVersion11
-from .http_parser import RawRequestMessage, RawResponseMessage, DeflateBuffer
-from .streams import EMPTY_PAYLOAD, StreamReader
+from .http_writer import (HttpVersion as _HttpVersion,
+                          HttpVersion10 as _HttpVersion10,
+                          HttpVersion11 as _HttpVersion11)
+from .http_parser import DeflateBuffer as _DeflateBuffer
+from .streams import (EMPTY_PAYLOAD as _EMPTY_PAYLOAD,
+                      StreamReader as _StreamReader)
 
 cimport cython
-from . cimport _cparser as cparser
+from aiohttp cimport _cparser as cparser
 
+include "_headers.pxi"
 
-__all__ = ('HttpRequestParserC', 'HttpResponseMessageC', 'parse_url')
+from aiohttp cimport _find_header
 
+DEF DEFAULT_FREELIST_SIZE = 250
 
+cdef extern from "Python.h":
+    int PyByteArray_Resize(object, Py_ssize_t) except -1
+    Py_ssize_t PyByteArray_Size(object) except -1
+    char* PyByteArray_AsString(object)
+
+__all__ = ('HttpRequestParser', 'HttpResponseParser',
+           'RawRequestMessage', 'RawResponseMessage')
+
+cdef object URL = _URL
 cdef object URL_build = URL.build
+cdef object CIMultiDict = _CIMultiDict
+cdef object CIMultiDictProxy = _CIMultiDictProxy
+cdef object HttpVersion = _HttpVersion
+cdef object HttpVersion10 = _HttpVersion10
+cdef object HttpVersion11 = _HttpVersion11
+cdef object SEC_WEBSOCKET_KEY1 = hdrs.SEC_WEBSOCKET_KEY1
+cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
+cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
+cdef object StreamReader = _StreamReader
+cdef object DeflateBuffer = _DeflateBuffer
+
+
+cdef inline object extend(object buf, const char* at, size_t length):
+    cdef Py_ssize_t s
+    cdef char* ptr
+    s = PyByteArray_Size(buf)
+    PyByteArray_Resize(buf, s + length)
+    ptr = PyByteArray_AsString(buf)
+    memcpy(ptr + s, at, length)
+
+
+DEF METHODS_COUNT = 34;
+
+cdef list _http_method = []
+
+for i in range(METHODS_COUNT):
+    _http_method.append(
+        cparser.http_method_str(<cparser.http_method> i).decode('ascii'))
+
+
+cdef inline str http_method_str(int i):
+    if i < METHODS_COUNT:
+        return <str>_http_method[i]
+    else:
+        return "<unknown>"
+
+cdef inline object find_header(bytes raw_header):
+    cdef Py_ssize_t size
+    cdef char *buf
+    cdef int idx
+    PyBytes_AsStringAndSize(raw_header, &buf, &size)
+    idx = _find_header.find_header(buf, size)
+    if idx == -1:
+        return raw_header.decode('utf-8', 'surrogateescape')
+    return headers[idx]
+
+
+@cython.freelist(DEFAULT_FREELIST_SIZE)
+cdef class RawRequestMessage:
+    cdef readonly str method
+    cdef readonly str path
+    cdef readonly object version  # HttpVersion
+    cdef readonly object headers  # CIMultiDict
+    cdef readonly object raw_headers  # tuple
+    cdef readonly object should_close
+    cdef readonly object compression
+    cdef readonly object upgrade
+    cdef readonly object chunked
+    cdef readonly object url  # yarl.URL
+
+    def __init__(self, method, path, version, headers, raw_headers,
+                 should_close, compression, upgrade, chunked, url):
+        self.method = method
+        self.path = path
+        self.version = version
+        self.headers = headers
+        self.raw_headers = raw_headers
+        self.should_close = should_close
+        self.compression = compression
+        self.upgrade = upgrade
+        self.chunked = chunked
+        self.url = url
+
+    def __repr__(self):
+        info = []
+        info.append(("method", self.method))
+        info.append(("path", self.path))
+        info.append(("version", self.version))
+        info.append(("headers", self.headers))
+        info.append(("raw_headers", self.raw_headers))
+        info.append(("should_close", self.should_close))
+        info.append(("compression", self.compression))
+        info.append(("upgrade", self.upgrade))
+        info.append(("chunked", self.chunked))
+        info.append(("url", self.url))
+        sinfo = ', '.join(name + '=' + repr(val) for name, val in info)
+        return '<RawRequestMessage(' + sinfo + ')>'
+
+    def _replace(self, **dct):
+        cdef RawRequestMessage ret
+        ret = _new_request_message(self.method,
+                                   self.path,
+                                   self.version,
+                                   self.headers,
+                                   self.raw_headers,
+                                   self.should_close,
+                                   self.compression,
+                                   self.upgrade,
+                                   self.chunked,
+                                   self.url)
+        if "method" in dct:
+            ret.method = dct["method"]
+        if "path" in dct:
+            ret.path = dct["path"]
+        if "version" in dct:
+            ret.version = dct["version"]
+        if "headers" in dct:
+            ret.headers = dct["headers"]
+        if "raw_headers" in dct:
+            ret.raw_headers = dct["raw_headers"]
+        if "should_close" in dct:
+            ret.should_close = dct["should_close"]
+        if "compression" in dct:
+            ret.compression = dct["compression"]
+        if "upgrade" in dct:
+            ret.upgrade = dct["upgrade"]
+        if "chunked" in dct:
+            ret.chunked = dct["chunked"]
+        if "url" in dct:
+            ret.url = dct["url"]
+        return ret
+
+cdef _new_request_message(str method,
+                           str path,
+                           object version,
+                           object headers,
+                           object raw_headers,
+                           bint should_close,
+                           object compression,
+                           bint upgrade,
+                           bint chunked,
+                           object url):
+    cdef RawRequestMessage ret
+    ret = RawRequestMessage.__new__(RawRequestMessage)
+    ret.method = method
+    ret.path = path
+    ret.version = version
+    ret.headers = headers
+    ret.raw_headers = raw_headers
+    ret.should_close = should_close
+    ret.compression = compression
+    ret.upgrade = upgrade
+    ret.chunked = chunked
+    ret.url = url
+    return ret
+
+
+@cython.freelist(DEFAULT_FREELIST_SIZE)
+cdef class RawResponseMessage:
+    cdef readonly object version  # HttpVersion
+    cdef readonly int code
+    cdef readonly str reason
+    cdef readonly object headers  # CIMultiDict
+    cdef readonly object raw_headers  # tuple
+    cdef readonly object should_close
+    cdef readonly object compression
+    cdef readonly object upgrade
+    cdef readonly object chunked
+
+    def __init__(self, version, code, reason, headers, raw_headers,
+                 should_close, compression, upgrade, chunked):
+        self.version = version
+        self.code = code
+        self.reason = reason
+        self.headers = headers
+        self.raw_headers = raw_headers
+        self.should_close = should_close
+        self.compression = compression
+        self.upgrade = upgrade
+        self.chunked = chunked
+
+    def __repr__(self):
+        info = []
+        info.append(("version", self.version))
+        info.append(("code", self.code))
+        info.append(("reason", self.reason))
+        info.append(("headers", self.headers))
+        info.append(("raw_headers", self.raw_headers))
+        info.append(("should_close", self.should_close))
+        info.append(("compression", self.compression))
+        info.append(("upgrade", self.upgrade))
+        info.append(("chunked", self.chunked))
+        sinfo = ', '.join(name + '=' + repr(val) for name, val in info)
+        return '<RawResponseMessage(' + sinfo + ')>'
+
+
+cdef _new_response_message(object version,
+                           int code,
+                           str reason,
+                           object headers,
+                           object raw_headers,
+                           bint should_close,
+                           object compression,
+                           bint upgrade,
+                           bint chunked):
+    cdef RawResponseMessage ret
+    ret = RawResponseMessage.__new__(RawResponseMessage)
+    ret.version = version
+    ret.code = code
+    ret.reason = reason
+    ret.headers = headers
+    ret.raw_headers = raw_headers
+    ret.should_close = should_close
+    ret.compression = compression
+    ret.upgrade = upgrade
+    ret.chunked = chunked
+    return ret
+
 
 @cython.internal
 cdef class HttpParser:
@@ -34,10 +258,8 @@ cdef class HttpParser:
         cparser.http_parser* _cparser
         cparser.http_parser_settings* _csettings
 
-        str _header_name
-        str _header_value
-        bytes _raw_header_name
-        bytes _raw_header_value
+        bytearray _raw_name
+        bytearray _raw_value
 
         object _protocol
         object _loop
@@ -63,6 +285,8 @@ cdef class HttpParser:
         object  _last_error
         bint    _auto_decompress
 
+        str     _content_encoding
+
         Py_buffer py_buf
 
     def __cinit__(self):
@@ -84,7 +308,7 @@ cdef class HttpParser:
                    object protocol, object loop, object timer=None,
                    size_t max_line_size=8190, size_t max_headers=32768,
                    size_t max_field_size=8190, payload_exception=None,
-                   response_with_body=True, auto_decompress=True):
+                   bint response_with_body=True, bint auto_decompress=True):
         cparser.http_parser_init(self._cparser, mode)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
@@ -101,10 +325,8 @@ cdef class HttpParser:
         self._payload_exception = payload_exception
         self._messages = []
 
-        self._header_name = None
-        self._header_value = None
-        self._raw_header_name = None
-        self._raw_header_value = None
+        self._raw_name = bytearray()
+        self._raw_value = bytearray()
 
         self._max_line_size = max_line_size
         self._max_headers = max_headers
@@ -112,6 +334,7 @@ cdef class HttpParser:
         self._response_with_body = response_with_body
         self._upgraded = False
         self._auto_decompress = auto_decompress
+        self._content_encoding = None
 
         self._csettings.on_url = cb_on_url
         self._csettings.on_status = cb_on_status
@@ -127,51 +350,49 @@ cdef class HttpParser:
         self._last_error = None
 
     cdef _process_header(self):
-        if self._header_name is not None:
-            name = self._header_name
-            value = self._header_value
+        if self._raw_name:
+            raw_name = bytes(self._raw_name)
+            raw_value = bytes(self._raw_value)
 
-            self._header_name = self._header_value = None
+            name = find_header(raw_name)
+            value = raw_value.decode('utf-8', 'surrogateescape')
+
             self._headers.add(name, value)
 
-            raw_name = self._raw_header_name
-            raw_value = self._raw_header_value
+            if name is CONTENT_ENCODING:
+                self._content_encoding = value
 
-            self._raw_header_name = self._raw_header_value = None
+            PyByteArray_Resize(self._raw_name, 0)
+            PyByteArray_Resize(self._raw_value, 0)
             self._raw_headers.append((raw_name, raw_value))
 
-    cdef _on_header_field(self, str field, bytes raw_field):
-        if self._header_value is not None:
+    cdef _on_header_field(self, char* at, size_t length):
+        cdef Py_ssize_t size
+        cdef char *buf
+        if self._raw_value:
             self._process_header()
-            self._header_value = None
 
-        if self._header_name is None:
-            self._header_name = field
-            self._raw_header_name = raw_field
-        else:
-            self._header_name += field
-            self._raw_header_name += raw_field
+        size = PyByteArray_Size(self._raw_name)
+        PyByteArray_Resize(self._raw_name, size + length)
+        buf = PyByteArray_AsString(self._raw_name)
+        memcpy(buf + size, at, length)
 
-    cdef _on_header_value(self, str val, bytes raw_val):
-        if self._header_value is None:
-            self._header_value = val
-            self._raw_header_value = raw_val
-        else:
-            self._header_value += val
-            self._raw_header_value += raw_val
+    cdef _on_header_value(self, char* at, size_t length):
+        cdef Py_ssize_t size
+        cdef char *buf
 
-    cdef _on_headers_complete(self,
-                              ENCODING='utf-8',
-                              ENCODING_ERR='surrogateescape',
-                              CONTENT_ENCODING=hdrs.CONTENT_ENCODING,
-                              SEC_WEBSOCKET_KEY1=hdrs.SEC_WEBSOCKET_KEY1,
-                              SUPPORTED=('gzip', 'deflate', 'br')):
+        size = PyByteArray_Size(self._raw_value)
+        PyByteArray_Resize(self._raw_value, size + length)
+        buf = PyByteArray_AsString(self._raw_value)
+        memcpy(buf + size, at, length)
+
+    cdef _on_headers_complete(self):
         self._process_header()
 
-        method = cparser.http_method_str(<cparser.http_method> self._cparser.method)
-        should_close = not bool(cparser.http_should_keep_alive(self._cparser))
-        upgrade = bool(self._cparser.upgrade)
-        chunked = bool(self._cparser.flags & cparser.F_CHUNKED)
+        method = http_method_str(self._cparser.method)
+        should_close = not cparser.http_should_keep_alive(self._cparser)
+        upgrade = self._cparser.upgrade
+        chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
         headers = CIMultiDictProxy(self._headers)
@@ -184,19 +405,20 @@ cdef class HttpParser:
             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
         encoding = None
-        enc = headers.get(CONTENT_ENCODING)
-        if enc:
+        enc = self._content_encoding
+        if enc is not None:
+            self._content_encoding = None
             enc = enc.lower()
-            if enc in SUPPORTED:
+            if enc in ('gzip', 'deflate', 'br'):
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
-            msg = RawRequestMessage(
-                method.decode(ENCODING, ENCODING_ERR), self._path,
+            msg = _new_request_message(
+                method, self._path,
                 self.http_version(), headers, raw_headers,
                 should_close, encoding, upgrade, chunked, self._url)
         else:
-            msg = RawResponseMessage(
+            msg = _new_response_message(
                 self.http_version(), self._cparser.status_code, self._reason,
                 headers, raw_headers, should_close, encoding,
                 upgrade, chunked)
@@ -230,9 +452,7 @@ cdef class HttpParser:
     cdef object _on_status_complete(self):
         pass
 
-    ### Public API ###
-
-    def http_version(self):
+    cdef inline http_version(self):
         cdef cparser.http_parser* parser = self._cparser
 
         if parser.http_major == 1:
@@ -242,6 +462,8 @@ cdef class HttpParser:
                 return HttpVersion11
 
         return HttpVersion(parser.http_major, parser.http_minor)
+
+    ### Public API ###
 
     def feed_eof(self):
         cdef bytes desc
@@ -308,12 +530,12 @@ cdef class HttpParser:
             return messages, False, b''
 
 
-cdef class HttpRequestParserC(HttpParser):
+cdef class HttpRequestParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 response_with_body=True, read_until_eof=False):
+                 bint response_with_body=True, bint read_until_eof=False):
          self._init(cparser.HTTP_REQUEST, protocol, loop, timer,
                     max_line_size, max_headers, max_field_size,
                     payload_exception, response_with_body)
@@ -332,16 +554,16 @@ cdef class HttpRequestParserC(HttpParser):
                                         py_buf.len)
              finally:
                  PyBuffer_Release(&py_buf)
-         self._buf.clear()
+         PyByteArray_Resize(self._buf, 0)
 
 
-cdef class HttpResponseParserC(HttpParser):
+cdef class HttpResponseParser(HttpParser):
 
     def __init__(self, protocol, loop, timer=None,
                  size_t max_line_size=8190, size_t max_headers=32768,
                  size_t max_field_size=8190, payload_exception=None,
-                 response_with_body=True, read_until_eof=False,
-                 auto_decompress=True):
+                 bint response_with_body=True, bint read_until_eof=False,
+                 bint auto_decompress=True):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, timer,
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, auto_decompress)
@@ -349,7 +571,7 @@ cdef class HttpResponseParserC(HttpParser):
     cdef object _on_status_complete(self):
         if self._buf:
             self._reason = self._buf.decode('utf-8', 'surrogateescape')
-            self._buf.clear()
+            PyByteArray_Resize(self._buf, 0)
 
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
@@ -358,7 +580,7 @@ cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     pyparser._started = True
     pyparser._headers = CIMultiDict()
     pyparser._raw_headers = []
-    pyparser._buf.clear()
+    PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
     pyparser._reason = None
     return 0
@@ -371,7 +593,7 @@ cdef int cb_on_url(cparser.http_parser* parser,
         if length > pyparser._max_line_size:
             raise LineTooLong(
                 'Status line is too long', pyparser._max_line_size, length)
-        pyparser._buf.extend(at[:length])
+        extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -387,7 +609,7 @@ cdef int cb_on_status(cparser.http_parser* parser,
         if length > pyparser._max_line_size:
             raise LineTooLong(
                 'Status line is too long', pyparser._max_line_size, length)
-        pyparser._buf.extend(at[:length])
+        extend(pyparser._buf, at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -398,13 +620,14 @@ cdef int cb_on_status(cparser.http_parser* parser,
 cdef int cb_on_header_field(cparser.http_parser* parser,
                             const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
+    cdef Py_ssize_t size
     try:
         pyparser._on_status_complete()
-        if length > pyparser._max_field_size:
+        size = len(pyparser._raw_name) + length
+        if size > pyparser._max_field_size:
             raise LineTooLong(
-                'Header name is too long', pyparser._max_field_size, length)
-        pyparser._on_header_field(
-            at[:length].decode('utf-8', 'surrogateescape'), at[:length])
+                'Header name is too long', pyparser._max_field_size, size)
+        pyparser._on_header_field(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -415,17 +638,13 @@ cdef int cb_on_header_field(cparser.http_parser* parser,
 cdef int cb_on_header_value(cparser.http_parser* parser,
                             const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
+    cdef Py_ssize_t size
     try:
-        if pyparser._header_value is not None:
-            if len(pyparser._header_value) + length > pyparser._max_field_size:
-                raise LineTooLong(
-                    'Header value is too long', pyparser._max_field_size,
-                    len(pyparser._header_value) + length)
-        elif length > pyparser._max_field_size:
+        size = len(pyparser._raw_value) + length
+        if size > pyparser._max_field_size:
             raise LineTooLong(
-                'Header value is too long', pyparser._max_field_size, length)
-        pyparser._on_header_value(
-            at[:length].decode('utf-8', 'surrogateescape'), at[:length])
+                'Header value is too long', pyparser._max_field_size, size)
+        pyparser._on_header_value(at, length)
     except BaseException as ex:
         pyparser._last_error = ex
         return -1
@@ -542,7 +761,7 @@ def parse_url(url):
         PyBuffer_Release(&py_buf)
 
 
-def _parse_url(char* buf_data, size_t length):
+cdef _parse_url(char* buf_data, size_t length):
     cdef:
         cparser.http_parser_url* parsed
         int res

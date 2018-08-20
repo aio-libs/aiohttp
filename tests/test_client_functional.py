@@ -161,7 +161,7 @@ async def test_auto_header_user_agent(aiohttp_client):
     client = await aiohttp_client(app)
 
     resp = await client.get('/')
-    assert 200, resp.status
+    assert 200 == resp.status
 
 
 async def test_skip_auto_headers_user_agent(aiohttp_client):
@@ -2032,6 +2032,33 @@ async def test_raise_for_status(aiohttp_client):
         await client.get('/')
 
 
+async def test_raise_for_status_per_request(aiohttp_client):
+
+    async def handler_redirect(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler_redirect)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get('/', raise_for_status=True)
+
+
+async def test_raise_for_status_disable_per_request(aiohttp_client):
+
+    async def handler_redirect(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler_redirect)
+    client = await aiohttp_client(app, raise_for_status=True)
+
+    resp = await client.get('/', raise_for_status=False)
+    assert 400 == resp.status
+    resp.close()
+
+
 async def test_invalid_idna():
     session = aiohttp.ClientSession()
     try:
@@ -2613,3 +2640,22 @@ async def test_read_timeout(aiohttp_client):
 
     with pytest.raises(aiohttp.ServerTimeoutError):
         await client.get('/')
+
+
+async def test_read_timeout_on_prepared_response(aiohttp_client):
+    async def handler(request):
+        resp = aiohttp.web.StreamResponse()
+        await resp.prepare(request)
+        await asyncio.sleep(5)
+        await resp.drain()
+        return resp
+
+    app = web.Application()
+    app.add_routes([web.get('/', handler)])
+
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    with pytest.raises(aiohttp.ServerTimeoutError):
+        async with await client.get('/') as resp:
+            await resp.read()

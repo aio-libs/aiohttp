@@ -25,7 +25,8 @@ ext = '.pyx' if USE_CYTHON else '.c'
 extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
               Extension('aiohttp._http_parser',
                         ['aiohttp/_http_parser' + ext,
-                         'vendor/http-parser/http_parser.c'],
+                         'vendor/http-parser/http_parser.c',
+                         'aiohttp/_find_header.c'],
                         define_macros=[('HTTP_PARSER_STRICT', 0)],
                         ),
               Extension('aiohttp._frozenlist',
@@ -56,7 +57,7 @@ class ve_build_ext(build_ext):
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError,
+        except (DistutilsExecError,
                 DistutilsPlatformError, ValueError):
             raise BuildFailed()
 
@@ -70,14 +71,14 @@ try:
 except IndexError:
     raise RuntimeError('Unable to determine version.')
 
-
-install_requires = ['attrs>=17.3.0', 'chardet>=2.0,<4.0',
-                    'multidict>=4.0,<5.0',
-                    'async_timeout>=3.0,<4.0',
-                    'yarl>=1.0,<2.0']
-
-if sys.version_info < (3, 7):
-    install_requires.append('idna-ssl>=1.0')
+install_requires = [
+    'attrs>=17.3.0',
+    'chardet>=2.0,<4.0',
+    'multidict>=4.0,<5.0',
+    'async_timeout>=3.0,<4.0',
+    'yarl>=1.0,<2.0',
+    'idna-ssl>=1.0; python_version<"3.7"',
+]
 
 
 def read(f):
@@ -119,7 +120,7 @@ args = dict(
     url='https://github.com/aio-libs/aiohttp',
     project_urls={
         'Chat: Gitter': 'https://gitter.im/aio-libs/Lobby',
-        'CI: AppVeyor': 'https://ci.appveyor.com/project/asvetlov/aiohttp',  # FIXME: move under aio-libs/* slug
+        'CI: AppVeyor': 'https://ci.appveyor.com/project/aio-libs/aiohttp',
         'CI: Circle': 'https://circleci.com/gh/aio-libs/aiohttp',
         'CI: Shippable': 'https://app.shippable.com/github/aio-libs/aiohttp',
         'CI: Travis': 'https://travis-ci.com/aio-libs/aiohttp',

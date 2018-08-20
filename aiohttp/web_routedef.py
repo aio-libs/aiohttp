@@ -6,9 +6,9 @@ import attr
 from . import hdrs
 
 
-__all__ = ('RouteDef', 'StaticDef', 'RouteTableDef', 'head', 'get',
-           'post', 'patch', 'put', 'delete', 'route', 'view',
-           'static')
+__all__ = ('AbstractRouteDef', 'RouteDef', 'StaticDef', 'RouteTableDef',
+           'head', 'options', 'get', 'post', 'patch', 'put', 'delete',
+           'route', 'view', 'static')
 
 
 class AbstractRouteDef(abc.ABC):
@@ -65,6 +65,10 @@ def route(method, path, handler, **kwargs):
 
 def head(path, handler, **kwargs):
     return route(hdrs.METH_HEAD, path, handler, **kwargs)
+
+
+def options(path, handler, **kwargs):
+    return route(hdrs.METH_OPTIONS, path, handler, **kwargs)
 
 
 def get(path, handler, *, name=None, allow_head=True, **kwargs):

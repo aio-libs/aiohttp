@@ -411,7 +411,7 @@ and :ref:`aiohttp-web-signals` handlers.
          :meth:`~Request.json` call will return the same value.
 
 
-   .. comethod:: multipart(*, reader=aiohttp.multipart.MultipartReader)
+   .. comethod:: multipart()
 
       Returns :class:`aiohttp.multipart.MultipartReader` which processes
       incoming *multipart* request.
@@ -431,6 +431,10 @@ and :ref:`aiohttp-web-signals` handlers.
          more time.
 
       .. seealso:: :ref:`aiohttp-multipart`
+
+      .. versionchanged:: 3.4
+
+         Dropped *reader* parameter.
 
    .. comethod:: post()
 
@@ -1400,54 +1404,56 @@ duplicated like one using :meth:`Application.copy`.
 
    .. method:: make_handler(loop=None, **kwargs)
 
-    Creates HTTP protocol factory for handling requests.
+      Creates HTTP protocol factory for handling requests.
 
-    :param loop: :ref:`event loop<asyncio-event-loop>` used
-                 for processing HTTP requests.
+      :param loop: :ref:`event loop<asyncio-event-loop>` used
+                   for processing HTTP requests.
 
-                 If param is ``None`` :func:`asyncio.get_event_loop`
-                 used for getting default event loop.
+                   If param is ``None`` :func:`asyncio.get_event_loop`
+                   used for getting default event loop.
 
-       .. deprecated:: 2.0
+         .. deprecated:: 2.0
 
-    :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
-    :param int keepalive_timeout: Number of seconds before closing Keep-Alive
-      connection. Default: ``75`` seconds (NGINX's default value).
-    :param logger: Custom logger object. Default:
-      :data:`aiohttp.log.server_logger`.
-    :param access_log: Custom logging object. Default:
-      :data:`aiohttp.log.access_logger`.
-    :param access_log_class: class for `access_logger`. Default:
-      :data:`aiohttp.helpers.AccessLogger`.
-      Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
-    :param str access_log_format: Access log format string. Default:
-      :attr:`helpers.AccessLogger.LOG_FORMAT`.
-    :param int max_line_size: Optional maximum header line size. Default:
-      ``8190``.
-    :param int max_headers: Optional maximum header size. Default: ``32768``.
-    :param int max_field_size: Optional maximum header field size. Default:
-      ``8190``.
+      :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+      :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+        connection. Default: ``75`` seconds (NGINX's default value).
+      :param logger: Custom logger object. Default:
+        :data:`aiohttp.log.server_logger`.
+      :param access_log: Custom logging object. Default:
+        :data:`aiohttp.log.access_logger`.
+      :param access_log_class: class for `access_logger`. Default:
+        :data:`aiohttp.helpers.AccessLogger`.
+        Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
+      :param str access_log_format: Access log format string. Default:
+        :attr:`helpers.AccessLogger.LOG_FORMAT`.
+      :param int max_line_size: Optional maximum header line size. Default:
+        ``8190``.
+      :param int max_headers: Optional maximum header size. Default: ``32768``.
+      :param int max_field_size: Optional maximum header field size. Default:
+        ``8190``.
 
-    :param float lingering_time: maximum time during which the server
-       reads and ignore additional data coming from the client when
-       lingering close is on.  Use ``0`` for disabling lingering on
-       server channel closing.
+      :param float lingering_time: maximum time during which the server
+         reads and ignore additional data coming from the client when
+         lingering close is on.  Use ``0`` for disabling lingering on
+         server channel closing.
 
-    :param float lingering_timeout: maximum waiting time for more
-        client data to arrive when lingering close is in effect
+      You should pass result of the method as *protocol_factory* to
+      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
 
-    You should pass result of the method as *protocol_factory* to
-    :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
+         loop = asyncio.get_event_loop()
 
-       loop = asyncio.get_event_loop()
+         app = Application()
 
-       app = Application()
+         # setup route table
+         # app.router.add_route(...)
 
-       # setup route table
-       # app.router.add_route(...)
+         await loop.create_server(app.make_handler(),
+                                  '0.0.0.0', 8080)
 
-       await loop.create_server(app.make_handler(),
-                                '0.0.0.0', 8080)
+      .. deprecated:: 3.2
+
+         The method is deprecated and will be removed in future
+         aiohttp versions.  Please use :ref:`aiohttp-web-app-runners` instead.
 
    .. comethod:: startup()
 
@@ -2515,7 +2521,7 @@ application on specific TCP or Unix socket, e.g.::
 
 .. class:: TCPSite(runner, host=None, port=None, *, \
                    shutdown_timeout=60.0, ssl_context=None, \
-                   backlog=128, reuse_address=None,
+                   backlog=128, reuse_address=None, \
                    reuse_port=None)
 
    Serve a runner on TCP socket.
@@ -2756,27 +2762,41 @@ Normalize path middleware
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: normalize_path_middleware(*, \
-                                        append_slash=True, merge_slashes=True)
+                                        append_slash=True, \
+                                        remove_slash=False, \
+                                        merge_slashes=True, \
+                                        redirect_class=HTTPMovedPermanently)
 
-  Middleware factory which produces a middleware that normalizes
-  the path of a request. By normalizing it means:
+   Middleware factory which produces a middleware that normalizes
+   the path of a request. By normalizing it means:
 
-      - Add a trailing slash to the path.
-      - Double slashes are replaced by one.
+     - Add or remove a trailing slash to the path.
+     - Double slashes are replaced by one.
 
-  The middleware returns as soon as it finds a path that resolves
-  correctly. The order if all enabled is:
+   The middleware returns as soon as it finds a path that resolves
+   correctly. The order if both merge and append/remove are enabled is:
 
-    1. *merge_slashes*
-    2. *append_slash*
-    3. both *merge_slashes* and *append_slash*
+     1. *merge_slashes*
+     2. *append_slash* or *remove_slash*
+     3. both *merge_slashes* and *append_slash* or *remove_slash*
 
-  If the path resolves with at least one of those conditions, it will
-  redirect to the new path.
+   If the path resolves with at least one of those conditions, it will
+   redirect to the new path.
 
-  If *append_slash* is ``True`` append slash when needed. If a resource is
-  defined with trailing slash and the request comes without it, it will
-  append it automatically.
+   Only one of *append_slash* and *remove_slash* can be enabled. If both are
+   ``True`` the factory will raise an ``AssertionError``
 
-  If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
-  path into one.
+   If *append_slash* is ``True`` the middleware will append a slash when
+   needed. If a resource is defined with trailing slash and the request
+   comes without it, it will append it automatically.
+
+   If *remove_slash* is ``True``, *append_slash* must be ``False``. When enabled
+   the middleware will remove trailing slashes and redirect if the resource is
+   defined.
+
+   If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
+   path into one.
+
+   .. versionadded:: 3.4
+
+      Support for *remove_slash*

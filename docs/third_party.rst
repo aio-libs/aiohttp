@@ -206,6 +206,9 @@ period ask to raise the status.
 - `aiohttp-sentry <https://github.com/underyx/aiohttp-sentry>`_
   An aiohttp middleware for reporting errors to Sentry. Python 3.5+ is required.
 
+- `aiohttp-datadog <https://github.com/underyx/aiohttp-datadog>`_
+  An aiohttp middleware for reporting metrics to DataDog. Python 3.5+ is required.
+
 - `async-v20 <https://github.com/jamespeterschinner/async_v20>`_
   Asynchronous FOREX client for OANDA's v20 API. Python 3.6+
 
@@ -220,3 +223,11 @@ period ask to raise the status.
 
 - `aiohttp-apispec <https://github.com/maximdanilchenko/aiohttp-apispec>`_
   Build and document REST APIs with ``aiohttp`` and ``apispec``.
+
+- `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
+  the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
+
+- `asynapplicationinsights <https://github.com/RobertoPrevato/asynapplicationinsights>`_ A client 
+  for `Azure Application Insights <https://azure.microsoft.com/en-us/services/application-insights/>`_
+  implemented using ``aiohttp`` client, including a middleware for ``aiohttp`` servers to collect web apps
+  telemetry.

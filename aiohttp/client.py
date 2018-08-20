@@ -8,7 +8,8 @@ import os
 import sys
 import traceback
 import warnings
-from collections.abc import Coroutine
+from collections.abc import Coroutine as CoroutineABC
+from typing import Any, Generator, Optional, Tuple
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
@@ -25,7 +26,7 @@ from .client_reqrep import *  # noqa
 from .client_reqrep import ClientRequest, ClientResponse, _merge_ssl_params
 from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
-from .connector import TCPConnector
+from .connector import BaseConnector, TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (DEBUG, PY_36, CeilTimeout, TimeoutHandle,
                       proxies_from_env, sentinel, strip_auth_from_url)
@@ -34,6 +35,7 @@ from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
 from .tcp_helpers import tcp_cork, tcp_nodelay
 from .tracing import Trace
+from .typedefs import StrOrURL
 
 
 __all__ = (client_exceptions.__all__ +  # noqa
@@ -92,7 +94,8 @@ class ClientSession:
                  request_class=ClientRequest, response_class=ClientResponse,
                  ws_response_class=ClientWebSocketResponse,
                  version=http.HttpVersion11,
-                 cookie_jar=None, connector_owner=True, raise_for_status=False,
+                 cookie_jar=None, connector_owner=True,
+                 raise_for_status=False,
                  read_timeout=sentinel, conn_timeout=None,
                  timeout=sentinel,
                  auto_decompress=True, trust_env=False,
@@ -136,31 +139,28 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector
+        self._connector = connector  # type: BaseConnector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
         if timeout is not sentinel:
             self._timeout = timeout
+            if read_timeout is not sentinel:
+                raise ValueError("read_timeout and timeout parameters "
+                                 "conflict, please setup "
+                                 "timeout.read")
+            if conn_timeout is not None:
+                raise ValueError("conn_timeout and timeout parameters "
+                                 "conflict, please setup "
+                                 "timeout.connect")
         else:
             self._timeout = DEFAULT_TIMEOUT
             if read_timeout is not sentinel:
-                if timeout is not sentinel:
-                    raise ValueError("read_timeout and timeout parameters "
-                                     "conflict, please setup "
-                                     "timeout.read")
-                else:
-                    self._timeout = attr.evolve(self._timeout,
-                                                total=read_timeout)
+                self._timeout = attr.evolve(self._timeout, total=read_timeout)
             if conn_timeout is not None:
-                if timeout is not sentinel:
-                    raise ValueError("conn_timeout and timeout parameters "
-                                     "conflict, please setup "
-                                     "timeout.connect")
-                else:
-                    self._timeout = attr.evolve(self._timeout,
-                                                connect=conn_timeout)
+                self._timeout = attr.evolve(self._timeout,
+                                            connect=conn_timeout)
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -215,7 +215,10 @@ class ClientSession:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    def request(self, method, url, **kwargs):
+    def request(self,
+                method: str,
+                url: StrOrURL,
+                **kwargs) -> '_RequestContextManager':
         """Perform HTTP request."""
         return _RequestContextManager(self._request(method, url, **kwargs))
 
@@ -231,6 +234,7 @@ class ClientSession:
                        compress=None,
                        chunked=None,
                        expect100=False,
+                       raise_for_status=None,
                        read_until_eof=True,
                        proxy=None,
                        proxy_auth=None,
@@ -465,7 +469,9 @@ class ClientSession:
                     break
 
             # check response status
-            if self._raise_for_status:
+            if raise_for_status is None:
+                raise_for_status = self._raise_for_status
+            if raise_for_status:
                 resp.raise_for_status()
 
             # register connection
@@ -502,7 +508,7 @@ class ClientSession:
                 )
             raise
 
-    def ws_connect(self, url, *,
+    def ws_connect(self, url: StrOrURL, *,
                    protocols=(),
                    timeout=10.0,
                    receive_timeout=None,
@@ -709,66 +715,72 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    def get(self, url, *, allow_redirects=True, **kwargs):
+    def get(self, url: StrOrURL, *, allow_redirects: bool=True,
+            **kwargs) -> '_RequestContextManager':
         """Perform HTTP GET request."""
         return _RequestContextManager(
             self._request(hdrs.METH_GET, url,
                           allow_redirects=allow_redirects,
                           **kwargs))
 
-    def options(self, url, *, allow_redirects=True, **kwargs):
+    def options(self, url: StrOrURL, *, allow_redirects: bool=True,
+                **kwargs) -> '_RequestContextManager':
         """Perform HTTP OPTIONS request."""
         return _RequestContextManager(
             self._request(hdrs.METH_OPTIONS, url,
                           allow_redirects=allow_redirects,
                           **kwargs))
 
-    def head(self, url, *, allow_redirects=False, **kwargs):
+    def head(self, url: StrOrURL, *, allow_redirects: bool=False,
+             **kwargs) -> '_RequestContextManager':
         """Perform HTTP HEAD request."""
         return _RequestContextManager(
             self._request(hdrs.METH_HEAD, url,
                           allow_redirects=allow_redirects,
                           **kwargs))
 
-    def post(self, url, *, data=None, **kwargs):
+    def post(self, url: StrOrURL,
+             *, data: Any=None, **kwargs) -> '_RequestContextManager':
         """Perform HTTP POST request."""
         return _RequestContextManager(
             self._request(hdrs.METH_POST, url,
                           data=data,
                           **kwargs))
 
-    def put(self, url, *, data=None, **kwargs):
+    def put(self, url: StrOrURL,
+            *, data: Any=None, **kwargs) -> '_RequestContextManager':
         """Perform HTTP PUT request."""
         return _RequestContextManager(
             self._request(hdrs.METH_PUT, url,
                           data=data,
                           **kwargs))
 
-    def patch(self, url, *, data=None, **kwargs):
+    def patch(self, url: StrOrURL,
+              *, data: Any=None, **kwargs) -> '_RequestContextManager':
         """Perform HTTP PATCH request."""
         return _RequestContextManager(
             self._request(hdrs.METH_PATCH, url,
                           data=data,
                           **kwargs))
 
-    def delete(self, url, **kwargs):
+    def delete(self, url: StrOrURL, **kwargs) -> '_RequestContextManager':
         """Perform HTTP DELETE request."""
         return _RequestContextManager(
             self._request(hdrs.METH_DELETE, url,
                           **kwargs))
 
-    async def close(self):
+    async def close(self) -> None:
         """Close underlying connector.
 
         Release all acquired resources.
         """
         if not self.closed:
-            if self._connector_owner:
+            if self._connector is not None and self._connector_owner:
                 self._connector.close()
             self._connector = None
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         """Is client session closed.
 
         A readonly property.
@@ -776,26 +788,26 @@ class ClientSession:
         return self._connector is None or self._connector.closed
 
     @property
-    def connector(self):
+    def connector(self) -> Optional[BaseConnector]:
         """Connector instance used for the session."""
         return self._connector
 
     @property
-    def cookie_jar(self):
+    def cookie_jar(self) -> CookieJar:
         """The session cookies."""
         return self._cookie_jar
 
     @property
-    def version(self):
+    def version(self) -> Tuple[int, int]:
         """The session HTTP protocol version."""
         return self._version
 
     @property
-    def loop(self):
+    def loop(self) -> asyncio.AbstractEventLoop:
         """Session's loop."""
         return self._loop
 
-    def detach(self):
+    def detach(self) -> None:
         """Detach connector from session without closing the former.
 
         Session is switched to closed state anyway.
@@ -809,14 +821,14 @@ class ClientSession:
         # __exit__ should exist in pair with __enter__ but never executed
         pass  # pragma: no cover
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> 'ClientSession':
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
 
 
-class _BaseRequestContextManager(Coroutine):
+class _BaseRequestContextManager(CoroutineABC):
 
     __slots__ = ('_coro', '_resp')
 
@@ -832,14 +844,14 @@ class _BaseRequestContextManager(Coroutine):
     def close(self):
         return self._coro.close()
 
-    def __await__(self):
+    def __await__(self) -> Generator[Any, None, ClientResponse]:
         ret = self._coro.__await__()
         return ret
 
     def __iter__(self):
         return self.__await__()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> ClientResponse:
         self._resp = await self._coro
         return self._resp
 
@@ -868,7 +880,7 @@ class _SessionRequestContextManager:
         self._resp = None
         self._session = session
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> ClientResponse:
         self._resp = await self._coro
         return self._resp
 
@@ -895,7 +907,7 @@ def request(method, url, *,
             loop=None,
             read_until_eof=True,
             proxy=None,
-            proxy_auth=None):
+            proxy_auth=None) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
     method - HTTP method
     url - request url

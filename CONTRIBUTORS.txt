@@ -57,6 +57,7 @@ Dan Xu
 Daniel García
 Daniel Nelson
 Danny Song
+David Bibb
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
@@ -112,6 +113,7 @@ Julien Duponchelle
 Jungkook Park
 Junjie Tao
 Justas Trimailovas
+Justin Foo
 Justin Turner Arthur
 Kay Zheng
 Kimmo Parviainen-Jalanko
@@ -125,6 +127,7 @@ Lu Gong
 Lubomir Gelo
 Ludovic Gasc
 Lukasz Marcin Dobrzanski
+Luis Pedrosa
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
@@ -151,6 +154,7 @@ Panagiotis Kolokotronis
 Pankaj Pandey
 Pau Freixes
 Paul Colomiets
+Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
 Pawel Miech
@@ -187,6 +191,7 @@ Thanos Lefteris
 Thijs Vermeir
 Thomas Grainger
 Tolga Tezel
+Trinh Hoang Nhu
 Vadim Suharnikov
 Vaibhav Sagar
 Vamsi Krishna Avula
@@ -206,6 +211,7 @@ Vladyslav Bondar
 W. Trevor King
 Will McGugan
 Willem de Groot
+William Grzybowski
 Wilson Ong
 Wei Lin
 Weiwei Wang

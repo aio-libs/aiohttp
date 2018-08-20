@@ -13,7 +13,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import codecs
+import io
 import os
 import re
 import sys
@@ -21,7 +21,7 @@ import sys
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(os.path.join(_docs_path,
                                              '..', 'aiohttp', '__init__.py'))
-with codecs.open(_version_path, 'r', 'latin1') as fp:
+with io.open(_version_path, 'r', encoding='latin1') as fp:
     try:
         _version_info = re.search(r"^__version__ = '"
                                   r"(?P<major>\d+)"
@@ -33,13 +33,6 @@ with codecs.open(_version_path, 'r', 'latin1') as fp:
         raise RuntimeError('Unable to determine version.')
 
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('.'))
-
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -49,7 +42,6 @@ sys.path.insert(0, os.path.abspath('.'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.intersphinx',
     'sphinxcontrib.asyncio',
