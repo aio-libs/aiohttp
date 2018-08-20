@@ -1,3 +1,4 @@
+import asyncio
 import collections
 import datetime
 import enum
@@ -32,6 +33,10 @@ class ContentCoding(enum.Enum):
 ############################################################
 # HTTP Response classes
 ############################################################
+
+# Length in bytes of body which will trigger sync methods to process in a
+# thread pool to avoid blocking the main thread
+_BODY_LENGTH_THREAD_CUTOFF = 1024
 
 
 class StreamResponse(collections.MutableMapping, HeadersMixin):
@@ -271,7 +276,7 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
             ctype = self._content_type
         self.headers[CONTENT_TYPE] = ctype
 
-    def _do_start_compression(self, coding):
+    async def _do_start_compression(self, coding):
         if coding != ContentCoding.identity:
             self.headers[hdrs.CONTENT_ENCODING] = coding.value
             self._payload_writer.enable_compression(coding.value)
@@ -279,15 +284,15 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
 
-    def _start_compression(self, request):
+    async def _start_compression(self, request):
         if self._compression_force:
-            self._do_start_compression(self._compression_force)
+            await self._do_start_compression(self._compression_force)
         else:
             accept_encoding = request.headers.get(
                 hdrs.ACCEPT_ENCODING, '').lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
-                    self._do_start_compression(coding)
+                    await self._do_start_compression(coding)
                     return
 
     async def prepare(self, request):
@@ -326,7 +331,7 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
             headers.add(SET_COOKIE, value)
 
         if self._compression:
-            self._start_compression(request)
+            await self._start_compression(request)
 
         if self._chunked:
             if version != HttpVersion11:
@@ -578,7 +583,9 @@ class Response(StreamResponse):
     def content_length(self, value):
         raise RuntimeError("Content length is set automatically")
 
-    async def write_eof(self):
+    async def write_eof(self, data=b''):
+        assert not data
+
         if self._eof_sent:
             return
         if self._compressed_body is not None:
@@ -597,7 +604,7 @@ class Response(StreamResponse):
         else:
             await super().write_eof()
 
-    async def _start(self, request):
+    async def _start(self, request, *args, **kwargs):
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if not self._body_payload:
                 if self._body is not None:
@@ -605,9 +612,14 @@ class Response(StreamResponse):
                 else:
                     self._headers[hdrs.CONTENT_LENGTH] = '0'
 
-        return await super()._start(request)
+        return await super()._start(request, *args, **kwargs)
 
-    def _do_start_compression(self, coding):
+    def _compress_body(self, zlib_mode):
+        compressobj = zlib.compressobj(wbits=zlib_mode)
+        self._compressed_body = compressobj.compress(self._body) + \
+                                compressobj.flush()
+
+    async def _do_start_compression(self, coding):
         if self._body_payload or self._chunked:
             return super()._do_start_compression(coding)
         if coding != ContentCoding.identity:
@@ -615,8 +627,15 @@ class Response(StreamResponse):
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
                          if coding.value == 'gzip' else -zlib.MAX_WBITS)
+            if len(self._body) > _BODY_LENGTH_THREAD_CUTOFF:
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(None,
+                                           self._compress_body(zlib_mode))
+            else:
+                self._compress_body(zlib_mode)
+
             compressobj = zlib.compressobj(wbits=zlib_mode)
-            self._compressed_body = compressobj.compress(self._body) +\
+            self._compressed_body = compressobj.compress(self._body) + \
                 compressobj.flush()
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
             self._headers[hdrs.CONTENT_LENGTH] = \
@@ -633,5 +652,27 @@ def json_response(data=sentinel, *, text=None, body=None, status=200,
             )
         else:
             text = dumps(data)
+    return Response(text=text, body=body, status=status, reason=reason,
+                    headers=headers, content_type=content_type)
+
+
+async def async_json_response(data=sentinel, *, text=None, body=None,
+                              status=200, reason=None, headers=None,
+                              content_type='application/json',
+                              dumps=json.dumps):
+    if data is not sentinel:
+        if text or body:
+            raise ValueError(
+                "only one of data, text, or body should be specified"
+            )
+        else:
+            if asyncio.iscoroutine(dumps):
+                text = await dumps(data)
+            elif len(data) > _BODY_LENGTH_THREAD_CUTOFF:
+                loop = asyncio.get_event_loop()
+                text = await loop.run_in_executor(None, dumps, data)
+            else:
+                text = dumps(data)
+
     return Response(text=text, body=body, status=status, reason=reason,
                     headers=headers, content_type=content_type)
