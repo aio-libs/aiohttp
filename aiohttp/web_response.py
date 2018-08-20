@@ -616,8 +616,8 @@ class Response(StreamResponse):
 
     def _compress_body(self, zlib_mode):
         compressobj = zlib.compressobj(wbits=zlib_mode)
-        self._compressed_body = compressobj.compress(self._body) + \
-                                compressobj.flush()
+        self._compressed_body = \
+            compressobj.compress(self._body) + compressobj.flush()
 
     async def _do_start_compression(self, coding):
         if self._body_payload or self._chunked:
