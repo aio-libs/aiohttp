@@ -10,7 +10,8 @@ from multidict import CIMultiDict
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web import ContentCoding, Response, StreamResponse, json_response
+from aiohttp.web import ContentCoding, Response, StreamResponse, \
+    json_response, async_json_response, _BODY_LENGTH_THREAD_CUTOFF
 
 
 def make_request(method, path, headers=CIMultiDict(),
@@ -1101,6 +1102,27 @@ def test_text_with_empty_payload():
 def test_response_with_content_length_header_without_body():
     resp = Response(headers={'Content-Length': 123})
     assert resp.content_length == 123
+
+
+async def test_async_json_small_response():
+    text = 'jaysawn'
+    resp = await async_json_response(text=json.dumps(text))
+    assert resp.text == json.dumps(text)
+
+
+async def test_async_json_large_response():
+    text = 'ja' * _BODY_LENGTH_THREAD_CUTOFF
+    resp = await async_json_response(text=json.dumps(text))
+    assert resp.text == json.dumps(text)
+
+
+async def test_async_json_coro_response():
+    async def dumps(data):
+        return json.dumps(data)
+
+    text = 'jaysawn'
+    resp = await async_json_response(text=json.dumps(text), dumps=dumps)
+    assert resp.text == json.dumps(text)
 
 
 class TestJSONResponse:

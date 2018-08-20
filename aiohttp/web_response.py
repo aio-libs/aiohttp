@@ -445,7 +445,7 @@ class Response(StreamResponse):
 
     def __init__(self, *, body=None, status=200,
                  reason=None, text=None, headers=None, content_type=None,
-                 charset=None):
+                 charset=None, loop=None):
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
@@ -497,6 +497,7 @@ class Response(StreamResponse):
             self.body = body
 
         self._compressed_body = None
+        self._loop = loop or asyncio.get_event_loop()
 
     @property
     def body(self):
@@ -628,9 +629,8 @@ class Response(StreamResponse):
             zlib_mode = (16 + zlib.MAX_WBITS
                          if coding.value == 'gzip' else -zlib.MAX_WBITS)
             if len(self._body) > _BODY_LENGTH_THREAD_CUTOFF:
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(None,
-                                           self._compress_body(zlib_mode))
+                await self._loop.run_in_executor(
+                    None, self._compress_body, zlib_mode)
             else:
                 self._compress_body(zlib_mode)
 
