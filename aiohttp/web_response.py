@@ -34,10 +34,6 @@ class ContentCoding(enum.Enum):
 # HTTP Response classes
 ############################################################
 
-# Length in bytes of body which will trigger sync methods to process in a
-# thread pool to avoid blocking the main thread
-_BODY_LENGTH_THREAD_CUTOFF = 1024
-
 
 class StreamResponse(collections.MutableMapping, HeadersMixin):
 
@@ -630,7 +626,7 @@ class Response(StreamResponse):
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
                          if coding.value == 'gzip' else -zlib.MAX_WBITS)
-            if len(self._body) > _BODY_LENGTH_THREAD_CUTOFF:
+            if len(self._body) > self._zlib_thread_size:
                 await self._loop.run_in_executor(
                     None, self._compress_body, zlib_mode)
             else:
