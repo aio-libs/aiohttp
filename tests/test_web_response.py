@@ -420,7 +420,7 @@ async def test_force_compression_no_accept_gzip():
 async def test_change_content_length_if_compression_enabled():
     req = make_request('GET', '/')
     resp = Response(body=b'answer')
-    resp.enable_compression(ContentCoding.gzip)
+    await resp.enable_compression(ContentCoding.gzip)
 
     await resp.prepare(req)
     assert resp.content_length is not None and \
@@ -438,7 +438,7 @@ async def test_set_content_length_if_compression_enabled():
     writer.write_headers.side_effect = write_headers
     req = make_request('GET', '/', writer=writer)
     resp = Response(body=b'answer')
-    resp.enable_compression(ContentCoding.gzip)
+    await resp.enable_compression(ContentCoding.gzip)
 
     await resp.prepare(req)
     assert resp.content_length == 26
@@ -507,7 +507,7 @@ async def test_force_compression_identity_response():
     req = make_request('GET', '/',
                        writer=writer)
     resp = Response(body=b'answer')
-    resp.enable_compression(ContentCoding.identity)
+    await resp.enable_compression(ContentCoding.identity)
     await resp.prepare(req)
     assert resp.content_length == 6
 
@@ -525,7 +525,7 @@ async def test_rm_content_length_if_compression_enabled_on_payload_http11():
     resp = Response(body=payload)
     assert resp.content_length == 6
     resp.body = payload
-    resp.enable_compression(ContentCoding.gzip)
+    await resp.enable_compression(ContentCoding.gzip)
     await resp.prepare(req)
     assert resp.content_length is None
 
@@ -541,7 +541,7 @@ async def test_rm_content_length_if_compression_enabled_on_payload_http10():
     req = make_request('GET', '/', version=HttpVersion10,
                        writer=writer)
     resp = Response(body=BytesPayload(b'answer'))
-    resp.enable_compression(ContentCoding.gzip)
+    await resp.enable_compression(ContentCoding.gzip)
     await resp.prepare(req)
     assert resp.content_length is None
 

@@ -445,7 +445,8 @@ class Response(StreamResponse):
 
     def __init__(self, *, body=None, status=200,
                  reason=None, text=None, headers=None, content_type=None,
-                 charset=None, loop=None):
+                 charset=None, loop=None,
+                 zlib_thread_size=None):
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
@@ -498,6 +499,7 @@ class Response(StreamResponse):
 
         self._compressed_body = None
         self._loop = loop or asyncio.get_event_loop()
+        self._zlib_thread_size = zlib_thread_size
 
     @property
     def body(self):
@@ -659,7 +661,7 @@ def json_response(data=sentinel, *, text=None, body=None, status=200,
 async def async_json_response(data=sentinel, *, text=None, body=None,
                               status=200, reason=None, headers=None,
                               content_type='application/json',
-                              dumps=json.dumps):
+                              dumps=json.dumps, executor_body_size=None):
     if data is not sentinel:
         if text or body:
             raise ValueError(
@@ -668,11 +670,12 @@ async def async_json_response(data=sentinel, *, text=None, body=None,
         else:
             if asyncio.iscoroutine(dumps):
                 text = await dumps(data)
-            elif len(data) > _BODY_LENGTH_THREAD_CUTOFF:
+            elif len(data) > executor_body_size:
                 loop = asyncio.get_event_loop()
                 text = await loop.run_in_executor(None, dumps, data)
             else:
                 text = dumps(data)
 
     return Response(text=text, body=body, status=status, reason=reason,
-                    headers=headers, content_type=content_type)
+                    headers=headers, content_type=content_type,
+                    zlib_thread_size=executor_body_size)
