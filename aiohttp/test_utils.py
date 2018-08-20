@@ -448,7 +448,17 @@ def teardown_test_loop(loop, fast=False):
 
 
 def _create_app_mock():
-    app = mock.Mock()
+    def get_dict(app, key):
+        return app.__app_dict[key]
+
+    def set_dict(app, key, value):
+        app.__app_dict[key] = value
+
+    app = mock.MagicMock()
+    app.__app_dict = {}
+    app.__getitem__ = get_dict
+    app.__setitem__ = set_dict
+
     app._debug = False
     app.on_response_prepare = Signal(app)
     app.on_response_prepare.freeze()
