@@ -11,8 +11,8 @@ from multidict import CIMultiDict
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web import ContentCoding, Response, StreamResponse, \
-    json_response, async_json_response
+from aiohttp.web import (ContentCoding, Response, StreamResponse,
+                         async_json_response, json_response)
 
 
 def make_request(method, path, headers=CIMultiDict(),
