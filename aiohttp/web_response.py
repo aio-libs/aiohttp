@@ -17,7 +17,8 @@ from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 
 
-__all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
+__all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response',
+           'async_json_response')
 
 
 class ContentCoding(enum.Enum):
@@ -441,8 +442,7 @@ class Response(StreamResponse):
 
     def __init__(self, *, body=None, status=200,
                  reason=None, text=None, headers=None, content_type=None,
-                 charset=None, loop=None,
-                 zlib_thread_size=None):
+                 charset=None, zlib_thread_size=None):
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
@@ -494,7 +494,6 @@ class Response(StreamResponse):
             self.body = body
 
         self._compressed_body = None
-        self._loop = loop or asyncio.get_event_loop()
         self._zlib_thread_size = zlib_thread_size
 
     @property
@@ -620,7 +619,7 @@ class Response(StreamResponse):
 
     async def _do_start_compression(self, coding):
         if self._body_payload or self._chunked:
-            return super()._do_start_compression(coding)
+            return await super()._do_start_compression(coding)
         if coding != ContentCoding.identity:
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
@@ -628,7 +627,7 @@ class Response(StreamResponse):
                          if coding.value == 'gzip' else -zlib.MAX_WBITS)
             if self._zlib_thread_size is not None and \
                     len(self._body) > self._zlib_thread_size:
-                await self._loop.run_in_executor(
+                await asyncio.get_event_loop().run_in_executor(
                     None, self._compress_body, zlib_mode)
             else:
                 self._compress_body(zlib_mode)
