@@ -834,6 +834,7 @@ Response
 
    :param int zlib_thread_size: length in bytes which will trigger zlib compression
                             of body to happen in the default executor
+
    .. attribute:: body
 
       Read-write attribute for storing response's content aka BODY,
