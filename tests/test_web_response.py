@@ -1125,6 +1125,9 @@ async def test_async_json_small_response():
     resp = await async_json_response(text)
     assert resp.text == json.dumps(text)
 
+    with pytest.raises(ValueError):
+        await async_json_response(text, body=text)
+
 
 async def test_async_json_large_response():
     cuttoff_length = 1024
