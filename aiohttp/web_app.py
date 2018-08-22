@@ -5,8 +5,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Awaitable, Callable
 
 from . import hdrs
-from .abc import (AbstractAccessLogger, AbstractMatchInfo, AbstractRouter,
-                  AbstractRuleMatching)
+from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
 from .helpers import DEBUG, AccessLogger
 from .log import web_logger
@@ -15,8 +14,8 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import (DefaultRule, Domain, MaskDomain,
-                                PrefixedSubAppResource, SubAppResource,
+from .web_urldispatcher import (Domain, MaskDomain,
+                                MatchedSubAppResource, PrefixedSubAppResource,
                                 UrlDispatcher)
 
 
@@ -197,21 +196,21 @@ class Application(MutableMapping):
         reg_handler('on_cleanup')
 
     def add_subapp(self, prefix: str, subapp: 'Application'):
+        if not isinstance(prefix, str):
+            raise TypeError("Prefix must be str")
+        prefix = prefix.rstrip('/')
+        if not prefix:
+            raise ValueError("Prefix cannot be empty")
+        factory = partial(PrefixedSubAppResource, prefix, subapp)
+        return self._add_subapp(factory, subapp)
+
+    def _add_subapp(self, resource_factory: Callable, subapp: 'Application'):
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
         if subapp.frozen:
             raise RuntimeError("Cannot add frozen application")
-        if isinstance(rule, str):
-            prefix = rule.rstrip('/')
-            if not prefix:
-                raise ValueError("Prefix cannot be empty")
-            resource = PrefixedSubAppResource(prefix, subapp)
-        elif isinstance(rule, AbstractRuleMatching):
-            resource = SubAppResource(rule, subapp)
-        else:
-            raise TypeError("Rule must be str or subclass of "
-                            "aiohttp.abc.AbstractRuleMatching")
+        resource = resource_factory()
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
@@ -220,16 +219,15 @@ class Application(MutableMapping):
             subapp._set_loop(self._loop)
         return resource
 
-    def add_domain(self, domain, subapp):
+    def add_domain(self, domain: str, subapp: 'Application'):
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
-        elif domain == '*':
-            rule = DefaultRule()
         elif '*' in domain:
-            rule = MaskDomain(domain)
+            rule = MaskDomain(domain)  # type: Domain
         else:
             rule = Domain(domain)
-        return self.add_subapp(rule, subapp)
+        factory = partial(MatchedSubAppResource, rule, subapp)
+        return self._add_subapp(factory, subapp)
 
     def add_routes(self, routes):
         self.router.add_routes(routes)

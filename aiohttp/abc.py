@@ -155,3 +155,8 @@ class AbstractRuleMatching(ABC):
     @abstractmethod  # pragma: no branch
     def get_info(self):
         """Return a dict with additional info useful for introspection"""
+
+    @property
+    @abstractmethod  # pragma: no branch
+    def canonical(self):
+        """Return a str"""

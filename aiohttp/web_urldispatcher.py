@@ -674,20 +674,16 @@ class PrefixedSubAppResource(PrefixResource):
             prefix=self._prefix, app=self._app)
 
 
-class DefaultRule(AbstractRuleMatching):
-    async def match(self, request):
-        return True
-
-    def get_info(self):
-        return {}
-
-
 class Domain(AbstractRuleMatching):
     re_part = re.compile(r"(?!-)[a-z\d-]{1,63}(?<!-)")
 
     def __init__(self, domain):
         super().__init__()
         self._domain = self.validation(domain)
+
+    @property
+    def canonical(self):
+        return self._domain
 
     def validation(self, domain):
         if not isinstance(domain, str):
@@ -725,24 +721,25 @@ class MaskDomain(Domain):
         mask = self._domain.replace('.', '\.').replace('*', '.*')
         self._mask = re.compile(mask)
 
+    @property
+    def canonical(self):
+        return self._mask.pattern
+
     def match_domain(self, host):
         return self._mask.fullmatch(host) is not None
 
 
-class SubAppResource(AbstractResource):
+class MatchedSubAppResource(PrefixedSubAppResource):
 
     def __init__(self, rule, app):
-        super().__init__()
+        AbstractResource.__init__(self)
+        self._prefix = ''
         self._app = app
         self._rule = rule
 
-    def add_prefix(self, prefix):
-        for resource in self._app.router.resources():
-            resource.add_prefix(prefix)
-
-    def url_for(self, *args, **kwargs):
-        raise RuntimeError(".url_for() is not supported "
-                           "by sub-application root")
+    @property
+    def canonical(self):
+        return self._rule.canonical
 
     def get_info(self):
         return {'app': self._app,
@@ -759,18 +756,9 @@ class SubAppResource(AbstractResource):
             methods = set()
         return match_info, methods
 
-    def raw_match(self, path):
-        return False
-
-    def __len__(self):
-        return len(self._app.router.routes())
-
-    def __iter__(self):
-        return iter(self._app.router.routes())
-
     def __repr__(self):
-        return "<SubAppResource {rule!r} -> {app!r}>".format(
-            rule=self._rule, app=self._app)
+        return "<MatchedSubAppResource -> {app!r}>" \
+               "".format(app=self._app)
 
 
 class ResourceRoute(AbstractRoute):
