@@ -1122,12 +1122,14 @@ async def test_async_json_small_response():
     resp = await async_json_response(text=json.dumps(text))
     assert resp.text == json.dumps(text)
 
+    resp = await async_json_response(text)
+    assert resp.text == json.dumps(text)
+
 
 async def test_async_json_large_response():
     cuttoff_length = 1024
     text = 'ja' * cuttoff_length
-    resp = await async_json_response(text=json.dumps(text),
-                                     executor_body_size=cuttoff_length)
+    resp = await async_json_response(text, executor_body_size=cuttoff_length)
     assert resp.text == json.dumps(text)
 
 
@@ -1136,7 +1138,7 @@ async def test_async_json_coro_response():
         return json.dumps(data)
 
     text = 'jaysawn'
-    resp = await async_json_response(text=json.dumps(text), dumps=dumps)
+    resp = await async_json_response(text, dumps=dumps)
     assert resp.text == json.dumps(text)
 
 

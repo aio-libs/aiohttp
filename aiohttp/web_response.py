@@ -661,7 +661,7 @@ async def async_json_response(data=sentinel, *, text=None, body=None,
                 "only one of data, text, or body should be specified"
             )
         else:
-            if asyncio.iscoroutine(dumps):
+            if asyncio.iscoroutinefunction(dumps):
                 text = await dumps(data)
             elif executor_body_size is not None and \
                     len(data) > executor_body_size:
