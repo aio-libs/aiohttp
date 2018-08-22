@@ -11,11 +11,10 @@ import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
-from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
-                                       Domain, DynamicResource,
-                                       MaskDomain, PlainResource,
-                                       ResourceRoute, StaticResource,
-                                       SystemRoute, View,
+from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource, Domain,
+                                       DynamicResource, MaskDomain,
+                                       PlainResource, ResourceRoute,
+                                       StaticResource, SystemRoute, View,
                                        _default_expect_handler)
 
 

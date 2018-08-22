@@ -14,9 +14,8 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import (Domain, MaskDomain,
-                                MatchedSubAppResource, PrefixedSubAppResource,
-                                UrlDispatcher)
+from .web_urldispatcher import (Domain, MaskDomain, MatchedSubAppResource,
+                                PrefixedSubAppResource, UrlDispatcher)
 
 
 __all__ = ('Application', 'CleanupError')
