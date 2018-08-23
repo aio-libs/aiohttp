@@ -1402,7 +1402,7 @@ duplicated like one using :meth:`Application.copy`.
 
       :param Application subapp: nested application.
 
-      :returns: a :class:`SubAppResource` instance.
+      :returns: a :class:`MatchedSubAppResource` instance.
 
    .. method:: add_routes(routes_table)
 
