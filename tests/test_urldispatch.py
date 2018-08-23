@@ -1066,6 +1066,12 @@ def test_subapp_rule_resource(app):
         resource.url_for()
 
 
+async def test_add_domain_not_str(app, loop):
+    app = web.Application()
+    with pytest.raises(TypeError):
+        app.add_domain(1, app)
+
+
 async def test_add_domain(app, loop):
     subapp1 = web.Application()
     h1 = make_handler()
