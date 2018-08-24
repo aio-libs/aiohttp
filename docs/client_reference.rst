@@ -660,7 +660,7 @@ certification chaining.
                         version=HttpVersion(major=1, minor=1), \
                         compress=None, chunked=None, expect100=False, raise_for_status=None, \
                         connector=None, loop=None,\
-                        read_until_eof=True)
+                        read_until_eof=True, timeout=sentinel)
 
    :async-with:
 
@@ -718,6 +718,9 @@ certification chaining.
    :param bool read_until_eof: Read response until EOF if response
                                does not have Content-Length header.
                                ``True`` by default (optional).
+
+   :param timeout: a :class:`ClientTimeout` settings structure, 5min
+        total timeout by default.
 
    :param loop: :ref:`event loop<asyncio-event-loop>`
                 used for processing HTTP requests.
