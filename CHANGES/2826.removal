@@ -1,1 +1,0 @@
-Drop ``loop.current_task()`` from ``helpers.current_task()``

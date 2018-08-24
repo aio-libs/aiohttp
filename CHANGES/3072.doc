@@ -1,1 +1,0 @@
-Add FAQ section "Why is creating a ClientSession outside of an event loop dangerous?"
