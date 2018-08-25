@@ -396,7 +396,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
     @reify
     def raw_headers(self) -> RawHeaders:
-        """A sequence of pars for all headers."""
+        """A sequence of pairs for all headers."""
         return self._message.raw_headers
 
     @staticmethod
