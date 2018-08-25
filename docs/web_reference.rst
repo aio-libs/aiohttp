@@ -71,8 +71,6 @@ and :ref:`aiohttp-web-signals` handlers.
 
       The value could be overridden by :meth:`~BaseRequest.clone`.
 
-      ``'http'`` otherwise.
-
       Read-only :class:`str` property.
 
       .. versionchanged:: 2.3
@@ -840,7 +838,7 @@ Response
 
       Setting :attr:`body` also recalculates
       :attr:`~StreamResponse.content_length` value.
-      
+
       Assigning :class:`str` to :attr:`body` will make the :attr:`body`
       type of :class:`aiohttp.payload.StringPayload`, which tries to encode
       the given data based on *Content-Type* HTTP header, while defaulting
