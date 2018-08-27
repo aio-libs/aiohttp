@@ -5,7 +5,6 @@ import pathlib
 from aiohttp import hdrs
 from collections import defaultdict
 import io
-from pprint import pprint
 
 headers = [getattr(hdrs, name)
            for name in dir(hdrs)
