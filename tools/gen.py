@@ -16,11 +16,17 @@ def factory():
 
 
 TERMINAL = object()
+HIDDEN_FROM_FIND_HEADER = (
+    'Proxy-Authorization',
+)
 
 
 def build(headers):
     dct = defaultdict(factory)
     for hdr in headers:
+        if hdr in HIDDEN_FROM_FIND_HEADER:
+            continue
+
         d = dct
         for ch in hdr:
             d = d[ch]

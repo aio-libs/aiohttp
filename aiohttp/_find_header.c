@@ -6629,11 +6629,6 @@ PROX:
 PROXY:
     NEXT_CHAR();
     switch (ch) {
-        case '_':
-            if (last) {
-                return -1;
-            }
-            goto PROXY_;
         case '-':
             if (last) {
                 return -1;
