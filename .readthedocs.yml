@@ -3,3 +3,4 @@ build:
 python:
   version: 3.6
   pip_install: true
+requirements_file: requirements/cython.txt
