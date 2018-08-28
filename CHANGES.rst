@@ -17,11 +17,8 @@ Changelog
 3.4.1 (2018-08-28)
 ==================
 
-Improved Documentation
-----------------------
-
-- Fix BaseRequest.raw_headers doc. (#3215)
-- Fix documentation building on readthedocs.org (#3221)
+- Fix BaseRequest.raw_headers doc. (`#3215 <https://github.com/aio-libs/aiohttp/pull/3215>`_)
+- Fix documentation building on readthedocs.org (`#3221 <https://github.com/aio-libs/aiohttp/pull/3221>`_)
 
 
 3.4.0 (2018-08-25)
