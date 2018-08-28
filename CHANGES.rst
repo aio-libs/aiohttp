@@ -14,6 +14,16 @@ Changelog
 
 .. towncrier release notes start
 
+3.4.1 (2018-08-28)
+==================
+
+Improved Documentation
+----------------------
+
+- Fix BaseRequest.raw_headers doc. (#3215)
+- Fix documentation building on readthedocs.org (#3221)
+
+
 3.4.0 (2018-08-25)
 ==================
 
