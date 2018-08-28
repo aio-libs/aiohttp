@@ -260,6 +260,7 @@ cdef class HttpParser:
 
         bytearray _raw_name
         bytearray _raw_value
+        bint      _has_value
 
         object _protocol
         object _loop
@@ -327,6 +328,7 @@ cdef class HttpParser:
 
         self._raw_name = bytearray()
         self._raw_value = bytearray()
+        self._has_value = False
 
         self._max_line_size = max_line_size
         self._max_headers = max_headers
@@ -364,12 +366,13 @@ cdef class HttpParser:
 
             PyByteArray_Resize(self._raw_name, 0)
             PyByteArray_Resize(self._raw_value, 0)
+            self._has_value = False
             self._raw_headers.append((raw_name, raw_value))
 
     cdef _on_header_field(self, char* at, size_t length):
         cdef Py_ssize_t size
         cdef char *buf
-        if self._raw_value:
+        if self._has_value:
             self._process_header()
 
         size = PyByteArray_Size(self._raw_name)
@@ -385,6 +388,7 @@ cdef class HttpParser:
         PyByteArray_Resize(self._raw_value, size + length)
         buf = PyByteArray_AsString(self._raw_value)
         memcpy(buf + size, at, length)
+        self._has_value = True
 
     cdef _on_headers_complete(self):
         self._process_header()
