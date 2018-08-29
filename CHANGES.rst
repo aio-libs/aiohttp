@@ -14,6 +14,14 @@ Changelog
 
 .. towncrier release notes start
 
+3.4.1 (2018-08-28)
+==================
+
+- Fix empty header parsing regression. (`#3218 <https://github.com/aio-libs/aiohttp/pull/3218>`_)
+- Fix BaseRequest.raw_headers doc. (`#3215 <https://github.com/aio-libs/aiohttp/pull/3215>`_)
+- Fix documentation building on ReadTheDocs (`#3221 <https://github.com/aio-libs/aiohttp/pull/3221>`_)
+
+
 3.4.0 (2018-08-25)
 ==================
 
