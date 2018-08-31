@@ -37,8 +37,15 @@ class AsyncStreamIterator:
         return rv
 
 
-class ChunkTupleAsyncStreamIterator(AsyncStreamIterator):
-    async def __anext__(self) -> bytes:
+class ChunkTupleAsyncStreamIterator:
+
+    def __init__(self, read_func: Callable[[], Awaitable[Tuple[bytes, bool]]]) -> None:
+        self.read_func = read_func
+
+    def __aiter__(self) -> 'ChunkTupleAsyncStreamIterator':
+        return self
+
+    async def __anext__(self) -> Tuple[bytes, bool]:
         rv = await self.read_func()
         if rv == (b'', False):
             raise StopAsyncIteration  # NOQA
