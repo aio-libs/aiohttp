@@ -325,7 +325,7 @@ class Application(MutableMapping):
         match_info = await self._router.resolve(request)
         if DEBUG:  # pragma: no cover
             if not isinstance(match_info, AbstractMatchInfo):
-                raise TypeError("match_info should be AbstractMAtchInfo "
+                raise TypeError("match_info should be AbstractMatchInfo "
                                 "instance, not {!r}".format(match_info))
         match_info.add_app(self)
 
