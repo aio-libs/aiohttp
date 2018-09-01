@@ -14,6 +14,11 @@ Changelog
 
 .. towncrier release notes start
 
+3.4.2 (2018-09-01)
+==================
+
+- Fix iter_chunks type annotation wrong (`#3230 <https://github.com/aio-libs/aiohttp/pull/3230>`_)
+
 3.4.1 (2018-08-28)
 ==================
 
