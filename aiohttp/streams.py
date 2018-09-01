@@ -39,15 +39,14 @@ class AsyncStreamIterator:
 
 class ChunkTupleAsyncStreamIterator:
 
-    def __init__(self, 
-                 read_func: Callable[[], Awaitable[Tuple[bytes, bool]]]) -> None:
-        self.read_func = read_func
+    def __init__(self, stream: 'StreamReader') -> None:
+        self._stream = stream
 
     def __aiter__(self) -> 'ChunkTupleAsyncStreamIterator':
         return self
 
     async def __anext__(self) -> Tuple[bytes, bool]:
-        rv = await self.read_func()
+        rv = await self._stream.readchunk()
         if rv == (b'', False):
             raise StopAsyncIteration  # NOQA
         return rv
@@ -80,7 +79,7 @@ class AsyncStreamReaderMixin:
 
         Python-3.5 available for Python 3.5+ only
         """
-        return ChunkTupleAsyncStreamIterator(self.readchunk)  # type: ignore
+        return ChunkTupleAsyncStreamIterator(self)  # type: ignore
 
 
 class StreamReader(AsyncStreamReaderMixin):
