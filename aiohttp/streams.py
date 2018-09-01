@@ -39,7 +39,8 @@ class AsyncStreamIterator:
 
 class ChunkTupleAsyncStreamIterator:
 
-    def __init__(self, read_func: Callable[[], Awaitable[Tuple[bytes, bool]]]) -> None:
+    def __init__(self, 
+                 read_func: Callable[[], Awaitable[Tuple[bytes, bool]]]) -> None:
         self.read_func = read_func
 
     def __aiter__(self) -> 'ChunkTupleAsyncStreamIterator':
