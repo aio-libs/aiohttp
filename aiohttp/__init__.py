@@ -1,4 +1,4 @@
-__version__ = '3.4.1'
+__version__ = '3.4.2'
 
 # This relies on each of the submodules having an __all__ variable.
 
