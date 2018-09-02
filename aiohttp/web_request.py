@@ -78,7 +78,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
     ATTRS = HeadersMixin.ATTRS | frozenset([
         '_message', '_protocol', '_payload_writer', '_payload', '_headers',
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
-        '_state', '_cache', '_task', '_client_max_size', '_loop'])
+        '_state', '_cache', '_task', '_client_max_size', '_loop',
+        '_transport_sslcontext', '_transport_peername'])
 
     def __init__(self, message, payload, protocol, payload_writer, task,
                  loop,
@@ -104,6 +105,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         self._task = task
         self._client_max_size = client_max_size
         self._loop = loop
+
+        transport = self._protocol.transport
+        self._transport_sslcontext = transport.get_extra_info('sslcontext')
+        self._transport_peername = transport.get_extra_info('peername')
 
         if scheme is not None:
             self._cache['scheme'] = scheme
@@ -292,7 +297,7 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
 
         'http' or 'https'.
         """
-        if self.transport.get_extra_info('sslcontext'):
+        if self._transport_sslcontext:
             return 'https'
         else:
             return 'http'
@@ -338,13 +343,10 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         - overridden value by .clone(remote=new_remote) call.
         - peername of opened socket
         """
-        if self.transport is None:
-            return None
-        peername = self.transport.get_extra_info('peername')
-        if isinstance(peername, (list, tuple)):
-            return peername[0]
+        if isinstance(self._transport_peername, (list, tuple)):
+            return self._transport_peername[0]
         else:
-            return peername
+            return self._transport_peername
 
     @reify
     def url(self) -> URL:
