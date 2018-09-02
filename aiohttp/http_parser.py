@@ -371,7 +371,6 @@ class HttpRequestParser(HttpParser):
                 'Status line is too long', self.max_line_size, len(path))
 
         # method
-        method = method.upper()
         if not METHRE.match(method):
             raise BadStatusLine(method)
 
