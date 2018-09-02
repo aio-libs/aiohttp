@@ -540,7 +540,7 @@ def test_http_request_parser_two_slashes(parser):
 
 def test_http_request_parser_bad_method(parser):
     with pytest.raises(http_exceptions.BadStatusLine):
-        parser.feed_data(b'!12%()+=~$ /get HTTP/1.1\r\n\r\n')
+        parser.feed_data(b'=":<G>(e),[T];?" /get HTTP/1.1\r\n\r\n')
 
 
 def test_http_request_parser_bad_version(parser):
