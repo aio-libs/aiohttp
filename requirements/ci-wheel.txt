@@ -1,5 +1,5 @@
 -r flake.txt
-attrs==18.1.0
+attrs==18.2.0
 async-generator==1.10
 async-timeout==3.0.0
 brotlipy==0.7.0
