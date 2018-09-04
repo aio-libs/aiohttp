@@ -14,6 +14,12 @@ Changelog
 
 .. towncrier release notes start
 
+3.4.3 (2018-09-04)
+==================
+
+- Add ``app.pre_frozen`` state to properly handle startup signals in sub-applications. (`#3237 <https://github.com/aio-libs/aiohttp/pull/3237>`_)
+
+
 3.4.2 (2018-09-01)
 ==================
 
