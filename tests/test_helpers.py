@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import datetime
 import gc
 import os
@@ -83,8 +84,10 @@ def test_basic_auth4():
     assert auth.encode() == 'Basic bmtpbTpwd2Q='
 
 
-def test_basic_auth_decode():
-    auth = helpers.BasicAuth.decode('Basic bmtpbTpwd2Q=')
+@pytest.mark.parametrize('header', (
+    'Basic bmtpbTpwd2Q=', 'basic bmtpbTpwd2Q='))
+def test_basic_auth_decode(header):
+    auth = helpers.BasicAuth.decode(header)
     assert auth.login == 'nkim'
     assert auth.password == 'pwd'
 
@@ -102,6 +105,30 @@ def test_basic_auth_decode_not_basic():
 def test_basic_auth_decode_bad_base64():
     with pytest.raises(ValueError):
         helpers.BasicAuth.decode('Basic bmtpbTpwd2Q')
+
+
+@pytest.mark.parametrize('header', ('Basic ???', 'Basic   '))
+def test_basic_auth_decode_illegal_chars_base64(header):
+    with pytest.raises(ValueError, match='Invalid base64 encoding.'):
+        helpers.BasicAuth.decode(header)
+
+
+def test_basic_auth_decode_invalid_credentials():
+    with pytest.raises(ValueError, match='Invalid credentials.'):
+        header = 'Basic {}'.format(base64.b64encode(b'username').decode())
+        helpers.BasicAuth.decode(header)
+
+
+@pytest.mark.parametrize('credentials, expected_auth', (
+    (':', helpers.BasicAuth(login='', password='')),
+    ('username:', helpers.BasicAuth(login='username', password='')),
+    (':password', helpers.BasicAuth(login='', password='password')),
+    ('username:password', helpers.BasicAuth(
+        login='username', password='password')),
+))
+def test_basic_auth_decode_blank_username(credentials, expected_auth):
+    header = 'Basic {}'.format(base64.b64encode(credentials.encode()).decode())
+    assert helpers.BasicAuth.decode(header) == expected_auth
 
 
 def test_basic_auth_from_url():
