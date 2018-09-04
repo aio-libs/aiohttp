@@ -85,7 +85,9 @@ def test_basic_auth4():
 
 
 @pytest.mark.parametrize('header', (
-    'Basic bmtpbTpwd2Q=', 'basic bmtpbTpwd2Q='))
+    'Basic bmtpbTpwd2Q=',
+    'basic bmtpbTpwd2Q=',
+))
 def test_basic_auth_decode(header):
     auth = helpers.BasicAuth.decode(header)
     assert auth.login == 'nkim'
@@ -120,11 +122,14 @@ def test_basic_auth_decode_invalid_credentials():
 
 
 @pytest.mark.parametrize('credentials, expected_auth', (
-    (':', helpers.BasicAuth(login='', password='')),
-    ('username:', helpers.BasicAuth(login='username', password='')),
-    (':password', helpers.BasicAuth(login='', password='password')),
+    (':', helpers.BasicAuth(
+        login='', password='', encoding='latin1')),
+    ('username:', helpers.BasicAuth(
+        login='username', password='', encoding='latin1')),
+    (':password', helpers.BasicAuth(
+        login='', password='password', encoding='latin1')),
     ('username:password', helpers.BasicAuth(
-        login='username', password='password')),
+        login='username', password='password', encoding='latin1')),
 ))
 def test_basic_auth_decode_blank_username(credentials, expected_auth):
     header = 'Basic {}'.format(base64.b64encode(credentials.encode()).decode())
