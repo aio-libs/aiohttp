@@ -1,5 +1,9 @@
 """Low-level http related exceptions."""
 
+
+from multidict import MultiDict, MultiDictProxy
+from typing import Optional, TYPE_CHECKING
+
 __all__ = ('HttpProcessingError',)
 
 
@@ -17,7 +21,10 @@ class HttpProcessingError(Exception):
     message = ''
     headers = None
 
-    def __init__(self, *, code=None, message='', headers=None):
+    def __init__(self, *,
+                 code: Optional[int]=None,
+                 message: str='',
+                 headers=None):
         if code is not None:
             self.code = code
         self.headers = headers
@@ -31,7 +38,7 @@ class BadHttpMessage(HttpProcessingError):
     code = 400
     message = 'Bad Request'
 
-    def __init__(self, message, *, headers=None):
+    def __init__(self, message: str, *, headers=None):
         super().__init__(message=message, headers=headers)
 
 
