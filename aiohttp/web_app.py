@@ -34,7 +34,7 @@ class Application(MutableMapping):
     ATTRS = frozenset([
         'logger', '_debug', '_router', '_loop', '_handler_args',
         '_middlewares', '_middlewares_handlers', '_run_middlewares',
-        '_state', '_frozen', '_subapps',
+        '_state', '_frozen', '_pre_frozen', '_subapps',
         '_on_response_prepare', '_on_startup', '_on_shutdown',
         '_on_cleanup', '_client_max_size', '_cleanup_ctx'])
 
@@ -68,6 +68,7 @@ class Application(MutableMapping):
         self._run_middlewares = None  # initialized on freezing
         self._state = {}
         self._frozen = False
+        self._pre_frozen = False
         self._subapps = []
 
         self._on_response_prepare = Signal(self)  # type: _RespPrepareSignal
@@ -146,14 +147,14 @@ class Application(MutableMapping):
             subapp._set_loop(loop)
 
     @property
-    def frozen(self) -> bool:
-        return self._frozen
+    def pre_frozen(self) -> bool:
+        return self._pre_frozen
 
-    def freeze(self) -> None:
-        if self._frozen:
+    def pre_freeze(self) -> None:
+        if self._pre_frozen:
             return
 
-        self._frozen = True
+        self._pre_frozen = True
         self._middlewares.freeze()
         self._router.freeze()
         self._on_response_prepare.freeze()
@@ -171,9 +172,22 @@ class Application(MutableMapping):
         self._run_middlewares = True if self.middlewares else False
 
         for subapp in self._subapps:
-            subapp.freeze()
+            subapp.pre_freeze()
             self._run_middlewares =\
                 self._run_middlewares or subapp._run_middlewares
+
+    @property
+    def frozen(self) -> bool:
+        return self._frozen
+
+    def freeze(self) -> None:
+        if self._frozen:
+            return
+
+        self.pre_freeze()
+        self._frozen = True
+        for subapp in self._subapps:
+            subapp.freeze()
 
     @property
     def debug(self) -> bool:
@@ -208,7 +222,7 @@ class Application(MutableMapping):
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
-        subapp.freeze()
+        subapp.pre_freeze()
         if self._loop is not None:
             subapp._set_loop(self._loop)
         return resource
