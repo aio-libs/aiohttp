@@ -95,20 +95,29 @@ class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
     @classmethod
     def decode(cls, auth_header: str, encoding: str='latin1') -> 'BasicAuth':
         """Create a BasicAuth object from an Authorization HTTP header."""
-        split = auth_header.strip().split(' ')
-        if len(split) == 2:
-            if split[0].strip().lower() != 'basic':
-                raise ValueError('Unknown authorization method %s' % split[0])
-            to_decode = split[1]
-        else:
+        try:
+            auth_type, encoded_credentials = auth_header.split(' ', 1)
+        except ValueError:
             raise ValueError('Could not parse authorization header.')
 
+        if auth_type.lower() != 'basic':
+            raise ValueError('Unknown authorization method %s' % auth_type)
+
         try:
-            username, _, password = base64.b64decode(
-                to_decode.encode('ascii')
-            ).decode(encoding).partition(':')
+            decoded = base64.b64decode(
+                encoded_credentials.encode('ascii'), validate=True
+            ).decode(encoding)
         except binascii.Error:
             raise ValueError('Invalid base64 encoding.')
+
+        try:
+            # RFC 2617 HTTP Authentication
+            # https://www.ietf.org/rfc/rfc2617.txt
+            # the colon must be present, but the username and password may be
+            # otherwise blank.
+            username, password = decoded.split(':', 1)
+        except ValueError:
+            raise ValueError('Invalid credentials.')
 
         return cls(username, password, encoding=encoding)
 
