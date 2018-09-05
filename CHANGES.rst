@@ -14,6 +14,11 @@ Changelog
 
 .. towncrier release notes start
 
+3.4.4 (2018-09-05)
+==================
+
+- Fix installation from sources when compiling toolkit is not available (`#3241 <https://github.com/aio-libs/aiohttp/pull/3241>`_)
+
 3.4.3 (2018-09-04)
 ==================
 
