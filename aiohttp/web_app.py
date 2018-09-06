@@ -1,8 +1,10 @@
 import asyncio
+import logging
 import warnings
 from collections import MutableMapping
 from functools import partial
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, List, Mapping,
+                    Optional, Sequence, Tuple, Union)
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
@@ -24,10 +26,23 @@ if TYPE_CHECKING:  # pragma: no branch
     _AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
                                          Awaitable[None]]]
+    _Handler = Callable[[Request], Awaitable[StreamResponse]]
+    _Middleware = Union[Callable[[Request, _Handler],
+                                 Awaitable[StreamResponse]],
+                        Callable[['Application', _Handler],  # old-style
+                                 Awaitable[_Handler]]]
+    _Middlewares = FrozenList[_Middleware]
+    _MiddlewaresHandlers = Optional[Sequence[Tuple[_Middleware, bool]]]
+    _Subapps = List['Application']
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
     _RespPrepareSignal = Signal
+    _Handler = Callable
+    _Middleware = Callable
+    _Middlewares = FrozenList
+    _MiddlewaresHandlers = Optional[Sequence]
+    _Subapps = List
 
 
 class Application(MutableMapping):
@@ -39,13 +54,14 @@ class Application(MutableMapping):
         '_on_cleanup', '_client_max_size', '_cleanup_ctx'])
 
     def __init__(self, *,
-                 logger=web_logger,
-                 router=None,
-                 middlewares=(),
-                 handler_args=None,
-                 client_max_size=1024**2,
-                 loop=None,
-                 debug=...):
+                 logger: logging.Logger=web_logger,
+                 router: Optional[UrlDispatcher]=None,
+                 middlewares: Sequence[_Middleware]=(),
+                 handler_args: Mapping[str, Any]=None,
+                 client_max_size: int=1024**2,
+                 loop: Optional[asyncio.AbstractEventLoop]=None,
+                 debug=...  # type: ignore
+                 ) -> None:
         if router is None:
             router = UrlDispatcher()
         else:
@@ -63,12 +79,16 @@ class Application(MutableMapping):
         self._handler_args = handler_args
         self.logger = logger
 
-        self._middlewares = FrozenList(middlewares)
-        self._middlewares_handlers = None  # initialized on freezing
-        self._run_middlewares = None  # initialized on freezing
-        self._state = {}
+        self._middlewares = FrozenList(middlewares)  # type: _Middlewares
+
+        # initialized on freezing
+        self._middlewares_handlers = None  # type: _MiddlewaresHandlers
+        # initialized on freezing
+        self._run_middlewares = None  # type: Optional[bool]
+
+        self._state = {}  # type: Mapping
         self._frozen = False
-        self._subapps = []
+        self._subapps = []  # type: _Subapps
 
         self._on_response_prepare = Signal(self)  # type: _RespPrepareSignal
         self._on_startup = Signal(self)  # type: _AppSignal
