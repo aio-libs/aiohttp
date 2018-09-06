@@ -248,12 +248,13 @@ def test_app_run_middlewares():
     assert root._run_middlewares is True
 
 
-def test_subapp_frozen_after_adding():
+def test_subapp_pre_frozen_after_adding():
     app = web.Application()
     subapp = web.Application()
 
     app.add_subapp('/prefix', subapp)
-    assert subapp.frozen
+    assert subapp.pre_frozen
+    assert not subapp.frozen
 
 
 @pytest.mark.skipif(not PY_36,
@@ -455,3 +456,78 @@ async def test_subapp_chained_config_dict_overriding(aiohttp_client):
     assert resp.status == 200
     resp = await client.get('/sub/')
     assert resp.status == 201
+
+
+async def test_subapp_on_startup(aiohttp_client):
+
+    subapp = web.Application()
+
+    startup_called = False
+
+    async def on_startup(app):
+        nonlocal startup_called
+        startup_called = True
+        app['startup'] = True
+
+    subapp.on_startup.append(on_startup)
+
+    ctx_pre_called = False
+    ctx_post_called = False
+
+    @async_generator
+    async def cleanup_ctx(app):
+        nonlocal ctx_pre_called, ctx_post_called
+        ctx_pre_called = True
+        app['cleanup'] = True
+        await yield_(None)
+        ctx_post_called = True
+
+    subapp.cleanup_ctx.append(cleanup_ctx)
+
+    shutdown_called = False
+
+    async def on_shutdown(app):
+        nonlocal shutdown_called
+        shutdown_called = True
+
+    subapp.on_shutdown.append(on_shutdown)
+
+    cleanup_called = False
+
+    async def on_cleanup(app):
+        nonlocal cleanup_called
+        cleanup_called = True
+
+    subapp.on_cleanup.append(on_cleanup)
+
+    app = web.Application()
+
+    app.add_subapp('/subapp', subapp)
+
+    assert not startup_called
+    assert not ctx_pre_called
+    assert not ctx_post_called
+    assert not shutdown_called
+    assert not cleanup_called
+
+    assert subapp.on_startup.frozen
+    assert subapp.cleanup_ctx.frozen
+    assert subapp.on_shutdown.frozen
+    assert subapp.on_cleanup.frozen
+    assert subapp.router.frozen
+
+    client = await aiohttp_client(app)
+
+    assert startup_called
+    assert ctx_pre_called
+    assert not ctx_post_called
+    assert not shutdown_called
+    assert not cleanup_called
+
+    await client.close()
+
+    assert startup_called
+    assert ctx_pre_called
+    assert ctx_post_called
+    assert shutdown_called
+    assert cleanup_called
