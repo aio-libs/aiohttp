@@ -239,7 +239,7 @@ async def test_simple(srv, loop, buf):
 
 async def test_bad_method(srv, loop, buf):
     srv.data_received(
-        b'!@#$ / HTTP/1.0\r\n'
+        b':BAD; / HTTP/1.0\r\n'
         b'Host: example.com\r\n\r\n')
 
     await asyncio.sleep(0, loop=loop)
