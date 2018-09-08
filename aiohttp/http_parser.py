@@ -29,7 +29,15 @@ __all__ = (
     'RawRequestMessage', 'RawResponseMessage')
 
 ASCIISET = set(string.printable)
-METHRE = re.compile('[A-Z0-9$-_.]+')
+
+# See https://tools.ietf.org/html/rfc7230#section-3.1.1
+# and https://tools.ietf.org/html/rfc7230#appendix-B
+#
+#     method = token
+#     tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." /
+#             "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+#     token = 1*tchar
+METHRE = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
 VERSRE = re.compile(r'HTTP/(\d+).(\d+)')
 HDRRE = re.compile(rb'[\x00-\x1F\x7F()<>@,;:\[\]={} \t\\\\\"]')
 
