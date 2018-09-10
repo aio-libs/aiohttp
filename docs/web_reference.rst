@@ -1500,12 +1500,12 @@ Server
 A protocol factory compatible with
 :meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-      .. class:: Server
+.. class:: Server
 
    The class is responsible for creating HTTP protocol
    objects that can handle HTTP connections.
 
-   .. attribute:: Server.connections
+   .. attribute:: connections
 
       List of all currently opened connections.
 
@@ -2445,28 +2445,15 @@ application on specific TCP or Unix socket, e.g.::
 
 .. versionadded:: 3.0
 
-   :class:`AppRunner` and :class:`TCPSite` / :class:`UnixSite` /
-   :class:`SockSite` are added in aiohttp 3.0
+   :class:`AppRunner` / :class:`ServerRunner` and :class:`TCPSite` /
+   :class:`UnixSite` / :class:`SockSite` are added in aiohttp 3.0
 
-.. class:: AppRunner(app, *, handle_signals=False, **kwargs)
 
-   A runner for :class:`Application`. Used with conjunction with sites
-   to serve on specific port.
+.. class:: BaseRunner
 
-   :param Application app: web application instance to serve.
-
-   :param bool handle_signals: add signal handlers for
-                               :data:`signal.SIGINT` and
-                               :data:`signal.SIGTERM` (``False`` by
-                               default).
-
-   :param kwargs: named parameters to pass into
-                    :meth:`Application.make_handler`.
-
-   .. attribute:: app
-
-      Read-only attribute for accessing to :class:`Application` served
-      instance.
+   A base class for runners. Use :class:`AppRunner` for serving
+   :class:`Application`, :class:`ServerRunner` for low-level
+   :class:`Server`.
 
    .. attribute:: server
 
@@ -2488,6 +2475,37 @@ application on specific TCP or Unix socket, e.g.::
 
    .. comethod:: setup()
 
+      Initialize the server. Should be called before adding sites.
+
+   .. comethod:: cleanup()
+
+      Stop handling all registered sites and cleanup used resources.
+
+
+.. class:: AppRunner(app, *, handle_signals=False, **kwargs)
+
+   A runner for :class:`Application`. Used with conjunction with sites
+   to serve on specific port.
+
+   Inherited from :class:`BaseRunner`.
+
+   :param Application app: web application instance to serve.
+
+   :param bool handle_signals: add signal handlers for
+                               :data:`signal.SIGINT` and
+                               :data:`signal.SIGTERM` (``False`` by
+                               default).
+
+   :param kwargs: named parameters to pass into
+                  web protocol.
+
+   .. attribute:: app
+
+      Read-only attribute for accessing to :class:`Application` served
+      instance.
+
+   .. comethod:: setup()
+
       Initialize application. Should be called before adding sites.
 
       The method calls :attr:`Application.on_startup` registered signals.
@@ -2498,6 +2516,28 @@ application on specific TCP or Unix socket, e.g.::
 
       :attr:`Application.on_shutdown` and
       :attr:`Application.on_cleanup` signals are called internally.
+
+
+.. class:: ServerRunner(web_server, *, handle_signals=False, **kwargs)
+
+   A runner for low-level :class:`Server`. Used with conjunction with sites
+   to serve on specific port.
+
+   Inherited from :class:`BaseRunner`.
+
+   :param Server web_server: low-level web server instance to serve.
+
+   :param bool handle_signals: add signal handlers for
+                               :data:`signal.SIGINT` and
+                               :data:`signal.SIGTERM` (``False`` by
+                               default).
+
+   :param kwargs: named parameters to pass into
+                  web protocol.
+
+   .. seealso::
+
+      :ref:`aiohttp-web-lowlevel` demonstrates low-level server usage
 
 .. class:: BaseSite
 
