@@ -293,12 +293,12 @@ class Application(MutableMapping):
         self.freeze()
 
         kwargs['debug'] = self.debug
+        kwargs['access_log_class'] = access_log_class
         if self._handler_args:
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
         return Server(self._handle, request_factory=self._make_request,
-                      access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
 
     def make_handler(self, *,

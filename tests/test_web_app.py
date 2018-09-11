@@ -95,6 +95,13 @@ def test_app_make_handler_access_log_class(loop, mocker):
                            request_factory=app._make_request,
                            loop=loop, debug=mock.ANY)
 
+    app = web.Application(handler_args={'access_log_class': Logger})
+    app._make_handler(access_log_class=Logger, loop=loop)
+    srv.assert_called_with(app._handle,
+                           access_log_class=Logger,
+                           request_factory=app._make_request,
+                           loop=loop, debug=mock.ANY)
+
 
 def test_app_make_handler_raises_deprecation_warning(loop):
     app = web.Application()
