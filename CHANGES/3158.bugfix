@@ -1,0 +1,1 @@
+Enable passing `access_log_class` via `handler_args`
