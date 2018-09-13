@@ -9,6 +9,7 @@ import functools
 import inspect
 import netrc
 import os
+import platform
 import re
 import sys
 import time
@@ -146,30 +147,39 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
 
 
 def netrc_from_env():
-    netrc_obj = None
-    netrc_path = os.environ.get('NETRC')
-    try:
-        if netrc_path is not None:
-            netrc_path = Path(netrc_path)
-        else:
+    """Attempt to load the netrc file from the path specified by the env-var
+    NETRC or in the default location in the user's home directory.
+
+    Returns ``None`` if it couldn't be found or fails to parse.
+    """
+    netrc_env = os.environ.get('NETRC')
+
+    if netrc_env is not None:
+        netrc_path = Path(netrc_env)
+    else:
+        try:
             home_dir = Path.home()
-            if os.name == 'nt':  # pragma: no cover
-                netrc_path = home_dir.joinpath('_netrc')
-            else:
-                netrc_path = home_dir.joinpath('.netrc')
+        except RuntimeError as e:  # pragma: no cover
+            # if pathlib can't resolve home, it may raise a RuntimeError
+            client_logger.warning('Could not resolve home directory when '
+                                  'trying to look for .netrc file: %s', e)
+            return None
 
-        if netrc_path and netrc_path.is_file():
-            try:
-                netrc_obj = netrc.netrc(str(netrc_path))
-            except (netrc.NetrcParseError, OSError) as e:
-                client_logger.warning(".netrc file parses fail: %s", e)
+        netrc_path = home_dir / (
+            '_netrc' if platform.system() == 'Windows' else '.netrc')
 
-        if netrc_obj is None:
-            client_logger.warning("could't find .netrc file")
-    except RuntimeError as e:  # pragma: no cover
-        """ handle error raised by pathlib """
-        client_logger.warning("could't find .netrc file: %s", e)
-    return netrc_obj
+    try:
+        return netrc.netrc(str(netrc_path))
+    except netrc.NetrcParseError as e:
+        client_logger.warning('Could not parse .netrc file: %s', e)
+    except OSError as e:
+        # we couldn't read the file (doesn't exist, permissions, etc.)
+        if netrc_env or netrc_path.is_file():
+            # only warn if the enviroment wanted us to load it,
+            # or it appears like the default file does actually exist
+            client_logger.warning('Could not read .netrc file: %s', e)
+
+    return None
 
 
 @attr.s(frozen=True, slots=True)
