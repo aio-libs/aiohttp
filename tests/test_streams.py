@@ -721,7 +721,7 @@ class TestStreamReader:
     async def test___repr__waiter(self, loop):
         stream = self._make_one()
         stream._waiter = loop.create_future()
-        assert re.search("<StreamReader w=<Future pending[\S ]*>>",
+        assert re.search(r"<StreamReader w=<Future pending[\S ]*>>",
                          repr(stream))
         stream._waiter.set_result(None)
         await stream._waiter

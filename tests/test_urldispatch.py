@@ -586,7 +586,7 @@ def test_add_route_with_invalid_re(router):
 
 def test_route_dynamic_with_regex_spec(router):
     handler = make_handler()
-    route = router.add_route('GET', '/get/{num:^\d+}', handler,
+    route = router.add_route('GET', r'/get/{num:^\d+}', handler,
                              name='name')
 
     url = route.url_for(num='123')
@@ -595,7 +595,7 @@ def test_route_dynamic_with_regex_spec(router):
 
 def test_route_dynamic_with_regex_spec_and_trailing_slash(router):
     handler = make_handler()
-    route = router.add_route('GET', '/get/{num:^\d+}/', handler,
+    route = router.add_route('GET', r'/get/{num:^\d+}/', handler,
                              name='name')
 
     url = route.url_for(num='123')
@@ -1125,7 +1125,7 @@ def test_plain_resource_canonical():
 def test_dynamic_resource_canonical():
     canonicals = {
         '/get/{name}': '/get/{name}',
-        '/get/{num:^\d+}': '/get/{num}',
+        r'/get/{num:^\d+}': '/get/{num}',
         r'/handler/{to:\d+}': r'/handler/{to}',
         r'/{one}/{two:.+}': r'/{one}/{two}',
     }
