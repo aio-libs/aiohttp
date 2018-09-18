@@ -1,0 +1,1 @@
+Fix forward compatibility with Python 3.8: importing ABCs directly from the collections module will not be supported anymore.
