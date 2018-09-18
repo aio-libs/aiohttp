@@ -340,7 +340,7 @@ def test_single_forwarded_header_multiple_param():
 
 
 def test_single_forwarded_header_quoted_escaped():
-    header = 'BY=identifier;pROTO="\lala lan\d\~ 123\!&"'
+    header = r'BY=identifier;pROTO="\lala lan\d\~ 123\!&"'
     req = make_mocked_request('GET', '/',
                               headers=CIMultiDict({'Forwarded': header}))
     assert req.forwarded[0]['by'] == 'identifier'
