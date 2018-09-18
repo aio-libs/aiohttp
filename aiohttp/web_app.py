@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from functools import partial
 from typing import (TYPE_CHECKING, Any, Awaitable, Callable, List, Mapping,
                     Optional, Sequence, Tuple, Union)

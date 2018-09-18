@@ -1,5 +1,5 @@
 import socket
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from unittest import mock
 
 import pytest
