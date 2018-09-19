@@ -3,6 +3,7 @@ import re
 import pytest
 
 from aiohttp import web
+from yarl import URL
 
 
 async def test_middleware_modifies_response(loop, aiohttp_client):
@@ -115,6 +116,7 @@ class TestNormalizePathMiddleware:
 
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1', 200),
@@ -136,6 +138,7 @@ class TestNormalizePathMiddleware:
 
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1', 200),
@@ -158,6 +161,7 @@ class TestNormalizePathMiddleware:
 
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
@@ -180,6 +184,7 @@ class TestNormalizePathMiddleware:
 
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
@@ -220,6 +225,7 @@ class TestNormalizePathMiddleware:
         client = await cli(extra_middlewares)
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
@@ -262,6 +268,7 @@ class TestNormalizePathMiddleware:
         client = await cli(extra_middlewares)
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     async def test_cannot_remove_and_add_slash(self):
         with pytest.raises(AssertionError):
