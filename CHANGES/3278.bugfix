@@ -1,1 +1,1 @@
-`normalize_path_middleware` should keep the query string.
+Keep the query string by `normalize_path_middleware`.
