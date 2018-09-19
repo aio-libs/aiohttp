@@ -1,9 +1,9 @@
 import re
 
 import pytest
+from yarl import URL
 
 from aiohttp import web
-from yarl import URL
 
 
 async def test_middleware_modifies_response(loop, aiohttp_client):
