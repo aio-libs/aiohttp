@@ -91,7 +91,7 @@ def normalize_path_middleware(
                 resolves, request = await _check_request_resolves(
                     request, path)
                 if resolves:
-                    raise redirect_class(request.raw_path)
+                    raise redirect_class(request.raw_path + query)
 
         return await handler(request)
 
