@@ -55,7 +55,8 @@ class ClientResponseError(ClientError):
                  history: Tuple[ClientResponse, ...], *,
                  code: Optional[int]=None,
                  status: Optional[int]=None,
-                 message: str='', headers: Optional[_CIMultiDict]=None) -> None:
+                 message: str='',
+                 headers: Optional[_CIMultiDict]=None) -> None:
         self.request_info = request_info
         if code is not None:
             if status is not None:
@@ -127,7 +128,8 @@ class ClientConnectorError(ClientOSError):
     Raised in :class:`aiohttp.connector.TCPConnector` if
         connection to proxy can not be established.
     """
-    def __init__(self, connection_key: ConnectionKey, os_error: OSError) -> None:
+    def __init__(self, connection_key: ConnectionKey,
+                 os_error: OSError) -> None:
         self._conn_key = connection_key
         self._os_error = os_error
         super().__init__(os_error.errno, os_error.strerror)
@@ -179,7 +181,8 @@ class ServerTimeoutError(ServerConnectionError, asyncio.TimeoutError):
 class ServerFingerprintMismatch(ServerConnectionError):
     """SSL certificate does not match expected fingerprint."""
 
-    def __init__(self, expected: bytes, got: bytes, host: str, port: int) -> None:
+    def __init__(self, expected: bytes, got: bytes,
+                 host: str, port: int) -> None:
         self.expected = expected
         self.got = got
         self.host = host

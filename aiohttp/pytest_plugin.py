@@ -115,7 +115,8 @@ def _runtime_warning_context():  # type: ignore
     with warnings.catch_warnings(record=True) as _warnings:
         yield
         rw = ['{w.filename}:{w.lineno}:{w.message}'.format(w=w)
-              for w in _warnings if w.category == RuntimeWarning]  # type: ignore
+              for w in _warnings  # type: ignore
+              if w.category == RuntimeWarning]
         if rw:
             raise RuntimeError('{} Runtime Warning{},\n{}'.format(
                 len(rw),
