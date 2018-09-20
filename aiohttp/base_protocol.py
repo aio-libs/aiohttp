@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 
 from .log import internal_logger
 
@@ -7,23 +8,23 @@ class BaseProtocol(asyncio.Protocol):
     __slots__ = ('_loop', '_paused', '_drain_waiter',
                  '_connection_lost', 'transport')
 
-    def __init__(self, loop=None):
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         if loop is None:
             self._loop = asyncio.get_event_loop()
         else:
             self._loop = loop
         self._paused = False
-        self._drain_waiter = None
+        self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
         self._connection_lost = False
-        self.transport = None
+        self.transport = None  # type: Optional[asyncio.BaseTransport]
 
-    def pause_writing(self):
+    def pause_writing(self) -> None:
         assert not self._paused
         self._paused = True
         if self._loop.get_debug():
             internal_logger.debug("%r pauses writing", self)
 
-    def resume_writing(self):
+    def resume_writing(self) -> None:
         assert self._paused
         self._paused = False
         if self._loop.get_debug():
@@ -35,10 +36,10 @@ class BaseProtocol(asyncio.Protocol):
             if not waiter.done():
                 waiter.set_result(None)
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = transport
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         self._connection_lost = True
         # Wake up the writer if currently paused.
         self.transport = None
@@ -55,7 +56,7 @@ class BaseProtocol(asyncio.Protocol):
         else:
             waiter.set_exception(exc)
 
-    async def _drain_helper(self):
+    async def _drain_helper(self) -> None:
         if self._connection_lost:
             raise ConnectionResetError('Connection lost')
         if not self._paused:
