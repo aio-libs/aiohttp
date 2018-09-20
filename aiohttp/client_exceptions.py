@@ -13,8 +13,7 @@ try:
     import ssl
     SSLContext = ssl.SSLContext
 except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore
-    SSLContext = None
+    ssl = SSLContext = None  # type: ignore
 
 
 if TYPE_CHECKING:
@@ -242,27 +241,28 @@ class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore
 class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
     """Response certificate error."""
 
-    def __init__(self, connection_key: ConnectionKey, certificate_error):
+    def __init__(self, connection_key:
+                 ConnectionKey, certificate_error: Exception) -> None:
         self._conn_key = connection_key
         self._certificate_error = certificate_error
 
     @property
-    def certificate_error(self):
+    def certificate_error(self) -> Exception:
         return self._certificate_error
 
     @property
-    def host(self):
+    def host(self) -> str:
         return self._conn_key.host
 
     @property
-    def port(self):
+    def port(self) -> int:
         return self._conn_key.port
 
     @property
-    def ssl(self):
+    def ssl(self) -> bool:
         return self._conn_key.is_ssl
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} '
                 '[{0.certificate_error.__class__.__name__}: '
                 '{0.certificate_error.args}]'.format(self))

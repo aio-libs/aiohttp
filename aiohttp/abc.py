@@ -1,14 +1,30 @@
 import asyncio
+import logging
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Sized
+from collections.abc import Sized
+from http.cookies import SimpleCookie
+from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
+                    Mapping, Optional, Tuple, Union)
+
+from yarl import URL
+
+
+if TYPE_CHECKING:
+    from .web_request import Request
+    from .web_response import StreamResponse
+    from .web_app import Application
+    from .web_exceptions import HTTPException
+else:
+    Request = Application = StreamResponse = None
+    HTTPException = None
 
 
 class AbstractRouter(ABC):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._frozen = False
 
-    def post_init(self, app):
+    def post_init(self, app: Application) -> None:
         """Post init stage.
 
         Not an abstract method for sake of backward compatibility,
@@ -17,40 +33,40 @@ class AbstractRouter(ABC):
         """
 
     @property
-    def frozen(self):
+    def frozen(self) -> bool:
         return self._frozen
 
-    def freeze(self):
+    def freeze(self) -> None:
         """Freeze router."""
         self._frozen = True
 
     @abstractmethod
-    async def resolve(self, request):
+    async def resolve(self, request: Request) -> 'AbstractMatchInfo':
         """Return MATCH_INFO for given request"""
 
 
 class AbstractMatchInfo(ABC):
 
     @abstractmethod
-    async def handler(self, request):
+    async def handler(self, request: Request) -> StreamResponse:
         """Execute matched request handler"""
 
     @abstractmethod
-    async def expect_handler(self, request):
+    async def expect_handler(self, request: Request) -> None:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def http_exception(self):
+    def http_exception(self) -> HTTPException:
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def apps(self):
+    def apps(self) -> Tuple[Application, ...]:
         """Stack of nested applications.
 
         Top level application is left-most element.
@@ -58,11 +74,11 @@ class AbstractMatchInfo(ABC):
         """
 
     @abstractmethod
-    def add_app(self, app):
+    def add_app(self, app: Application) -> None:
         """Add application to the nested apps stack."""
 
     @abstractmethod
-    def freeze(self):
+    def freeze(self) -> None:
         """Freeze the match info.
 
         The method is called after route resolution.
@@ -75,16 +91,16 @@ class AbstractMatchInfo(ABC):
 class AbstractView(ABC):
     """Abstract class based view."""
 
-    def __init__(self, request):
+    def __init__(self, request: Request) -> None:
         self._request = request
 
     @property
-    def request(self):
+    def request(self) -> Request:
         """Request instance."""
         return self._request
 
     @abstractmethod
-    def __await__(self):
+    def __await__(self) -> Awaitable[StreamResponse]:
         """Execute the view handler."""
 
 
@@ -92,30 +108,34 @@ class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, hostname):
+    async def resolve(self, hostname: str) -> List[Dict[str, Any]]:
         """Return IP address for given hostname"""
 
     @abstractmethod
-    async def close(self):
+    async def close(self) -> None:
         """Release resolver"""
 
 
-class AbstractCookieJar(Sized, Iterable):
+class AbstractCookieJar(Sized, Iterable[SimpleCookie]):
     """Abstract Cookie Jar."""
 
-    def __init__(self, *, loop=None):
+    def __init__(self, *,
+                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         self._loop = loop or asyncio.get_event_loop()
 
     @abstractmethod
-    def clear(self):
+    def clear(self) -> None:
         """Clear all cookies."""
 
     @abstractmethod
-    def update_cookies(self, cookies, response_url=None):
+    def update_cookies(self,
+                       cookies: Union[Iterable[Tuple[str, SimpleCookie]],
+                                      Mapping[str, SimpleCookie]],
+                       response_url: Optional[URL]=None) -> None:
         """Update cookies."""
 
     @abstractmethod
-    def filter_cookies(self, request_url):
+    def filter_cookies(self, request_url: URL) -> SimpleCookie:
         """Return the jar's cookies filtered by their attributes."""
 
 
@@ -123,25 +143,28 @@ class AbstractStreamWriter(ABC):
     """Abstract stream writer."""
 
     @abstractmethod
-    async def write(self, chunk):
+    async def write(self, chunk: bytes) -> None:
         """Write chunk into stream."""
 
     @abstractmethod
-    async def write_eof(self, chunk=b''):
+    async def write_eof(self, chunk: bytes=b'') -> None:
         """Write last chunk."""
 
     @abstractmethod
-    async def drain(self):
+    async def drain(self) -> None:
         """Flush the write buffer."""
 
 
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""
 
-    def __init__(self, logger, log_format):
+    def __init__(self, logger: logging.Logger, log_format: str) -> None:
         self.logger = logger
         self.log_format = log_format
 
     @abstractmethod
-    def log(self, request, response, time):
+    def log(self,
+            request: Request,
+            response: StreamResponse,
+            time: float) -> None:
         """Emit log to logger."""
