@@ -1,8 +1,10 @@
 import asyncio
+import logging
 import warnings
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from functools import partial
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, List, Mapping,
+                    Optional, Sequence, Tuple, Union)
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
@@ -24,28 +26,42 @@ if TYPE_CHECKING:  # pragma: no branch
     _AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
                                          Awaitable[None]]]
+    _Handler = Callable[[Request], Awaitable[StreamResponse]]
+    _Middleware = Union[Callable[[Request, _Handler],
+                                 Awaitable[StreamResponse]],
+                        Callable[['Application', _Handler],  # old-style
+                                 Awaitable[_Handler]]]
+    _Middlewares = FrozenList[_Middleware]
+    _MiddlewaresHandlers = Optional[Sequence[Tuple[_Middleware, bool]]]
+    _Subapps = List['Application']
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
     _RespPrepareSignal = Signal
+    _Handler = Callable
+    _Middleware = Callable
+    _Middlewares = FrozenList
+    _MiddlewaresHandlers = Optional[Sequence]
+    _Subapps = List
 
 
 class Application(MutableMapping):
     ATTRS = frozenset([
         'logger', '_debug', '_router', '_loop', '_handler_args',
         '_middlewares', '_middlewares_handlers', '_run_middlewares',
-        '_state', '_frozen', '_subapps',
+        '_state', '_frozen', '_pre_frozen', '_subapps',
         '_on_response_prepare', '_on_startup', '_on_shutdown',
         '_on_cleanup', '_client_max_size', '_cleanup_ctx'])
 
     def __init__(self, *,
-                 logger=web_logger,
-                 router=None,
-                 middlewares=(),
-                 handler_args=None,
-                 client_max_size=1024**2,
-                 loop=None,
-                 debug=...):
+                 logger: logging.Logger=web_logger,
+                 router: Optional[UrlDispatcher]=None,
+                 middlewares: Sequence[_Middleware]=(),
+                 handler_args: Mapping[str, Any]=None,
+                 client_max_size: int=1024**2,
+                 loop: Optional[asyncio.AbstractEventLoop]=None,
+                 debug=...  # type: ignore
+                 ) -> None:
         if router is None:
             router = UrlDispatcher()
         else:
@@ -63,12 +79,17 @@ class Application(MutableMapping):
         self._handler_args = handler_args
         self.logger = logger
 
-        self._middlewares = FrozenList(middlewares)
-        self._middlewares_handlers = None  # initialized on freezing
-        self._run_middlewares = None  # initialized on freezing
-        self._state = {}
+        self._middlewares = FrozenList(middlewares)  # type: _Middlewares
+
+        # initialized on freezing
+        self._middlewares_handlers = None  # type: _MiddlewaresHandlers
+        # initialized on freezing
+        self._run_middlewares = None  # type: Optional[bool]
+
+        self._state = {}  # type: Mapping
         self._frozen = False
-        self._subapps = []
+        self._pre_frozen = False
+        self._subapps = []  # type: _Subapps
 
         self._on_response_prepare = Signal(self)  # type: _RespPrepareSignal
         self._on_startup = Signal(self)  # type: _AppSignal
@@ -146,14 +167,14 @@ class Application(MutableMapping):
             subapp._set_loop(loop)
 
     @property
-    def frozen(self) -> bool:
-        return self._frozen
+    def pre_frozen(self) -> bool:
+        return self._pre_frozen
 
-    def freeze(self) -> None:
-        if self._frozen:
+    def pre_freeze(self) -> None:
+        if self._pre_frozen:
             return
 
-        self._frozen = True
+        self._pre_frozen = True
         self._middlewares.freeze()
         self._router.freeze()
         self._on_response_prepare.freeze()
@@ -171,9 +192,22 @@ class Application(MutableMapping):
         self._run_middlewares = True if self.middlewares else False
 
         for subapp in self._subapps:
-            subapp.freeze()
+            subapp.pre_freeze()
             self._run_middlewares =\
                 self._run_middlewares or subapp._run_middlewares
+
+    @property
+    def frozen(self) -> bool:
+        return self._frozen
+
+    def freeze(self) -> None:
+        if self._frozen:
+            return
+
+        self.pre_freeze()
+        self._frozen = True
+        for subapp in self._subapps:
+            subapp.freeze()
 
     @property
     def debug(self) -> bool:
@@ -208,7 +242,7 @@ class Application(MutableMapping):
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
-        subapp.freeze()
+        subapp.pre_freeze()
         if self._loop is not None:
             subapp._set_loop(self._loop)
         return resource
@@ -259,12 +293,12 @@ class Application(MutableMapping):
         self.freeze()
 
         kwargs['debug'] = self.debug
+        kwargs['access_log_class'] = access_log_class
         if self._handler_args:
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
         return Server(self._handle, request_factory=self._make_request,
-                      access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
 
     def make_handler(self, *,
