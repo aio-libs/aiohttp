@@ -421,12 +421,9 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
         # Just in case
         skip_watcher = True
     asyncio.set_event_loop(loop)
-    if sys.platform != "win32" and not skip_watcher:
-        policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
-        watcher.attach_loop(loop)
-        with contextlib.suppress(NotImplementedError):
-            policy.set_child_watcher(watcher)
+
+    # automatically create the child watcher for that loop
+    asyncio.get_child_watcher()
     return loop
 
 
