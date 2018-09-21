@@ -15,12 +15,11 @@ import sys
 import time
 import weakref
 from collections import namedtuple
-from collections.abc import Mapping as ABCMapping
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
-                    Optional, Tuple, cast)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, Iterator,
+                    List, Mapping, Optional, Tuple, TypeVar, Union, cast)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -43,11 +42,19 @@ if not PY_37:
     import idna_ssl
     idna_ssl.patch_match_hostname()
 
+try:
+    from typing import ContextManager
+except ImportError:
+    from typing_extensions import ContextManager
+
 
 if TYPE_CHECKING:  # pragma: no cover
     # run in mypy mode only to prevent circular imports
     from .web_request import BaseRequest
     from .web_response import StreamResponse
+
+
+_T = TypeVar('_T')
 
 
 sentinel = object()  # type: Any
@@ -208,7 +215,7 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                 # if `user` is None, use `account`
                 *logins, password = auth_from_netrc
                 auth = BasicAuth(logins[0] if logins[0] else logins[-1],
-                                 password)
+                                 password, 'latin1')
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
@@ -554,12 +561,12 @@ class reify:
 
     """
 
-    def __init__(self, wrapped):
+    def __init__(self, wrapped: Callable[..., Any]) -> None:
         self.wrapped = wrapped
         self.__doc__ = wrapped.__doc__
         self.name = wrapped.__name__
 
-    def __get__(self, inst, owner):
+    def __get__(self, inst: Any, owner: Any) -> Any:
         try:
             try:
                 return inst._cache[self.name]
@@ -572,7 +579,7 @@ class reify:
                 return self
             raise
 
-    def __set__(self, inst, value):
+    def __set__(self, inst: Any, value: Any) -> None:
         raise AttributeError("reified property is read-only")
 
 
@@ -602,7 +609,8 @@ _ipv4_regexb = re.compile(_ipv4_pattern.encode('ascii'))
 _ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
 
 
-def is_ip_address(host):
+def is_ip_address(
+        host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
     if host is None:
         return False
     if isinstance(host, str):
@@ -611,7 +619,7 @@ def is_ip_address(host):
         else:
             return False
     elif isinstance(host, (bytes, bytearray, memoryview)):
-        if _ipv4_regexb.match(host) or _ipv6_regexb.match(host):
+        if _ipv4_regexb.match(host) or _ipv6_regexb.match(host):  # type: ignore  # noqa
             return True
         else:
             return False
@@ -624,7 +632,7 @@ _cached_current_datetime = None
 _cached_formatted_datetime = None
 
 
-def rfc822_formatted_time():
+def rfc822_formatted_time() -> str:
     global _cached_current_datetime
     global _cached_formatted_datetime
 
@@ -638,15 +646,15 @@ def rfc822_formatted_time():
                       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(now)
+        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(now)  # type: ignore  # noqa
         _cached_formatted_datetime = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
             _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
         )
         _cached_current_datetime = now
-    return _cached_formatted_datetime
+    return _cached_formatted_datetime  # type: ignore
 
 
-def _weakref_handle(info):
+def _weakref_handle(info):  # type: ignore
     ref, name = info
     ob = ref()
     if ob is not None:
@@ -654,7 +662,7 @@ def _weakref_handle(info):
             getattr(ob, name)()
 
 
-def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):
+def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):  # type: ignore
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if ceil_timeout:
@@ -663,7 +671,7 @@ def weakref_handle(ob, name, timeout, loop, ceil_timeout=True):
         return loop.call_at(when, _weakref_handle, (weakref.ref(ob), name))
 
 
-def call_later(cb, timeout, loop):
+def call_later(cb, timeout, loop):  # type: ignore
     if timeout is not None and timeout > 0:
         when = ceil(loop.time() + timeout)
         return loop.call_at(when, cb)
@@ -672,31 +680,36 @@ def call_later(cb, timeout, loop):
 class TimeoutHandle:
     """ Timeout handle """
 
-    def __init__(self, loop, timeout):
+    def __init__(self,
+                 loop: asyncio.AbstractEventLoop,
+                 timeout: Optional[float]) -> None:
         self._timeout = timeout
         self._loop = loop
-        self._callbacks = []
+        self._callbacks = []  # type: List[Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]]  # noqa
 
-    def register(self, callback, *args, **kwargs):
+    def register(self, callback: Callable[..., None],
+                 *args: Any, **kwargs: Any) -> None:
         self._callbacks.append((callback, args, kwargs))
 
-    def close(self):
+    def close(self) -> None:
         self._callbacks.clear()
 
-    def start(self):
+    def start(self) -> Optional[asyncio.Handle]:
         if self._timeout is not None and self._timeout > 0:
             at = ceil(self._loop.time() + self._timeout)
             return self._loop.call_at(at, self.__call__)
+        else:
+            return None
 
-    def timer(self):
+    def timer(self) -> ContextManager[None]:
         if self._timeout is not None and self._timeout > 0:
             timer = TimerContext(self._loop)
             self.register(timer.timeout)
+            return timer
         else:
-            timer = TimerNoop()
-        return timer
+            return TimerNoop()
 
-    def __call__(self):
+    def __call__(self) -> None:
         for cb, args, kwargs in self._callbacks:
             with suppress(Exception):
                 cb(*args, **kwargs)
@@ -704,24 +717,24 @@ class TimeoutHandle:
         self._callbacks.clear()
 
 
-class TimerNoop:
+class TimerNoop(ContextManager[None]):
 
-    def __enter__(self):
+    def __enter__(self):  # type: ignore
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
         return False
 
 
-class TimerContext:
+class TimerContext(ContextManager[None]):
     """ Low resolution timeout context manager """
 
-    def __init__(self, loop):
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._tasks = []
+        self._tasks = []  # type: List[asyncio.Task[Any]]
         self._cancelled = False
 
-    def __enter__(self):
+    def __enter__(self):  # type: ignore
         task = current_task(loop=self._loop)
 
         if task is None:
@@ -735,14 +748,14 @@ class TimerContext:
         self._tasks.append(task)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
         if self._tasks:
             self._tasks.pop()
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
 
-    def timeout(self):
+    def timeout(self) -> None:
         if not self._cancelled:
             for task in set(self._tasks):
                 task.cancel()
@@ -752,7 +765,7 @@ class TimerContext:
 
 class CeilTimeout(async_timeout.timeout):
 
-    def __enter__(self):
+    def __enter__(self):  # type: ignore
         if self._timeout is not None:
             self._task = current_task(loop=self._loop)
             if self._task is None:
@@ -772,7 +785,7 @@ class HeadersMixin:
     _content_dict = None
     _stored_content_type = sentinel
 
-    def _parse_content_type(self, raw):
+    def _parse_content_type(self, raw: str) -> None:
         self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
@@ -782,51 +795,53 @@ class HeadersMixin:
             self._content_type, self._content_dict = cgi.parse_header(raw)
 
     @property
-    def content_type(self):
+    def content_type(self) -> str:
         """The value of content part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_type
+        return self._content_type  # type: ignore
 
     @property
-    def charset(self):
+    def charset(self) -> Optional[str]:
         """The value of charset part for Content-Type HTTP header."""
-        raw = self._headers.get(hdrs.CONTENT_TYPE)
+        raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get('charset')
+        return self._content_dict.get('charset')  # type: ignore
 
     @property
-    def content_length(self):
+    def content_length(self) -> Optional[int]:
         """The value of Content-Length HTTP header."""
-        content_length = self._headers.get(hdrs.CONTENT_LENGTH)
+        content_length = self._headers.get(hdrs.CONTENT_LENGTH)  # type: ignore
 
-        if content_length:
+        if content_length is not None:
             return int(content_length)
+        else:
+            return None
 
 
-def set_result(fut, result):
+def set_result(fut: asyncio.Future[_T], result: _T) -> None:
     if not fut.done():
         fut.set_result(result)
 
 
-def set_exception(fut, exc):
+def set_exception(fut: asyncio.Future[_T], exc: Exception) -> None:
     if not fut.done():
         fut.set_exception(exc)
 
 
-class ChainMapProxy(ABCMapping):
+class ChainMapProxy(Mapping[str, Any]):
     __slots__ = ('_maps',)
 
-    def __init__(self, maps):
+    def __init__(self, maps: Iterable[Mapping[str, Any]]) -> None:
         self._maps = tuple(maps)
 
-    def __init_subclass__(cls):
+    def __init_subclass__(cls) -> None:
         raise TypeError("Inheritance class {} from ChainMapProxy "
                         "is forbidden".format(cls.__name__))
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         for mapping in self._maps:
             try:
                 return mapping[key]
@@ -834,26 +849,26 @@ class ChainMapProxy(ABCMapping):
                 pass
         raise KeyError(key)
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any=None) -> Any:
         return self[key] if key in self else default
 
-    def __len__(self):
+    def __len__(self) -> int:
         # reuses stored hash values if possible
-        return len(set().union(*self._maps))
+        return len(set().union(*self._maps))  # type: ignore
 
-    def __iter__(self):
-        d = {}
+    def __iter__(self) -> Iterator[str]:
+        d = {}  # type: Dict[str, Any]
         for mapping in reversed(self._maps):
             # reuses stored hash values if possible
             d.update(mapping)
         return iter(d)
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
         return any(key in m for m in self._maps)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return any(self._maps)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         content = ", ".join(map(repr, self._maps))
         return 'ChainMapProxy({})'.format(content)
