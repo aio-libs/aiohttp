@@ -1,7 +1,7 @@
 import abc
 import os
-from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, List,
-                    Sequence, Union, Optional, Iterator, overload)
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Iterator,
+                    List, Optional, Sequence, Union, overload)
 
 import attr
 
@@ -130,12 +130,12 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
         return "<RouteTableDef count={}>".format(len(self._items))
 
     @overload
-    def __getitem__(self, index: int) -> AbstractRouteDef: ...
+    def __getitem__(self, index: int) -> AbstractRouteDef: ...  # noqa
 
-    @overload
-    def __getitem__(self, index: slice) -> List[AbstractRouteDef]: ...
+    @overload  # noqa
+    def __getitem__(self, index: slice) -> List[AbstractRouteDef]: ...  # noqa
 
-    def __getitem__(self, index):  # type: ignore
+    def __getitem__(self, index):  # type: ignore  # noqa
         return self._items[index]
 
     def __iter__(self) -> Iterator[AbstractRouteDef]:

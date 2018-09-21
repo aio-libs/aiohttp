@@ -7,6 +7,7 @@ import cgi
 import datetime
 import functools
 import inspect
+import logging
 import netrc
 import os
 import re
@@ -18,7 +19,8 @@ from collections.abc import Mapping as ABCMapping
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple  # noqa
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
+                    Optional, Tuple, cast)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -40,6 +42,12 @@ PY_37 = sys.version_info >= (3, 7)
 if not PY_37:
     import idna_ssl
     idna_ssl.patch_match_hostname()
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    # run in mypy mode only to prevent circular imports
+    from .web_request import BaseRequest
+    from .web_response import StreamResponse
 
 
 sentinel = object()  # type: Any
@@ -67,8 +75,8 @@ coroutines._DEBUG = False  # type: ignore
 
 
 @asyncio.coroutine
-def noop(*args, **kwargs):
-    return
+def noop(*args, **kwargs):  # type: ignore
+    return  # type: ignore
 
 
 coroutines._DEBUG = old_debug  # type: ignore
@@ -145,9 +153,9 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
         return url.with_user(None), auth
 
 
-def netrc_from_env():
+def netrc_from_env() -> Optional[netrc.netrc]:
     netrc_obj = None
-    netrc_path = os.environ.get('NETRC')
+    netrc_path = os.environ.get('NETRC')  # type: Optional[Union[str, os.PathLike[str]]]  # noqa
     try:
         if netrc_path is not None:
             netrc_path = Path(netrc_path)
@@ -174,11 +182,11 @@ def netrc_from_env():
 
 @attr.s(frozen=True, slots=True)
 class ProxyInfo:
-    proxy = attr.ib(type=str)
-    proxy_auth = attr.ib(type=BasicAuth)
+    proxy = attr.ib(type=URL)
+    proxy_auth = attr.ib(type=Optional[BasicAuth])
 
 
-def proxies_from_env():
+def proxies_from_env() -> Dict[str, ProxyInfo]:
     proxy_urls = {k: URL(v) for k, v in getproxies().items()
                   if k in ('http', 'https')}
     netrc_obj = netrc_from_env()
@@ -191,7 +199,9 @@ def proxies_from_env():
                 "HTTPS proxies %s are not supported, ignoring", proxy)
             continue
         if netrc_obj and auth is None:
-            auth_from_netrc = netrc_obj.authenticators(proxy.host)
+            auth_from_netrc = None
+            if proxy.host is not None:
+                auth_from_netrc = netrc_obj.authenticators(proxy.host)
             if auth_from_netrc is not None:
                 # auth_from_netrc is a (`user`, `account`, `password`) tuple,
                 # `user` and `account` both can be username,
@@ -203,14 +213,14 @@ def proxies_from_env():
     return ret
 
 
-def current_task(loop=None):
+def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task:  # type: ignore  # noqa  # Return type is intentionly Generic here
     if PY_37:
-        return asyncio.current_task(loop=loop)
+        return asyncio.current_task(loop=loop)  # type: ignore
     else:
-        return asyncio.Task.current_task(loop=loop)
+        return asyncio.Task.current_task(loop=loop)  # type: ignore
 
 
-def isasyncgenfunction(obj):
+def isasyncgenfunction(obj: Any) -> bool:
     if hasattr(inspect, 'isasyncgenfunction'):
         return inspect.isasyncgenfunction(obj)
     return False
@@ -221,10 +231,10 @@ class MimeType:
     type = attr.ib(type=str)
     subtype = attr.ib(type=str)
     suffix = attr.ib(type=str)
-    parameters = attr.ib(type=MultiDict)
+    parameters = attr.ib(type=MultiDict)  # type: MultiDict[str]
 
 
-def parse_mimetype(mimetype):
+def parse_mimetype(mimetype: str) -> MimeType:
     """Parses a MIME type into its components.
 
     mimetype is a MIME type string.
@@ -239,37 +249,41 @@ def parse_mimetype(mimetype):
 
     """
     if not mimetype:
-        return MimeType(type='', subtype='', suffix='', parameters={})
+        return MimeType(type='', subtype='', suffix='', parameters=MultiDict())
 
     parts = mimetype.split(';')
-    params = []
+    params_lst = []
     for item in parts[1:]:
         if not item:
             continue
-        key, value = item.split('=', 1) if '=' in item else (item, '')
-        params.append((key.lower().strip(), value.strip(' "')))
-    params = MultiDict(params)
+        key, value = cast(Tuple[str, str],
+                          item.split('=', 1) if '=' in item else (item, ''))
+        params_lst.append((key.lower().strip(), value.strip(' "')))
+    params = MultiDict(params_lst)
 
     fulltype = parts[0].strip().lower()
     if fulltype == '*':
         fulltype = '*/*'
 
-    mtype, stype = fulltype.split('/', 1) \
-        if '/' in fulltype else (fulltype, '')
-    stype, suffix = stype.split('+', 1) if '+' in stype else (stype, '')
+    mtype, stype = (cast(Tuple[str, str], fulltype.split('/', 1))
+                    if '/' in fulltype else (fulltype, ''))
+    stype, suffix = (cast(Tuple[str, str], stype.split('+', 1))
+                     if '+' in stype else (stype, ''))
 
     return MimeType(type=mtype, subtype=stype, suffix=suffix,
                     parameters=params)
 
 
-def guess_filename(obj, default=None):
+def guess_filename(obj: Any, default: Optional[str]=None) -> Optional[str]:
     name = getattr(obj, 'name', None)
     if name and isinstance(name, str) and name[0] != '<' and name[-1] != '>':
         return Path(name).name
     return default
 
 
-def content_disposition_header(disptype, quote_fields=True, **params):
+def content_disposition_header(disptype: str,
+                               quote_fields: bool=True,
+                               **params: str) -> str:
     """Sets ``Content-Disposition`` header.
 
     disptype is a disposition type: inline, attachment, form-data.
@@ -345,7 +359,8 @@ class AccessLogger(AbstractAccessLogger):
     CLEANUP_RE = re.compile(r'(%[^s])')
     _FORMAT_CACHE = {}  # type: Dict[str, Tuple[str, List[KeyMethod]]]
 
-    def __init__(self, logger, log_format=LOG_FORMAT):
+    def __init__(self, logger: logging.Logger,
+                 log_format: str=LOG_FORMAT) -> None:
         """Initialise the logger.
 
         logger is a logger object to be used for logging.
@@ -361,7 +376,7 @@ class AccessLogger(AbstractAccessLogger):
 
         self._log_format, self._methods = _compiled_format
 
-    def compile_format(self, log_format):
+    def compile_format(self, log_format: str) -> Tuple[str, List[KeyMethod]]:
         """Translate log_format into form usable by modulo formatting
 
         All known atoms will be replaced with %s
@@ -388,21 +403,26 @@ class AccessLogger(AbstractAccessLogger):
 
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
-                format_key = self.LOG_FORMAT_MAP[atom[0]]
+                format_key1 = self.LOG_FORMAT_MAP[atom[0]]
                 m = getattr(AccessLogger, '_format_%s' % atom[0])
+                key_method = KeyMethod(format_key1, m)
             else:
-                format_key = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
+                format_key2 = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
                 m = getattr(AccessLogger, '_format_%s' % atom[2])
-                m = functools.partial(m, atom[1])
+                key_method = KeyMethod(format_key2,
+                                       functools.partial(m, atom[1]))
 
-            methods.append(KeyMethod(format_key, m))
+            methods.append(key_method)
 
         log_format = self.FORMAT_RE.sub(r'%s', log_format)
         log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
         return log_format, methods
 
     @staticmethod
-    def _format_i(key, request, response, time):
+    def _format_i(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         if request is None:
             return '(no headers)'
 
@@ -410,59 +430,100 @@ class AccessLogger(AbstractAccessLogger):
         return request.headers.get(key, '-')
 
     @staticmethod
-    def _format_o(key, request, response, time):
+    def _format_o(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         # suboptimal, make istr(key) once
         return response.headers.get(key, '-')
 
     @staticmethod
-    def _format_a(request, response, time):
+    def _format_a(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         if request is None:
             return '-'
         ip = request.remote
         return ip if ip is not None else '-'
 
     @staticmethod
-    def _format_t(request, response, time):
+    def _format_t(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         now = datetime.datetime.utcnow()
         start_time = now - datetime.timedelta(seconds=time)
         return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
-    def _format_P(request, response, time):
+    def _format_P(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         return "<%s>" % os.getpid()
 
     @staticmethod
-    def _format_r(request, response, time):
+    def _format_r(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         if request is None:
             return '-'
-        return '%s %s HTTP/%s.%s' % tuple((request.method,
-                                           request.path_qs) + request.version)
+        return '%s %s HTTP/%s.%s' % (request.method, request.path_qs,
+                                     request.version.major,
+                                     request.version.minor)
 
     @staticmethod
-    def _format_s(request, response, time):
+    def _format_s(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         return response.status
 
     @staticmethod
-    def _format_b(request, response, time):
+    def _format_b(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
         return response.body_length
 
     @staticmethod
-    def _format_T(request, response, time):
-        return round(time)
+    def _format_T(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
+        return str(round(time))
 
     @staticmethod
-    def _format_Tf(request, response, time):
+    def _format_Tf(key: str,
+                   request: 'BaseRequest',
+                   response: 'StreamResponse',
+                   time: float) -> str:
         return '%06f' % time
 
     @staticmethod
-    def _format_D(request, response, time):
-        return round(time * 1000000)
+    def _format_D(key: str,
+                  request: 'BaseRequest',
+                  response: 'StreamResponse',
+                  time: float) -> str:
+        return str(round(time * 1000000))
 
-    def _format_line(self, request, response, time):
+    def _format_line(self,
+                     request: 'BaseRequest',
+                     response: 'StreamResponse',
+                     time: float) -> Iterable[Tuple[str,
+                                                    Callable[['BaseRequest',
+                                                              'StreamResponse',
+                                                              float],
+                                                             str]]]:
         return ((key, method(request, response, time))
                 for key, method in self._methods)
 
-    def log(self, request, response, time):
+    def log(self,
+            request: 'BaseRequest',
+            response: 'StreamResponse',
+            time: float) -> None:
         try:
             fmt_info = self._format_line(request, response, time)
 
@@ -476,8 +537,8 @@ class AccessLogger(AbstractAccessLogger):
                 else:
                     k1, k2 = key
                     dct = extra.get(k1, {})
-                    dct[k2] = value
-                    extra[k1] = dct
+                    dct[k2] = value  # type: ignore
+                    extra[k1] = dct  # type: ignore
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
