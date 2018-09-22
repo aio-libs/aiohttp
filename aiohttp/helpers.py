@@ -446,8 +446,7 @@ class AccessLogger(AbstractAccessLogger):
         return response.headers.get(key, '-')
 
     @staticmethod
-    def _format_a(key: str,
-                  request: 'BaseRequest',
+    def _format_a(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         if request is None:
@@ -456,8 +455,7 @@ class AccessLogger(AbstractAccessLogger):
         return ip if ip is not None else '-'
 
     @staticmethod
-    def _format_t(key: str,
-                  request: 'BaseRequest',
+    def _format_t(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         now = datetime.datetime.utcnow()
@@ -465,15 +463,13 @@ class AccessLogger(AbstractAccessLogger):
         return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
 
     @staticmethod
-    def _format_P(key: str,
-                  request: 'BaseRequest',
+    def _format_P(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         return "<%s>" % os.getpid()
 
     @staticmethod
-    def _format_r(key: str,
-                  request: 'BaseRequest',
+    def _format_r(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         if request is None:
@@ -483,36 +479,31 @@ class AccessLogger(AbstractAccessLogger):
                                      request.version.minor)
 
     @staticmethod
-    def _format_s(key: str,
-                  request: 'BaseRequest',
+    def _format_s(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         return response.status
 
     @staticmethod
-    def _format_b(key: str,
-                  request: 'BaseRequest',
+    def _format_b(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         return response.body_length
 
     @staticmethod
-    def _format_T(key: str,
-                  request: 'BaseRequest',
+    def _format_T(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         return str(round(time))
 
     @staticmethod
-    def _format_Tf(key: str,
-                   request: 'BaseRequest',
+    def _format_Tf(request: 'BaseRequest',
                    response: 'StreamResponse',
                    time: float) -> str:
         return '%06f' % time
 
     @staticmethod
-    def _format_D(key: str,
-                  request: 'BaseRequest',
+    def _format_D(request: 'BaseRequest',
                   response: 'StreamResponse',
                   time: float) -> str:
         return str(round(time * 1000000))
@@ -525,8 +516,8 @@ class AccessLogger(AbstractAccessLogger):
                                                               'StreamResponse',
                                                               float],
                                                              str]]]:
-        return ((key, method(request, response, time))
-                for key, method in self._methods)
+        return [(key, method(request, response, time))
+                for key, method in self._methods]
 
     def log(self,
             request: 'BaseRequest',
