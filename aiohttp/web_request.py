@@ -556,7 +556,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         """Return async iterator to process BODY as multipart."""
         return MultipartReader(self._headers, self._payload)
 
-    async def post(self) -> MultiDictProxy:
+    async def post(self,
+                   loads: JSONDecoder=DEFAULT_JSON_DECODER) -> MultiDictProxy:
         """Return POST parameters."""
         if self._post is not None:
             return self._post
@@ -567,7 +568,8 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
         content_type = self.content_type
         if (content_type not in ('',
                                  'application/x-www-form-urlencoded',
-                                 'multipart/form-data')):
+                                 'multipart/form-data',
+                                 'application/json')):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
@@ -617,6 +619,13 @@ class BaseRequest(collections.MutableMapping, HeadersMixin):
                         )
 
                 field = await multipart.next()
+        elif content_type == 'application/json':
+            data = await self.read()
+            if data:
+                charset = self.charset or 'utf-8'
+                out.extend(
+                    loads(
+                        data.rstrip().decode(charset)))
         else:
             data = await self.read()
             if data:
