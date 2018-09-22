@@ -18,8 +18,9 @@ from collections import namedtuple
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
+from types import TracebackType
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, Iterator,
-                    List, Mapping, Optional, Tuple, TypeVar, Union, cast)
+                    List, Mapping, Optional, Tuple, Type, TypeVar, Union, cast)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -701,7 +702,7 @@ class TimeoutHandle:
         else:
             return None
 
-    def timer(self) -> ContextManager[None]:
+    def timer(self) -> 'BaseTimerContext':
         if self._timeout is not None and self._timeout > 0:
             timer = TimerContext(self._loop)
             self.register(timer.timeout)
@@ -717,16 +718,22 @@ class TimeoutHandle:
         self._callbacks.clear()
 
 
-class TimerNoop(ContextManager[None]):
+class BaseTimerContext(ContextManager['BaseTimerContext']):
+    pass
 
-    def __enter__(self):  # type: ignore
+
+class TimerNoop(BaseTimerContext):
+
+    def __enter__(self) -> BaseTimerContext:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_val: Optional[BaseException],
+                 exc_tb: Optional[TracebackType]) -> Optional[bool]:
         return False
 
 
-class TimerContext(ContextManager[None]):
+class TimerContext(BaseTimerContext):
     """ Low resolution timeout context manager """
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
@@ -734,7 +741,7 @@ class TimerContext(ContextManager[None]):
         self._tasks = []  # type: List[asyncio.Task[Any]]
         self._cancelled = False
 
-    def __enter__(self):  # type: ignore
+    def __enter__(self) -> BaseTimerContext:
         task = current_task(loop=self._loop)
 
         if task is None:
@@ -748,12 +755,15 @@ class TimerContext(ContextManager[None]):
         self._tasks.append(task)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_val: Optional[BaseException],
+                 exc_tb: Optional[TracebackType]) -> Optional[bool]:
         if self._tasks:
             self._tasks.pop()
 
         if exc_type is asyncio.CancelledError and self._cancelled:
             raise asyncio.TimeoutError from None
+        return None
 
     def timeout(self) -> None:
         if not self._cancelled:
@@ -765,7 +775,7 @@ class TimerContext(ContextManager[None]):
 
 class CeilTimeout(async_timeout.timeout):
 
-    def __enter__(self):  # type: ignore
+    def __enter__(self) -> async_timeout.timeout:
         if self._timeout is not None:
             self._task = current_task(loop=self._loop)
             if self._task is None:
@@ -821,12 +831,12 @@ class HeadersMixin:
             return None
 
 
-def set_result(fut: asyncio.Future[_T], result: _T) -> None:
+def set_result(fut: 'asyncio.Future[_T]', result: _T) -> None:
     if not fut.done():
         fut.set_result(result)
 
 
-def set_exception(fut: asyncio.Future[_T], exc: Exception) -> None:
+def set_exception(fut: 'asyncio.Future[_T]', exc: Exception) -> None:
     if not fut.done():
         fut.set_exception(exc)
 

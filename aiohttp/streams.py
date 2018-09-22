@@ -3,9 +3,16 @@ import collections
 from typing import List  # noqa
 from typing import Awaitable, Callable, Optional, Tuple
 
-from .helpers import set_exception, set_result
+from .base_protocol import BaseProtocol
+from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
 from .typedefs import Byteish
+
+
+try:  # pragma: no cover
+    from typing import Deque  # noqa
+except ImportError:
+    from typing_extensions import Deque  # noqa
 
 
 __all__ = (
@@ -98,8 +105,10 @@ class StreamReader(AsyncStreamReaderMixin):
 
     total_bytes = 0
 
-    def __init__(self, protocol,
-                 *, limit=DEFAULT_LIMIT, timer=None, loop=None):
+    def __init__(self, protocol: BaseProtocol,
+                 *, limit: int=DEFAULT_LIMIT,
+                 timer: Optional[BaseTimerContext]=None,
+                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
@@ -109,14 +118,14 @@ class StreamReader(AsyncStreamReaderMixin):
         self._size = 0
         self._cursor = 0
         self._http_chunk_splits = None
-        self._buffer = collections.deque()
+        self._buffer = collections.deque()  # type: Deque[bytes]
         self._buffer_offset = 0
         self._eof = False
         self._waiter = None
         self._eof_waiter = None
         self._exception = None
         self._timer = timer
-        self._eof_callbacks = []
+        self._eof_callbacks = []  # type: List[Callable[[None], None]]
 
     def __repr__(self):
         info = [self.__class__.__name__]
@@ -495,7 +504,7 @@ class DataQueue:
         self._waiter = None
         self._exception = None
         self._size = 0
-        self._buffer = collections.deque()
+        self._buffer = collections.deque()  # type: Deque[Tuple[bytes, int]]
 
     def __len__(self) -> int:
         return len(self._buffer)
