@@ -163,6 +163,8 @@ async def test_post_json(aiohttp_client):
         assert dct == data
         data2 = await request.json(loads=json.loads)
         assert data == data2
+        data3 = await request.post()
+        assert data == data3
         resp = web.Response()
         resp.content_type = 'application/json'
         resp.body = json.dumps(data).encode('utf8')
