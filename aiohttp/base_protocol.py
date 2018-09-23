@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional
+from typing import Optional, cast
 
 from .log import internal_logger
 
@@ -16,7 +16,9 @@ class BaseProtocol(asyncio.Protocol):
         self._paused = False
         self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
         self._connection_lost = False
-        self.transport = None  # type: Optional[asyncio.BaseTransport]
+        self._reading_paused = False
+
+        self.transport = None  # type: Optional[asyncio.Transport]
 
     def pause_writing(self) -> None:
         assert not self._paused
@@ -36,8 +38,24 @@ class BaseProtocol(asyncio.Protocol):
             if not waiter.done():
                 waiter.set_result(None)
 
+    def pause_reading(self) -> None:
+        if not self._reading_paused and self.transport is not None:
+            try:
+                self.transport.pause_reading()
+            except (AttributeError, NotImplementedError, RuntimeError):
+                pass
+            self._reading_paused = True
+
+    def resume_reading(self) -> None:
+        if self._reading_paused and self.transport is not None:
+            try:
+                self.transport.resume_reading()
+            except (AttributeError, NotImplementedError, RuntimeError):
+                pass
+            self._reading_paused = False
+
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        self.transport = transport
+        self.transport = cast(asyncio.Transport, transport)
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
         self._connection_lost = True

@@ -827,7 +827,7 @@ def set_result(fut: 'asyncio.Future[_T]', result: _T) -> None:
         fut.set_result(result)
 
 
-def set_exception(fut: 'asyncio.Future[_T]', exc: Exception) -> None:
+def set_exception(fut: 'asyncio.Future[_T]', exc: BaseException) -> None:
     if not fut.done():
         fut.set_exception(exc)
 

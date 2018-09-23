@@ -6,7 +6,6 @@ from typing import Awaitable, Callable, Optional, Tuple
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
-from .typedefs import Byteish
 
 
 try:  # pragma: no cover
@@ -121,13 +120,13 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer = collections.deque()  # type: Deque[bytes]
         self._buffer_offset = 0
         self._eof = False
-        self._waiter = None
-        self._eof_waiter = None
-        self._exception = None
+        self._waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._eof_waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._exception = None  # type: Optional[BaseException]
         self._timer = timer
-        self._eof_callbacks = []  # type: List[Callable[[None], None]]
+        self._eof_callbacks = []  # type: List[Callable[[], None]]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         info = [self.__class__.__name__]
         if self._size:
             info.append('%d bytes' % self._size)
@@ -207,7 +206,7 @@ class StreamReader(AsyncStreamReaderMixin):
         finally:
             self._eof_waiter = None
 
-    def unread_data(self, data: Byteish) -> None:
+    def unread_data(self, data: bytes) -> None:
         """ rollback reading some data from stream, inserting it to buffer head.
         """
         if not data:
@@ -222,7 +221,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._eof_counter = 0
 
     # TODO: size is ignored, remove the param later
-    def feed_data(self, data: Byteish, size: int=0) -> None:
+    def feed_data(self, data: bytes, size: int=0) -> None:
         assert not self._eof, 'feed_data after feed_eof'
 
         if not data:
@@ -253,7 +252,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 self._http_chunk_splits[-1] != self.total_bytes:
             self._http_chunk_splits.append(self.total_bytes)
 
-    async def _wait(self, func_name):
+    async def _wait(self, func_name: str) -> None:
         # StreamReader uses a future to link the protocol feed_data() method
         # to a read coroutine. Running two read coroutines at the same time
         # would have an unexpected behaviour. It would not possible to know
@@ -430,7 +429,7 @@ class StreamReader(AsyncStreamReaderMixin):
             self._protocol.resume_reading()
         return data
 
-    def _read_nowait(self, n):
+    def _read_nowait(self, n: int) -> bytes:
         chunks = []
 
         while self._buffer:
@@ -470,7 +469,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: Byteish, n: int=0) -> None:
+    def feed_data(self, data: bytes, n: int=0) -> None:
         pass
 
     async def readline(self) -> bytes:
@@ -527,7 +526,7 @@ class DataQueue:
             set_exception(waiter, exc)
             self._waiter = None
 
-    def feed_data(self, data: Byteish, size: int=0) -> None:
+    def feed_data(self, data: bytes, size: int=0) -> None:
         self._size += size
         self._buffer.append((data, size))
 
@@ -580,7 +579,7 @@ class FlowControlDataQueue(DataQueue):
         self._protocol = protocol
         self._limit = limit * 2
 
-    def feed_data(self, data: Byteish, size: int=0) -> None:
+    def feed_data(self, data: bytes, size: int=0) -> None:
         super().feed_data(data, size)
 
         if self._size > self._limit and not self._protocol._reading_paused:
