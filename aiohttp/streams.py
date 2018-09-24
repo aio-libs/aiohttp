@@ -116,7 +116,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits = None
+        self._http_chunk_splits = None  # type: Optional[List[int]]
         self._buffer = collections.deque()  # type: Deque[bytes]
         self._buffer_offset = 0
         self._eof = False
@@ -407,7 +407,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         return self._read_nowait(n)
 
-    def _read_nowait_chunk(self, n):
+    def _read_nowait_chunk(self, n: int) -> bytes:
         first_buffer = self._buffer[0]
         offset = self._buffer_offset
         if n != -1 and len(first_buffer) - offset > n:
@@ -451,7 +451,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
     def set_exception(self, exc: BaseException) -> None:
         pass
 
-    def on_eof(self, callback: Callable[[], None]):
+    def on_eof(self, callback: Callable[[], None]) -> None:
         try:
             callback()
         except Exception:
@@ -497,11 +497,11 @@ EMPTY_PAYLOAD = EmptyStreamReader()
 class DataQueue:
     """DataQueue is a general-purpose blocking queue with one reader."""
 
-    def __init__(self, *, loop=None):
+    def __init__(self, *, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
-        self._waiter = None
-        self._exception = None
+        self._waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._exception = None  # type: Optional[BaseException]
         self._size = 0
         self._buffer = collections.deque()  # type: Deque[Tuple[bytes, int]]
 
@@ -572,8 +572,9 @@ class FlowControlDataQueue(DataQueue):
 
     It is a destination for parsed data."""
 
-    def __init__(self, protocol, *, limit: int=DEFAULT_LIMIT, loop:
-                 Optional[asyncio.AbstractEventLoop]=None) -> None:
+    def __init__(self, protocol: BaseProtocol, *,
+                 limit: int=DEFAULT_LIMIT,
+                 loop: asyncio.AbstractEventLoop) -> None:
         super().__init__(loop=loop)
 
         self._protocol = protocol
