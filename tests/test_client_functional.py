@@ -495,6 +495,26 @@ async def test_raw_headers(aiohttp_client):
     resp.close()
 
 
+async def test_empty_header_values(aiohttp_client):
+    async def handler(request):
+        resp = web.Response()
+        resp.headers['X-Empty'] = ''
+        return resp
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.get('/')
+    assert resp.status == 200
+    raw_headers = tuple((bytes(h), bytes(v)) for h, v in resp.raw_headers)
+    assert raw_headers == ((b'X-Empty', b''),
+                           (b'Content-Length', b'0'),
+                           (b'Content-Type', b'application/octet-stream'),
+                           (b'Date', mock.ANY),
+                           (b'Server', mock.ANY))
+    resp.close()
+
+
 async def test_204_with_gzipped_content_encoding(aiohttp_client):
     async def handler(request):
         resp = web.StreamResponse(status=204)

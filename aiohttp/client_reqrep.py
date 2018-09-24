@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
 
 
-json_re = re.compile('^application/(?:[\w.+-]+?\+)?json')
+json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 
 @attr.s(frozen=True, slots=True)

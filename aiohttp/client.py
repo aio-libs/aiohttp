@@ -906,6 +906,7 @@ def request(method, url, *,
             connector=None,
             loop=None,
             read_until_eof=True,
+            timeout=sentinel,
             proxy=None,
             proxy_auth=None) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
@@ -933,6 +934,8 @@ def request(method, url, *,
     read_until_eof - Read response until eof if response
        does not have Content-Length header.
     loop - Optional event loop.
+    timeout - Optional ClientTimeout settings structure, 5min
+       total timeout by default.
     Usage::
       >>> import aiohttp
       >>> resp = await aiohttp.request('GET', 'http://python.org/')
@@ -946,7 +949,7 @@ def request(method, url, *,
         connector = TCPConnector(loop=loop, force_close=True)
 
     session = ClientSession(
-        loop=loop, cookies=cookies, version=version,
+        loop=loop, cookies=cookies, version=version, timeout=timeout,
         connector=connector, connector_owner=connector_owner)
 
     return _SessionRequestContextManager(

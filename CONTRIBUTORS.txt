@@ -87,12 +87,14 @@ Georges Dubus
 Greg Holt
 Gregory Haynes
 Günther Jena
+Gus Goulart
 Gustavo Carneiro
 Hu Bo
 Hugo Herter
 Hynek Schlawack
 Igor Alexandrov
 Igor Davydenko
+Igor Mozharovsky
 Igor Pavlov
 Ingmar Steen
 Jacob Champion
@@ -103,6 +105,7 @@ Jashandeep Sohi
 Jeongkyu Shin
 Jeroen van der Heijden
 Jesus Cea
+Jian Zeng
 Jinkyu Yi
 Joel Watts
 Jon Nabozny
@@ -142,6 +145,7 @@ Michael Ihnatenko
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Misha Behersky
+Mitchell Ferree
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
@@ -189,7 +193,9 @@ Taras Voinarovskyi
 Terence Honles
 Thanos Lefteris
 Thijs Vermeir
+Thomas Forbes
 Thomas Grainger
+Tomasz Trebski
 Tolga Tezel
 Trinh Hoang Nhu
 Vadim Suharnikov

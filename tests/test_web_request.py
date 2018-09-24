@@ -1,5 +1,5 @@
 import socket
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from unittest import mock
 
 import pytest
@@ -340,7 +340,7 @@ def test_single_forwarded_header_multiple_param():
 
 
 def test_single_forwarded_header_quoted_escaped():
-    header = 'BY=identifier;pROTO="\lala lan\d\~ 123\!&"'
+    header = r'BY=identifier;pROTO="\lala lan\d\~ 123\!&"'
     req = make_mocked_request('GET', '/',
                               headers=CIMultiDict({'Forwarded': header}))
     assert req.forwarded[0]['by'] == 'identifier'
@@ -631,9 +631,23 @@ def test_request_custom_attr():
 
 
 def test_remote_with_closed_transport():
+    transp = mock.Mock()
+    transp.get_extra_info.return_value = ('10.10.10.10', 1234)
+    req = make_mocked_request('GET', '/', transport=transp)
+    req._protocol = None
+    assert req.remote == '10.10.10.10'
+
+
+def test_url_http_with_closed_transport():
     req = make_mocked_request('GET', '/')
     req._protocol = None
-    assert req.remote is None
+    assert str(req.url).startswith('http://')
+
+
+def test_url_https_with_closed_transport():
+    req = make_mocked_request('GET', '/', sslcontext=True)
+    req._protocol = None
+    assert str(req.url).startswith('https://')
 
 
 def test_eq():
