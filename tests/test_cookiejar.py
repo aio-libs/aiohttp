@@ -606,5 +606,5 @@ def test_dummy_cookie_jar(loop) -> None:
     assert len(dummy_jar) == 0
     with pytest.raises(StopIteration):
         next(iter(dummy_jar))
-    assert dummy_jar.filter_cookies(URL("http://example.com/")) is None
+    assert not dummy_jar.filter_cookies(URL("http://example.com/"))
     dummy_jar.clear()

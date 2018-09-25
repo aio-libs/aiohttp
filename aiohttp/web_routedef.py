@@ -1,5 +1,5 @@
 import abc
-import os
+import os  # noqa
 from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Iterator,
                     List, Optional, Sequence, Union, overload)
 

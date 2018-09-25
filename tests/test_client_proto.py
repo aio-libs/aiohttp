@@ -21,6 +21,8 @@ async def test_oserror(loop) -> None:
 
 async def test_pause_resume_on_error(loop) -> None:
     proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
 
     proto.pause_reading()
     assert proto._reading_paused

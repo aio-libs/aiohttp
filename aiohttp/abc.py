@@ -2,7 +2,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import SimpleCookie
+from http.cookies import Morsel, BaseCookie
 from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
                     Mapping, Optional, Tuple, Union)
 
@@ -116,7 +116,13 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-class AbstractCookieJar(Sized, Iterable[SimpleCookie]):
+if TYPE_CHECKING:
+    IterableBase = Iterable[Morsel[str]]
+else:
+    IterableBase = Iterable
+
+
+class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
 
     def __init__(self, *,
@@ -129,13 +135,13 @@ class AbstractCookieJar(Sized, Iterable[SimpleCookie]):
 
     @abstractmethod
     def update_cookies(self,
-                       cookies: Union[Iterable[Tuple[str, SimpleCookie]],
-                                      Mapping[str, SimpleCookie]],
-                       response_url: Optional[URL]=None) -> None:
+                       cookies: Union[Iterable[Tuple[str, 'BaseCookie[str]']],
+                                      Mapping[str, 'BaseCookie[str]']],
+                       response_url: URL=URL()) -> None:
         """Update cookies."""
 
     @abstractmethod
-    def filter_cookies(self, request_url: URL) -> SimpleCookie:
+    def filter_cookies(self, request_url: URL) -> 'BaseCookie[str]':
         """Return the jar's cookies filtered by their attributes."""
 
 

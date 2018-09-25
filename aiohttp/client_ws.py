@@ -10,8 +10,8 @@ from .helpers import call_later, set_result
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
 from .streams import EofStream
-from .typedefs import (DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER,
-                       JSONDecoder, JSONEncoder)
+from .typedefs import (DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER, JSONDecoder,
+                       JSONEncoder)
 
 
 class ClientWebSocketResponse:
