@@ -2,7 +2,8 @@ import json
 import os  # noqa
 import pathlib  # noqa
 import sys
-from typing import TYPE_CHECKING, Any, Callable, Mapping, Tuple, Union  # noqa
+from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Mapping,  # noqa
+                    Tuple, Union)
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -23,8 +24,13 @@ else:
     _MultiDictProxy = MultiDictProxy
 
 Byteish = Union[bytes, bytearray, memoryview]
-JSONEncoder = Callable[[Any], str]
-JSONDecoder = Callable[[str], Any]
+JSONObj = Dict[str, Any]
+JSON = Union[
+    JSONObj,
+    List[Union[JSONObj, Any]],
+]
+JSONEncoder = Callable[[JSON], str]
+JSONDecoder = Callable[[str], JSON]
 LooseHeaders = Union[Mapping[str, str], _CIMultiDict, _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
