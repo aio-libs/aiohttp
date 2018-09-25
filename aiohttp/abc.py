@@ -2,7 +2,7 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
-from http.cookies import Morsel, BaseCookie
+from http.cookies import BaseCookie, Morsel
 from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
                     Mapping, Optional, Tuple, Union)
 

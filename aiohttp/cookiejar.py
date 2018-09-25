@@ -5,10 +5,10 @@ import pathlib
 import pickle
 import re
 from collections import defaultdict
-from http.cookies import Morsel, BaseCookie, SimpleCookie  # noqa
+from http.cookies import BaseCookie, Morsel, SimpleCookie  # noqa
 from math import ceil
-from typing import (DefaultDict, Dict, Iterable, Iterator, Mapping, Optional,  # noqa
-                    Set, Tuple, Union, cast)
+from typing import (DefaultDict, Dict, Iterable, Iterator, Mapping,  # noqa
+                    Optional, Set, Tuple, Union, cast)
 
 from yarl import URL
 
