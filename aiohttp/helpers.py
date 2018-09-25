@@ -51,8 +51,8 @@ except ImportError:
 
 if TYPE_CHECKING:  # pragma: no cover
     # run in mypy mode only to prevent circular imports
-    from .web_request import BaseRequest
-    from .web_response import StreamResponse
+    from .web_request import BaseRequest  # noqa
+    from .web_response import StreamResponse  # noqa
 
 
 _T = TypeVar('_T')
