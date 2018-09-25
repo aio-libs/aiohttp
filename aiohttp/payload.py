@@ -101,7 +101,7 @@ class PayloadRegistry:
 
 class Payload(ABC):
 
-    _size = None  # type: Optional[float]
+    _size = None  # type: Optional[int]
     _headers = None  # type: Optional[_CIMultiDict]
     _content_type = 'application/octet-stream'  # type: Optional[str]
 
@@ -132,7 +132,7 @@ class Payload(ABC):
         self._content_type = content_type
 
     @property
-    def size(self) -> Optional[float]:
+    def size(self) -> Optional[int]:
         """Size of the payload."""
         return self._size
 
@@ -305,7 +305,7 @@ class TextIOPayload(IOBasePayload):
         )
 
     @property
-    def size(self) -> Optional[float]:
+    def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except OSError:
@@ -324,7 +324,7 @@ class TextIOPayload(IOBasePayload):
 class BytesIOPayload(IOBasePayload):
 
     @property
-    def size(self) -> float:
+    def size(self) -> int:
         position = self._value.tell()
         end = self._value.seek(0, os.SEEK_END)
         self._value.seek(position)
@@ -334,7 +334,7 @@ class BytesIOPayload(IOBasePayload):
 class BufferedReaderPayload(IOBasePayload):
 
     @property
-    def size(self) -> Optional[float]:
+    def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except OSError:
