@@ -86,7 +86,7 @@ def stopper(loop):
     return f
 
 
-def test_run_app_http(patched_loop):
+def test_run_app_http(patched_loop) -> None:
     app = web.Application()
     startup_handler = make_mocked_coro()
     app.on_startup.append(startup_handler)
@@ -103,7 +103,7 @@ def test_run_app_http(patched_loop):
     cleanup_handler.assert_called_once_with(app)
 
 
-def test_run_app_close_loop(patched_loop):
+def test_run_app_close_loop(patched_loop) -> None:
     app = web.Application()
     web.run_app(app, print=stopper(patched_loop))
 
@@ -308,7 +308,7 @@ def test_run_app_mixed_bindings(run_app_kwargs, expected_server_calls,
             expected_server_calls)
 
 
-def test_run_app_https(patched_loop):
+def test_run_app_https(patched_loop) -> None:
     app = web.Application()
 
     ssl_context = ssl.create_default_context()
@@ -319,7 +319,8 @@ def test_run_app_https(patched_loop):
         reuse_address=None, reuse_port=None)
 
 
-def test_run_app_nondefault_host_port(patched_loop, aiohttp_unused_port):
+def test_run_app_nondefault_host_port(patched_loop,
+                                      aiohttp_unused_port) -> None:
     port = aiohttp_unused_port()
     host = '127.0.0.1'
 
@@ -332,7 +333,7 @@ def test_run_app_nondefault_host_port(patched_loop, aiohttp_unused_port):
                                                   reuse_port=None)
 
 
-def test_run_app_custom_backlog(patched_loop):
+def test_run_app_custom_backlog(patched_loop) -> None:
     app = web.Application()
     web.run_app(app, backlog=10, print=stopper(patched_loop))
 
@@ -341,7 +342,7 @@ def test_run_app_custom_backlog(patched_loop):
         reuse_address=None, reuse_port=None)
 
 
-def test_run_app_custom_backlog_unix(patched_loop):
+def test_run_app_custom_backlog_unix(patched_loop) -> None:
     app = web.Application()
     web.run_app(app, path='/tmp/tmpsock.sock',
                 backlog=10, print=stopper(patched_loop))
@@ -351,7 +352,7 @@ def test_run_app_custom_backlog_unix(patched_loop):
 
 
 @skip_if_no_unix_socks
-def test_run_app_http_unix_socket(patched_loop, shorttmpdir):
+def test_run_app_http_unix_socket(patched_loop, shorttmpdir) -> None:
     app = web.Application()
 
     sock_path = str(shorttmpdir / 'socket.sock')
@@ -364,7 +365,7 @@ def test_run_app_http_unix_socket(patched_loop, shorttmpdir):
 
 
 @skip_if_no_unix_socks
-def test_run_app_https_unix_socket(patched_loop, shorttmpdir):
+def test_run_app_https_unix_socket(patched_loop, shorttmpdir) -> None:
     app = web.Application()
 
     sock_path = str(shorttmpdir / 'socket.sock')
@@ -379,7 +380,7 @@ def test_run_app_https_unix_socket(patched_loop, shorttmpdir):
 
 @skip_if_no_unix_socks
 @skip_if_no_abstract_paths
-def test_run_app_abstract_linux_socket(patched_loop):
+def test_run_app_abstract_linux_socket(patched_loop) -> None:
     sock_path = b"\x00" + uuid4().hex.encode('ascii')
     app = web.Application()
     web.run_app(
@@ -394,7 +395,7 @@ def test_run_app_abstract_linux_socket(patched_loop):
     )
 
 
-def test_run_app_preexisting_inet_socket(patched_loop, mocker):
+def test_run_app_preexisting_inet_socket(patched_loop, mocker) -> None:
     app = web.Application()
 
     sock = socket.socket()
@@ -412,7 +413,7 @@ def test_run_app_preexisting_inet_socket(patched_loop, mocker):
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
-def test_run_app_preexisting_inet6_socket(patched_loop):
+def test_run_app_preexisting_inet6_socket(patched_loop) -> None:
     app = web.Application()
 
     sock = socket.socket(socket.AF_INET6)
@@ -430,7 +431,7 @@ def test_run_app_preexisting_inet6_socket(patched_loop):
 
 
 @skip_if_no_unix_socks
-def test_run_app_preexisting_unix_socket(patched_loop, mocker):
+def test_run_app_preexisting_unix_socket(patched_loop, mocker) -> None:
     app = web.Application()
 
     sock_path = '/tmp/test_preexisting_sock1'
@@ -448,7 +449,7 @@ def test_run_app_preexisting_unix_socket(patched_loop, mocker):
         assert "http://unix:{}:".format(sock_path) in printer.call_args[0][0]
 
 
-def test_run_app_multiple_preexisting_sockets(patched_loop):
+def test_run_app_multiple_preexisting_sockets(patched_loop) -> None:
     app = web.Application()
 
     sock1 = socket.socket()
@@ -478,7 +479,7 @@ web.run_app(app, host=())
 """
 
 
-def test_sigint():
+def test_sigint() -> None:
     skip_if_on_windows()
 
     proc = subprocess.Popen([sys.executable, "-u", "-c", _script_test_signal],
@@ -490,7 +491,7 @@ def test_sigint():
     assert proc.wait() == 0
 
 
-def test_sigterm():
+def test_sigterm() -> None:
     skip_if_on_windows()
 
     proc = subprocess.Popen([sys.executable, "-u", "-c", _script_test_signal],
@@ -502,7 +503,7 @@ def test_sigterm():
     assert proc.wait() == 0
 
 
-def test_startup_cleanup_signals_even_on_failure(patched_loop):
+def test_startup_cleanup_signals_even_on_failure(patched_loop) -> None:
     patched_loop.create_server = mock.Mock(side_effect=RuntimeError())
 
     app = web.Application()
@@ -518,7 +519,7 @@ def test_startup_cleanup_signals_even_on_failure(patched_loop):
     cleanup_handler.assert_called_once_with(app)
 
 
-def test_run_app_coro(patched_loop):
+def test_run_app_coro(patched_loop) -> None:
     startup_handler = cleanup_handler = None
 
     async def make_app():

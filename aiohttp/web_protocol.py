@@ -129,8 +129,6 @@ class RequestHandler(BaseProtocol):
             max_headers=max_headers,
             payload_exception=RequestPayloadError)
 
-        self._reading_paused = False
-
         self.logger = logger
         self.debug = debug
         self.access_log = access_log
@@ -334,22 +332,6 @@ class RequestHandler(BaseProtocol):
         # reschedule itself to next second
         self._keepalive_handle = self._loop.call_later(
             self.KEEPALIVE_RESCHEDULE_DELAY, self._process_keepalive)
-
-    def pause_reading(self):
-        if not self._reading_paused:
-            try:
-                self.transport.pause_reading()
-            except (AttributeError, NotImplementedError, RuntimeError):
-                pass
-            self._reading_paused = True
-
-    def resume_reading(self):
-        if self._reading_paused:
-            try:
-                self.transport.resume_reading()
-            except (AttributeError, NotImplementedError, RuntimeError):
-                pass
-            self._reading_paused = False
 
     async def start(self):
         """Process incoming request.

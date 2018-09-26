@@ -15,7 +15,7 @@ pytest_plugins = 'aiohttp.pytest_plugin'
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
 
-def test_aiohttp_plugin(testdir):
+def test_aiohttp_plugin(testdir) -> None:
     testdir.makepyfile("""\
 import pytest
 from unittest import mock
@@ -33,7 +33,7 @@ def create_app(loop=None):
     return app
 
 
-async def test_hello(aiohttp_client):
+async def test_hello(aiohttp_client) -> None:
     client = await aiohttp_client(create_app)
     resp = await client.get('/')
     assert resp.status == 200
@@ -41,7 +41,7 @@ async def test_hello(aiohttp_client):
     assert 'Hello, world' in text
 
 
-async def test_hello_from_app(aiohttp_client, loop):
+async def test_hello_from_app(aiohttp_client, loop) -> None:
     app = web.Application()
     app.router.add_get('/', hello)
     client = await aiohttp_client(app)
@@ -51,7 +51,7 @@ async def test_hello_from_app(aiohttp_client, loop):
     assert 'Hello, world' in text
 
 
-async def test_hello_with_loop(aiohttp_client, loop):
+async def test_hello_with_loop(aiohttp_client, loop) -> None:
     client = await aiohttp_client(create_app)
     resp = await client.get('/')
     assert resp.status == 200
@@ -59,19 +59,19 @@ async def test_hello_with_loop(aiohttp_client, loop):
     assert 'Hello, world' in text
 
 
-async def test_set_args(aiohttp_client, loop):
+async def test_set_args(aiohttp_client, loop) -> None:
     with pytest.raises(AssertionError):
         app = web.Application()
         await aiohttp_client(app, 1, 2, 3)
 
 
-async def test_set_keyword_args(aiohttp_client, loop):
+async def test_set_keyword_args(aiohttp_client, loop) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
         await aiohttp_client(app, param=1)
 
 
-async def test_noop():
+async def test_noop() -> None:
     pass
 
 
@@ -96,7 +96,7 @@ def cli(loop, aiohttp_client):
     return loop.run_until_complete(aiohttp_client(create_stateful_app))
 
 
-async def test_set_value(cli):
+async def test_set_value(cli) -> None:
     resp = await cli.post('/', data={'value': 'foo'})
     assert resp.status == 200
     text = await resp.text()
@@ -104,7 +104,7 @@ async def test_set_value(cli):
     assert cli.server.app['value'] == 'foo'
 
 
-async def test_get_value(cli):
+async def test_get_value(cli) -> None:
     resp = await cli.get('/')
     assert resp.status == 200
     text = await resp.text()
@@ -117,11 +117,11 @@ async def test_get_value(cli):
     assert text == 'value: bar'
 
 
-def test_noncoro():
+def test_noncoro() -> None:
     assert True
 
 
-async def test_failed_to_create_client(aiohttp_client):
+async def test_failed_to_create_client(aiohttp_client) -> None:
 
     def make_app(loop):
         raise RuntimeError()
@@ -152,17 +152,17 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
     result.assert_outcomes(passed=12)
 
 
-def test_warning_checks(testdir):
+def test_warning_checks(testdir) -> None:
     testdir.makepyfile("""\
 
 async def foobar():
     return 123
 
-async def test_good():
+async def test_good() -> None:
     v = await foobar()
     assert v == 123
 
-async def test_bad():
+async def test_bad() -> None:
     foobar()
 """)
     testdir.makeconftest(CONFTEST)
@@ -177,7 +177,7 @@ async def test_bad():
     result.assert_outcomes(**expected_outcomes)
 
 
-def test_aiohttp_plugin_async_fixture(testdir, capsys):
+def test_aiohttp_plugin_async_fixture(testdir, capsys) -> None:
     testdir.makepyfile("""\
 import pytest
 
@@ -211,21 +211,21 @@ async def bar(request):
     return request.function
 
 
-async def test_hello(cli):
+async def test_hello(cli) -> None:
     resp = await cli.get('/')
     assert resp.status == 200
 
 
-def test_foo(loop, foo):
+def test_foo(loop, foo) -> None:
     assert foo == 42
 
 
-def test_foo_without_loop(foo):
+def test_foo_without_loop(foo) -> None:
     # will raise an error because there is no loop
     pass
 
 
-def test_bar(loop, bar):
+def test_bar(loop, bar) -> None:
     assert bar is test_bar
 """)
     testdir.makeconftest(CONFTEST)
@@ -238,7 +238,7 @@ def test_bar(loop, bar):
 
 
 @pytest.mark.skipif(sys.version_info < (3, 6), reason='old python')
-def test_aiohttp_plugin_async_gen_fixture(testdir):
+def test_aiohttp_plugin_async_gen_fixture(testdir) -> None:
     testdir.makepyfile("""\
 import pytest
 from unittest import mock
@@ -265,12 +265,12 @@ async def cli(aiohttp_client):
     canary()
 
 
-async def test_hello(cli):
+async def test_hello(cli) -> None:
     resp = await cli.get('/')
     assert resp.status == 200
 
 
-def test_finalized():
+def test_finalized() -> None:
     assert canary.called is True
 """)
     testdir.makeconftest(CONFTEST)

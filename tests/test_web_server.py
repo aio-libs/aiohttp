@@ -6,7 +6,7 @@ import pytest
 from aiohttp import client, web
 
 
-async def test_simple_server(aiohttp_raw_server, aiohttp_client):
+async def test_simple_server(aiohttp_raw_server, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(text=str(request.rel_url))
 
@@ -39,7 +39,8 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server,
         exc_info=exc)
 
 
-async def test_raw_server_handler_timeout(aiohttp_raw_server, aiohttp_client):
+async def test_raw_server_handler_timeout(aiohttp_raw_server,
+                                          aiohttp_client) -> None:
     exc = asyncio.TimeoutError("error")
 
     async def handler(request):
@@ -110,7 +111,7 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server,
         exc_info=exc)
 
 
-def test_create_web_server_with_implicit_loop(loop):
+def test_create_web_server_with_implicit_loop(loop) -> None:
     asyncio.set_event_loop(loop)
 
     async def handler(request):

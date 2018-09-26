@@ -1,5 +1,6 @@
 import asyncio
 import socket
+from typing import Any, Dict, List, Optional
 
 from .abc import AbstractResolver
 
@@ -20,12 +21,13 @@ class ThreadedResolver(AbstractResolver):
     concurrent.futures.ThreadPoolExecutor.
     """
 
-    def __init__(self, loop=None):
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
         self._loop = loop
 
-    async def resolve(self, host, port=0, family=socket.AF_INET):
+    async def resolve(self, host: str, port: int=0,
+                      family: int=socket.AF_INET) -> List[Dict[str, Any]]:
         infos = await self._loop.getaddrinfo(
             host, port, type=socket.SOCK_STREAM, family=family)
 
@@ -39,14 +41,15 @@ class ThreadedResolver(AbstractResolver):
 
         return hosts
 
-    async def close(self):
+    async def close(self) -> None:
         pass
 
 
 class AsyncResolver(AbstractResolver):
     """Use the `aiodns` package to make asynchronous DNS lookups"""
 
-    def __init__(self, loop=None, *args, **kwargs):
+    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None,
+                 *args: Any, **kwargs: Any) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
 
@@ -58,9 +61,10 @@ class AsyncResolver(AbstractResolver):
 
         if not hasattr(self._resolver, 'gethostbyname'):
             # aiodns 1.1 is not available, fallback to DNSResolver.query
-            self.resolve = self._resolve_with_query
+            self.resolve = self._resolve_with_query  # type: ignore
 
-    async def resolve(self, host, port=0, family=socket.AF_INET):
+    async def resolve(self, host: str, port: int=0,
+                      family: int=socket.AF_INET) -> List[Dict[str, Any]]:
         try:
             resp = await self._resolver.gethostbyname(host, family)
         except aiodns.error.DNSError as exc:
@@ -79,7 +83,9 @@ class AsyncResolver(AbstractResolver):
 
         return hosts
 
-    async def _resolve_with_query(self, host, port=0, family=socket.AF_INET):
+    async def _resolve_with_query(
+            self, host: str, port: int=0,
+            family: int=socket.AF_INET) -> List[Dict[str, Any]]:
         if family == socket.AF_INET6:
             qtype = 'AAAA'
         else:
@@ -104,7 +110,7 @@ class AsyncResolver(AbstractResolver):
 
         return hosts
 
-    async def close(self):
+    async def close(self) -> None:
         return self._resolver.cancel()
 
 

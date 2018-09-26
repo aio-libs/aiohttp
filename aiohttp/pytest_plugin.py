@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
     tokio = None
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser):  # type: ignore
     parser.addoption(
         '--aiohttp-fast', action='store_true', default=False,
         help='run tests faster by disabling extra checks')
@@ -36,7 +36,7 @@ def pytest_addoption(parser):
         help='enable event loop debug mode')
 
 
-def pytest_fixture_setup(fixturedef):
+def pytest_fixture_setup(fixturedef):  # type: ignore
     """
     Allow fixtures to be coroutines. Run coroutine fixtures in an event loop.
     """
@@ -57,7 +57,7 @@ def pytest_fixture_setup(fixturedef):
         fixturedef.argnames += ('request',)
         strip_request = True
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs):  # type: ignore
         request = kwargs['request']
         if strip_request:
             del kwargs['request']
@@ -78,7 +78,7 @@ def pytest_fixture_setup(fixturedef):
             # then advance it again in a finalizer
             gen = func(*args, **kwargs)
 
-            def finalizer():
+            def finalizer():  # type: ignore
                 try:
                     return _loop.run_until_complete(gen.__anext__())
                 except StopAsyncIteration:  # NOQA
@@ -93,19 +93,19 @@ def pytest_fixture_setup(fixturedef):
 
 
 @pytest.fixture
-def fast(request):
+def fast(request):  # type: ignore
     """--fast config option"""
     return request.config.getoption('--aiohttp-fast')
 
 
 @pytest.fixture
-def loop_debug(request):
+def loop_debug(request):  # type: ignore
     """--enable-loop-debug config option"""
     return request.config.getoption('--aiohttp-enable-loop-debug')
 
 
 @contextlib.contextmanager
-def _runtime_warning_context():
+def _runtime_warning_context():  # type: ignore
     """
     Context manager which checks for RuntimeWarnings, specifically to
     avoid "coroutine 'X' was never awaited" warnings being missed.
@@ -115,7 +115,8 @@ def _runtime_warning_context():
     with warnings.catch_warnings(record=True) as _warnings:
         yield
         rw = ['{w.filename}:{w.lineno}:{w.message}'.format(w=w)
-              for w in _warnings if w.category == RuntimeWarning]
+              for w in _warnings  # type: ignore
+              if w.category == RuntimeWarning]
         if rw:
             raise RuntimeError('{} Runtime Warning{},\n{}'.format(
                 len(rw),
@@ -125,7 +126,7 @@ def _runtime_warning_context():
 
 
 @contextlib.contextmanager
-def _passthrough_loop_context(loop, fast=False):
+def _passthrough_loop_context(loop, fast=False):  # type: ignore
     """
     setups and tears down a loop unless one is passed in via the loop
     argument when it's passed straight through.
@@ -140,7 +141,7 @@ def _passthrough_loop_context(loop, fast=False):
         teardown_test_loop(loop, fast=fast)
 
 
-def pytest_pycollect_makeitem(collector, name, obj):
+def pytest_pycollect_makeitem(collector, name, obj):  # type: ignore
     """
     Fix pytest collecting for coroutines.
     """
@@ -148,7 +149,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
         return list(collector._genfunctions(name, obj))
 
 
-def pytest_pyfunc_call(pyfuncitem):
+def pytest_pyfunc_call(pyfuncitem):  # type: ignore
     """
     Run coroutines in an event loop instead of a normal function call.
     """
@@ -164,7 +165,7 @@ def pytest_pyfunc_call(pyfuncitem):
         return True
 
 
-def pytest_generate_tests(metafunc):
+def pytest_generate_tests(metafunc):  # type: ignore
     if 'loop_factory' not in metafunc.fixturenames:
         return
 
@@ -180,7 +181,7 @@ def pytest_generate_tests(metafunc):
     if loops == 'all':
         loops = 'pyloop,uvloop?,tokio?'
 
-    factories = {}
+    factories = {}  # type: ignore
     for name in loops.split(','):
         required = not name.endswith('?')
         name = name.strip(' ?')
@@ -198,7 +199,7 @@ def pytest_generate_tests(metafunc):
 
 
 @pytest.fixture
-def loop(loop_factory, fast, loop_debug):
+def loop(loop_factory, fast, loop_debug):  # type: ignore
     """Return an instance of the event loop."""
     policy = loop_factory()
     asyncio.set_event_loop_policy(policy)
@@ -210,27 +211,27 @@ def loop(loop_factory, fast, loop_debug):
 
 
 @pytest.fixture
-def unused_port(aiohttp_unused_port):  # pragma: no cover
+def unused_port(aiohttp_unused_port):  # type: ignore # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_unused_port fixture instead",
                   DeprecationWarning)
     return aiohttp_unused_port
 
 
 @pytest.fixture
-def aiohttp_unused_port():
+def aiohttp_unused_port():  # type: ignore
     """Return a port that is unused on the current host."""
     return _unused_port
 
 
 @pytest.fixture
-def aiohttp_server(loop):
+def aiohttp_server(loop):  # type: ignore
     """Factory to create a TestServer instance, given an app.
 
     aiohttp_server(app, **kwargs)
     """
     servers = []
 
-    async def go(app, *, port=None, **kwargs):
+    async def go(app, *, port=None, **kwargs):  # type: ignore
         server = TestServer(app, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
@@ -238,7 +239,7 @@ def aiohttp_server(loop):
 
     yield go
 
-    async def finalize():
+    async def finalize():  # type: ignore
         while servers:
             await servers.pop().close()
 
@@ -246,21 +247,21 @@ def aiohttp_server(loop):
 
 
 @pytest.fixture
-def test_server(aiohttp_server):  # pragma: no cover
+def test_server(aiohttp_server):  # type: ignore  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_server fixture instead",
                   DeprecationWarning)
     return aiohttp_server
 
 
 @pytest.fixture
-def aiohttp_raw_server(loop):
+def aiohttp_raw_server(loop):  # type: ignore
     """Factory to create a RawTestServer instance, given a web handler.
 
     aiohttp_raw_server(handler, **kwargs)
     """
     servers = []
 
-    async def go(handler, *, port=None, **kwargs):
+    async def go(handler, *, port=None, **kwargs):  # type: ignore
         server = RawTestServer(handler, port=port)
         await server.start_server(loop=loop, **kwargs)
         servers.append(server)
@@ -268,7 +269,7 @@ def aiohttp_raw_server(loop):
 
     yield go
 
-    async def finalize():
+    async def finalize():  # type: ignore
         while servers:
             await servers.pop().close()
 
@@ -276,14 +277,14 @@ def aiohttp_raw_server(loop):
 
 
 @pytest.fixture
-def raw_test_server(aiohttp_raw_server):  # pragma: no cover
+def raw_test_server(aiohttp_raw_server):  # type: ignore  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_raw_server fixture instead",
                   DeprecationWarning)
     return aiohttp_raw_server
 
 
 @pytest.fixture
-def aiohttp_client(loop):
+def aiohttp_client(loop):  # type: ignore
     """Factory to create a TestClient instance.
 
     aiohttp_client(app, **kwargs)
@@ -292,9 +293,9 @@ def aiohttp_client(loop):
     """
     clients = []
 
-    async def go(__param, *args, server_kwargs=None, **kwargs):
+    async def go(__param, *args, server_kwargs=None, **kwargs):  # type: ignore
 
-        if (isinstance(__param, Callable) and
+        if (isinstance(__param, Callable) and  # type: ignore
                 not isinstance(__param, (Application, BaseTestServer))):
             __param = __param(loop, *args, **kwargs)
             kwargs = {}
@@ -316,7 +317,7 @@ def aiohttp_client(loop):
 
     yield go
 
-    async def finalize():
+    async def finalize():  # type: ignore
         while clients:
             await clients.pop().close()
 
@@ -324,7 +325,7 @@ def aiohttp_client(loop):
 
 
 @pytest.fixture
-def test_client(aiohttp_client):  # pragma: no cover
+def test_client(aiohttp_client):  # type: ignore  # pragma: no cover
     warnings.warn("Deprecated, use aiohttp_client fixture instead",
                   DeprecationWarning)
     return aiohttp_client

@@ -19,7 +19,7 @@ if has_ipv6:
 
 # nodelay
 
-def test_tcp_nodelay_exception():
+def test_tcp_nodelay_exception() -> None:
     transport = mock.Mock()
     s = mock.Mock()
     s.setsockopt = mock.Mock()
@@ -34,7 +34,7 @@ def test_tcp_nodelay_exception():
     )
 
 
-def test_tcp_nodelay_enable():
+def test_tcp_nodelay_enable() -> None:
     transport = mock.Mock()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         transport.get_extra_info.return_value = s
@@ -42,7 +42,7 @@ def test_tcp_nodelay_enable():
         assert s.getsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY)
 
 
-def test_tcp_nodelay_enable_and_disable():
+def test_tcp_nodelay_enable_and_disable() -> None:
     transport = mock.Mock()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         transport.get_extra_info.return_value = s
@@ -53,7 +53,7 @@ def test_tcp_nodelay_enable_and_disable():
 
 
 @pytest.mark.skipif(not has_ipv6, reason="IPv6 is not available")
-def test_tcp_nodelay_enable_ipv6():
+def test_tcp_nodelay_enable_ipv6() -> None:
     transport = mock.Mock()
     with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
         transport.get_extra_info.return_value = s
@@ -63,7 +63,7 @@ def test_tcp_nodelay_enable_ipv6():
 
 @pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
                     reason="requires unix sockets")
-def test_tcp_nodelay_enable_unix():
+def test_tcp_nodelay_enable_unix() -> None:
     # do not set nodelay for unix socket
     transport = mock.Mock()
     s = mock.Mock(family=socket.AF_UNIX, type=socket.SOCK_STREAM)
@@ -72,7 +72,7 @@ def test_tcp_nodelay_enable_unix():
     assert not s.setsockopt.called
 
 
-def test_tcp_nodelay_enable_no_socket():
+def test_tcp_nodelay_enable_no_socket() -> None:
     transport = mock.Mock()
     transport.get_extra_info.return_value = None
     tcp_nodelay(transport, True)
@@ -82,7 +82,7 @@ def test_tcp_nodelay_enable_no_socket():
 
 
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
-def test_tcp_cork_enable():
+def test_tcp_cork_enable() -> None:
     transport = mock.Mock()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         transport.get_extra_info.return_value = s
@@ -91,7 +91,7 @@ def test_tcp_cork_enable():
 
 
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
-def test_set_cork_enable_and_disable():
+def test_set_cork_enable_and_disable() -> None:
     transport = mock.Mock()
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         transport.get_extra_info.return_value = s
@@ -103,7 +103,7 @@ def test_set_cork_enable_and_disable():
 
 @pytest.mark.skipif(not has_ipv6, reason="IPv6 is not available")
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
-def test_set_cork_enable_ipv6():
+def test_set_cork_enable_ipv6() -> None:
     transport = mock.Mock()
     with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
         transport.get_extra_info.return_value = s
@@ -114,7 +114,7 @@ def test_set_cork_enable_ipv6():
 @pytest.mark.skipif(not hasattr(socket, 'AF_UNIX'),
                     reason="requires unix sockets")
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
-def test_set_cork_enable_unix():
+def test_set_cork_enable_unix() -> None:
     transport = mock.Mock()
     s = mock.Mock(family=socket.AF_UNIX, type=socket.SOCK_STREAM)
     transport.get_extra_info.return_value = s
@@ -123,14 +123,14 @@ def test_set_cork_enable_unix():
 
 
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
-def test_set_cork_enable_no_socket():
+def test_set_cork_enable_no_socket() -> None:
     transport = mock.Mock()
     transport.get_extra_info.return_value = None
     tcp_cork(transport, True)
 
 
 @pytest.mark.skipif(CORK is None, reason="TCP_CORK or TCP_NOPUSH required")
-def test_set_cork_exception():
+def test_set_cork_exception() -> None:
     transport = mock.Mock()
     s = mock.Mock()
     s.setsockopt = mock.Mock()

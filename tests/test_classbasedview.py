@@ -6,13 +6,13 @@ from aiohttp import web
 from aiohttp.web_urldispatcher import View
 
 
-def test_ctor():
+def test_ctor() -> None:
     request = mock.Mock()
     view = View(request)
     assert view.request is request
 
 
-async def test_render_ok():
+async def test_render_ok() -> None:
     resp = web.Response(text='OK')
 
     class MyView(View):
@@ -25,7 +25,7 @@ async def test_render_ok():
     assert resp is resp2
 
 
-async def test_render_unknown_method():
+async def test_render_unknown_method() -> None:
 
     class MyView(View):
         async def get(self):
@@ -40,7 +40,7 @@ async def test_render_unknown_method():
     assert ctx.value.status == 405
 
 
-async def test_render_unsupported_method():
+async def test_render_unsupported_method() -> None:
 
     class MyView(View):
         async def get(self):

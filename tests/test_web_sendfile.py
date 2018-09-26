@@ -5,7 +5,7 @@ from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web_fileresponse import FileResponse, SendfileStreamWriter
 
 
-def test_static_handle_eof(loop):
+def test_static_handle_eof(loop) -> None:
     fake_loop = mock.Mock()
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
@@ -21,7 +21,7 @@ def test_static_handle_eof(loop):
         assert not fake_loop.remove_writer.called
 
 
-def test_static_handle_again(loop):
+def test_static_handle_again(loop) -> None:
     fake_loop = mock.Mock()
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
@@ -39,7 +39,7 @@ def test_static_handle_again(loop):
         assert not fake_loop.remove_writer.called
 
 
-def test_static_handle_exception(loop):
+def test_static_handle_exception(loop) -> None:
     fake_loop = mock.Mock()
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
@@ -56,7 +56,7 @@ def test_static_handle_exception(loop):
         assert not fake_loop.remove_writer.called
 
 
-def test__sendfile_cb_return_on_cancelling(loop):
+def test__sendfile_cb_return_on_cancelling(loop) -> None:
     fake_loop = mock.Mock()
     with mock.patch('aiohttp.web_fileresponse.os') as m_os:
         out_fd = 30
@@ -71,7 +71,7 @@ def test__sendfile_cb_return_on_cancelling(loop):
         assert not m_os.sendfile.called
 
 
-def test_using_gzip_if_header_present_and_file_available(loop):
+def test_using_gzip_if_header_present_and_file_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
             hdrs.ACCEPT_ENCODING: 'gzip'
@@ -98,7 +98,7 @@ def test_using_gzip_if_header_present_and_file_available(loop):
     assert gz_filepath.open.called
 
 
-def test_gzip_if_header_not_present_and_file_available(loop):
+def test_gzip_if_header_not_present_and_file_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
         }
@@ -124,7 +124,7 @@ def test_gzip_if_header_not_present_and_file_available(loop):
     assert not gz_filepath.open.called
 
 
-def test_gzip_if_header_not_present_and_file_not_available(loop):
+def test_gzip_if_header_not_present_and_file_not_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
         }
@@ -150,7 +150,7 @@ def test_gzip_if_header_not_present_and_file_not_available(loop):
     assert not gz_filepath.open.called
 
 
-def test_gzip_if_header_present_and_file_not_available(loop):
+def test_gzip_if_header_present_and_file_not_available(loop) -> None:
     request = make_mocked_request(
         'GET', 'http://python.org/logo.png', headers={
             hdrs.ACCEPT_ENCODING: 'gzip'

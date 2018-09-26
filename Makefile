@@ -33,7 +33,7 @@ check_changes:
 
 mypy: .flake
 	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
-            mypy aiohttp tests; \
+            mypy aiohttp; \
 	fi
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy

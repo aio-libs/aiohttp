@@ -8,7 +8,7 @@ async def serve(request):
     return web.Response()
 
 
-def test_repr(loop):
+def test_repr(loop) -> None:
     manager = web.Server(serve, loop=loop)
     handler = manager()
 
@@ -18,7 +18,7 @@ def test_repr(loop):
     assert '<RequestHandler connected>' == repr(handler)
 
 
-def test_connections(loop):
+def test_connections(loop) -> None:
     manager = web.Server(serve, loop=loop)
     assert manager.connections == []
 
@@ -31,7 +31,7 @@ def test_connections(loop):
     assert manager.connections == []
 
 
-async def test_shutdown_no_timeout(loop):
+async def test_shutdown_no_timeout(loop) -> None:
     manager = web.Server(serve, loop=loop)
 
     handler = mock.Mock()
@@ -46,7 +46,7 @@ async def test_shutdown_no_timeout(loop):
     handler.shutdown.assert_called_with(None)
 
 
-async def test_shutdown_timeout(loop):
+async def test_shutdown_timeout(loop) -> None:
     manager = web.Server(serve, loop=loop)
 
     handler = mock.Mock()

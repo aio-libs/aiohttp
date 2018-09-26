@@ -92,6 +92,7 @@ install_requires = [
     'async_timeout>=3.0,<4.0',
     'yarl>=1.0,<2.0',
     'idna-ssl>=1.0; python_version<"3.7"',
+    'typing_extensions>=3.6.5; python_version<"3.7"',
 ]
 
 

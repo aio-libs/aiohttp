@@ -17,7 +17,7 @@ def ceil(mocker):
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
 
 
-async def test_websocket_can_prepare(loop, aiohttp_client):
+async def test_websocket_can_prepare(loop, aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -34,7 +34,7 @@ async def test_websocket_can_prepare(loop, aiohttp_client):
     assert resp.status == 426
 
 
-async def test_websocket_json(loop, aiohttp_client):
+async def test_websocket_json(loop, aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -64,7 +64,7 @@ async def test_websocket_json(loop, aiohttp_client):
     assert resp.data == expected_value
 
 
-async def test_websocket_json_invalid_message(loop, aiohttp_client):
+async def test_websocket_json_invalid_message(loop, aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -91,7 +91,7 @@ async def test_websocket_json_invalid_message(loop, aiohttp_client):
     assert 'ValueError was raised' in data
 
 
-async def test_websocket_send_json(loop, aiohttp_client):
+async def test_websocket_send_json(loop, aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -115,7 +115,7 @@ async def test_websocket_send_json(loop, aiohttp_client):
     assert data['test'] == expected_value
 
 
-async def test_websocket_receive_json(loop, aiohttp_client):
+async def test_websocket_receive_json(loop, aiohttp_client) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse()
@@ -141,7 +141,7 @@ async def test_websocket_receive_json(loop, aiohttp_client):
     assert resp.data == expected_value
 
 
-async def test_send_recv_text(loop, aiohttp_client):
+async def test_send_recv_text(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -175,7 +175,7 @@ async def test_send_recv_text(loop, aiohttp_client):
     await closed
 
 
-async def test_send_recv_bytes(loop, aiohttp_client):
+async def test_send_recv_bytes(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -210,7 +210,7 @@ async def test_send_recv_bytes(loop, aiohttp_client):
     await closed
 
 
-async def test_send_recv_json(loop, aiohttp_client):
+async def test_send_recv_json(loop, aiohttp_client) -> None:
     closed = loop.create_future()
 
     async def handler(request):
@@ -244,7 +244,7 @@ async def test_send_recv_json(loop, aiohttp_client):
     await closed
 
 
-async def test_close_timeout(loop, aiohttp_client):
+async def test_close_timeout(loop, aiohttp_client) -> None:
     aborted = loop.create_future()
 
     async def handler(request):
@@ -297,7 +297,7 @@ async def test_close_timeout(loop, aiohttp_client):
     await ws.close()
 
 
-async def test_concurrent_close(loop, aiohttp_client):
+async def test_concurrent_close(loop, aiohttp_client) -> None:
 
     srv_ws = None
 
@@ -337,7 +337,7 @@ async def test_concurrent_close(loop, aiohttp_client):
     assert msg.type == WSMsgType.CLOSED
 
 
-async def test_auto_pong_with_closing_by_peer(loop, aiohttp_client):
+async def test_auto_pong_with_closing_by_peer(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -367,7 +367,7 @@ async def test_auto_pong_with_closing_by_peer(loop, aiohttp_client):
     await closed
 
 
-async def test_ping(loop, aiohttp_client):
+async def test_ping(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -420,7 +420,7 @@ async def aiohttp_client_ping(loop, aiohttp_client):
     await ws.close()
 
 
-async def test_pong(loop, aiohttp_client):
+async def test_pong(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -455,7 +455,7 @@ async def test_pong(loop, aiohttp_client):
     await closed
 
 
-async def test_change_status(loop, aiohttp_client):
+async def test_change_status(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -480,7 +480,7 @@ async def test_change_status(loop, aiohttp_client):
     await ws.close()
 
 
-async def test_handle_protocol(loop, aiohttp_client):
+async def test_handle_protocol(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -502,7 +502,7 @@ async def test_handle_protocol(loop, aiohttp_client):
     await closed
 
 
-async def test_server_close_handshake(loop, aiohttp_client):
+async def test_server_close_handshake(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -591,7 +591,7 @@ async def test_server_close_handshake_server_eats_client_messages(
     await closed
 
 
-async def test_receive_timeout(loop, aiohttp_client):
+async def test_receive_timeout(loop, aiohttp_client) -> None:
     raised = False
 
     async def handler(request):
@@ -617,7 +617,7 @@ async def test_receive_timeout(loop, aiohttp_client):
     assert raised
 
 
-async def test_custom_receive_timeout(loop, aiohttp_client):
+async def test_custom_receive_timeout(loop, aiohttp_client) -> None:
     raised = False
 
     async def handler(request):
@@ -643,7 +643,7 @@ async def test_custom_receive_timeout(loop, aiohttp_client):
     assert raised
 
 
-async def test_heartbeat(loop, aiohttp_client, ceil):
+async def test_heartbeat(loop, aiohttp_client, ceil) -> None:
 
     async def handler(request):
         ws = web.WebSocketResponse(heartbeat=0.05)
@@ -664,7 +664,7 @@ async def test_heartbeat(loop, aiohttp_client, ceil):
     await ws.close()
 
 
-async def test_heartbeat_no_pong(loop, aiohttp_client, ceil):
+async def test_heartbeat_no_pong(loop, aiohttp_client, ceil) -> None:
     cancelled = False
 
     async def handler(request):
@@ -692,7 +692,7 @@ async def test_heartbeat_no_pong(loop, aiohttp_client, ceil):
     assert cancelled
 
 
-async def test_server_ws_async_for(loop, aiohttp_server):
+async def test_server_ws_async_for(loop, aiohttp_server) -> None:
     closed = loop.create_future()
 
     async def handler(request):
@@ -724,7 +724,7 @@ async def test_server_ws_async_for(loop, aiohttp_server):
             await closed
 
 
-async def test_closed_async_for(loop, aiohttp_client):
+async def test_closed_async_for(loop, aiohttp_client) -> None:
 
     closed = loop.create_future()
 
@@ -760,7 +760,7 @@ async def test_closed_async_for(loop, aiohttp_client):
     await closed
 
 
-async def test_websocket_disable_keepalive(loop, aiohttp_client):
+async def test_websocket_disable_keepalive(loop, aiohttp_client) -> None:
     async def handler(request):
         ws = web.WebSocketResponse()
         if not ws.can_prepare(request):
