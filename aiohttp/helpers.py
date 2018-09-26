@@ -230,9 +230,11 @@ def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task
 
 
 def isasyncgenfunction(obj: Any) -> bool:
-    if hasattr(inspect, 'isasyncgenfunction'):
-        return inspect.isasyncgenfunction(obj)
-    return False
+    func = getattr(inspect, 'isasyncgenfunction')
+    if func is not None:
+        return func(obj)
+    else:
+        return False
 
 
 @attr.s(frozen=True, slots=True)
