@@ -9,7 +9,7 @@ from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
 from yarl import URL
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .web_request import Request
     from .web_response import StreamResponse
     from .web_app import Application
@@ -116,7 +116,7 @@ class AbstractResolver(ABC):
         """Release resolver"""
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     IterableBase = Iterable[Morsel[str]]
 else:
     IterableBase = Iterable

@@ -10,7 +10,7 @@ from .abc import AbstractView
 from .typedefs import PathLike
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .web_urldispatcher import UrlDispatcher
     from .web_request import Request
     from .web_response import StreamResponse

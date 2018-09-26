@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover
     ssl = SSLContext = None  # type: ignore
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .client_reqrep import RequestInfo, ClientResponse, ConnectionKey
 else:
     RequestInfo = ClientResponse = ConnectionKey = None
