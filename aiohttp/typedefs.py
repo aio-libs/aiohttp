@@ -1,4 +1,7 @@
 import json
+import os  # noqa
+import pathlib  # noqa
+import sys
 from typing import TYPE_CHECKING, Any, Callable, Mapping, Tuple, Union  # noqa
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -25,3 +28,9 @@ JSONDecoder = Callable[[str], Any]
 LooseHeaders = Union[Mapping[str, str], _CIMultiDict, _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
+
+
+if sys.version_info >= (3, 6):
+    PathLike = Union[str, 'os.PathLike[str]']
+else:
+    PathLike = Union[str, pathlib.PurePath]

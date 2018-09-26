@@ -32,6 +32,7 @@ from yarl import URL
 from . import hdrs
 from .abc import AbstractAccessLogger
 from .log import client_logger
+from .typedefs import PathLike  # noqa
 
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
@@ -163,7 +164,7 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
 
 def netrc_from_env() -> Optional[netrc.netrc]:
     netrc_obj = None
-    netrc_path = os.environ.get('NETRC')  # type: Optional[Union[str, os.PathLike[str]]]  # noqa
+    netrc_path = os.environ.get('NETRC')  # type: Optional[PathLike]
     try:
         if netrc_path is not None:
             netrc_path = Path(netrc_path)

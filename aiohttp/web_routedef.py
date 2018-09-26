@@ -7,6 +7,7 @@ import attr
 
 from . import hdrs
 from .abc import AbstractView
+from .typedefs import PathLike
 
 
 if TYPE_CHECKING:
@@ -59,7 +60,7 @@ class RouteDef(AbstractRouteDef):
 @attr.s(frozen=True, repr=False, slots=True)
 class StaticDef(AbstractRouteDef):
     prefix = attr.ib(type=str)
-    path = attr.ib()  # type: Union[str, os.PathLike[str]]
+    path = attr.ib()  # type: PathLike
     kwargs = attr.ib(type=Dict[str, Any])
 
     def __repr__(self) -> str:
@@ -113,7 +114,7 @@ def view(path: str, handler: AbstractView, **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 
-def static(prefix: str, path: Union[str, 'os.PathLike[str]'],
+def static(prefix: str, path: PathLike,
            **kwargs: Any) -> StaticDef:
     return StaticDef(prefix, path, kwargs)
 
@@ -177,6 +178,6 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def view(self, path: str, **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_ANY, path, **kwargs)
 
-    def static(self, prefix: str, path: Union[str, 'os.PathLike[str]'],
+    def static(self, prefix: str, path: PathLike,
                **kwargs: Any) -> None:
         self._items.append(StaticDef(prefix, path, kwargs))

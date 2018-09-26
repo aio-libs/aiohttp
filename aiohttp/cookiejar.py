@@ -14,6 +14,7 @@ from yarl import URL
 
 from .abc import AbstractCookieJar
 from .helpers import is_ip_address
+from .typedefs import PathLike
 
 
 __all__ = ('CookieJar', 'DummyCookieJar')
@@ -49,12 +50,12 @@ class CookieJar(AbstractCookieJar):
         self._next_expiration = ceil(self._loop.time())
         self._expirations = {}  # type: Dict[Tuple[str, str], int]
 
-    def save(self, file_path: 'os.PathLike[str]') -> None:
+    def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
         with file_path.open(mode='wb') as f:
             pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
 
-    def load(self, file_path: 'os.PathLike[str]') -> None:
+    def load(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
         with file_path.open(mode='rb') as f:
             self._cookies = pickle.load(f)
