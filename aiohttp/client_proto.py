@@ -19,7 +19,6 @@ class ResponseHandler(BaseProtocol, DataQueue):
         self._payload = None
         self._skip_payload = False
         self._payload_parser = None
-        self._reading_paused = False
 
         self._timer = None
 
@@ -57,7 +56,7 @@ class ResponseHandler(BaseProtocol, DataQueue):
             self._drop_timeout()
         return transport
 
-    def is_connected(self):
+    def is_connected(self) -> bool:
         return self.transport is not None
 
     def connection_lost(self, exc):
@@ -92,29 +91,19 @@ class ResponseHandler(BaseProtocol, DataQueue):
 
         super().connection_lost(exc)
 
-    def eof_received(self):
+    def eof_received(self) -> None:
         # should call parser.feed_eof() most likely
         self._drop_timeout()
 
-    def pause_reading(self):
-        if not self._reading_paused:
-            try:
-                self.transport.pause_reading()
-            except (AttributeError, NotImplementedError, RuntimeError):
-                pass
-            self._reading_paused = True
-            self._drop_timeout()
+    def pause_reading(self) -> None:
+        super().pause_reading()
+        self._drop_timeout()
 
-    def resume_reading(self):
-        if self._reading_paused:
-            try:
-                self.transport.resume_reading()
-            except (AttributeError, NotImplementedError, RuntimeError):
-                pass
-            self._reading_paused = False
-            self._reschedule_timeout()
+    def resume_reading(self) -> None:
+        super().resume_reading()
+        self._reschedule_timeout()
 
-    def set_exception(self, exc):
+    def set_exception(self, exc: BaseException) -> None:
         self._should_close = True
         self._drop_timeout()
         super().set_exception(exc)
