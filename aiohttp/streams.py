@@ -482,7 +482,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
         return b''
 
     async def readchunk(self) -> Tuple[bytes, bool]:
-        return (b'', False)
+        return (b'', True)
 
     async def readexactly(self, n: int) -> bytes:
         raise asyncio.streams.IncompleteReadError(b'', n)
