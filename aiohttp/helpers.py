@@ -230,7 +230,7 @@ def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task
 
 
 def isasyncgenfunction(obj: Any) -> bool:
-    func = getattr(inspect, 'isasyncgenfunction')
+    func = getattr(inspect, 'isasyncgenfunction', None)
     if func is not None:
         return func(obj)
     else:
