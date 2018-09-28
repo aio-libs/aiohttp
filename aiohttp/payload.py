@@ -6,8 +6,8 @@ import os
 import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
-from typing import (IO, TYPE_CHECKING, Any, Callable, List, Optional,  # noqa
-                    Text, TextIO, Tuple, Type, Union)
+from typing import (IO, TYPE_CHECKING, Any, ByteString, Callable, Dict,  # noqa
+                    Iterable, List, Optional, Text, TextIO, Tuple, Type, Union)
 
 from multidict import CIMultiDict
 
@@ -16,7 +16,7 @@ from .abc import AbstractStreamWriter
 from .helpers import (PY_36, content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
 from .streams import DEFAULT_LIMIT, StreamReader
-from .typedefs import JSON, JSONEncoder, LooseHeaders
+from .typedefs import JSON, JSONEncoder
 
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
@@ -50,7 +50,7 @@ def register_payload(factory: Type['Payload'],
 
 class payload_type:
 
-    def __init__(self, type: Any, *, order: Order=Order.normal) -> None:
+    def __init__(self, type: Any, order: Order=Order.normal) -> None:
         self.type = type
         self.order = order
 
@@ -73,7 +73,7 @@ class PayloadRegistry:
     def get(self,
             data: Any,
             *args: Any,
-            _CHAIN: Callable[..., Tuple[Type['Payload'], Any]]=chain,
+            _CHAIN: Any=chain,
             **kwargs: Any) -> 'Payload':
         if isinstance(data, Payload):
             return data
@@ -101,17 +101,21 @@ class PayloadRegistry:
 class Payload(ABC):
 
     _size = None  # type: Optional[float]
-    _headers = None  # type: Optional[LooseHeaders]
+    _headers = None  # type: Optional[CIMultiDict]
     _content_type = 'application/octet-stream'  # type: Optional[str]
 
     def __init__(self,
                  value: Any,
-                 *,
-                 headers: Optional[LooseHeaders]=None,
+                 headers: Optional[
+                     Union[
+                         CIMultiDict,
+                         Dict[str, Any],
+                         Iterable[Tuple[str, Any]]
+                     ]
+                 ] = None,
                  content_type: Optional[str]=sentinel,
                  filename: Optional[str]=None,
-                 encoding: Optional[str]=None,
-                 **kwargs: Any) -> None:
+                 encoding: Optional[str]=None) -> None:
         self._value = value
         self._encoding = encoding
         self._filename = filename
@@ -136,7 +140,7 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> Optional[LooseHeaders]:
+    def headers(self) -> Optional[CIMultiDict]:
         """Custom item headers"""
         return self._headers
 
@@ -178,7 +182,7 @@ class Payload(ABC):
 class BytesPayload(Payload):
 
     def __init__(self,
-                 value: Union[bytes, bytearray, memoryview],
+                 value: ByteString,
                  *args: Any,
                  **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
