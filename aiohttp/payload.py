@@ -44,13 +44,14 @@ def get_payload(data: Any, *args: Any, **kwargs: Any) -> 'Payload':
 
 def register_payload(factory: Type['Payload'],
                      type: Any,
-                     *, order: Order=Order.normal) -> None:
+                     *,
+                     order: Order=Order.normal) -> None:
     PAYLOAD_REGISTRY.register(factory, type, order=order)
 
 
 class payload_type:
 
-    def __init__(self, type: Any, order: Order=Order.normal) -> None:
+    def __init__(self, type: Any, *, order: Order=Order.normal) -> None:
         self.type = type
         self.order = order
 
@@ -115,7 +116,8 @@ class Payload(ABC):
                  ] = None,
                  content_type: Optional[str]=sentinel,
                  filename: Optional[str]=None,
-                 encoding: Optional[str]=None) -> None:
+                 encoding: Optional[str]=None,
+                 **kwargs: Any) -> None:
         self._value = value
         self._encoding = encoding
         self._filename = filename
@@ -219,27 +221,26 @@ class StringPayload(BytesPayload):
                  content_type: Optional[str]=None,
                  **kwargs: Any) -> None:
 
-        _encoding: str
-        _content_type: str
-
         if encoding is None:
             if content_type is None:
-                _encoding = 'utf-8'
-                _content_type = 'text/plain; charset=utf-8'
+                encoding = 'utf-8'
+                content_type = 'text/plain; charset=utf-8'
             else:
-                _content_type = content_type
-                mimetype = parse_mimetype(_content_type)
-                _encoding = mimetype.parameters.get('charset', 'utf-8')
+                mimetype = parse_mimetype(content_type)
+                encoding = mimetype.parameters.get('charset', 'utf-8')
         else:
             if content_type is None:
-                _content_type = 'text/plain; charset=%s' % encoding
+                content_type = 'text/plain; charset=%s' % encoding
 
-        super().__init__(
-            value.encode(_encoding),
-            encoding=_encoding,
-            content_type=_content_type,
-            *args,
-            **kwargs)
+        if encoding is None:
+            raise ValueError('Encoding must be set')
+        else:
+            super().__init__(
+                value.encode(encoding),
+                encoding=encoding,
+                content_type=content_type,
+                *args,
+                **kwargs)
 
 
 class StringIOPayload(StringPayload):
