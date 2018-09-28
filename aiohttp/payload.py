@@ -369,7 +369,7 @@ else:
 
 class AsyncIterablePayload(Payload):
 
-    _iter: Optional[_AsyncIterator] = None
+    _iter = None  # type: Optional[_AsyncIterator]
 
     def __init__(self,
                  value: _AsyncIterable,
@@ -393,7 +393,7 @@ class AsyncIterablePayload(Payload):
                 # iter is not None check prevents rare cases
                 # when the case iterable is used twice
                 while True:
-                    chunk: bytes = await self._iter.__anext__()
+                    chunk = await self._iter.__anext__()
                     await writer.write(chunk)
             except StopAsyncIteration:
                 self._iter = None
