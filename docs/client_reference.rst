@@ -658,7 +658,7 @@ certification chaining.
                         allow_redirects=True, max_redirects=10, \
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
-                        compress=None, chunked=None, expect100=False, raise_for_status=None, \
+                        compress=None, chunked=None, expect100=False, raise_for_status=False, \
                         connector=None, loop=None,\
                         read_until_eof=True, timeout=sentinel)
 
