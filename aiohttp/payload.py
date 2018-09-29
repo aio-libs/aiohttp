@@ -102,16 +102,16 @@ class PayloadRegistry:
 class Payload(ABC):
 
     _size = None  # type: Optional[float]
-    _headers = None  # type: Optional[CIMultiDict]
+    _headers = None  # type: Optional[CIMultiDict[str]]
     _content_type = 'application/octet-stream'  # type: Optional[str]
 
     def __init__(self,
                  value: Any,
                  headers: Optional[
                      Union[
-                         CIMultiDict,
-                         Dict[str, Any],
-                         Iterable[Tuple[str, Any]]
+                         CIMultiDict[str],
+                         Dict[str, str],
+                         Iterable[Tuple[str, str]]
                      ]
                  ] = None,
                  content_type: Optional[str]=sentinel,
@@ -142,7 +142,7 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> Optional[CIMultiDict]:
+    def headers(self) -> Optional[CIMultiDict[str]]:
         """Custom item headers"""
         return self._headers
 
