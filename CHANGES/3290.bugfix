@@ -1,1 +1,1 @@
-Fix missing parameter 'raise_for_status' for aiohttp.request()
+Fix missing parameter ``raise_for_status`` for aiohttp.request()
