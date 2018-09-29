@@ -16,7 +16,7 @@ from .abc import AbstractStreamWriter
 from .helpers import (PY_36, content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
 from .streams import DEFAULT_LIMIT, StreamReader
-from .typedefs import JSON, JSONEncoder
+from .typedefs import JSONEncoder
 
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
@@ -223,24 +223,23 @@ class StringPayload(BytesPayload):
 
         if encoding is None:
             if content_type is None:
-                encoding = 'utf-8'
+                real_encoding = 'utf-8'
                 content_type = 'text/plain; charset=utf-8'
             else:
                 mimetype = parse_mimetype(content_type)
-                encoding = mimetype.parameters.get('charset', 'utf-8')
+                real_encoding = mimetype.parameters.get('charset', 'utf-8')
         else:
             if content_type is None:
                 content_type = 'text/plain; charset=%s' % encoding
+            real_encoding = encoding
 
-        if encoding is None:
-            raise ValueError('Encoding must be set')
-        else:
-            super().__init__(
-                value.encode(encoding),
-                encoding=encoding,
-                content_type=content_type,
-                *args,
-                **kwargs)
+        super().__init__(
+            value.encode(real_encoding),
+            encoding=real_encoding,
+            content_type=content_type,
+            *args,
+            **kwargs,
+        )
 
 
 class StringIOPayload(StringPayload):
@@ -299,7 +298,11 @@ class TextIOPayload(IOBasePayload):
 
         super().__init__(
             value,
-            content_type=content_type, encoding=encoding, *args, **kwargs)
+            content_type=content_type,
+            encoding=encoding,
+            *args,
+            **kwargs,
+        )
 
     @property
     def size(self) -> Optional[float]:
@@ -343,7 +346,7 @@ class BufferedReaderPayload(IOBasePayload):
 class JsonPayload(BytesPayload):
 
     def __init__(self,
-                 value: JSON,
+                 value: Any,
                  encoding: str='utf-8',
                  content_type: str='application/json',
                  dumps: JSONEncoder=json.dumps,
@@ -355,7 +358,7 @@ class JsonPayload(BytesPayload):
             content_type=content_type, encoding=encoding, *args, **kwargs)
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from typing import AsyncIterator, AsyncIterable
 
     _AsyncIterator = AsyncIterator[bytes]
