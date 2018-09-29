@@ -2083,6 +2083,45 @@ async def test_raise_for_status_disable_per_request(aiohttp_client) -> None:
     resp.close()
 
 
+async def test_request_raise_for_status_default(aiohttp_server) -> None:
+    async def handler(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app)
+
+    async with aiohttp.request('GET', server.make_url('/')) as resp:
+        assert resp.status == 400
+
+
+async def test_request_raise_for_status_disabled(aiohttp_server) -> None:
+    async def handler(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app)
+    url = server.make_url('/')
+
+    async with aiohttp.request('GET', url, raise_for_status=False) as resp:
+        assert resp.status == 400
+
+
+async def test_request_raise_for_status_enabled(aiohttp_server) -> None:
+    async def handler(request):
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app)
+    url = server.make_url('/')
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        async with aiohttp.request('GET', url, raise_for_status=True):
+            assert False, "never executed"  # pragma: no cover
+
+
 async def test_invalid_idna() -> None:
     session = aiohttp.ClientSession()
     try:
