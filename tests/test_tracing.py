@@ -138,7 +138,7 @@ class TestTrace:
             TraceDnsCacheMissParams
         )
     ])
-    async def test_send(self, loop, signal, params, param_obj) -> None:
+    async def test_send(self, signal, params, param_obj) -> None:
         session = Mock()
         trace_request_ctx = Mock()
         callback = Mock(side_effect=asyncio.coroutine(Mock()))
