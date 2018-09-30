@@ -16,7 +16,7 @@ from .abc import AbstractStreamWriter
 from .helpers import (PY_36, content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
 from .streams import DEFAULT_LIMIT, StreamReader
-from .typedefs import JSONEncoder
+from .typedefs import JSONEncoder, _CIMultiDict
 
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
@@ -102,14 +102,14 @@ class PayloadRegistry:
 class Payload(ABC):
 
     _size = None  # type: Optional[float]
-    _headers = None  # type: Optional[CIMultiDict[str]]
+    _headers = None  # type: Optional[_CIMultiDict]
     _content_type = 'application/octet-stream'  # type: Optional[str]
 
     def __init__(self,
                  value: Any,
                  headers: Optional[
                      Union[
-                         CIMultiDict[str],
+                         _CIMultiDict,
                          Dict[str, str],
                          Iterable[Tuple[str, str]]
                      ]
@@ -142,7 +142,7 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> Optional[CIMultiDict[str]]:
+    def headers(self) -> Optional[_CIMultiDict]:
         """Custom item headers"""
         return self._headers
 
