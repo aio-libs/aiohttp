@@ -247,6 +247,26 @@ def test_host_header_explicit_host_with_port(make_request) -> None:
     assert req.headers['HOST'] == 'example.com:99'
 
 
+def test_host_header_ipv4(make_request) -> None:
+    req = make_request('get', 'http://127.0.0.2')
+    assert req.headers['HOST'] == '127.0.0.2'
+
+
+def test_host_header_ipv6(make_request) -> None:
+    req = make_request('get', 'http://[::2]')
+    assert req.headers['HOST'] == '[::2]'
+
+
+def test_host_header_ipv4_with_port(make_request) -> None:
+    req = make_request('get', 'http://127.0.0.2:99')
+    assert req.headers['HOST'] == '127.0.0.2:99'
+
+
+def test_host_header_ipv6_with_port(make_request) -> None:
+    req = make_request('get', 'http://[::2]:99')
+    assert req.headers['HOST'] == '[::2]:99'
+
+
 def test_default_loop(loop) -> None:
     asyncio.set_event_loop(loop)
     req = ClientRequest('get', URL('http://python.org/'))
