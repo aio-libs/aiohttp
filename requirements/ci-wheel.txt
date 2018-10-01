@@ -3,19 +3,19 @@ attrs==18.2.0
 async-generator==1.10
 async-timeout==3.0.0
 brotlipy==0.7.0
-cchardet==2.1.1
+cchardet==2.1.4
 chardet==3.0.4
 coverage==4.5.1
 cython==0.28.5
 gunicorn==19.8.1
 pyflakes==2.0.0
-multidict==4.4.1
-pytest==3.8.0
+multidict==4.4.2
+pytest==3.8.1
 pytest-cov==2.6.0
 pytest-mock==1.10.0
-pytest-xdist==1.23.0
-tox==3.2.1
-twine==1.11.0
+pytest-xdist==1.23.2
+tox==3.4.0
+twine==1.12.1
 yarl==1.2.6
 
 # Using PEP 508 env markers to control dependency on runtimes:
