@@ -31,7 +31,7 @@ Access logs
 Access log by default is switched on and uses ``'aiohttp.access'``
 logger name.
 
-The log may be controlled by :meth:`aiohttp.web.AppRunner` and 
+The log may be controlled by :meth:`aiohttp.web.AppRunner` and
 :func:`aiohttp.web.run_app`.
 
 
