@@ -4,6 +4,7 @@ import attr
 from multidict import CIMultiDict
 from yarl import URL
 
+from .client import ClientSession
 from .client_reqrep import ClientResponse
 from .signals import Signal
 
@@ -24,31 +25,31 @@ class TraceConfig:
     """First-class used to trace requests launched via ClientSession
     objects."""
 
-    def __init__(self, trace_config_ctx_factory=SimpleNamespace):
-        self._on_request_start = Signal(self)
-        self._on_request_chunk_sent = Signal(self)
-        self._on_response_chunk_received = Signal(self)
-        self._on_request_end = Signal(self)
-        self._on_request_exception = Signal(self)
-        self._on_request_redirect = Signal(self)
-        self._on_connection_queued_start = Signal(self)
-        self._on_connection_queued_end = Signal(self)
-        self._on_connection_create_start = Signal(self)
-        self._on_connection_create_end = Signal(self)
-        self._on_connection_reuseconn = Signal(self)
-        self._on_dns_resolvehost_start = Signal(self)
-        self._on_dns_resolvehost_end = Signal(self)
-        self._on_dns_cache_hit = Signal(self)
-        self._on_dns_cache_miss = Signal(self)
+    def __init__(self, trace_config_ctx_factory=SimpleNamespace) -> None:
+        self._on_request_start = Signal(self)  # type: Signal
+        self._on_request_chunk_sent = Signal(self)  # type: Signal
+        self._on_response_chunk_received = Signal(self)  # type: Signal
+        self._on_request_end = Signal(self)  # type: Signal
+        self._on_request_exception = Signal(self)  # type: Signal
+        self._on_request_redirect = Signal(self)  # type: Signal
+        self._on_connection_queued_start = Signal(self)  # type: Signal
+        self._on_connection_queued_end = Signal(self)  # type: Signal
+        self._on_connection_create_start = Signal(self)  # type: Signal
+        self._on_connection_create_end = Signal(self)  # type: Signal
+        self._on_connection_reuseconn = Signal(self)  # type: Signal
+        self._on_dns_resolvehost_start = Signal(self)  # type: Signal
+        self._on_dns_resolvehost_end = Signal(self)  # type: Signal
+        self._on_dns_cache_hit = Signal(self)  # type: Signal
+        self._on_dns_cache_miss = Signal(self)  # type: Signal
 
         self._trace_config_ctx_factory = trace_config_ctx_factory
 
-    def trace_config_ctx(self, trace_request_ctx=None):
+    def trace_config_ctx(self, trace_request_ctx=None) -> SimpleNamespace:
         """ Return a new trace_config_ctx instance """
         return self._trace_config_ctx_factory(
             trace_request_ctx=trace_request_ctx)
 
-    def freeze(self):
+    def freeze(self) -> None:
         self._on_request_start.freeze()
         self._on_request_chunk_sent.freeze()
         self._on_response_chunk_received.freeze()
@@ -66,63 +67,63 @@ class TraceConfig:
         self._on_dns_cache_miss.freeze()
 
     @property
-    def on_request_start(self):
+    def on_request_start(self) -> Signal:
         return self._on_request_start
 
     @property
-    def on_request_chunk_sent(self):
+    def on_request_chunk_sent(self) -> Signal:
         return self._on_request_chunk_sent
 
     @property
-    def on_response_chunk_received(self):
+    def on_response_chunk_received(self) -> Signal:
         return self._on_response_chunk_received
 
     @property
-    def on_request_end(self):
+    def on_request_end(self) -> Signal:
         return self._on_request_end
 
     @property
-    def on_request_exception(self):
+    def on_request_exception(self) -> Signal:
         return self._on_request_exception
 
     @property
-    def on_request_redirect(self):
+    def on_request_redirect(self) -> Signal:
         return self._on_request_redirect
 
     @property
-    def on_connection_queued_start(self):
+    def on_connection_queued_start(self) -> Signal:
         return self._on_connection_queued_start
 
     @property
-    def on_connection_queued_end(self):
+    def on_connection_queued_end(self) -> Signal:
         return self._on_connection_queued_end
 
     @property
-    def on_connection_create_start(self):
+    def on_connection_create_start(self) -> Signal:
         return self._on_connection_create_start
 
     @property
-    def on_connection_create_end(self):
+    def on_connection_create_end(self) -> Signal:
         return self._on_connection_create_end
 
     @property
-    def on_connection_reuseconn(self):
+    def on_connection_reuseconn(self) -> Signal:
         return self._on_connection_reuseconn
 
     @property
-    def on_dns_resolvehost_start(self):
+    def on_dns_resolvehost_start(self) -> Signal:
         return self._on_dns_resolvehost_start
 
     @property
-    def on_dns_resolvehost_end(self):
+    def on_dns_resolvehost_end(self) -> Signal:
         return self._on_dns_resolvehost_end
 
     @property
-    def on_dns_cache_hit(self):
+    def on_dns_cache_hit(self) -> Signal:
         return self._on_dns_cache_hit
 
     @property
-    def on_dns_cache_miss(self):
+    def on_dns_cache_miss(self) -> Signal:
         return self._on_dns_cache_miss
 
 
@@ -226,110 +227,118 @@ class Trace:
     """ Internal class used to keep together the main dependencies used
     at the moment of send a signal."""
 
-    def __init__(self, session, trace_config, trace_config_ctx):
+    def __init__(self, session: ClientSession, trace_config: TraceConfig,
+                 trace_config_ctx) -> None:
         self._trace_config = trace_config
         self._trace_config_ctx = trace_config_ctx
         self._session = session
 
-    async def send_request_start(self, method, url, headers):
+    async def send_request_start(self, method: str, url: URL,
+                                 headers: CIMultiDict) -> None:
         return await self._trace_config.on_request_start.send(
             self._session,
             self._trace_config_ctx,
             TraceRequestStartParams(method, url, headers)
         )
 
-    async def send_request_chunk_sent(self, chunk):
+    async def send_request_chunk_sent(self, chunk: bytes) -> None:
         return await self._trace_config.on_request_chunk_sent.send(
             self._session,
             self._trace_config_ctx,
             TraceRequestChunkSentParams(chunk)
         )
 
-    async def send_response_chunk_received(self, chunk):
+    async def send_response_chunk_received(self, chunk: bytes) -> None:
         return await self._trace_config.on_response_chunk_received.send(
             self._session,
             self._trace_config_ctx,
             TraceResponseChunkReceivedParams(chunk)
         )
 
-    async def send_request_end(self, method, url, headers, response):
+    async def send_request_end(self, method: str, url: URL,
+                               headers: CIMultiDict,
+                               response: ClientResponse) -> None:
         return await self._trace_config.on_request_end.send(
             self._session,
             self._trace_config_ctx,
             TraceRequestEndParams(method, url, headers, response)
         )
 
-    async def send_request_exception(self, method, url, headers, exception):
+    async def send_request_exception(self, method: str, url: URL,
+                                     headers: CIMultiDict,
+                                     exception: Exception) -> None:
         return await self._trace_config.on_request_exception.send(
             self._session,
             self._trace_config_ctx,
             TraceRequestExceptionParams(method, url, headers, exception)
         )
 
-    async def send_request_redirect(self, method, url, headers, response):
+    async def send_request_redirect(self, method: str, url: URL,
+                                    headers: CIMultiDict,
+                                    response: ClientResponse) -> None:
         return await self._trace_config._on_request_redirect.send(
             self._session,
             self._trace_config_ctx,
             TraceRequestRedirectParams(method, url, headers, response)
         )
 
-    async def send_connection_queued_start(self):
+    async def send_connection_queued_start(self) -> None:
         return await self._trace_config.on_connection_queued_start.send(
             self._session,
             self._trace_config_ctx,
             TraceConnectionQueuedStartParams()
         )
 
-    async def send_connection_queued_end(self):
+    async def send_connection_queued_end(self) -> None:
         return await self._trace_config.on_connection_queued_end.send(
             self._session,
             self._trace_config_ctx,
             TraceConnectionQueuedEndParams()
         )
 
-    async def send_connection_create_start(self):
+    async def send_connection_create_start(self) -> None:
         return await self._trace_config.on_connection_create_start.send(
             self._session,
             self._trace_config_ctx,
             TraceConnectionCreateStartParams()
         )
 
-    async def send_connection_create_end(self):
+    async def send_connection_create_end(self) -> None:
         return await self._trace_config.on_connection_create_end.send(
             self._session,
             self._trace_config_ctx,
             TraceConnectionCreateEndParams()
         )
 
-    async def send_connection_reuseconn(self):
+    async def send_connection_reuseconn(self) -> None:
         return await self._trace_config.on_connection_reuseconn.send(
             self._session,
             self._trace_config_ctx,
             TraceConnectionReuseconnParams()
         )
 
-    async def send_dns_resolvehost_start(self, host):
+    async def send_dns_resolvehost_start(self, host) -> None:  # TODO
         return await self._trace_config.on_dns_resolvehost_start.send(
             self._session,
             self._trace_config_ctx,
             TraceDnsResolveHostStartParams(host)
         )
 
-    async def send_dns_resolvehost_end(self, host):
+    async def send_dns_resolvehost_end(self, host: str) -> None:
         return await self._trace_config.on_dns_resolvehost_end.send(
             self._session,
             self._trace_config_ctx,
             TraceDnsResolveHostEndParams(host)
         )
 
-    async def send_dns_cache_hit(self, host):
+    async def send_dns_cache_hit(self, host: str) -> None:
         return await self._trace_config.on_dns_cache_hit.send(
             self._session,
             self._trace_config_ctx,
             TraceDnsCacheHitParams(host)
         )
 
-    async def send_dns_cache_miss(self, host):
+    async def send_dns_cache_miss(self, host: str) -> None:
         return await self._trace_config.on_dns_cache_miss.send(
             self._session,
             self._trace_config_ctx,

@@ -1,3 +1,5 @@
+from typing import Any
+
 from aiohttp.frozenlist import FrozenList
 
 
@@ -15,16 +17,16 @@ class Signal(FrozenList):
 
     __slots__ = ('_owner',)
 
-    def __init__(self, owner):
+    def __init__(self, owner) -> None:
         super().__init__()
         self._owner = owner
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<Signal owner={}, frozen={}, {!r}>'.format(self._owner,
                                                            self.frozen,
                                                            list(self))
 
-    async def send(self, *args, **kwargs):
+    async def send(self, *args: Any, **kwargs: Any) -> None:
         """
         Sends data to all registered receivers.
         """
