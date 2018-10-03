@@ -6,6 +6,7 @@ import re
 import signal
 import sys
 from contextlib import suppress
+from typing import Any, Optional
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -31,7 +32,7 @@ class GunicornWebWorker(base.Worker):
     DEFAULT_AIOHTTP_LOG_FORMAT = AccessLogger.LOG_FORMAT
     DEFAULT_GUNICORN_LOG_FORMAT = GunicornAccessLogFormat.default
 
-    def __init__(self, *args, **kw):  # pragma: no cover
+    def __init__(self, *args: Any, **kw: Any) -> None:  # pragma: no cover
         super().__init__(*args, **kw)
 
         self._runner = None
@@ -39,7 +40,7 @@ class GunicornWebWorker(base.Worker):
         self.exit_code = 0
         self._notify_waiter = None
 
-    def init_process(self):
+    def init_process(self) -> None:
         # create new event_loop after fork
         asyncio.get_event_loop().close()
 
@@ -48,7 +49,7 @@ class GunicornWebWorker(base.Worker):
 
         super().init_process()
 
-    def run(self):
+    def run(self) -> None:
         access_log = self.log.access_log if self.cfg.accesslog else None
         params = dict(
             logger=self.log,
@@ -70,7 +71,7 @@ class GunicornWebWorker(base.Worker):
 
         sys.exit(self.exit_code)
 
-    async def _run(self):
+    async def _run(self) -> None:
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
 
         for sock in self.sockets:
@@ -100,7 +101,7 @@ class GunicornWebWorker(base.Worker):
 
         await self._runner.cleanup()
 
-    def _wait_next_notify(self):
+    def _wait_next_notify(self) -> asyncio.Future:
         self._notify_waiter_done()
 
         self._notify_waiter = waiter = self.loop.create_future()
@@ -108,7 +109,8 @@ class GunicornWebWorker(base.Worker):
 
         return waiter
 
-    def _notify_waiter_done(self, waiter=None):
+    def _notify_waiter_done(self,
+                            waiter: Optional[asyncio.Future]=None) -> None:
         if waiter is None:
             waiter = self._notify_waiter
         if waiter is not None:
@@ -117,7 +119,7 @@ class GunicornWebWorker(base.Worker):
         if waiter is self._notify_waiter:
             self._notify_waiter = None
 
-    def init_signals(self):
+    def init_signals(self) -> None:
         # Set up signals through the event loop API.
 
         self.loop.add_signal_handler(signal.SIGQUIT, self.handle_quit,
@@ -143,7 +145,7 @@ class GunicornWebWorker(base.Worker):
         signal.siginterrupt(signal.SIGTERM, False)
         signal.siginterrupt(signal.SIGUSR1, False)
 
-    def handle_quit(self, sig, frame):
+    def handle_quit(self, sig: signal.Signals, frame: Any) -> None:
         self.alive = False
 
         # worker_int callback
@@ -152,14 +154,14 @@ class GunicornWebWorker(base.Worker):
         # wakeup closing process
         self._notify_waiter_done()
 
-    def handle_abort(self, sig, frame):
+    def handle_abort(self, sig: signal.Signals, frame: Any) -> None:
         self.alive = False
         self.exit_code = 1
         self.cfg.worker_abort(self)
         sys.exit(1)
 
     @staticmethod
-    def _create_ssl_context(cfg):
+    def _create_ssl_context(cfg) -> ssl.SSLContext:
         """ Creates SSLContext instance for usage in asyncio.create_server.
 
         See ssl.SSLSocket.__init__ for more details.
@@ -176,7 +178,7 @@ class GunicornWebWorker(base.Worker):
             ctx.set_ciphers(cfg.ciphers)
         return ctx
 
-    def _get_valid_log_format(self, source_format):
+    def _get_valid_log_format(self, source_format: str) -> str:
         if source_format == self.DEFAULT_GUNICORN_LOG_FORMAT:
             return self.DEFAULT_AIOHTTP_LOG_FORMAT
         elif re.search(r'%\([^\)]+\)', source_format):
@@ -193,7 +195,7 @@ class GunicornWebWorker(base.Worker):
 
 class GunicornUVLoopWebWorker(GunicornWebWorker):
 
-    def init_process(self):
+    def init_process(self) -> None:
         import uvloop
 
         # Close any existing event loop before setting a
@@ -210,7 +212,7 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
 
 class GunicornTokioWebWorker(GunicornWebWorker):
 
-    def init_process(self):  # pragma: no cover
+    def init_process(self) -> None:  # pragma: no cover
         import tokio
 
         # Close any existing event loop before setting a
