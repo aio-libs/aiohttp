@@ -16,12 +16,12 @@ from typing import (TYPE_CHECKING, Any, ByteString, Callable, Dict,  # noqa
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
-from .helpers import _T, HeadersMixin, rfc822_formatted_time, sentinel
+from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import (RESPONSES, SERVER_SOFTWARE, HttpVersion, HttpVersion10,
                    HttpVersion11)
 from .http_writer import StreamWriter
 from .typedefs import LooseHeaders, _CIMultiDict
-from .web_request import Request
+from .web_request import BaseRequest
 
 
 __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
@@ -59,10 +59,10 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
         self._compression = False
-        self._compression_force = None  # type: Optional[bool]
+        self._compression_force = None  # type: Optional[ContentCoding]
         self._cookies = SimpleCookie()
 
-        self._req = None  # type: Optional[Request]
+        self._req = None  # type: Optional[BaseRequest]
         self._payload_writer = None  # type: Optional[StreamWriter]
         self._eof_sent = False
         self._body_length = 0
@@ -81,7 +81,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
         return self._payload_writer is not None
 
     @property
-    def task(self) -> asyncio.Task[_T]:
+    def task(self) -> asyncio.Task[None]:
         return getattr(self._req, 'task', None)
 
     @property
@@ -97,7 +97,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
         return self._compression
 
     @property
-    def reason(self) -> Optional[str]:
+    def reason(self) -> str:
         return self._reason
 
     def set_status(
@@ -129,11 +129,11 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
         return self._body_length
 
     @property
-    def output_length(self) -> None:
+    def output_length(self) -> int:
         warnings.warn('output_length is deprecated', DeprecationWarning)
         return self._payload_writer.buffer_size  # type: ignore
 
-    def enable_chunked_encoding(self, chunk_size: Any=None) -> None:
+    def enable_chunked_encoding(self, chunk_size: Optional[int]=None) -> None:
         """Enables automatic chunked transfer encoding."""
         self._chunked = True
 
@@ -149,15 +149,19 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
     ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
-        if type(force) == bool:
-            force = ContentCoding.deflate if force else ContentCoding.identity
-        elif force is not None:
-            assert isinstance(force, ContentCoding), ("force should one of "
-                                                      "None, bool or "
-                                                      "ContentEncoding")
+        if force is not None:
+            if isinstance(force, bool):
+                actual_force = ContentCoding.deflate \
+                    if force else ContentCoding.identity
+            elif isinstance(force, ContentCoding):
+                actual_force = force
+            else:
+                raise ValueError('force should be one of '
+                                 'None, bool or ContentEncoding')
+
+            self._compression_force = actual_force
 
         self._compression = True
-        self._compression_force = force
 
     @property
     def headers(self) -> CIMultiDict[str]:
@@ -325,7 +329,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
 
-    def _start_compression(self, request: Request) -> None:
+    def _start_compression(self, request: BaseRequest) -> None:
         if self._compression_force:
             self._do_start_compression(self._compression_force)
         else:
@@ -338,7 +342,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
                     self._do_start_compression(coding)
                     return
 
-    async def prepare(self, request: Request) -> Optional[StreamWriter]:
+    async def prepare(self, request: BaseRequest) -> Optional[StreamWriter]:
         if self._eof_sent:
             return None
         if self._payload_writer is not None:
@@ -349,7 +353,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
 
     async def _start(
         self,
-        request: Request,
+        request: BaseRequest,
         HttpVersion10: HttpVersion=HttpVersion10,
         HttpVersion11: HttpVersion=HttpVersion11,
         CONNECTION: str=hdrs.CONNECTION,
@@ -552,7 +556,7 @@ class Response(StreamResponse):
         else:
             self.body = body
 
-        self._compressed_body = None
+        self._compressed_body = None  # type: Optional[bytes]
 
     @property
     def body(self) -> Optional[Union[payload.Payload, bytes]]:
@@ -642,11 +646,13 @@ class Response(StreamResponse):
     async def write_eof(self) -> None:
         if self._eof_sent:
             return
+
         if self._compressed_body is not None:
             body = self._compressed_body
         else:
             body = self._body
-        if body is not None:
+
+        if body is not None and self._req is not None:
             if (self._req._method == hdrs.METH_HEAD or
                     self._status in [204, 304]):
                 await super().write_eof()
@@ -658,7 +664,7 @@ class Response(StreamResponse):
         else:
             await super().write_eof()
 
-    async def _start(self, request: Request) -> StreamWriter:
+    async def _start(self, request: BaseRequest) -> StreamWriter:
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if self._body is not None:
                 if isinstance(self._body, payload.Payload):
@@ -670,10 +676,11 @@ class Response(StreamResponse):
 
         return await super()._start(request)
 
-    def _do_start_compression(self, coding: ContentCoding) -> str:
-        if self._body_payload or self._chunked:
-            return super()._do_start_compression(coding)
-        if coding != ContentCoding.identity:
+    def _do_start_compression(self, coding: ContentCoding) -> None:
+        if isinstance(self._body, payload.Payload) or self._chunked:
+            super()._do_start_compression(coding)
+        elif isinstance(self._body, bytes) \
+                and coding != ContentCoding.identity:
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
