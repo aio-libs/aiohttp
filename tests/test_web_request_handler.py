@@ -8,7 +8,7 @@ async def serve(request):
     return web.Response()
 
 
-def test_repr() -> None:
+async def test_repr() -> None:
     manager = web.Server(serve)
     handler = manager()
 
@@ -18,7 +18,7 @@ def test_repr() -> None:
     assert '<RequestHandler connected>' == repr(handler)
 
 
-def test_connections() -> None:
+async def test_connections() -> None:
     manager = web.Server(serve)
     assert manager.connections == []
 
