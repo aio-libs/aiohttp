@@ -18,10 +18,6 @@ from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
                                        _default_expect_handler)
 
 
-def make_request(method, path):
-    return make_mocked_request(method, path)
-
-
 def make_handler():
 
     async def handler(request):
@@ -31,10 +27,8 @@ def make_handler():
 
 
 @pytest.fixture
-def app(loop):
-    app = web.Application()
-    app._set_loop(loop)
-    return app
+def app():
+    return web.Application()
 
 
 @pytest.fixture
@@ -74,7 +68,7 @@ def test_register_uncommon_http_methods(router) -> None:
 async def test_add_route_root(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/', handler)
-    req = make_request('GET', '/')
+    req = make_mocked_request('GET', '/')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -85,7 +79,7 @@ async def test_add_route_root(router) -> None:
 async def test_add_route_simple(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/handler/to/path', handler)
-    req = make_request('GET', '/handler/to/path')
+    req = make_mocked_request('GET', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -96,7 +90,7 @@ async def test_add_route_simple(router) -> None:
 async def test_add_with_matchdict(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/handler/{to}', handler)
-    req = make_request('GET', '/handler/tail')
+    req = make_mocked_request('GET', '/handler/tail')
     info = await router.resolve(req)
     assert info is not None
     assert {'to': 'tail'} == info
@@ -107,7 +101,7 @@ async def test_add_with_matchdict(router) -> None:
 async def test_add_with_matchdict_with_colon(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/handler/{to}', handler)
-    req = make_request('GET', '/handler/1:2:3')
+    req = make_mocked_request('GET', '/handler/1:2:3')
     info = await router.resolve(req)
     assert info is not None
     assert {'to': '1:2:3'} == info
@@ -118,7 +112,7 @@ async def test_add_with_matchdict_with_colon(router) -> None:
 async def test_add_route_with_add_get_shortcut(router) -> None:
     handler = make_handler()
     router.add_get('/handler/to/path', handler)
-    req = make_request('GET', '/handler/to/path')
+    req = make_mocked_request('GET', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -129,7 +123,7 @@ async def test_add_route_with_add_get_shortcut(router) -> None:
 async def test_add_route_with_add_post_shortcut(router) -> None:
     handler = make_handler()
     router.add_post('/handler/to/path', handler)
-    req = make_request('POST', '/handler/to/path')
+    req = make_mocked_request('POST', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -140,7 +134,7 @@ async def test_add_route_with_add_post_shortcut(router) -> None:
 async def test_add_route_with_add_put_shortcut(router) -> None:
     handler = make_handler()
     router.add_put('/handler/to/path', handler)
-    req = make_request('PUT', '/handler/to/path')
+    req = make_mocked_request('PUT', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -151,7 +145,7 @@ async def test_add_route_with_add_put_shortcut(router) -> None:
 async def test_add_route_with_add_patch_shortcut(router) -> None:
     handler = make_handler()
     router.add_patch('/handler/to/path', handler)
-    req = make_request('PATCH', '/handler/to/path')
+    req = make_mocked_request('PATCH', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -162,7 +156,7 @@ async def test_add_route_with_add_patch_shortcut(router) -> None:
 async def test_add_route_with_add_delete_shortcut(router) -> None:
     handler = make_handler()
     router.add_delete('/handler/to/path', handler)
-    req = make_request('DELETE', '/handler/to/path')
+    req = make_mocked_request('DELETE', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -173,7 +167,7 @@ async def test_add_route_with_add_delete_shortcut(router) -> None:
 async def test_add_route_with_add_head_shortcut(router) -> None:
     handler = make_handler()
     router.add_head('/handler/to/path', handler)
-    req = make_request('HEAD', '/handler/to/path')
+    req = make_mocked_request('HEAD', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 0 == len(info)
@@ -185,7 +179,7 @@ async def test_add_with_name(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/handler/to/path', handler,
                      name='name')
-    req = make_request('GET', '/handler/to/path')
+    req = make_mocked_request('GET', '/handler/to/path')
     info = await router.resolve(req)
     assert info is not None
     assert 'name' == info.route.name
@@ -194,7 +188,7 @@ async def test_add_with_name(router) -> None:
 async def test_add_with_tailing_slash(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/handler/to/path/', handler)
-    req = make_request('GET', '/handler/to/path/')
+    req = make_mocked_request('GET', '/handler/to/path/')
     info = await router.resolve(req)
     assert info is not None
     assert {} == info
@@ -235,7 +229,7 @@ async def test_add_url_escaping(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/+$', handler)
 
-    req = make_request('GET', '/+$')
+    req = make_mocked_request('GET', '/+$')
     info = await router.resolve(req)
     assert info is not None
     assert handler is info.handler
@@ -245,12 +239,12 @@ async def test_any_method(router) -> None:
     handler = make_handler()
     route = router.add_route(hdrs.METH_ANY, '/', handler)
 
-    req = make_request('GET', '/')
+    req = make_mocked_request('GET', '/')
     info1 = await router.resolve(req)
     assert info1 is not None
     assert route is info1.route
 
-    req = make_request('POST', '/')
+    req = make_mocked_request('POST', '/')
     info2 = await router.resolve(req)
     assert info2 is not None
 
@@ -262,7 +256,7 @@ async def test_match_second_result_in_table(router) -> None:
     handler2 = make_handler()
     router.add_route('GET', '/h1', handler1)
     router.add_route('POST', '/h2', handler2)
-    req = make_request('POST', '/h2')
+    req = make_mocked_request('POST', '/h2')
     info = await router.resolve(req)
     assert info is not None
     assert {} == info
@@ -274,7 +268,7 @@ async def test_raise_method_not_allowed(router) -> None:
     handler2 = make_handler()
     router.add_route('GET', '/', handler1)
     router.add_route('POST', '/', handler2)
-    req = make_request('PUT', '/')
+    req = make_mocked_request('PUT', '/')
 
     match_info = await router.resolve(req)
     assert isinstance(match_info.route, SystemRoute)
@@ -292,7 +286,7 @@ async def test_raise_method_not_allowed(router) -> None:
 async def test_raise_method_not_found(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/a', handler)
-    req = make_request('GET', '/b')
+    req = make_mocked_request('GET', '/b')
 
     match_info = await router.resolve(req)
     assert isinstance(match_info.route, SystemRoute)
@@ -525,13 +519,13 @@ async def test_add_route_with_re(router) -> None:
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:\d+}', handler)
 
-    req = make_request('GET', '/handler/1234')
+    req = make_mocked_request('GET', '/handler/1234')
     info = await router.resolve(req)
     assert info is not None
     assert {'to': '1234'} == info
 
     router.add_route('GET', r'/handler/{name}.html', handler)
-    req = make_request('GET', '/handler/test.html')
+    req = make_mocked_request('GET', '/handler/test.html')
     info = await router.resolve(req)
     assert {'name': 'test'} == info
 
@@ -539,13 +533,13 @@ async def test_add_route_with_re(router) -> None:
 async def test_add_route_with_re_and_slashes(router) -> None:
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:[^/]+/?}', handler)
-    req = make_request('GET', '/handler/1234/')
+    req = make_mocked_request('GET', '/handler/1234/')
     info = await router.resolve(req)
     assert info is not None
     assert {'to': '1234/'} == info
 
     router.add_route('GET', r'/handler/{to:.+}', handler)
-    req = make_request('GET', '/handler/1234/5/6/7')
+    req = make_mocked_request('GET', '/handler/1234/5/6/7')
     info = await router.resolve(req)
     assert info is not None
     assert {'to': '1234/5/6/7'} == info
@@ -555,7 +549,7 @@ async def test_add_route_with_re_not_match(router) -> None:
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:\d+}', handler)
 
-    req = make_request('GET', '/handler/tail')
+    req = make_mocked_request('GET', '/handler/tail')
     match_info = await router.resolve(req)
     assert isinstance(match_info.route, SystemRoute)
     assert {} == match_info
@@ -566,7 +560,7 @@ async def test_add_route_with_re_not_match(router) -> None:
 async def test_add_route_with_re_including_slashes(router) -> None:
     handler = make_handler()
     router.add_route('GET', r'/handler/{to:.+}/tail', handler)
-    req = make_request('GET', '/handler/re/with/slashes/tail')
+    req = make_mocked_request('GET', '/handler/re/with/slashes/tail')
     info = await router.resolve(req)
     assert info is not None
     assert {'to': 're/with/slashes'} == info
@@ -623,7 +617,7 @@ async def test_regular_match_info(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/get/{name}', handler)
 
-    req = make_request('GET', '/get/john')
+    req = make_mocked_request('GET', '/get/john')
     match_info = await router.resolve(req)
     assert {'name': 'john'} == match_info
     assert re.match("<MatchInfo {'name': 'john'}: .+<Dynamic.+>>",
@@ -634,13 +628,13 @@ async def test_match_info_with_plus(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/get/{version}', handler)
 
-    req = make_request('GET', '/get/1.0+test')
+    req = make_mocked_request('GET', '/get/1.0+test')
     match_info = await router.resolve(req)
     assert {'version': '1.0+test'} == match_info
 
 
 async def test_not_found_repr(router) -> None:
-    req = make_request('POST', '/path/to')
+    req = make_mocked_request('POST', '/path/to')
     match_info = await router.resolve(req)
     assert "<MatchInfoError 404: Not Found>" == repr(match_info)
 
@@ -652,7 +646,7 @@ async def test_not_allowed_repr(router) -> None:
     handler2 = make_handler()
     router.add_route('POST', '/path/to', handler2)
 
-    req = make_request('PUT', '/path/to')
+    req = make_mocked_request('PUT', '/path/to')
     match_info = await router.resolve(req)
     assert "<MatchInfoError 405: Method Not Allowed>" == repr(match_info)
 
@@ -697,7 +691,7 @@ def test_expect_handler_non_coroutine(router) -> None:
 async def test_dynamic_match_non_ascii(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/{var}', handler)
-    req = make_request(
+    req = make_mocked_request(
         'GET',
         '/%D1%80%D1%83%D1%81%20%D1%82%D0%B5%D0%BA%D1%81%D1%82')
     match_info = await router.resolve(req)
@@ -707,7 +701,7 @@ async def test_dynamic_match_non_ascii(router) -> None:
 async def test_dynamic_match_with_static_part(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/{name}.html', handler)
-    req = make_request('GET', '/file.html')
+    req = make_mocked_request('GET', '/file.html')
     match_info = await router.resolve(req)
     assert {'name': 'file'} == match_info
 
@@ -715,7 +709,7 @@ async def test_dynamic_match_with_static_part(router) -> None:
 async def test_dynamic_match_two_part2(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/{name}.{ext}', handler)
-    req = make_request('GET', '/file.html')
+    req = make_mocked_request('GET', '/file.html')
     match_info = await router.resolve(req)
     assert {'name': 'file', 'ext': 'html'} == match_info
 
@@ -724,7 +718,7 @@ async def test_dynamic_match_unquoted_path(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/{path}/{subpath}', handler)
     resource_id = 'my%2Fpath%7Cwith%21some%25strange%24characters'
-    req = make_request('GET', '/path/{0}'.format(resource_id))
+    req = make_mocked_request('GET', '/path/{0}'.format(resource_id))
     match_info = await router.resolve(req)
     assert match_info == {
         'path': 'path',
@@ -858,7 +852,7 @@ def test_error_on_adding_route_after_wildcard(router) -> None:
 async def test_http_exception_is_none_when_resolved(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/', handler)
-    req = make_request('GET', '/')
+    req = make_mocked_request('GET', '/')
     info = await router.resolve(req)
     assert info.http_exception is None
 
@@ -866,7 +860,7 @@ async def test_http_exception_is_none_when_resolved(router) -> None:
 async def test_http_exception_is_not_none_when_not_resolved(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/', handler)
-    req = make_request('GET', '/abc')
+    req = make_mocked_request('GET', '/abc')
     info = await router.resolve(req)
     assert info.http_exception.status == 404
 
@@ -874,7 +868,7 @@ async def test_http_exception_is_not_none_when_not_resolved(router) -> None:
 async def test_match_info_get_info_plain(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/', handler)
-    req = make_request('GET', '/')
+    req = make_mocked_request('GET', '/')
     info = await router.resolve(req)
     assert info.get_info() == {'path': '/'}
 
@@ -882,7 +876,7 @@ async def test_match_info_get_info_plain(router) -> None:
 async def test_match_info_get_info_dynamic(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/{a}', handler)
-    req = make_request('GET', '/value')
+    req = make_mocked_request('GET', '/value')
     info = await router.resolve(req)
     assert info.get_info() == {
         'pattern': re.compile(PATH_SEP+'(?P<a>[^{}/]+)'),
@@ -892,7 +886,7 @@ async def test_match_info_get_info_dynamic(router) -> None:
 async def test_match_info_get_info_dynamic2(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/{a}/{b}', handler)
-    req = make_request('GET', '/path/to')
+    req = make_mocked_request('GET', '/path/to')
     info = await router.resolve(req)
     assert info.get_info() == {
         'pattern': re.compile(PATH_SEP +
@@ -912,7 +906,7 @@ def test_static_resource_get_info(router) -> None:
 async def test_system_route_get_info(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/', handler)
-    req = make_request('GET', '/abc')
+    req = make_mocked_request('GET', '/abc')
     info = await router.resolve(req)
     assert info.get_info()['http_exception'].status == 404
 
@@ -1004,27 +998,27 @@ def test_url_for_in_resource_route(router) -> None:
     assert URL('/get/John') == route.url_for(name='John')
 
 
-def test_subapp_get_info(app, loop) -> None:
+def test_subapp_get_info(app) -> None:
     subapp = web.Application()
     resource = subapp.add_subapp('/pre', subapp)
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
-def test_subapp_url_for(app, loop) -> None:
+def test_subapp_url_for(app) -> None:
     subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
     with pytest.raises(RuntimeError):
         resource.url_for()
 
 
-def test_subapp_repr(app, loop) -> None:
+def test_subapp_repr(app) -> None:
     subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
     assert repr(resource).startswith(
         '<PrefixedSubAppResource /pre -> <Application')
 
 
-def test_subapp_len(app, loop) -> None:
+def test_subapp_len(app) -> None:
     subapp = web.Application()
     subapp.router.add_get('/', make_handler(), allow_head=False)
     subapp.router.add_post('/', make_handler())
@@ -1032,7 +1026,7 @@ def test_subapp_len(app, loop) -> None:
     assert len(resource) == 2
 
 
-def test_subapp_iter(app, loop) -> None:
+def test_subapp_iter(app) -> None:
     subapp = web.Application()
     r1 = subapp.router.add_get('/', make_handler(), allow_head=False)
     r2 = subapp.router.add_post('/', make_handler())
@@ -1051,14 +1045,14 @@ def test_frozen_router(router) -> None:
         router.add_get('/', make_handler())
 
 
-def test_frozen_router_subapp(app, loop) -> None:
+def test_frozen_router_subapp(app) -> None:
     subapp = web.Application()
     subapp.freeze()
     with pytest.raises(RuntimeError):
         app.add_subapp('/', subapp)
 
 
-def test_frozen_app_on_subapp(app, loop) -> None:
+def test_frozen_app_on_subapp(app) -> None:
     app.freeze()
     subapp = web.Application()
     with pytest.raises(RuntimeError):
@@ -1088,13 +1082,13 @@ def test_dynamic_url_with_name_started_from_undescore(router) -> None:
     assert URL('/get/John') == route.url_for(_name='John')
 
 
-def test_cannot_add_subapp_with_empty_prefix(app, loop) -> None:
+def test_cannot_add_subapp_with_empty_prefix(app) -> None:
     subapp = web.Application()
     with pytest.raises(ValueError):
         app.add_subapp('', subapp)
 
 
-def test_cannot_add_subapp_with_slash_prefix(app, loop) -> None:
+def test_cannot_add_subapp_with_slash_prefix(app) -> None:
     subapp = web.Application()
     with pytest.raises(ValueError):
         app.add_subapp('/', subapp)
@@ -1143,7 +1137,7 @@ def test_static_resource_canonical() -> None:
     assert res.canonical == canonical
 
 
-def test_prefixed_subapp_resource_canonical(app, loop) -> None:
+def test_prefixed_subapp_resource_canonical(app) -> None:
     canonical = '/prefix'
     subapp = web.Application()
     res = subapp.add_subapp(canonical, subapp)
