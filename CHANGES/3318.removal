@@ -1,0 +1,1 @@
+Deprecated use of boolean in resp.enable_compression()
