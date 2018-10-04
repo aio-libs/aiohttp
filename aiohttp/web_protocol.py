@@ -370,6 +370,9 @@ class RequestHandler(BaseProtocol):
             try:
                 try:
                     resp = await self._request_handler(request)
+                    if resp is None:
+                        self.log_debug('Possibly missing return ' +
+                                       ' statement on request handler')
                 except HTTPException as exc:
                     resp = exc
                 except asyncio.CancelledError:
