@@ -8,7 +8,7 @@ from aiohttp.locks import EventResultOrError
 
 class TestEventResultOrError:
 
-    async def test_set_exception(self, loop):
+    async def test_set_exception(self, loop) -> None:
         ev = EventResultOrError(loop=loop)
 
         async def c():
@@ -24,7 +24,7 @@ class TestEventResultOrError:
         ev.set(exc=e)
         assert (await t) == e
 
-    async def test_set(self, loop):
+    async def test_set(self, loop) -> None:
         ev = EventResultOrError(loop=loop)
 
         async def c():
@@ -36,7 +36,7 @@ class TestEventResultOrError:
         ev.set()
         assert (await t) == 1
 
-    async def test_cancel_waiters(self, loop):
+    async def test_cancel_waiters(self, loop) -> None:
         ev = EventResultOrError(loop=loop)
 
         async def c():

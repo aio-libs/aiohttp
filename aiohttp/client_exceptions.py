@@ -2,12 +2,24 @@
 
 import asyncio
 import warnings
+from typing import TYPE_CHECKING, Optional, Tuple
+
+from yarl import URL
+
+from .typedefs import _CIMultiDict
 
 
 try:
     import ssl
+    SSLContext = ssl.SSLContext
 except ImportError:  # pragma: no cover
-    ssl = None  # type: ignore
+    ssl = SSLContext = None  # type: ignore
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .client_reqrep import RequestInfo, ClientResponse, ConnectionKey
+else:
+    RequestInfo = ClientResponse = ConnectionKey = None
 
 
 __all__ = (
@@ -38,8 +50,12 @@ class ClientResponseError(ClientError):
     request_info: instance of RequestInfo
     """
 
-    def __init__(self, request_info, history, *,
-                 code=None, status=None, message='', headers=None):
+    def __init__(self, request_info: RequestInfo,
+                 history: Tuple[ClientResponse, ...], *,
+                 code: Optional[int]=None,
+                 status: Optional[int]=None,
+                 message: str='',
+                 headers: Optional[_CIMultiDict]=None) -> None:
         self.request_info = request_info
         if code is not None:
             if status is not None:
@@ -62,14 +78,14 @@ class ClientResponseError(ClientError):
         super().__init__("%s, message='%s'" % (self.status, message))
 
     @property
-    def code(self):
+    def code(self) -> int:
         warnings.warn("code property is deprecated, use status instead",
                       DeprecationWarning,
                       stacklevel=2)
         return self.status
 
     @code.setter
-    def code(self, value):
+    def code(self, value: int) -> None:
         warnings.warn("code property is deprecated, use status instead",
                       DeprecationWarning,
                       stacklevel=2)
@@ -111,28 +127,29 @@ class ClientConnectorError(ClientOSError):
     Raised in :class:`aiohttp.connector.TCPConnector` if
         connection to proxy can not be established.
     """
-    def __init__(self, connection_key, os_error):
+    def __init__(self, connection_key: ConnectionKey,
+                 os_error: OSError) -> None:
         self._conn_key = connection_key
         self._os_error = os_error
         super().__init__(os_error.errno, os_error.strerror)
 
     @property
-    def os_error(self):
+    def os_error(self) -> OSError:
         return self._os_error
 
     @property
-    def host(self):
+    def host(self) -> str:
         return self._conn_key.host
 
     @property
-    def port(self):
+    def port(self) -> int:
         return self._conn_key.port
 
     @property
-    def ssl(self):
+    def ssl(self) -> Optional[SSLContext]:
         return self._conn_key.ssl
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} [{1}]'
                 .format(self, self.strerror))
 
@@ -152,7 +169,7 @@ class ServerConnectionError(ClientConnectionError):
 class ServerDisconnectedError(ServerConnectionError):
     """Server disconnected."""
 
-    def __init__(self, message=None):
+    def __init__(self, message: Optional[str]=None) -> None:
         self.message = message
 
 
@@ -163,13 +180,14 @@ class ServerTimeoutError(ServerConnectionError, asyncio.TimeoutError):
 class ServerFingerprintMismatch(ServerConnectionError):
     """SSL certificate does not match expected fingerprint."""
 
-    def __init__(self, expected, got, host, port):
+    def __init__(self, expected: bytes, got: bytes,
+                 host: str, port: int) -> None:
         self.expected = expected
         self.got = got
         self.host = host
         self.port = port
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{} expected={} got={} host={} port={}>'.format(
             self.__class__.__name__, self.expected, self.got,
             self.host, self.port)
@@ -187,14 +205,14 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url):
+    def __init__(self, url: URL) -> None:
         super().__init__(url)
 
     @property
-    def url(self):
+    def url(self) -> URL:
         return self.args[0]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '<{} {}>'.format(self.__class__.__name__, self.url)
 
 
@@ -223,27 +241,28 @@ class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore
 class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
     """Response certificate error."""
 
-    def __init__(self, connection_key, certificate_error):
+    def __init__(self, connection_key:
+                 ConnectionKey, certificate_error: Exception) -> None:
         self._conn_key = connection_key
         self._certificate_error = certificate_error
 
     @property
-    def certificate_error(self):
+    def certificate_error(self) -> Exception:
         return self._certificate_error
 
     @property
-    def host(self):
+    def host(self) -> str:
         return self._conn_key.host
 
     @property
-    def port(self):
+    def port(self) -> int:
         return self._conn_key.port
 
     @property
-    def ssl(self):
+    def ssl(self) -> bool:
         return self._conn_key.is_ssl
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} '
                 '[{0.certificate_error.__class__.__name__}: '
                 '{0.certificate_error.args}]'.format(self))

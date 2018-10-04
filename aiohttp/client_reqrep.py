@@ -318,6 +318,8 @@ class ClientRequest:
         # add host
         if hdrs.HOST not in used_headers:
             netloc = self.url.raw_host
+            if helpers.is_ipv6_address(netloc):
+                netloc = '[{}]'.format(netloc)
             if not self.url.is_default_port():
                 netloc += ':' + str(self.url.port)
             self.headers[hdrs.HOST] = netloc
@@ -845,6 +847,7 @@ class ClientResponse(HeadersMixin):
 
     def raise_for_status(self) -> None:
         if 400 <= self.status:
+            assert self.reason  # always not None for started response
             raise ClientResponseError(
                 self.request_info,
                 self.history,

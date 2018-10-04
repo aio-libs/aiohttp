@@ -63,7 +63,7 @@ def worker(request, loop):
     return ret
 
 
-def test_init_process(worker):
+def test_init_process(worker) -> None:
     with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
         try:
             worker.init_process()
@@ -75,7 +75,7 @@ def test_init_process(worker):
         assert m_asyncio.set_event_loop.called
 
 
-def test_run(worker, loop):
+def test_run(worker, loop) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
@@ -88,7 +88,7 @@ def test_run(worker, loop):
     assert loop.is_closed()
 
 
-def test_run_async_factory(worker, loop):
+def test_run_async_factory(worker, loop) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
@@ -106,7 +106,7 @@ def test_run_async_factory(worker, loop):
     assert loop.is_closed()
 
 
-def test_handle_quit(worker, loop):
+def test_handle_quit(worker, loop) -> None:
     worker.loop = mock.Mock()
     worker.handle_quit(object(), object())
     assert not worker.alive
@@ -115,7 +115,7 @@ def test_handle_quit(worker, loop):
         0.1, worker._notify_waiter_done)
 
 
-def test_handle_abort(worker):
+def test_handle_abort(worker) -> None:
     with mock.patch('aiohttp.worker.sys') as m_sys:
         worker.handle_abort(object(), object())
         assert not worker.alive
@@ -123,7 +123,7 @@ def test_handle_abort(worker):
         m_sys.exit.assert_called_with(1)
 
 
-def test__wait_next_notify(worker):
+def test__wait_next_notify(worker) -> None:
     worker.loop = mock.Mock()
     worker._notify_waiter_done = mock.Mock()
     fut = worker._wait_next_notify()
@@ -134,7 +134,7 @@ def test__wait_next_notify(worker):
                                               fut)
 
 
-def test__notify_waiter_done(worker):
+def test__notify_waiter_done(worker) -> None:
     worker._notify_waiter = None
     worker._notify_waiter_done()
     assert worker._notify_waiter is None
@@ -147,7 +147,7 @@ def test__notify_waiter_done(worker):
     waiter.set_result.assert_called_with(True)
 
 
-def test__notify_waiter_done_explicit_waiter(worker):
+def test__notify_waiter_done_explicit_waiter(worker) -> None:
     worker._notify_waiter = None
     assert worker._notify_waiter is None
 
@@ -161,7 +161,7 @@ def test__notify_waiter_done_explicit_waiter(worker):
     assert not waiter2.set_result.called
 
 
-def test_init_signals(worker):
+def test_init_signals(worker) -> None:
     worker.loop = mock.Mock()
     worker.init_signals()
     assert worker.loop.add_signal_handler.called
@@ -172,17 +172,18 @@ def test_init_signals(worker):
     (AsyncioWorker.DEFAULT_GUNICORN_LOG_FORMAT,
      AsyncioWorker.DEFAULT_AIOHTTP_LOG_FORMAT),
 ])
-def test__get_valid_log_format_ok(worker, source, result):
+def test__get_valid_log_format_ok(worker, source, result) -> None:
     assert result == worker._get_valid_log_format(source)
 
 
-def test__get_valid_log_format_exc(worker):
+def test__get_valid_log_format_exc(worker) -> None:
     with pytest.raises(ValueError) as exc:
         worker._get_valid_log_format(WRONG_LOG_FORMAT)
     assert '%(name)s' in str(exc)
 
 
-async def test__run_ok_parent_changed(worker, loop, aiohttp_unused_port):
+async def test__run_ok_parent_changed(worker, loop,
+                                      aiohttp_unused_port) -> None:
     skip_if_no_dict(loop)
 
     worker.ppid = 0
@@ -208,7 +209,7 @@ async def test__run_ok_parent_changed(worker, loop, aiohttp_unused_port):
     assert worker._runner.server is None
 
 
-async def test__run_exc(worker, loop, aiohttp_unused_port):
+async def test__run_exc(worker, loop, aiohttp_unused_port) -> None:
     skip_if_no_dict(loop)
 
     worker.ppid = os.getppid()
@@ -268,7 +269,7 @@ async def test__run_ok_max_requests_exceeded(worker, loop,
     assert worker._runner.server is None
 
 
-def test__create_ssl_context_without_certs_and_ciphers(worker):
+def test__create_ssl_context_without_certs_and_ciphers(worker) -> None:
     here = pathlib.Path(__file__).parent
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
@@ -280,7 +281,7 @@ def test__create_ssl_context_without_certs_and_ciphers(worker):
     assert isinstance(crt, ssl.SSLContext)
 
 
-def test__create_ssl_context_with_ciphers(worker):
+def test__create_ssl_context_with_ciphers(worker) -> None:
     here = pathlib.Path(__file__).parent
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
@@ -292,7 +293,7 @@ def test__create_ssl_context_with_ciphers(worker):
     assert isinstance(ctx, ssl.SSLContext)
 
 
-def test__create_ssl_context_with_ca_certs(worker):
+def test__create_ssl_context_with_ca_certs(worker) -> None:
     here = pathlib.Path(__file__).parent
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL

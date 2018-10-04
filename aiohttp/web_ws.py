@@ -237,12 +237,12 @@ class WebSocketResponse(StreamResponse):
     def exception(self):
         return self._exception
 
-    async def ping(self, message='b'):
+    async def ping(self, message=b''):
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')
         await self._writer.ping(message)
 
-    async def pong(self, message='b'):
+    async def pong(self, message=b''):
         # unsolicited pong
         if self._writer is None:
             raise RuntimeError('Call .prepare() first')

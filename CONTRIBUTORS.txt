@@ -45,6 +45,7 @@ Brian Muller
 Bryce Drennan
 Carl George
 Cecile Tonglet
+Colin Dunklau
 Chien-Wei Huang
 Chih-Yuan Chen
 Chris AtLee
@@ -64,6 +65,7 @@ Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
 Dmitry Doroshev
+Dmitry Lukashin
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Kuznetsov
@@ -161,6 +163,7 @@ Paul Colomiets
 Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
+Pavel Polyakov
 Pawel Miech
 Pepe Osca
 Philipp A.
