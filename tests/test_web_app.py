@@ -10,7 +10,8 @@ from aiohttp.helpers import DEBUG, PY_36
 from aiohttp.test_utils import make_mocked_coro
 
 
-def test_app_ctor(loop) -> None:
+async def test_app_ctor() -> None:
+    loop = asyncio.get_event_loop()
     with pytest.warns(DeprecationWarning):
         app = web.Application(loop=loop)
     assert loop is app.loop
@@ -27,20 +28,24 @@ def test_app_default_loop() -> None:
     assert app.loop is None
 
 
-def test_set_loop(loop) -> None:
+async def test_set_loop() -> None:
+    loop = asyncio.get_event_loop()
     app = web.Application()
     app._set_loop(loop)
     assert app.loop is loop
 
 
-def test_set_loop_default_loop(loop) -> None:
+def test_set_loop_default_loop() -> None:
+    loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     app = web.Application()
     app._set_loop(None)
     assert app.loop is loop
+    asyncio.set_event_loop(None)
 
 
-def test_set_loop_with_different_loops(loop) -> None:
+def test_set_loop_with_different_loops() -> None:
+    loop = asyncio.new_event_loop()
     app = web.Application()
     app._set_loop(loop)
     assert app.loop is loop
@@ -50,37 +55,38 @@ def test_set_loop_with_different_loops(loop) -> None:
 
 
 @pytest.mark.parametrize('debug', [True, False])
-def test_app_make_handler_debug_exc(loop, mocker, debug) -> None:
+async def test_app_make_handler_debug_exc(mocker, debug) -> None:
     app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web_app.Server')
 
-    app._make_handler(loop=loop)
+    app._make_handler()
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
                            access_log_class=mock.ANY,
-                           loop=loop,
+                           loop=asyncio.get_event_loop(),
                            debug=debug)
 
 
-def test_app_make_handler_args(loop, mocker) -> None:
+async def test_app_make_handler_args(mocker) -> None:
     app = web.Application(handler_args={'test': True})
     srv = mocker.patch('aiohttp.web_app.Server')
 
-    app._make_handler(loop=loop)
+    app._make_handler()
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
                            access_log_class=mock.ANY,
-                           loop=loop, debug=mock.ANY, test=True)
+                           loop=asyncio.get_event_loop(),
+                           debug=mock.ANY, test=True)
 
 
-def test_app_make_handler_access_log_class(loop, mocker) -> None:
+async def test_app_make_handler_access_log_class(mocker) -> None:
     class Logger:
         pass
 
     app = web.Application()
 
     with pytest.raises(TypeError):
-        app._make_handler(access_log_class=Logger, loop=loop)
+        app._make_handler(access_log_class=Logger)
 
     class Logger(AbstractAccessLogger):
 
@@ -89,25 +95,27 @@ def test_app_make_handler_access_log_class(loop, mocker) -> None:
 
     srv = mocker.patch('aiohttp.web_app.Server')
 
-    app._make_handler(access_log_class=Logger, loop=loop)
+    app._make_handler(access_log_class=Logger)
     srv.assert_called_with(app._handle,
                            access_log_class=Logger,
                            request_factory=app._make_request,
-                           loop=loop, debug=mock.ANY)
+                           loop=asyncio.get_event_loop(),
+                           debug=mock.ANY)
 
     app = web.Application(handler_args={'access_log_class': Logger})
-    app._make_handler(access_log_class=Logger, loop=loop)
+    app._make_handler(access_log_class=Logger)
     srv.assert_called_with(app._handle,
                            access_log_class=Logger,
                            request_factory=app._make_request,
-                           loop=loop, debug=mock.ANY)
+                           loop=asyncio.get_event_loop(),
+                           debug=mock.ANY)
 
 
-def test_app_make_handler_raises_deprecation_warning(loop) -> None:
+async def test_app_make_handler_raises_deprecation_warning() -> None:
     app = web.Application()
 
     with pytest.warns(DeprecationWarning):
-        app.make_handler(loop=loop)
+        app.make_handler()
 
 
 async def test_app_register_on_finish() -> None:
@@ -122,12 +130,12 @@ async def test_app_register_on_finish() -> None:
     cb2.assert_called_once_with(app)
 
 
-async def test_app_register_coro(loop) -> None:
+async def test_app_register_coro() -> None:
     app = web.Application()
-    fut = loop.create_future()
+    fut = asyncio.get_event_loop().create_future()
 
     async def cb(app):
-        await asyncio.sleep(0.001, loop=loop)
+        await asyncio.sleep(0.001)
         fut.set_result(123)
 
     app.on_cleanup.append(cb)
@@ -166,9 +174,8 @@ async def test_on_shutdown() -> None:
     assert called
 
 
-async def test_on_startup(loop) -> None:
+async def test_on_startup() -> None:
     app = web.Application()
-    app._set_loop(loop)
 
     long_running1_called = False
     long_running2_called = False
@@ -189,8 +196,7 @@ async def test_on_startup(loop) -> None:
         assert app is app_param
         all_long_running_called = True
         return await asyncio.gather(long_running1(app_param),
-                                    long_running2(app_param),
-                                    loop=app_param.loop)
+                                    long_running2(app_param))
 
     app.on_startup.append(on_startup_all_long_running)
     app.freeze()
