@@ -111,7 +111,8 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server,
         exc_info=exc)
 
 
-def test_create_web_server_with_implicit_loop(loop) -> None:
+def test_create_web_server_with_implicit_loop() -> None:
+    loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     async def handler(request):
@@ -119,3 +120,4 @@ def test_create_web_server_with_implicit_loop(loop) -> None:
 
     srv = web.Server(handler)
     assert srv._loop is loop
+    asyncio.set_event_loop(None)
