@@ -71,7 +71,7 @@ request and response:
 +--------------+---------------------------------------------------------+
 | ``%s``       | Response status code                                    |
 +--------------+---------------------------------------------------------+
-| ``%b``       | Size of response in bytes, excluding HTTP headers       |
+| ``%b``       | Size of response in bytes, including HTTP headers       |
 +--------------+---------------------------------------------------------+
 | ``%T``       | The time taken to serve the request, in seconds         |
 +--------------+---------------------------------------------------------+
