@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import zlib
@@ -153,7 +154,8 @@ class TestPartReader:
         assert c1 + c2 == b'Hello, world!'
         assert c3 == b''
 
-    async def test_read_incomplete_chunk(self, loop) -> None:
+    async def test_read_incomplete_chunk(self) -> None:
+        loop = asyncio.get_event_loop()
         stream = Stream(b'')
 
         def prepare(data):
@@ -194,7 +196,8 @@ class TestPartReader:
                 result += await obj.read_chunk(7)
         assert b'Hello, World!\r\n-' == result
 
-    async def test_read_boundary_with_incomplete_chunk(self, loop) -> None:
+    async def test_read_boundary_with_incomplete_chunk(self) -> None:
+        loop = asyncio.get_event_loop()
         stream = Stream(b'')
 
         def prepare(data):
@@ -1028,7 +1031,7 @@ class TestMultipartWriter:
                 writer.append(None)
 
 
-async def test_async_for_reader(loop) -> None:
+async def test_async_for_reader() -> None:
     data = [
         {"test": "passed"},
         42,
@@ -1088,7 +1091,7 @@ async def test_async_for_reader(loop) -> None:
     await check(reader)
 
 
-async def test_async_for_bodypart(loop) -> None:
+async def test_async_for_bodypart() -> None:
     part = aiohttp.BodyPartReader(
         boundary=b'--:',
         headers={},
