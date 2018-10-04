@@ -20,7 +20,8 @@ from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, Iterator,
-                    List, Mapping, Optional, Tuple, Type, TypeVar, Union, cast)
+                    List, Mapping, Optional, Pattern, Tuple, Type, TypeVar,
+                    Union, cast)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -604,23 +605,27 @@ _ipv4_regexb = re.compile(_ipv4_pattern.encode('ascii'))
 _ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
 
 
-def is_ip_address(
-        host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
+def _is_ip_address(
+        regex: Pattern, regexb: Pattern,
+        host: Optional[Union[str, bytes, bytearray, memoryview]])-> bool:
     if host is None:
         return False
     if isinstance(host, str):
-        if _ipv4_regex.match(host) or _ipv6_regex.match(host):
-            return True
-        else:
-            return False
+        return bool(regex.match(host))
     elif isinstance(host, (bytes, bytearray, memoryview)):
-        if _ipv4_regexb.match(host) or _ipv6_regexb.match(host):  # type: ignore  # noqa
-            return True
-        else:
-            return False
+        return bool(regexb.match(host))
     else:
         raise TypeError("{} [{}] is not a str or bytes"
                         .format(host, type(host)))
+
+
+is_ipv4_address = functools.partial(_is_ip_address, _ipv4_regex, _ipv4_regexb)
+is_ipv6_address = functools.partial(_is_ip_address, _ipv6_regex, _ipv6_regexb)
+
+
+def is_ip_address(
+        host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
+    return is_ipv4_address(host) or is_ipv6_address(host)
 
 
 _cached_current_datetime = None

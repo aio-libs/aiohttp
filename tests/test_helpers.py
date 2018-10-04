@@ -390,11 +390,20 @@ def test_is_ip_address_bytes() -> None:
     assert not helpers.is_ip_address(b"1200::AB00:1234::2552:7777:1313")
 
 
-def test_ip_addresses() -> None:
+def test_ipv4_addresses() -> None:
     ip_addresses = [
         '0.0.0.0',
         '127.0.0.1',
         '255.255.255.255',
+    ]
+    for address in ip_addresses:
+        assert helpers.is_ipv4_address(address)
+        assert not helpers.is_ipv6_address(address)
+        assert helpers.is_ip_address(address)
+
+
+def test_ipv6_addresses() -> None:
+    ip_addresses = [
         '0:0:0:0:0:0:0:0',
         'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF',
         '00AB:0002:3008:8CFD:00AB:0002:3008:8CFD',
@@ -405,6 +414,8 @@ def test_ip_addresses() -> None:
         '1::1',
     ]
     for address in ip_addresses:
+        assert not helpers.is_ipv4_address(address)
+        assert helpers.is_ipv6_address(address)
         assert helpers.is_ip_address(address)
 
 
