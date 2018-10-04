@@ -12,7 +12,7 @@ from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
 from aiohttp.web import (ContentCoding, Response, StreamResponse,
-                         async_json_response, json_response)
+                         json_response)
 
 
 def make_request(method, path, headers=CIMultiDict(),
@@ -1115,34 +1115,6 @@ def test_text_with_empty_payload() -> None:
 def test_response_with_content_length_header_without_body() -> None:
     resp = Response(headers={'Content-Length': 123})
     assert resp.content_length == 123
-
-
-async def test_async_json_small_response():
-    text = 'jaysawn'
-    resp = await async_json_response(text=json.dumps(text))
-    assert resp.text == json.dumps(text)
-
-    resp = await async_json_response(text)
-    assert resp.text == json.dumps(text)
-
-    with pytest.raises(ValueError):
-        await async_json_response(text, body=text)
-
-
-async def test_async_json_large_response():
-    cuttoff_length = 1024
-    text = 'ja' * cuttoff_length
-    resp = await async_json_response(text, executor_body_size=cuttoff_length)
-    assert resp.text == json.dumps(text)
-
-
-async def test_async_json_coro_response():
-    async def dumps(data):
-        return json.dumps(data)
-
-    text = 'jaysawn'
-    resp = await async_json_response(text, dumps=dumps)
-    assert resp.text == json.dumps(text)
 
 
 class TestJSONResponse:

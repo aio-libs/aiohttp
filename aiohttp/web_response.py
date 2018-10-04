@@ -19,8 +19,7 @@ from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .typedefs import LooseHeaders
 
 
-__all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response',
-           'async_json_response')
+__all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
 
 
 class ContentCoding(enum.Enum):
@@ -661,27 +660,3 @@ def json_response(data=sentinel, *, text=None, body=None, status=200,
             text = dumps(data)
     return Response(text=text, body=body, status=status, reason=reason,
                     headers=headers, content_type=content_type)
-
-
-async def async_json_response(data=sentinel, *, text=None, body=None,
-                              status=200, reason=None, headers=None,
-                              content_type='application/json',
-                              dumps=json.dumps, executor_body_size=None):
-    if data is not sentinel:
-        if text or body:
-            raise ValueError(
-                "only one of data, text, or body should be specified"
-            )
-        else:
-            if asyncio.iscoroutinefunction(dumps):
-                text = await dumps(data)
-            elif executor_body_size is not None and \
-                    len(data) > executor_body_size:
-                loop = asyncio.get_event_loop()
-                text = await loop.run_in_executor(None, dumps, data)
-            else:
-                text = dumps(data)
-
-    return Response(text=text, body=body, status=status, reason=reason,
-                    headers=headers, content_type=content_type,
-                    zlib_thread_size=executor_body_size)
