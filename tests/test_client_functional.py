@@ -338,7 +338,8 @@ async def test_tcp_connector_fingerprint_fail(aiohttp_server, aiohttp_client,
     assert exc.got == fingerprint
 
 
-async def test_format_task_get(aiohttp_server, loop) -> None:
+async def test_format_task_get(aiohttp_server) -> None:
+    loop = asyncio.get_event_loop()
 
     async def handler(request):
         return web.Response(body=b'OK')
@@ -592,7 +593,9 @@ async def test_timeout_on_session_read_timeout(aiohttp_client, mocker) -> None:
         await client.get('/')
 
 
-async def test_timeout_on_reading_data(loop, aiohttp_client, mocker) -> None:
+async def test_timeout_on_reading_data(aiohttp_client, mocker) -> None:
+    loop = asyncio.get_event_loop()
+
     mocker.patch('aiohttp.helpers.ceil').side_effect = ceil
     fut = loop.create_future()
 
@@ -630,7 +633,8 @@ async def test_timeout_none(aiohttp_client, mocker) -> None:
     assert resp.status == 200
 
 
-async def test_readline_error_on_conn_close(loop, aiohttp_client) -> None:
+async def test_readline_error_on_conn_close(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
 
     async def handler(request):
         resp_ = web.StreamResponse()
@@ -2474,7 +2478,8 @@ async def test_dont_close_explicit_connector(aiohttp_client) -> None:
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection(loop) -> None:
+async def test_server_close_keepalive_connection() -> None:
+    loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
 
@@ -2515,7 +2520,8 @@ async def test_server_close_keepalive_connection(loop) -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection(loop) -> None:
+async def test_handle_keepalive_on_closed_connection() -> None:
+    loop = asyncio.get_event_loop()
 
     class Proto(asyncio.Protocol):
 
@@ -2560,7 +2566,7 @@ async def test_handle_keepalive_on_closed_connection(loop) -> None:
     await server.wait_closed()
 
 
-async def test_error_in_performing_request(loop, ssl_ctx,
+async def test_error_in_performing_request(ssl_ctx,
                                            aiohttp_client, aiohttp_server):
     async def handler(request):
         return web.Response()
@@ -2569,6 +2575,7 @@ async def test_error_in_performing_request(loop, ssl_ctx,
         # skip log messages about destroyed but pending tasks
         pass
 
+    loop = asyncio.get_event_loop()
     loop.set_exception_handler(exception_handler)
 
     app = web.Application()
@@ -2587,7 +2594,8 @@ async def test_error_in_performing_request(loop, ssl_ctx,
         await client.get('/')
 
 
-async def test_await_after_cancelling(loop, aiohttp_client) -> None:
+async def test_await_after_cancelling(aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
 
     async def handler(request):
         return web.Response()
