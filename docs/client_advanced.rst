@@ -424,7 +424,15 @@ same thing as the previous example, but add another call to
                              '/path/to/client/private/device.key')
   r = await session.get('https://example.com', ssl=sslcontext)
 
-There is explicit errors when ssl verification fails
+If you need to use client-side SSL certificates for authentication
+you can create the :class:`ssl.SSLContext` with that purpose::
+
+  sslcontext = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+  sslcontext.load_cert_chain('/path/to/client/public/device.pem',
+                             '/path/to/client/private/device.key')
+  r = await session.get('https://example.com', ssl=sslcontext)
+
+There are explicit errors when ssl verification fails
 
 :class:`aiohttp.ClientConnectorSSLError`::
 
