@@ -511,8 +511,8 @@ def test_clone_headers_dict() -> None:
     assert req2.raw_headers == ((b'B', b'C'),)
 
 
-async def test_cannot_clone_after_read(loop, protocol) -> None:
-    payload = StreamReader(protocol, loop=loop)
+async def test_cannot_clone_after_read(protocol) -> None:
+    payload = StreamReader(protocol)
     payload.feed_data(b'data')
     payload.feed_eof()
     req = make_mocked_request('GET', '/path', payload=payload)
@@ -521,8 +521,8 @@ async def test_cannot_clone_after_read(loop, protocol) -> None:
         req.clone()
 
 
-async def test_make_too_big_request(loop, protocol) -> None:
-    payload = StreamReader(protocol, loop=loop)
+async def test_make_too_big_request(protocol) -> None:
+    payload = StreamReader(protocol)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -534,8 +534,8 @@ async def test_make_too_big_request(loop, protocol) -> None:
     assert err.value.status_code == 413
 
 
-async def test_make_too_big_request_adjust_limit(loop, protocol) -> None:
-    payload = StreamReader(protocol, loop=loop)
+async def test_make_too_big_request_adjust_limit(protocol) -> None:
+    payload = StreamReader(protocol)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -547,8 +547,8 @@ async def test_make_too_big_request_adjust_limit(loop, protocol) -> None:
     assert len(txt) == 1024**2 + 1
 
 
-async def test_multipart_formdata(loop, protocol) -> None:
-    payload = StreamReader(protocol, loop=loop)
+async def test_multipart_formdata(protocol) -> None:
+    payload = StreamReader(protocol)
     payload.feed_data(b"""-----------------------------326931944431359\r
 Content-Disposition: form-data; name="a"\r
 \r
@@ -568,8 +568,8 @@ d\r
     assert dict(result) == {'a': 'b', 'c': 'd'}
 
 
-async def test_make_too_big_request_limit_None(loop, protocol) -> None:
-    payload = StreamReader(protocol, loop=loop)
+async def test_make_too_big_request_limit_None(protocol) -> None:
+    payload = StreamReader(protocol)
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
