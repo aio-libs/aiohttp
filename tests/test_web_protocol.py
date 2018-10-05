@@ -517,6 +517,34 @@ async def test_handle_cancel(make_srv, transport) -> None:
     assert log.debug.called
 
 
+async def test_handle_none_response(
+    make_srv, loop, transport, request_handler
+):
+    log = mock.Mock()
+
+    srv = make_srv(logger=log, debug=True)
+    srv.connection_made(transport)
+    srv.transport = mock.Mock()
+
+    handle = mock.Mock()
+    handle.return_value = loop.create_future()
+    handle.return_value.set_result(None)
+    request_handler.side_effect = handle
+
+    srv.data_received(
+        b'GET / HTTP/1.0\r\n'
+        b'Content-Length: 10\r\n'
+        b'Host: example.com\r\n\r\n')
+
+    assert srv._task_handler
+
+    await asyncio.sleep(0, loop=loop)
+    await srv._task_handler
+    assert request_handler.called
+    log.debug.assert_called_with("Possibly missing return "
+                                 "statement on request handler")
+
+
 async def test_handle_cancelled(make_srv, transport) -> None:
     log = mock.Mock()
 
