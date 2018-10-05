@@ -18,7 +18,7 @@ from .streams import EMPTY_PAYLOAD
 from .tcp_helpers import tcp_cork, tcp_keepalive, tcp_nodelay
 from .web_exceptions import HTTPException
 from .web_request import BaseRequest
-from .web_response import Response
+from .web_response import Response, StreamResponse
 
 
 __all__ = ('RequestHandler', 'RequestPayloadError', 'PayloadAccessError')
@@ -346,6 +346,7 @@ class RequestHandler(BaseProtocol):
         handler = self._task_handler
         manager = self._manager
         keepalive_timeout = self._keepalive_timeout
+        resp = None
 
         while not self._force_close:
             if not self._messages:
@@ -370,9 +371,6 @@ class RequestHandler(BaseProtocol):
             try:
                 try:
                     resp = await self._request_handler(request)
-                    if resp is None:
-                        self.log_debug('Possibly missing return ' +
-                                       ' statement on request handler')
                 except HTTPException as exc:
                     resp = exc
                 except asyncio.CancelledError:
@@ -392,6 +390,12 @@ class RequestHandler(BaseProtocol):
                             "please raise the exception instead",
                             DeprecationWarning)
 
+                if self.debug:
+                    if not isinstance(resp, StreamResponse):
+                        self.log_debug("Possibly missing return "
+                                       "statement on request handler")
+                        raise RuntimeError('Web-handler should \
+                            return a response instance, got {!r}'.format(resp))
                 await resp.prepare(request)
                 await resp.write_eof()
 
@@ -441,7 +445,7 @@ class RequestHandler(BaseProtocol):
                 self.log_exception('Unhandled exception', exc_info=exc)
                 self.force_close()
             finally:
-                if self.transport is None:
+                if self.transport is None and resp is not None:
                     self.log_debug('Ignored premature client disconnection.')
                 elif not self._force_close:
                     if self._keepalive and not self._close:
