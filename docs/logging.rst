@@ -28,8 +28,11 @@ configuring whole loggers in your application.
 Access logs
 -----------
 
-Access log by default is switched on and uses ``'aiohttp.access'``
-logger name.
+Access logs are enabled by default. If the `debug` flag is set, and the default
+logger ``'aiohttp.access'`` is used, access logs will be output to
+:obj:`~sys.stderr` if no handlers are attached.
+Furthermore, if the default logger has no log level set, the log level will be
+set to :obj:`logging.DEBUG`.
 
 The log may be controlled by :meth:`aiohttp.web.AppRunner` and
 :func:`aiohttp.web.run_app`.
