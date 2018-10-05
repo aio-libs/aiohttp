@@ -394,8 +394,8 @@ class RequestHandler(BaseProtocol):
                     if not isinstance(resp, StreamResponse):
                         self.log_debug("Possibly missing return "
                                        "statement on request handler")
-                        raise RuntimeError('Web-handler should \
-                            return a response instance, got {!r}'.format(resp))
+                        raise RuntimeError("Web-handler should "
+                            "return a response instance, got {!r}".format(resp))
                 await resp.prepare(request)
                 await resp.write_eof()
 
