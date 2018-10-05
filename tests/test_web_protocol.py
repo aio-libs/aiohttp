@@ -517,14 +517,12 @@ async def test_handle_cancel(make_srv, transport) -> None:
     assert log.debug.called
 
 
-async def test_handle_none_response(
-    make_srv, loop, transport, request_handler
-):
+async def test_handle_none_response(make_srv, transport, request_handler):
+    loop = asyncio.get_event_loop()
     log = mock.Mock()
 
     srv = make_srv(logger=log, debug=True)
     srv.connection_made(transport)
-    srv.transport = mock.Mock()
 
     handle = mock.Mock()
     handle.return_value = loop.create_future()
