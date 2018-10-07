@@ -60,6 +60,8 @@ class BaseProtocol(asyncio.Protocol):
     def connection_lost(self, exc: Optional[Exception]) -> None:
         self._connection_lost = True
         # Wake up the writer if currently paused.
+        if self.transport is not None:
+            self.transport.close()
         self.transport = None
         if not self._paused:
             return
