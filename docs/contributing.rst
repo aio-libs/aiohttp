@@ -33,10 +33,10 @@ Workflow is pretty straightforward:
 
    The project uses *Squash-and-Merge* strategy for *GitHub Merge* button.
 
-   Basically it means that there is **no need to rebase*** a Pull Request against
+   Basically it means that there is **no need to rebase** a Pull Request against
    *master* branch. Just ``git merge`` *master* into your working copy (a fork) if
-   needed. The Pull Request is automatically squashed into the single commit on the PR
-   accepting.
+   needed. The Pull Request is automatically squashed into the single commit
+   once the PR is accepted.
 
 Preconditions for running aiohttp test suite
 --------------------------------------------
