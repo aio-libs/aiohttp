@@ -180,6 +180,14 @@ jobs:
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
+  - <<: *_lint_base
+    name:
+    - CONTRIBUTORS.txt sorting check
+    install:
+    - skip
+    script:
+    - LC_ALL=C sort -c CONTRIBUTORS.txt
+
   - <<: *osx_python_base
     python: 3.5.3
     env:
