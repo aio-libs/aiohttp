@@ -4,7 +4,8 @@ from typing import List  # noqa
 from typing import Awaitable, Callable, Optional, Tuple
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, set_exception, set_result, get_running_loop
+from .helpers import (BaseTimerContext, set_exception,
+                      set_result, get_running_loop)
 from .log import internal_logger
 
 
