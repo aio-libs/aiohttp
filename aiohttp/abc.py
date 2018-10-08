@@ -7,7 +7,6 @@ from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
                     Mapping, Optional, Tuple, Union)
 
 from yarl import URL
-from .helpers import get_running_loop
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -128,7 +127,7 @@ class AbstractCookieJar(Sized, IterableBase):
 
     def __init__(self, *,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        self._loop = loop or get_running_loop()
+        self._loop = loop or asyncio.get_event_loop()
 
     @abstractmethod
     def clear(self) -> None:
