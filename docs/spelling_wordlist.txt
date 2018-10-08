@@ -9,6 +9,7 @@ alives
 api
 api’s
 app
+apps
 app’s
 arg
 Arsenic
