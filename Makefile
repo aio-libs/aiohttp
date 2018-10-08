@@ -26,6 +26,9 @@ flake: .flake
             isort --diff -rc aiohttp tests examples; \
             false; \
 	fi
+	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
+            echo "CONTRIBUTORS.txt sort error"; \
+	fi
 	@touch .flake
 
 check_changes:
