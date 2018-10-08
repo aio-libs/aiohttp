@@ -19,7 +19,7 @@ from .client_exceptions import (ClientConnectionError, ClientOSError,
                                 ClientResponseError, ContentTypeError,
                                 InvalidURL, ServerFingerprintMismatch)
 from .formdata import FormData
-from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
+from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result, get_running_loop
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
 from .streams import StreamReader  # noqa
@@ -197,7 +197,7 @@ class ClientRequest:
                  traces=None):
 
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = get_running_loop()
 
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy

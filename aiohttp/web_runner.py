@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from yarl import URL
 
 from .web_app import Application
+from .helpers import get_running_loop
 
 
 __all__ = ('TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
@@ -81,7 +82,7 @@ class TCPSite(BaseSite):
 
     async def start(self):
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = get_running_loop()
         self._server = await loop.create_server(
             self._runner.server, self._host, self._port,
             ssl=self._ssl_context, backlog=self._backlog,
@@ -106,7 +107,7 @@ class UnixSite(BaseSite):
 
     async def start(self):
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = get_running_loop()
         self._server = await loop.create_unix_server(
             self._runner.server, self._path,
             ssl=self._ssl_context, backlog=self._backlog)
@@ -135,7 +136,7 @@ class SockSite(BaseSite):
 
     async def start(self):
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = get_running_loop()
         self._server = await loop.create_server(
             self._runner.server, sock=self._sock,
             ssl=self._ssl_context, backlog=self._backlog)
@@ -165,7 +166,7 @@ class BaseRunner(ABC):
         return set(self._sites)
 
     async def setup(self):
-        loop = asyncio.get_event_loop()
+        loop = get_running_loop()
 
         if self._handle_signals:
             try:
@@ -182,7 +183,7 @@ class BaseRunner(ABC):
         pass  # pragma: no cover
 
     async def cleanup(self):
-        loop = asyncio.get_event_loop()
+        loop = get_running_loop()
 
         if self._server is None:
             # no started yet, do nothing
@@ -269,7 +270,7 @@ class AppRunner(BaseRunner):
         await self._app.shutdown()
 
     async def _make_server(self):
-        loop = asyncio.get_event_loop()
+        loop = get_running_loop()
         self._app._set_loop(loop)
         self._app.on_startup.freeze()
         await self._app.startup()

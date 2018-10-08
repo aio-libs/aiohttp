@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional, cast
 
 from .log import internal_logger
+from .helpers import get_running_loop
 
 
 class BaseProtocol(asyncio.Protocol):
@@ -10,7 +11,7 @@ class BaseProtocol(asyncio.Protocol):
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         if loop is None:
-            self._loop = asyncio.get_event_loop()
+            self._loop = get_running_loop()
         else:
             self._loop = loop
         self._paused = False

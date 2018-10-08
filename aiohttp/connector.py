@@ -22,7 +22,7 @@ from .client_exceptions import (ClientConnectionError,
                                 ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import PY_36, CeilTimeout, is_ip_address, noop, sentinel
+from .helpers import PY_36, CeilTimeout, is_ip_address, noop, sentinel, get_running_loop
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -171,7 +171,7 @@ class BaseConnector:
                 keepalive_timeout = 15.0
 
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = get_running_loop()
 
         self._closed = False
         if loop.get_debug():

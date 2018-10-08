@@ -4,7 +4,7 @@ from typing import List  # noqa
 from typing import Awaitable, Callable, Optional, Tuple
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, set_exception, set_result
+from .helpers import BaseTimerContext, set_exception, set_result, get_running_loop
 from .log import internal_logger
 
 
@@ -112,7 +112,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._low_water = limit
         self._high_water = limit * 2
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = get_running_loop()
         self._loop = loop
         self._size = 0
         self._cursor = 0

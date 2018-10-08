@@ -3,6 +3,7 @@ import asyncio
 
 from .web_protocol import RequestHandler
 from .web_request import BaseRequest
+from .helpers import get_running_loop
 
 
 __all__ = ('Server',)
@@ -12,7 +13,7 @@ class Server:
 
     def __init__(self, handler, *, request_factory=None, loop=None, **kwargs):
         if loop is None:
-            loop = asyncio.get_event_loop()
+            loop = get_running_loop()
         self._loop = loop
         self._connections = {}
         self._kwargs = kwargs

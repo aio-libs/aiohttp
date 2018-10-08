@@ -29,7 +29,8 @@ from .connector import *  # noqa
 from .connector import BaseConnector, TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (DEBUG, PY_36, CeilTimeout, TimeoutHandle,
-                      proxies_from_env, sentinel, strip_auth_from_url)
+                      proxies_from_env, sentinel, strip_auth_from_url,
+                      get_running_loop)
 from .http import WS_KEY, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .streams import FlowControlDataQueue
@@ -107,7 +108,7 @@ class ClientSession:
                 loop = connector._loop
             else:
                 implicit_loop = True
-                loop = asyncio.get_event_loop()
+                loop = get_running_loop()
 
         if connector is None:
             connector = TCPConnector(loop=loop)
