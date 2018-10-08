@@ -1,0 +1,1 @@
+Replace asyncio.get_event_loop() with get_running_loop() for encourage creation of aiohttp public objects inside a coroutine
