@@ -10,11 +10,11 @@ cython==0.28.5
 gunicorn==19.8.1
 pyflakes==2.0.0
 multidict==4.4.2
-pytest==3.8.1
+pytest==3.8.2
 pytest-cov==2.6.0
 pytest-mock==1.10.0
 pytest-xdist==1.23.2
-tox==3.4.0
+tox==3.5.0
 twine==1.12.1
 yarl==1.2.6
 
@@ -23,4 +23,4 @@ aiodns==1.1.1; platform_system!="Windows"  # required c-ares will not build on w
 codecov==2.0.15; platform_system!="Windows"  # We only use it in Travis CI
 uvloop==0.11.2; platform_system!="Windows" and implementation_name=="cpython" and python_version<"3.7" # MagicStack/uvloop#14
 idna-ssl==1.1.0; python_version<"3.7"
-typing_extensions==3.6.5; python_version<"3.7"
+typing_extensions==3.6.6; python_version<"3.7"

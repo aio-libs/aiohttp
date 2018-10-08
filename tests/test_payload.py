@@ -1,3 +1,4 @@
+import asyncio
 from io import StringIO
 from unittest import mock
 
@@ -114,7 +115,8 @@ def test_async_iterable_payload_not_async_iterable() -> None:
         payload.AsyncIterablePayload(object())
 
 
-async def test_stream_reader_long_lines(loop) -> None:
+async def test_stream_reader_long_lines() -> None:
+    loop = asyncio.get_event_loop()
     DATA = b'0' * 1024 ** 3
 
     stream = streams.StreamReader(mock.Mock(), loop=loop)
