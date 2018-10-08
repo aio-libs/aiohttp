@@ -29,6 +29,15 @@ Workflow is pretty straightforward:
   7. Optionally make backport Pull Request(s) for landing a bug fix
      into released aiohttp versions.
 
+.. note::
+
+   The project uses *Squash-and-Merge* strategy for *GitHub Merge* button.
+
+   Basically it means that there is **no need to rebase** a Pull Request against
+   *master* branch. Just ``git merge`` *master* into your working copy (a fork) if
+   needed. The Pull Request is automatically squashed into the single commit
+   once the PR is accepted.
+
 Preconditions for running aiohttp test suite
 --------------------------------------------
 
