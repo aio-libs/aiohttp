@@ -14,6 +14,7 @@ import re
 import sys
 import time
 import weakref
+import warnings
 from collections import namedtuple
 from contextlib import suppress
 from math import ceil
@@ -228,6 +229,14 @@ def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task
         return asyncio.current_task(loop=loop)  # type: ignore
     else:
         return asyncio.Task.current_task(loop=loop)  # type: ignore
+
+
+def get_running_loop(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.AbstractEventLoop:
+    if loop is None:
+        loop = asyncio.get_event_loop()
+    if not loop.is_running():
+        warnings.warn("The object should be created from async function", DeprecationWarning, stacklevel=3)
+    return loop
 
 
 def isasyncgenfunction(obj: Any) -> bool:
