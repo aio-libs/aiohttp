@@ -61,7 +61,9 @@ Other HTTP methods are available as well::
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
-It is also possible to use session without context manager, like so::
+A session context manager usage is not mandatory 
+but ``await session.close()`` method 
+should be called in this case, e.g.::
 
     session = aiohttp.ClientSession()
     async with session.get('...'):
