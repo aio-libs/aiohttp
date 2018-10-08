@@ -61,6 +61,13 @@ Other HTTP methods are available as well::
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
+It is also possible to use session without context manager, like so::
+
+    session = aiohttp.ClientSession()
+    async with session.get('...'):
+        # ...
+    await session.close()
+
 
 Passing Parameters In URLs
 ==========================
