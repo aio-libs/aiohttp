@@ -3,7 +3,6 @@
 import asyncio
 
 import aioredis
-
 from aiohttp import web
 
 

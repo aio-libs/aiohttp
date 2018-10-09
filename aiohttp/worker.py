@@ -7,9 +7,10 @@ import signal
 import sys
 from contextlib import suppress
 
-from aiohttp import web
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
+
+from aiohttp import web
 
 from .helpers import AccessLogger, get_running_loop, set_result
 
