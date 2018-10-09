@@ -53,7 +53,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
         app = loop.run_until_complete(app)
 
     # Configure if and only if in debugging mode and using the default logger
-    if app.debug and access_log is access_logger:
+    if app.debug and access_log.name == 'aiohttp.access':
         if access_log.level == logging.NOTSET:
             access_log.setLevel(logging.DEBUG)
         if not access_log.hasHandlers():
