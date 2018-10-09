@@ -10,9 +10,8 @@ class BaseProtocol(asyncio.Protocol):
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         if loop is None:
-            self._loop = asyncio.get_event_loop()
-        else:
-            self._loop = loop
+            loop = asyncio.get_event_loop()
+        self._loop = loop  # type: asyncio.AbstractEventLoop
         self._paused = False
         self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
         self._connection_lost = False
