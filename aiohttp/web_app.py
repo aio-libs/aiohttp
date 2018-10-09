@@ -9,9 +9,10 @@ from typing import (TYPE_CHECKING, Any, Awaitable, Callable, List, Mapping,
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
-from .helpers import DEBUG, AccessLogger
+from .helpers import DEBUG
 from .log import web_logger
 from .signals import Signal
+from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse

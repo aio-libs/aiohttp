@@ -8,7 +8,6 @@ from html import escape as html_escape
 
 import yarl
 
-from . import helpers
 from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout
 from .http import (HttpProcessingError, HttpRequestParser, HttpVersion10,
@@ -17,6 +16,7 @@ from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD
 from .tcp_helpers import tcp_cork, tcp_keepalive, tcp_nodelay
 from .web_exceptions import HTTPException
+from .web_log import AccessLogger
 from .web_request import BaseRequest
 from .web_response import Response, StreamResponse
 
@@ -90,9 +90,9 @@ class RequestHandler(BaseProtocol):
                  keepalive_timeout=75,  # NGINX default value is 75 secs
                  tcp_keepalive=True,
                  logger=server_logger,
-                 access_log_class=helpers.AccessLogger,
+                 access_log_class=AccessLogger,
                  access_log=access_logger,
-                 access_log_format=helpers.AccessLogger.LOG_FORMAT,
+                 access_log_format=AccessLogger.LOG_FORMAT,
                  debug=False,
                  max_line_size=8190,
                  max_headers=32768,

@@ -1,4 +1,6 @@
+import asyncio
 from contextlib import suppress
+from typing import Optional
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (ClientOSError, ClientPayloadError,
@@ -10,7 +12,10 @@ from .streams import EMPTY_PAYLOAD, DataQueue
 class ResponseHandler(BaseProtocol, DataQueue):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, *, loop=None):
+    def __init__(self, *,
+                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+        if loop is None:
+            loop = asyncio.get_event_loop()
         BaseProtocol.__init__(self, loop=loop)
         DataQueue.__init__(self, loop=loop)
 
