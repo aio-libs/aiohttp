@@ -22,8 +22,8 @@ from .client_exceptions import (ClientConnectionError,
                                 ssl_errors)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import (PY_36, CeilTimeout, is_ip_address,
-                      noop, sentinel, get_running_loop)
+from .helpers import (PY_36, CeilTimeout, get_running_loop, is_ip_address,
+                      noop, sentinel)
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 

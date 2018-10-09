@@ -13,8 +13,8 @@ import os
 import re
 import sys
 import time
-import weakref
 import warnings
+import weakref
 from collections import namedtuple
 from contextlib import suppress
 from math import ceil

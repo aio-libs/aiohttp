@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 
 from yarl import URL
 
-from .web_app import Application
 from .helpers import get_running_loop
+from .web_app import Application
 
 
 __all__ = ('TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',

@@ -1,8 +1,8 @@
 import asyncio
 from typing import Optional, cast
 
-from .log import internal_logger
 from .helpers import get_running_loop
+from .log import internal_logger
 
 
 class BaseProtocol(asyncio.Protocol):
