@@ -12,9 +12,7 @@ __all__ = ('Server',)
 class Server:
 
     def __init__(self, handler, *, request_factory=None, loop=None, **kwargs):
-        if loop is None:
-            loop = get_running_loop()
-        self._loop = loop
+        self._loop = get_running_loop(loop)
         self._connections = {}
         self._kwargs = kwargs
         self.requests_count = 0

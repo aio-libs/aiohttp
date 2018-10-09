@@ -197,8 +197,7 @@ class ClientRequest:
                  proxy_headers=None,
                  traces=None):
 
-        if loop is None:
-            loop = get_running_loop()
+        loop = get_running_loop(loop)
 
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy

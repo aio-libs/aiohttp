@@ -171,8 +171,7 @@ class BaseConnector:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
 
-        if loop is None:
-            loop = get_running_loop()
+        loop = get_running_loop(loop)
 
         self._closed = False
         if loop.get_debug():

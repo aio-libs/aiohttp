@@ -231,10 +231,10 @@ def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task
         return asyncio.Task.current_task(loop=loop)  # type: ignore
 
 
-def get_running_loop(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.AbstractEventLoop:  # type: ignore  # noqa
+def get_running_loop(loop: Optional[asyncio.AbstractEventLoop] = None) -> asyncio.AbstractEventLoop:  # type: ignore  # noqa
     if loop is None:
         loop = asyncio.get_event_loop()
-    if not loop.is_running():
+    if hasattr(loop, 'is_running') and not loop.is_running():
         warnings.warn("The object should be created from async function",
                       DeprecationWarning, stacklevel=3)
     return loop

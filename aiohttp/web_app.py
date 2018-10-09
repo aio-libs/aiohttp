@@ -150,8 +150,7 @@ class Application(MutableMapping):
         return self._loop
 
     def _set_loop(self, loop):
-        if loop is None:
-            loop = get_running_loop()
+        loop = get_running_loop(loop)
         if self._loop is not None and self._loop is not loop:
             raise RuntimeError(
                 "web.Application instance initialized with different loop")

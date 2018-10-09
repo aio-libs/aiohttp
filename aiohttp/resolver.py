@@ -23,8 +23,7 @@ class ThreadedResolver(AbstractResolver):
     """
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        if loop is None:
-            loop = get_running_loop()
+        loop = get_running_loop(loop)
         self._loop = loop
 
     async def resolve(self, host: str, port: int=0,
@@ -51,8 +50,7 @@ class AsyncResolver(AbstractResolver):
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None,
                  *args: Any, **kwargs: Any) -> None:
-        if loop is None:
-            loop = get_running_loop()
+        loop = get_running_loop(loop)
 
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")

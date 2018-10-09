@@ -112,9 +112,7 @@ class StreamReader(AsyncStreamReaderMixin):
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
-        if loop is None:
-            loop = get_running_loop()
-        self._loop = loop
+        self._loop = get_running_loop(loop)
         self._size = 0
         self._cursor = 0
         self._http_chunk_splits = None  # type: Optional[List[int]]

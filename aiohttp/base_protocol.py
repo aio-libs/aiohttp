@@ -10,10 +10,7 @@ class BaseProtocol(asyncio.Protocol):
                  '_connection_lost', 'transport')
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        if loop is None:
-            self._loop = get_running_loop()
-        else:
-            self._loop = loop
+        self._loop = get_running_loop(loop)
         self._paused = False
         self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
         self._connection_lost = False
