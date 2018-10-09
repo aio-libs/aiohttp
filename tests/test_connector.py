@@ -239,6 +239,7 @@ def test_context_manager(loop) -> None:
 def test_ctor_loop() -> None:
     with mock.patch('aiohttp.connector.asyncio') as m_asyncio:
         session = aiohttp.BaseConnector()
+
     assert session._loop is m_asyncio.get_event_loop.return_value
 
 
