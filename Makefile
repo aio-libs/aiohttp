@@ -2,10 +2,8 @@
 
 all: test
 
-install-cython:
+.install-deps: $(shell find requirements -type f)
 	@pip install -r requirements/cython.txt
-
-.install-deps: $(shell find requirements -type f) install-cython
 	@pip install -U -r requirements/dev.txt
 	@touch .install-deps
 
