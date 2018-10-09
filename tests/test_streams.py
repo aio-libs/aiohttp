@@ -49,9 +49,12 @@ class TestStreamReader:
     def test_ctor_global_loop(self) -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        stream = streams.StreamReader(mock.Mock(_reading_paused=False))
-
-        assert stream._loop is loop
+        with pytest.warns(DeprecationWarning) as warning_checker:
+            stream = streams.StreamReader(mock.Mock(_reading_paused=False))
+            assert stream._loop is loop
+        assert len(warning_checker) == 1
+        msg = str(warning_checker.list[0].message)
+        assert msg == "The object should be created from async function"
 
     async def test_at_eof(self) -> None:
         stream = self._make_one()

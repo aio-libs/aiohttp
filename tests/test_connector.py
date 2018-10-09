@@ -238,9 +238,13 @@ def test_context_manager(loop) -> None:
 
 def test_ctor_loop() -> None:
     with mock.patch('aiohttp.connector.asyncio') as m_asyncio:
-        session = aiohttp.BaseConnector()
+        with pytest.warns(DeprecationWarning) as warning_checker:
+            session = aiohttp.BaseConnector()
+            assert session._loop is m_asyncio.get_event_loop.return_value
 
-    assert session._loop is m_asyncio.get_event_loop.return_value
+    assert len(warning_checker) == 1
+    msg = str(warning_checker.list[0].message)
+    assert msg == "The object should be created from async function"
 
 
 def test_close(loop) -> None:
@@ -1363,9 +1367,13 @@ def test_close_cancels_cleanup_closed_handle(loop) -> None:
 def test_ctor_with_default_loop() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    conn = aiohttp.BaseConnector()
-    assert loop is conn._loop
-    loop.close()
+    with pytest.warns(DeprecationWarning) as warning_checker:
+        conn = aiohttp.BaseConnector()
+        assert loop is conn._loop
+        loop.close()
+    assert len(warning_checker) == 1
+    msg = str(warning_checker.list[0].message)
+    assert msg == "The object should be created from async function"
 
 
 async def test_connect_with_limit(loop, key) -> None:

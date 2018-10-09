@@ -269,8 +269,12 @@ def test_host_header_ipv6_with_port(make_request) -> None:
 
 def test_default_loop(loop) -> None:
     asyncio.set_event_loop(loop)
-    req = ClientRequest('get', URL('http://python.org/'))
-    assert req.loop is loop
+    with pytest.warns(DeprecationWarning) as warning_checker:
+        req = ClientRequest('get', URL('http://python.org/'))
+        assert req.loop is loop
+    assert len(warning_checker) == 1
+    msg = str(warning_checker.list[0].message)
+    assert msg == "The object should be created from async function"
 
 
 def test_default_headers_useragent(make_request) -> None:

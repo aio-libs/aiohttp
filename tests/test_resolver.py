@@ -168,8 +168,12 @@ async def test_close_for_async_resolver(loop) -> None:
 
 def test_default_loop_for_threaded_resolver(loop) -> None:
     asyncio.set_event_loop(loop)
-    resolver = ThreadedResolver()
-    assert resolver._loop is loop
+    with pytest.warns(DeprecationWarning) as warning_checker:
+        resolver = ThreadedResolver()
+        assert resolver._loop is loop
+    assert len(warning_checker) == 1
+    msg = str(warning_checker.list[0].message)
+    assert msg == "The object should be created from async function"
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
