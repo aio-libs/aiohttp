@@ -118,10 +118,6 @@ def test_create_web_server_with_implicit_loop() -> None:
     async def handler(request):
         return web.Response()  # pragma: no cover
 
-    with pytest.warns(DeprecationWarning) as warning_checker:
-        srv = web.Server(handler)
-        assert srv._loop is loop
-        asyncio.set_event_loop(None)
-    assert len(warning_checker) == 1
-    msg = str(warning_checker.list[0].message)
-    assert msg == "The object should be created from async function"
+    srv = web.Server(handler)
+    assert srv._loop is loop
+    asyncio.set_event_loop(None)

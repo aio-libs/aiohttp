@@ -36,16 +36,12 @@ async def test_set_loop() -> None:
 
 
 def test_set_loop_default_loop() -> None:
-    with pytest.warns(DeprecationWarning) as warning_checker:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        app = web.Application()
-        app._set_loop(None)
-        assert app.loop is loop
-        asyncio.set_event_loop(None)
-    assert len(warning_checker) == 1
-    msg = str(warning_checker.list[0].message)
-    assert msg == "The object should be created from async function"
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    app = web.Application()
+    app._set_loop(None)
+    assert app.loop is loop
+    asyncio.set_event_loop(None)
 
 
 def test_set_loop_with_different_loops() -> None:
