@@ -209,7 +209,7 @@ def test_del_with_closed_loop(loop) -> None:
     assert exc_handler.called
 
 
-def test_del_empty_conector(loop) -> None:
+def test_del_empty_connector(loop) -> None:
     conn = aiohttp.BaseConnector(loop=loop)
 
     exc_handler = mock.Mock()
