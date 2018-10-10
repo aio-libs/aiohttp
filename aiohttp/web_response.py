@@ -484,7 +484,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[Tuple[str, str]]:
+    def __iter__(self) -> Iterator[Tuple[str, str]]:  # type: ignore
         return iter(self._state.items())
 
     def __hash__(self) -> int:
