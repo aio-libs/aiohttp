@@ -99,7 +99,7 @@ class ClientSession:
                  read_timeout=sentinel, conn_timeout=None,
                  timeout=sentinel,
                  auto_decompress=True, trust_env=False,
-                 trace_configs=None):
+                 trace_configs=None) -> None:
 
         implicit_loop = False
         if loop is None:
