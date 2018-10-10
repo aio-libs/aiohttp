@@ -103,7 +103,7 @@ class Payload(ABC):
 
     _size = None  # type: Optional[int]
     _headers = None  # type: Optional[_CIMultiDict]
-    _content_type = 'application/octet-stream'  # type: Optional[str]
+    _content_type = 'application/octet-stream'  # type: str
 
     def __init__(self,
                  value: Any,
@@ -128,8 +128,8 @@ class Payload(ABC):
 
         if content_type is sentinel:
             content_type = None
-
-        self._content_type = content_type
+        if content_type is not None:
+            self._content_type = content_type
 
     @property
     def size(self) -> Optional[int]:
@@ -152,7 +152,7 @@ class Payload(ABC):
         return self._encoding
 
     @property
-    def content_type(self) -> Optional[str]:
+    def content_type(self) -> str:
         """Content type"""
         if self._content_type is not None:
             return self._content_type

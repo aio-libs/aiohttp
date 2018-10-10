@@ -9,9 +9,9 @@ import warnings
 import zlib
 from email.utils import parsedate
 from http.cookies import SimpleCookie
-from typing import (TYPE_CHECKING, Any, ByteString, Callable, Dict,  # noqa
-                    Iterable, Iterator, List, Mapping, MutableMapping,
-                    Optional, Tuple, Union, cast)
+from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable,  # noqa
+                    Iterator, List, Mapping, MutableMapping, Optional, Tuple,
+                    Union, cast)
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
@@ -423,7 +423,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
 
         return writer
 
-    async def write(self, data: ByteString) -> None:
+    async def write(self, data: bytes) -> None:
         assert isinstance(data, (bytes, bytearray, memoryview)), \
             "data argument must be byte-ish (%r)" % type(data)
 
@@ -443,7 +443,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
                       stacklevel=2)
         await self._payload_writer.drain()
 
-    async def write_eof(self, data: ByteString=b'') -> None:
+    async def write_eof(self, data: bytes=b'') -> None:
         assert isinstance(data, (bytes, bytearray, memoryview)), \
             "data argument must be byte-ish (%r)" % type(data)
 
@@ -564,12 +564,12 @@ class Response(StreamResponse):
 
     @body.setter
     def body(self,
-             body: Any,
+             body: Optional[Union[bytes, payload.Payload]],
              CONTENT_TYPE: str=hdrs.CONTENT_TYPE,
              CONTENT_LENGTH: str=hdrs.CONTENT_LENGTH) -> None:
         if body is None:
             self._body = None
-        elif isinstance(body, (bytes, bytearray)):
+        elif isinstance(body, (bytes, bytearray, memoryview)):
             self._body = body
         else:
             try:
@@ -640,13 +640,14 @@ class Response(StreamResponse):
             return 0
 
     @content_length.setter
-    def content_length(self, value: Any) -> None:
+    def content_length(self, value: int) -> None:
         raise RuntimeError("Content length is set automatically")
 
-    async def write_eof(self) -> None:
+    async def write_eof(self) -> None:  # type: ignore
         if self._eof_sent:
             return
 
+        body = None  # type: Optional[Union[payload.Payload, bytes]]
         if self._compressed_body is not None:
             body = self._compressed_body
         else:
@@ -656,15 +657,16 @@ class Response(StreamResponse):
             if (self._req._method == hdrs.METH_HEAD or
                     self._status in [204, 304]):
                 await super().write_eof()
-            elif isinstance(body, payload.Payload):
+            elif isinstance(body, payload.Payload) and self._payload_writer:
                 await body.write(self._payload_writer)
                 await super().write_eof()
-            else:
+            elif isinstance(body, bytes):
                 await super().write_eof(body)
         else:
             await super().write_eof()
 
-    async def _start(self, request: BaseRequest) -> StreamWriter:
+    async def _start(self,  # type: ignore
+                     request: BaseRequest) -> StreamWriter:
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if self._body is not None:
                 if isinstance(self._body, payload.Payload):
