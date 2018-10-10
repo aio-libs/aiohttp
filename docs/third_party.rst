@@ -231,3 +231,6 @@ period ask to raise the status.
   for `Azure Application Insights <https://azure.microsoft.com/en-us/services/application-insights/>`_
   implemented using ``aiohttp`` client, including a middleware for ``aiohttp`` servers to collect web apps
   telemetry.
+
+- `aiogmaps <https://github.com/hzlmn/aiogmaps>`_
+  Asynchronous client for Google Maps API Web Services. Python 3.6+ required.
