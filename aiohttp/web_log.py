@@ -173,13 +173,13 @@ class AccessLogger(AbstractAccessLogger):
     @staticmethod
     def _format_s(request: BaseRequest,
                   response: StreamResponse,
-                  time: float) -> str:
+                  time: float) -> int:
         return response.status
 
     @staticmethod
     def _format_b(request: BaseRequest,
                   response: StreamResponse,
-                  time: float) -> str:
+                  time: float) -> int:
         return response.body_length
 
     @staticmethod
