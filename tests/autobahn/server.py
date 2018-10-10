@@ -50,8 +50,6 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(levelname)s %(message)s')
-
-    loop = asyncio.get_event_loop()
     app, srv, handler = loop.run_until_complete(main(loop))
     try:
         loop.run_forever()
