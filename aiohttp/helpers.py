@@ -255,14 +255,13 @@ def parse_mimetype(mimetype: str) -> MimeType:
         return MimeType(type='', subtype='', suffix='', parameters=MultiDict())
 
     parts = mimetype.split(';')
-    params_lst = []
+    params = MultiDict()  # type: MultiDict[str]
     for item in parts[1:]:
         if not item:
             continue
         key, value = cast(Tuple[str, str],
                           item.split('=', 1) if '=' in item else (item, ''))
-        params_lst.append((key.lower().strip(), value.strip(' "')))
-    params = MultiDict(params_lst)
+        params.add(key.lower().strip(), value.strip(' "'))
 
     fulltype = parts[0].strip().lower()
     if fulltype == '*':
