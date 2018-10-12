@@ -237,6 +237,7 @@ class MimeType:
     parameters = attr.ib(type=MultiDict)  # type: MultiDict[str]
 
 
+@functools.lru_cache(maxsize=56)
 def parse_mimetype(mimetype: str) -> MimeType:
     """Parses a MIME type into its components.
 
