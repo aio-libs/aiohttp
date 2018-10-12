@@ -253,7 +253,8 @@ def parse_mimetype(mimetype: str) -> MimeType:
 
     """
     if not mimetype:
-        return MimeType(type='', subtype='', suffix='', parameters=MultiDictProxy(MultiDict()))
+        return MimeType(type='', subtype='', suffix='',
+                        parameters=MultiDictProxy(MultiDict()))
 
     parts = mimetype.split(';')
     params_lst = []
