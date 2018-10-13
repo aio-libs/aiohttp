@@ -25,7 +25,7 @@ from urllib.request import getproxies
 
 import async_timeout
 import attr
-from multidict import MultiDict
+from multidict import MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
@@ -234,9 +234,10 @@ class MimeType:
     type = attr.ib(type=str)
     subtype = attr.ib(type=str)
     suffix = attr.ib(type=str)
-    parameters = attr.ib(type=MultiDict)  # type: MultiDict[str]
+    parameters = attr.ib(type=MultiDictProxy)  # type: MultiDictProxy[str]
 
 
+@functools.lru_cache(maxsize=56)
 def parse_mimetype(mimetype: str) -> MimeType:
     """Parses a MIME type into its components.
 
@@ -252,7 +253,8 @@ def parse_mimetype(mimetype: str) -> MimeType:
 
     """
     if not mimetype:
-        return MimeType(type='', subtype='', suffix='', parameters=MultiDict())
+        return MimeType(type='', subtype='', suffix='',
+                        parameters=MultiDictProxy(MultiDict()))
 
     parts = mimetype.split(';')
     params = MultiDict()  # type: MultiDict[str]
@@ -273,7 +275,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
                      if '+' in stype else (stype, ''))
 
     return MimeType(type=mtype, subtype=stype, suffix=suffix,
-                    parameters=params)
+                    parameters=MultiDictProxy(params))
 
 
 def guess_filename(obj: Any, default: Optional[str]=None) -> Optional[str]:
