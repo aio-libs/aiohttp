@@ -7,7 +7,7 @@ cchardet==2.1.4
 chardet==3.0.4
 coverage==4.5.1
 cython==0.29
-gunicorn==19.8.1
+gunicorn==19.9.0
 pyflakes==2.0.0
 multidict==4.4.2
 pytest==3.8.2
