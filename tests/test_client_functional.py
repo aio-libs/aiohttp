@@ -497,6 +497,18 @@ async def test_raw_headers(aiohttp_client) -> None:
     resp.close()
 
 
+async def test_host_header_first(aiohttp_client) -> None:
+    async def handler(request):
+        assert list(request.headers)[0] == hdrs.HOST
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.get('/')
+    assert resp.status == 200
+
+
 async def test_empty_header_values(aiohttp_client) -> None:
     async def handler(request):
         resp = web.Response()
