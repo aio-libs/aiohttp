@@ -131,6 +131,8 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         # Backwards compatibility for when force was a bool <0.17.
         if type(force) == bool:
             force = ContentCoding.deflate if force else ContentCoding.identity
+            warnings.warn("Using boolean for force is deprecated #3318",
+                          DeprecationWarning)
         elif force is not None:
             assert isinstance(force, ContentCoding), ("force should one of "
                                                       "None, bool or "
