@@ -21,7 +21,6 @@ from .http import (RESPONSES, SERVER_SOFTWARE, HttpVersion, HttpVersion10,
                    HttpVersion11)
 from .http_writer import StreamWriter
 from .typedefs import LooseHeaders, _CIMultiDict
-from .web_request import BaseRequest
 
 
 __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
@@ -42,8 +41,10 @@ class ContentCoding(str, enum.Enum):
 ############################################################
 
 if TYPE_CHECKING:  # pragma: no cover
+    from .web_request import BaseRequest
     BaseStreamResponse = MutableMapping[str, str]
 else:
+    BaseRequest = object()  # placeholder
     BaseStreamResponse = collections.MutableMapping
 
 
@@ -81,7 +82,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
         return self._payload_writer is not None
 
     @property
-    def task(self) -> asyncio.Task[None]:
+    def task(self) -> 'asyncio.Task[None]':
         return getattr(self._req, 'task', None)
 
     @property
@@ -164,7 +165,7 @@ class StreamResponse(BaseStreamResponse, HeadersMixin):
         self._compression = True
 
     @property
-    def headers(self) -> CIMultiDict[str]:
+    def headers(self) -> 'CIMultiDict[str]':
         return self._headers
 
     @property
