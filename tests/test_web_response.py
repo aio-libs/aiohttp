@@ -326,7 +326,8 @@ async def test_force_compression_no_accept_backwards_compat() -> None:
     assert not resp.chunked
 
     assert not resp.compression
-    resp.enable_compression(force=True)
+    with pytest.warns(DeprecationWarning):
+        resp.enable_compression(force=True)
     assert resp.compression
 
     msg = await resp.prepare(req)
@@ -339,7 +340,8 @@ async def test_force_compression_false_backwards_compat() -> None:
     resp = StreamResponse()
 
     assert not resp.compression
-    resp.enable_compression(force=False)
+    with pytest.warns(DeprecationWarning):
+        resp.enable_compression(force=False)
     assert resp.compression
 
     msg = await resp.prepare(req)
