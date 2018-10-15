@@ -13,6 +13,7 @@ python:
 
 install:
 - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
+- pip install -r requirements/cython.txt
 - pip install -r requirements/ci.txt
 
 script:
@@ -43,7 +44,7 @@ _helpers:
   <<: *_lint_base
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/ci.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
+  - pip install -U -r requirements/doc.txt -r requirements/doc-spelling.txt
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:
@@ -152,12 +153,20 @@ jobs:
   - <<: *_doc_base
     env:
     - TARGET=towncrier
+    install:
+    - *upgrade_python_toolset
+    - pip install -r requirements/cython.txt
+    - pip install -r requirements/ci.txt
+    - pip install -r requirements/towncrier.txt
     script:
     - towncrier --yes
 
   - <<: *_lint_base
     env:
     - TARGET=flake8
+    install:
+    - *upgrade_python_toolset
+    - pip install -r requirements/flake.txt
     script:
     - flake8 aiohttp examples tests
 
@@ -166,9 +175,18 @@ jobs:
     - TARGET="'dist setup check'"
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/doc.txt
+    - pip install -r requirements/cython.txt
+    - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
+
+  - <<: *_lint_base
+    name:
+    - CONTRIBUTORS.txt sorting check
+    install:
+    - skip
+    script:
+    - LC_ALL=C sort -c CONTRIBUTORS.txt
 
   - <<: *osx_python_base
     python: 3.5.3
@@ -206,6 +224,7 @@ jobs:
     - docker
     script:
     - ./tools/run_docker.sh "aiohttp"
+    - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt  # to compile *.c files by Cython
     deploy:
       <<: *deploy_step

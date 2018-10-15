@@ -46,8 +46,12 @@ def tmp_dir_path(request):
                   b'<li><a href="/static/my_file">my_file</a></li>\n'
                   b'</ul>\n</body>\n</html>',
                   id="index_static")])
-async def test_access_root_of_static_handler(tmp_dir_path, aiohttp_client,
-                                             show_index, status, prefix, data):
+async def test_access_root_of_static_handler(tmp_dir_path,
+                                             aiohttp_client,
+                                             show_index,
+                                             status,
+                                             prefix,
+                                             data) -> None:
     """
     Tests the operation of static file server.
     Try to access the root of static file server, and make
@@ -82,7 +86,7 @@ async def test_access_root_of_static_handler(tmp_dir_path, aiohttp_client,
         assert read_ == data
 
 
-async def test_follow_symlink(tmp_dir_path, aiohttp_client):
+async def test_follow_symlink(tmp_dir_path, aiohttp_client) -> None:
     """
     Tests the access to a symlink, in static folder
     """
@@ -142,7 +146,8 @@ async def test_access_to_the_file_with_spaces(tmp_dir_path, aiohttp_client,
     assert (await r.text()) == data
 
 
-async def test_access_non_existing_resource(tmp_dir_path, aiohttp_client):
+async def test_access_non_existing_resource(tmp_dir_path,
+                                            aiohttp_client) -> None:
     """
     Tests accessing non-existing resource
     Try to access a non-exiting resource and make sure that 404 HTTP status
@@ -164,7 +169,9 @@ async def test_access_non_existing_resource(tmp_dir_path, aiohttp_client):
     ('/a@b', '/a@b'),
     ('/a:b', '/a%3Ab'),
 ])
-async def test_url_escaping(aiohttp_client, registered_path, request_url):
+async def test_url_escaping(aiohttp_client,
+                            registered_path,
+                            request_url) -> None:
     """
     Tests accessing a resource with
     """
@@ -179,7 +186,7 @@ async def test_url_escaping(aiohttp_client, registered_path, request_url):
     assert r.status == 200
 
 
-async def test_handler_metadata_persistence():
+async def test_handler_metadata_persistence() -> None:
     """
     Tests accessing metadata of a handler after registering it on the app
     router.
@@ -203,7 +210,8 @@ async def test_handler_metadata_persistence():
             assert route.handler.__doc__ == 'Doc'
 
 
-async def test_unauthorized_folder_access(tmp_dir_path, aiohttp_client):
+async def test_unauthorized_folder_access(tmp_dir_path,
+                                          aiohttp_client) -> None:
     """
     Tests the unauthorized access to a folder of static file server.
     Try to list a folder content of static file server when server does not
@@ -230,7 +238,7 @@ async def test_unauthorized_folder_access(tmp_dir_path, aiohttp_client):
         assert r.status == 403
 
 
-async def test_access_symlink_loop(tmp_dir_path, aiohttp_client):
+async def test_access_symlink_loop(tmp_dir_path, aiohttp_client) -> None:
     """
     Tests the access to a looped symlink, which could not be resolved.
     """
@@ -248,7 +256,7 @@ async def test_access_symlink_loop(tmp_dir_path, aiohttp_client):
     assert r.status == 404
 
 
-async def test_access_special_resource(tmp_dir_path, aiohttp_client):
+async def test_access_special_resource(tmp_dir_path, aiohttp_client) -> None:
     """
     Tests the access to a resource that is neither a file nor a directory.
     Checks that if a special resource is accessed (f.e. named pipe or UNIX
@@ -278,7 +286,7 @@ async def test_access_special_resource(tmp_dir_path, aiohttp_client):
         assert r.status == 403
 
 
-async def test_partially_applied_handler(aiohttp_client):
+async def test_partially_applied_handler(aiohttp_client) -> None:
     app = web.Application()
 
     async def handler(data, request):
@@ -293,7 +301,7 @@ async def test_partially_applied_handler(aiohttp_client):
     assert data == b'hello'
 
 
-def test_system_route():
+def test_system_route() -> None:
     route = SystemRoute(web.HTTPCreated(reason='test'))
     with pytest.raises(RuntimeError):
         route.url_for()
@@ -304,7 +312,7 @@ def test_system_route():
     assert 'test' == route.reason
 
 
-async def test_412_is_returned(aiohttp_client):
+async def test_412_is_returned(aiohttp_client) -> None:
 
     class MyRouter(abc.AbstractRouter):
 
@@ -321,7 +329,7 @@ async def test_412_is_returned(aiohttp_client):
     assert resp.status == 412
 
 
-async def test_allow_head(aiohttp_client):
+async def test_allow_head(aiohttp_client) -> None:
     """
     Test allow_head on routes.
     """
@@ -354,7 +362,7 @@ async def test_allow_head(aiohttp_client):
     '/a',
     '/{a}',
 ])
-def test_reuse_last_added_resource(path):
+def test_reuse_last_added_resource(path) -> None:
     """
     Test that adding a route with the same name and path of the last added
     resource doesn't create a new resource.
@@ -370,7 +378,7 @@ def test_reuse_last_added_resource(path):
     assert len(app.router.resources()) == 1
 
 
-def test_resource_raw_match():
+def test_resource_raw_match() -> None:
     app = web.Application()
 
     async def handler(request):
@@ -386,7 +394,7 @@ def test_resource_raw_match():
     assert not resource.raw_match("/static")
 
 
-async def test_add_view(aiohttp_client):
+async def test_add_view(aiohttp_client) -> None:
     app = web.Application()
 
     class MyView(web.View):
@@ -413,7 +421,7 @@ async def test_add_view(aiohttp_client):
     await r.release()
 
 
-async def test_decorate_view(aiohttp_client):
+async def test_decorate_view(aiohttp_client) -> None:
     routes = web.RouteTableDef()
 
     @routes.view("/a")
@@ -442,7 +450,7 @@ async def test_decorate_view(aiohttp_client):
     await r.release()
 
 
-async def test_web_view(aiohttp_client):
+async def test_web_view(aiohttp_client) -> None:
     app = web.Application()
 
     class MyView(web.View):
@@ -471,7 +479,7 @@ async def test_web_view(aiohttp_client):
     await r.release()
 
 
-async def test_static_absolute_url(aiohttp_client, tmpdir):
+async def test_static_absolute_url(aiohttp_client, tmpdir) -> None:
     # requested url is an absolute name like
     # /static/\\machine_name\c$ or /static/D:\path
     # where the static dir is totally different

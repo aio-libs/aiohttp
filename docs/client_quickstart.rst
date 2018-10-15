@@ -61,6 +61,15 @@ Other HTTP methods are available as well::
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
+A session context manager usage is not mandatory 
+but ``await session.close()`` method 
+should be called in this case, e.g.::
+
+    session = aiohttp.ClientSession()
+    async with session.get('...'):
+        # ...
+    await session.close()
+
 
 Passing Parameters In URLs
 ==========================
@@ -108,7 +117,7 @@ is not encoded by library. Note that ``+`` is not encoded::
    Canonization encodes *host* part by :term:`IDNA` codec and applies
    :term:`requoting` to *path* and *query* parts.
 
-   For example ``URL('http://example.com/путь%30?a=%31')`` is converted to
+   For example ``URL('http://example.com/путь/%30?a=%31')`` is converted to
    ``URL('http://example.com/%D0%BF%D1%83%D1%82%D1%8C/0?a=1')``.
 
    Sometimes canonization is not desirable if server accepts exact
@@ -431,7 +440,7 @@ Supported :class:`ClientTimeout` fields are:
       The maximum allowed timeout for period between reading a new
       data portion from a peer.
 
-All fields a floats, ``None`` or ``0`` disables a particular timeout check.
+All fields are floats, ``None`` or ``0`` disables a particular timeout check.
 
 Thus the default timeout is::
 

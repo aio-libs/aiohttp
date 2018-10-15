@@ -9,7 +9,7 @@ from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import TimerNoop
 
 
-async def test_oserror(loop):
+async def test_oserror(loop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -19,8 +19,10 @@ async def test_oserror(loop):
     assert isinstance(proto.exception(), ClientOSError)
 
 
-async def test_pause_resume_on_error(loop):
+async def test_pause_resume_on_error(loop) -> None:
     proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
 
     proto.pause_reading()
     assert proto._reading_paused
@@ -29,7 +31,7 @@ async def test_pause_resume_on_error(loop):
     assert not proto._reading_paused
 
 
-async def test_client_proto_bad_message(loop):
+async def test_client_proto_bad_message(loop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -41,7 +43,7 @@ async def test_client_proto_bad_message(loop):
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-async def test_uncompleted_message(loop):
+async def test_uncompleted_message(loop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -57,7 +59,7 @@ async def test_uncompleted_message(loop):
     assert dict(exc.message.headers) == {'Location': 'http://python.org/'}
 
 
-async def test_client_protocol_readuntil_eof(loop):
+async def test_client_protocol_readuntil_eof(loop) -> None:
     proto = ResponseHandler(loop=loop)
     transport = mock.Mock()
     proto.connection_made(transport)
@@ -91,20 +93,20 @@ async def test_client_protocol_readuntil_eof(loop):
     assert response.content.is_eof()
 
 
-async def test_empty_data(loop):
+async def test_empty_data(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.data_received(b'')
 
     # do nothing
 
 
-async def test_schedule_timeout(loop):
+async def test_schedule_timeout(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None
 
 
-async def test_drop_timeout(loop):
+async def test_drop_timeout(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None
@@ -112,7 +114,7 @@ async def test_drop_timeout(loop):
     assert proto._read_timeout_handle is None
 
 
-async def test_reschedule_timeout(loop):
+async def test_reschedule_timeout(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None
@@ -122,7 +124,7 @@ async def test_reschedule_timeout(loop):
     assert proto._read_timeout_handle is not h
 
 
-async def test_eof_received(loop):
+async def test_eof_received(loop) -> None:
     proto = ResponseHandler(loop=loop)
     proto.set_response_params(read_timeout=1)
     assert proto._read_timeout_handle is not None

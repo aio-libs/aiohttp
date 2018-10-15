@@ -8,9 +8,11 @@ import sys
 import zlib
 from enum import IntEnum
 from struct import Struct
+from typing import Any, Callable, Tuple
 
 from .helpers import NO_EXTENSIONS
 from .log import ws_logger
+from .streams import DataQueue
 
 
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
@@ -79,7 +81,8 @@ _WSMessageBase = collections.namedtuple('_WSMessageBase',
 
 class WSMessage(_WSMessageBase):
 
-    def json(self, *, loads=json.loads):
+    def json(self, *,  # type: ignore
+             loads: Callable[[Any], Any]=json.loads) -> None:
         """Return parsed JSON data.
 
         .. versionadded:: 0.22
@@ -94,7 +97,7 @@ WS_CLOSING_MESSAGE = WSMessage(WSMsgType.CLOSING, None, None)
 class WebSocketError(Exception):
     """WebSocket protocol parser error."""
 
-    def __init__(self, code, message):
+    def __init__(self, code: int, message: str) -> None:
         self.code = code
         super().__init__(message)
 
@@ -110,7 +113,7 @@ native_byteorder = sys.byteorder
 _XOR_TABLE = [bytes(a ^ b for a in range(256)) for b in range(256)]
 
 
-def _websocket_mask_python(mask, data):
+def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
     """Websocket masking function.
 
     `mask` is a `bytes` object of length 4; `data` is a `bytearray`
@@ -155,7 +158,7 @@ _WS_EXT_RE = re.compile(r'^(?:;\s*(?:'
 _WS_EXT_RE_SPLIT = re.compile(r'permessage-deflate([^,]+)?')
 
 
-def ws_ext_parse(extstr, isserver=False):
+def ws_ext_parse(extstr: str, isserver: bool=False) -> Tuple[int, bool]:
     if not extstr:
         return 0, False
 
@@ -207,8 +210,8 @@ def ws_ext_parse(extstr, isserver=False):
     return compress, notakeover
 
 
-def ws_ext_gen(compress=15, isserver=False,
-               server_notakeover=False):
+def ws_ext_gen(compress: int=15, isserver: bool=False,
+               server_notakeover: bool=False) -> str:
     # client_notakeover=False not used for server
     # compress wbit 8 does not support in zlib
     if compress < 9 or compress > 15:
@@ -236,7 +239,8 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
 
-    def __init__(self, queue, max_msg_size, compress=True):
+    def __init__(self, queue: DataQueue,
+                 max_msg_size: int, compress: bool=True) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
 

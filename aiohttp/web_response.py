@@ -8,12 +8,14 @@ import warnings
 import zlib
 from email.utils import parsedate
 from http.cookies import SimpleCookie
+from typing import TYPE_CHECKING, Any, Mapping, Optional, cast  # noqa
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from . import hdrs, payload
 from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
+from .typedefs import LooseHeaders
 
 
 __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
@@ -38,7 +40,10 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
 
     _length_check = True
 
-    def __init__(self, *, status=200, reason=None, headers=None):
+    def __init__(self, *,
+                 status: int=200,
+                 reason: Optional[str]=None,
+                 headers: Optional[LooseHeaders]=None) -> None:
         self._body = None
         self._keep_alive = None
         self._chunked = False
@@ -50,12 +55,12 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
         self._payload_writer = None
         self._eof_sent = False
         self._body_length = 0
-        self._state = {}
+        self._state = {}  # type: Mapping
 
         if headers is not None:
-            self._headers = CIMultiDict(headers)
+            self._headers = CIMultiDict(headers)  # type: CIMultiDict
         else:
-            self._headers = CIMultiDict()
+            self._headers = CIMultiDict()  # type: CIMultiDict
 
         self.set_status(status, reason)
 
@@ -438,9 +443,14 @@ class StreamResponse(collections.MutableMapping, HeadersMixin):
 
 class Response(StreamResponse):
 
-    def __init__(self, *, body=None, status=200,
-                 reason=None, text=None, headers=None, content_type=None,
-                 charset=None):
+    def __init__(self, *,
+                 body: Any=None,
+                 status: int=200,
+                 reason: Optional[str]=None,
+                 text: Optional[str]=None,
+                 headers: Optional[LooseHeaders]=None,
+                 content_type: Optional[str]=None,
+                 charset: Optional[str]=None) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
@@ -448,6 +458,8 @@ class Response(StreamResponse):
             headers = CIMultiDict()
         elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
             headers = CIMultiDict(headers)
+        else:
+            headers = cast(CIMultiDict, headers)
 
         if content_type is not None and "charset" in content_type:
             raise ValueError("charset must not be in content_type "
