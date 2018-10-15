@@ -2,15 +2,15 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Awaitable, Callable, Type
 
 import attr
-from multidict import CIMultiDict
+from multidict import CIMultiDict  # noqa
 from yarl import URL
 
 from .client_reqrep import ClientResponse
 from .signals import Signal
 
 
-if TYPE_CHECKING:
-    from .client import ClientSession
+if TYPE_CHECKING:  # pragma: no cover
+    from .client import ClientSession  # noqa
 
     _Signal = Signal[Callable[['TraceConfig'], Awaitable[None]]]
 else:
