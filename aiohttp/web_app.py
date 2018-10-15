@@ -387,12 +387,12 @@ class CleanupContext(FrozenList):
             self._cb = cb
             self._iterator_at_exit = None
 
-        async def enter(self, app):
+        async def _enter(self, app):
             it = self._cb(app).__aiter__()
             await it.__anext__()
             self._iterator_at_exit = it
 
-        async def exit(self, app):
+        async def _exit(self, app):
             if self._iterator_at_exit is None:
                 return
             try:
@@ -409,8 +409,8 @@ class CleanupContext(FrozenList):
 
     def append(self, item):
         cleanup_ctx_item = self.CleanupContextItem(item)
-        super().append(cleanup_ctx_item.exit)
-        self._on_startup.append(cleanup_ctx_item.enter)
+        super().append(cleanup_ctx_item._exit)
+        self._on_startup.append(cleanup_ctx_item._enter)
 
     async def _on_cleanup(self, app):
         errors = []
