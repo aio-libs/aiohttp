@@ -11,7 +11,11 @@ from .signals import Signal
 
 if TYPE_CHECKING:
     from .client import ClientSession
-    from .web_app import Application  # noqa
+    from .web_app import Application
+
+    _Signal = Signal[Callable[[Application], Awaitable[None]]]
+else:
+    _Signal = Signal
 
 
 __all__ = (
@@ -34,21 +38,21 @@ class TraceConfig:
         self,
         trace_config_ctx_factory: Type[SimpleNamespace]=SimpleNamespace
     ) -> None:
-        self._on_request_start = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_request_chunk_sent = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_response_chunk_received = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_request_end = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_request_exception = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_request_redirect = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_connection_queued_start = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_connection_queued_end = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_connection_create_start = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_connection_create_end = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_connection_reuseconn = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_dns_resolvehost_start = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_dns_resolvehost_end = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_dns_cache_hit = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
-        self._on_dns_cache_miss = Signal(self)  # type: Signal[Callable[['Application'], Awaitable[None]]] # noqa
+        self._on_request_start = Signal(self)  # type: _Signal
+        self._on_request_chunk_sent = Signal(self)  # type: _Signal
+        self._on_response_chunk_received = Signal(self)  # type: _Signal
+        self._on_request_end = Signal(self)  # type: _Signal
+        self._on_request_exception = Signal(self)  # type: _Signal
+        self._on_request_redirect = Signal(self)  # type: _Signal
+        self._on_connection_queued_start = Signal(self)  # type: _Signal
+        self._on_connection_queued_end = Signal(self)  # type: _Signal
+        self._on_connection_create_start = Signal(self)  # type: _Signal
+        self._on_connection_create_end = Signal(self)  # type: _Signal
+        self._on_connection_reuseconn = Signal(self)  # type: _Signal
+        self._on_dns_resolvehost_start = Signal(self)  # type: _Signal
+        self._on_dns_resolvehost_end = Signal(self)  # type: _Signal
+        self._on_dns_cache_hit = Signal(self)  # type: _Signal
+        self._on_dns_cache_miss = Signal(self)  # type: _Signal
 
         self._trace_config_ctx_factory = trace_config_ctx_factory  # type: Type[SimpleNamespace] # noqa
 
@@ -78,63 +82,63 @@ class TraceConfig:
         self._on_dns_cache_miss.freeze()
 
     @property
-    def on_request_start(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_request_start(self) -> _Signal:
         return self._on_request_start
 
     @property
-    def on_request_chunk_sent(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_request_chunk_sent(self) -> _Signal:
         return self._on_request_chunk_sent
 
     @property
-    def on_response_chunk_received(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_response_chunk_received(self) -> _Signal:
         return self._on_response_chunk_received
 
     @property
-    def on_request_end(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_request_end(self) -> _Signal:
         return self._on_request_end
 
     @property
-    def on_request_exception(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_request_exception(self) -> _Signal:
         return self._on_request_exception
 
     @property
-    def on_request_redirect(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_request_redirect(self) -> _Signal:
         return self._on_request_redirect
 
     @property
-    def on_connection_queued_start(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_connection_queued_start(self) -> _Signal:
         return self._on_connection_queued_start
 
     @property
-    def on_connection_queued_end(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_connection_queued_end(self) -> _Signal:
         return self._on_connection_queued_end
 
     @property
-    def on_connection_create_start(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_connection_create_start(self) -> _Signal:
         return self._on_connection_create_start
 
     @property
-    def on_connection_create_end(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_connection_create_end(self) -> _Signal:
         return self._on_connection_create_end
 
     @property
-    def on_connection_reuseconn(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_connection_reuseconn(self) -> _Signal:
         return self._on_connection_reuseconn
 
     @property
-    def on_dns_resolvehost_start(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_dns_resolvehost_start(self) -> _Signal:
         return self._on_dns_resolvehost_start
 
     @property
-    def on_dns_resolvehost_end(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_dns_resolvehost_end(self) -> _Signal:
         return self._on_dns_resolvehost_end
 
     @property
-    def on_dns_cache_hit(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_dns_cache_hit(self) -> _Signal:
         return self._on_dns_cache_hit
 
     @property
-    def on_dns_cache_miss(self) -> 'Signal[Callable[["Application"], Awaitable[None]]]':  # noqa
+    def on_dns_cache_miss(self) -> _Signal:
         return self._on_dns_cache_miss
 
 
