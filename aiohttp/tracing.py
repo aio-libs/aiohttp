@@ -11,9 +11,8 @@ from .signals import Signal
 
 if TYPE_CHECKING:
     from .client import ClientSession
-    from .web_app import Application
 
-    _Signal = Signal[Callable[[Application], Awaitable[None]]]
+    _Signal = Signal[Callable[['TraceConfig'], Awaitable[None]]]
 else:
     _Signal = Signal
 
