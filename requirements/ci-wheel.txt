@@ -1,7 +1,7 @@
 -r flake.txt
 attrs==18.2.0
 async-generator==1.10
-async-timeout==3.0.0
+async-timeout==3.0.1
 brotlipy==0.7.0
 cchardet==2.1.4
 chardet==3.0.4
