@@ -69,6 +69,7 @@ Dmitry Doroshev
 Dmitry Lukashin
 Dmitry Shamov
 Dmitry Trofimov
+Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
 Eduard Iskandarov
