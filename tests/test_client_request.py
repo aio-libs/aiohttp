@@ -210,6 +210,11 @@ def test_hostname_err(make_request) -> None:
         make_request('get', 'http://:8080/')
 
 
+def test_host_header_host_first(make_request) -> None:
+    req = make_request('get', 'http://python.org/')
+    assert list(req.headers)[0] == 'Host'
+
+
 def test_host_header_host_without_port(make_request) -> None:
     req = make_request('get', 'http://python.org/')
     assert req.headers['HOST'] == 'python.org'
