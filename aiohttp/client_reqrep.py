@@ -313,7 +313,11 @@ class ClientRequest:
                 headers = headers.items()
 
             for key, value in headers:
-                self.headers.add(key, value)
+                # A special case for Host header
+                if key.lower() == 'host':
+                    self.headers[key] = value
+                else:
+                    self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers):
         self.skip_auto_headers = CIMultiDict(
