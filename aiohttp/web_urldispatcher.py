@@ -17,8 +17,7 @@ from types import MappingProxyType
 from yarl import URL
 
 from . import hdrs
-from .abc import (AbstractMatchInfo, AbstractRouter, AbstractRuleMatching,
-                  AbstractView)
+from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
 from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
@@ -672,6 +671,21 @@ class PrefixedSubAppResource(PrefixResource):
     def __repr__(self):
         return "<PrefixedSubAppResource {prefix} -> {app!r}>".format(
             prefix=self._prefix, app=self._app)
+
+
+class AbstractRuleMatching(abc.ABC):
+    @abc.abstractmethod  # pragma: no branch
+    async def match(self, request):
+        """Return bool if the request satisfies the criteria"""
+
+    @abc.abstractmethod  # pragma: no branch
+    def get_info(self):
+        """Return a dict with additional info useful for introspection"""
+
+    @property
+    @abc.abstractmethod  # pragma: no branch
+    def canonical(self):
+        """Return a str"""
 
 
 class Domain(AbstractRuleMatching):

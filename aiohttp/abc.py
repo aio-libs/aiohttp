@@ -174,18 +174,3 @@ class AbstractAccessLogger(ABC):
             response: StreamResponse,
             time: float) -> None:
         """Emit log to logger."""
-
-
-class AbstractRuleMatching(ABC):
-    @abstractmethod  # pragma: no branch
-    async def match(self, request):
-        """Return bool if the request satisfies the criteria"""
-
-    @abstractmethod  # pragma: no branch
-    def get_info(self):
-        """Return a dict with additional info useful for introspection"""
-
-    @property
-    @abstractmethod  # pragma: no branch
-    def canonical(self):
-        """Return a str"""
