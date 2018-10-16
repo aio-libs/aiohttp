@@ -300,13 +300,12 @@ class ClientRequest:
         self.headers = CIMultiDict()
 
         # add host
-        if hdrs.HOST not in self.headers:
-            netloc = self.url.raw_host
-            if helpers.is_ipv6_address(netloc):
-                netloc = '[{}]'.format(netloc)
-            if not self.url.is_default_port():
-                netloc += ':' + str(self.url.port)
-            self.headers[hdrs.HOST] = netloc
+        netloc = self.url.raw_host
+        if helpers.is_ipv6_address(netloc):
+            netloc = '[{}]'.format(netloc)
+        if not self.url.is_default_port():
+            netloc += ':' + str(self.url.port)
+        self.headers[hdrs.HOST] = netloc
 
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
