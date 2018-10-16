@@ -31,7 +31,7 @@ Access logs
 Access log by default is switched on and uses ``'aiohttp.access'``
 logger name.
 
-The log may be controlled by :meth:`aiohttp.web.AppRunner` and 
+The log may be controlled by :meth:`aiohttp.web.AppRunner` and
 :func:`aiohttp.web.run_app`.
 
 
@@ -71,7 +71,7 @@ request and response:
 +--------------+---------------------------------------------------------+
 | ``%s``       | Response status code                                    |
 +--------------+---------------------------------------------------------+
-| ``%b``       | Size of response in bytes, excluding HTTP headers       |
+| ``%b``       | Size of response in bytes, including HTTP headers       |
 +--------------+---------------------------------------------------------+
 | ``%T``       | The time taken to serve the request, in seconds         |
 +--------------+---------------------------------------------------------+

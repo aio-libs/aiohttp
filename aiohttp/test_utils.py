@@ -24,7 +24,7 @@ from .web import (AppRunner, Request, Server, ServerRunner, TCPSite,
                   UrlMappingMatchInfo)
 
 
-def unused_port():
+def unused_port() -> int:
     """Return a port that is unused on the current host."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('127.0.0.1', 0))
@@ -423,7 +423,7 @@ def setup_test_loop(loop_factory=asyncio.new_event_loop):
     asyncio.set_event_loop(loop)
     if sys.platform != "win32" and not skip_watcher:
         policy = asyncio.get_event_loop_policy()
-        watcher = asyncio.SafeChildWatcher()
+        watcher = asyncio.SafeChildWatcher()  # type: ignore
         watcher.attach_loop(loop)
         with contextlib.suppress(NotImplementedError):
             policy.set_child_watcher(watcher)
@@ -448,7 +448,17 @@ def teardown_test_loop(loop, fast=False):
 
 
 def _create_app_mock():
-    app = mock.Mock()
+    def get_dict(app, key):
+        return app.__app_dict[key]
+
+    def set_dict(app, key, value):
+        app.__app_dict[key] = value
+
+    app = mock.MagicMock()
+    app.__app_dict = {}
+    app.__getitem__ = get_dict
+    app.__setitem__ = set_dict
+
     app._debug = False
     app.on_response_prepare = Signal(app)
     app.on_response_prepare.freeze()

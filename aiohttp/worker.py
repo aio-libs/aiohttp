@@ -12,7 +12,8 @@ from gunicorn.workers import base
 
 from aiohttp import web
 
-from .helpers import AccessLogger, set_result
+from .helpers import set_result
+from .web_log import AccessLogger
 
 
 try:

@@ -1,15 +1,18 @@
 import asyncio
+import logging
 import warnings
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from functools import partial
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, List, Mapping,
+                    Optional, Sequence, Tuple, Union)
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
 from .frozenlist import FrozenList
-from .helpers import DEBUG, AccessLogger
+from .helpers import DEBUG
 from .log import web_logger
 from .signals import Signal
+from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
@@ -25,28 +28,42 @@ if TYPE_CHECKING:  # pragma: no branch
     _AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
                                          Awaitable[None]]]
+    _Handler = Callable[[Request], Awaitable[StreamResponse]]
+    _Middleware = Union[Callable[[Request, _Handler],
+                                 Awaitable[StreamResponse]],
+                        Callable[['Application', _Handler],  # old-style
+                                 Awaitable[_Handler]]]
+    _Middlewares = FrozenList[_Middleware]
+    _MiddlewaresHandlers = Optional[Sequence[Tuple[_Middleware, bool]]]
+    _Subapps = List['Application']
 else:
     # No type checker mode, skip types
     _AppSignal = Signal
     _RespPrepareSignal = Signal
+    _Handler = Callable
+    _Middleware = Callable
+    _Middlewares = FrozenList
+    _MiddlewaresHandlers = Optional[Sequence]
+    _Subapps = List
 
 
 class Application(MutableMapping):
     ATTRS = frozenset([
         'logger', '_debug', '_router', '_loop', '_handler_args',
         '_middlewares', '_middlewares_handlers', '_run_middlewares',
-        '_state', '_frozen', '_subapps',
+        '_state', '_frozen', '_pre_frozen', '_subapps',
         '_on_response_prepare', '_on_startup', '_on_shutdown',
         '_on_cleanup', '_client_max_size', '_cleanup_ctx'])
 
     def __init__(self, *,
-                 logger=web_logger,
-                 router=None,
-                 middlewares=(),
-                 handler_args=None,
-                 client_max_size=1024**2,
-                 loop=None,
-                 debug=...):
+                 logger: logging.Logger=web_logger,
+                 router: Optional[UrlDispatcher]=None,
+                 middlewares: Sequence[_Middleware]=(),
+                 handler_args: Mapping[str, Any]=None,
+                 client_max_size: int=1024**2,
+                 loop: Optional[asyncio.AbstractEventLoop]=None,
+                 debug=...  # type: ignore
+                 ) -> None:
         if router is None:
             router = UrlDispatcher()
         else:
@@ -64,19 +81,23 @@ class Application(MutableMapping):
         self._handler_args = handler_args
         self.logger = logger
 
-        self._middlewares = FrozenList(middlewares)
-        self._middlewares_handlers = None  # initialized on freezing
-        self._run_middlewares = None  # initialized on freezing
-        self._state = {}
+        self._middlewares = FrozenList(middlewares)  # type: _Middlewares
+
+        # initialized on freezing
+        self._middlewares_handlers = None  # type: _MiddlewaresHandlers
+        # initialized on freezing
+        self._run_middlewares = None  # type: Optional[bool]
+
+        self._state = {}  # type: Mapping
         self._frozen = False
-        self._subapps = []
+        self._pre_frozen = False
+        self._subapps = []  # type: _Subapps
 
         self._on_response_prepare = Signal(self)  # type: _RespPrepareSignal
         self._on_startup = Signal(self)  # type: _AppSignal
         self._on_shutdown = Signal(self)  # type: _AppSignal
         self._on_cleanup = Signal(self)  # type: _AppSignal
-        self._cleanup_ctx = CleanupContext()
-        self._on_startup.append(self._cleanup_ctx._on_startup)
+        self._cleanup_ctx = CleanupContext(self._on_startup)
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
@@ -147,14 +168,14 @@ class Application(MutableMapping):
             subapp._set_loop(loop)
 
     @property
-    def frozen(self) -> bool:
-        return self._frozen
+    def pre_frozen(self) -> bool:
+        return self._pre_frozen
 
-    def freeze(self) -> None:
-        if self._frozen:
+    def pre_freeze(self) -> None:
+        if self._pre_frozen:
             return
 
-        self._frozen = True
+        self._pre_frozen = True
         self._middlewares.freeze()
         self._router.freeze()
         self._on_response_prepare.freeze()
@@ -172,9 +193,22 @@ class Application(MutableMapping):
         self._run_middlewares = True if self.middlewares else False
 
         for subapp in self._subapps:
-            subapp.freeze()
+            subapp.pre_freeze()
             self._run_middlewares =\
                 self._run_middlewares or subapp._run_middlewares
+
+    @property
+    def frozen(self) -> bool:
+        return self._frozen
+
+    def freeze(self) -> None:
+        if self._frozen:
+            return
+
+        self.pre_freeze()
+        self._frozen = True
+        for subapp in self._subapps:
+            subapp.freeze()
 
     @property
     def debug(self) -> bool:
@@ -213,7 +247,7 @@ class Application(MutableMapping):
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
-        subapp.freeze()
+        subapp.pre_freeze()
         if self._loop is not None:
             subapp._set_loop(self._loop)
         return resource
@@ -274,12 +308,12 @@ class Application(MutableMapping):
         self.freeze()
 
         kwargs['debug'] = self.debug
+        kwargs['access_log_class'] = access_log_class
         if self._handler_args:
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
         return Server(self._handle, request_factory=self._make_request,
-                      access_log_class=access_log_class,
                       loop=self.loop, **kwargs)
 
     def make_handler(self, *,
@@ -340,7 +374,7 @@ class Application(MutableMapping):
         match_info = await self._router.resolve(request)
         if DEBUG:  # pragma: no cover
             if not isinstance(match_info, AbstractMatchInfo):
-                raise TypeError("match_info should be AbstractMAtchInfo "
+                raise TypeError("match_info should be AbstractMatchInfo "
                                 "instance, not {!r}".format(match_info))
         match_info.add_app(self)
 
@@ -393,28 +427,49 @@ class CleanupError(RuntimeError):
 
 class CleanupContext(FrozenList):
 
-    def __init__(self):
-        super().__init__()
-        self._exits = []
+    class CleanupContextItem:
+        """
+        CleanupContext uses this class to wrap an asynchronous generator
+        before adding to itself.
+        """
 
-    async def _on_startup(self, app):
-        for cb in self:
-            it = cb(app).__aiter__()
+        def __init__(self, cb):
+            self._cb = cb
+            self._iterator_at_exit = None
+
+        async def _enter(self, app):
+            it = self._cb(app).__aiter__()
             await it.__anext__()
-            self._exits.append(it)
+            self._iterator_at_exit = it
+
+        async def _exit(self, app):
+            if self._iterator_at_exit is None:
+                return
+            try:
+                await self._iterator_at_exit.__anext__()
+            except StopAsyncIteration:
+                pass
+            else:
+                raise RuntimeError("{!r} has more than one 'yield'"
+                                   .format(self._iterator_at_exit))
+
+    def __init__(self, on_startup):
+        super().__init__()
+        self._on_startup = on_startup
+
+    def append(self, item):
+        cleanup_ctx_item = self.CleanupContextItem(item)
+        super().append(cleanup_ctx_item._exit)
+        self._on_startup.append(cleanup_ctx_item._enter)
 
     async def _on_cleanup(self, app):
         errors = []
-        for it in reversed(self._exits):
+        for cb in reversed(self):
             try:
-                await it.__anext__()
-            except StopAsyncIteration:
-                pass
+                await cb(app)
             except Exception as exc:
                 errors.append(exc)
-            else:
-                errors.append(RuntimeError("{!r} has more than one 'yield'"
-                                           .format(it)))
+
         if errors:
             if len(errors) == 1:
                 raise errors[0]

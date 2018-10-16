@@ -99,7 +99,7 @@ class ClientSession:
                  read_timeout=sentinel, conn_timeout=None,
                  timeout=sentinel,
                  auto_decompress=True, trust_env=False,
-                 trace_configs=None):
+                 trace_configs=None) -> None:
 
         implicit_loop = False
         if loop is None:
@@ -903,9 +903,11 @@ def request(method, url, *,
             compress=None,
             chunked=None,
             expect100=False,
+            raise_for_status=False,
             connector=None,
             loop=None,
             read_until_eof=True,
+            timeout=sentinel,
             proxy=None,
             proxy_auth=None) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
@@ -933,6 +935,8 @@ def request(method, url, *,
     read_until_eof - Read response until eof if response
        does not have Content-Length header.
     loop - Optional event loop.
+    timeout - Optional ClientTimeout settings structure, 5min
+       total timeout by default.
     Usage::
       >>> import aiohttp
       >>> resp = await aiohttp.request('GET', 'http://python.org/')
@@ -946,7 +950,7 @@ def request(method, url, *,
         connector = TCPConnector(loop=loop, force_close=True)
 
     session = ClientSession(
-        loop=loop, cookies=cookies, version=version,
+        loop=loop, cookies=cookies, version=version, timeout=timeout,
         connector=connector, connector_owner=connector_owner)
 
     return _SessionRequestContextManager(
@@ -962,6 +966,7 @@ def request(method, url, *,
                          compress=compress,
                          chunked=chunked,
                          expect100=expect100,
+                         raise_for_status=raise_for_status,
                          read_until_eof=read_until_eof,
                          proxy=proxy,
                          proxy_auth=proxy_auth,),

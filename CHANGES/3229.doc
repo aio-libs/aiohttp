@@ -1,0 +1,1 @@
+Fix typo in TypeError exception reason in ``web.Application._handle``

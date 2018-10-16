@@ -1,3 +1,6 @@
+from typing import Any, Dict, List, Optional  # noqa
+
+from .typedefs import LooseHeaders, StrOrURL
 from .web_response import Response
 
 
@@ -76,8 +79,12 @@ class HTTPException(Response, Exception):
 
     __http_exception__ = True
 
-    def __init__(self, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
+    def __init__(self, *,
+                 headers: Optional[LooseHeaders]=None,
+                 reason: Optional[str]=None,
+                 body: Any=None,
+                 text: Optional[str]=None,
+                 content_type: Optional[str]=None) -> None:
         Response.__init__(self, status=self.status_code,
                           headers=headers, reason=reason,
                           body=body, text=text, content_type=content_type)
@@ -85,7 +92,7 @@ class HTTPException(Response, Exception):
         if self.body is None and not self.empty_body:
             self.text = "{}: {}".format(self.status, self.reason)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return True
 
 
@@ -138,8 +145,14 @@ class HTTPPartialContent(HTTPSuccessful):
 
 class _HTTPMove(HTTPRedirection):
 
-    def __init__(self, location, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
+    def __init__(self,
+                 location: StrOrURL,
+                 *,
+                 headers: Optional[LooseHeaders]=None,
+                 reason: Optional[str]=None,
+                 body: Any=None,
+                 text: Optional[str]=None,
+                 content_type: Optional[str]=None) -> None:
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
         super().__init__(headers=headers, reason=reason,
@@ -217,8 +230,15 @@ class HTTPNotFound(HTTPClientError):
 class HTTPMethodNotAllowed(HTTPClientError):
     status_code = 405
 
-    def __init__(self, method, allowed_methods, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
+    def __init__(self,
+                 method: str,
+                 allowed_methods: List[str],
+                 *,
+                 headers: Optional[LooseHeaders]=None,
+                 reason: Optional[str]=None,
+                 body: Any=None,
+                 text: Optional[str]=None,
+                 content_type: Optional[str]=None) -> None:
         allow = ','.join(sorted(allowed_methods))
         super().__init__(headers=headers, reason=reason,
                          body=body, text=text, content_type=content_type)
@@ -258,7 +278,10 @@ class HTTPPreconditionFailed(HTTPClientError):
 class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
 
-    def __init__(self, max_size, actual_size, **kwargs):
+    def __init__(self,
+                 max_size: float,
+                 actual_size: float,
+                 **kwargs: Any) -> None:
         kwargs.setdefault(
             'text',
             'Maximum request body size {} exceeded, '
@@ -314,8 +337,14 @@ class HTTPRequestHeaderFieldsTooLarge(HTTPClientError):
 class HTTPUnavailableForLegalReasons(HTTPClientError):
     status_code = 451
 
-    def __init__(self, link, *, headers=None, reason=None,
-                 body=None, text=None, content_type=None):
+    def __init__(self,
+                 link: str,
+                 *,
+                 headers: Optional[LooseHeaders]=None,
+                 reason: Optional[str]=None,
+                 body: Any=None,
+                 text: Optional[str]=None,
+                 content_type: Optional[str]=None) -> None:
         super().__init__(headers=headers, reason=reason,
                          body=body, text=text, content_type=content_type)
         self.headers['Link'] = '<%s>; rel="blocked-by"' % link

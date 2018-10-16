@@ -5,15 +5,18 @@ import mimetypes
 import os
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterable
 from itertools import chain
+from typing import (IO, TYPE_CHECKING, Any, ByteString, Callable, Dict,  # noqa
+                    Iterable, List, Optional, Text, TextIO, Tuple, Type, Union)
 
 from multidict import CIMultiDict
 
 from . import hdrs
+from .abc import AbstractStreamWriter
 from .helpers import (PY_36, content_disposition_header, guess_filename,
                       parse_mimetype, sentinel)
 from .streams import DEFAULT_LIMIT, StreamReader
+from .typedefs import JSONEncoder, _CIMultiDict
 
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
@@ -29,27 +32,30 @@ class LookupError(Exception):
     pass
 
 
-class Order(enum.Enum):
+class Order(str, enum.Enum):
     normal = 'normal'
     try_first = 'try_first'
     try_last = 'try_last'
 
 
-def get_payload(data, *args, **kwargs):
+def get_payload(data: Any, *args: Any, **kwargs: Any) -> 'Payload':
     return PAYLOAD_REGISTRY.get(data, *args, **kwargs)
 
 
-def register_payload(factory, type, *, order=Order.normal):
+def register_payload(factory: Type['Payload'],
+                     type: Any,
+                     *,
+                     order: Order=Order.normal) -> None:
     PAYLOAD_REGISTRY.register(factory, type, order=order)
 
 
 class payload_type:
 
-    def __init__(self, type, *, order=Order.normal):
+    def __init__(self, type: Any, *, order: Order=Order.normal) -> None:
         self.type = type
         self.order = order
 
-    def __call__(self, factory):
+    def __call__(self, factory: Type['Payload']) -> Type['Payload']:
         register_payload(factory, self.type, order=self.order)
         return factory
 
@@ -60,12 +66,16 @@ class PayloadRegistry:
     note: we need zope.interface for more efficient adapter search
     """
 
-    def __init__(self):
-        self._first = []
-        self._normal = []
-        self._last = []
+    def __init__(self) -> None:
+        self._first = []  # type: List[Tuple[Type[Payload], Any]]
+        self._normal = []  # type: List[Tuple[Type[Payload], Any]]
+        self._last = []  # type: List[Tuple[Type[Payload], Any]]
 
-    def get(self, data, *args, _CHAIN=chain, **kwargs):
+    def get(self,
+            data: Any,
+            *args: Any,
+            _CHAIN: Any=chain,
+            **kwargs: Any) -> 'Payload':
         if isinstance(data, Payload):
             return data
         for factory, type in _CHAIN(self._first, self._normal, self._last):
@@ -74,7 +84,11 @@ class PayloadRegistry:
 
         raise LookupError()
 
-    def register(self, factory, type, *, order=Order.normal):
+    def register(self,
+                 factory: Type['Payload'],
+                 type: Any,
+                 *,
+                 order: Order=Order.normal) -> None:
         if order is Order.try_first:
             self._first.append((factory, type))
         elif order is Order.normal:
@@ -87,12 +101,23 @@ class PayloadRegistry:
 
 class Payload(ABC):
 
-    _size = None
-    _headers = None
-    _content_type = 'application/octet-stream'
+    _size = None  # type: Optional[float]
+    _headers = None  # type: Optional[_CIMultiDict]
+    _content_type = 'application/octet-stream'  # type: Optional[str]
 
-    def __init__(self, value, *, headers=None, content_type=sentinel,
-                 filename=None, encoding=None, **kwargs):
+    def __init__(self,
+                 value: Any,
+                 headers: Optional[
+                     Union[
+                         _CIMultiDict,
+                         Dict[str, str],
+                         Iterable[Tuple[str, str]]
+                     ]
+                 ] = None,
+                 content_type: Optional[str]=sentinel,
+                 filename: Optional[str]=None,
+                 encoding: Optional[str]=None,
+                 **kwargs: Any) -> None:
         self._value = value
         self._encoding = encoding
         self._filename = filename
@@ -107,27 +132,27 @@ class Payload(ABC):
         self._content_type = content_type
 
     @property
-    def size(self):
+    def size(self) -> Optional[float]:
         """Size of the payload."""
         return self._size
 
     @property
-    def filename(self):
+    def filename(self) -> Optional[str]:
         """Filename of the payload."""
         return self._filename
 
     @property
-    def headers(self):
+    def headers(self) -> Optional[_CIMultiDict]:
         """Custom item headers"""
         return self._headers
 
     @property
-    def encoding(self):
+    def encoding(self) -> Optional[str]:
         """Payload encoding"""
         return self._encoding
 
     @property
-    def content_type(self):
+    def content_type(self) -> Optional[str]:
         """Content type"""
         if self._content_type is not None:
             return self._content_type
@@ -137,7 +162,10 @@ class Payload(ABC):
         else:
             return Payload._content_type
 
-    def set_content_disposition(self, disptype, quote_fields=True, **params):
+    def set_content_disposition(self,
+                                disptype: str,
+                                quote_fields: bool=True,
+                                **params: Any) -> None:
         """Sets ``Content-Disposition`` header."""
         if self._headers is None:
             self._headers = CIMultiDict()
@@ -146,7 +174,7 @@ class Payload(ABC):
             disptype, quote_fields=quote_fields, **params)
 
     @abstractmethod
-    async def write(self, writer):
+    async def write(self, writer: AbstractStreamWriter) -> None:
         """Write payload.
 
         writer is an AbstractStreamWriter instance:
@@ -155,7 +183,10 @@ class Payload(ABC):
 
 class BytesPayload(Payload):
 
-    def __init__(self, value, *args, **kwargs):
+    def __init__(self,
+                 value: ByteString,
+                 *args: Any,
+                 **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
             raise TypeError("value argument must be byte-ish, not (!r)"
                             .format(type(value)))
@@ -177,40 +208,56 @@ class BytesPayload(Payload):
                           "io.BytesIO object instead", ResourceWarning,
                           **kwargs)
 
-    async def write(self, writer):
+    async def write(self, writer: AbstractStreamWriter) -> None:
         await writer.write(self._value)
 
 
 class StringPayload(BytesPayload):
 
-    def __init__(self, value, *args,
-                 encoding=None, content_type=None, **kwargs):
+    def __init__(self,
+                 value: Text,
+                 *args: Any,
+                 encoding: Optional[str]=None,
+                 content_type: Optional[str]=None,
+                 **kwargs: Any) -> None:
 
         if encoding is None:
             if content_type is None:
-                encoding = 'utf-8'
+                real_encoding = 'utf-8'
                 content_type = 'text/plain; charset=utf-8'
             else:
                 mimetype = parse_mimetype(content_type)
-                encoding = mimetype.parameters.get('charset', 'utf-8')
+                real_encoding = mimetype.parameters.get('charset', 'utf-8')
         else:
             if content_type is None:
                 content_type = 'text/plain; charset=%s' % encoding
+            real_encoding = encoding
 
         super().__init__(
-            value.encode(encoding),
-            encoding=encoding, content_type=content_type, *args, **kwargs)
+            value.encode(real_encoding),
+            encoding=real_encoding,
+            content_type=content_type,
+            *args,
+            **kwargs,
+        )
 
 
 class StringIOPayload(StringPayload):
 
-    def __init__(self, value, *args, **kwargs):
+    def __init__(self,
+                 value: IO[str],
+                 *args: Any,
+                 **kwargs: Any) -> None:
         super().__init__(value.read(), *args, **kwargs)
 
 
 class IOBasePayload(Payload):
 
-    def __init__(self, value, disposition='attachment', *args, **kwargs):
+    def __init__(self,
+                 value: IO[Any],
+                 disposition: str='attachment',
+                 *args: Any,
+                 **kwargs: Any) -> None:
         if 'filename' not in kwargs:
             kwargs['filename'] = guess_filename(value)
 
@@ -219,7 +266,7 @@ class IOBasePayload(Payload):
         if self._filename is not None and disposition is not None:
             self.set_content_disposition(disposition, filename=self._filename)
 
-    async def write(self, writer):
+    async def write(self, writer: AbstractStreamWriter) -> None:
         try:
             chunk = self._value.read(DEFAULT_LIMIT)
             while chunk:
@@ -231,8 +278,12 @@ class IOBasePayload(Payload):
 
 class TextIOPayload(IOBasePayload):
 
-    def __init__(self, value, *args,
-                 encoding=None, content_type=None, **kwargs):
+    def __init__(self,
+                 value: TextIO,
+                 *args: Any,
+                 encoding: Optional[str]=None,
+                 content_type: Optional[str]=None,
+                 **kwargs: Any) -> None:
 
         if encoding is None:
             if content_type is None:
@@ -247,16 +298,20 @@ class TextIOPayload(IOBasePayload):
 
         super().__init__(
             value,
-            content_type=content_type, encoding=encoding, *args, **kwargs)
+            content_type=content_type,
+            encoding=encoding,
+            *args,
+            **kwargs,
+        )
 
     @property
-    def size(self):
+    def size(self) -> Optional[float]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except OSError:
             return None
 
-    async def write(self, writer):
+    async def write(self, writer: AbstractStreamWriter) -> None:
         try:
             chunk = self._value.read(DEFAULT_LIMIT)
             while chunk:
@@ -269,7 +324,7 @@ class TextIOPayload(IOBasePayload):
 class BytesIOPayload(IOBasePayload):
 
     @property
-    def size(self):
+    def size(self) -> float:
         position = self._value.tell()
         end = self._value.seek(0, os.SEEK_END)
         self._value.seek(position)
@@ -279,7 +334,7 @@ class BytesIOPayload(IOBasePayload):
 class BufferedReaderPayload(IOBasePayload):
 
     @property
-    def size(self):
+    def size(self) -> Optional[float]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except OSError:
@@ -290,18 +345,39 @@ class BufferedReaderPayload(IOBasePayload):
 
 class JsonPayload(BytesPayload):
 
-    def __init__(self, value,
-                 encoding='utf-8', content_type='application/json',
-                 dumps=json.dumps, *args, **kwargs):
+    def __init__(self,
+                 value: Any,
+                 encoding: str='utf-8',
+                 content_type: str='application/json',
+                 dumps: JSONEncoder=json.dumps,
+                 *args: Any,
+                 **kwargs: Any) -> None:
 
         super().__init__(
             dumps(value).encode(encoding),
             content_type=content_type, encoding=encoding, *args, **kwargs)
 
 
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import AsyncIterator, AsyncIterable
+
+    _AsyncIterator = AsyncIterator[bytes]
+    _AsyncIterable = AsyncIterable[bytes]
+else:
+    from collections.abc import AsyncIterable, AsyncIterator
+
+    _AsyncIterator = AsyncIterator
+    _AsyncIterable = AsyncIterable
+
+
 class AsyncIterablePayload(Payload):
 
-    def __init__(self, value, *args, **kwargs):
+    _iter = None  # type: Optional[_AsyncIterator]
+
+    def __init__(self,
+                 value: _AsyncIterable,
+                 *args: Any,
+                 **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
             raise TypeError("value argument must support "
                             "collections.abc.AsyncIterablebe interface, "
@@ -314,20 +390,21 @@ class AsyncIterablePayload(Payload):
 
         self._iter = value.__aiter__()
 
-    async def write(self, writer):
-        try:
-            # iter is not None check prevents rare cases
-            # when the case iterable is used twice
-            while True:
-                chunk = await self._iter.__anext__()
-                await writer.write(chunk)
-        except StopAsyncIteration:
-            self._iter = None
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        if self._iter:
+            try:
+                # iter is not None check prevents rare cases
+                # when the case iterable is used twice
+                while True:
+                    chunk = await self._iter.__anext__()
+                    await writer.write(chunk)
+            except StopAsyncIteration:
+                self._iter = None
 
 
 class StreamReaderPayload(AsyncIterablePayload):
 
-    def __init__(self, value, *args, **kwargs):
+    def __init__(self, value: StreamReader, *args: Any, **kwargs: Any) -> None:
         super().__init__(value.iter_any(), *args, **kwargs)
 
 

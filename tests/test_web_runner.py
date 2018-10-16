@@ -27,7 +27,7 @@ def make_runner(loop, app):
         loop.run_until_complete(runner.cleanup())
 
 
-async def test_site_for_nonfrozen_app(make_runner):
+async def test_site_for_nonfrozen_app(make_runner) -> None:
     runner = make_runner()
     with pytest.raises(RuntimeError):
         web.TCPSite(runner)
@@ -36,7 +36,7 @@ async def test_site_for_nonfrozen_app(make_runner):
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="the test is not valid for Windows")
-async def test_runner_setup_handle_signals(make_runner):
+async def test_runner_setup_handle_signals(make_runner) -> None:
     runner = make_runner(handle_signals=True)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
@@ -46,7 +46,7 @@ async def test_runner_setup_handle_signals(make_runner):
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="the test is not valid for Windows")
-async def test_runner_setup_without_signal_handling(make_runner):
+async def test_runner_setup_without_signal_handling(make_runner) -> None:
     runner = make_runner(handle_signals=False)
     await runner.setup()
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
@@ -54,7 +54,7 @@ async def test_runner_setup_without_signal_handling(make_runner):
     assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
 
 
-async def test_site_double_added(make_runner):
+async def test_site_double_added(make_runner) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
@@ -65,7 +65,7 @@ async def test_site_double_added(make_runner):
     assert len(runner.sites) == 1
 
 
-async def test_site_stop_not_started(make_runner):
+async def test_site_stop_not_started(make_runner) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
@@ -75,13 +75,13 @@ async def test_site_stop_not_started(make_runner):
     assert len(runner.sites) == 0
 
 
-async def test_custom_log_format(make_runner):
+async def test_custom_log_format(make_runner) -> None:
     runner = make_runner(access_log_format='abc')
     await runner.setup()
     assert runner.server._kwargs['access_log_format'] == 'abc'
 
 
-async def test_unreg_site(make_runner):
+async def test_unreg_site(make_runner) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner)
@@ -89,19 +89,19 @@ async def test_unreg_site(make_runner):
         runner._unreg_site(site)
 
 
-async def test_app_property(make_runner, app):
+async def test_app_property(make_runner, app) -> None:
     runner = make_runner()
     assert runner.app is app
 
 
-def test_non_app():
+def test_non_app() -> None:
     with pytest.raises(TypeError):
         web.AppRunner(object())
 
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="Unix socket support is required")
-async def test_addresses(make_runner, shorttmpdir):
+async def test_addresses(make_runner, shorttmpdir) -> None:
     runner = make_runner()
     await runner.setup()
     tcp = web.TCPSite(runner)

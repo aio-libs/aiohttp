@@ -59,19 +59,19 @@ def params():
         read_until_eof=False)
 
 
-def test_close_coro(create_session, loop):
+def test_close_coro(create_session, loop) -> None:
     session = create_session()
     loop.run_until_complete(session.close())
 
 
-def test_init_headers_simple_dict(create_session):
+def test_init_headers_simple_dict(create_session) -> None:
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})
     assert (sorted(session._default_headers.items()) ==
             ([("h1", "header1"), ("h2", "header2")]))
 
 
-def test_init_headers_list_of_tuples(create_session):
+def test_init_headers_list_of_tuples(create_session) -> None:
     session = create_session(headers=[("h1", "header1"),
                                       ("h2", "header2"),
                                       ("h3", "header3")])
@@ -81,7 +81,7 @@ def test_init_headers_list_of_tuples(create_session):
                          ("h3", "header3")]))
 
 
-def test_init_headers_MultiDict(create_session):
+def test_init_headers_MultiDict(create_session) -> None:
     session = create_session(headers=MultiDict([("h1", "header1"),
                                                 ("h2", "header2"),
                                                 ("h3", "header3")]))
@@ -91,7 +91,7 @@ def test_init_headers_MultiDict(create_session):
                          ("H3", "header3")]))
 
 
-def test_init_headers_list_of_tuples_with_duplicates(create_session):
+def test_init_headers_list_of_tuples_with_duplicates(create_session) -> None:
     session = create_session(headers=[("h1", "header11"),
                                       ("h2", "header21"),
                                       ("h1", "header12")])
@@ -101,7 +101,7 @@ def test_init_headers_list_of_tuples_with_duplicates(create_session):
                          ("H1", "header12")]))
 
 
-def test_init_cookies_with_simple_dict(create_session):
+def test_init_cookies_with_simple_dict(create_session) -> None:
     session = create_session(cookies={"c1": "cookie1",
                                       "c2": "cookie2"})
     cookies = session.cookie_jar.filter_cookies()
@@ -110,7 +110,7 @@ def test_init_cookies_with_simple_dict(create_session):
     assert cookies['c2'].value == 'cookie2'
 
 
-def test_init_cookies_with_list_of_tuples(create_session):
+def test_init_cookies_with_list_of_tuples(create_session) -> None:
     session = create_session(cookies=[("c1", "cookie1"),
                                       ("c2", "cookie2")])
 
@@ -120,7 +120,7 @@ def test_init_cookies_with_list_of_tuples(create_session):
     assert cookies['c2'].value == 'cookie2'
 
 
-def test_merge_headers(create_session):
+def test_merge_headers(create_session) -> None:
         # Check incoming simple dict
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})
@@ -130,7 +130,7 @@ def test_merge_headers(create_session):
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-def test_merge_headers_with_multi_dict(create_session):
+def test_merge_headers_with_multi_dict(create_session) -> None:
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})
     headers = session._prepare_headers(MultiDict([("h1", "h1")]))
@@ -138,7 +138,7 @@ def test_merge_headers_with_multi_dict(create_session):
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-def test_merge_headers_with_list_of_tuples(create_session):
+def test_merge_headers_with_list_of_tuples(create_session) -> None:
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})
     headers = session._prepare_headers([("h1", "h1")])
@@ -146,7 +146,8 @@ def test_merge_headers_with_list_of_tuples(create_session):
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-def test_merge_headers_with_list_of_tuples_duplicated_names(create_session):
+def test_merge_headers_with_list_of_tuples_duplicated_names(
+        create_session) -> None:
     session = create_session(headers={"h1": "header1",
                                       "h2": "header2"})
 
@@ -159,7 +160,7 @@ def test_merge_headers_with_list_of_tuples_duplicated_names(create_session):
                                              ("h2", "header2")]
 
 
-def test_http_GET(session, params):
+def test_http_GET(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.get("http://test.example.com",
                     params={"x": 1},
@@ -172,7 +173,7 @@ def test_http_GET(session, params):
                                            **params)]
 
 
-def test_http_OPTIONS(session, params):
+def test_http_OPTIONS(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.options("http://opt.example.com",
                         params={"x": 2},
@@ -185,7 +186,7 @@ def test_http_OPTIONS(session, params):
                                            **params)]
 
 
-def test_http_HEAD(session, params):
+def test_http_HEAD(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.head("http://head.example.com",
                      params={"x": 2},
@@ -198,7 +199,7 @@ def test_http_HEAD(session, params):
                                            **params)]
 
 
-def test_http_POST(session, params):
+def test_http_POST(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.post("http://post.example.com",
                      params={"x": 2},
@@ -212,7 +213,7 @@ def test_http_POST(session, params):
                                            **params)]
 
 
-def test_http_PUT(session, params):
+def test_http_PUT(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.put("http://put.example.com",
                     params={"x": 2},
@@ -226,7 +227,7 @@ def test_http_PUT(session, params):
                                            **params)]
 
 
-def test_http_PATCH(session, params):
+def test_http_PATCH(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.patch("http://patch.example.com",
                       params={"x": 2},
@@ -240,7 +241,7 @@ def test_http_PATCH(session, params):
                                            **params)]
 
 
-def test_http_DELETE(session, params):
+def test_http_DELETE(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.delete("http://delete.example.com",
                        params={"x": 2},
@@ -253,7 +254,7 @@ def test_http_DELETE(session, params):
                                            **params)]
 
 
-async def test_close(create_session, connector):
+async def test_close(create_session, connector) -> None:
     session = create_session(connector=connector)
 
     await session.close()
@@ -261,13 +262,13 @@ async def test_close(create_session, connector):
     assert connector.closed
 
 
-async def test_closed(session):
+async def test_closed(session) -> None:
     assert not session.closed
     await session.close()
     assert session.closed
 
 
-async def test_connector(create_session, loop, mocker):
+async def test_connector(create_session, loop, mocker) -> None:
     connector = TCPConnector(loop=loop)
     mocker.spy(connector, 'close')
     session = create_session(connector=connector)
@@ -278,7 +279,7 @@ async def test_connector(create_session, loop, mocker):
     connector.close()
 
 
-async def test_create_connector(create_session, loop, mocker):
+async def test_create_connector(create_session, loop, mocker) -> None:
     session = create_session()
     connector = session.connector
     mocker.spy(session.connector, 'close')
@@ -287,7 +288,7 @@ async def test_create_connector(create_session, loop, mocker):
     assert connector.close.called
 
 
-def test_connector_loop(loop):
+def test_connector_loop(loop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
@@ -299,7 +300,7 @@ def test_connector_loop(loop):
                         str(ctx.value))
 
 
-def test_detach(session):
+def test_detach(session) -> None:
     conn = session.connector
     try:
         assert not conn.closed
@@ -311,20 +312,20 @@ def test_detach(session):
         conn.close()
 
 
-async def test_request_closed_session(session):
+async def test_request_closed_session(session) -> None:
     await session.close()
     with pytest.raises(RuntimeError):
         await session.request('get', '/')
 
 
-def test_close_flag_for_closed_connector(session):
+def test_close_flag_for_closed_connector(session) -> None:
     conn = session.connector
     assert not session.closed
     conn.close()
     assert session.closed
 
 
-async def test_double_close(connector, create_session):
+async def test_double_close(connector, create_session) -> None:
     session = create_session(connector=connector)
 
     await session.close()
@@ -334,7 +335,7 @@ async def test_double_close(connector, create_session):
     assert connector.closed
 
 
-def test_del(connector, loop):
+def test_del(connector, loop) -> None:
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
     loop.set_exception_handler(lambda loop, ctx: None)
@@ -344,7 +345,7 @@ def test_del(connector, loop):
         gc.collect()
 
 
-def test_context_manager(connector, loop):
+def test_context_manager(connector, loop) -> None:
     with pytest.raises(TypeError):
         with ClientSession(loop=loop, connector=connector) as session:
             pass
@@ -352,7 +353,7 @@ def test_context_manager(connector, loop):
         assert session.closed
 
 
-async def test_borrow_connector_loop(connector, create_session, loop):
+async def test_borrow_connector_loop(connector, create_session, loop) -> None:
     session = ClientSession(connector=connector, loop=None)
     try:
         assert session._loop, loop
@@ -360,7 +361,7 @@ async def test_borrow_connector_loop(connector, create_session, loop):
         await session.close()
 
 
-async def test_reraise_os_error(create_session):
+async def test_reraise_os_error(create_session) -> None:
     err = OSError(1, "permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
@@ -380,7 +381,7 @@ async def test_reraise_os_error(create_session):
     assert e.strerror == err.strerror
 
 
-async def test_close_conn_on_error(create_session):
+async def test_close_conn_on_error(create_session) -> None:
     class UnexpectedException(BaseException):
         pass
 
@@ -417,7 +418,7 @@ async def test_close_conn_on_error(create_session):
         c.__del__()
 
 
-async def test_cookie_jar_usage(loop, aiohttp_client):
+async def test_cookie_jar_usage(loop, aiohttp_client) -> None:
     req_url = None
 
     jar = mock.Mock()
@@ -458,18 +459,18 @@ async def test_cookie_jar_usage(loop, aiohttp_client):
     assert resp_cookies["response"].value == "resp_value"
 
 
-def test_session_default_version(loop):
+def test_session_default_version(loop) -> None:
     session = aiohttp.ClientSession(loop=loop)
     assert session.version == aiohttp.HttpVersion11
 
 
-async def test_session_loop(loop):
+async def test_session_loop(loop) -> None:
     session = aiohttp.ClientSession(loop=loop)
     assert session.loop is loop
     await session.close()
 
 
-def test_proxy_str(session, params):
+def test_proxy_str(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.get("http://test.example.com",
                     proxy='http://proxy.com',
@@ -482,7 +483,7 @@ def test_proxy_str(session, params):
                                            **params)]
 
 
-def test_client_session_implicit_loop_warn():
+def test_client_session_implicit_loop_warn() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -495,7 +496,7 @@ def test_client_session_implicit_loop_warn():
     loop.close()
 
 
-async def test_request_tracing(loop, aiohttp_client):
+async def test_request_tracing(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.json_response({'ok': True})
 
@@ -559,7 +560,7 @@ async def test_request_tracing(loop, aiohttp_client):
             {'ok': True}).encode('utf8')
 
 
-async def test_request_tracing_exception(loop):
+async def test_request_tracing_exception(loop) -> None:
     on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
     on_request_exception = mock.Mock(
         side_effect=asyncio.coroutine(mock.Mock())
@@ -598,7 +599,7 @@ async def test_request_tracing_exception(loop):
         assert not on_request_end.called
 
 
-async def test_request_tracing_interpose_headers(loop, aiohttp_client):
+async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
 
     async def handler(request):
         return web.Response()
@@ -634,7 +635,7 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client):
 
 @pytest.mark.skipif(not PY_36,
                     reason="Python 3.6+ required")
-def test_client_session_inheritance():
+def test_client_session_inheritance() -> None:
     with pytest.warns(DeprecationWarning):
         class A(ClientSession):
             pass
@@ -642,13 +643,13 @@ def test_client_session_inheritance():
 
 @pytest.mark.skipif(not DEBUG,
                     reason="The check is applied in DEBUG mode only")
-def test_client_session_custom_attr(loop):
+def test_client_session_custom_attr(loop) -> None:
     session = ClientSession(loop=loop)
     with pytest.warns(DeprecationWarning):
         session.custom = None
 
 
-def test_client_session_timeout_args(loop):
+def test_client_session_timeout_args(loop) -> None:
     session1 = ClientSession(loop=loop)
     assert session1._timeout == client.DEFAULT_TIMEOUT
 

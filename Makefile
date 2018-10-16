@@ -3,6 +3,7 @@
 all: test
 
 .install-deps: $(shell find requirements -type f)
+	@pip install -r requirements/cython.txt
 	@pip install -U -r requirements/dev.txt
 	@touch .install-deps
 
@@ -23,6 +24,9 @@ flake: .flake
             isort --diff -rc aiohttp tests examples; \
             false; \
 	fi
+	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
+            echo "CONTRIBUTORS.txt sort error"; \
+	fi
 	@touch .flake
 
 check_changes:
@@ -30,7 +34,7 @@ check_changes:
 
 mypy: .flake
 	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
-            mypy aiohttp tests; \
+            mypy aiohttp; \
 	fi
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy

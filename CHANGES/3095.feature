@@ -1,1 +1,0 @@
-Minor server optimizations

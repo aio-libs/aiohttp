@@ -3,16 +3,17 @@ import logging
 import socket
 import sys
 from argparse import ArgumentParser
-from collections import Iterable
+from collections.abc import Iterable
 from importlib import import_module
 
-from . import (helpers, web_app, web_exceptions, web_fileresponse,
-               web_middlewares, web_protocol, web_request, web_response,
-               web_routedef, web_runner, web_server, web_urldispatcher, web_ws)
+from . import (web_app, web_exceptions, web_fileresponse, web_middlewares,
+               web_protocol, web_request, web_response, web_routedef,
+               web_runner, web_server, web_urldispatcher, web_ws)
 from .log import access_logger
 from .web_app import *  # noqa
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
+from .web_log import AccessLogger
 from .web_middlewares import *  # noqa
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
@@ -42,8 +43,8 @@ __all__ = (web_protocol.__all__ +
 
 def run_app(app, *, host=None, port=None, path=None, sock=None,
             shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128, access_log_class=helpers.AccessLogger,
-            access_log_format=helpers.AccessLogger.LOG_FORMAT,
+            print=print, backlog=128, access_log_class=AccessLogger,
+            access_log_format=AccessLogger.LOG_FORMAT,
             access_log=access_logger, handle_signals=True,
             reuse_address=None, reuse_port=None):
     """Run an app locally"""
