@@ -1018,7 +1018,7 @@ def test_domain_validation_error(domain, error):
 
 def test_domain_valid():
     assert Domain('example.com:81').canonical == 'example.com:81'
-    assert MaskDomain('*.example.com').canonical == '.*\.example\.com'
+    assert MaskDomain('*.example.com').canonical == r'.*\.example\.com'
     assert Domain('пуни.код').canonical == 'xn--h1ajfq.xn--d1alm'
 
 
