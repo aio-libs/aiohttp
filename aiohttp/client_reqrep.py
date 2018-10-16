@@ -307,14 +307,13 @@ class ClientRequest:
             if not self.url.is_default_port():
                 netloc += ':' + str(self.url.port)
             self.headers[hdrs.HOST] = netloc
-            
+
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
                 headers = headers.items()
 
             for key, value in headers:
                 self.headers.add(key, value)
-
 
     def update_auto_headers(self, skip_auto_headers):
         self.skip_auto_headers = CIMultiDict(
