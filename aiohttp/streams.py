@@ -1,7 +1,7 @@
 import asyncio
 import collections
 from typing import List  # noqa
-from typing import Awaitable, Callable, Optional, Tuple
+from typing import Any, Awaitable, Callable, Optional, Tuple
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
@@ -526,7 +526,7 @@ class DataQueue:
             set_exception(waiter, exc)
             self._waiter = None
 
-    def feed_data(self, data: bytes, size: int=0) -> None:
+    def feed_data(self, data: Any, size: int=0) -> None:
         self._size += size
         self._buffer.append((data, size))
 
@@ -543,7 +543,7 @@ class DataQueue:
             self._waiter = None
             set_result(waiter, False)
 
-    async def read(self) -> bytes:
+    async def read(self) -> Any:
         if not self._buffer and not self._eof:
             assert not self._waiter
             self._waiter = self._loop.create_future()

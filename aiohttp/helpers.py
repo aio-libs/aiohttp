@@ -218,8 +218,8 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                 # `user` and `account` both can be username,
                 # if `user` is None, use `account`
                 *logins, password = auth_from_netrc
-                auth = BasicAuth(logins[0] if logins[0] else logins[-1],
-                                 password, 'latin1')
+                login = logins[0] if logins[0] else logins[-1]
+                auth = BasicAuth(cast(str, login), cast(str, password))
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
@@ -383,8 +383,8 @@ _ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
 
 
 def _is_ip_address(
-        regex: Pattern, regexb: Pattern,
-        host: Optional[Union[str, bytes, bytearray, memoryview]])-> bool:
+        regex: Pattern[str], regexb: Pattern[bytes],
+        host: Optional[Union[str, bytes]])-> bool:
     if host is None:
         return False
     if isinstance(host, str):
