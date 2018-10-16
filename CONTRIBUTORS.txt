@@ -211,6 +211,7 @@ Vasyl Baran
 Victor Kovtun
 Vikas Kawadia
 Viktor Danyliuk
+Vincent Maillol
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
