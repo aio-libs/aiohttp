@@ -19,8 +19,7 @@ HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
-_T_Data = Union[bytes, bytearray, memoryview]
-_T_OnChunkSent = Optional[Callable[[_T_Data], Awaitable[None]]]
+_T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
 class StreamWriter(AbstractStreamWriter):
