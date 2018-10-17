@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional  # noqa
+from typing import Any, Dict, List, Optional, Set  # noqa
 
 from .typedefs import LooseHeaders, StrOrURL
 from .web_response import Response
@@ -243,7 +243,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
         super().__init__(headers=headers, reason=reason,
                          body=body, text=text, content_type=content_type)
         self.headers['Allow'] = allow
-        self.allowed_methods = allowed_methods
+        self.allowed_methods = set(allowed_methods)  # type: Set[str]
         self.method = method.upper()
 
 

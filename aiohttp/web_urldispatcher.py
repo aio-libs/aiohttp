@@ -14,7 +14,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Container,  # noqa
                     Dict, Generator, Iterable, Iterator, List, Optional, Set,
-                    Sized, Tuple)
+                    Sized, Tuple, Union)
 
 from yarl import URL
 
@@ -37,6 +37,9 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application  # noqa
+    BaseDict = Dict[str, str]
+else:
+    BaseDict = dict
 
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
@@ -45,6 +48,7 @@ PATH_SEP = re.escape('/')
 
 _WebHandler = Callable[[Request], Awaitable[StreamResponse]]
 _ExpectHandler = Callable[[Request], Awaitable[None]]
+_Resolve = Tuple[Optional[AbstractMatchInfo], Set[str]]
 
 
 class AbstractResource(Sized, Iterable['AbstractRoute']):
@@ -70,8 +74,7 @@ class AbstractResource(Sized, Iterable['AbstractRoute']):
         """Construct url for resource with additional params."""
 
     @abc.abstractmethod  # pragma: no branch
-    async def resolve(self, request: Request) -> Tuple[
-            Optional['AbstractMatchInfo'], Set[str]]:
+    async def resolve(self, request: Request) -> _Resolve:
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
@@ -162,14 +165,14 @@ class AbstractRoute(abc.ABC):
         """Return a dict with additional info useful for introspection"""
 
     @abc.abstractmethod  # pragma: no branch
-    def url_for(self, *args, **kwargs) -> URL:
+    def url_for(self, *args: str, **kwargs: str) -> URL:
         """Construct url for route with additional params."""
 
     async def handle_expect_header(self, request: Request) -> None:
         await self._expect_handler(request)
 
 
-class UrlMappingMatchInfo(dict, AbstractMatchInfo):
+class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
 
     def __init__(self, match_dict: Dict[str, str], route: AbstractRoute):
         super().__init__(match_dict)
@@ -251,7 +254,7 @@ class MatchInfoError(UrlMappingMatchInfo):
                                                 self._exception.reason)
 
 
-async def _default_expect_handler(request: Request):
+async def _default_expect_handler(request: Request) -> None:
     """Default handler for Expect header.
 
     Just send "100 Continue" to client.
@@ -291,9 +294,7 @@ class Resource(AbstractResource):
             'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
-    async def resolve(self,
-                      request: Request) -> Tuple[
-                          Optional[AbstractMatchInfo], Set[str]]:
+    async def resolve(self, request: Request) -> _Resolve:
         allowed_methods = set()  # type: Set[str]
 
         match_dict = self._match(request.rel_url.raw_path)
@@ -326,42 +327,42 @@ class Resource(AbstractResource):
 
 class PlainResource(Resource):
 
-    def __init__(self, path, *, name=None):
+    def __init__(self, path: str, *, name: Optional[str]=None) -> None:
         super().__init__(name=name)
         assert not path or path.startswith('/')
         self._path = path
 
     @property
-    def canonical(self):
+    def canonical(self) -> str:
         return self._path
 
-    def freeze(self):
+    def freeze(self) -> None:
         if not self._path:
             self._path = '/'
 
-    def add_prefix(self, prefix):
+    def add_prefix(self, prefix: str) -> None:
         assert prefix.startswith('/')
         assert not prefix.endswith('/')
         assert len(prefix) > 1
         self._path = prefix + self._path
 
-    def _match(self, path):
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         # string comparison is about 10 times faster than regexp matching
         if self._path == path:
             return {}
         else:
             return None
 
-    def raw_match(self, path):
+    def raw_match(self, path: str) -> bool:
         return self._path == path
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         return {'path': self._path}
 
-    def url_for(self):
+    def url_for(self) -> URL:  # type: ignore
         return URL.build(path=self._path, encoded=True)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         name = "'" + self.name + "' " if self.name is not None else ""
         return "<PlainResource {name} {path}>".format(name=name,
                                                       path=self._path)
@@ -374,7 +375,7 @@ class DynamicResource(Resource):
         r'\{(?P<var>[_a-zA-Z][_a-zA-Z0-9]*):(?P<re>.+)\}')
     GOOD = r'[^{}/]+'
 
-    def __init__(self, path, *, name=None):
+    def __init__(self, path: str, *, name: Optional[str]=None) -> None:
         super().__init__(name=name)
         pattern = ''
         formatter = ''
@@ -409,17 +410,17 @@ class DynamicResource(Resource):
         self._formatter = formatter
 
     @property
-    def canonical(self):
+    def canonical(self) -> str:
         return self._formatter
 
-    def add_prefix(self, prefix):
+    def add_prefix(self, prefix: str) -> None:
         assert prefix.startswith('/')
         assert not prefix.endswith('/')
         assert len(prefix) > 1
         self._pattern = re.compile(re.escape(prefix)+self._pattern.pattern)
         self._formatter = prefix + self._formatter
 
-    def _match(self, path):
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
         match = self._pattern.fullmatch(path)
         if match is None:
             return None
@@ -427,19 +428,19 @@ class DynamicResource(Resource):
             return {key: URL.build(path=value, encoded=True).path
                     for key, value in match.groupdict().items()}
 
-    def raw_match(self, path):
+    def raw_match(self, path: str) -> bool:
         return self._formatter == path
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         return {'formatter': self._formatter,
                 'pattern': self._pattern}
 
-    def url_for(self, **parts):
+    def url_for(self, **parts: str) -> URL:
         url = self._formatter.format_map({k: URL.build(path=v).raw_path
                                           for k, v in parts.items()})
         return URL.build(path=url)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         name = "'" + self.name + "' " if self.name is not None else ""
         return ("<DynamicResource {name} {formatter}>"
                 .format(name=name, formatter=self._formatter))
@@ -447,23 +448,23 @@ class DynamicResource(Resource):
 
 class PrefixResource(AbstractResource):
 
-    def __init__(self, prefix, *, name=None):
+    def __init__(self, prefix: str, *, name: Optional[str]=None) -> None:
         assert not prefix or prefix.startswith('/'), prefix
         assert prefix in ('', '/') or not prefix.endswith('/'), prefix
         super().__init__(name=name)
         self._prefix = URL.build(path=prefix).raw_path
 
     @property
-    def canonical(self):
+    def canonical(self) -> str:
         return self._prefix
 
-    def add_prefix(self, prefix):
+    def add_prefix(self, prefix: str) -> None:
         assert prefix.startswith('/')
         assert not prefix.endswith('/')
         assert len(prefix) > 1
         self._prefix = prefix + self._prefix
 
-    def raw_match(self, prefix):
+    def raw_match(self, prefix: str) -> bool:
         return False
 
     # TODO: impl missing abstract methods
@@ -472,10 +473,12 @@ class PrefixResource(AbstractResource):
 class StaticResource(PrefixResource):
     VERSION_KEY = 'v'
 
-    def __init__(self, prefix, directory, *, name=None,
-                 expect_handler=None, chunk_size=256 * 1024,
-                 show_index=False, follow_symlinks=False,
-                 append_version=False):
+    def __init__(self, prefix: str, directory: Union[Path, str],
+                 *, name: Optional[str]=None,
+                 expect_handler: Optional[_ExpectHandler]=None,
+                 chunk_size: int=256 * 1024,
+                 show_index: bool=False, follow_symlinks: bool=False,
+                 append_version: bool=False)-> None:
         super().__init__(prefix, name=name)
         try:
             directory = Path(directory)
@@ -500,7 +503,8 @@ class StaticResource(PrefixResource):
                         'HEAD': ResourceRoute('HEAD', self._handle, self,
                                               expect_handler=expect_handler)}
 
-    def url_for(self, *, filename, append_version=None):
+    def url_for(self, *, filename: Union[str, Path],  # type: ignore
+                append_version: Optional[bool]=None) -> URL:
         if append_version is None:
             append_version = self._append_version
         if isinstance(filename, Path):
@@ -512,7 +516,7 @@ class StaticResource(PrefixResource):
         # filename is not encoded
         url = URL.build(path=self._prefix + filename)
 
-        if append_version is True:
+        if append_version:
             try:
                 if filename.startswith('/'):
                     filename = filename[1:]
@@ -534,24 +538,24 @@ class StaticResource(PrefixResource):
         return url
 
     @staticmethod
-    def _get_file_hash(byte_array):
+    def _get_file_hash(byte_array: bytes) -> str:
         m = hashlib.sha256()  # todo sha256 can be configurable param
         m.update(byte_array)
         b64 = base64.urlsafe_b64encode(m.digest())
         return b64.decode('ascii')
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         return {'directory': self._directory,
                 'prefix': self._prefix}
 
-    def set_options_route(self, handler):
+    def set_options_route(self, handler: _WebHandler) -> None:
         if 'OPTIONS' in self._routes:
             raise RuntimeError('OPTIONS route was set already')
         self._routes['OPTIONS'] = ResourceRoute(
             'OPTIONS', handler, self,
             expect_handler=self._expect_handler)
 
-    async def resolve(self, request):
+    async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.raw_path
         method = request.method
         allowed_methods = set(self._routes)
@@ -566,13 +570,13 @@ class StaticResource(PrefixResource):
         return (UrlMappingMatchInfo(match_dict, self._routes[method]),
                 allowed_methods)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._routes)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[AbstractRoute]:
         return iter(self._routes.values())
 
-    async def _handle(self, request):
+    async def _handle(self, request: Request) -> StreamResponse:
         rel_url = request.match_info['filename']
         try:
             filename = Path(rel_url)
@@ -591,27 +595,27 @@ class StaticResource(PrefixResource):
             raise
         except Exception as error:
             # perm error or other kind!
-            request.app.logger.exception(error)
+            app = request.app
+            assert app is not None
+            app.logger.exception(error)
             raise HTTPNotFound() from error
 
         # on opening a dir, load it's contents if allowed
         if filepath.is_dir():
             if self._show_index:
                 try:
-                    ret = Response(text=self._directory_as_html(filepath),
-                                   content_type="text/html")
+                    return Response(text=self._directory_as_html(filepath),
+                                    content_type="text/html")
                 except PermissionError:
                     raise HTTPForbidden()
             else:
                 raise HTTPForbidden()
         elif filepath.is_file():
-            ret = FileResponse(filepath, chunk_size=self._chunk_size)
+            return FileResponse(filepath, chunk_size=self._chunk_size)
         else:
             raise HTTPNotFound
 
-        return ret
-
-    def _directory_as_html(self, filepath):
+    def _directory_as_html(self, filepath: Path) -> str:
         # returns directory's index as html
 
         # sanity check
@@ -646,7 +650,7 @@ class StaticResource(PrefixResource):
 
         return html
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         name = "'" + self.name + "'" if self.name is not None else ""
         return "<StaticResource {name} {path} -> {directory!r}>".format(
             name=name, path=self._prefix, directory=self._directory)
@@ -654,26 +658,26 @@ class StaticResource(PrefixResource):
 
 class PrefixedSubAppResource(PrefixResource):
 
-    def __init__(self, prefix, app):
+    def __init__(self, prefix: str, app: 'Application') -> None:
         super().__init__(prefix)
         self._app = app
         for resource in app.router.resources():
             resource.add_prefix(prefix)
 
-    def add_prefix(self, prefix):
+    def add_prefix(self, prefix: str) -> None:
         super().add_prefix(prefix)
         for resource in self._app.router.resources():
             resource.add_prefix(prefix)
 
-    def url_for(self, *args, **kwargs):
+    def url_for(self, *args: str, **kwargs: str) -> URL:
         raise RuntimeError(".url_for() is not supported "
                            "by sub-application root")
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         return {'app': self._app,
                 'prefix': self._prefix}
 
-    async def resolve(self, request):
+    async def resolve(self, request: Request) -> _Resolve:
         if not request.url.raw_path.startswith(self._prefix):
             return None, set()
         match_info = await self._app.router.resolve(request)
@@ -684,29 +688,29 @@ class PrefixedSubAppResource(PrefixResource):
             methods = set()
         return match_info, methods
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._app.router.routes())
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[AbstractRoute]:
         return iter(self._app.router.routes())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<PrefixedSubAppResource {prefix} -> {app!r}>".format(
             prefix=self._prefix, app=self._app)
 
 
 class AbstractRuleMatching(abc.ABC):
     @abc.abstractmethod  # pragma: no branch
-    async def match(self, request):
+    async def match(self, request: Request) -> bool:
         """Return bool if the request satisfies the criteria"""
 
     @abc.abstractmethod  # pragma: no branch
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
     @property
     @abc.abstractmethod  # pragma: no branch
-    def canonical(self):
+    def canonical(self) -> str:
         """Return a str"""
 
 

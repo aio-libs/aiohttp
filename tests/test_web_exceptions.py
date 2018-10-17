@@ -114,7 +114,7 @@ def test_HTTPFound_empty_location() -> None:
 async def test_HTTPMethodNotAllowed(buf, request) -> None:
     resp = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
     assert 'GET' == resp.method
-    assert ['POST', 'PUT'] == resp.allowed_methods
+    assert {'POST', 'PUT'} == resp.allowed_methods
     assert 'POST,PUT' == resp.headers['allow']
     await resp.prepare(request)
     await resp.write_eof()
