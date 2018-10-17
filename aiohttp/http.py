@@ -1,5 +1,6 @@
 import http.server
 import sys
+from typing import Mapping, Tuple  # noqa
 
 from . import __version__
 from .http_exceptions import HttpProcessingError
@@ -31,6 +32,6 @@ __all__ = (
 
 
 SERVER_SOFTWARE = 'Python/{0[0]}.{0[1]} aiohttp/{1}'.format(
-    sys.version_info, __version__)
+    sys.version_info, __version__)  # type: str
 
-RESPONSES = http.server.BaseHTTPRequestHandler.responses
+RESPONSES = http.server.BaseHTTPRequestHandler.responses  # type: Mapping[int, Tuple[str, str]]  # noqa

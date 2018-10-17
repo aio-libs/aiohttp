@@ -97,8 +97,8 @@ class StreamWriter(AbstractStreamWriter):
 
         if chunk:
             if self.chunked:
-                chunk_len = ('%x\r\n' % len(chunk)).encode('ascii')
-                chunk = chunk_len + chunk + b'\r\n'
+                chunk_len_pre = ('%x\r\n' % len(chunk)).encode('ascii')
+                chunk = chunk_len_pre + chunk + b'\r\n'
 
             self._write(chunk)
 
