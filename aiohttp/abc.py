@@ -6,6 +6,7 @@ from http.cookies import BaseCookie, Morsel  # noqa
 from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
                     Mapping, Optional, Tuple, Union)
 
+from multidict import CIMultiDict  # noqa
 from yarl import URL
 
 
@@ -148,6 +149,10 @@ class AbstractCookieJar(Sized, IterableBase):
 class AbstractStreamWriter(ABC):
     """Abstract stream writer."""
 
+    buffer_size = 0
+    output_size = 0
+    length = 0  # type: Optional[int]
+
     @abstractmethod
     async def write(self, chunk: bytes) -> None:
         """Write chunk into stream."""
@@ -159,6 +164,19 @@ class AbstractStreamWriter(ABC):
     @abstractmethod
     async def drain(self) -> None:
         """Flush the write buffer."""
+
+    @abstractmethod
+    def enable_compression(self, encoding: str='deflate') -> None:
+        """Enable HTTP body compression"""
+
+    @abstractmethod
+    def enable_chunking(self) -> None:
+        """Enable HTTP chunked mode"""
+
+    @abstractmethod
+    async def write_headers(self, status_line: str,
+                            headers: 'CIMultiDict[str]') -> None:
+        """Write HTTP headers"""
 
 
 class AbstractAccessLogger(ABC):
