@@ -673,6 +673,108 @@ class PrefixedSubAppResource(PrefixResource):
             prefix=self._prefix, app=self._app)
 
 
+class AbstractRuleMatching(abc.ABC):
+    @abc.abstractmethod  # pragma: no branch
+    async def match(self, request):
+        """Return bool if the request satisfies the criteria"""
+
+    @abc.abstractmethod  # pragma: no branch
+    def get_info(self):
+        """Return a dict with additional info useful for introspection"""
+
+    @property
+    @abc.abstractmethod  # pragma: no branch
+    def canonical(self):
+        """Return a str"""
+
+
+class Domain(AbstractRuleMatching):
+    re_part = re.compile(r"(?!-)[a-z\d-]{1,63}(?<!-)")
+
+    def __init__(self, domain):
+        super().__init__()
+        self._domain = self.validation(domain)
+
+    @property
+    def canonical(self):
+        return self._domain
+
+    def validation(self, domain):
+        if not isinstance(domain, str):
+            raise TypeError("Domain must be str")
+        domain = domain.rstrip('.').lower()
+        if not domain:
+            raise ValueError("Domain cannot be empty")
+        elif '://' in domain:
+            raise ValueError("Scheme not supported")
+        url = URL('http://' + domain)
+        if not all(
+                self.re_part.fullmatch(x)
+                for x in url.raw_host.split(".")):
+            raise ValueError("Domain not valid")
+        if url.port == 80:
+            return url.raw_host
+        return '{}:{}'.format(url.raw_host, url.port)
+
+    async def match(self, request):
+        host = request.headers.get('host', False)
+        return host and self.match_domain(host)
+
+    def match_domain(self, host):
+        return host.lower() == self._domain
+
+    def get_info(self):
+        return {'domain': self._domain}
+
+
+class MaskDomain(Domain):
+    re_part = re.compile(r"(?!-)[a-z\d\*-]{1,63}(?<!-)")
+
+    def __init__(self, domain):
+        super().__init__(domain)
+        mask = self._domain.replace('.', '\.').replace('*', '.*')
+        self._mask = re.compile(mask)
+
+    @property
+    def canonical(self):
+        return self._mask.pattern
+
+    def match_domain(self, host):
+        return self._mask.fullmatch(host) is not None
+
+
+class MatchedSubAppResource(PrefixedSubAppResource):
+
+    def __init__(self, rule, app):
+        AbstractResource.__init__(self)
+        self._prefix = ''
+        self._app = app
+        self._rule = rule
+
+    @property
+    def canonical(self):
+        return self._rule.canonical
+
+    def get_info(self):
+        return {'app': self._app,
+                'rule': self._rule}
+
+    async def resolve(self, request):
+        if not await self._rule.match(request):
+            return None, set()
+        match_info = await self._app.router.resolve(request)
+        match_info.add_app(self._app)
+        if isinstance(match_info.http_exception, HTTPMethodNotAllowed):
+            methods = match_info.http_exception.allowed_methods
+        else:
+            methods = set()
+        return match_info, methods
+
+    def __repr__(self):
+        return "<MatchedSubAppResource -> {app!r}>" \
+               "".format(app=self._app)
+
+
 class ResourceRoute(AbstractRoute):
     """A route with resource"""
 

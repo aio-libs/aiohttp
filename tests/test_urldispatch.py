@@ -11,10 +11,10 @@ import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web import HTTPMethodNotAllowed, HTTPNotFound, Response
-from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource,
-                                       DynamicResource, PlainResource,
-                                       ResourceRoute, StaticResource,
-                                       SystemRoute, View,
+from aiohttp.web_urldispatcher import (PATH_SEP, AbstractResource, Domain,
+                                       DynamicResource, MaskDomain,
+                                       PlainResource, ResourceRoute,
+                                       StaticResource, SystemRoute, View,
                                        _default_expect_handler)
 
 
@@ -1004,6 +1004,102 @@ def test_subapp_get_info(app) -> None:
     assert resource.get_info() == {'prefix': '/pre', 'app': subapp}
 
 
+@pytest.mark.parametrize('domain,error', [
+    (None, TypeError),
+    ('', ValueError),
+    ('http://dom', ValueError),
+    ('*.example.com', ValueError),
+    ('example$com', ValueError),
+])
+def test_domain_validation_error(domain, error):
+    with pytest.raises(error):
+        Domain(domain)
+
+
+def test_domain_valid():
+    assert Domain('example.com:81').canonical == 'example.com:81'
+    assert MaskDomain('*.example.com').canonical == r'.*\.example\.com'
+    assert Domain('пуни.код').canonical == 'xn--h1ajfq.xn--d1alm'
+
+
+@pytest.mark.parametrize('a,b,result', [
+    ('example.com', 'example.com', True),
+    ('example.com:81', 'example.com:81', True),
+    ('example.com:81', 'example.com', False),
+    ('пуникод', 'xn--d1ahgkhc2a', True),
+    ('*.example.com', 'jpg.example.com', True),
+    ('*.example.com', 'a.example.com', True),
+    ('*.example.com', 'example.com', False),
+])
+def test_match_domain(a, b, result):
+    if '*' in a:
+        rule = MaskDomain(a)
+    else:
+        rule = Domain(a)
+    assert rule.match_domain(b) is result
+
+
+def test_add_subapp_errors(app):
+    with pytest.raises(TypeError):
+        app.add_subapp(1, web.Application())
+
+
+def test_subapp_rule_resource(app):
+    subapp = web.Application()
+    subapp.router.add_get('/', make_handler())
+    rule = Domain('example.com')
+    assert rule.get_info() == {'domain': 'example.com'}
+    resource = app.add_domain('example.com', subapp)
+    assert resource.canonical == 'example.com'
+    assert resource.get_info() == {'rule': resource._rule, 'app': subapp}
+    resource.add_prefix('/a')
+    resource.raw_match('/b')
+    assert len(resource)
+    assert list(resource)
+    assert repr(resource).startswith('<MatchedSubAppResource')
+    with pytest.raises(RuntimeError):
+        resource.url_for()
+
+
+async def test_add_domain_not_str(app, loop):
+    app = web.Application()
+    with pytest.raises(TypeError):
+        app.add_domain(1, app)
+
+
+async def test_add_domain(app, loop):
+    subapp1 = web.Application()
+    h1 = make_handler()
+    subapp1.router.add_get('/', h1)
+    app.add_domain('example.com', subapp1)
+
+    subapp2 = web.Application()
+    h2 = make_handler()
+    subapp2.router.add_get('/', h2)
+    app.add_domain('*.example.com', subapp2)
+
+    subapp3 = web.Application()
+    h3 = make_handler()
+    subapp3.router.add_get('/', h3)
+    app.add_domain('*', subapp3)
+
+    request = make_mocked_request('GET', '/', {'host': 'example.com'})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is h1
+
+    request = make_mocked_request('GET', '/', {'host': 'a.example.com'})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is h2
+
+    request = make_mocked_request('GET', '/', {'host': 'example2.com'})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is h3
+
+    request = make_mocked_request('POST', '/', {'host': 'example.com'})
+    match_info = await app.router.resolve(request)
+    assert isinstance(match_info.http_exception, HTTPMethodNotAllowed)
+
+
 def test_subapp_url_for(app) -> None:
     subapp = web.Application()
     resource = app.add_subapp('/pre', subapp)
@@ -1049,14 +1145,14 @@ def test_frozen_router_subapp(app) -> None:
     subapp = web.Application()
     subapp.freeze()
     with pytest.raises(RuntimeError):
-        app.add_subapp('/', subapp)
+        app.add_subapp('/pre', subapp)
 
 
 def test_frozen_app_on_subapp(app) -> None:
     app.freeze()
     subapp = web.Application()
     with pytest.raises(RuntimeError):
-        app.add_subapp('/', subapp)
+        app.add_subapp('/pre', subapp)
 
 
 def test_set_options_route(router) -> None:

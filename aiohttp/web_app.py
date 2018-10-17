@@ -16,7 +16,8 @@ from .web_middlewares import _fix_request_current_app
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_server import Server
-from .web_urldispatcher import PrefixedSubAppResource, UrlDispatcher
+from .web_urldispatcher import (Domain, MaskDomain, MatchedSubAppResource,
+                                PrefixedSubAppResource, UrlDispatcher)
 
 
 __all__ = ('Application', 'CleanupError')
@@ -227,17 +228,21 @@ class Application(MutableMapping[str, Any]):
         reg_handler('on_cleanup')
 
     def add_subapp(self, prefix: str, subapp: 'Application'):
+        if not isinstance(prefix, str):
+            raise TypeError("Prefix must be str")
+        prefix = prefix.rstrip('/')
+        if not prefix:
+            raise ValueError("Prefix cannot be empty")
+        factory = partial(PrefixedSubAppResource, prefix, subapp)
+        return self._add_subapp(factory, subapp)
+
+    def _add_subapp(self, resource_factory: Callable, subapp: 'Application'):
         if self.frozen:
             raise RuntimeError(
                 "Cannot add sub application to frozen application")
         if subapp.frozen:
             raise RuntimeError("Cannot add frozen application")
-        if prefix.endswith('/'):
-            prefix = prefix[:-1]
-        if prefix in ('', '/'):
-            raise ValueError("Prefix cannot be empty")
-
-        resource = PrefixedSubAppResource(prefix, subapp)
+        resource = resource_factory()
         self.router.register_resource(resource)
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
@@ -245,6 +250,16 @@ class Application(MutableMapping[str, Any]):
         if self._loop is not None:
             subapp._set_loop(self._loop)
         return resource
+
+    def add_domain(self, domain: str, subapp: 'Application'):
+        if not isinstance(domain, str):
+            raise TypeError("Domain must be str")
+        elif '*' in domain:
+            rule = MaskDomain(domain)  # type: Domain
+        else:
+            rule = Domain(domain)
+        factory = partial(MatchedSubAppResource, rule, subapp)
+        return self._add_subapp(factory, subapp)
 
     def add_routes(self, routes):
         self.router.add_routes(routes)
