@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Set  # noqa
+from typing import Any, Dict, Iterable, List, Optional, Set  # noqa
 
 from .typedefs import LooseHeaders, StrOrURL
 from .web_response import Response
@@ -232,7 +232,7 @@ class HTTPMethodNotAllowed(HTTPClientError):
 
     def __init__(self,
                  method: str,
-                 allowed_methods: List[str],
+                 allowed_methods: Iterable[str],
                  *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,

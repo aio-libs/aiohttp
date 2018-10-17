@@ -3,8 +3,8 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel  # noqa
-from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Iterable,
-                    List, Mapping, Optional, Tuple, Union)
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generator,
+                    Iterable, List, Mapping, Optional, Tuple, Union)
 
 from multidict import CIMultiDict  # noqa
 from yarl import URL
@@ -103,7 +103,7 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    def __await__(self) -> Awaitable[StreamResponse]:
+    def __await__(self) -> Generator[Any, None, StreamResponse]:
         """Execute the view handler."""
 
 

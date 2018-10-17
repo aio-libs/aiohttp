@@ -717,15 +717,15 @@ class AbstractRuleMatching(abc.ABC):
 class Domain(AbstractRuleMatching):
     re_part = re.compile(r"(?!-)[a-z\d-]{1,63}(?<!-)")
 
-    def __init__(self, domain):
+    def __init__(self, domain: str) -> None:
         super().__init__()
         self._domain = self.validation(domain)
 
     @property
-    def canonical(self):
+    def canonical(self) -> str:
         return self._domain
 
-    def validation(self, domain):
+    def validation(self, domain: str) -> str:
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
         domain = domain.rstrip('.').lower()
@@ -736,56 +736,56 @@ class Domain(AbstractRuleMatching):
         url = URL('http://' + domain)
         if not all(
                 self.re_part.fullmatch(x)
-                for x in url.raw_host.split(".")):
+                for x in url.raw_host.split(".")):  # type: ignore
             raise ValueError("Domain not valid")
         if url.port == 80:
-            return url.raw_host
+            return url.raw_host  # type: ignore
         return '{}:{}'.format(url.raw_host, url.port)
 
-    async def match(self, request):
-        host = request.headers.get('host', False)
+    async def match(self, request: Request) -> bool:
+        host = request.headers.get(hdrs.HOST)
         return host and self.match_domain(host)
 
-    def match_domain(self, host):
+    def match_domain(self, host: str) -> bool:
         return host.lower() == self._domain
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         return {'domain': self._domain}
 
 
 class MaskDomain(Domain):
     re_part = re.compile(r"(?!-)[a-z\d\*-]{1,63}(?<!-)")
 
-    def __init__(self, domain):
+    def __init__(self, domain: str) -> None:
         super().__init__(domain)
         mask = self._domain.replace('.', '\.').replace('*', '.*')
         self._mask = re.compile(mask)
 
     @property
-    def canonical(self):
+    def canonical(self) -> str:
         return self._mask.pattern
 
-    def match_domain(self, host):
+    def match_domain(self, host: str) -> bool:
         return self._mask.fullmatch(host) is not None
 
 
 class MatchedSubAppResource(PrefixedSubAppResource):
 
-    def __init__(self, rule, app):
+    def __init__(self, rule: AbstractRuleMatching, app: 'Application') -> None:
         AbstractResource.__init__(self)
         self._prefix = ''
         self._app = app
         self._rule = rule
 
     @property
-    def canonical(self):
+    def canonical(self) -> str:
         return self._rule.canonical
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         return {'app': self._app,
                 'rule': self._rule}
 
-    async def resolve(self, request):
+    async def resolve(self, request: Request) -> _Resolve:
         if not await self._rule.match(request):
             return None, set()
         match_info = await self._app.router.resolve(request)
@@ -796,7 +796,7 @@ class MatchedSubAppResource(PrefixedSubAppResource):
             methods = set()
         return match_info, methods
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<MatchedSubAppResource -> {app!r}>" \
                "".format(app=self._app)
 
@@ -804,62 +804,63 @@ class MatchedSubAppResource(PrefixedSubAppResource):
 class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
-    def __init__(self, method, handler, resource, *,
-                 expect_handler=None):
+    def __init__(self, method: str, handler: _WebHandler,
+                 resource: AbstractResource, *,
+                 expect_handler: Optional[_ExpectHandler]=None) -> None:
         super().__init__(method, handler, expect_handler=expect_handler,
                          resource=resource)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<ResourceRoute [{method}] {resource} -> {handler!r}".format(
             method=self.method, resource=self._resource,
             handler=self.handler)
 
     @property
-    def name(self):
-        return self._resource.name
+    def name(self) -> Optional[str]:
+        return self._resource.name  # type: ignore
 
-    def url_for(self, *args, **kwargs):
+    def url_for(self, *args: str, **kwargs: str) -> URL:
         """Construct url for route with additional params."""
-        return self._resource.url_for(*args, **kwargs)
+        return self._resource.url_for(*args, **kwargs)  # type: ignore
 
-    def get_info(self):
-        return self._resource.get_info()
+    def get_info(self) -> Dict[str, Any]:
+        return self._resource.get_info()  # type: ignore
 
 
 class SystemRoute(AbstractRoute):
 
-    def __init__(self, http_exception):
+    def __init__(self, http_exception: HTTPException) -> None:
         super().__init__(hdrs.METH_ANY, self._handler)
         self._http_exception = http_exception
 
-    def url_for(self, *args, **kwargs):
+    def url_for(self, *args: str, **kwargs: str) -> URL:
         raise RuntimeError(".url_for() is not allowed for SystemRoute")
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         return None
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         return {'http_exception': self._http_exception}
 
-    async def _handler(self, request):
+    async def _handler(self, request: Request) -> StreamResponse:
         raise self._http_exception
 
     @property
-    def status(self):
+    def status(self) -> int:
         return self._http_exception.status
 
     @property
-    def reason(self):
+    def reason(self) -> str:
         return self._http_exception.reason
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<SystemRoute {self.status}: {self.reason}>".format(self=self)
 
 
 class View(AbstractView):
 
-    async def _iter(self):
+    async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:
             self._raise_allowed_methods()
         method = getattr(self, self.request.method.lower(), None)
@@ -868,46 +869,48 @@ class View(AbstractView):
         resp = await method()
         return resp
 
-    def __await__(self):
+    def __await__(self) -> Generator[Any, None, StreamResponse]:
         return self._iter().__await__()
 
-    def _raise_allowed_methods(self):
+    def _raise_allowed_methods(self) -> None:
         allowed_methods = {
             m for m in hdrs.METH_ALL if hasattr(self, m.lower())}
         raise HTTPMethodNotAllowed(self.request.method, allowed_methods)
 
 
-class ResourcesView(Sized, Iterable, Container):
+class ResourcesView(Sized,
+                    Iterable[AbstractResource],
+                    Container[AbstractResource]):
 
-    def __init__(self, resources):
+    def __init__(self, resources: List[AbstractResource]) -> None:
         self._resources = resources
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._resources)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[AbstractResource]:
         yield from self._resources
 
-    def __contains__(self, resource):
+    def __contains__(self, resource: object) -> bool:
         return resource in self._resources
 
 
-class RoutesView(Sized, Iterable, Container):
+class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
 
-    def __init__(self, resources):
-        self._routes = []
+    def __init__(self, resources: List[AbstractResource]):
+        self._routes = []  # type: List[AbstractRoute]
         for resource in resources:
-            for route_obj in resource:
-                self._routes.append(route_obj)
+            for route in resource:
+                self._routes.append(route)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._routes)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[AbstractRoute]:
         yield from self._routes
 
-    def __contains__(self, route_obj):
-        return route_obj in self._routes
+    def __contains__(self, route: object) -> bool:
+        return route in self._routes
 
 
 class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
