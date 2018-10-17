@@ -8,11 +8,13 @@ import keyword
 import os
 import re
 import warnings
-from collections.abc import Container, Iterable, Sized
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Container,  # noqa
+                    Dict, Generator, Iterable, Iterator, List, Optional, Set,
+                    Sized, Tuple)
 
 from yarl import URL
 
@@ -20,10 +22,11 @@ from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
-from .web_exceptions import (HTTPExpectationFailed, HTTPForbidden,
-                             HTTPMethodNotAllowed, HTTPNotFound)
+from .web_exceptions import (HTTPException, HTTPExpectationFailed,
+                             HTTPForbidden, HTTPMethodNotAllowed, HTTPNotFound)
 from .web_fileresponse import FileResponse
-from .web_response import Response
+from .web_request import Request
+from .web_response import Response, StreamResponse
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -31,23 +34,31 @@ __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractRoute', 'ResourceRoute',
            'StaticResource', 'View')
 
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .web_app import Application  # noqa
+
 HTTP_METHOD_RE = re.compile(r"^[0-9A-Za-z!#\$%&'\*\+\-\.\^_`\|~]+$")
 ROUTE_RE = re.compile(r'(\{[_a-zA-Z][^{}]*(?:\{[^{}]*\}[^{}]*)*\})')
 PATH_SEP = re.escape('/')
 
 
-class AbstractResource(Sized, Iterable):
+_WebHandler = Callable[[Request], Awaitable[StreamResponse]]
+_ExpectHandler = Callable[[Request], Awaitable[None]]
 
-    def __init__(self, *, name=None):
+
+class AbstractResource(Sized, Iterable['AbstractRoute']):
+
+    def __init__(self, *, name: Optional[str]=None) -> None:
         self._name = name
 
     @property
-    def name(self):
+    def name(self) -> Optional[str]:
         return self._name
 
     @property
     @abc.abstractmethod
-    def canonical(self):
+    def canonical(self) -> str:
         """Exposes the resource's canonical path.
 
         For example '/foo/bar/{name}'
@@ -55,17 +66,18 @@ class AbstractResource(Sized, Iterable):
         """
 
     @abc.abstractmethod  # pragma: no branch
-    def url_for(self, **kwargs):
+    def url_for(self, **kwargs: str) -> URL:
         """Construct url for resource with additional params."""
 
     @abc.abstractmethod  # pragma: no branch
-    async def resolve(self, request):
+    async def resolve(self, request: Request) -> Tuple[
+            Optional['AbstractMatchInfo'], Set[str]]:
         """Resolve resource
 
         Return (UrlMappingMatchInfo, allowed_methods) pair."""
 
     @abc.abstractmethod
-    def add_prefix(self, prefix):
+    def add_prefix(self, prefix: str) -> None:
         """Add a prefix to processed URLs.
 
         Required for subapplications support.
@@ -73,22 +85,23 @@ class AbstractResource(Sized, Iterable):
         """
 
     @abc.abstractmethod
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
-    def freeze(self):
+    def freeze(self) -> None:
         pass
 
     @abc.abstractmethod
-    def raw_match(self, path):
+    def raw_match(self, path: str) -> bool:
         """Perform a raw match against path"""
 
 
 class AbstractRoute(abc.ABC):
 
-    def __init__(self, method, handler, *,
-                 expect_handler=None,
-                 resource=None):
+    def __init__(self, method: str,
+                 handler: _WebHandler, *,
+                 expect_handler: _ExpectHandler=None,
+                 resource: AbstractResource=None) -> None:
 
         if expect_handler is None:
             expect_handler = _default_expect_handler
@@ -114,8 +127,8 @@ class AbstractRoute(abc.ABC):
                           "use async ones", DeprecationWarning)
 
             @wraps(handler)
-            async def handler_wrapper(*args, **kwargs):
-                result = old_handler(*args, **kwargs)
+            async def handler_wrapper(request: Request) -> StreamResponse:
+                result = old_handler(request)
                 if asyncio.iscoroutine(result):
                     result = await result
                 return result
@@ -128,67 +141,67 @@ class AbstractRoute(abc.ABC):
         self._resource = resource
 
     @property
-    def method(self):
+    def method(self) -> str:
         return self._method
 
     @property
-    def handler(self):
+    def handler(self) -> _WebHandler:
         return self._handler
 
     @property
     @abc.abstractmethod
-    def name(self):
+    def name(self) -> Optional[str]:
         """Optional route's name, always equals to resource's name."""
 
     @property
-    def resource(self):
+    def resource(self) -> Optional[AbstractResource]:
         return self._resource
 
     @abc.abstractmethod
-    def get_info(self):
+    def get_info(self) -> Dict[str, Any]:
         """Return a dict with additional info useful for introspection"""
 
     @abc.abstractmethod  # pragma: no branch
-    def url_for(self, *args, **kwargs):
+    def url_for(self, *args, **kwargs) -> URL:
         """Construct url for route with additional params."""
 
-    async def handle_expect_header(self, request):
-        return await self._expect_handler(request)
+    async def handle_expect_header(self, request: Request) -> None:
+        await self._expect_handler(request)
 
 
 class UrlMappingMatchInfo(dict, AbstractMatchInfo):
 
-    def __init__(self, match_dict, route):
+    def __init__(self, match_dict: Dict[str, str], route: AbstractRoute):
         super().__init__(match_dict)
         self._route = route
-        self._apps = []
-        self._current_app = None
+        self._apps = []  # type: List[Application]
+        self._current_app = None  # type: Optional[Application]
         self._frozen = False
 
     @property
-    def handler(self):
+    def handler(self) -> _WebHandler:
         return self._route.handler
 
     @property
-    def route(self):
+    def route(self) -> AbstractRoute:
         return self._route
 
     @property
-    def expect_handler(self):
+    def expect_handler(self) -> _ExpectHandler:
         return self._route.handle_expect_header
 
     @property
-    def http_exception(self):
+    def http_exception(self) -> Optional[HTTPException]:
         return None
 
-    def get_info(self):
+    def get_info(self) -> Dict[str, str]:
         return self._route.get_info()
 
     @property
-    def apps(self):
+    def apps(self) -> Tuple['Application', ...]:
         return tuple(self._apps)
 
-    def add_app(self, app):
+    def add_app(self, app: 'Application') -> None:
         if self._frozen:
             raise RuntimeError("Cannot change apps stack after .freeze() call")
         if self._current_app is None:
@@ -196,11 +209,14 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         self._apps.insert(0, app)
 
     @property
-    def current_app(self):
-        return self._current_app
+    def current_app(self) -> 'Application':
+        app = self._current_app
+        assert app is not None
+        return app
 
     @contextmanager
-    def set_current_app(self, app):
+    def set_current_app(self,
+                        app: 'Application') -> Generator[None, None, None]:
         if DEBUG:  # pragma: no cover
             if app not in self._apps:
                 raise RuntimeError(
@@ -213,29 +229,29 @@ class UrlMappingMatchInfo(dict, AbstractMatchInfo):
         finally:
             self._current_app = prev
 
-    def freeze(self):
+    def freeze(self) -> None:
         self._frozen = True
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<MatchInfo {}: {}>".format(super().__repr__(), self._route)
 
 
 class MatchInfoError(UrlMappingMatchInfo):
 
-    def __init__(self, http_exception):
+    def __init__(self, http_exception: HTTPException) -> None:
         self._exception = http_exception
         super().__init__({}, SystemRoute(self._exception))
 
     @property
-    def http_exception(self):
+    def http_exception(self) -> HTTPException:
         return self._exception
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<MatchInfoError {}: {}>".format(self._exception.status,
                                                 self._exception.reason)
 
 
-async def _default_expect_handler(request):
+async def _default_expect_handler(request: Request):
     """Default handler for Expect header.
 
     Just send "100 Continue" to client.
@@ -244,20 +260,20 @@ async def _default_expect_handler(request):
     expect = request.headers.get(hdrs.EXPECT)
     if request.version == HttpVersion11:
         if expect.lower() == "100-continue":
-            await request.writer.write(
-                b"HTTP/1.1 100 Continue\r\n\r\n", drain=False)
+            await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
         else:
             raise HTTPExpectationFailed(text="Unknown Expect: %s" % expect)
 
 
 class Resource(AbstractResource):
 
-    def __init__(self, *, name=None):
+    def __init__(self, *, name: Optional[str]=None) -> None:
         super().__init__(name=name)
-        self._routes = []
+        self._routes = []  # type: List[ResourceRoute]
 
-    def add_route(self, method, handler, *,
-                  expect_handler=None):
+    def add_route(self, method: str, handler: _WebHandler, *,
+                  expect_handler: Optional[_ExpectHandler]=None
+                  ) -> 'ResourceRoute':
 
         for route_obj in self._routes:
             if route_obj.method == method or route_obj.method == hdrs.METH_ANY:
@@ -270,13 +286,15 @@ class Resource(AbstractResource):
         self.register_route(route_obj)
         return route_obj
 
-    def register_route(self, route):
+    def register_route(self, route: 'ResourceRoute') -> None:
         assert isinstance(route, ResourceRoute), \
             'Instance of Route class is required, got {!r}'.format(route)
         self._routes.append(route)
 
-    async def resolve(self, request):
-        allowed_methods = set()
+    async def resolve(self,
+                      request: Request) -> Tuple[
+                          Optional[AbstractMatchInfo], Set[str]]:
+        allowed_methods = set()  # type: Set[str]
 
         match_dict = self._match(request.rel_url.raw_path)
         if match_dict is None:
@@ -293,10 +311,14 @@ class Resource(AbstractResource):
         else:
             return None, allowed_methods
 
-    def __len__(self):
+    @abc.abstractmethod
+    def _match(self, path: str) -> Optional[Dict[str, str]]:
+        pass  # pragma: no cover
+
+    def __len__(self) -> int:
         return len(self._routes)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[AbstractRoute]:
         return iter(self._routes)
 
     # TODO: implement all abstract methods
