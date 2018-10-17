@@ -1,10 +1,9 @@
 import asyncio
 import logging
 import warnings
-from collections.abc import MutableMapping
 from functools import partial
 from typing import (TYPE_CHECKING, Any, Awaitable, Callable, List, Mapping,
-                    Optional, Sequence, Tuple, Union)
+                    MutableMapping, Optional, Sequence, Tuple, Union)
 
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractRouter
@@ -47,7 +46,7 @@ else:
     _Subapps = List
 
 
-class Application(MutableMapping):
+class Application(MutableMapping[str, Any]):
     ATTRS = frozenset([
         'logger', '_debug', '_router', '_loop', '_handler_args',
         '_middlewares', '_middlewares_handlers', '_run_middlewares',
