@@ -5,7 +5,7 @@ import re
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, signals
 from aiohttp.payload import BytesPayload
@@ -1103,6 +1103,13 @@ def test_text_with_empty_payload() -> None:
 def test_response_with_content_length_header_without_body() -> None:
     resp = Response(headers={'Content-Length': 123})
     assert resp.content_length == 123
+
+
+def test_response_with_immutable_headers() -> None:
+    resp = Response(text='text',
+                    headers=CIMultiDictProxy(CIMultiDict({'Header': 'Value'})))
+    assert resp.headers == {'Header': 'Value',
+                            'Content-Type': 'text/plain; charset=utf-8'}
 
 
 class TestJSONResponse:
