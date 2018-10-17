@@ -458,7 +458,7 @@ class Response(StreamResponse):
 
         if headers is None:
             headers = CIMultiDict()
-        elif not isinstance(headers, (CIMultiDict, CIMultiDictProxy)):
+        elif not isinstance(headers, CIMultiDict):
             headers = CIMultiDict(headers)
         else:
             headers = cast(CIMultiDict, headers)
