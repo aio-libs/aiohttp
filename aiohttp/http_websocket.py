@@ -547,7 +547,7 @@ class WebSocketWriter:
     def __init__(self, protocol: BaseProtocol, transport: asyncio.Transport, *,
                  use_mask: bool=False, limit: int=DEFAULT_LIMIT,
                  random: Any=random.Random(),
-                 compress: int=0, notakeover: bool=False):
+                 compress: int=0, notakeover: bool=False) -> None:
         self.protocol = protocol
         self.transport = transport
         self.use_mask = use_mask
