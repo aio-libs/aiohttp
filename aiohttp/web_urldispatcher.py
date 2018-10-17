@@ -1,7 +1,6 @@
 import abc
 import asyncio
 import base64
-import collections
 import hashlib
 import inspect
 import keyword
@@ -13,8 +12,8 @@ from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Container,  # noqa
-                    Dict, Generator, Iterable, Iterator, List, Optional, Set,
-                    Sized, Tuple, Union)
+                    Dict, Generator, Iterable, Iterator, List, Mapping,
+                    Optional, Set, Sized, Tuple, Union, cast)
 
 from yarl import URL
 
@@ -22,11 +21,13 @@ from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
+from .typedefs import PathLike
 from .web_exceptions import (HTTPException, HTTPExpectationFailed,
                              HTTPForbidden, HTTPMethodNotAllowed, HTTPNotFound)
 from .web_fileresponse import FileResponse
 from .web_request import Request
 from .web_response import Response, StreamResponse
+from .web_routedef import AbstractRouteDef
 
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
@@ -102,7 +103,7 @@ class AbstractResource(Sized, Iterable['AbstractRoute']):
 class AbstractRoute(abc.ABC):
 
     def __init__(self, method: str,
-                 handler: _WebHandler, *,
+                 handler: Union[_WebHandler, AbstractView], *,
                  expect_handler: _ExpectHandler=None,
                  resource: AbstractResource=None) -> None:
 
@@ -274,7 +275,8 @@ class Resource(AbstractResource):
         super().__init__(name=name)
         self._routes = []  # type: List[ResourceRoute]
 
-    def add_route(self, method: str, handler: _WebHandler, *,
+    def add_route(self, method: str,
+                  handler: Union[AbstractView, _WebHandler], *,
                   expect_handler: Optional[_ExpectHandler]=None
                   ) -> 'ResourceRoute':
 
@@ -473,7 +475,7 @@ class PrefixResource(AbstractResource):
 class StaticResource(PrefixResource):
     VERSION_KEY = 'v'
 
-    def __init__(self, prefix: str, directory: Union[Path, str],
+    def __init__(self, prefix: str, directory: PathLike,
                  *, name: Optional[str]=None,
                  expect_handler: Optional[_ExpectHandler]=None,
                  chunk_size: int=256 * 1024,
@@ -804,7 +806,8 @@ class MatchedSubAppResource(PrefixedSubAppResource):
 class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
-    def __init__(self, method: str, handler: _WebHandler,
+    def __init__(self, method: str,
+                 handler: Union[_WebHandler, AbstractView],
                  resource: AbstractResource, *,
                  expect_handler: Optional[_ExpectHandler]=None) -> None:
         super().__init__(method, handler, expect_handler=expect_handler,
@@ -830,7 +833,7 @@ class ResourceRoute(AbstractRoute):
 class SystemRoute(AbstractRoute):
 
     def __init__(self, http_exception: HTTPException) -> None:
-        super().__init__(hdrs.METH_ANY, self._handler)
+        super().__init__(hdrs.METH_ANY, self._handle)
         self._http_exception = http_exception
 
     def url_for(self, *args: str, **kwargs: str) -> URL:
@@ -843,7 +846,7 @@ class SystemRoute(AbstractRoute):
     def get_info(self) -> Dict[str, Any]:
         return {'http_exception': self._http_exception}
 
-    async def _handler(self, request: Request) -> StreamResponse:
+    async def _handle(self, request: Request) -> StreamResponse:
         raise self._http_exception
 
     @property
@@ -913,18 +916,18 @@ class RoutesView(Sized, Iterable[AbstractRoute], Container[AbstractRoute]):
         return route in self._routes
 
 
-class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
+class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
 
     NAME_SPLIT_RE = re.compile(r'[.:-]')
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self._resources = []
-        self._named_resources = {}
+        self._resources = []  # type: List[AbstractResource]
+        self._named_resources = {}  # type: Dict[str, AbstractResource]
 
-    async def resolve(self, request):
+    async def resolve(self, request: Request) -> AbstractMatchInfo:
         method = request.method
-        allowed_methods = set()
+        allowed_methods = set()  # type: Set[str]
 
         for resource in self._resources:
             match_dict, allowed = await resource.resolve(request)
@@ -939,28 +942,28 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             else:
                 return MatchInfoError(HTTPNotFound())
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self._named_resources)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._named_resources)
 
-    def __contains__(self, name):
-        return name in self._named_resources
+    def __contains__(self, resource: object) -> bool:
+        return resource in self._named_resources
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> AbstractResource:
         return self._named_resources[name]
 
-    def resources(self):
+    def resources(self) -> ResourcesView:
         return ResourcesView(self._resources)
 
-    def routes(self):
+    def routes(self) -> RoutesView:
         return RoutesView(self._resources)
 
-    def named_resources(self):
+    def named_resources(self) -> Mapping[str, AbstractResource]:
         return MappingProxyType(self._named_resources)
 
-    def register_resource(self, resource):
+    def register_resource(self, resource: AbstractResource) -> None:
         assert isinstance(resource, AbstractResource), \
             'Instance of AbstractResource class is required, got {!r}'.format(
                 resource)
@@ -985,14 +988,15 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             self._named_resources[name] = resource
         self._resources.append(resource)
 
-    def add_resource(self, path, *, name=None):
+    def add_resource(self, path: str, *,
+                     name: Optional[str]=None) -> Resource:
         if path and not path.startswith('/'):
             raise ValueError("path should be started with / or be empty")
         # Reuse last added resource if path and name are the same
         if self._resources:
             resource = self._resources[-1]
             if resource.name == name and resource.raw_match(path):
-                return resource
+                return cast(Resource, resource)
         if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
             url = URL.build(path=path)
             resource = PlainResource(url.raw_path, name=name)
@@ -1002,16 +1006,21 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self.register_resource(resource)
         return resource
 
-    def add_route(self, method, path, handler,
-                  *, name=None, expect_handler=None):
+    def add_route(self, method: str, path: str,
+                  handler: Union[_WebHandler, AbstractView],
+                  *, name: Optional[str]=None,
+                  expect_handler: Optional[_ExpectHandler]=None
+                  ) -> AbstractRoute:
         resource = self.add_resource(path, name=name)
         return resource.add_route(method, handler,
                                   expect_handler=expect_handler)
 
-    def add_static(self, prefix, path, *, name=None, expect_handler=None,
-                   chunk_size=256 * 1024,
-                   show_index=False, follow_symlinks=False,
-                   append_version=False):
+    def add_static(self, prefix: str, path: PathLike, *,
+                   name: Optional[str]=None,
+                   expect_handler: Optional[_ExpectHandler]=None,
+                   chunk_size: int=256 * 1024,
+                   show_index: bool=False, follow_symlinks: bool=False,
+                   append_version: bool=False) -> AbstractResource:
         """Add static files view.
 
         prefix - url prefix
@@ -1031,19 +1040,23 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
         self.register_resource(resource)
         return resource
 
-    def add_head(self, path, handler, **kwargs):
+    def add_head(self, path: str, handler: _WebHandler,
+                 **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method HEAD
         """
         return self.add_route(hdrs.METH_HEAD, path, handler, **kwargs)
 
-    def add_options(self, path, handler, **kwargs):
+    def add_options(self, path: str, handler: _WebHandler,
+                    **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method OPTIONS
         """
         return self.add_route(hdrs.METH_OPTIONS, path, handler, **kwargs)
 
-    def add_get(self, path, handler, *, name=None, allow_head=True, **kwargs):
+    def add_get(self, path: str, handler: _WebHandler, *,
+                name: Optional[str]=None, allow_head: bool=True,
+                **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method GET, if allow_head is true another
         route is added allowing head requests to the same endpoint
@@ -1053,45 +1066,50 @@ class UrlDispatcher(AbstractRouter, collections.abc.Mapping):
             resource.add_route(hdrs.METH_HEAD, handler, **kwargs)
         return resource.add_route(hdrs.METH_GET, handler, **kwargs)
 
-    def add_post(self, path, handler, **kwargs):
+    def add_post(self, path: str, handler: _WebHandler,
+                 **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method POST
         """
         return self.add_route(hdrs.METH_POST, path, handler, **kwargs)
 
-    def add_put(self, path, handler, **kwargs):
+    def add_put(self, path: str, handler: _WebHandler,
+                **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method PUT
         """
         return self.add_route(hdrs.METH_PUT, path, handler, **kwargs)
 
-    def add_patch(self, path, handler, **kwargs):
+    def add_patch(self, path: str, handler: _WebHandler,
+                  **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method PATCH
         """
         return self.add_route(hdrs.METH_PATCH, path, handler, **kwargs)
 
-    def add_delete(self, path, handler, **kwargs):
+    def add_delete(self, path: str, handler: _WebHandler,
+                   **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with method DELETE
         """
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
-    def add_view(self, path, handler, **kwargs):
+    def add_view(self, path: str, handler: AbstractView,
+                 **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with ANY methods for a class-based view
         """
         return self.add_route(hdrs.METH_ANY, path, handler, **kwargs)
 
-    def freeze(self):
+    def freeze(self) -> None:
         super().freeze()
         for resource in self._resources:
             resource.freeze()
 
-    def add_routes(self, routes):
+    def add_routes(self, routes: Iterable[AbstractRouteDef]) -> None:
         """Append routes to route table.
 
         Parameter should be a sequence of RouteDef objects.
         """
-        for route_obj in routes:
-            route_obj.register(self)
+        for route_def in routes:
+            route_def.register(self)
