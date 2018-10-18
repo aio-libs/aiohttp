@@ -597,9 +597,7 @@ class StaticResource(PrefixResource):
             raise
         except Exception as error:
             # perm error or other kind!
-            app = request.app
-            assert app is not None
-            app.logger.exception(error)
+            request.app.logger.exception(error)
             raise HTTPNotFound() from error
 
         # on opening a dir, load it's contents if allowed
