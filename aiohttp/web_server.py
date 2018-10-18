@@ -1,6 +1,6 @@
 """Low level HTTP server."""
 import asyncio
-from typing import Any, Callable, Dict, List, Optional  # noqa
+from typing import Any, Awaitable, Callable, Dict, List, Optional  # noqa
 
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
@@ -8,6 +8,7 @@ from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .web_protocol import RequestHandler
 from .web_request import BaseRequest
+from .web_response import StreamResponse
 
 
 __all__ = ('Server',)
@@ -22,7 +23,9 @@ _RequestFactory = Callable[[RawRequestMessage,
 
 class Server:
 
-    def __init__(self, handler: RequestHandler, *,
+    def __init__(self,
+                 handler: Callable[[BaseRequest], Awaitable[StreamResponse]],
+                 *,
                  request_factory: Optional[_RequestFactory]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
                  **kwargs: Any) -> None:
