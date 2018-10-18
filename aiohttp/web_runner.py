@@ -16,7 +16,7 @@ except ImportError:
     SSLContext = object  # type: ignore
 
 
-__all__ = ('TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
+__all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
            'AppRunner', 'ServerRunner', 'GracefulExit')
 
 
