@@ -29,7 +29,6 @@ from .typedefs import (DEFAULT_JSON_DECODER, JSONDecoder, LooseHeaders,
                        RawHeaders, StrOrURL)
 from .web_exceptions import HTTPRequestEntityTooLarge
 from .web_response import StreamResponse
-from .web_urldispatcher import UrlMappingMatchInfo
 
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
@@ -37,6 +36,7 @@ __all__ = ('BaseRequest', 'FileField', 'Request')
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application  # noqa
+    from .web_urldispatcher import UrlMappingMatchInfo  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -695,7 +695,7 @@ class Request(BaseRequest):
         return new_ret
 
     @reify
-    def match_info(self) -> Optional[UrlMappingMatchInfo]:
+    def match_info(self) -> Optional['UrlMappingMatchInfo']:
         """Result of route resolving."""
         return self._match_info
 

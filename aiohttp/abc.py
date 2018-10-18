@@ -3,8 +3,8 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel  # noqa
-from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
-                    Mapping, Optional, Tuple, Union)
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generator,
+                    Iterable, List, Mapping, Optional, Tuple, Union)
 
 from multidict import CIMultiDict  # noqa
 from yarl import URL
@@ -48,17 +48,19 @@ class AbstractRouter(ABC):
 
 class AbstractMatchInfo(ABC):
 
+    @property  # pragma: no branch
     @abstractmethod
-    async def handler(self, request: Request) -> StreamResponse:
+    def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
         """Execute matched request handler"""
 
+    @property
     @abstractmethod
-    async def expect_handler(self, request: Request) -> None:
+    def expect_handler(self) -> Callable[[Request], Awaitable[None]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def http_exception(self) -> HTTPException:
+    def http_exception(self) -> Optional[HTTPException]:
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
@@ -101,7 +103,7 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    def __await__(self) -> Awaitable[StreamResponse]:
+    def __await__(self) -> Generator[Any, None, StreamResponse]:
         """Execute the view handler."""
 
 
