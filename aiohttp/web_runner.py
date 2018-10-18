@@ -4,7 +4,6 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Set
 
-from mypy_extensions import NoReturn
 from yarl import URL
 
 from .web_app import Application
@@ -25,7 +24,7 @@ class GracefulExit(SystemExit):
     code = 1
 
 
-def _raise_graceful_exit() -> NoReturn:
+def _raise_graceful_exit() -> None:
     raise GracefulExit()
 
 

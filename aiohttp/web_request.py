@@ -695,23 +695,23 @@ class Request(BaseRequest):
         return new_ret
 
     @reify
-    def match_info(self) -> Optional['UrlMappingMatchInfo']:
+    def match_info(self) -> 'UrlMappingMatchInfo':
         """Result of route resolving."""
-        return self._match_info
+        match_info = self._match_info
+        assert match_info is not None
+        return match_info
 
     @property
-    def app(self) -> Optional['Application']:
+    def app(self) -> 'Application':
         """Application instance."""
         match_info = self._match_info
-        if match_info is None:
-            return None
+        assert match_info is not None
         return match_info.current_app
 
     @property
     def config_dict(self) -> ChainMapProxy:
         match_info = self._match_info
-        if match_info is None:
-            return ChainMapProxy([])
+        assert match_info is not None
         lst = match_info.apps
         app = self.app
         idx = lst.index(app)

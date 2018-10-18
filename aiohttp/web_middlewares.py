@@ -1,7 +1,10 @@
 import re
+from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
-from aiohttp.web_exceptions import HTTPMovedPermanently
-from aiohttp.web_urldispatcher import SystemRoute
+from .web_exceptions import HTTPMovedPermanently, _HTTPMove
+from .web_request import Request
+from .web_response import StreamResponse
+from .web_urldispatcher import SystemRoute
 
 
 __all__ = (
@@ -9,27 +12,38 @@ __all__ = (
     'normalize_path_middleware',
 )
 
+if TYPE_CHECKING:  # pragma: no cover
+    from .web_app import Application  # noqa
 
-async def _check_request_resolves(request, path):
+_Func = TypeVar('_Func')
+
+
+async def _check_request_resolves(request: Request,
+                                  path: str) -> Tuple[bool, Request]:
     alt_request = request.clone(rel_url=path)
 
     match_info = await request.app.router.resolve(alt_request)
-    alt_request._match_info = match_info
+    alt_request._match_info = match_info  # type: ignore
 
-    if not isinstance(match_info.route, SystemRoute):
+    if match_info.http_exception is None:
         return True, alt_request
 
     return False, request
 
 
-def middleware(f):
-    f.__middleware_version__ = 1
+def middleware(f: _Func) -> _Func:
+    f.__middleware_version__ = 1  # type: ignore
     return f
 
 
+_Handler = Callable[[Request], Awaitable[StreamResponse]]
+_Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
+
+
 def normalize_path_middleware(
-        *, append_slash=True, remove_slash=False,
-        merge_slashes=True, redirect_class=HTTPMovedPermanently):
+        *, append_slash: bool=True, remove_slash: bool=False,
+        merge_slashes: bool=True,
+        redirect_class: Type[_HTTPMove]=HTTPMovedPermanently) -> _Middleware:
     """
     Middleware factory which produces a middleware that normalizes
     the path of a request. By normalizing it means:
@@ -64,7 +78,7 @@ def normalize_path_middleware(
     assert correct_configuration, "Cannot both remove and append slash"
 
     @middleware
-    async def impl(request, handler):
+    async def impl(request: Request, handler: _Handler) -> StreamResponse:
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
             if '?' in request.raw_path:
@@ -98,10 +112,10 @@ def normalize_path_middleware(
     return impl
 
 
-def _fix_request_current_app(app):
+def _fix_request_current_app(app: 'Application') -> _Middleware:
 
     @middleware
-    async def impl(request, handler):
+    async def impl(request: Request, handler: _Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
             return await handler(request)
     return impl
