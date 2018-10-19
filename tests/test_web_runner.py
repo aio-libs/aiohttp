@@ -55,9 +55,10 @@ async def test_runner_setup_without_signal_handling(make_runner) -> None:
 
 
 async def test_site_double_added(make_runner) -> None:
+    _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
     await runner.setup()
-    site = web.TCPSite(runner)
+    site = web.SockSite(runner, _sock)
     await site.start()
     with pytest.raises(RuntimeError):
         await site.start()
