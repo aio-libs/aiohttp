@@ -11,7 +11,6 @@ from . import (web_app, web_exceptions, web_fileresponse, web_middlewares,
                web_protocol, web_request, web_response, web_routedef,
                web_runner, web_server, web_urldispatcher, web_ws)
 from .abc import AbstractAccessLogger
-from .helpers import PY_36
 from .log import access_logger
 from .web_app import *  # noqa
 from .web_app import Application
@@ -146,7 +145,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             pass
     finally:
         loop.run_until_complete(runner.cleanup())
-    if PY_36:
+    if sys.version_info >= (3, 6):  # don't use PY_36 to pass mypy
         if hasattr(loop, 'shutdown_asyncgens'):
             loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
