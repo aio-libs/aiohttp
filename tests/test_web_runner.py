@@ -1,11 +1,11 @@
 import asyncio
 import platform
 import signal
-from unittest import mock
 
 import pytest
 
 from aiohttp import web
+from aiohttp.test_utils import get_unused_port_socket
 
 
 @pytest.fixture
@@ -102,12 +102,14 @@ def test_non_app() -> None:
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="Unix socket support is required")
 async def test_addresses(make_runner, shorttmpdir) -> None:
+    _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
     await runner.setup()
-    tcp = web.TCPSite(runner)
+    tcp = web.SockSite(runner, _sock)
     await tcp.start()
     path = str(shorttmpdir / 'tmp.sock')
     unix = web.UnixSite(runner, path)
     await unix.start()
-    addrs = runner.addresses
-    assert addrs == [('0.0.0.0', mock.ANY), path]
+    actual_addrs = runner.addresses
+    expected_host, expected_post = _sock.getsockname()[:2]
+    assert actual_addrs == [(expected_host, expected_post), path]
