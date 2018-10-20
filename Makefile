@@ -52,19 +52,19 @@ cov cover coverage:
 
 cov-dev: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append
+	@AIOHTTP_NO_EXTENSIONS=1 pytest
+	@pytest --cov-report=html --cov-append
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp
+	@AIOHTTP_NO_EXTENSIONS=1 pytest
 cov-ci-aio-debug: .develop
 	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 pytest --cov=aiohttp --cov-append
+	@PYTHONASYNCIODEBUG=1 pytest --cov-append
 cov-ci-run: .develop
 	@echo "Regular run"
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append
+	@pytest --cov-report=html --cov-append
 
 cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"
