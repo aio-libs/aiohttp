@@ -180,8 +180,7 @@ jobs:
     - python setup.py check --metadata --restructuredtext --strict --verbose
 
   - <<: *_lint_base
-    name:
-    - Making sure that CONTRIBUTORS.txt remains sorted
+    name: Making sure that CONTRIBUTORS.txt remains sorted
     install:
     - skip
     script:
