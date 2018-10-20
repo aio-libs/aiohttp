@@ -148,14 +148,12 @@ jobs:
       PYTEST_ADDOPTS: -n0
 
   - <<: *_doc_base
-    env:
-    - TARGET=docs
+    name: Checking docs spelling
     script:
     - make doc-spelling
 
   - <<: *_doc_base
-    env:
-    - TARGET=towncrier
+    name: Checking Towncrier fragments
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
@@ -165,8 +163,7 @@ jobs:
     - towncrier --yes
 
   - <<: *_lint_base
-    env:
-    - TARGET=flake8
+    name: Linting source code with flake8
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/flake.txt
@@ -174,8 +171,7 @@ jobs:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
-    env:
-    - TARGET="'dist setup check'"
+    name: Verifying distribution package metadate
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
@@ -185,7 +181,7 @@ jobs:
 
   - <<: *_lint_base
     name:
-    - CONTRIBUTORS.txt sorting check
+    - Making sure that CONTRIBUTORS.txt remains sorted
     install:
     - skip
     script:
