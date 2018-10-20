@@ -170,8 +170,8 @@ def netrc_from_env() -> Optional[netrc.netrc]:
             home_dir = Path.home()
         except RuntimeError as e:  # pragma: no cover
             # if pathlib can't resolve home, it may raise a RuntimeError
-            client_logger.warning('Could not resolve home directory when '
-                                  'trying to look for .netrc file: %s', e)
+            client_logger.debug('Could not resolve home directory when '
+                                'trying to look for .netrc file: %s', e)
             return None
 
         netrc_path = home_dir / (
