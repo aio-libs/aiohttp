@@ -1,7 +1,7 @@
 import asyncio
 import collections
 from typing import List  # noqa
-from typing import Any, Awaitable, Callable, Generic, Optional, Tuple, TypeVar
+from typing import Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
