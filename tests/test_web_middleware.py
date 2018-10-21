@@ -1,11 +1,12 @@
 import re
 
 import pytest
+from yarl import URL
 
 from aiohttp import web
 
 
-async def test_middleware_modifies_response(loop, aiohttp_client):
+async def test_middleware_modifies_response(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -27,7 +28,7 @@ async def test_middleware_modifies_response(loop, aiohttp_client):
     assert 'OK[MIDDLEWARE]' == txt
 
 
-async def test_middleware_handles_exception(loop, aiohttp_client):
+async def test_middleware_handles_exception(loop, aiohttp_client) -> None:
     async def handler(request):
         raise RuntimeError('Error text')
 
@@ -48,7 +49,7 @@ async def test_middleware_handles_exception(loop, aiohttp_client):
     assert 'Error text[MIDDLEWARE]' == txt
 
 
-async def test_middleware_chain(loop, aiohttp_client):
+async def test_middleware_chain(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(text='OK')
 
@@ -115,6 +116,30 @@ class TestNormalizePathMiddleware:
 
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
+
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1', 200),
+        ('/resource1/', 200),
+        ('/resource2', 404),
+        ('/resource2/', 200),
+        ('/resource1?p1=1&p2=2', 200),
+        ('/resource1/?p1=1&p2=2', 200),
+        ('/resource2?p1=1&p2=2', 404),
+        ('/resource2/?p1=1&p2=2', 200),
+        ('/resource2/a/b%2Fc', 404),
+        ('/resource2/a/b%2Fc/', 200)
+    ])
+    async def test_remove_trailing_when_necessary(self, path,
+                                                  status, cli) -> None:
+        extra_middlewares = [
+            web.normalize_path_middleware(
+                append_slash=False, remove_slash=True, merge_slashes=False)]
+        client = await cli(extra_middlewares)
+
+        resp = await client.get(path)
+        assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1', 200),
@@ -137,6 +162,7 @@ class TestNormalizePathMiddleware:
 
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
@@ -152,13 +178,14 @@ class TestNormalizePathMiddleware:
         ('/////resource1/a///b?p=1', 200),
         ('/////resource1/a//b/?p=1', 404),
     ])
-    async def test_merge_slash(self, path, status, cli):
+    async def test_merge_slash(self, path, status, cli) -> None:
         extra_middlewares = [
             web.normalize_path_middleware(append_slash=False)]
         client = await cli(extra_middlewares)
 
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
 
     @pytest.mark.parametrize("path, status", [
         ('/resource1/a/b', 200),
@@ -192,16 +219,64 @@ class TestNormalizePathMiddleware:
         ('/////resource2/a///b?p=1', 200),
         ('/////resource2/a///b/?p=1', 200)
     ])
-    async def test_append_and_merge_slash(self, path, status, cli):
+    async def test_append_and_merge_slash(self, path, status, cli) -> None:
         extra_middlewares = [
             web.normalize_path_middleware()]
 
         client = await cli(extra_middlewares)
         resp = await client.get(path)
         assert resp.status == status
+        assert resp.url.query == URL(path).query
+
+    @pytest.mark.parametrize("path, status", [
+        ('/resource1/a/b', 200),
+        ('/resource1/a/b/', 200),
+        ('//resource2//a//b', 404),
+        ('//resource2//a//b/', 200),
+        ('///resource1//a//b', 200),
+        ('///resource1//a//b/', 200),
+        ('/////resource1/a///b', 200),
+        ('/////resource1/a///b/', 200),
+        ('/////resource1/a///b///', 200),
+        ('/resource2/a/b', 404),
+        ('//resource2//a//b', 404),
+        ('//resource2//a//b/', 200),
+        ('///resource2//a//b', 404),
+        ('///resource2//a//b/', 200),
+        ('/////resource2/a///b', 404),
+        ('/////resource2/a///b/', 200),
+        ('/resource1/a/b?p=1', 200),
+        ('/resource1/a/b/?p=1', 200),
+        ('//resource2//a//b?p=1', 404),
+        ('//resource2//a//b/?p=1', 200),
+        ('///resource1//a//b?p=1', 200),
+        ('///resource1//a//b/?p=1', 200),
+        ('/////resource1/a///b?p=1', 200),
+        ('/////resource1/a///b/?p=1', 200),
+        ('/resource2/a/b?p=1', 404),
+        ('//resource2//a//b?p=1', 404),
+        ('//resource2//a//b/?p=1', 200),
+        ('///resource2//a//b?p=1', 404),
+        ('///resource2//a//b/?p=1', 200),
+        ('/////resource2/a///b?p=1', 404),
+        ('/////resource2/a///b/?p=1', 200)
+    ])
+    async def test_remove_and_merge_slash(self, path, status, cli) -> None:
+        extra_middlewares = [
+            web.normalize_path_middleware(
+                append_slash=False, remove_slash=True)]
+
+        client = await cli(extra_middlewares)
+        resp = await client.get(path)
+        assert resp.status == status
+        assert resp.url.query == URL(path).query
+
+    async def test_cannot_remove_and_add_slash(self) -> None:
+        with pytest.raises(AssertionError):
+            web.normalize_path_middleware(append_slash=True, remove_slash=True)
 
 
-async def test_old_style_middleware(loop, aiohttp_client):
+async def test_old_style_middleware(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -234,7 +309,7 @@ async def test_old_style_middleware(loop, aiohttp_client):
                     msg)
 
 
-async def test_mixed_middleware(loop, aiohttp_client):
+async def test_mixed_middleware(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -287,7 +362,7 @@ async def test_mixed_middleware(loop, aiohttp_client):
     assert re.match(p1, str(w.list[1].message))
 
 
-async def test_old_style_middleware_class(loop, aiohttp_client):
+async def test_old_style_middleware_class(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -319,7 +394,7 @@ async def test_old_style_middleware_class(loop, aiohttp_client):
                     'at 0x[0-9a-fA-F]+>" deprecated, see #2252$', msg)
 
 
-async def test_new_style_middleware_class(loop, aiohttp_client):
+async def test_new_style_middleware_class(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -345,7 +420,7 @@ async def test_new_style_middleware_class(loop, aiohttp_client):
     assert len(warning_checker) == 0
 
 
-async def test_new_style_middleware_method(loop, aiohttp_client):
+async def test_new_style_middleware_method(loop, aiohttp_client) -> None:
     async def handler(request):
         return web.Response(body=b'OK')
 

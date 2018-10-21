@@ -1,6 +1,7 @@
-Contributors
-------------
+- Contributors -
+----------------
 A. Jesse Jiryu Davis
+Adam Cooper
 Adam Mills
 Adrián Chaves
 Alec Hanefeld
@@ -52,21 +53,25 @@ Chris Laws
 Chris Moore
 Christopher Schmitt
 Claudiu Popa
+Colin Dunklau
 Damien Nadé
 Dan Xu
 Daniel García
 Daniel Nelson
 Danny Song
+David Bibb
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
+Dmitriy Safonov
 Dmitry Doroshev
+Dmitry Lukashin
 Dmitry Shamov
 Dmitry Trofimov
+Dmytro Bohomiakov
 Dmytro Kuznetsov
-Dmitriy Safonov
 Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
@@ -85,14 +90,16 @@ Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
-Günther Jena
+Gus Goulart
 Gustavo Carneiro
+Günther Jena
 Harmon Y.
 Hu Bo
 Hugo Herter
 Hynek Schlawack
 Igor Alexandrov
 Igor Davydenko
+Igor Mozharovsky
 Igor Pavlov
 Ingmar Steen
 Jacob Champion
@@ -103,6 +110,7 @@ Jashandeep Sohi
 Jeongkyu Shin
 Jeroen van der Heijden
 Jesus Cea
+Jian Zeng
 Jinkyu Yi
 Joel Watts
 Jon Nabozny
@@ -121,13 +129,13 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
-Loïc Lajeanne
 Louis-Philippe Huberdeau
+Loïc Lajeanne
 Lu Gong
 Lubomir Gelo
 Ludovic Gasc
-Lukasz Marcin Dobrzanski
 Luis Pedrosa
+Lukasz Marcin Dobrzanski
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
@@ -142,12 +150,14 @@ Michael Ihnatenko
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Misha Behersky
+Mitchell Ferree
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik
+Oisin Aylward
 Olaf Conradi
 Pahaz Blinov
 Panagiotis Kolokotronis
@@ -157,6 +167,7 @@ Paul Colomiets
 Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
+Pavel Polyakov
 Pawel Miech
 Pepe Osca
 Philipp A.
@@ -168,9 +179,9 @@ Robert Lu
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt
-Sebastien Geffroy
 Sebastian Hanula
 Sebastian Hüther
+Sebastien Geffroy
 SeongSoo Cho
 Sergey Ninua
 Sergey Skripnick
@@ -189,8 +200,10 @@ Taras Voinarovskyi
 Terence Honles
 Thanos Lefteris
 Thijs Vermeir
+Thomas Forbes
 Thomas Grainger
 Tolga Tezel
+Tomasz Trebski
 Trinh Hoang Nhu
 Vadim Suharnikov
 Vaibhav Sagar
@@ -200,6 +213,7 @@ Vasyl Baran
 Victor Kovtun
 Vikas Kawadia
 Viktor Danyliuk
+Vincent Maillol
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
@@ -209,12 +223,12 @@ Vladimir Shulyak
 Vladimir Zakharov
 Vladyslav Bondar
 W. Trevor King
+Wei Lin
+Weiwei Wang
 Will McGugan
 Willem de Groot
 William Grzybowski
 Wilson Ong
-Wei Lin
-Weiwei Wang
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux

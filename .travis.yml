@@ -5,7 +5,6 @@ sudo: false
 language: python
 
 python:
-- 3.5
 - &mainstream_python 3.6
 - 3.7-dev
 - nightly
@@ -13,6 +12,7 @@ python:
 
 install:
 - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
+- pip install -r requirements/cython.txt
 - pip install -r requirements/ci.txt
 
 script:
@@ -43,7 +43,7 @@ _helpers:
   <<: *_lint_base
   install:
   - *upgrade_python_toolset
-  - pip install -U -r requirements/ci.txt -r requirements/doc.txt -r requirements/doc-spelling.txt
+  - pip install -U -r requirements/doc.txt -r requirements/doc-spelling.txt
   after_failure: cat docs/_build/spelling/output.txt
   addons:
     apt:
@@ -143,32 +143,48 @@ jobs:
     dist: xenial
     sudo: required
 
-  - <<: *_doc_base
+  - python: 3.5
     env:
-    - TARGET=docs
+      PYTEST_ADDOPTS: -n0
+
+  - <<: *_doc_base
+    name: Checking docs spelling
     script:
     - make doc-spelling
 
   - <<: *_doc_base
-    env:
-    - TARGET=towncrier
+    name: Checking Towncrier fragments
+    install:
+    - *upgrade_python_toolset
+    - pip install -r requirements/cython.txt
+    - pip install -r requirements/ci.txt
+    - pip install -r requirements/towncrier.txt
     script:
     - towncrier --yes
 
   - <<: *_lint_base
-    env:
-    - TARGET=flake8
+    name: Linting source code with flake8
+    install:
+    - *upgrade_python_toolset
+    - pip install -r requirements/flake.txt
     script:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
-    env:
-    - TARGET="'dist setup check'"
+    name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/doc.txt
+    - pip install -r requirements/cython.txt
+    - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
+
+  - <<: *_lint_base
+    name: Making sure that CONTRIBUTORS.txt remains sorted
+    install:
+    - skip
+    script:
+    - LC_ALL=C sort -c CONTRIBUTORS.txt
 
   - <<: *osx_python_base
     python: 3.5.3
@@ -176,6 +192,7 @@ jobs:
     - &env_py35 PYTHON_VERSION=3.5.3
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
   - <<: *osx_python_base
     python: *mainstream_python
     env:
@@ -206,6 +223,7 @@ jobs:
     - docker
     script:
     - ./tools/run_docker.sh "aiohttp"
+    - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt  # to compile *.c files by Cython
     deploy:
       <<: *deploy_step
@@ -219,6 +237,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     env:
@@ -241,6 +260,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
     env:
@@ -263,6 +283,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     env:

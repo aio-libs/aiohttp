@@ -5,7 +5,8 @@ import re
 import uuid
 import warnings
 import zlib
-from collections import Mapping, Sequence, deque
+from collections import deque
+from collections.abc import Mapping, Sequence
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict

@@ -71,8 +71,6 @@ and :ref:`aiohttp-web-signals` handlers.
 
       The value could be overridden by :meth:`~BaseRequest.clone`.
 
-      ``'http'`` otherwise.
-
       Read-only :class:`str` property.
 
       .. versionchanged:: 2.3
@@ -840,7 +838,7 @@ Response
 
       Setting :attr:`body` also recalculates
       :attr:`~StreamResponse.content_length` value.
-      
+
       Assigning :class:`str` to :attr:`body` will make the :attr:`body`
       type of :class:`aiohttp.payload.StringPayload`, which tries to encode
       the given data based on *Content-Type* HTTP header, while defaulting
@@ -1389,6 +1387,21 @@ duplicated like one using :meth:`Application.copy`.
 
       :returns: a :class:`PrefixedSubAppResource` instance.
 
+   .. method:: add_domain(domain, subapp)
+
+      Register nested sub-application that serves
+      the domain name or domain name mask.
+
+      In resolving process if request.headers['host']
+      matches the pattern *domain* then
+      further resolving is passed to *subapp*.
+
+      :param str domain: domain or mask of domain for the resource.
+
+      :param Application subapp: nested application.
+
+      :returns: a :class:`MatchedSubAppResource` instance.
+
    .. method:: add_routes(routes_table)
 
       Register route definitions from *routes_table*.
@@ -1502,12 +1515,12 @@ Server
 A protocol factory compatible with
 :meth:`~asyncio.AbstreactEventLoop.create_server`.
 
-      .. class:: Server
+.. class:: Server
 
    The class is responsible for creating HTTP protocol
    objects that can handle HTTP connections.
 
-   .. attribute:: Server.connections
+   .. attribute:: connections
 
       List of all currently opened connections.
 
@@ -2447,28 +2460,15 @@ application on specific TCP or Unix socket, e.g.::
 
 .. versionadded:: 3.0
 
-   :class:`AppRunner` and :class:`TCPSite` / :class:`UnixSite` /
-   :class:`SockSite` are added in aiohttp 3.0
+   :class:`AppRunner` / :class:`ServerRunner` and :class:`TCPSite` /
+   :class:`UnixSite` / :class:`SockSite` are added in aiohttp 3.0
 
-.. class:: AppRunner(app, *, handle_signals=False, **kwargs)
 
-   A runner for :class:`Application`. Used with conjunction with sites
-   to serve on specific port.
+.. class:: BaseRunner
 
-   :param Application app: web application instance to serve.
-
-   :param bool handle_signals: add signal handlers for
-                               :data:`signal.SIGINT` and
-                               :data:`signal.SIGTERM` (``False`` by
-                               default).
-
-   :param kwargs: named parameters to pass into
-                    :meth:`Application.make_handler`.
-
-   .. attribute:: app
-
-      Read-only attribute for accessing to :class:`Application` served
-      instance.
+   A base class for runners. Use :class:`AppRunner` for serving
+   :class:`Application`, :class:`ServerRunner` for low-level
+   :class:`Server`.
 
    .. attribute:: server
 
@@ -2490,6 +2490,37 @@ application on specific TCP or Unix socket, e.g.::
 
    .. comethod:: setup()
 
+      Initialize the server. Should be called before adding sites.
+
+   .. comethod:: cleanup()
+
+      Stop handling all registered sites and cleanup used resources.
+
+
+.. class:: AppRunner(app, *, handle_signals=False, **kwargs)
+
+   A runner for :class:`Application`. Used with conjunction with sites
+   to serve on specific port.
+
+   Inherited from :class:`BaseRunner`.
+
+   :param Application app: web application instance to serve.
+
+   :param bool handle_signals: add signal handlers for
+                               :data:`signal.SIGINT` and
+                               :data:`signal.SIGTERM` (``False`` by
+                               default).
+
+   :param kwargs: named parameters to pass into
+                  web protocol.
+
+   .. attribute:: app
+
+      Read-only attribute for accessing to :class:`Application` served
+      instance.
+
+   .. comethod:: setup()
+
       Initialize application. Should be called before adding sites.
 
       The method calls :attr:`Application.on_startup` registered signals.
@@ -2500,6 +2531,28 @@ application on specific TCP or Unix socket, e.g.::
 
       :attr:`Application.on_shutdown` and
       :attr:`Application.on_cleanup` signals are called internally.
+
+
+.. class:: ServerRunner(web_server, *, handle_signals=False, **kwargs)
+
+   A runner for low-level :class:`Server`. Used with conjunction with sites
+   to serve on specific port.
+
+   Inherited from :class:`BaseRunner`.
+
+   :param Server web_server: low-level web server instance to serve.
+
+   :param bool handle_signals: add signal handlers for
+                               :data:`signal.SIGINT` and
+                               :data:`signal.SIGTERM` (``False`` by
+                               default).
+
+   :param kwargs: named parameters to pass into
+                  web protocol.
+
+   .. seealso::
+
+      :ref:`aiohttp-web-lowlevel` demonstrates low-level server usage
 
 .. class:: BaseSite
 
@@ -2762,27 +2815,41 @@ Normalize path middleware
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: normalize_path_middleware(*, \
-                                        append_slash=True, merge_slashes=True)
+                                        append_slash=True, \
+                                        remove_slash=False, \
+                                        merge_slashes=True, \
+                                        redirect_class=HTTPMovedPermanently)
 
-  Middleware factory which produces a middleware that normalizes
-  the path of a request. By normalizing it means:
+   Middleware factory which produces a middleware that normalizes
+   the path of a request. By normalizing it means:
 
-      - Add a trailing slash to the path.
-      - Double slashes are replaced by one.
+     - Add or remove a trailing slash to the path.
+     - Double slashes are replaced by one.
 
-  The middleware returns as soon as it finds a path that resolves
-  correctly. The order if all enabled is:
+   The middleware returns as soon as it finds a path that resolves
+   correctly. The order if both merge and append/remove are enabled is:
 
-    1. *merge_slashes*
-    2. *append_slash*
-    3. both *merge_slashes* and *append_slash*
+     1. *merge_slashes*
+     2. *append_slash* or *remove_slash*
+     3. both *merge_slashes* and *append_slash* or *remove_slash*
 
-  If the path resolves with at least one of those conditions, it will
-  redirect to the new path.
+   If the path resolves with at least one of those conditions, it will
+   redirect to the new path.
 
-  If *append_slash* is ``True`` append slash when needed. If a resource is
-  defined with trailing slash and the request comes without it, it will
-  append it automatically.
+   Only one of *append_slash* and *remove_slash* can be enabled. If both are
+   ``True`` the factory will raise an ``AssertionError``
 
-  If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
-  path into one.
+   If *append_slash* is ``True`` the middleware will append a slash when
+   needed. If a resource is defined with trailing slash and the request
+   comes without it, it will append it automatically.
+
+   If *remove_slash* is ``True``, *append_slash* must be ``False``. When enabled
+   the middleware will remove trailing slashes and redirect if the resource is
+   defined.
+
+   If *merge_slashes* is ``True``, merge multiple consecutive slashes in the
+   path into one.
+
+   .. versionadded:: 3.4
+
+      Support for *remove_slash*

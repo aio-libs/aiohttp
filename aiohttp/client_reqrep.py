@@ -40,7 +40,7 @@ except ImportError:  # pragma: no cover
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
 
 
-json_re = re.compile('^application/(?:[\w.+-]+?\+)?json')
+json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 
 @attr.s(frozen=True, slots=True)
@@ -298,12 +298,25 @@ class ClientRequest:
     def update_headers(self, headers):
         """Update request headers."""
         self.headers = CIMultiDict()
+
+        # add host
+        netloc = self.url.raw_host
+        if helpers.is_ipv6_address(netloc):
+            netloc = '[{}]'.format(netloc)
+        if not self.url.is_default_port():
+            netloc += ':' + str(self.url.port)
+        self.headers[hdrs.HOST] = netloc
+
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
                 headers = headers.items()
 
             for key, value in headers:
-                self.headers.add(key, value)
+                # A special case for Host header
+                if key.lower() == 'host':
+                    self.headers[key] = value
+                else:
+                    self.headers.add(key, value)
 
     def update_auto_headers(self, skip_auto_headers):
         self.skip_auto_headers = CIMultiDict(
@@ -314,13 +327,6 @@ class ClientRequest:
         for hdr, val in self.DEFAULT_HEADERS.items():
             if hdr not in used_headers:
                 self.headers.add(hdr, val)
-
-        # add host
-        if hdrs.HOST not in used_headers:
-            netloc = self.url.raw_host
-            if not self.url.is_default_port():
-                netloc += ':' + str(self.url.port)
-            self.headers[hdrs.HOST] = netloc
 
         if hdrs.USER_AGENT not in used_headers:
             self.headers[hdrs.USER_AGENT] = SERVER_SOFTWARE
@@ -845,6 +851,7 @@ class ClientResponse(HeadersMixin):
 
     def raise_for_status(self) -> None:
         if 400 <= self.status:
+            assert self.reason  # always not None for started response
             raise ClientResponseError(
                 self.request_info,
                 self.history,

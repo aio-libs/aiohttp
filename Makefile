@@ -3,6 +3,7 @@
 all: test
 
 .install-deps: $(shell find requirements -type f)
+	@pip install -r requirements/cython.txt
 	@pip install -U -r requirements/dev.txt
 	@touch .install-deps
 
@@ -23,6 +24,9 @@ flake: .flake
             isort --diff -rc aiohttp tests examples; \
             false; \
 	fi
+	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
+            echo "CONTRIBUTORS.txt sort error"; \
+	fi
 	@touch .flake
 
 check_changes:
@@ -30,7 +34,7 @@ check_changes:
 
 mypy: .flake
 	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
-            mypy aiohttp tests; \
+            mypy aiohttp; \
 	fi
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
@@ -38,29 +42,29 @@ mypy: .flake
 	@touch .develop
 
 test: .develop
-	@pytest -q ./tests
+	@pytest -q
 
 vtest: .develop
-	@pytest -s -v ./tests
+	@pytest -s -v
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@AIOHTTP_NO_EXTENSIONS=1 pytest
+	@pytest --cov-report=html --cov-append
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
+	@AIOHTTP_NO_EXTENSIONS=1 pytest
 cov-ci-aio-debug: .develop
 	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 pytest --cov=aiohttp --cov-append tests
+	@PYTHONASYNCIODEBUG=1 pytest --cov-append
 cov-ci-run: .develop
 	@echo "Regular run"
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@pytest --cov-report=html --cov-append
 
 cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"

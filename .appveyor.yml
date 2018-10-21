@@ -14,15 +14,16 @@ install:
   - git submodule update --init --recursive
 
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U pip wheel setuptools"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/cython.txt"
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 build: false
 
 test_script:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pytest tests"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pytest"
 
 after_test:
-  - "tools/build.cmd %PYTHON%\\python.exe setup.py sdist bdist_wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe -m setup sdist bdist_wheel"
 
 artifacts:
   - path: dist\*

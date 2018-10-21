@@ -52,9 +52,9 @@ directly as shown above, but it is more convenient to use special keyword
 
     await session.post(url, json={'example': 'text'})
 
-The same for *text/plain*::
+For *text/plain* ::
 
-    await session.post(url, text='Привет, Мир!')
+    await session.post(url, data='Привет, Мир!')
 
 Custom Cookies
 --------------

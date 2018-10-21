@@ -9,6 +9,7 @@ alives
 api
 api’s
 app
+apps
 app’s
 arg
 Arsenic
@@ -265,6 +266,7 @@ Tf
 timestamps
 toolbar
 toplevel
+towncrier
 tp
 tuples
 UI
@@ -302,3 +304,4 @@ WSMsgType
 wss
 www
 xxx
+yarl
