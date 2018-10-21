@@ -447,7 +447,7 @@ class CleanupError(RuntimeError):
         return self.args[1]
 
 
-if TYPE_CHECKING:  # pragma: no branch
+if TYPE_CHECKING:  # pragma: no cover
     _CleanupContextBase = FrozenList[Callable[[Application],
                                               AsyncIterator[None]]]
 else:
