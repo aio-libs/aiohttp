@@ -70,8 +70,9 @@ class GunicornWebWorker(base.Worker):
 
         with suppress(Exception):  # ignore all finalization problems
             self.loop.run_until_complete(self._task)
-        if hasattr(self.loop, 'shutdown_asyncgens'):
-            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+        if sys.version_info >= (3, 6):
+            if hasattr(self.loop, 'shutdown_asyncgens'):
+                self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
 
         sys.exit(self.exit_code)
