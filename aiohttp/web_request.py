@@ -20,7 +20,6 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .base_protocol import BaseProtocol
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .http_parser import RawRequestMessage
 from .multipart import MultipartReader
@@ -37,6 +36,7 @@ __all__ = ('BaseRequest', 'FileField', 'Request')
 if TYPE_CHECKING:  # pragma: no cover
     from .web_app import Application  # noqa
     from .web_urldispatcher import UrlMappingMatchInfo  # noqa
+    from .web_protocol import RequestHandler  # noqa
 
 
 @attr.s(frozen=True, slots=True)
@@ -90,7 +90,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         '_transport_sslcontext', '_transport_peername'])
 
     def __init__(self, message: RawRequestMessage,
-                 payload: StreamReader, protocol: BaseProtocol,
+                 payload: StreamReader, protocol: 'RequestHandler',
                  payload_writer: AbstractStreamWriter,
                  task: 'asyncio.Task[None]',
                  loop: asyncio.AbstractEventLoop,
@@ -186,7 +186,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._task
 
     @property
-    def protocol(self) -> BaseProtocol:
+    def protocol(self) -> 'RequestHandler':
         return self._protocol
 
     @property

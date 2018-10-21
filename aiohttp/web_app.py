@@ -10,7 +10,7 @@ from typing import (TYPE_CHECKING, Any, AsyncIterator, Awaitable,  # noqa
 from . import hdrs
 from .abc import (AbstractAccessLogger, AbstractMatchInfo, AbstractRouter,
                   AbstractStreamWriter)
-from .base_protocol import BaseProtocol
+from .web_protocol import RequestHandler
 from .frozenlist import FrozenList
 from .helpers import DEBUG
 from .http_parser import RawRequestMessage
@@ -370,7 +370,7 @@ class Application(MutableMapping[str, Any]):
 
     def _make_request(self, message: RawRequestMessage,
                       payload: StreamReader,
-                      protocol: BaseProtocol,
+                      protocol: RequestHandler,
                       writer: AbstractStreamWriter,
                       task: 'asyncio.Task[None]',
                       _cls: Type[Request]=Request) -> Request:
@@ -492,7 +492,7 @@ class CleanupContext(_CleanupContextBase):
         super().append(cleanup_ctx_item._exit)  # type: ignore
         self._on_startup.append(cleanup_ctx_item._enter)
 
-    async def _on_cleanup(self, app: Application):
+    async def _on_cleanup(self, app: Application) -> None:
         errors = []
         for cb in reversed(self):
             try:
