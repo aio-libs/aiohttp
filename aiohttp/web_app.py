@@ -104,7 +104,8 @@ class Application(MutableMapping[str, Any]):
         self._on_startup = Signal(self)  # type: _AppSignal
         self._on_shutdown = Signal(self)  # type: _AppSignal
         self._on_cleanup = Signal(self)  # type: _AppSignal
-        self._cleanup_ctx = CleanupContext(self._on_startup)
+        self._cleanup_ctx = CleanupContext()
+        self._on_startup.append(self._cleanup_ctx._on_startup)
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
 
@@ -446,60 +447,37 @@ class CleanupError(RuntimeError):
         return self.args[1]
 
 
-class _CleanupContextItem:
-    """
-    CleanupContext uses this class to wrap an asynchronous generator
-    before adding to itself.
-    """
-
-    def __init__(self,
-                 cb: Callable[[Application], AsyncIterator[None]]) -> None:
-        self._cb = cb
-        self._iterator_at_exit = None  # type: Optional[AsyncIterator[None]]
-
-    async def _enter(self, app: Application) -> None:
-        it = self._cb(app).__aiter__()
-        await it.__anext__()
-        self._iterator_at_exit = it
-
-    async def _exit(self, app: Application) -> None:
-        if self._iterator_at_exit is None:
-            return
-        try:
-            await self._iterator_at_exit.__anext__()
-        except StopAsyncIteration:
-            pass
-        else:
-            raise RuntimeError("{!r} has more than one 'yield'"
-                               .format(self._iterator_at_exit))
-
-
 if TYPE_CHECKING:  # pragma: no branch
-    _CleanupContextBase = FrozenList[_CleanupContextItem]
+    _CleanupContextBase = FrozenList[Callable[[Application],
+                                              AsyncIterator[None]]]
 else:
     _CleanupContextBase = FrozenList
 
 
 class CleanupContext(_CleanupContextBase):
 
-    def __init__(self, on_startup: _AppSignal):
+    def __init__(self) -> None:
         super().__init__()
-        self._on_startup = on_startup
+        self._exits = []  # type: List[AsyncIterator[None]]
 
-    def append(self,  # type: ignore
-               item: Callable[[Application], AsyncIterator[None]]) -> None:
-        cleanup_ctx_item = _CleanupContextItem(item)
-        super().append(cleanup_ctx_item._exit)  # type: ignore
-        self._on_startup.append(cleanup_ctx_item._enter)
+    async def _on_startup(self, app: Application) -> None:
+        for cb in self:
+            it = cb(app).__aiter__()
+            await it.__anext__()
+            self._exits.append(it)
 
-    async def _on_cleanup(self, app: Application):
+    async def _on_cleanup(self, app: Application) -> None:
         errors = []
-        for cb in reversed(self):
+        for it in reversed(self._exits):
             try:
-                await cb(app)  # type: ignore
+                await it.__anext__()
+            except StopAsyncIteration:
+                pass
             except Exception as exc:
                 errors.append(exc)
-
+            else:
+                errors.append(RuntimeError("{!r} has more than one 'yield'"
+                                           .format(it)))
         if errors:
             if len(errors) == 1:
                 raise errors[0]
