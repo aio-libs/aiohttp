@@ -423,18 +423,18 @@ async def test_static_file_range_end_bigger_than_size(
 
         # Ensure the whole file requested in parts is correct
         response = await client.get(
-            '/', headers={'Range': 'bytes=61000-62000'})
+            '/', headers={'Range': 'bytes=54000-55000'})
 
         assert response.status == 206, \
-            "failed 'bytes=61000-62000': %s" % response.reason
+            "failed 'bytes=54000-55000': %s" % response.reason
         assert response.headers['Content-Range'] == \
-            'bytes 61000-61107/61108', 'failed: Content-Range Error'
+            'bytes 54000-54996/54997', 'failed: Content-Range Error'
 
         body = await response.read()
-        assert len(body) == 108, \
-            "failed 'bytes=61000-62000', received %d bytes" % len(body)
+        assert len(body) == 997, \
+            "failed 'bytes=54000-55000', received %d bytes" % len(body)
 
-        assert content[61000:] == body
+        assert content[54000:] == body
 
 
 async def test_static_file_range_beyond_eof(aiohttp_client, sender) -> None:
@@ -471,7 +471,7 @@ async def test_static_file_range_tail(aiohttp_client, sender) -> None:
     # Ensure the tail of the file is correct
     resp = await client.get('/', headers={'Range': 'bytes=-500'})
     assert resp.status == 206, resp.reason
-    assert resp.headers['Content-Range'] == 'bytes 60608-61107/61108', \
+    assert resp.headers['Content-Range'] == 'bytes 54497-54996/54997', \
         'failed: Content-Range Error'
     body4 = await resp.read()
     resp.close()
@@ -480,7 +480,7 @@ async def test_static_file_range_tail(aiohttp_client, sender) -> None:
     # Ensure out-of-range tails could be handled
     resp2 = await client.get('/', headers={'Range': 'bytes=-99999999999999'})
     assert resp2.status == 206, resp.reason
-    assert resp2.headers['Content-Range'] == 'bytes 0-61107/61108', \
+    assert resp2.headers['Content-Range'] == 'bytes 0-54996/54997', \
         'failed: Content-Range Error'
 
 
