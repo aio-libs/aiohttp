@@ -241,7 +241,7 @@ class WSParserState(IntEnum):
 
 class WebSocketReader:
 
-    def __init__(self, queue: DataQueue,
+    def __init__(self, queue: DataQueue[WSMessage],
                  max_msg_size: int, compress: bool=True) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size

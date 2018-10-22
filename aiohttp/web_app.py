@@ -10,7 +10,6 @@ from typing import (TYPE_CHECKING, Any, AsyncIterator, Awaitable,  # noqa
 from . import hdrs
 from .abc import (AbstractAccessLogger, AbstractMatchInfo, AbstractRouter,
                   AbstractStreamWriter)
-from .base_protocol import BaseProtocol
 from .frozenlist import FrozenList
 from .helpers import DEBUG
 from .http_parser import RawRequestMessage
@@ -19,6 +18,7 @@ from .signals import Signal
 from .streams import StreamReader
 from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
+from .web_protocol import RequestHandler
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_routedef import AbstractRouteDef
@@ -371,7 +371,7 @@ class Application(MutableMapping[str, Any]):
 
     def _make_request(self, message: RawRequestMessage,
                       payload: StreamReader,
-                      protocol: BaseProtocol,
+                      protocol: RequestHandler,
                       writer: AbstractStreamWriter,
                       task: 'asyncio.Task[None]',
                       _cls: Type[Request]=Request) -> Request:
