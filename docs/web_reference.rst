@@ -1420,12 +1420,12 @@ duplicated like one using :meth:`Application.copy`.
       Creates HTTP protocol factory for handling requests.
 
       :param loop: :ref:`event loop<asyncio-event-loop>` used
-                   for processing HTTP requests.
+        for processing HTTP requests.
 
-                   If param is ``None`` :func:`asyncio.get_event_loop`
-                   used for getting default event loop.
+        If param is ``None`` :func:`asyncio.get_event_loop`
+        used for getting default event loop.
 
-         .. deprecated:: 2.0
+        .. deprecated:: 2.0
 
       :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
       :param int keepalive_timeout: Number of seconds before closing Keep-Alive
@@ -1434,7 +1434,7 @@ duplicated like one using :meth:`Application.copy`.
         :data:`aiohttp.log.server_logger`.
       :param access_log: Custom logging object. Default:
         :data:`aiohttp.log.access_logger`.
-      :param access_log_class: class for `access_logger`. Default:
+      :param access_log_class: Class for `access_logger`. Default:
         :data:`aiohttp.helpers.AccessLogger`.
         Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
       :param str access_log_format: Access log format string. Default:
@@ -1445,10 +1445,10 @@ duplicated like one using :meth:`Application.copy`.
       :param int max_field_size: Optional maximum header field size. Default:
         ``8190``.
 
-      :param float lingering_time: maximum time during which the server
-         reads and ignore additional data coming from the client when
-         lingering close is on.  Use ``0`` for disabling lingering on
-         server channel closing.
+      :param float lingering_time: Maximum time during which the server
+        reads and ignores additional data coming from the client when
+        lingering close is on.  Use ``0`` to disable lingering on
+        server channel closing.
 
       You should pass result of the method as *protocol_factory* to
       :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
