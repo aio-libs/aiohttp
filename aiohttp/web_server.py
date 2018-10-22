@@ -3,7 +3,6 @@ import asyncio
 from typing import Any, Awaitable, Callable, Dict, List, Optional  # noqa
 
 from .abc import AbstractStreamWriter
-from .base_protocol import BaseProtocol
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .web_protocol import RequestHandler
@@ -15,7 +14,7 @@ __all__ = ('Server',)
 
 _RequestFactory = Callable[[RawRequestMessage,
                             StreamReader,
-                            BaseProtocol,
+                            RequestHandler,
                             AbstractStreamWriter,
                             'asyncio.Task[None]'],
                            BaseRequest]
@@ -53,7 +52,7 @@ class Server:
 
     def _make_request(self, message: RawRequestMessage,
                       payload: StreamReader,
-                      protocol: BaseProtocol,
+                      protocol: RequestHandler,
                       writer: AbstractStreamWriter,
                       task: 'asyncio.Task[None]') -> BaseRequest:
         return BaseRequest(

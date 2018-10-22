@@ -1,7 +1,7 @@
 import asyncio
 import collections
 from typing import List  # noqa
-from typing import Any, Awaitable, Callable, Optional, Tuple
+from typing import Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
@@ -20,20 +20,22 @@ __all__ = (
 
 DEFAULT_LIMIT = 2 ** 16
 
+_T = TypeVar('_T')
+
 
 class EofStream(Exception):
     """eof stream indication."""
 
 
-class AsyncStreamIterator:
+class AsyncStreamIterator(Generic[_T]):
 
-    def __init__(self, read_func: Callable[[], Awaitable[bytes]]) -> None:
+    def __init__(self, read_func: Callable[[], Awaitable[_T]]) -> None:
         self.read_func = read_func
 
-    def __aiter__(self) -> 'AsyncStreamIterator':
+    def __aiter__(self) -> 'AsyncStreamIterator[_T]':
         return self
 
-    async def __anext__(self) -> bytes:
+    async def __anext__(self) -> _T:
         try:
             rv = await self.read_func()
         except EofStream:
@@ -60,17 +62,17 @@ class ChunkTupleAsyncStreamIterator:
 
 class AsyncStreamReaderMixin:
 
-    def __aiter__(self) -> AsyncStreamIterator:
+    def __aiter__(self) -> AsyncStreamIterator[bytes]:
         return AsyncStreamIterator(self.readline)  # type: ignore
 
-    def iter_chunked(self, n: int) -> AsyncStreamIterator:
+    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields chunks of size n.
 
         Python-3.5 available for Python 3.5+ only
         """
         return AsyncStreamIterator(lambda: self.read(n))  # type: ignore
 
-    def iter_any(self) -> AsyncStreamIterator:
+    def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields all the available
         data as soon as it is received
 
@@ -494,7 +496,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
 EMPTY_PAYLOAD = EmptyStreamReader()
 
 
-class DataQueue:
+class DataQueue(Generic[_T]):
     """DataQueue is a general-purpose blocking queue with one reader."""
 
     def __init__(self, *, loop: asyncio.AbstractEventLoop) -> None:
@@ -503,7 +505,7 @@ class DataQueue:
         self._waiter = None  # type: Optional[asyncio.Future[bool]]
         self._exception = None  # type: Optional[BaseException]
         self._size = 0
-        self._buffer = collections.deque()  # type: Deque[Tuple[bytes, int]]
+        self._buffer = collections.deque()  # type: Deque[Tuple[_T, int]]
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -526,7 +528,7 @@ class DataQueue:
             set_exception(waiter, exc)
             self._waiter = None
 
-    def feed_data(self, data: Any, size: int=0) -> None:
+    def feed_data(self, data: _T, size: int=0) -> None:
         self._size += size
         self._buffer.append((data, size))
 
@@ -543,7 +545,7 @@ class DataQueue:
             self._waiter = None
             set_result(waiter, False)
 
-    async def read(self) -> Any:
+    async def read(self) -> _T:
         if not self._buffer and not self._eof:
             assert not self._waiter
             self._waiter = self._loop.create_future()
@@ -563,11 +565,11 @@ class DataQueue:
             else:
                 raise EofStream
 
-    def __aiter__(self) -> AsyncStreamIterator:
+    def __aiter__(self) -> AsyncStreamIterator[_T]:
         return AsyncStreamIterator(self.read)
 
 
-class FlowControlDataQueue(DataQueue):
+class FlowControlDataQueue(DataQueue[_T]):
     """FlowControlDataQueue resumes and pauses an underlying stream.
 
     It is a destination for parsed data."""
@@ -580,13 +582,13 @@ class FlowControlDataQueue(DataQueue):
         self._protocol = protocol
         self._limit = limit * 2
 
-    def feed_data(self, data: bytes, size: int=0) -> None:
+    def feed_data(self, data: _T, size: int=0) -> None:
         super().feed_data(data, size)
 
         if self._size > self._limit and not self._protocol._reading_paused:
             self._protocol.pause_reading()
 
-    async def read(self) -> bytes:
+    async def read(self) -> _T:
         try:
             return await super().read()
         finally:
