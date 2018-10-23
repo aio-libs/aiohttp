@@ -87,10 +87,6 @@ class Connection:
     def protocol(self):
         return self._protocol
 
-    @property
-    def writer(self):
-        return self._protocol.writer
-
     def add_callback(self, callback):
         if callback is not None:
             self._callbacks.append(callback)
@@ -118,13 +114,6 @@ class Connection:
                 self._key, self._protocol,
                 should_close=self._protocol.should_close)
             self._protocol = None
-
-    def detach(self):
-        self._notify_release()
-
-        if self._protocol is not None:
-            self._connector._release_acquired(self._protocol)
-        self._protocol = None
 
     @property
     def closed(self):
