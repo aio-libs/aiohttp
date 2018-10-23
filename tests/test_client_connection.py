@@ -35,7 +35,6 @@ def test_ctor(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
     assert conn.loop is loop
     assert conn.protocol is protocol
-    assert conn.writer is protocol.writer
     conn.close()
 
 
