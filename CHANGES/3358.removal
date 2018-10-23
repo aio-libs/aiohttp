@@ -1,0 +1,2 @@
+Drop dead ``Connection.detach()`` and ``Connection.writer``. Both methods were broken
+for more than 2 years.

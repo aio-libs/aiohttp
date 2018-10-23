@@ -1062,13 +1062,6 @@ Connection
       later if timeout (30 seconds by default) for connection was not
       expired.
 
-   .. method:: detach()
-
-      Detach underlying socket from connection.
-
-      Underlying socket is not closed, next :meth:`close` or
-      :meth:`release` calls don't return socket to free pool.
-
 
 Response object
 ---------------
