@@ -111,7 +111,8 @@ class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, hostname: str) -> List[Dict[str, Any]]:
+    async def resolve(self, host: str,
+                      port: int, family: int) -> List[Dict[str, Any]]:
         """Return IP address for given hostname"""
 
     @abstractmethod
