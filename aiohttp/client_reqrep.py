@@ -23,7 +23,8 @@ from .helpers import PY_36, HeadersMixin, TimerNoop, noop, reify, set_result
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
 from .streams import StreamReader  # noqa
-from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
+from .typedefs import (DEFAULT_JSON_DECODER, JSONDecoder, LooseHeaders,
+                       RawHeaders)
 
 
 try:
@@ -295,9 +296,9 @@ class ClientRequest:
                     .format(version)) from None
         self.version = version
 
-    def update_headers(self, headers):
+    def update_headers(self, headers: LooseHeaders) -> None:
         """Update request headers."""
-        self.headers = CIMultiDict()
+        self.headers = CIMultiDict()  # type: CIMultiDict[str]
 
         # add host
         netloc = self.url.raw_host
@@ -309,7 +310,7 @@ class ClientRequest:
 
         if headers:
             if isinstance(headers, (dict, MultiDictProxy, MultiDict)):
-                headers = headers.items()
+                headers = headers.items()  # type: ignore
 
             for key, value in headers:
                 # A special case for Host header
