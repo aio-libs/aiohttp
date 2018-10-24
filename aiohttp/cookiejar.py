@@ -14,7 +14,7 @@ from yarl import URL
 
 from .abc import AbstractCookieJar
 from .helpers import is_ip_address
-from .typedefs import PathLike
+from .typedefs import LooseCookies, PathLike
 
 
 __all__ = ('CookieJar', 'DummyCookieJar')
@@ -102,8 +102,7 @@ class CookieJar(AbstractCookieJar):
         self._expirations[(domain, name)] = iwhen
 
     def update_cookies(self,
-                       cookies: Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                                      Mapping[str, 'BaseCookie[str]']],
+                       cookies: LooseCookies,
                        response_url: URL=URL()) -> None:
         """Update cookies."""
         hostname = response_url.raw_host

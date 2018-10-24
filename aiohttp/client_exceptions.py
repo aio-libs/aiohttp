@@ -2,9 +2,7 @@
 
 import asyncio
 import warnings
-from typing import TYPE_CHECKING, Optional, Tuple
-
-from yarl import URL
+from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 from .typedefs import _CIMultiDict
 
@@ -205,11 +203,13 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: URL) -> None:
+    def __init__(self, url: Any) -> None:
+        # The type of url is not yarl.URL because the exception can be raised
+        # on URL(url) call
         super().__init__(url)
 
     @property
-    def url(self) -> URL:
+    def url(self) -> Any:
         return self.args[0]
 
     def __repr__(self) -> str:

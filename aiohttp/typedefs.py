@@ -2,8 +2,8 @@ import json
 import os  # noqa
 import pathlib  # noqa
 import sys
-from typing import (TYPE_CHECKING, Any, Callable, Dict, List, Mapping,  # noqa
-                    Tuple, Union)
+from typing import (TYPE_CHECKING, Any, Callable, Iterable, Mapping, Tuple,
+                    Union)
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL
@@ -17,6 +17,7 @@ if TYPE_CHECKING:  # pragma: no cover
     _CIMultiDictProxy = CIMultiDictProxy[str]
     _MultiDict = MultiDict[str]
     _MultiDictProxy = MultiDictProxy[str]
+    from http.cookies import BaseCookie  # noqa
 else:
     _CIMultiDict = CIMultiDict
     _CIMultiDictProxy = CIMultiDictProxy
@@ -29,6 +30,8 @@ JSONDecoder = Callable[[str], Any]
 LooseHeaders = Union[Mapping[str, str], _CIMultiDict, _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
+LooseCookies = Union[Iterable[Tuple[str, 'BaseCookie[str]']],
+                     Mapping[str, 'BaseCookie[str]']]
 
 
 if sys.version_info >= (3, 6):

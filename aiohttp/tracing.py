@@ -176,7 +176,7 @@ class TraceRequestExceptionParams:
     method = attr.ib(type=str)
     url = attr.ib(type=URL)
     headers = attr.ib(type='CIMultiDict[str]')
-    exception = attr.ib(type=Exception)
+    exception = attr.ib(type=BaseException)
 
 
 @attr.s(frozen=True, slots=True)
@@ -288,7 +288,7 @@ class Trace:
                                      method: str,
                                      url: URL,
                                      headers: 'CIMultiDict[str]',
-                                     exception: Exception) -> None:
+                                     exception: BaseException) -> None:
         return await self._trace_config.on_request_exception.send(
             self._session,
             self._trace_config_ctx,
