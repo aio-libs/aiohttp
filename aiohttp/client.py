@@ -977,7 +977,7 @@ def request(
         cookies: Optional[LooseCookies]=None,
         version: HttpVersion=http.HttpVersion11,
         connector: Optional[BaseConnector]=None,
-        loop: Optional[asyncio.AbstractEventLoop]=None,
+        loop: Optional[asyncio.AbstractEventLoop]=None
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
     method - HTTP method
