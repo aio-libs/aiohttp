@@ -112,7 +112,7 @@ class CookieJar(AbstractCookieJar):
             return
 
         if isinstance(cookies, Mapping):
-            cookies = cookies.items()
+            cookies = cookies.items()  # type: ignore
 
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
@@ -340,8 +340,7 @@ class DummyCookieJar(AbstractCookieJar):
         pass
 
     def update_cookies(self,
-                       cookies: Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                                      Mapping[str, 'BaseCookie[str]']],
+                       cookies: LooseCookies,
                        response_url: URL=URL()) -> None:
         pass
 

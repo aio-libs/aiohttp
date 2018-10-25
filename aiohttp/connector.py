@@ -27,6 +27,7 @@ from .client_exceptions import (ClientConnectionError,
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
 from .helpers import PY_36, CeilTimeout, is_ip_address, noop, sentinel
+from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
 
@@ -647,7 +648,7 @@ class TCPConnector(BaseConnector):
     """
 
     def __init__(self, *, verify_ssl: bool=True,
-                 fingerprint: Optional[Fingerprint]=None,
+                 fingerprint: Optional[bytes]=None,
                  use_dns_cache: bool=True, ttl_dns_cache: int=10,
                  family: int=0,
                  ssl_context: Optional[SSLContext]=None,
@@ -935,11 +936,13 @@ class TCPConnector(BaseConnector):
     ) -> Tuple[asyncio.Transport, ResponseHandler]:
         headers = {}  # type: Dict[str, str]
         if req.proxy_headers is not None:
-            headers = req.proxy_headers
+            headers = req.proxy_headers  # type: ignore
         headers[hdrs.HOST] = req.headers[hdrs.HOST]
 
+        url = req.proxy
+        assert url is not None
         proxy_req = ClientRequest(
-            hdrs.METH_GET, req.proxy,
+            hdrs.METH_GET, url,
             headers=headers,
             auth=req.proxy_auth,
             loop=self._loop,
@@ -994,11 +997,14 @@ class TCPConnector(BaseConnector):
                 conn._transport = None
                 try:
                     if resp.status != 200:
+                        message = resp.reason
+                        if message is None:
+                            message = RESPONSES[resp.status][0]
                         raise ClientHttpProxyError(
                             proxy_resp.request_info,
                             resp.history,
                             status=resp.status,
-                            message=resp.reason,
+                            message=message,
                             headers=resp.headers)
                     rawsock = transport.get_extra_info('socket', default=None)
                     if rawsock is None:

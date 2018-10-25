@@ -31,7 +31,7 @@ LooseHeaders = Union[Mapping[str, str], _CIMultiDict, _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
 LooseCookies = Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                     Mapping[str, 'BaseCookie[str]']]
+                     Mapping[str, 'BaseCookie[str]'], 'BaseCookie[str]']
 
 
 if sys.version_info >= (3, 6):
