@@ -4,10 +4,12 @@ from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel  # noqa
 from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generator,
-                    Iterable, List, Mapping, Optional, Tuple, Union)
+                    Iterable, List, Optional, Tuple)
 
 from multidict import CIMultiDict  # noqa
 from yarl import URL
+
+from .typedefs import LooseCookies
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -139,8 +141,7 @@ class AbstractCookieJar(Sized, IterableBase):
 
     @abstractmethod
     def update_cookies(self,
-                       cookies: Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                                      Mapping[str, 'BaseCookie[str]']],
+                       cookies: LooseCookies,
                        response_url: URL=URL()) -> None:
         """Update cookies."""
 
