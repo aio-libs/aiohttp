@@ -707,8 +707,12 @@ class ClientSession:
                     compress = 0
                     notakeover = False
 
-            proto = resp.connection.protocol
-            transport = resp.connection.transport
+            conn = resp.connection
+            assert conn is not None
+            proto = conn.protocol
+            assert proto is not None
+            transport = conn.transport
+            assert transport is not None
             reader = FlowControlDataQueue(
                 proto, limit=2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
             proto.set_parser(WebSocketReader(reader, max_msg_size), reader)

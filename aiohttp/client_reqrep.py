@@ -8,7 +8,7 @@ import warnings
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType
-from typing import Any, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -39,6 +39,10 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = ('ClientRequest', 'ClientResponse', 'RequestInfo', 'Fingerprint')
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .connector import Connection  # noqa
 
 
 json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
@@ -704,7 +708,7 @@ class ClientResponse(HeadersMixin):
         return out.getvalue()
 
     @property
-    def connection(self):
+    def connection(self) -> Optional['Connection']:
         return self._connection
 
     @reify

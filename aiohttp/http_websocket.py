@@ -560,7 +560,7 @@ class WebSocketWriter:
         self._compressobj = None  # type: Any  # actually compressobj
 
     async def _send_frame(self, message: bytes, opcode: int,
-                          compress: Optional[bool]=None) -> None:
+                          compress: Optional[int]=None) -> None:
         """Send a frame over the websocket with message as its payload."""
         if self._closing:
             ws_logger.warning('websocket connection is closing.')
@@ -634,7 +634,7 @@ class WebSocketWriter:
 
     async def send(self, message: Union[str, bytes],
                    binary: bool=False,
-                   compress: Optional[bool]=None) -> None:
+                   compress: Optional[int]=None) -> None:
         """Send a frame over the websocket with message as its payload."""
         if isinstance(message, str):
             message = message.encode('utf-8')

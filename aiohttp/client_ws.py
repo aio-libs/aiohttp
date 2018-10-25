@@ -6,20 +6,32 @@ from typing import Any, Optional
 import async_timeout
 
 from .client_exceptions import ClientError
+from .client_reqrep import ClientResponse
 from .helpers import call_later, set_result
 from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
                    WSMessage, WSMsgType)
-from .streams import EofStream
+from .http_websocket import WebSocketWriter  # WSMessage
+from .streams import EofStream, FlowControlDataQueue  # noqa
 from .typedefs import (DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER, JSONDecoder,
                        JSONEncoder)
 
 
 class ClientWebSocketResponse:
 
-    def __init__(self, reader, writer, protocol,
-                 response, timeout, autoclose, autoping, loop, *,
-                 receive_timeout=None, heartbeat=None,
-                 compress=0, client_notakeover=False):
+    def __init__(self,
+                 reader: 'FlowControlDataQueue[WSMessage]',
+                 writer: WebSocketWriter,
+                 protocol: Optional[str],
+                 response: ClientResponse,
+                 timeout: float,
+                 autoclose: bool,
+                 autoping: bool,
+                 loop: asyncio.AbstractEventLoop,
+                 *,
+                 receive_timeout: Optional[float]=None,
+                 heartbeat: Optional[float]=None,
+                 compress: int=0,
+                 client_notakeover: bool=False) -> None:
         self._response = response
         self._conn = response.connection
 
@@ -28,7 +40,7 @@ class ClientWebSocketResponse:
         self._protocol = protocol
         self._closed = False
         self._closing = False
-        self._close_code = None
+        self._close_code = None  # type: Optional[int]
         self._timeout = timeout
         self._receive_timeout = receive_timeout
         self._autoclose = autoclose
@@ -39,14 +51,14 @@ class ClientWebSocketResponse:
             self._pong_heartbeat = heartbeat / 2.0
         self._pong_response_cb = None
         self._loop = loop
-        self._waiting = None
-        self._exception = None
+        self._waiting = None  # type: Optional[asyncio.Future[bool]]
+        self._exception = None  # type: Optional[BaseException]
         self._compress = compress
         self._client_notakeover = client_notakeover
 
         self._reset_heartbeat()
 
-    def _cancel_heartbeat(self):
+    def _cancel_heartbeat(self) -> None:
         if self._pong_response_cb is not None:
             self._pong_response_cb.cancel()
             self._pong_response_cb = None
@@ -55,14 +67,14 @@ class ClientWebSocketResponse:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
 
-    def _reset_heartbeat(self):
+    def _reset_heartbeat(self) -> None:
         self._cancel_heartbeat()
 
         if self._heartbeat is not None:
             self._heartbeat_cb = call_later(
                 self._send_heartbeat, self._heartbeat, self._loop)
 
-    def _send_heartbeat(self):
+    def _send_heartbeat(self) -> None:
         if self._heartbeat is not None and not self._closed:
             # fire-and-forget a task is not perfect but maybe ok for
             # sending ping. Otherwise we need a long-living heartbeat
@@ -74,7 +86,7 @@ class ClientWebSocketResponse:
             self._pong_response_cb = call_later(
                 self._pong_not_received, self._pong_heartbeat, self._loop)
 
-    def _pong_not_received(self):
+    def _pong_not_received(self) -> None:
         if not self._closed:
             self._closed = True
             self._close_code = 1006
@@ -90,7 +102,7 @@ class ClientWebSocketResponse:
         return self._close_code
 
     @property
-    def protocol(self):
+    def protocol(self) -> Optional[str]:
         return self._protocol
 
     @property
@@ -101,13 +113,15 @@ class ClientWebSocketResponse:
     def client_notakeover(self) -> bool:
         return self._client_notakeover
 
-    def get_extra_info(self, name: str, default: Any=None):
+    def get_extra_info(self, name: str, default: Any=None) -> Any:
         """extra info from connection transport"""
-        try:
-            return self._response.connection.transport.get_extra_info(
-                name, default)
-        except Exception:
+        conn = self._response.connection
+        if conn is None:
             return default
+        transport = conn.transport
+        if transport is None:
+            return default
+        return transport.get_extra_info(name, default)
 
     def exception(self) -> Optional[BaseException]:
         return self._exception
@@ -136,7 +150,7 @@ class ClientWebSocketResponse:
                         *, dumps: JSONEncoder=DEFAULT_JSON_ENCODER) -> None:
         await self.send_str(dumps(data), compress=compress)
 
-    async def close(self, *, code: int=1000, message: bytes=b''):
+    async def close(self, *, code: int=1000, message: bytes=b'') -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting is not None and not self._closed:
