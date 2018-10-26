@@ -1,0 +1,1 @@
+fix false-negative indicator end_of_HTTP_chunk in StreamReader.readchunk function
