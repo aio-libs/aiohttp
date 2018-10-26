@@ -13,12 +13,12 @@ from .typedefs import LooseCookies
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import Request
+    from .web_request import BaseRequest, Request
     from .web_response import StreamResponse
     from .web_app import Application
     from .web_exceptions import HTTPException
 else:
-    Request = Application = StreamResponse = None
+    BaseRequest = Request = Application = StreamResponse = None
     HTTPException = None
 
 
@@ -192,7 +192,7 @@ class AbstractAccessLogger(ABC):
 
     @abstractmethod
     def log(self,
-            request: Request,
+            request: BaseRequest,
             response: StreamResponse,
             time: float) -> None:
         """Emit log to logger."""

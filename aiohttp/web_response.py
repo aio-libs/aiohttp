@@ -26,7 +26,7 @@ __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import Request  # noqa
+    from .web_request import BaseRequest  # noqa
     BaseClass = MutableMapping[str, Any]
 else:
     BaseClass = collections.MutableMapping
@@ -62,7 +62,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._compression_force = None  # type: Optional[ContentCoding]
         self._cookies = SimpleCookie()
 
-        self._req = None  # type: Optional[Request]
+        self._req = None  # type: Optional[BaseRequest]
         self._payload_writer = None  # type: Optional[AbstractStreamWriter]
         self._eof_sent = False
         self._body_length = 0
@@ -319,7 +319,7 @@ class StreamResponse(BaseClass, HeadersMixin):
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
 
-    def _start_compression(self, request: 'Request') -> None:
+    def _start_compression(self, request: 'BaseRequest') -> None:
         if self._compression_force:
             self._do_start_compression(self._compression_force)
         else:
@@ -330,8 +330,10 @@ class StreamResponse(BaseClass, HeadersMixin):
                     self._do_start_compression(coding)
                     return
 
-    async def prepare(self,
-                      request: 'Request') -> Optional[AbstractStreamWriter]:
+    async def prepare(
+            self,
+            request: 'BaseRequest'
+    ) -> Optional[AbstractStreamWriter]:
         if self._eof_sent:
             return None
         if self._payload_writer is not None:
@@ -340,7 +342,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         await request._prepare_hook(self)
         return await self._start(request)
 
-    async def _start(self, request: 'Request') -> AbstractStreamWriter:
+    async def _start(self, request: 'BaseRequest') -> AbstractStreamWriter:
         self._req = request
 
         keep_alive = self._keep_alive
@@ -640,7 +642,7 @@ class Response(StreamResponse):
         else:
             await super().write_eof()
 
-    async def _start(self, request: 'Request') -> AbstractStreamWriter:
+    async def _start(self, request: 'BaseRequest') -> AbstractStreamWriter:
         if not self._chunked and hdrs.CONTENT_LENGTH not in self._headers:
             if not self._body_payload:
                 if self._body is not None:

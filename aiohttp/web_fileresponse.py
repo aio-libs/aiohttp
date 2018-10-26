@@ -21,7 +21,7 @@ from .web_response import StreamResponse
 __all__ = ('FileResponse',)
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import Request  # noqa
+    from .web_request import BaseRequest  # noqa
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
@@ -116,7 +116,7 @@ class FileResponse(StreamResponse):
         self._path = path
         self._chunk_size = chunk_size
 
-    async def _sendfile_system(self, request: 'Request',
+    async def _sendfile_system(self, request: 'BaseRequest',
                                fobj: IO[Any],
                                count: int) -> AbstractStreamWriter:
         # Write count bytes of fobj to resp using
@@ -148,7 +148,7 @@ class FileResponse(StreamResponse):
 
         return writer
 
-    async def _sendfile_fallback(self, request: 'Request',
+    async def _sendfile_fallback(self, request: 'BaseRequest',
                                  fobj: IO[Any],
                                  count: int) -> AbstractStreamWriter:
         # Mimic the _sendfile_system() method, but without using the
@@ -180,8 +180,10 @@ class FileResponse(StreamResponse):
     else:  # pragma: no cover
         _sendfile = _sendfile_fallback
 
-    async def prepare(self,
-                      request: 'Request') -> Optional[AbstractStreamWriter]:
+    async def prepare(
+            self,
+            request: 'BaseRequest'
+    ) -> Optional[AbstractStreamWriter]:
         filepath = self._path
 
         gzip = False
