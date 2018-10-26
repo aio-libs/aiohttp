@@ -14,7 +14,7 @@ from multidict import CIMultiDict
 from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
                    CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
-from .http import HttpParser
+from .http import HeadersParser
 from .payload import (JsonPayload, LookupError, Order, Payload, StringPayload,
                       get_payload, payload_type)
 
@@ -616,8 +616,8 @@ class MultipartReader:
             lines.append(chunk)
             if not chunk:
                 break
-        parser = HttpParser()
-        headers, *_ = parser.parse_headers(lines)
+        parser = HeadersParser()
+        headers, raw_headers = parser.parse_headers(lines)
         return headers
 
     async def _maybe_release_last_part(self):
