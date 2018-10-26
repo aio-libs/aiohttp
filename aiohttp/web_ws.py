@@ -19,7 +19,7 @@ from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
 from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
-from .web_request import Request
+from .web_request import BaseRequest
 from .web_response import StreamResponse
 
 
@@ -104,7 +104,7 @@ class WebSocketResponse(StreamResponse):
             self._exception = asyncio.TimeoutError()
             self._req.transport.close()
 
-    async def prepare(self, request: Request) -> AbstractStreamWriter:
+    async def prepare(self, request: BaseRequest) -> AbstractStreamWriter:
         # make pre-check to don't hide it by do_handshake() exceptions
         if self._payload_writer is not None:
             return self._payload_writer
@@ -116,10 +116,10 @@ class WebSocketResponse(StreamResponse):
         await payload_writer.drain()
         return payload_writer
 
-    def _handshake(self, request: Request) -> Tuple['CIMultiDict[str]',
-                                                    str,
-                                                    bool,
-                                                    bool]:
+    def _handshake(self, request: BaseRequest) -> Tuple['CIMultiDict[str]',
+                                                        str,
+                                                        bool,
+                                                        bool]:
         headers = request.headers
         if request.method != hdrs.METH_GET:
             raise HTTPMethodNotAllowed(request.method, [hdrs.METH_GET])
@@ -193,7 +193,7 @@ class WebSocketResponse(StreamResponse):
                 compress,
                 notakeover)
 
-    def _pre_start(self, request: Request) -> Tuple[str, WebSocketWriter]:
+    def _pre_start(self, request: BaseRequest) -> Tuple[str, WebSocketWriter]:
         self._loop = request.loop
 
         headers, protocol, compress, notakeover = self._handshake(
@@ -214,7 +214,7 @@ class WebSocketResponse(StreamResponse):
 
         return protocol, writer
 
-    def _post_start(self, request: Request,
+    def _post_start(self, request: BaseRequest,
                     protocol: str, writer: WebSocketWriter) -> None:
         self._ws_protocol = protocol
         self._writer = writer
@@ -227,7 +227,7 @@ class WebSocketResponse(StreamResponse):
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 
-    def can_prepare(self, request: Request) -> WebSocketReady:
+    def can_prepare(self, request: BaseRequest) -> WebSocketReady:
         if self._writer is not None:
             raise RuntimeError('Already started')
         try:
