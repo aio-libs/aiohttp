@@ -56,7 +56,7 @@ class BaseProtocol(asyncio.Protocol):
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = cast(asyncio.Transport, transport)
 
-    def connection_lost(self, exc: Optional[Exception]) -> None:
+    def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._connection_lost = True
         # Wake up the writer if currently paused.
         self.transport = None

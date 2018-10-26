@@ -273,10 +273,11 @@ def test_get_expired_ssl(loop) -> None:
     assert conn._get(key) is None
 
     proto = mock.Mock()
+    transport = proto.transport
     conn._conns[key] = [(proto, loop.time() - 1000)]
     assert conn._get(key) is None
     assert not conn._conns
-    assert conn._cleanup_closed_transports == [proto.close.return_value]
+    assert conn._cleanup_closed_transports == [transport]
     conn.close()
 
 
@@ -336,11 +337,12 @@ def test_release_ssl_transport(loop, ssl_key) -> None:
     conn._release_waiter = mock.Mock()
 
     proto = mock.Mock()
+    transport = proto.transport
     conn._acquired.add(proto)
     conn._acquired_per_host[ssl_key].add(proto)
 
     conn._release(ssl_key, proto, should_close=True)
-    assert conn._cleanup_closed_transports == [proto.close.return_value]
+    assert conn._cleanup_closed_transports == [transport]
     conn.close()
 
 
@@ -1110,6 +1112,7 @@ def test_cleanup(key) -> None:
 
 def test_cleanup_close_ssl_transport(ssl_key) -> None:
     proto = mock.Mock()
+    transport = proto.transport
     testset = {ssl_key: [(proto, 10)]}
 
     loop = mock.Mock()
@@ -1121,7 +1124,7 @@ def test_cleanup_close_ssl_transport(ssl_key) -> None:
     conn._cleanup()
     assert existing_handle.cancel.called
     assert conn._conns == {}
-    assert conn._cleanup_closed_transports == [proto.close.return_value]
+    assert conn._cleanup_closed_transports == [transport]
 
 
 def test_cleanup2() -> None:
