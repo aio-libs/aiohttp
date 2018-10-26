@@ -665,6 +665,7 @@ def test_raise_for_status_4xx() -> None:
         response.raise_for_status()
     assert str(cm.value.status) == '409'
     assert str(cm.value.message) == "CONFLICT"
+    assert response.closed
 
 
 def test_resp_host() -> None:
