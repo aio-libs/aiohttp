@@ -209,7 +209,7 @@ class BaseConnector:
         # start cleanup closed transports task
         self._cleanup_closed_handle = None
         self._cleanup_closed_disabled = not enable_cleanup_closed
-        self._cleanup_closed_transports = []  # type: List[asyncio.Transport]
+        self._cleanup_closed_transports = []  # type: List[Optional[asyncio.Transport]]  # noqa
         self._cleanup_closed()
 
     def __del__(self, _warnings: Any=warnings) -> None:
@@ -283,7 +283,8 @@ class BaseConnector:
                 for proto, use_time in conns:
                     if proto.is_connected():
                         if use_time - deadline < 0:
-                            transport = proto.close()
+                            transport = proto.transport
+                            proto.close()
                             if (key.is_ssl and
                                     not self._cleanup_closed_disabled):
                                 self._cleanup_closed_transports.append(
@@ -496,7 +497,8 @@ class BaseConnector:
             proto, t0 = conns.pop()
             if proto.is_connected():
                 if t1 - t0 > self._keepalive_timeout:
-                    transport = proto.close()
+                    transport = proto.transport
+                    proto.close()
                     # only for SSL transports
                     if key.is_ssl and not self._cleanup_closed_disabled:
                         self._cleanup_closed_transports.append(transport)
@@ -562,7 +564,8 @@ class BaseConnector:
             should_close = True
 
         if should_close or protocol.should_close:
-            transport = protocol.close()
+            transport = protocol.transport
+            protocol.close()
 
             if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)

@@ -202,7 +202,7 @@ class HttpParser(abc.ABC):
     def parse_message(self, lines: List[bytes]) -> Any:
         pass
 
-    def feed_eof(self) -> None:
+    def feed_eof(self) -> Any:
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
             self._payload_parser = None
