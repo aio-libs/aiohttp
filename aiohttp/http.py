@@ -4,8 +4,9 @@ from typing import Mapping, Tuple  # noqa
 
 from . import __version__
 from .http_exceptions import HttpProcessingError
-from .http_parser import (HttpParser, HttpRequestParser, HttpResponseParser,
-                          RawRequestMessage, RawResponseMessage)
+from .http_parser import (HeadersParser, HttpParser, HttpRequestParser,
+                          HttpResponseParser, RawRequestMessage,
+                          RawResponseMessage)
 from .http_websocket import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WS_KEY,
                              WebSocketError, WebSocketReader, WebSocketWriter,
                              WSCloseCode, WSMessage, WSMsgType, ws_ext_gen,
@@ -21,7 +22,8 @@ __all__ = (
     'StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
 
     # .http_parser
-    'HttpParser', 'HttpRequestParser', 'HttpResponseParser',
+    'HeadersParser', 'HttpParser',
+    'HttpRequestParser', 'HttpResponseParser',
     'RawRequestMessage', 'RawResponseMessage',
 
     # .http_websocket
