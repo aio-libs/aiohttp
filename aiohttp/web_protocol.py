@@ -13,7 +13,7 @@ import yarl
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
-from .helpers import CeilTimeout
+from .helpers import CeilTimeout, current_task
 from .http import (HttpProcessingError, HttpRequestParser, HttpVersion10,
                    RawRequestMessage, StreamWriter)
 from .log import access_logger, server_logger
@@ -544,7 +544,7 @@ class RequestHandler(BaseProtocol):
             ERROR,
             EMPTY_PAYLOAD,
             self, writer,
-            asyncio.Task.current_task(),
+            current_task(),
             self._loop)
 
         resp = self.handle_error(request, status, exc, message)
