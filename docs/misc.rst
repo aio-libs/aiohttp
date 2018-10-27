@@ -10,6 +10,7 @@ Helpful pages.
 
    essays
    glossary
+   examples
 
 .. toctree::
    :titlesonly:
