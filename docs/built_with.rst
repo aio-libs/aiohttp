@@ -22,3 +22,4 @@ project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 * `Arsenic <https://github.com/hde/arsenic>`_ Async WebDriver.
 * `Home Assistant <https://home-assistant.io>`_ Home Automation Platform.
 * `Backend.AI <https://backend.ai>`_ Code execution API service.
+* `doh-proxy <https://github.com/facebookexperimental/doh-proxy>`_ DNS Over HTTPS Proxy.
