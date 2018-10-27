@@ -583,6 +583,7 @@ class ClientSession:
     async def _ws_connect(
             self,
             url: StrOrURL, *,
+            method: str=hdrs.METH_GET,
             protocols: Iterable[str]=(),
             timeout: float=10.0,
             receive_timeout: Optional[float]=None,
@@ -631,13 +632,14 @@ class ClientSession:
         ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         # send request
-        resp = await self.get(url, headers=real_headers,
-                              read_until_eof=False,
-                              auth=auth,
-                              proxy=proxy,
-                              proxy_auth=proxy_auth,
-                              ssl=ssl,
-                              proxy_headers=proxy_headers)
+        resp = await self.request(method, url,
+                                  headers=real_headers,
+                                  read_until_eof=False,
+                                  auth=auth,
+                                  proxy=proxy,
+                                  proxy_auth=proxy_auth,
+                                  ssl=ssl,
+                                  proxy_headers=proxy_headers)
 
         try:
             # check handshake
