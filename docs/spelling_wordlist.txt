@@ -127,6 +127,7 @@ iterables
 javascript
 Jinja
 json
+Kaggle
 keepalive
 keepalived
 keepalives
@@ -231,6 +232,8 @@ Runit
 sa
 Satisfiable
 schemas
+shortener
+scikit
 sendfile
 serializable
 shourtcuts

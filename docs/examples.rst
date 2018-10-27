@@ -9,8 +9,8 @@ inspiration of what can  be done with aiohttp. Please feel free to add your
 open source example project by making Pull Request.
 
 
-Officiall Example Projects
---------------------------
+Official Example Projects
+-------------------------
 
 This list contains libraries which are supported by *aio-libs* team
 and located at https://github.com/aio-libs/aiohttp-demos
