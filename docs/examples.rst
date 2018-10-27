@@ -34,5 +34,5 @@ and located at https://github.com/aio-libs/aiohttp-demos
 - `polls <https://github.com/aio-libs/aiohttp-demos/tree/master/demos/chat>`_
   Simple *polls* application with PostgreSQL storage.
 
-- `Blog <https://github.com/aio-libs/aiohttp-demos/tree/master/demos/chat>`_
+- `blog <https://github.com/aio-libs/aiohttp-demos/tree/master/demos/chat>`_
   Blog application with PostgreSQL storage and Redis session store.
