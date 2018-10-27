@@ -57,9 +57,9 @@ json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 @attr.s(frozen=True, slots=True)
 class ContentDisposition:
-    type = attr.ib(type=str)
+    type = attr.ib(type=str)  # type: Optional[str]
     parameters = attr.ib(type=MappingProxyType)  # type: MappingProxyType[str, str]  # noqa
-    filename = attr.ib(type=str)
+    filename = attr.ib(type=str)  # type: Optional[str]
 
 
 @attr.s(frozen=True, slots=True)
@@ -715,8 +715,8 @@ class ClientResponse(HeadersMixin):
         raw = self._headers.get(hdrs.CONTENT_DISPOSITION)
         if raw is None:
             return None
-        disposition_type, params = multipart.parse_content_disposition(raw)
-        params = MappingProxyType(params)
+        disposition_type, params_dct = multipart.parse_content_disposition(raw)
+        params = MappingProxyType(params_dct)
         filename = multipart.content_disposition_filename(params)
         return ContentDisposition(disposition_type, params, filename)
 
