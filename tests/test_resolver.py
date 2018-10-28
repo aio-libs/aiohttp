@@ -166,14 +166,14 @@ async def test_close_for_async_resolver(loop) -> None:
     await resolver.close()
 
 
-def test_default_loop_for_threaded_resolver(loop) -> None:
+async def test_default_loop_for_threaded_resolver(loop) -> None:
     asyncio.set_event_loop(loop)
     resolver = ThreadedResolver()
     assert resolver._loop is loop
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
-def test_default_loop_for_async_resolver(loop) -> None:
+async def test_default_loop_for_async_resolver(loop) -> None:
     asyncio.set_event_loop(loop)
     resolver = AsyncResolver()
     assert resolver._loop is loop
@@ -203,7 +203,7 @@ async def test_async_resolver_query_ipv6_positive_lookup(loop) -> None:
         mock().query.assert_called_with('www.python.org', 'AAAA')
 
 
-def test_async_resolver_aiodns_not_present(loop, monkeypatch) -> None:
+async def test_async_resolver_aiodns_not_present(loop, monkeypatch) -> None:
     monkeypatch.setattr("aiohttp.resolver.aiodns", None)
     with pytest.raises(RuntimeError):
         AsyncResolver(loop=loop)
