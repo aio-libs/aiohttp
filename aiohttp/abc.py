@@ -9,6 +9,7 @@ from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generator,
 from multidict import CIMultiDict  # noqa
 from yarl import URL
 
+from .helpers import get_running_loop
 from .typedefs import LooseCookies
 
 
@@ -133,7 +134,7 @@ class AbstractCookieJar(Sized, IterableBase):
 
     def __init__(self, *,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = get_running_loop(loop)
 
     @abstractmethod
     def clear(self) -> None:
