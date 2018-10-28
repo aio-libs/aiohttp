@@ -21,7 +21,9 @@ from aiohttp.helpers import DEBUG, PY_36
 
 @pytest.fixture
 def connector(loop):
-    conn = BaseConnector(loop=loop)
+    async def make_conn():
+        return BaseConnector(loop=loop)
+    conn = loop.run_until_complete(make_conn())
     proto = mock.Mock()
     conn._conns['a'] = [(proto, 123)]
     yield conn
@@ -289,14 +291,20 @@ async def test_create_connector(create_session, loop, mocker) -> None:
     assert connector.close.called
 
 
-async def test_connector_loop(loop) -> None:
+def test_connector_loop(loop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
-        connector = TCPConnector(loop=another_loop)
+
+        async def make_connector():
+            return TCPConnector()
+        connector = another_loop.run_until_complete(make_connector())
+
         stack.enter_context(contextlib.closing(connector))
         with pytest.raises(RuntimeError) as ctx:
-            ClientSession(connector=connector, loop=loop)
+            async def make_sess():
+                return ClientSession(connector=connector, loop=loop)
+            loop.run_until_complete(make_sess())
         assert re.match("Session and connector has to use same event loop",
                         str(ctx.value))
 
