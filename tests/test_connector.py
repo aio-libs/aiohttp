@@ -7,6 +7,7 @@ import os.path
 import platform
 import socket
 import ssl
+import sys
 import uuid
 from collections import deque
 from unittest import mock
@@ -179,6 +180,8 @@ async def test_del_with_scheduled_cleanup(loop) -> None:
     exc_handler.assert_called_with(loop, msg)
 
 
+@pytest.mark.skipif(sys.implementation.name != 'cpython',
+                    reason="CPython GC is required for the test")
 def test_del_with_closed_loop(loop) -> None:
     async def make_conn():
         return aiohttp.BaseConnector()
