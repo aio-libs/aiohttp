@@ -506,7 +506,8 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
+   .. comethod:: ws_connect(url, *, method='GET', \
+                            protocols=(), timeout=10.0,\
                             receive_timeout=None,\
                             auth=None,\
                             autoclose=True,\
@@ -625,6 +626,11 @@ The client session supports the context manager protocol for self closing.
                                limit use ``0``.
 
          .. versionadded:: 3.3
+
+      :param str method: HTTP method to establish WebSocket connection,
+                         ``'GET'`` by default.
+
+         .. versionadded:: 3.5
 
 
    .. comethod:: close()

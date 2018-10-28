@@ -39,7 +39,7 @@ async def test_ws_connect(ws_key, loop, key_data) -> None:
         hdrs.SEC_WEBSOCKET_PROTOCOL: 'chat'
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -57,7 +57,7 @@ async def test_ws_connect_with_origin(key_data, loop) -> None:
     resp = mock.Mock()
     resp.status = 403
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -85,7 +85,7 @@ async def test_ws_connect_custom_response(loop, ws_key, key_data) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -106,7 +106,7 @@ async def test_ws_connect_err_status(loop, ws_key, key_data) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -128,7 +128,7 @@ async def test_ws_connect_err_upgrade(loop, ws_key, key_data) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -150,7 +150,7 @@ async def test_ws_connect_err_conn(loop, ws_key, key_data) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -172,7 +172,7 @@ async def test_ws_connect_err_challenge(loop, ws_key, key_data) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: 'asdfasdfasdfasdfasdfasdf'
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -210,7 +210,7 @@ async def test_ws_connect_common_headers(ws_key, loop, key_data) -> None:
             }
             return resp
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get',
+            with mock.patch('aiohttp.client.ClientSession.request',
                             side_effect=mock_get) as m_req:
                 m_os.urandom.return_value = key_data
 
@@ -239,7 +239,7 @@ async def test_close(loop, ws_key, key_data) -> None:
     }
     with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            with mock.patch('aiohttp.client.ClientSession.request') as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
@@ -279,7 +279,7 @@ async def test_close_eofstream(loop, ws_key, key_data) -> None:
     }
     with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            with mock.patch('aiohttp.client.ClientSession.request') as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
@@ -309,7 +309,7 @@ async def test_close_exc(loop, ws_key, key_data) -> None:
     }
     with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            with mock.patch('aiohttp.client.ClientSession.request') as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
@@ -341,7 +341,7 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
     }
     with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            with mock.patch('aiohttp.client.ClientSession.request') as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
@@ -373,7 +373,7 @@ async def test_send_data_after_close(ws_key, key_data, loop, mocker) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -404,7 +404,7 @@ async def test_send_data_type_errors(ws_key, key_data, loop) -> None:
     }
     with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            with mock.patch('aiohttp.client.ClientSession.request') as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
@@ -431,7 +431,7 @@ async def test_reader_read_exception(ws_key, key_data, loop) -> None:
     }
     with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            with mock.patch('aiohttp.client.ClientSession.request') as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(hresp)
@@ -472,7 +472,7 @@ async def test_ws_connect_close_resp_on_err(loop, ws_key, key_data) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -495,7 +495,7 @@ async def test_ws_connect_non_overlapped_protocols(ws_key,
         hdrs.SEC_WEBSOCKET_PROTOCOL: 'other,another'
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -518,7 +518,7 @@ async def test_ws_connect_non_overlapped_protocols_2(ws_key,
         hdrs.SEC_WEBSOCKET_PROTOCOL: 'other,another'
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -543,7 +543,7 @@ async def test_ws_connect_deflate(loop, ws_key, key_data) -> None:
         hdrs.SEC_WEBSOCKET_EXTENSIONS: 'permessage-deflate',
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -566,7 +566,7 @@ async def test_ws_connect_deflate_per_message(loop, ws_key, key_data) -> None:
     }
     with mock.patch('aiohttp.client.WebSocketWriter') as WebSocketWriter:
         with mock.patch('aiohttp.client.os') as m_os:
-            with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+            with mock.patch('aiohttp.client.ClientSession.request') as m_req:
                 m_os.urandom.return_value = key_data
                 m_req.return_value = loop.create_future()
                 m_req.return_value.set_result(resp)
@@ -598,7 +598,7 @@ async def test_ws_connect_deflate_server_not_support(loop,
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -621,7 +621,7 @@ async def test_ws_connect_deflate_notakeover(loop, ws_key, key_data) -> None:
                                        'client_no_context_takeover',
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -644,7 +644,7 @@ async def test_ws_connect_deflate_client_wbits(loop, ws_key, key_data) -> None:
                                        'client_max_window_bits=10',
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -668,7 +668,7 @@ async def test_ws_connect_deflate_client_wbits_bad(loop,
                                        'client_max_window_bits=6',
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
@@ -689,7 +689,7 @@ async def test_ws_connect_deflate_server_ext_bad(loop,
         hdrs.SEC_WEBSOCKET_EXTENSIONS: 'permessage-deflate; bad',
     }
     with mock.patch('aiohttp.client.os') as m_os:
-        with mock.patch('aiohttp.client.ClientSession.get') as m_req:
+        with mock.patch('aiohttp.client.ClientSession.request') as m_req:
             m_os.urandom.return_value = key_data
             m_req.return_value = loop.create_future()
             m_req.return_value.set_result(resp)
