@@ -3,8 +3,8 @@
 all: test
 
 .install-deps: $(shell find requirements -type f)
-	@pip install -r requirements/cython.txt
-	@pip install -U -r requirements/dev.txt
+	pip install -r requirements/cython.txt
+	pip install -r requirements/dev.txt
 	@touch .install-deps
 
 isort:
@@ -17,7 +17,7 @@ flake: .flake
 .flake: .install-deps $(shell find aiohttp -type f) \
                       $(shell find tests -type f) \
                       $(shell find examples -type f)
-	@flake8 aiohttp examples tests
+	flake8 aiohttp examples tests
 	python setup.py check -rms
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
@@ -30,7 +30,7 @@ flake: .flake
 	@touch .flake
 
 check_changes:
-	@./tools/check_changes.py
+	./tools/check_changes.py
 
 mypy: .flake
 	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
@@ -38,7 +38,7 @@ mypy: .flake
 	fi
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
-	@pip install -e .
+	# pip install -e .
 	@touch .develop
 
 test: .develop
