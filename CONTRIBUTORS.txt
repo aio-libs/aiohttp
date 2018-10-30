@@ -144,6 +144,7 @@ Mariano Anaya
 Martin Melka
 Martin Richard
 Mathias Fröjdman
+Matt Bone
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
