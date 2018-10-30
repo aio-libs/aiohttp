@@ -34,21 +34,18 @@ logger ``'aiohttp.access'`` is used, access logs will be output to
 Furthermore, if the default logger has no log level set, the log level will be
 set to :obj:`logging.DEBUG`.
 
-The log may be controlled by :meth:`aiohttp.web.AppRunner` and
+This logging may be controlled by :meth:`aiohttp.web.AppRunner` and
 :func:`aiohttp.web.run_app`.
 
-
-Pass *access_log* parameter with value of :class:`logging.Logger`
-instance to override default logger.
+To override the default logger, pass an instance of :class:`logging.Logger` to
+override the default logger.
 
 .. note::
 
-   Use ``web.run_app(app, access_log=None)`` for disabling access logs.
+   Use ``web.run_app(app, access_log=None)`` to disable access logs.
 
 
-Other parameter called *access_log_format* may be used for specifying log
-format (see below).
-
+In addition, *access_log_format* may be used to specify the log format.
 
 .. _aiohttp-logging-access-log-format-spec:
 
@@ -88,7 +85,7 @@ request and response:
 | ``%{FOO}o``  | ``response.headers['FOO']``                             |
 +--------------+---------------------------------------------------------+
 
-Default access log format is::
+The default access log format is::
 
    '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
 
@@ -96,7 +93,7 @@ Default access log format is::
 
 *access_log_class* introduced.
 
-Example of drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
+Example of a drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
 
   from aiohttp.abc import AbstractAccessLogger
 
@@ -113,13 +110,13 @@ Example of drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
 Gunicorn access logs
 ^^^^^^^^^^^^^^^^^^^^
 When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
-:ref:`deployment <aiohttp-deployment-gunicorn>` its default access log format
+:ref:`deployment <aiohttp-deployment-gunicorn>`, its default access log format
 will be automatically replaced with the default aiohttp's access log format.
 
 If Gunicorn's option access_logformat_ is
-specified explicitly it should use aiohttp's format specification.
+specified explicitly, it should use aiohttp's format specification.
 
-Gunicorn access log works only if accesslog_ is specified explicitly in your
+Gunicorn's access log works only if accesslog_ is specified explicitly in your
 config or as a command line option.
 This configuration can be either a path or ``'-'``. If the application uses
 a custom logging setup intercepting the ``'gunicorn.access'`` logger,
@@ -132,13 +129,13 @@ access log file upon every startup.
 Error logs
 ----------
 
-*aiohttp.web* uses logger named ``'aiohttp.server'`` to store errors
+:mod:`aiohttp.web` uses a logger named ``'aiohttp.server'`` to store errors
 given on web requests handling.
 
-The log is enabled by default.
+This log is enabled by default.
 
-To use different logger name please pass *logger* parameter
-(:class:`logging.Logger` instance) to :meth:`aiohttp.web.AppRunner` constructor.
+To use a different logger name, pass *logger* (:class:`logging.Logger`
+instance) to the :meth:`aiohttp.web.AppRunner` constructor.
 
 
 .. _access_logformat:
