@@ -1,0 +1,1 @@
+Fix RuntimeError in _sendfile_cb.
