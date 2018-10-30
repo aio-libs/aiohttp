@@ -561,7 +561,8 @@ def test_run_app_default_logger(monkeypatch, patched_loop):
     assert isinstance(mock_logger.addHandler.call_args[0][0],
                       logging.StreamHandler)
 
-def test_run_app_default_logger_setup_requires_debug(monkeypatch, patched_loop):
+
+def test_run_app_default_logger_setup_requires_debug(patched_loop):
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': False,
@@ -579,7 +580,8 @@ def test_run_app_default_logger_setup_requires_debug(monkeypatch, patched_loop):
     mock_logger.hasHandlers.assert_not_called()
     mock_logger.addHandler.assert_not_called()
 
-def test_run_app_default_logger_setup_requires_default_logger(monkeypatch, patched_loop):
+
+def test_run_app_default_logger_setup_requires_default_logger(patched_loop):
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': False,
@@ -597,7 +599,8 @@ def test_run_app_default_logger_setup_requires_default_logger(monkeypatch, patch
     mock_logger.hasHandlers.assert_not_called()
     mock_logger.addHandler.assert_not_called()
 
-def test_run_app_default_logger_setup_only_if_unconfigured(monkeypatch, patched_loop):
+
+def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop):
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': True,
