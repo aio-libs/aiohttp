@@ -73,7 +73,7 @@ def build_close_frame(code=1000, message=b'', noheader=False):
 
 @pytest.fixture()
 def out(loop):
-    return aiohttp.DataQueue(loop=loop)
+    return aiohttp.DataQueue(loop)
 
 
 @pytest.fixture()

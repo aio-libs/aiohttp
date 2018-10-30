@@ -12,7 +12,6 @@ from aiohttp.test_utils import RawTestServer as _RawTestServer
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
 from aiohttp.test_utils import (loop_context, make_mocked_request,
-                                setup_test_loop, teardown_test_loop,
                                 unittest_run_loop)
 
 
@@ -64,7 +63,11 @@ def app():
 
 @pytest.fixture
 def test_client(loop, app) -> None:
-    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
+    async def make_client():
+        return _TestClient(_TestServer(app, loop=loop), loop=loop)
+
+    client = loop.run_until_complete(make_client())
+
     loop.run_until_complete(client.start_server())
     yield client
     loop.run_until_complete(client.close())
@@ -77,24 +80,22 @@ def test_with_test_server_fails(loop) -> None:
             pass
 
 
-def test_with_client_fails(loop) -> None:
+async def test_with_client_fails(loop) -> None:
     app = _create_example_app()
     with pytest.raises(TypeError):
         with _TestClient(_TestServer(app, loop=loop), loop=loop):
             pass
 
 
-def test_aiohttp_client_close_is_idempotent() -> None:
+async def test_aiohttp_client_close_is_idempotent() -> None:
     """
     a test client, called multiple times, should
     not attempt to close the server again.
     """
-    loop = setup_test_loop()
     app = _create_example_app()
-    client = _TestClient(_TestServer(app, loop=loop), loop=loop)
-    loop.run_until_complete(client.close())
-    loop.run_until_complete(client.close())
-    teardown_test_loop(loop)
+    client = _TestClient(_TestServer(app))
+    await client.close()
+    await client.close()
 
 
 class TestAioHTTPTestCase(AioHTTPTestCase):

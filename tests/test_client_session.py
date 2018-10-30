@@ -21,7 +21,9 @@ from aiohttp.helpers import DEBUG, PY_36
 
 @pytest.fixture
 def connector(loop):
-    conn = BaseConnector(loop=loop)
+    async def make_conn():
+        return BaseConnector(loop=loop)
+    conn = loop.run_until_complete(make_conn())
     proto = mock.Mock()
     conn._conns['a'] = [(proto, 123)]
     yield conn
@@ -32,7 +34,7 @@ def connector(loop):
 def create_session(loop):
     session = None
 
-    def maker(*args, **kwargs):
+    async def maker(*args, **kwargs):
         nonlocal session
         session = ClientSession(*args, loop=loop, **kwargs)
         return session
@@ -42,8 +44,8 @@ def create_session(loop):
 
 
 @pytest.fixture
-def session(create_session):
-    return create_session()
+def session(create_session, loop):
+    return loop.run_until_complete(create_session())
 
 
 @pytest.fixture
@@ -59,60 +61,61 @@ def params():
         read_until_eof=False)
 
 
-def test_close_coro(create_session, loop) -> None:
-    session = create_session()
-    loop.run_until_complete(session.close())
+async def test_close_coro(create_session) -> None:
+    session = await create_session()
+    await session.close()
 
 
-def test_init_headers_simple_dict(create_session) -> None:
-    session = create_session(headers={"h1": "header1",
-                                      "h2": "header2"})
+async def test_init_headers_simple_dict(create_session) -> None:
+    session = await create_session(headers={"h1": "header1",
+                                            "h2": "header2"})
     assert (sorted(session._default_headers.items()) ==
             ([("h1", "header1"), ("h2", "header2")]))
 
 
-def test_init_headers_list_of_tuples(create_session) -> None:
-    session = create_session(headers=[("h1", "header1"),
-                                      ("h2", "header2"),
-                                      ("h3", "header3")])
+async def test_init_headers_list_of_tuples(create_session) -> None:
+    session = await create_session(headers=[("h1", "header1"),
+                                            ("h2", "header2"),
+                                            ("h3", "header3")])
     assert (session._default_headers ==
             CIMultiDict([("h1", "header1"),
                          ("h2", "header2"),
                          ("h3", "header3")]))
 
 
-def test_init_headers_MultiDict(create_session) -> None:
-    session = create_session(headers=MultiDict([("h1", "header1"),
-                                                ("h2", "header2"),
-                                                ("h3", "header3")]))
+async def test_init_headers_MultiDict(create_session) -> None:
+    session = await create_session(headers=MultiDict([("h1", "header1"),
+                                                      ("h2", "header2"),
+                                                      ("h3", "header3")]))
     assert (session._default_headers ==
             CIMultiDict([("H1", "header1"),
                          ("H2", "header2"),
                          ("H3", "header3")]))
 
 
-def test_init_headers_list_of_tuples_with_duplicates(create_session) -> None:
-    session = create_session(headers=[("h1", "header11"),
-                                      ("h2", "header21"),
-                                      ("h1", "header12")])
+async def test_init_headers_list_of_tuples_with_duplicates(
+        create_session) -> None:
+    session = await create_session(headers=[("h1", "header11"),
+                                            ("h2", "header21"),
+                                            ("h1", "header12")])
     assert (session._default_headers ==
             CIMultiDict([("H1", "header11"),
                          ("H2", "header21"),
                          ("H1", "header12")]))
 
 
-def test_init_cookies_with_simple_dict(create_session) -> None:
-    session = create_session(cookies={"c1": "cookie1",
-                                      "c2": "cookie2"})
+async def test_init_cookies_with_simple_dict(create_session) -> None:
+    session = await create_session(cookies={"c1": "cookie1",
+                                            "c2": "cookie2"})
     cookies = session.cookie_jar.filter_cookies()
     assert set(cookies) == {'c1', 'c2'}
     assert cookies['c1'].value == 'cookie1'
     assert cookies['c2'].value == 'cookie2'
 
 
-def test_init_cookies_with_list_of_tuples(create_session) -> None:
-    session = create_session(cookies=[("c1", "cookie1"),
-                                      ("c2", "cookie2")])
+async def test_init_cookies_with_list_of_tuples(create_session) -> None:
+    session = await create_session(cookies=[("c1", "cookie1"),
+                                            ("c2", "cookie2")])
 
     cookies = session.cookie_jar.filter_cookies()
     assert set(cookies) == {'c1', 'c2'}
@@ -120,36 +123,36 @@ def test_init_cookies_with_list_of_tuples(create_session) -> None:
     assert cookies['c2'].value == 'cookie2'
 
 
-def test_merge_headers(create_session) -> None:
+async def test_merge_headers(create_session) -> None:
         # Check incoming simple dict
-    session = create_session(headers={"h1": "header1",
-                                      "h2": "header2"})
+    session = await create_session(headers={"h1": "header1",
+                                            "h2": "header2"})
     headers = session._prepare_headers({"h1": "h1"})
 
     assert isinstance(headers, CIMultiDict)
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-def test_merge_headers_with_multi_dict(create_session) -> None:
-    session = create_session(headers={"h1": "header1",
-                                      "h2": "header2"})
+async def test_merge_headers_with_multi_dict(create_session) -> None:
+    session = await create_session(headers={"h1": "header1",
+                                            "h2": "header2"})
     headers = session._prepare_headers(MultiDict([("h1", "h1")]))
     assert isinstance(headers, CIMultiDict)
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-def test_merge_headers_with_list_of_tuples(create_session) -> None:
-    session = create_session(headers={"h1": "header1",
-                                      "h2": "header2"})
+async def test_merge_headers_with_list_of_tuples(create_session) -> None:
+    session = await create_session(headers={"h1": "header1",
+                                            "h2": "header2"})
     headers = session._prepare_headers([("h1", "h1")])
     assert isinstance(headers, CIMultiDict)
     assert headers == {"h1": "h1", "h2": "header2"}
 
 
-def test_merge_headers_with_list_of_tuples_duplicated_names(
+async def test_merge_headers_with_list_of_tuples_duplicated_names(
         create_session) -> None:
-    session = create_session(headers={"h1": "header1",
-                                      "h2": "header2"})
+    session = await create_session(headers={"h1": "header1",
+                                            "h2": "header2"})
 
     headers = session._prepare_headers([("h1", "v1"),
                                         ("h1", "v2")])
@@ -255,7 +258,7 @@ def test_http_DELETE(session, params) -> None:
 
 
 async def test_close(create_session, connector) -> None:
-    session = create_session(connector=connector)
+    session = await create_session(connector=connector)
 
     await session.close()
     assert session.connector is None
@@ -271,7 +274,7 @@ async def test_closed(session) -> None:
 async def test_connector(create_session, loop, mocker) -> None:
     connector = TCPConnector(loop=loop)
     mocker.spy(connector, 'close')
-    session = create_session(connector=connector)
+    session = await create_session(connector=connector)
     assert session.connector is connector
 
     await session.close()
@@ -280,7 +283,7 @@ async def test_connector(create_session, loop, mocker) -> None:
 
 
 async def test_create_connector(create_session, loop, mocker) -> None:
-    session = create_session()
+    session = await create_session()
     connector = session.connector
     mocker.spy(session.connector, 'close')
 
@@ -292,10 +295,16 @@ def test_connector_loop(loop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
-        connector = TCPConnector(loop=another_loop)
+
+        async def make_connector():
+            return TCPConnector()
+        connector = another_loop.run_until_complete(make_connector())
+
         stack.enter_context(contextlib.closing(connector))
         with pytest.raises(RuntimeError) as ctx:
-            ClientSession(connector=connector, loop=loop)
+            async def make_sess():
+                return ClientSession(connector=connector, loop=loop)
+            loop.run_until_complete(make_sess())
         assert re.match("Session and connector has to use same event loop",
                         str(ctx.value))
 
@@ -326,7 +335,7 @@ def test_close_flag_for_closed_connector(session) -> None:
 
 
 async def test_double_close(connector, create_session) -> None:
-    session = create_session(connector=connector)
+    session = await create_session(connector=connector)
 
     await session.close()
     assert session.connector is None
@@ -335,7 +344,7 @@ async def test_double_close(connector, create_session) -> None:
     assert connector.closed
 
 
-def test_del(connector, loop) -> None:
+async def test_del(connector, loop) -> None:
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
     loop.set_exception_handler(lambda loop, ctx: None)
@@ -345,7 +354,7 @@ def test_del(connector, loop) -> None:
         gc.collect()
 
 
-def test_context_manager(connector, loop) -> None:
+async def test_context_manager(connector, loop) -> None:
     with pytest.raises(TypeError):
         with ClientSession(loop=loop, connector=connector) as session:
             pass
@@ -366,7 +375,7 @@ async def test_reraise_os_error(create_session) -> None:
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
     req.send = mock.Mock(side_effect=err)
-    session = create_session(request_class=req_factory)
+    session = await create_session(request_class=req_factory)
 
     async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
@@ -389,7 +398,7 @@ async def test_close_conn_on_error(create_session) -> None:
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
     req.send = mock.Mock(side_effect=err)
-    session = create_session(request_class=req_factory)
+    session = await create_session(request_class=req_factory)
 
     connections = []
     original_connect = session._connector.connect
@@ -459,7 +468,7 @@ async def test_cookie_jar_usage(loop, aiohttp_client) -> None:
     assert resp_cookies["response"].value == "resp_value"
 
 
-def test_session_default_version(loop) -> None:
+async def test_session_default_version(loop) -> None:
     session = aiohttp.ClientSession(loop=loop)
     assert session.version == aiohttp.HttpVersion11
 
@@ -481,19 +490,6 @@ def test_proxy_str(session, params) -> None:
                                            allow_redirects=True,
                                            proxy='http://proxy.com',
                                            **params)]
-
-
-def test_client_session_implicit_loop_warn() -> None:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    with pytest.warns(UserWarning):
-        session = aiohttp.ClientSession()
-        assert session._loop is loop
-        loop.run_until_complete(session.close())
-
-    asyncio.set_event_loop(None)
-    loop.close()
 
 
 async def test_request_tracing(loop, aiohttp_client) -> None:
@@ -643,13 +639,13 @@ def test_client_session_inheritance() -> None:
 
 @pytest.mark.skipif(not DEBUG,
                     reason="The check is applied in DEBUG mode only")
-def test_client_session_custom_attr(loop) -> None:
+async def test_client_session_custom_attr(loop) -> None:
     session = ClientSession(loop=loop)
     with pytest.warns(DeprecationWarning):
         session.custom = None
 
 
-def test_client_session_timeout_args(loop) -> None:
+async def test_client_session_timeout_args(loop) -> None:
     session1 = ClientSession(loop=loop)
     assert session1._timeout == client.DEFAULT_TIMEOUT
 

@@ -30,7 +30,9 @@ def make_srv(loop, manager):
 
 @pytest.fixture
 def manager(request_handler, loop):
-    return web.Server(request_handler, loop=loop)
+    async def maker():
+        return web.Server(request_handler)
+    return loop.run_until_complete(maker())
 
 
 @pytest.fixture

@@ -499,7 +499,7 @@ EMPTY_PAYLOAD = EmptyStreamReader()
 class DataQueue(Generic[_T]):
     """DataQueue is a general-purpose blocking queue with one reader."""
 
-    def __init__(self, *, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
         self._waiter = None  # type: Optional[asyncio.Future[bool]]

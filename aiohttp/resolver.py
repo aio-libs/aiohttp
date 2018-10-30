@@ -3,6 +3,7 @@ import socket
 from typing import Any, Dict, List, Optional
 
 from .abc import AbstractResolver
+from .helpers import get_running_loop
 
 
 __all__ = ('ThreadedResolver', 'AsyncResolver', 'DefaultResolver')
@@ -22,9 +23,7 @@ class ThreadedResolver(AbstractResolver):
     """
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        self._loop = loop
+        self._loop = get_running_loop(loop)
 
     async def resolve(self, host: str, port: int=0,
                       family: int=socket.AF_INET) -> List[Dict[str, Any]]:
@@ -50,13 +49,10 @@ class AsyncResolver(AbstractResolver):
 
     def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None,
                  *args: Any, **kwargs: Any) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
-
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = loop
+        self._loop = get_running_loop(loop)
         self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
 
         if not hasattr(self._resolver, 'gethostbyname'):

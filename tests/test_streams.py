@@ -778,7 +778,7 @@ async def test_empty_stream_reader() -> None:
 
 @pytest.fixture
 async def buffer(loop):
-    return streams.DataQueue(loop=loop)
+    return streams.DataQueue(loop)
 
 
 class TestDataQueue:
@@ -1114,7 +1114,7 @@ async def test_stream_reader_chunks_incomplete() -> None:
 async def test_data_queue_empty() -> None:
     """Tests that async looping yields nothing if nothing is there"""
     loop = asyncio.get_event_loop()
-    buffer = streams.DataQueue(loop=loop)
+    buffer = streams.DataQueue(loop)
     buffer.feed_eof()
 
     async for _ in buffer:  # NOQA
@@ -1124,7 +1124,7 @@ async def test_data_queue_empty() -> None:
 async def test_data_queue_items() -> None:
     """Tests that async looping yields objects identically"""
     loop = asyncio.get_event_loop()
-    buffer = streams.DataQueue(loop=loop)
+    buffer = streams.DataQueue(loop)
 
     items = [object(), object()]
     buffer.feed_data(items[0], 1)

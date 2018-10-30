@@ -10,20 +10,13 @@ from aiohttp.base_protocol import BaseProtocol
 async def test_loop() -> None:
     loop = asyncio.get_event_loop()
     asyncio.set_event_loop(None)
-    pr = BaseProtocol(loop=loop)
-    assert pr._loop is loop
-
-
-async def test_default_loop() -> None:
-    loop = asyncio.get_event_loop()
-    asyncio.set_event_loop(loop)
-    pr = BaseProtocol()
+    pr = BaseProtocol(loop)
     assert pr._loop is loop
 
 
 async def test_pause_writing() -> None:
     loop = asyncio.get_event_loop()
-    pr = BaseProtocol(loop=loop)
+    pr = BaseProtocol(loop)
     assert not pr._paused
     pr.pause_writing()
     assert pr._paused
