@@ -51,10 +51,11 @@ class SendfileStreamWriter(StreamWriter):
                      offset: int, count: int,
                      loop: asyncio.AbstractEventLoop,
                      registered: bool) -> None:
-        if registered:
-            loop.remove_writer(out_fd)
         if fut.cancelled():
             return
+
+        if registered:
+            loop.remove_writer(out_fd)
 
         try:
             n = os.sendfile(out_fd, in_fd, offset, count)
