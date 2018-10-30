@@ -444,6 +444,17 @@ def test_proxies_from_env_http_with_auth(mocker) -> None:
     assert proxy_auth.password == 'pass'
     assert proxy_auth.encoding == 'latin1'
 
+# ------------ get_running_loop ---------------------------------
+
+
+def test_get_running_loop_not_running(loop) -> None:
+    with pytest.warns(DeprecationWarning):
+        helpers.get_running_loop()
+
+
+async def test_get_running_loop_ok(loop) -> None:
+    assert helpers.get_running_loop() is loop
+
 
 # ------------- set_result / set_exception ----------------------
 

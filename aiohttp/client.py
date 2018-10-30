@@ -32,7 +32,8 @@ from .connector import *  # noqa
 from .connector import BaseConnector, TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (DEBUG, PY_36, BasicAuth, CeilTimeout, TimeoutHandle,
-                      proxies_from_env, sentinel, strip_auth_from_url)
+                      get_running_loop, proxies_from_env, sentinel,
+                      strip_auth_from_url)
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import (WSHandshakeError, WSMessage, ws_ext_gen,  # noqa
                              ws_ext_parse)
@@ -121,13 +122,11 @@ class ClientSession:
                  trust_env: bool=False,
                  trace_configs: Optional[List[TraceConfig]]=None) -> None:
 
-        implicit_loop = False
         if loop is None:
             if connector is not None:
                 loop = connector._loop
-            else:
-                implicit_loop = True
-                loop = asyncio.get_event_loop()
+
+        loop = get_running_loop(loop)
 
         if connector is None:
             connector = TCPConnector(loop=loop)
@@ -140,17 +139,6 @@ class ClientSession:
 
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
-
-        if implicit_loop and not loop.is_running():
-            warnings.warn("Creating a client session outside of coroutine is "
-                          "a very dangerous idea",
-                          stacklevel=2)
-            context = {'client_session': self,
-                       'message': 'Creating a client session outside '
-                       'of coroutine'}
-            if self._source_traceback is not None:
-                context['source_traceback'] = self._source_traceback
-            loop.call_exception_handler(context)
 
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)

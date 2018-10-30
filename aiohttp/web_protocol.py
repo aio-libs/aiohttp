@@ -105,7 +105,7 @@ class RequestHandler(BaseProtocol):
                  'access_logger', '_close', '_force_close')
 
     def __init__(self, manager: 'Server', *,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
+                 loop: asyncio.AbstractEventLoop,
                  keepalive_timeout: float=75.,  # NGINX default is 75 secs
                  tcp_keepalive: bool=True,
                  logger: Logger=server_logger,
@@ -118,7 +118,7 @@ class RequestHandler(BaseProtocol):
                  max_field_size: int=8190,
                  lingering_time: float=10.0):
 
-        super().__init__(loop=loop)
+        super().__init__(loop)
 
         self._request_count = 0
         self._keepalive = False

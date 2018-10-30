@@ -14,12 +14,10 @@ class ResponseHandler(BaseProtocol,
                       DataQueue[Tuple[RawResponseMessage, StreamReader]]):
     """Helper class to adapt between Protocol and StreamReader."""
 
-    def __init__(self, *,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
+    def __init__(self,
+                 loop: asyncio.AbstractEventLoop) -> None:
         BaseProtocol.__init__(self, loop=loop)
-        DataQueue.__init__(self, loop=loop)
+        DataQueue.__init__(self, loop)
 
         self._should_close = False
 
