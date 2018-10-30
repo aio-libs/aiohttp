@@ -162,7 +162,8 @@ class SockSite(BaseSite):
 class BaseRunner(ABC):
     __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites', '_loop')
 
-    def __init__(self, *, handle_signals: bool=False, loop: asyncio.AbstractEventLoop=None, **kwargs: Any) -> None:
+    def __init__(self, *, handle_signals: bool=False,
+                 loop: asyncio.AbstractEventLoop=None, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None  # type: Optional[Server]
@@ -194,8 +195,10 @@ class BaseRunner(ABC):
     async def setup(self) -> None:
         if self._handle_signals:
             try:
-                self._loop.add_signal_handler(signal.SIGINT, _raise_graceful_exit)
-                self._loop.add_signal_handler(signal.SIGTERM, _raise_graceful_exit)
+                self._loop.add_signal_handler(signal.SIGINT,
+                                              _raise_graceful_exit)
+                self._loop.add_signal_handler(signal.SIGTERM,
+                                              _raise_graceful_exit)
             except NotImplementedError:  # pragma: no cover
                 # add_signal_handler is not implemented on Windows
                 pass
