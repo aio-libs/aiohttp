@@ -96,6 +96,8 @@ async def test_app_property(make_runner, app) -> None:
 
 
 def test_non_app() -> None:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
     with pytest.raises(TypeError):
         web.AppRunner(object())
 
@@ -114,3 +116,16 @@ async def test_addresses(make_runner, shorttmpdir) -> None:
     actual_addrs = runner.addresses
     expected_host, expected_post = _sock.getsockname()[:2]
     assert actual_addrs == [(expected_host, expected_post), path]
+
+
+async def test_runner_with_explict_loop(app):
+    old_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(old_loop)
+
+    new_loop = asyncio.new_event_loop()
+
+    assert new_loop is not old_loop
+
+    runner = web.AppRunner(app, loop=new_loop)
+    await runner.setup()
+    assert runner._app.loop == new_loop

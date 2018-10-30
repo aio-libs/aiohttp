@@ -30,7 +30,7 @@ def _raise_graceful_exit() -> None:
 
 class BaseSite(ABC):
     __slots__ = ('_runner', '_shutdown_timeout', '_ssl_context', '_backlog',
-                 '_server')
+                 '_server', '_loop')
 
     def __init__(self, runner: 'BaseRunner', *,
                  shutdown_timeout: float=60.0,
@@ -43,6 +43,7 @@ class BaseSite(ABC):
         self._ssl_context = ssl_context
         self._backlog = backlog
         self._server = None  # type: Optional[asyncio.AbstractServer]
+        self._loop = runner._loop
 
     @property
     @abstractmethod
@@ -93,10 +94,9 @@ class TCPSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
+        self._server = await self._loop.create_server(
             server, self._host, self._port,
             ssl=self._ssl_context, backlog=self._backlog,
             reuse_address=self._reuse_address,
@@ -121,10 +121,9 @@ class UnixSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_unix_server(
+        self._server = await self._loop.create_unix_server(
             server, self._path,
             ssl=self._ssl_context, backlog=self._backlog)
 
@@ -153,22 +152,24 @@ class SockSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
+        self._server = await self._loop.create_server(
             server, sock=self._sock,
             ssl=self._ssl_context, backlog=self._backlog)
 
 
 class BaseRunner(ABC):
-    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
+    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites', '_loop')
 
-    def __init__(self, *, handle_signals: bool=False, **kwargs: Any) -> None:
+    def __init__(self, *, handle_signals: bool=False, loop: asyncio.AbstractEventLoop=None, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None  # type: Optional[Server]
         self._sites = []  # type: List[BaseSite]
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self._loop = loop  # type: asyncio.AbstractEventLoop
 
     @property
     def server(self) -> Optional[Server]:
@@ -191,12 +192,10 @@ class BaseRunner(ABC):
         return set(self._sites)
 
     async def setup(self) -> None:
-        loop = asyncio.get_event_loop()
-
         if self._handle_signals:
             try:
-                loop.add_signal_handler(signal.SIGINT, _raise_graceful_exit)
-                loop.add_signal_handler(signal.SIGTERM, _raise_graceful_exit)
+                self._loop.add_signal_handler(signal.SIGINT, _raise_graceful_exit)
+                self._loop.add_signal_handler(signal.SIGTERM, _raise_graceful_exit)
             except NotImplementedError:  # pragma: no cover
                 # add_signal_handler is not implemented on Windows
                 pass
@@ -208,8 +207,6 @@ class BaseRunner(ABC):
         pass  # pragma: no cover
 
     async def cleanup(self) -> None:
-        loop = asyncio.get_event_loop()
-
         if self._server is None:
             # no started yet, do nothing
             return
@@ -224,8 +221,8 @@ class BaseRunner(ABC):
         self._server = None
         if self._handle_signals:
             try:
-                loop.remove_signal_handler(signal.SIGINT)
-                loop.remove_signal_handler(signal.SIGTERM)
+                self._loop.remove_signal_handler(signal.SIGINT)
+                self._loop.remove_signal_handler(signal.SIGTERM)
             except NotImplementedError:  # pragma: no cover
                 # remove_signal_handler is not implemented on Windows
                 pass
@@ -282,8 +279,9 @@ class AppRunner(BaseRunner):
     __slots__ = ('_app',)
 
     def __init__(self, app: Application, *,
+                 loop: asyncio.AbstractEventLoop=None,
                  handle_signals: bool=False, **kwargs: Any) -> None:
-        super().__init__(handle_signals=handle_signals, **kwargs)
+        super().__init__(loop=loop, handle_signals=handle_signals, **kwargs)
         if not isinstance(app, Application):
             raise TypeError("The first argument should be web.Application "
                             "instance, got {!r}".format(app))
@@ -297,13 +295,12 @@ class AppRunner(BaseRunner):
         await self._app.shutdown()
 
     async def _make_server(self) -> Server:
-        loop = asyncio.get_event_loop()
-        self._app._set_loop(loop)
+        self._app._set_loop(self._loop)
         self._app.on_startup.freeze()
         await self._app.startup()
         self._app.freeze()
 
-        return self._app._make_handler(loop=loop, **self._kwargs)
+        return self._app._make_handler(loop=self._loop, **self._kwargs)
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()

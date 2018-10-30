@@ -2506,6 +2506,8 @@ application on specific TCP or Unix socket, e.g.::
 
    :param Application app: web application instance to serve.
 
+   :param asyncio.AbstractEventLoop loop: event loop for this server
+
    :param bool handle_signals: add signal handlers for
                                :data:`signal.SIGINT` and
                                :data:`signal.SIGTERM` (``False`` by
