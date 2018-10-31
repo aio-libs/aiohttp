@@ -1,0 +1,1 @@
+Deprecate ``app.loop``, ``request.loop``, ``client.loop`` and ``connector.loop`` properties.
