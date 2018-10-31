@@ -194,7 +194,7 @@ class WebSocketResponse(StreamResponse):
                 notakeover)
 
     def _pre_start(self, request: BaseRequest) -> Tuple[str, WebSocketWriter]:
-        self._loop = request.loop
+        self._loop = request._loop
 
         headers, protocol, compress, notakeover = self._handshake(
             request)
