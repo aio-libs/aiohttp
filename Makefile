@@ -42,10 +42,10 @@ mypy: .flake
 	@touch .develop
 
 test: .develop
-	@pytest -q
+	@pytest -c pytest.ci.ini -q
 
 vtest: .develop
-	@pytest -s -v
+	@pytest -c pytest.ci.ini -s -v
 
 cov cover coverage:
 	tox
@@ -53,7 +53,7 @@ cov cover coverage:
 cov-dev: .develop
 	@echo "Run without extensions"
 	@AIOHTTP_NO_EXTENSIONS=1 pytest
-	@pytest --cov-report=html --cov-append
+	@pytest -c pytest.ci.ini --cov-report=html --cov-append
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-no-ext: .develop
@@ -61,10 +61,10 @@ cov-ci-no-ext: .develop
 	@AIOHTTP_NO_EXTENSIONS=1 pytest
 cov-ci-aio-debug: .develop
 	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 pytest --cov-append
+	@PYTHONASYNCIODEBUG=1 pytest -c pytest.ci.ini --cov-append
 cov-ci-run: .develop
 	@echo "Regular run"
-	@pytest --cov-report=html --cov-append
+	@pytest -c pytest.ci.ini --cov-report=html --cov-append
 
 cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"
