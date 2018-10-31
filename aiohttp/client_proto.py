@@ -70,11 +70,11 @@ class ResponseHandler(BaseProtocol,
             with suppress(Exception):
                 self._payload_parser.feed_eof()
 
+        uncompleted = None
         if self._parser is not None:
             try:
                 uncompleted = self._parser.feed_eof()
             except Exception:
-                uncompleted = None
                 if self._payload is not None:
                     self._payload.set_exception(
                         ClientPayloadError(
