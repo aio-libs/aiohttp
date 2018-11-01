@@ -213,6 +213,8 @@ The client session supports the context manager protocol for self closing.
 
       A read-only property.
 
+      .. deprecated:: 3.5
+
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
@@ -1051,6 +1053,8 @@ Connection
    .. attribute:: loop
 
       Event loop used for connection
+
+      .. deprecated:: 3.5
 
    .. attribute:: transport
 

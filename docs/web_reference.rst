@@ -225,7 +225,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`asyncio.AbstractEventLoop` property.
 
-      .. versionadded:: 2.3
+      .. deprecated:: 3.5
 
    .. attribute:: cookies
 
@@ -1293,6 +1293,7 @@ duplicated like one using :meth:`Application.copy`.
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
 
+      .. deprecated:: 3.5
 
    .. attribute:: debug
 

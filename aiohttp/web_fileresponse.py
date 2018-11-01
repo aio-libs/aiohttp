@@ -72,6 +72,9 @@ class SendfileStreamWriter(StreamWriter):
         else:
             set_result(fut, None)
 
+    def _done_fut(self, fut, out_fd):
+        self.loop.remove_writer(out_fd)
+
     async def sendfile(self, fobj: IO[Any], count: int) -> None:
         assert self.transport is not None
         out_socket = self.transport.get_extra_info('socket').dup()
