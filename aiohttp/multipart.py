@@ -651,7 +651,7 @@ class MultipartReader:
             self._last_part = None
 
 
-_Part = Tuple[Payload, MultiMapping[str], str, str]
+_Part = Tuple[Payload, 'MultiMapping[str]', str, str]
 
 
 class MultipartWriter(Payload):
@@ -737,7 +737,7 @@ class MultipartWriter(Payload):
     def append(
             self,
             obj: Any,
-            headers: Optional[MultiMapping[str]]=None
+            headers: Optional['MultiMapping[str]']=None
     ) -> Payload:
         if headers is None:
             headers = CIMultiDict()
@@ -797,7 +797,7 @@ class MultipartWriter(Payload):
     def append_json(
             self,
             obj: Any,
-            headers: Optional[MultiMapping[str]]=None
+            headers: Optional['MultiMapping[str]']=None
     ) -> Payload:
         """Helper to append JSON part."""
         if headers is None:
@@ -809,7 +809,7 @@ class MultipartWriter(Payload):
             self,
             obj: Union[Sequence[Tuple[str, str]],
                        Mapping[str, str]],
-            headers: Optional[MultiMapping[str]]=None
+            headers: Optional['MultiMapping[str]']=None
     ) -> Payload:
         """Helper to append form urlencoded part."""
         assert isinstance(obj, (Sequence, Mapping))
