@@ -185,7 +185,7 @@ def netrc_from_env() -> Optional[netrc.netrc]:
     except OSError as e:
         # we couldn't read the file (doesn't exist, permissions, etc.)
         if netrc_env or netrc_path.is_file():
-            # only warn if the enviroment wanted us to load it,
+            # only warn if the environment wanted us to load it,
             # or it appears like the default file does actually exist
             client_logger.warning('Could not read .netrc file: %s', e)
 
