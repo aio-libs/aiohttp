@@ -297,6 +297,8 @@ functionality, the AioHTTPTestCase is provided::
 
        The event loop in which the application and server are running.
 
+       .. deprecated:: 3.5
+
     .. attribute:: app
 
        The application returned by :meth:`get_app`
