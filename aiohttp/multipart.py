@@ -651,7 +651,7 @@ class MultipartReader:
             self._last_part = None
 
 
-_Part = Tuple[Payload, MultiMapping[str], str, str]
+_Part = Tuple[Payload, 'MultiMapping[str]', str, str]
 
 
 class MultipartWriter(Payload):
