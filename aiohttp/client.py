@@ -836,6 +836,9 @@ class ClientSession:
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
         """Session's loop."""
+        warnings.warn("client.loop property is deprecated",
+                      DeprecationWarning,
+                      stacklevel=2)
         return self._loop
 
     def detach(self) -> None:

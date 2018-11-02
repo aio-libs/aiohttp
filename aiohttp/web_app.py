@@ -159,6 +159,9 @@ class Application(MutableMapping[str, Any]):
         # Technically the loop can be None
         # but we mask it by explicit type cast
         # to provide more convinient type annotation
+        warnings.warn("loop property is deprecated",
+                      DeprecationWarning,
+                      stacklevel=2)
         return cast(asyncio.AbstractEventLoop, self._loop)
 
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
@@ -331,7 +334,7 @@ class Application(MutableMapping[str, Any]):
 
         return Server(self._handle,  # type: ignore
                       request_factory=self._make_request,
-                      loop=self.loop, **kwargs)
+                      loop=self._loop, **kwargs)
 
     def make_handler(self, *,
                      loop: Optional[asyncio.AbstractEventLoop]=None,

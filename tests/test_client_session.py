@@ -475,7 +475,8 @@ async def test_session_default_version(loop) -> None:
 
 async def test_session_loop(loop) -> None:
     session = aiohttp.ClientSession(loop=loop)
-    assert session.loop is loop
+    with pytest.warns(DeprecationWarning):
+        assert session.loop is loop
     await session.close()
 
 

@@ -212,6 +212,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
     @reify
     def loop(self) -> asyncio.AbstractEventLoop:
+        warnings.warn("request.loop property is deprecated",
+                      DeprecationWarning,
+                      stacklevel=2)
         return self._loop
 
     # MutableMapping API
