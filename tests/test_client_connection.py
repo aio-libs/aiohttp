@@ -33,7 +33,8 @@ def protocol():
 
 def test_ctor(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
-    assert conn.loop is loop
+    with pytest.warns(DeprecationWarning):
+        assert conn.loop is loop
     assert conn.protocol is protocol
     conn.close()
 

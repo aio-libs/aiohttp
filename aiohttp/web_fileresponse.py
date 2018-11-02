@@ -139,7 +139,7 @@ class FileResponse(StreamResponse):
         else:
             writer = SendfileStreamWriter(
                 request.protocol,
-                request.loop
+                request._loop
             )
             request._payload_writer = writer
 

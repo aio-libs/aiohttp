@@ -94,6 +94,9 @@ class Connection:
 
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
+        warnings.warn("connector.loop property is deprecated",
+                      DeprecationWarning,
+                      stacklevel=2)
         return self._loop
 
     @property
