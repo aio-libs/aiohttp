@@ -1281,6 +1281,10 @@ duplicated like one using :meth:`Application.copy`.
 
    :param debug: Switches debug mode.
 
+      .. deprecated:: 3.5
+
+         Use asyncio :ref:`asyncio-debug-mode` instead.
+
    .. attribute:: router
 
       Read-only property that returns *router instance*.
@@ -1298,6 +1302,10 @@ duplicated like one using :meth:`Application.copy`.
    .. attribute:: debug
 
       Boolean value indicating whether the debug mode is turned on or off.
+
+      .. deprecated:: 3.5
+
+         Use asyncio :ref:`asyncio-debug-mode` instead.
 
    .. attribute:: on_response_prepare
 

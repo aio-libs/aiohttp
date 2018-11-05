@@ -61,8 +61,12 @@ def test_set_loop_with_different_loops() -> None:
 
 @pytest.mark.parametrize('debug', [True, False])
 async def test_app_make_handler_debug_exc(mocker, debug) -> None:
-    app = web.Application(debug=debug)
+    with pytest.warns(DeprecationWarning):
+        app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web_app.Server')
+
+    with pytest.warns(DeprecationWarning):
+        assert app.debug == debug
 
     app._make_handler()
     srv.assert_called_with(app._handle,
