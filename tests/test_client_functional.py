@@ -875,7 +875,7 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_hdr(
         raise web.HTTPFound(location='/')
 
     data = json.dumps({'some': 'data'})
-    app = web.Application(debug=True)
+    app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
     client = await aiohttp_client(app)
