@@ -82,6 +82,10 @@ class Application(MutableMapping[str, Any]):
             warnings.warn("loop argument is deprecated", DeprecationWarning,
                           stacklevel=2)
 
+        if debug is not ...:
+            warnings.warn("debug argument is deprecated",
+                          DeprecationWarning,
+                          stacklevel=2)
         self._debug = debug
         self._router = router  # type: UrlDispatcher
         self._loop = loop
@@ -226,6 +230,9 @@ class Application(MutableMapping[str, Any]):
 
     @property
     def debug(self) -> bool:
+        warnings.warn("debug property is deprecated",
+                      DeprecationWarning,
+                      stacklevel=2)
         return self._debug
 
     def _reg_subapp_signals(self, subapp: 'Application') -> None:
@@ -326,7 +333,7 @@ class Application(MutableMapping[str, Any]):
         self._set_loop(loop)
         self.freeze()
 
-        kwargs['debug'] = self.debug
+        kwargs['debug'] = self._debug
         kwargs['access_log_class'] = access_log_class
         if self._handler_args:
             for k, v in self._handler_args.items():
