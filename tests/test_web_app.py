@@ -65,6 +65,9 @@ async def test_app_make_handler_debug_exc(mocker, debug) -> None:
         app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web_app.Server')
 
+    with pytest.warns(DeprecationWarning):
+        assert app.debug == debug
+
     app._make_handler()
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
