@@ -751,3 +751,19 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
     assert 'application/octet-stream' == resp.headers['Content-Type']
     assert resp.headers.get('Content-Encoding') == 'deflate'
     await resp.release()
+
+
+async def test_static_file_cancel(aiohttp_client) -> None:
+    filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
+
+    async def handler(request):
+        ret = web.FileResponse(filepath)
+        request.task.cancel()
+        return ret
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert resp.status == 200

@@ -67,7 +67,7 @@ class SendfileStreamWriter(StreamWriter):
             n = os.sendfile(out_fd,
                             self._in_fd,
                             self._offset,
-                            self._count)
+                            min(self._count, 0xffffffff))
             if n == 0:  # EOF reached
                 n = self._count
         except (BlockingIOError, InterruptedError):
@@ -95,6 +95,8 @@ class SendfileStreamWriter(StreamWriter):
                 fut.add_done_callback(partial(self._done_fut, out_fd))
                 loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
                 await fut
+        except asyncio.CancelledError:
+            raise
         except Exception:
             server_logger.debug('Socket error')
             self.transport.close()
