@@ -753,22 +753,6 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
     await resp.release()
 
 
-async def test_static_file_cancel(aiohttp_client) -> None:
-    filepath = pathlib.Path(__file__).parent / 'data.unknown_mime_type'
-
-    async def handler(request):
-        ret = web.FileResponse(filepath)
-        request.task.cancel()
-        return ret
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert resp.status == 200  # cancelled after sending response headers
-
-
 async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
     filename = 'huge_data.unknown_mime_type'
 
@@ -777,10 +761,12 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
         for i in range(1024*20):
             f.write(chr(i % 64 + 0x20) * 1024)
 
+    task = None
+
     async def handler(request):
+        nonlocal task
+        task = request.task
         ret = web.FileResponse(pathlib.Path(tmpdir.join(filename)))
-        loop = asyncio.get_event_loop()
-        loop.call_later(0.01, request.task.cancel)
         return ret
 
     app = web.Application()
@@ -789,4 +775,11 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
     client = await aiohttp_client(app)
 
     resp = await client.get('/')
-    assert resp.status == 200  # cancelled after sending response headers
+    task.cancel()
+    data = b''
+    while True:
+        try:
+            data += await resp.read()
+        except aiohttp.ClientPayloadError:
+            break
+    assert len(data) < 1024 * 1024 * 20
