@@ -758,7 +758,7 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
 
     # fill 100MB file
     with tmpdir.join(filename).open('w') as f:
-        for i in range(1024*20):
+        for i in range(1024*100):
             f.write(chr(i % 64 + 0x20) * 1024)
 
     task = None
