@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import socket
 import zlib
 
 import pytest
@@ -758,7 +759,7 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
 
     # fill 100MB file
     with tmpdir.join(filename).open('w') as f:
-        for i in range(1024*100):
+        for i in range(1024*20):
             f.write(chr(i % 64 + 0x20) * 1024)
 
     task = None
@@ -766,6 +767,10 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
     async def handler(request):
         nonlocal task
         task = request.task
+        # reduce send buffer size
+        tr = request.transport
+        sock = tr.get_extra_info('socket')
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
         ret = web.FileResponse(pathlib.Path(tmpdir.join(filename)))
         return ret
 
