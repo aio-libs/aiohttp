@@ -759,7 +759,7 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
 
     # fill 100MB file
     with tmpdir.join(filename).open('w') as f:
-        for i in range(1024*200):
+        for i in range(1024*20):
             f.write(chr(i % 64 + 0x20) * 1024)
 
     task = None
@@ -781,6 +781,7 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
 
     resp = await client.get('/')
     task.cancel()
+    await asyncio.sleep(0)
     data = b''
     while True:
         try:
