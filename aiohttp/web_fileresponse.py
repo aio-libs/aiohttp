@@ -67,7 +67,7 @@ class SendfileStreamWriter(StreamWriter):
             n = os.sendfile(out_fd,
                             self._in_fd,
                             self._offset,
-                            min(self._count, 0x7fffffff))
+                            min(self._count, 0x7ffff000))
             if n == 0:  # in_fd EOF reached
                 n = self._count
         except (BlockingIOError, InterruptedError):
