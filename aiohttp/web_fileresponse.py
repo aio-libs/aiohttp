@@ -68,14 +68,15 @@ class SendfileStreamWriter(StreamWriter):
                             self._in_fd,
                             self._offset,
                             min(self._count, 0xffffffff))
-            if n == 0:  # EOF reached
+            if n == 0:  # in_fd EOF reached
                 n = self._count
         except (BlockingIOError, InterruptedError):
             n = 0
         self.output_size += n
         self._offset += n
         self._count -= n
-        return self._count <= 0
+        assert self._count >= 0
+        return self._count == 0
 
     def _done_fut(self, fut: 'asyncio.Future[None]', out_fd: int) -> None:
         self.loop.remove_writer(out_fd)
