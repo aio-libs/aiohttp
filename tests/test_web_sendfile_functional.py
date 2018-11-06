@@ -766,4 +766,27 @@ async def test_static_file_cancel(aiohttp_client) -> None:
     client = await aiohttp_client(app)
 
     resp = await client.get('/')
-    assert resp.status == 200
+    assert resp.status == 200  # cancelled after sending response headers
+
+
+async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
+    filename = 'huge_data.unknown_mime_type'
+
+    # fill 100MB file
+    with tmpdir.join(filename).open('w') as f:
+        for i in range(1024*20):
+            f.write(chr(i % 64 + 0x20) * 1024)
+
+    async def handler(request):
+        ret = web.FileResponse(pathlib.Path(tmpdir.join(filename)))
+        loop = asyncio.get_event_loop()
+        loop.call_later(0.01, request.task.cancel)
+        return ret
+
+    app = web.Application()
+
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert resp.status == 200  # cancelled after sending response headers
