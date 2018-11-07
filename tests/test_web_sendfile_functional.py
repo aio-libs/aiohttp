@@ -771,7 +771,7 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
         tr = request.transport
         sock = tr.get_extra_info('socket')
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
-        ret = web.FileResponse(pathlib.Path(tmpdir.join(filename)))
+        ret = web.FileResponse(pathlib.Path(str(tmpdir.join(filename))))
         return ret
 
     app = web.Application()
@@ -780,12 +780,13 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
     client = await aiohttp_client(app)
 
     resp = await client.get('/')
+    assert resp.status == 200
     task.cancel()
     await asyncio.sleep(0)
     data = b''
     while True:
         try:
-            data += await resp.read()
+            data += await resp.content.read(1024)
         except aiohttp.ClientPayloadError:
             break
     assert len(data) < 1024 * 1024 * 20
