@@ -325,7 +325,7 @@ def test_static_route_path_existence_check() -> None:
 async def test_static_file_huge(aiohttp_client, tmpdir) -> None:
     filename = 'huge_data.unknown_mime_type'
 
-    # fill 100MB file
+    # fill 20MB file
     with tmpdir.join(filename).open('w') as f:
         for i in range(1024*20):
             f.write(chr(i % 64 + 0x20) * 1024)
@@ -795,10 +795,10 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
 async def test_static_file_huge_error(aiohttp_client, tmpdir) -> None:
     filename = 'huge_data.unknown_mime_type'
 
-    # fill 100MB file
-    with tmpdir.join(filename).open('w') as f:
-        for i in range(1024*20):
-            f.write(chr(i % 64 + 0x20) * 1024)
+    # fill 20MB file
+    with tmpdir.join(filename).open('wb') as f:
+        f.seek(20*1024*1024)
+        f.write(b'1')
 
     async def handler(request):
         # reduce send buffer size
