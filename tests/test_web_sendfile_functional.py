@@ -790,3 +790,30 @@ async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
         except aiohttp.ClientPayloadError:
             break
     assert len(data) < 1024 * 1024 * 20
+
+
+async def test_static_file_huge_error(aiohttp_client, tmpdir) -> None:
+    filename = 'huge_data.unknown_mime_type'
+
+    # fill 100MB file
+    with tmpdir.join(filename).open('w') as f:
+        for i in range(1024*20):
+            f.write(chr(i % 64 + 0x20) * 1024)
+
+    async def handler(request):
+        # reduce send buffer size
+        tr = request.transport
+        sock = tr.get_extra_info('socket')
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
+        ret = web.FileResponse(pathlib.Path(str(tmpdir.join(filename))))
+        return ret
+
+    app = web.Application()
+
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert resp.status == 200
+    # raise an exception on server side
+    resp.close()
