@@ -1114,7 +1114,7 @@ Response object
 
    .. attribute:: real_url
 
-      Unmodified URL of request (:class:`~yarl.URL`).
+      Unmodified URL of request with URL fragment unstripped (:class:`~yarl.URL`).
 
       .. versionadded:: 3.2
 
