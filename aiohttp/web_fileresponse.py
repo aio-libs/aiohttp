@@ -93,7 +93,7 @@ class SendfileStreamWriter(StreamWriter):
             await loop.sock_sendall(out_socket, data)
             if not self._do_sendfile(out_fd):
                 fut = loop.create_future()
-                fut.add_done_callback(partial(out_fd))
+                fut.add_done_callback(partial(self._done_fut, out_fd))
                 loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
                 await fut
         except asyncio.CancelledError:
