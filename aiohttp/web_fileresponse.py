@@ -2,6 +2,7 @@ import asyncio
 import mimetypes
 import os
 import pathlib
+from functools import partial
 from typing import (IO, TYPE_CHECKING, Any, Awaitable, Callable, List,  # noqa
                     Optional, Union, cast)
 
@@ -35,9 +36,15 @@ class SendfileStreamWriter(StreamWriter):
     def __init__(self,
                  protocol: BaseProtocol,
                  loop: asyncio.AbstractEventLoop,
+                 fobj: IO[Any],
+                 count: int,
                  on_chunk_sent: _T_OnChunkSent=None) -> None:
         super().__init__(protocol, loop, on_chunk_sent)
         self._sendfile_buffer = []  # type: List[bytes]
+        self._fobj = fobj
+        self._count = count
+        self._offset = fobj.tell()
+        self._in_fd = fobj.fileno()
 
     def _write(self, chunk: bytes) -> None:
         # we overwrite StreamWriter._write, so nothing can be appended to
@@ -46,54 +53,57 @@ class SendfileStreamWriter(StreamWriter):
         self.output_size += len(chunk)
         self._sendfile_buffer.append(chunk)
 
-    def _sendfile_cb(self, fut: 'asyncio.Future[None]',
-                     out_fd: int, in_fd: int,
-                     offset: int, count: int,
-                     loop: asyncio.AbstractEventLoop,
-                     registered: bool) -> None:
-        if registered:
-            loop.remove_writer(out_fd)
+    def _sendfile_cb(self, fut: 'asyncio.Future[None]', out_fd: int) -> None:
         if fut.cancelled():
             return
-
         try:
-            n = os.sendfile(out_fd, in_fd, offset, count)
-            if n == 0:  # EOF reached
-                n = count
-        except (BlockingIOError, InterruptedError):
-            n = 0
+            if self._do_sendfile(out_fd):
+                set_result(fut, None)
         except Exception as exc:
             set_exception(fut, exc)
-            return
 
-        if n < count:
-            loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd, in_fd,
-                            offset + n, count - n, loop, True)
-        else:
-            set_result(fut, None)
+    def _do_sendfile(self, out_fd: int) -> bool:
+        try:
+            n = os.sendfile(out_fd,
+                            self._in_fd,
+                            self._offset,
+                            self._count)
+            if n == 0:  # in_fd EOF reached
+                n = self._count
+        except (BlockingIOError, InterruptedError):
+            n = 0
+        self.output_size += n
+        self._offset += n
+        self._count -= n
+        assert self._count >= 0
+        return self._count == 0
 
-    async def sendfile(self, fobj: IO[Any], count: int) -> None:
+    def _done_fut(self, out_fd: int, fut: 'asyncio.Future[None]') -> None:
+        self.loop.remove_writer(out_fd)
+
+    async def sendfile(self) -> None:
         assert self.transport is not None
         out_socket = self.transport.get_extra_info('socket').dup()
         out_socket.setblocking(False)
         out_fd = out_socket.fileno()
-        in_fd = fobj.fileno()
-        offset = fobj.tell()
 
         loop = self.loop
         data = b''.join(self._sendfile_buffer)
         try:
             await loop.sock_sendall(out_socket, data)
-            fut = loop.create_future()
-            self._sendfile_cb(fut, out_fd, in_fd, offset, count, loop, False)
-            await fut
+            if not self._do_sendfile(out_fd):
+                fut = loop.create_future()
+                fut.add_done_callback(partial(self._done_fut, out_fd))
+                loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
+                await fut
+        except asyncio.CancelledError:
+            raise
         except Exception:
             server_logger.debug('Socket error')
             self.transport.close()
         finally:
             out_socket.close()
 
-        self.output_size += count
         await super().write_eof()
 
     async def write_eof(self, chunk: bytes=b'') -> None:
@@ -139,12 +149,14 @@ class FileResponse(StreamResponse):
         else:
             writer = SendfileStreamWriter(
                 request.protocol,
-                request._loop
+                request._loop,
+                fobj,
+                count
             )
             request._payload_writer = writer
 
             await super().prepare(request)
-            await writer.sendfile(fobj, count)
+            await writer.sendfile()
 
         return writer
 
