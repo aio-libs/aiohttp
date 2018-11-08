@@ -2,73 +2,7 @@ from unittest import mock
 
 from aiohttp import hdrs
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web_fileresponse import FileResponse, SendfileStreamWriter
-
-
-def test_static_handle_eof(loop) -> None:
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        m_os.sendfile.return_value = 0
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-        assert fut.done()
-        assert fut.result() is None
-        assert not fake_loop.add_writer.called
-        assert not fake_loop.remove_writer.called
-
-
-def test_static_handle_again(loop) -> None:
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        m_os.sendfile.side_effect = BlockingIOError()
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-        assert not fut.done()
-        fake_loop.add_writer.assert_called_with(out_fd,
-                                                writer._sendfile_cb,
-                                                fut, out_fd, in_fd, 0, 100,
-                                                fake_loop, True)
-        assert not fake_loop.remove_writer.called
-
-
-def test_static_handle_exception(loop) -> None:
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        exc = OSError()
-        m_os.sendfile.side_effect = exc
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        m_os.sendfile.assert_called_with(out_fd, in_fd, 0, 100)
-        assert fut.done()
-        assert exc is fut.exception()
-        assert not fake_loop.add_writer.called
-        assert not fake_loop.remove_writer.called
-
-
-def test__sendfile_cb_return_on_cancelling(loop) -> None:
-    fake_loop = mock.Mock()
-    with mock.patch('aiohttp.web_fileresponse.os') as m_os:
-        out_fd = 30
-        in_fd = 31
-        fut = loop.create_future()
-        fut.cancel()
-        writer = SendfileStreamWriter(mock.Mock(), mock.Mock(), fake_loop)
-        writer._sendfile_cb(fut, out_fd, in_fd, 0, 100, fake_loop, False)
-        assert fut.done()
-        assert not fake_loop.add_writer.called
-        assert not fake_loop.remove_writer.called
-        assert not m_os.sendfile.called
+from aiohttp.web_fileresponse import FileResponse
 
 
 def test_using_gzip_if_header_present_and_file_available(loop) -> None:
