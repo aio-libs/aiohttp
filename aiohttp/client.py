@@ -528,6 +528,7 @@ class ClientSession:
     def ws_connect(
             self,
             url: StrOrURL, *,
+            method: str=hdrs.METH_GET,
             protocols: Iterable[str]=(),
             timeout: float=10.0,
             receive_timeout: Optional[float]=None,
@@ -549,6 +550,7 @@ class ClientSession:
         """Initiate websocket connection."""
         return _WSRequestContextManager(
             self._ws_connect(url,
+                             method=method,
                              protocols=protocols,
                              timeout=timeout,
                              receive_timeout=receive_timeout,
