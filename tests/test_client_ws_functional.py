@@ -780,3 +780,52 @@ async def test_closed_async_for(aiohttp_client) -> None:
     assert resp.closed
 
     await closed
+
+
+async def test_peer_connection_lost(aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive_str()
+        assert msg == 'ask'
+        await ws.send_str('answer')
+        request.transport.close()
+        await asyncio.sleep(10)
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect('/')
+    await resp.send_str('ask')
+    assert 'answer' == await resp.receive_str()
+
+    msg = await resp.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSED
+    await resp.close()
+
+
+async def test_peer_connection_lost_iter(aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        msg = await ws.receive_str()
+        assert msg == 'ask'
+        await ws.send_str('answer')
+        request.transport.close()
+        await asyncio.sleep(100)
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect('/')
+    await resp.send_str('ask')
+    async for msg in resp:
+        assert 'answer' == msg.data
+
+    await resp.close()
