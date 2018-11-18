@@ -1173,7 +1173,7 @@ def test_set_options_route(router) -> None:
         resource.set_options_route(make_handler())
 
 
-def test_dynamic_url_with_name_started_from_undescore(router) -> None:
+def test_dynamic_url_with_name_started_from_underscore(router) -> None:
     route = router.add_route('GET', '/get/{_name}', make_handler())
     assert URL('/get/John') == route.url_for(_name='John')
 
