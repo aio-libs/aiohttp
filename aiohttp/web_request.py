@@ -145,7 +145,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
         if self._read_bytes:
             raise RuntimeError("Cannot clone request "
-                               "after reading it's content")
+                               "after reading its content")
 
         dct = {}  # type: Dict[str, Any]
         if method is not sentinel:

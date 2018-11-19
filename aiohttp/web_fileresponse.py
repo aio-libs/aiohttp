@@ -136,7 +136,7 @@ class FileResponse(StreamResponse):
         # https://github.com/KeepSafe/aiohttp/issues/1177
         # See https://github.com/KeepSafe/aiohttp/issues/958 for details
         #
-        # request should be a aiohttp.web.Request instance.
+        # request should be an aiohttp.web.Request instance.
         # fobj should be an open file object.
         # count should be an integer > 0.
 

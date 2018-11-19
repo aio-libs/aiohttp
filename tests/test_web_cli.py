@@ -42,7 +42,7 @@ def test_entry_func_only_function(mocker) -> None:
     )
 
 
-def test_entry_func_only_seperator(mocker) -> None:
+def test_entry_func_only_separator(mocker) -> None:
     argv = [":"]
     error = mocker.patch("aiohttp.web.ArgumentParser.error",
                          side_effect=SystemExit)

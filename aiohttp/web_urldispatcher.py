@@ -600,7 +600,7 @@ class StaticResource(PrefixResource):
             request.app.logger.exception(error)
             raise HTTPNotFound() from error
 
-        # on opening a dir, load it's contents if allowed
+        # on opening a dir, load its contents if allowed
         if filepath.is_dir():
             if self._show_index:
                 try:

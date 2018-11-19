@@ -981,7 +981,7 @@ def request(
       string of the new request
     data - (optional) Dictionary, bytes, or file-like object to
       send in the body of the request
-    json - (optional) Any json compatibile python object
+    json - (optional) Any json compatible python object
     headers - (optional) Dictionary of HTTP Headers to send with
       the request
     cookies - (optional) Dict object to send with the request

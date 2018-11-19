@@ -219,7 +219,7 @@ class ResponseHandler(BaseProtocol,
                 if payload is not None:
                     # new message(s) was processed
                     # register timeout handler unsubscribing
-                    # either on end-of-stream or immediatelly for
+                    # either on end-of-stream or immediately for
                     # EMPTY_PAYLOAD
                     if payload is not EMPTY_PAYLOAD:
                         payload.on_eof(self._drop_timeout)

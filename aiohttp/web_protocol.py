@@ -51,7 +51,7 @@ class RequestPayloadError(Exception):
 
 
 class PayloadAccessError(Exception):
-    """Payload was accesed after responce was sent."""
+    """Payload was accessed after response was sent."""
 
 
 class RequestHandler(BaseProtocol):
