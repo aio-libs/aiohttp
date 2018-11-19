@@ -9,7 +9,7 @@ coverage==4.5.2
 cython==0.29
 gunicorn==19.9.0
 multidict==4.4.2
-pytest==3.8.2
+pytest==4.0.0
 pytest-cov==2.6.0
 pytest-mock==1.10.0
 pytest-xdist==1.23.2
