@@ -13,7 +13,7 @@ pytest==4.0.0
 pytest-cov==2.6.0
 pytest-mock==1.10.0
 pytest-xdist==1.24.1
-tox==3.5.2
+tox==3.5.3
 twine==1.12.1
 yarl==1.2.6
 
