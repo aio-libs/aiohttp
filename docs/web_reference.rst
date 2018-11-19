@@ -467,7 +467,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
 .. class:: Request
 
-   An request used for receiving request's information by *web handler*.
+   A request used for receiving request's information by *web handler*.
 
    Every :ref:`handler<aiohttp-web-handler>` accepts a request
    instance as the first positional parameter.
@@ -2002,7 +2002,7 @@ Resource classes hierarchy::
                                   (hash) to the url query string for
                                   cache boosting
 
-         By default has value from an constructor (``False`` by default)
+         By default has value from a constructor (``False`` by default)
          When set to ``True`` - ``v=FILE_HASH`` query string param will be added
          When set to ``False`` has no impact
 
@@ -2570,7 +2570,7 @@ application on specific TCP or Unix socket, e.g.::
    .. attribute:: name
 
       An identifier for site, read-only :class:`str` property. Could
-      be an handled URL or UNIX socket path.
+      be a handled URL or UNIX socket path.
 
    .. comethod:: start()
 

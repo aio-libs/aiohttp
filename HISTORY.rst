@@ -254,8 +254,8 @@ Improved Documentation
 ==================
 
 - Fix SSL proxy support by client. (`#2810 <https://github.com/aio-libs/aiohttp/pull/2810>`_)
-- Restore a imperative check in ``setup.py`` for python version. The check
-  works in parallel to environment marker. As effect a error about unsupported
+- Restore an imperative check in ``setup.py`` for python version. The check
+  works in parallel to environment marker. As effect an error about unsupported
   Python versions is raised even on outdated systems with very old
   ``setuptools`` version installed. (`#2813 <https://github.com/aio-libs/aiohttp/pull/2813>`_)
 

@@ -5,7 +5,7 @@ Signals
 
 Signal is a list of registered asynchronous callbacks.
 
-The signal's life-cycle has two stages: after creation it's content
+The signal's life-cycle has two stages: after creation its content
 could be filled by using standard list operations: ``sig.append()``
 etc.
 

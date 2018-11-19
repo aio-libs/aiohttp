@@ -79,7 +79,7 @@ _helpers:
     skip_cleanup: true
     # `skip-existing: true` is required to skip uploading dists, already
     # present in PYPI instead of failing the whole process.
-    # This happenes when other CI (AppVeyor etc.) has already uploaded
+    # This happens when other CI (AppVeyor etc.) has already uploaded
     # the very same dist (usually sdist).
     skip-existing: true
     user: aio-libs-bot

@@ -186,7 +186,7 @@ class TestStreamReader:
         data = await stream.read()
         assert data == b''
 
-    async def test_read_eof_infinit(self) -> None:
+    async def test_read_eof_infinite(self) -> None:
         # Read bytes.
         stream = self._make_one()
         stream.feed_eof()

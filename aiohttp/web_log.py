@@ -64,7 +64,7 @@ class AccessLogger(AbstractAccessLogger):
         """Initialise the logger.
 
         logger is a logger object to be used for logging.
-        log_format is an string with apache compatible log format description.
+        log_format is a string with apache compatible log format description.
 
         """
         super().__init__(logger, log_format=log_format)

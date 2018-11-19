@@ -61,8 +61,8 @@ Other HTTP methods are available as well::
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
-A session context manager usage is not mandatory 
-but ``await session.close()`` method 
+A session context manager usage is not mandatory
+but ``await session.close()`` method
 should be called in this case, e.g.::
 
     session = aiohttp.ClientSession()
@@ -135,7 +135,7 @@ is not encoded by library. Note that ``+`` is not encoded::
 Response Content and Status Code
 ================================
 
-We can read the content of the server's response and it's status
+We can read the content of the server's response and its status
 code. Consider the GitHub time-line again::
 
     async with session.get('https://api.github.com/events') as resp:
