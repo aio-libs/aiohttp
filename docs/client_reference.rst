@@ -48,7 +48,8 @@ The client session supports the context manager protocol for self closing.
                          timeout=sentinel, \
                          raise_for_status=False, \
                          connector_owner=True, \
-                         auto_decompress=True, proxies=None)
+                         auto_decompress=True, \
+                         proxy=None, proxy_auth=None, proxy_headers=None))
 
    The class for creating client sessions and making requests.
 

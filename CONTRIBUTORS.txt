@@ -1,18 +1,13 @@
 - Contributors -
 ----------------
-A. Jesse Jiryu Davis
 Adam Cooper
 Adam Mills
 Adrián Chaves
+A. Jesse Jiryu Davis
 Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
-Alex Hayes
-Alex Key
-Alex Khomchenko
-Alex Kuzmenko
-Alex Lisovoy
 Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
@@ -24,6 +19,11 @@ Alexandru Mihai
 Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
+Alex Hayes
+Alex Key
+Alex Khomchenko
+Alex Kuzmenko
+Alex Lisovoy
 Amin Etesamian
 Amy Boyle
 Andrei Ursulenko
@@ -55,10 +55,10 @@ Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
 Damien Nadé
-Dan Xu
 Daniel García
 Daniel Nelson
 Danny Song
+Dan Xu
 David Bibb
 David Michael Brown
 Denilson Amorim
@@ -77,11 +77,12 @@ Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
 Enrique Saez
-Eric Sheng
 Erich Healy
+Eric Sheng
 Eugene Chernyshov
 Eugene Naydenov
 Evert Lammerts
+Fan Yu
 FichteFoll
 Frederik Gladhorn
 Frederik Peter Aalund
@@ -90,9 +91,9 @@ Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
+Günther Jena
 Gus Goulart
 Gustavo Carneiro
-Günther Jena
 Harmon Y.
 Hu Bo
 Hugo Herter
@@ -129,11 +130,11 @@ Kirill Klenov
 Kirill Malovitsa
 Kyrylo Perevozchikov
 Lars P. Søndergaard
-Louis-Philippe Huberdeau
 Loïc Lajeanne
-Lu Gong
+Louis-Philippe Huberdeau
 Lubomir Gelo
 Ludovic Gasc
+Lu Gong
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
 Makc Belousow
@@ -173,6 +174,7 @@ Pepe Osca
 Philipp A.
 Pieter van Beek
 Rafael Viotti
+Ratan Kulshreshtha
 Raúl Cumplido
 Required Field
 Robert Lu
@@ -223,13 +225,13 @@ Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 Vladyslav Bondar
-W. Trevor King
 Wei Lin
 Weiwei Wang
-Will McGugan
 Willem de Groot
 William Grzybowski
+Will McGugan
 Wilson Ong
+W. Trevor King
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux

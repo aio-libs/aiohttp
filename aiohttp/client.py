@@ -120,7 +120,10 @@ class ClientSession:
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
-                 trace_configs: Optional[List[TraceConfig]]=None) -> None:
+                 trace_configs: Optional[List[TraceConfig]]=None,
+                 proxy: Optional[StrOrURL]=None,
+                 proxy_auth: Optional[BasicAuth]=None,
+                 proxy_headers: Optional[LooseHeaders]=None) -> None:
 
         if loop is None:
             if connector is not None:
@@ -172,6 +175,12 @@ class ClientSession:
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
+        self._proxy_info = {
+            'proxy': proxy,
+            'auth': proxy_auth,
+            'headers': proxy_headers,
+        }
+
 
         # Convert to list of tuples
         if headers:
@@ -247,14 +256,14 @@ class ClientSession:
             expect100: bool=False,
             raise_for_status: Optional[bool]=None,
             read_until_eof: bool=True,
-            proxy: Optional[StrOrURL]=None,
-            proxy_auth: Optional[BasicAuth]=None,
+            proxy: Optional[StrOrURL]=sentinel,
+            proxy_auth: Optional[BasicAuth]=sentinel,
             timeout: Union[ClientTimeout, object]=sentinel,
             verify_ssl: Optional[bool]=None,
             fingerprint: Optional[bytes]=None,
             ssl_context: Optional[SSLContext]=None,
             ssl: Optional[Union[SSLContext, bool, Fingerprint]]=None,
-            proxy_headers: Optional[LooseHeaders]=None,
+            proxy_headers: Optional[LooseHeaders]=sentinel,
             trace_request_ctx: Optional[SimpleNamespace]=None
     ) -> ClientResponse:
 
@@ -280,6 +289,16 @@ class ClientSession:
         redirects = 0
         history = []
         version = self._version
+
+        # Merge with session proxy
+        proxy = self._proxy_info['proxy'] \
+            if proxy is sentinel else proxy
+
+        proxy_auth = self._proxy_info['auth'] \
+            if proxy_auth is sentinel else proxy_auth
+
+        proxy_headers = self._proxy_info['headers'] \
+            if proxy_headers is sentinel else proxy_headers
 
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
