@@ -422,10 +422,11 @@ Supported :class:`ClientTimeout` fields are:
 
       The whole operation time including connection
       establishment, request sending and response reading.
+      Defaults to 5 minutes.
 
    ``connect``
 
-      Total timeout for acquiring a connection from pool.  The time
+       The time
       consists connection establishment for a new connection or
       waiting for a free connection from a pool if pool connection
       limits are exceeded.
