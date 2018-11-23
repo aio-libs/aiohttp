@@ -7,7 +7,7 @@ from aiohttp import web
 
 
 @pytest.fixture
-def proxy_test_server(raw_test_server, loop, monkeypatch):
+def proxy_test_server(aiohttp_raw_server, loop, monkeypatch):
     """Handle all proxy requests and imitate remote server response."""
 
     _patch_ssl_transport(monkeypatch)
@@ -46,7 +46,7 @@ def proxy_test_server(raw_test_server, loop, monkeypatch):
         proxy_mock.auth = None
         proxy_mock.requests_list = []
 
-        server = await raw_test_server(proxy_handler)
+        server = await aiohttp_raw_server(proxy_handler)
 
         proxy_mock.server = server
         proxy_mock.url = server.make_url('/')
@@ -71,7 +71,7 @@ def get_request(loop):
     return _request
 
 
-def _patch_ssl_transport(monkeypatch):
+def _patch_ssl_transport(monkeypatch) -> None:
     """Make ssl transport substitution to prevent ssl handshake."""
     def _make_ssl_transport_dummy(self, rawsock, protocol, sslcontext,
                                   waiter=None, **kwargs):
@@ -84,7 +84,7 @@ def _patch_ssl_transport(monkeypatch):
         _make_ssl_transport_dummy)
 
 
-async def test_session_proxy_http(proxy_test_server, loop):
+async def test_session_proxy_http(proxy_test_server, loop) -> None:
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
     proxy.return_value = dict(body=b'test')
@@ -96,7 +96,7 @@ async def test_session_proxy_http(proxy_test_server, loop):
     assert (await resp.read()) == b'test'
 
 
-async def test_session_proxy_http_auth(proxy_test_server, loop):
+async def test_session_proxy_http_auth(proxy_test_server, loop) -> None:
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
 
