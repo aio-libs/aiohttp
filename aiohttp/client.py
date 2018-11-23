@@ -181,7 +181,6 @@ class ClientSession:
             'headers': proxy_headers,
         }
 
-
         # Convert to list of tuples
         if headers:
             headers = CIMultiDict(headers)
