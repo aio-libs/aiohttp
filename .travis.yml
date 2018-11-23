@@ -191,6 +191,7 @@ jobs:
 
   - <<: *_lint_base
     name: Making sure that CONTRIBUTORS.txt remains sorted
+    language: minimal
     install:
     - skip
     script:
