@@ -174,7 +174,7 @@ jobs:
     name: Linting source code with mypy
     install:
     - *upgrade_python_toolset
-    - pip install mypy
+    - pip install -r requirements/ci.txt
     script:
     - mypy aiohttp
 
