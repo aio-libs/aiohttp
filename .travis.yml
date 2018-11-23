@@ -186,6 +186,7 @@ jobs:
     - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose
+    - twine check dist/*
 
   - <<: *_lint_base
     name: Making sure that CONTRIBUTORS.txt remains sorted
