@@ -171,6 +171,14 @@ jobs:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
+    name: Linting source code with mypy
+    install:
+    - *upgrade_python_toolset
+    - pip install mypy
+    script:
+    - mypy aiohttp
+
+  - <<: *_lint_base
     name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
