@@ -543,6 +543,7 @@ def test_run_app_coro(patched_loop) -> None:
 
 
 def test_run_app_default_logger(monkeypatch, patched_loop):
+    patched_loop.set_debug(True)
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': False,
@@ -552,7 +553,7 @@ def test_run_app_default_logger(monkeypatch, patched_loop):
     mock_logger = mock.create_autospec(logger, name='mock_access_logger')
     mock_logger.configure_mock(**attrs)
 
-    app = web.Application(debug=True)
+    app = web.Application()
     web.run_app(app,
                 print=stopper(patched_loop),
                 access_log=mock_logger)
@@ -563,6 +564,7 @@ def test_run_app_default_logger(monkeypatch, patched_loop):
 
 
 def test_run_app_default_logger_setup_requires_debug(patched_loop):
+    patched_loop.set_debug(False)
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': False,
@@ -572,7 +574,7 @@ def test_run_app_default_logger_setup_requires_debug(patched_loop):
     mock_logger = mock.create_autospec(logger, name='mock_access_logger')
     mock_logger.configure_mock(**attrs)
 
-    app = web.Application(debug=False)
+    app = web.Application()
     web.run_app(app,
                 print=stopper(patched_loop),
                 access_log=mock_logger)
@@ -582,6 +584,7 @@ def test_run_app_default_logger_setup_requires_debug(patched_loop):
 
 
 def test_run_app_default_logger_setup_requires_default_logger(patched_loop):
+    patched_loop.set_debug(True)
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': False,
@@ -601,6 +604,7 @@ def test_run_app_default_logger_setup_requires_default_logger(patched_loop):
 
 
 def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop):
+    patched_loop.set_debug(True)
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': True,
@@ -610,10 +614,10 @@ def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop):
     mock_logger = mock.create_autospec(logger, name='mock_access_logger')
     mock_logger.configure_mock(**attrs)
 
-    app = web.Application(debug=False)
+    app = web.Application()
     web.run_app(app,
                 print=stopper(patched_loop),
                 access_log=mock_logger)
     mock_logger.setLevel.assert_not_called()
-    mock_logger.hasHandlers.assert_not_called()
+    mock_logger.hasHandlers.assert_called_with()
     mock_logger.addHandler.assert_not_called()

@@ -666,7 +666,8 @@ class Response(StreamResponse):
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if coding.value == 'gzip' else -zlib.MAX_WBITS)
+                         if coding.value == ContentCoding.gzip 
+                         else -zlib.MAX_WBITS)
             if self._zlib_thread_size is not None and \
                     len(self._body) > self._zlib_thread_size:
                 await asyncio.get_event_loop().run_in_executor(

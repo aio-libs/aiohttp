@@ -425,7 +425,7 @@ Supported :class:`ClientTimeout` fields are:
 
    ``connect``
 
-      Total timeout for acquiring a connection from pool.  The time
+      The time
       consists connection establishment for a new connection or
       waiting for a free connection from a pool if pool connection
       limits are exceeded.
@@ -440,7 +440,8 @@ Supported :class:`ClientTimeout` fields are:
       The maximum allowed timeout for period between reading a new
       data portion from a peer.
 
-All fields are floats, ``None`` or ``0`` disables a particular timeout check.
+All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the
+:class:`ClientTimeout` reference for defaults and additional details.
 
 Thus the default timeout is::
 
