@@ -479,7 +479,8 @@ class Response(StreamResponse):
                  text: Optional[str]=None,
                  headers: Optional[LooseHeaders]=None,
                  content_type: Optional[str]=None,
-                 charset: Optional[str]=None, zlib_thread_size=None) -> None:
+                 charset: Optional[str]=None, 
+                 zlib_thread_size: Optional[int]=None) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
