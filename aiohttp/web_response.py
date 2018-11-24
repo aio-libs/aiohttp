@@ -652,7 +652,7 @@ class Response(StreamResponse):
                 else:
                     self._headers[hdrs.CONTENT_LENGTH] = '0'
 
-        return await super()._start(request, *args, **kwargs)
+        return await super()._start(request)
 
     def _compress_body(self, zlib_mode):
         compressobj = zlib.compressobj(wbits=zlib_mode)
