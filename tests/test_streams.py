@@ -712,6 +712,68 @@ class TestStreamReader:
         assert b'' == data
         assert not end_of_chunk
 
+    async def test_readchunk_separate_http_chunk_tail(self) -> None:
+        """Test that stream.readchunk returns (b'', True) when end of
+        http chunk received after body
+        """
+        loop = asyncio.get_event_loop()
+        stream = self._make_one()
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part1')
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part1' == data
+        assert not end_of_chunk
+
+        async def cb():
+            await asyncio.sleep(0.1)
+            stream.end_http_chunk_receiving()
+
+        loop.create_task(cb())
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part2')
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part2' == data
+        assert not end_of_chunk
+
+        stream.end_http_chunk_receiving()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part3')
+        stream.end_http_chunk_receiving()
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part3' == data
+        assert end_of_chunk
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part4')
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part4' == data
+        assert not end_of_chunk
+
+        async def cb():
+            await asyncio.sleep(0.1)
+            stream.end_http_chunk_receiving()
+            stream.feed_eof()
+
+        loop.create_task(cb())
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert not end_of_chunk
+
     async def test___repr__(self) -> None:
         stream = self._make_one()
         assert "<StreamReader>" == repr(stream)
