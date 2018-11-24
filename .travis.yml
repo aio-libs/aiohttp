@@ -1,6 +1,6 @@
 version: "= 0"
 
-sudo: false
+sudo: required
 
 language: python
 
@@ -141,7 +141,6 @@ jobs:
   include:
   - python: 3.7
     dist: xenial
-    sudo: required
 
   - python: 3.5
     env:
@@ -171,16 +170,27 @@ jobs:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
+    name: Linting source code with mypy
+    install:
+    - *upgrade_python_toolset
+    - pip install -r requirements/cython.txt
+    - pip install -r requirements/ci.txt
+    script:
+    - mypy aiohttp
+
+  - <<: *_lint_base
     name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
-    - python setup.py check --metadata --restructuredtext --strict --verbose
+    - python setup.py check --metadata --restructuredtext --strict --verbose sdist bdist_wheel
+    - twine check dist/*
 
   - <<: *_lint_base
     name: Making sure that CONTRIBUTORS.txt remains sorted
+    language: minimal
     install:
     - skip
     script:
