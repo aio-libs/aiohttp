@@ -1,5 +1,7 @@
 conditions: v1
 version: "= 0"
+if: >  # Forbid running non-PR pushes from pyup bot
+  not (type != pull_request AND branch =~ ^pyup\-scheduled\-update\-)
 
 sudo: required
 
