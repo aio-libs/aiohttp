@@ -258,6 +258,11 @@ The client session supports the context manager protocol for self closing.
       :param dict cookies: HTTP Cookies to send with
                            the request (optional)
 
+         Global session cookies and the explicitly set cookies will be merged
+         when sending the request.
+
+         .. versionadded:: 3.5
+
       :param dict headers: HTTP Headers to send with
                            the request (optional)
 
