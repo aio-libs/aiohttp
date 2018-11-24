@@ -254,6 +254,12 @@ class StreamReader(AsyncStreamReaderMixin):
                 self._http_chunk_splits[-1] != self.total_bytes:
             self._http_chunk_splits.append(self.total_bytes)
 
+            # wake up readchunk when end of http chunk received
+            waiter = self._waiter
+            if waiter is not None:
+                self._waiter = None
+                set_result(waiter, False)
+
     async def _wait(self, func_name: str) -> None:
         # StreamReader uses a future to link the protocol feed_data() method
         # to a read coroutine. Running two read coroutines at the same time
@@ -366,13 +372,15 @@ class StreamReader(AsyncStreamReaderMixin):
                 return (b"", True)
             await self._wait('readchunk')
 
-        if not self._buffer:
+        if not self._buffer and not self._http_chunk_splits:
             # end of file
             return (b"", False)
         elif self._http_chunk_splits is not None:
             while self._http_chunk_splits:
                 pos = self._http_chunk_splits[0]
                 self._http_chunk_splits = self._http_chunk_splits[1:]
+                if pos == self._cursor:
+                    return (b"", True)
                 if pos > self._cursor:
                     return (self._read_nowait(pos-self._cursor), True)
             return (self._read_nowait(-1), False)
