@@ -3,12 +3,14 @@ version: "= 0"
 if: >  # Forbid running non-PR pushes from pyup bot
   not (type != pull_request AND branch =~ ^pyup\-scheduled\-update\-)
 
+dist: xenial
 sudo: required
 
 language: python
 
 python:
-- &mainstream_python 3.6
+- 3.6
+- &mainstream_python 3.7
 - 3.7-dev
 - nightly
 - &pypy3 pypy3.5
@@ -142,9 +144,6 @@ jobs:
   - python: nightly
 
   include:
-  - python: 3.7
-    dist: xenial
-
   - python: 3.5
     env:
       PYTEST_ADDOPTS: -n0
