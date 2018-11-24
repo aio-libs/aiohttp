@@ -1,3 +1,4 @@
+conditions: v1
 version: "= 0"
 
 sudo: required
