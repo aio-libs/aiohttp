@@ -441,7 +441,7 @@ Supported :class:`ClientTimeout` fields are:
       data portion from a peer.
 
 All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the
-:class:`ClientTimeout` reference for defaults and addinitional details.
+:class:`ClientTimeout` reference for defaults and additional details.
 
 Thus the default timeout is::
 
