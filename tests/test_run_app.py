@@ -564,6 +564,7 @@ def test_run_app_default_logger(monkeypatch, patched_loop):
 
 
 def test_run_app_default_logger_setup_requires_debug(patched_loop):
+    patched_loop.set_debug(False)
     logger = web.access_logger
     attrs = {
         'hasHandlers.return_value': False,
