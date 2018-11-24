@@ -659,7 +659,7 @@ class Response(StreamResponse):
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if coding.value == 'gzip' else -zlib.MAX_WBITS)
+                         if coding == ContentCoding.gzip else -zlib.MAX_WBITS)
             compressobj = zlib.compressobj(wbits=zlib_mode)
             body_in = self._body
             assert body_in is not None
