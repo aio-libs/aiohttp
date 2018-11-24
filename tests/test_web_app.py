@@ -14,7 +14,8 @@ async def test_app_ctor() -> None:
     loop = asyncio.get_event_loop()
     with pytest.warns(DeprecationWarning):
         app = web.Application(loop=loop)
-    assert loop is app.loop
+    with pytest.warns(DeprecationWarning):
+        assert loop is app.loop
     assert app.logger is log.web_logger
 
 
@@ -25,14 +26,16 @@ def test_app_call() -> None:
 
 def test_app_default_loop() -> None:
     app = web.Application()
-    assert app.loop is None
+    with pytest.warns(DeprecationWarning):
+        assert app.loop is None
 
 
 async def test_set_loop() -> None:
     loop = asyncio.get_event_loop()
     app = web.Application()
     app._set_loop(loop)
-    assert app.loop is loop
+    with pytest.warns(DeprecationWarning):
+        assert app.loop is loop
 
 
 def test_set_loop_default_loop() -> None:
@@ -40,7 +43,8 @@ def test_set_loop_default_loop() -> None:
     asyncio.set_event_loop(loop)
     app = web.Application()
     app._set_loop(None)
-    assert app.loop is loop
+    with pytest.warns(DeprecationWarning):
+        assert app.loop is loop
     asyncio.set_event_loop(None)
 
 
@@ -48,7 +52,8 @@ def test_set_loop_with_different_loops() -> None:
     loop = asyncio.new_event_loop()
     app = web.Application()
     app._set_loop(loop)
-    assert app.loop is loop
+    with pytest.warns(DeprecationWarning):
+        assert app.loop is loop
 
     with pytest.raises(RuntimeError):
         app._set_loop(loop=object())
@@ -56,8 +61,12 @@ def test_set_loop_with_different_loops() -> None:
 
 @pytest.mark.parametrize('debug', [True, False])
 async def test_app_make_handler_debug_exc(mocker, debug) -> None:
-    app = web.Application(debug=debug)
+    with pytest.warns(DeprecationWarning):
+        app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web_app.Server')
+
+    with pytest.warns(DeprecationWarning):
+        assert app.debug == debug
 
     app._make_handler()
     srv.assert_called_with(app._handle,

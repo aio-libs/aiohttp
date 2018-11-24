@@ -33,9 +33,9 @@ def protocol():
 
 def test_ctor(connector, key, protocol, loop) -> None:
     conn = Connection(connector, key, protocol, loop)
-    assert conn.loop is loop
+    with pytest.warns(DeprecationWarning):
+        assert conn.loop is loop
     assert conn.protocol is protocol
-    assert conn.writer is protocol.writer
     conn.close()
 
 
@@ -62,19 +62,6 @@ def test_callbacks_on_release(connector, key, protocol, loop) -> None:
 
     conn.add_callback(cb)
     conn.release()
-    assert notified
-
-
-def test_callbacks_on_detach(connector, key, protocol, loop) -> None:
-    conn = Connection(connector, key, protocol, loop)
-    notified = False
-
-    def cb():
-        nonlocal notified
-        notified = True
-
-    conn.add_callback(cb)
-    conn.detach()
     assert notified
 
 
@@ -151,22 +138,3 @@ def test_release_released(connector, key, protocol, loop) -> None:
     assert not protocol.transport.close.called
     assert conn._protocol is None
     assert not connector._release.called
-
-
-def test_detach(connector, key, protocol, loop) -> None:
-    conn = Connection(connector, key, protocol, loop)
-    assert not conn.closed
-    conn.detach()
-    assert conn._protocol is None
-    assert connector._release_acquired.called
-    assert not connector._release.called
-    assert conn.closed
-
-
-def test_detach_closed(connector, key, protocol, loop) -> None:
-    conn = Connection(connector, key, protocol, loop)
-    conn.release()
-    conn.detach()
-
-    assert not connector._release_acquired.called
-    assert conn._protocol is None

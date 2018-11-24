@@ -8,11 +8,8 @@ class BaseProtocol(asyncio.Protocol):
     __slots__ = ('_loop', '_paused', '_drain_waiter',
                  '_connection_lost', 'transport')
 
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        if loop is None:
-            self._loop = asyncio.get_event_loop()
-        else:
-            self._loop = loop
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        self._loop = loop  # type: asyncio.AbstractEventLoop
         self._paused = False
         self._drain_waiter = None  # type: Optional[asyncio.Future[None]]
         self._connection_lost = False
@@ -57,7 +54,7 @@ class BaseProtocol(asyncio.Protocol):
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = cast(asyncio.Transport, transport)
 
-    def connection_lost(self, exc: Optional[Exception]) -> None:
+    def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._connection_lost = True
         # Wake up the writer if currently paused.
         self.transport = None

@@ -36,7 +36,7 @@ async def test_http_processing_error(session) -> None:
     loop.get_debug.return_value = True
 
     connection = mock.Mock()
-    connection.protocol = aiohttp.DataQueue(loop=loop)
+    connection.protocol = aiohttp.DataQueue(loop)
     connection.protocol.set_response_params = mock.Mock()
     connection.protocol.set_exception(http.HttpProcessingError())
 

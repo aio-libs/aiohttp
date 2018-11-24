@@ -2,9 +2,7 @@
 
 import asyncio
 import warnings
-from typing import TYPE_CHECKING, Optional, Tuple
-
-from yarl import URL
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from .typedefs import _CIMultiDict
 
@@ -17,7 +15,8 @@ except ImportError:  # pragma: no cover
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .client_reqrep import RequestInfo, ClientResponse, ConnectionKey
+    from .client_reqrep import (RequestInfo, ClientResponse, ConnectionKey,  # noqa
+                                Fingerprint)
 else:
     RequestInfo = ClientResponse = ConnectionKey = None
 
@@ -142,11 +141,11 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.host
 
     @property
-    def port(self) -> int:
+    def port(self) -> Optional[int]:
         return self._conn_key.port
 
     @property
-    def ssl(self) -> Optional[SSLContext]:
+    def ssl(self) -> Union[SSLContext, None, bool, 'Fingerprint']:
         return self._conn_key.ssl
 
     def __str__(self) -> str:
@@ -205,11 +204,13 @@ class InvalidURL(ClientError, ValueError):
 
     # Derive from ValueError for backward compatibility
 
-    def __init__(self, url: URL) -> None:
+    def __init__(self, url: Any) -> None:
+        # The type of url is not yarl.URL because the exception can be raised
+        # on URL(url) call
         super().__init__(url)
 
     @property
-    def url(self) -> URL:
+    def url(self) -> Any:
         return self.args[0]
 
     def __repr__(self) -> str:
@@ -255,7 +256,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore
         return self._conn_key.host
 
     @property
-    def port(self) -> int:
+    def port(self) -> Optional[int]:
         return self._conn_key.port
 
     @property

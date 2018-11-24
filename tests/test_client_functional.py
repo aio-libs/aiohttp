@@ -497,6 +497,18 @@ async def test_raw_headers(aiohttp_client) -> None:
     resp.close()
 
 
+async def test_host_header_first(aiohttp_client) -> None:
+    async def handler(request):
+        assert list(request.headers)[0] == hdrs.HOST
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+    resp = await client.get('/')
+    assert resp.status == 200
+
+
 async def test_empty_header_values(aiohttp_client) -> None:
     async def handler(request):
         resp = web.Response()
@@ -760,7 +772,7 @@ async def test_HTTP_200_OK_METHOD_connector(aiohttp_client) -> None:
     app = web.Application()
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         app.router.add_route(meth.upper(), '/', handler)
-    client = await aiohttp_client(app, connector=conn, conn_timeout=0.2)
+    client = await aiohttp_client(app, connector=conn)
 
     for meth in ('get', 'post', 'put', 'delete', 'head'):
         resp = await client.request(meth, '/')
@@ -863,7 +875,7 @@ async def test_HTTP_302_REDIRECT_POST_with_content_length_hdr(
         raise web.HTTPFound(location='/')
 
     data = json.dumps({'some': 'data'})
-    app = web.Application(debug=True)
+    app = web.Application()
     app.router.add_get('/', handler)
     app.router.add_post('/redirect', redirect)
     client = await aiohttp_client(app)

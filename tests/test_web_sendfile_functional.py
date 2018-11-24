@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+import socket
 import zlib
 
 import pytest
@@ -324,7 +325,7 @@ def test_static_route_path_existence_check() -> None:
 async def test_static_file_huge(aiohttp_client, tmpdir) -> None:
     filename = 'huge_data.unknown_mime_type'
 
-    # fill 100MB file
+    # fill 20MB file
     with tmpdir.join(filename).open('w') as f:
         for i in range(1024*20):
             f.write(chr(i % 64 + 0x20) * 1024)
@@ -423,18 +424,18 @@ async def test_static_file_range_end_bigger_than_size(
 
         # Ensure the whole file requested in parts is correct
         response = await client.get(
-            '/', headers={'Range': 'bytes=61000-62000'})
+            '/', headers={'Range': 'bytes=54000-55000'})
 
         assert response.status == 206, \
-            "failed 'bytes=61000-62000': %s" % response.reason
+            "failed 'bytes=54000-55000': %s" % response.reason
         assert response.headers['Content-Range'] == \
-            'bytes 61000-61107/61108', 'failed: Content-Range Error'
+            'bytes 54000-54996/54997', 'failed: Content-Range Error'
 
         body = await response.read()
-        assert len(body) == 108, \
-            "failed 'bytes=61000-62000', received %d bytes" % len(body)
+        assert len(body) == 997, \
+            "failed 'bytes=54000-55000', received %d bytes" % len(body)
 
-        assert content[61000:] == body
+        assert content[54000:] == body
 
 
 async def test_static_file_range_beyond_eof(aiohttp_client, sender) -> None:
@@ -471,7 +472,7 @@ async def test_static_file_range_tail(aiohttp_client, sender) -> None:
     # Ensure the tail of the file is correct
     resp = await client.get('/', headers={'Range': 'bytes=-500'})
     assert resp.status == 206, resp.reason
-    assert resp.headers['Content-Range'] == 'bytes 60608-61107/61108', \
+    assert resp.headers['Content-Range'] == 'bytes 54497-54996/54997', \
         'failed: Content-Range Error'
     body4 = await resp.read()
     resp.close()
@@ -480,7 +481,7 @@ async def test_static_file_range_tail(aiohttp_client, sender) -> None:
     # Ensure out-of-range tails could be handled
     resp2 = await client.get('/', headers={'Range': 'bytes=-99999999999999'})
     assert resp2.status == 206, resp.reason
-    assert resp2.headers['Content-Range'] == 'bytes 0-61107/61108', \
+    assert resp2.headers['Content-Range'] == 'bytes 0-54996/54997', \
         'failed: Content-Range Error'
 
 
@@ -751,3 +752,68 @@ async def test_static_file_compression(aiohttp_client, sender) -> None:
     assert 'application/octet-stream' == resp.headers['Content-Type']
     assert resp.headers.get('Content-Encoding') == 'deflate'
     await resp.release()
+
+
+async def test_static_file_huge_cancel(aiohttp_client, tmpdir) -> None:
+    filename = 'huge_data.unknown_mime_type'
+
+    # fill 100MB file
+    with tmpdir.join(filename).open('w') as f:
+        for i in range(1024*20):
+            f.write(chr(i % 64 + 0x20) * 1024)
+
+    task = None
+
+    async def handler(request):
+        nonlocal task
+        task = request.task
+        # reduce send buffer size
+        tr = request.transport
+        sock = tr.get_extra_info('socket')
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
+        ret = web.FileResponse(pathlib.Path(str(tmpdir.join(filename))))
+        return ret
+
+    app = web.Application()
+
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert resp.status == 200
+    task.cancel()
+    await asyncio.sleep(0)
+    data = b''
+    while True:
+        try:
+            data += await resp.content.read(1024)
+        except aiohttp.ClientPayloadError:
+            break
+    assert len(data) < 1024 * 1024 * 20
+
+
+async def test_static_file_huge_error(aiohttp_client, tmpdir) -> None:
+    filename = 'huge_data.unknown_mime_type'
+
+    # fill 20MB file
+    with tmpdir.join(filename).open('wb') as f:
+        f.seek(20*1024*1024)
+        f.write(b'1')
+
+    async def handler(request):
+        # reduce send buffer size
+        tr = request.transport
+        sock = tr.get_extra_info('socket')
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
+        ret = web.FileResponse(pathlib.Path(str(tmpdir.join(filename))))
+        return ret
+
+    app = web.Application()
+
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert resp.status == 200
+    # raise an exception on server side
+    resp.close()

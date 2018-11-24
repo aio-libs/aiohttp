@@ -133,7 +133,7 @@ def test_path_matching() -> None:
     assert not test_func("/different-folder/", "/folder/")
 
 
-def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
+async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
     jar = CookieJar(loop=loop)
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
@@ -144,7 +144,7 @@ def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
     assert jar._loop is loop
 
 
-def test_save_load(loop, cookies_to_send, cookies_to_receive) -> None:
+async def test_save_load(loop, cookies_to_send, cookies_to_receive) -> None:
     file_path = tempfile.mkdtemp() + '/aiohttp.test.cookie'
 
     # export cookie jar
@@ -163,7 +163,7 @@ def test_save_load(loop, cookies_to_send, cookies_to_receive) -> None:
     assert jar_test == cookies_to_receive
 
 
-def test_update_cookie_with_unicode_domain(loop) -> None:
+async def test_update_cookie_with_unicode_domain(loop) -> None:
     cookies = (
         "idna-domain-first=first; Domain=xn--9caa.com; Path=/;",
         "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
@@ -180,8 +180,8 @@ def test_update_cookie_with_unicode_domain(loop) -> None:
     assert jar_test == SimpleCookie(" ".join(cookies))
 
 
-def test_filter_cookie_with_unicode_domain(loop) -> None:
-    jar = CookieJar(loop=loop)
+async def test_filter_cookie_with_unicode_domain(loop) -> None:
+    jar = CookieJar()
     jar.update_cookies(SimpleCookie(
         "idna-domain-first=first; Domain=xn--9caa.com; Path=/; "
     ))
@@ -189,13 +189,7 @@ def test_filter_cookie_with_unicode_domain(loop) -> None:
     assert len(jar.filter_cookies(URL("http://xn--9caa.com"))) == 1
 
 
-def test_ctor_ith_default_loop(loop) -> None:
-    asyncio.set_event_loop(loop)
-    jar = CookieJar()
-    assert jar._loop is loop
-
-
-def test_domain_filter_ip_cookie_send(loop) -> None:
+async def test_domain_filter_ip_cookie_send(loop) -> None:
     jar = CookieJar(loop=loop)
     cookies = SimpleCookie(
         "shared-cookie=first; "
@@ -226,14 +220,14 @@ def test_domain_filter_ip_cookie_send(loop) -> None:
     assert cookies_sent == 'Cookie: shared-cookie=first'
 
 
-def test_domain_filter_ip_cookie_receive(loop, cookies_to_receive) -> None:
-    jar = CookieJar(loop=loop)
+async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
+    jar = CookieJar()
 
     jar.update_cookies(cookies_to_receive, URL("http://1.2.3.4/"))
     assert len(jar) == 0
 
 
-def test_preserving_ip_domain_cookies(loop) -> None:
+async def test_preserving_ip_domain_cookies(loop) -> None:
     jar = CookieJar(loop=loop, unsafe=True)
     jar.update_cookies(SimpleCookie(
         "shared-cookie=first; "
@@ -245,7 +239,7 @@ def test_preserving_ip_domain_cookies(loop) -> None:
                             'Cookie: shared-cookie=first')
 
 
-def test_preserving_quoted_cookies(loop) -> None:
+async def test_preserving_quoted_cookies(loop) -> None:
     jar = CookieJar(loop=loop, unsafe=True)
     jar.update_cookies(SimpleCookie(
         "ip-cookie=\"second\"; Domain=127.0.0.1;"
@@ -255,7 +249,7 @@ def test_preserving_quoted_cookies(loop) -> None:
     assert cookies_sent == 'Cookie: ip-cookie=\"second\"'
 
 
-def test_ignore_domain_ending_with_dot(loop) -> None:
+async def test_ignore_domain_ending_with_dot(loop) -> None:
     jar = CookieJar(loop=loop, unsafe=True)
     jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),
                        URL("http://www.example.com"))
@@ -272,7 +266,9 @@ class TestCookieJarBase(unittest.TestCase):
         asyncio.set_event_loop(None)
 
         # N.B. those need to be overridden in child test cases
-        self.jar = CookieJar(loop=self.loop)
+        async def make_jar():
+            return CookieJar()
+        self.jar = self.loop.run_until_complete(make_jar())
 
     def tearDown(self):
         self.loop.close()
@@ -333,7 +329,9 @@ class TestCookieJarSafe(TestCookieJarBase):
             "wrong-path-cookie=nineth; Domain=pathtest.com; Path=somepath;"
         )
 
-        self.jar = CookieJar(loop=self.loop)
+        async def make_jar():
+            return CookieJar()
+        self.jar = self.loop.run_until_complete(make_jar())
 
     def timed_request(self, url, update_time, send_time):
         with mock.patch.object(self.loop, 'time', return_value=update_time):
@@ -588,7 +586,9 @@ class TestCookieJarSafe(TestCookieJarBase):
         loop.time.side_effect = itertools.chain(
             timestamps, itertools.cycle([timestamps[-1]]))
 
-        jar = CookieJar(unsafe=True, loop=loop)
+        async def make_jar():
+            return CookieJar(unsafe=True)
+        jar = self.loop.run_until_complete(make_jar())
         # Remove `foo` cookie.
         jar.update_cookies(SimpleCookie('foo=""; Max-Age=0'))
         # Set `foo` cookie to `bar`.
@@ -598,9 +598,9 @@ class TestCookieJarSafe(TestCookieJarBase):
         assert len(jar) == 1
 
 
-def test_dummy_cookie_jar(loop) -> None:
+async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie('foo=bar; Domain=example.com;')
-    dummy_jar = DummyCookieJar(loop=loop)
+    dummy_jar = DummyCookieJar()
     assert len(dummy_jar) == 0
     dummy_jar.update_cookies(cookie)
     assert len(dummy_jar) == 0

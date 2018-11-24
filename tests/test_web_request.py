@@ -1,3 +1,4 @@
+import asyncio
 import socket
 from collections.abc import MutableMapping
 from unittest import mock
@@ -655,3 +656,10 @@ def test_eq() -> None:
     req2 = make_mocked_request('GET', '/path/to?a=1&b=2')
     assert req1 != req2
     assert req1 == req1
+
+
+async def test_loop_prop() -> None:
+    loop = asyncio.get_event_loop()
+    req = make_mocked_request('GET', '/path', loop=loop)
+    with pytest.warns(DeprecationWarning):
+        assert req.loop is loop

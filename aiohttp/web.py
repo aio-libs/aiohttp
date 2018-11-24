@@ -5,21 +5,25 @@ import sys
 from argparse import ArgumentParser
 from collections.abc import Iterable
 from importlib import import_module
+from typing import Any, Awaitable, Callable, List, Optional, Type, Union, cast
 
-from . import (helpers, web_app, web_exceptions, web_fileresponse,
-               web_middlewares, web_protocol, web_request, web_response,
-               web_routedef, web_runner, web_server, web_urldispatcher, web_ws)
+from . import (web_app, web_exceptions, web_fileresponse, web_middlewares,
+               web_protocol, web_request, web_response, web_routedef,
+               web_runner, web_server, web_urldispatcher, web_ws)
+from .abc import AbstractAccessLogger
 from .log import access_logger
 from .web_app import *  # noqa
+from .web_app import Application
 from .web_exceptions import *  # noqa
 from .web_fileresponse import *  # noqa
+from .web_log import AccessLogger
 from .web_middlewares import *  # noqa
 from .web_protocol import *  # noqa
 from .web_request import *  # noqa
 from .web_response import *  # noqa
 from .web_routedef import *  # noqa
-from .web_runner import *  # noqa
-from .web_runner import AppRunner, GracefulExit, SockSite, TCPSite, UnixSite
+from .web_runner import (AppRunner, BaseRunner, BaseSite, GracefulExit,  # noqa
+                         ServerRunner, SockSite, TCPSite, UnixSite)
 from .web_server import *  # noqa
 from .web_urldispatcher import *  # noqa
 from .web_ws import *  # noqa
@@ -37,20 +41,46 @@ __all__ = (web_protocol.__all__ +
            web_server.__all__ +
            web_runner.__all__ +
            web_middlewares.__all__ +
-           ('run_app',))
+           ('run_app', 'BaseSite', 'TCPSite', 'UnixSite',
+            'SockSite', 'BaseRunner',
+            'AppRunner', 'ServerRunner', 'GracefulExit'))
 
 
-def run_app(app, *, host=None, port=None, path=None, sock=None,
-            shutdown_timeout=60.0, ssl_context=None,
-            print=print, backlog=128, access_log_class=helpers.AccessLogger,
-            access_log_format=helpers.AccessLogger.LOG_FORMAT,
-            access_log=access_logger, handle_signals=True,
-            reuse_address=None, reuse_port=None):
+try:
+    from ssl import SSLContext
+except ImportError:  # pragma: no cover
+    SSLContext = Any  # type: ignore
+
+
+def run_app(app: Union[Application, Awaitable[Application]], *,
+            host: Optional[str]=None,
+            port: Optional[int]=None,
+            path: Optional[str]=None,
+            sock: Optional[socket.socket]=None,
+            shutdown_timeout: float=60.0,
+            ssl_context: Optional[SSLContext]=None,
+            print: Callable[..., None]=print,
+            backlog: int=128,
+            access_log_class: Type[AbstractAccessLogger]=AccessLogger,
+            access_log_format: str=AccessLogger.LOG_FORMAT,
+            access_log: logging.Logger=access_logger,
+            handle_signals: bool=True,
+            reuse_address: Optional[bool]=None,
+            reuse_port: Optional[bool]=None) -> None:
     """Run an app locally"""
     loop = asyncio.get_event_loop()
 
     if asyncio.iscoroutine(app):
-        app = loop.run_until_complete(app)
+        app = loop.run_until_complete(app)  # type: ignore
+
+    app = cast(Application, app)
+
+    # Configure if and only if in debugging mode and using the default logger
+    if app.debug and access_log.name == 'aiohttp.access':
+        if access_log.level == logging.NOTSET:
+            access_log.setLevel(logging.DEBUG)
+        if not access_log.hasHandlers():
+            access_log.addHandler(logging.StreamHandler())
 
     runner = AppRunner(app, handle_signals=handle_signals,
                        access_log_class=access_log_class,
@@ -59,7 +89,7 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
 
     loop.run_until_complete(runner.setup())
 
-    sites = []
+    sites = []  # type: List[BaseSite]
 
     try:
         if host is not None:
@@ -122,12 +152,13 @@ def run_app(app, *, host=None, port=None, path=None, sock=None,
             pass
     finally:
         loop.run_until_complete(runner.cleanup())
-    if hasattr(loop, 'shutdown_asyncgens'):
-        loop.run_until_complete(loop.shutdown_asyncgens())
+    if sys.version_info >= (3, 6):  # don't use PY_36 to pass mypy
+        if hasattr(loop, 'shutdown_asyncgens'):
+            loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
 
 
-def main(argv):
+def main(argv: List[str]) -> None:
     arg_parser = ArgumentParser(
         description="aiohttp.web Application server",
         prog="aiohttp.web"

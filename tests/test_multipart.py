@@ -456,7 +456,7 @@ class TestPartReader:
             {CONTENT_TYPE: 'application/x-www-form-urlencoded'}, stream)
         obj._at_eof = True
         result = await obj.form()
-        assert result is None
+        assert not result
 
     async def test_readline(self) -> None:
         obj = aiohttp.BodyPartReader(

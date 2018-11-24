@@ -213,6 +213,8 @@ The client session supports the context manager protocol for self closing.
 
       A read-only property.
 
+      .. deprecated:: 3.5
+
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
@@ -506,7 +508,8 @@ The client session supports the context manager protocol for self closing.
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
 
-   .. comethod:: ws_connect(url, *, protocols=(), timeout=10.0,\
+   .. comethod:: ws_connect(url, *, method='GET', \
+                            protocols=(), timeout=10.0,\
                             receive_timeout=None,\
                             auth=None,\
                             autoclose=True,\
@@ -625,6 +628,11 @@ The client session supports the context manager protocol for self closing.
                                limit use ``0``.
 
          .. versionadded:: 3.3
+
+      :param str method: HTTP method to establish WebSocket connection,
+                         ``'GET'`` by default.
+
+         .. versionadded:: 3.5
 
 
    .. comethod:: close()
@@ -1046,6 +1054,8 @@ Connection
 
       Event loop used for connection
 
+      .. deprecated:: 3.5
+
    .. attribute:: transport
 
       Connection transport
@@ -1061,13 +1071,6 @@ Connection
       Underlying socket is not closed, the connection may be reused
       later if timeout (30 seconds by default) for connection was not
       expired.
-
-   .. method:: detach()
-
-      Detach underlying socket from connection.
-
-      Underlying socket is not closed, next :meth:`close` or
-      :meth:`release` calls don't return socket to free pool.
 
 
 Response object
@@ -1111,7 +1114,7 @@ Response object
 
    .. attribute:: real_url
 
-      Unmodified URL of request (:class:`~yarl.URL`).
+      Unmodified URL of request with URL fragment unstripped (:class:`~yarl.URL`).
 
       .. versionadded:: 3.2
 

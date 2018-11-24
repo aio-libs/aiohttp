@@ -2,11 +2,9 @@
 
 all: test
 
-install-cython:
-	@pip install -r requirements/cython.txt
-
-.install-deps: $(shell find requirements -type f) install-cython
-	@pip install -U -r requirements/dev.txt
+.install-deps: $(shell find requirements -type f)
+	pip install -r requirements/cython.txt
+	pip install -r requirements/dev.txt
 	@touch .install-deps
 
 isort:
@@ -19,17 +17,20 @@ flake: .flake
 .flake: .install-deps $(shell find aiohttp -type f) \
                       $(shell find tests -type f) \
                       $(shell find examples -type f)
-	@flake8 aiohttp examples tests
+	flake8 aiohttp examples tests
 	python setup.py check -rms
 	@if ! isort -c -rc aiohttp tests examples; then \
             echo "Import sort errors, run 'make isort' to fix them!!!"; \
             isort --diff -rc aiohttp tests examples; \
             false; \
 	fi
+	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
+            echo "CONTRIBUTORS.txt sort error"; \
+	fi
 	@touch .flake
 
 check_changes:
-	@./tools/check_changes.py
+	./tools/check_changes.py
 
 mypy: .flake
 	if python -c "import sys; sys.exit(sys.implementation.name!='cpython')"; then \
@@ -37,33 +38,33 @@ mypy: .flake
 	fi
 
 .develop: .install-deps $(shell find aiohttp -type f) .flake check_changes mypy
-	@pip install -e .
+	# pip install -e .
 	@touch .develop
 
 test: .develop
-	@pytest -q ./tests
+	@pytest -c pytest.ci.ini -q
 
 vtest: .develop
-	@pytest -s -v ./tests
+	@pytest -c pytest.ci.ini -s -v
 
 cov cover coverage:
 	tox
 
 cov-dev: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@AIOHTTP_NO_EXTENSIONS=1 pytest
+	@pytest -c pytest.ci.ini --cov-report=html --cov-append
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 cov-ci-no-ext: .develop
 	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest --cov=aiohttp tests
+	@AIOHTTP_NO_EXTENSIONS=1 pytest
 cov-ci-aio-debug: .develop
 	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 pytest --cov=aiohttp --cov-append tests
+	@PYTHONASYNCIODEBUG=1 pytest -c pytest.ci.ini --cov-append
 cov-ci-run: .develop
 	@echo "Regular run"
-	@pytest --cov=aiohttp --cov-report=term --cov-report=html --cov-append tests
+	@pytest -c pytest.ci.ini --cov-report=html --cov-append
 
 cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"

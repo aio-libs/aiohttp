@@ -4,35 +4,34 @@ import asyncio
 import base64
 import binascii
 import cgi
-import datetime
 import functools
 import inspect
-import logging
 import netrc
 import os
+import platform
 import re
 import sys
 import time
+import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
 from math import ceil
 from pathlib import Path
 from types import TracebackType
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, Iterator,
-                    List, Mapping, Optional, Pattern, Tuple, Type, TypeVar,
-                    Union, cast)
+from typing import (Any, Callable, Dict, Iterable, Iterator, List,  # noqa
+                    Mapping, Optional, Pattern, Tuple, Type, TypeVar, Union,
+                    cast)
 from urllib.parse import quote
 from urllib.request import getproxies
 
 import async_timeout
 import attr
-from multidict import MultiDict
+from multidict import MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
-from .abc import AbstractAccessLogger
-from .log import client_logger
+from .log import client_logger, internal_logger
 from .typedefs import PathLike  # noqa
 
 
@@ -51,12 +50,6 @@ except ImportError:
     from typing_extensions import ContextManager
 
 
-if TYPE_CHECKING:  # pragma: no cover
-    # run in mypy mode only to prevent circular imports
-    from .web_request import BaseRequest  # noqa
-    from .web_response import StreamResponse  # noqa
-
-
 _T = TypeVar('_T')
 
 
@@ -67,7 +60,7 @@ NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))  # type: bool
 # for compatibility with older versions
 DEBUG = (getattr(sys.flags, 'dev_mode', False) or
          (not sys.flags.ignore_environment and
-          bool(os.environ.get('PYTHONASYNCIODEBUG'))))
+          bool(os.environ.get('PYTHONASYNCIODEBUG'))))  # type: bool
 
 
 CHAR = set(chr(i) for i in range(0, 128))
@@ -164,30 +157,39 @@ def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
 
 
 def netrc_from_env() -> Optional[netrc.netrc]:
-    netrc_obj = None
-    netrc_path = os.environ.get('NETRC')  # type: Optional[PathLike]
-    try:
-        if netrc_path is not None:
-            netrc_path = Path(netrc_path)
-        else:
+    """Attempt to load the netrc file from the path specified by the env-var
+    NETRC or in the default location in the user's home directory.
+
+    Returns None if it couldn't be found or fails to parse.
+    """
+    netrc_env = os.environ.get('NETRC')
+
+    if netrc_env is not None:
+        netrc_path = Path(netrc_env)
+    else:
+        try:
             home_dir = Path.home()
-            if os.name == 'nt':  # pragma: no cover
-                netrc_path = home_dir.joinpath('_netrc')
-            else:
-                netrc_path = home_dir.joinpath('.netrc')
+        except RuntimeError as e:  # pragma: no cover
+            # if pathlib can't resolve home, it may raise a RuntimeError
+            client_logger.debug('Could not resolve home directory when '
+                                'trying to look for .netrc file: %s', e)
+            return None
 
-        if netrc_path and netrc_path.is_file():
-            try:
-                netrc_obj = netrc.netrc(str(netrc_path))
-            except (netrc.NetrcParseError, OSError) as e:
-                client_logger.warning(".netrc file parses fail: %s", e)
+        netrc_path = home_dir / (
+            '_netrc' if platform.system() == 'Windows' else '.netrc')
 
-        if netrc_obj is None:
-            client_logger.warning("could't find .netrc file")
-    except RuntimeError as e:  # pragma: no cover
-        """ handle error raised by pathlib """
-        client_logger.warning("could't find .netrc file: %s", e)
-    return netrc_obj
+    try:
+        return netrc.netrc(str(netrc_path))
+    except netrc.NetrcParseError as e:
+        client_logger.warning('Could not parse .netrc file: %s', e)
+    except OSError as e:
+        # we couldn't read the file (doesn't exist, permissions, etc.)
+        if netrc_env or netrc_path.is_file():
+            # only warn if the environment wanted us to load it,
+            # or it appears like the default file does actually exist
+            client_logger.warning('Could not read .netrc file: %s', e)
+
+    return None
 
 
 @attr.s(frozen=True, slots=True)
@@ -217,17 +219,32 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
                 # `user` and `account` both can be username,
                 # if `user` is None, use `account`
                 *logins, password = auth_from_netrc
-                auth = BasicAuth(logins[0] if logins[0] else logins[-1],
-                                 password, 'latin1')
+                login = logins[0] if logins[0] else logins[-1]
+                auth = BasicAuth(cast(str, login), cast(str, password))
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
 
-def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task:  # type: ignore  # noqa  # Return type is intentionly Generic here
+def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task:  # type: ignore  # noqa  # Return type is intentionally Generic here
     if PY_37:
         return asyncio.current_task(loop=loop)  # type: ignore
     else:
         return asyncio.Task.current_task(loop=loop)  # type: ignore
+
+
+def get_running_loop(
+    loop: Optional[asyncio.AbstractEventLoop]=None
+) -> asyncio.AbstractEventLoop:
+    if loop is None:
+        loop = asyncio.get_event_loop()
+    if not loop.is_running():
+        warnings.warn("The object should be created from async function",
+                      DeprecationWarning, stacklevel=3)
+        if loop.get_debug():
+            internal_logger.warning(
+                "The object should be created from async function",
+                stack_info=True)
+    return loop
 
 
 def isasyncgenfunction(obj: Any) -> bool:
@@ -243,9 +260,10 @@ class MimeType:
     type = attr.ib(type=str)
     subtype = attr.ib(type=str)
     suffix = attr.ib(type=str)
-    parameters = attr.ib(type=MultiDict)  # type: MultiDict[str]
+    parameters = attr.ib(type=MultiDictProxy)  # type: MultiDictProxy[str]
 
 
+@functools.lru_cache(maxsize=56)
 def parse_mimetype(mimetype: str) -> MimeType:
     """Parses a MIME type into its components.
 
@@ -261,17 +279,17 @@ def parse_mimetype(mimetype: str) -> MimeType:
 
     """
     if not mimetype:
-        return MimeType(type='', subtype='', suffix='', parameters=MultiDict())
+        return MimeType(type='', subtype='', suffix='',
+                        parameters=MultiDictProxy(MultiDict()))
 
     parts = mimetype.split(';')
-    params_lst = []
+    params = MultiDict()  # type: MultiDict[str]
     for item in parts[1:]:
         if not item:
             continue
         key, value = cast(Tuple[str, str],
                           item.split('=', 1) if '=' in item else (item, ''))
-        params_lst.append((key.lower().strip(), value.strip(' "')))
-    params = MultiDict(params_lst)
+        params.add(key.lower().strip(), value.strip(' "'))
 
     fulltype = parts[0].strip().lower()
     if fulltype == '*':
@@ -283,7 +301,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
                      if '+' in stype else (stype, ''))
 
     return MimeType(type=mtype, subtype=stype, suffix=suffix,
-                    parameters=params)
+                    parameters=MultiDictProxy(params))
 
 
 def guess_filename(obj: Any, default: Optional[str]=None) -> Optional[str]:
@@ -321,231 +339,6 @@ def content_disposition_header(disptype: str,
         sparams = '; '.join('='.join(pair) for pair in lparams)
         value = '; '.join((value, sparams))
     return value
-
-
-KeyMethod = namedtuple('KeyMethod', 'key method')
-
-
-class AccessLogger(AbstractAccessLogger):
-    """Helper object to log access.
-
-    Usage:
-        log = logging.getLogger("spam")
-        log_format = "%a %{User-Agent}i"
-        access_logger = AccessLogger(log, log_format)
-        access_logger.log(request, response, time)
-
-    Format:
-        %%  The percent sign
-        %a  Remote IP-address (IP-address of proxy if using reverse proxy)
-        %t  Time when the request was started to process
-        %P  The process ID of the child that serviced the request
-        %r  First line of request
-        %s  Response status code
-        %b  Size of response in bytes, including HTTP headers
-        %T  Time taken to serve the request, in seconds
-        %Tf Time taken to serve the request, in seconds with floating fraction
-            in .06f format
-        %D  Time taken to serve the request, in microseconds
-        %{FOO}i  request.headers['FOO']
-        %{FOO}o  response.headers['FOO']
-        %{FOO}e  os.environ['FOO']
-
-    """
-    LOG_FORMAT_MAP = {
-        'a': 'remote_address',
-        't': 'request_start_time',
-        'P': 'process_id',
-        'r': 'first_request_line',
-        's': 'response_status',
-        'b': 'response_size',
-        'T': 'request_time',
-        'Tf': 'request_time_frac',
-        'D': 'request_time_micro',
-        'i': 'request_header',
-        'o': 'response_header',
-    }
-
-    LOG_FORMAT = '%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i"'
-    FORMAT_RE = re.compile(r'%(\{([A-Za-z0-9\-_]+)\}([ioe])|[atPrsbOD]|Tf?)')
-    CLEANUP_RE = re.compile(r'(%[^s])')
-    _FORMAT_CACHE = {}  # type: Dict[str, Tuple[str, List[KeyMethod]]]
-
-    def __init__(self, logger: logging.Logger,
-                 log_format: str=LOG_FORMAT) -> None:
-        """Initialise the logger.
-
-        logger is a logger object to be used for logging.
-        log_format is an string with apache compatible log format description.
-
-        """
-        super().__init__(logger, log_format=log_format)
-
-        _compiled_format = AccessLogger._FORMAT_CACHE.get(log_format)
-        if not _compiled_format:
-            _compiled_format = self.compile_format(log_format)
-            AccessLogger._FORMAT_CACHE[log_format] = _compiled_format
-
-        self._log_format, self._methods = _compiled_format
-
-    def compile_format(self, log_format: str) -> Tuple[str, List[KeyMethod]]:
-        """Translate log_format into form usable by modulo formatting
-
-        All known atoms will be replaced with %s
-        Also methods for formatting of those atoms will be added to
-        _methods in appropriate order
-
-        For example we have log_format = "%a %t"
-        This format will be translated to "%s %s"
-        Also contents of _methods will be
-        [self._format_a, self._format_t]
-        These method will be called and results will be passed
-        to translated string format.
-
-        Each _format_* method receive 'args' which is list of arguments
-        given to self.log
-
-        Exceptions are _format_e, _format_i and _format_o methods which
-        also receive key name (by functools.partial)
-
-        """
-        # list of (key, method) tuples, we don't use an OrderedDict as users
-        # can repeat the same key more than once
-        methods = list()
-
-        for atom in self.FORMAT_RE.findall(log_format):
-            if atom[1] == '':
-                format_key1 = self.LOG_FORMAT_MAP[atom[0]]
-                m = getattr(AccessLogger, '_format_%s' % atom[0])
-                key_method = KeyMethod(format_key1, m)
-            else:
-                format_key2 = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
-                m = getattr(AccessLogger, '_format_%s' % atom[2])
-                key_method = KeyMethod(format_key2,
-                                       functools.partial(m, atom[1]))
-
-            methods.append(key_method)
-
-        log_format = self.FORMAT_RE.sub(r'%s', log_format)
-        log_format = self.CLEANUP_RE.sub(r'%\1', log_format)
-        return log_format, methods
-
-    @staticmethod
-    def _format_i(key: str,
-                  request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        if request is None:
-            return '(no headers)'
-
-        # suboptimal, make istr(key) once
-        return request.headers.get(key, '-')
-
-    @staticmethod
-    def _format_o(key: str,
-                  request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        # suboptimal, make istr(key) once
-        return response.headers.get(key, '-')
-
-    @staticmethod
-    def _format_a(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        if request is None:
-            return '-'
-        ip = request.remote
-        return ip if ip is not None else '-'
-
-    @staticmethod
-    def _format_t(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        now = datetime.datetime.utcnow()
-        start_time = now - datetime.timedelta(seconds=time)
-        return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
-
-    @staticmethod
-    def _format_P(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        return "<%s>" % os.getpid()
-
-    @staticmethod
-    def _format_r(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        if request is None:
-            return '-'
-        return '%s %s HTTP/%s.%s' % (request.method, request.path_qs,
-                                     request.version.major,
-                                     request.version.minor)
-
-    @staticmethod
-    def _format_s(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        return response.status
-
-    @staticmethod
-    def _format_b(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        return response.body_length
-
-    @staticmethod
-    def _format_T(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        return str(round(time))
-
-    @staticmethod
-    def _format_Tf(request: 'BaseRequest',
-                   response: 'StreamResponse',
-                   time: float) -> str:
-        return '%06f' % time
-
-    @staticmethod
-    def _format_D(request: 'BaseRequest',
-                  response: 'StreamResponse',
-                  time: float) -> str:
-        return str(round(time * 1000000))
-
-    def _format_line(self,
-                     request: 'BaseRequest',
-                     response: 'StreamResponse',
-                     time: float) -> Iterable[Tuple[str,
-                                                    Callable[['BaseRequest',
-                                                              'StreamResponse',
-                                                              float],
-                                                             str]]]:
-        return [(key, method(request, response, time))
-                for key, method in self._methods]
-
-    def log(self,
-            request: 'BaseRequest',
-            response: 'StreamResponse',
-            time: float) -> None:
-        try:
-            fmt_info = self._format_line(request, response, time)
-
-            values = list()
-            extra = dict()
-            for key, value in fmt_info:
-                values.append(value)
-
-                if key.__class__ is str:
-                    extra[key] = value
-                else:
-                    k1, k2 = key
-                    dct = extra.get(k1, {})
-                    dct[k2] = value  # type: ignore
-                    extra[k1] = dct  # type: ignore
-
-            self.logger.info(self._log_format % tuple(values), extra=extra)
-        except Exception:
-            self.logger.exception("Error in logging")
 
 
 class reify:
@@ -606,8 +399,8 @@ _ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
 
 
 def _is_ip_address(
-        regex: Pattern, regexb: Pattern,
-        host: Optional[Union[str, bytes, bytearray, memoryview]])-> bool:
+        regex: Pattern[str], regexb: Pattern[bytes],
+        host: Optional[Union[str, bytes]])-> bool:
     if host is None:
         return False
     if isinstance(host, str):
@@ -790,8 +583,8 @@ class HeadersMixin:
     ATTRS = frozenset([
         '_content_type', '_content_dict', '_stored_content_type'])
 
-    _content_type = None
-    _content_dict = None
+    _content_type = None  # type: Optional[str]
+    _content_dict = None  # type: Optional[Dict[str, str]]
     _stored_content_type = sentinel
 
     def _parse_content_type(self, raw: str) -> None:

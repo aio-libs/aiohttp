@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import logging
 import os
 import platform
 import signal
@@ -539,3 +540,80 @@ def test_run_app_coro(patched_loop) -> None:
                                                   reuse_port=None)
     startup_handler.assert_called_once_with(mock.ANY)
     cleanup_handler.assert_called_once_with(mock.ANY)
+
+
+def test_run_app_default_logger(monkeypatch, patched_loop):
+    logger = web.access_logger
+    attrs = {
+        'hasHandlers.return_value': False,
+        'level': logging.NOTSET,
+        'name': 'aiohttp.access',
+    }
+    mock_logger = mock.create_autospec(logger, name='mock_access_logger')
+    mock_logger.configure_mock(**attrs)
+
+    app = web.Application(debug=True)
+    web.run_app(app,
+                print=stopper(patched_loop),
+                access_log=mock_logger)
+    mock_logger.setLevel.assert_any_call(logging.DEBUG)
+    mock_logger.hasHandlers.assert_called_with()
+    assert isinstance(mock_logger.addHandler.call_args[0][0],
+                      logging.StreamHandler)
+
+
+def test_run_app_default_logger_setup_requires_debug(patched_loop):
+    logger = web.access_logger
+    attrs = {
+        'hasHandlers.return_value': False,
+        'level': logging.NOTSET,
+        'name': 'aiohttp.access',
+    }
+    mock_logger = mock.create_autospec(logger, name='mock_access_logger')
+    mock_logger.configure_mock(**attrs)
+
+    app = web.Application(debug=False)
+    web.run_app(app,
+                print=stopper(patched_loop),
+                access_log=mock_logger)
+    mock_logger.setLevel.assert_not_called()
+    mock_logger.hasHandlers.assert_not_called()
+    mock_logger.addHandler.assert_not_called()
+
+
+def test_run_app_default_logger_setup_requires_default_logger(patched_loop):
+    logger = web.access_logger
+    attrs = {
+        'hasHandlers.return_value': False,
+        'level': logging.NOTSET,
+        'name': None,
+    }
+    mock_logger = mock.create_autospec(logger, name='mock_access_logger')
+    mock_logger.configure_mock(**attrs)
+
+    app = web.Application()
+    web.run_app(app,
+                print=stopper(patched_loop),
+                access_log=mock_logger)
+    mock_logger.setLevel.assert_not_called()
+    mock_logger.hasHandlers.assert_not_called()
+    mock_logger.addHandler.assert_not_called()
+
+
+def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop):
+    logger = web.access_logger
+    attrs = {
+        'hasHandlers.return_value': True,
+        'level': None,
+        'name': 'aiohttp.access',
+    }
+    mock_logger = mock.create_autospec(logger, name='mock_access_logger')
+    mock_logger.configure_mock(**attrs)
+
+    app = web.Application(debug=False)
+    web.run_app(app,
+                print=stopper(patched_loop),
+                access_log=mock_logger)
+    mock_logger.setLevel.assert_not_called()
+    mock_logger.hasHandlers.assert_not_called()
+    mock_logger.addHandler.assert_not_called()

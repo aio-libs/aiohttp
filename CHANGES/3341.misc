@@ -1,0 +1,1 @@
+Added a `lru_cache` to the `parse_mimetype` method

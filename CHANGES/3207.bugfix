@@ -1,0 +1,2 @@
+Accept ``CIMultiDictProxy`` instances for ``headers`` argument in ``web.Response``
+constructor.

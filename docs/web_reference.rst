@@ -225,7 +225,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`asyncio.AbstractEventLoop` property.
 
-      .. versionadded:: 2.3
+      .. deprecated:: 3.5
 
    .. attribute:: cookies
 
@@ -467,7 +467,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
 .. class:: Request
 
-   An request used for receiving request's information by *web handler*.
+   A request used for receiving request's information by *web handler*.
 
    Every :ref:`handler<aiohttp-web-handler>` accepts a request
    instance as the first positional parameter.
@@ -1283,6 +1283,10 @@ duplicated like one using :meth:`Application.copy`.
 
    :param debug: Switches debug mode.
 
+      .. deprecated:: 3.5
+
+         Use asyncio :ref:`asyncio-debug-mode` instead.
+
    .. attribute:: router
 
       Read-only property that returns *router instance*.
@@ -1295,10 +1299,15 @@ duplicated like one using :meth:`Application.copy`.
 
       :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
 
+      .. deprecated:: 3.5
 
    .. attribute:: debug
 
       Boolean value indicating whether the debug mode is turned on or off.
+
+      .. deprecated:: 3.5
+
+         Use asyncio :ref:`asyncio-debug-mode` instead.
 
    .. attribute:: on_response_prepare
 
@@ -1389,6 +1398,21 @@ duplicated like one using :meth:`Application.copy`.
 
       :returns: a :class:`PrefixedSubAppResource` instance.
 
+   .. method:: add_domain(domain, subapp)
+
+      Register nested sub-application that serves
+      the domain name or domain name mask.
+
+      In resolving process if request.headers['host']
+      matches the pattern *domain* then
+      further resolving is passed to *subapp*.
+
+      :param str domain: domain or mask of domain for the resource.
+
+      :param Application subapp: nested application.
+
+      :returns: a :class:`MatchedSubAppResource` instance.
+
    .. method:: add_routes(routes_table)
 
       Register route definitions from *routes_table*.
@@ -1407,12 +1431,12 @@ duplicated like one using :meth:`Application.copy`.
       Creates HTTP protocol factory for handling requests.
 
       :param loop: :ref:`event loop<asyncio-event-loop>` used
-                   for processing HTTP requests.
+        for processing HTTP requests.
 
-                   If param is ``None`` :func:`asyncio.get_event_loop`
-                   used for getting default event loop.
+        If param is ``None`` :func:`asyncio.get_event_loop`
+        used for getting default event loop.
 
-         .. deprecated:: 2.0
+        .. deprecated:: 2.0
 
       :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
       :param int keepalive_timeout: Number of seconds before closing Keep-Alive
@@ -1421,7 +1445,7 @@ duplicated like one using :meth:`Application.copy`.
         :data:`aiohttp.log.server_logger`.
       :param access_log: Custom logging object. Default:
         :data:`aiohttp.log.access_logger`.
-      :param access_log_class: class for `access_logger`. Default:
+      :param access_log_class: Class for `access_logger`. Default:
         :data:`aiohttp.helpers.AccessLogger`.
         Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
       :param str access_log_format: Access log format string. Default:
@@ -1432,10 +1456,10 @@ duplicated like one using :meth:`Application.copy`.
       :param int max_field_size: Optional maximum header field size. Default:
         ``8190``.
 
-      :param float lingering_time: maximum time during which the server
-         reads and ignore additional data coming from the client when
-         lingering close is on.  Use ``0`` for disabling lingering on
-         server channel closing.
+      :param float lingering_time: Maximum time during which the server
+        reads and ignores additional data coming from the client when
+        lingering close is on.  Use ``0`` to disable lingering on
+        server channel closing.
 
       You should pass result of the method as *protocol_factory* to
       :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
@@ -1980,7 +2004,7 @@ Resource classes hierarchy::
                                   (hash) to the url query string for
                                   cache boosting
 
-         By default has value from an constructor (``False`` by default)
+         By default has value from a constructor (``False`` by default)
          When set to ``True`` - ``v=FILE_HASH`` query string param will be added
          When set to ``False`` has no impact
 
@@ -2548,7 +2572,7 @@ application on specific TCP or Unix socket, e.g.::
    .. attribute:: name
 
       An identifier for site, read-only :class:`str` property. Could
-      be an handled URL or UNIX socket path.
+      be a handled URL or UNIX socket path.
 
    .. comethod:: start()
 

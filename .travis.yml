@@ -1,11 +1,10 @@
 version: "= 0"
 
-sudo: false
+sudo: required
 
 language: python
 
 python:
-- 3.5
 - &mainstream_python 3.6
 - 3.7-dev
 - nightly
@@ -80,7 +79,7 @@ _helpers:
     skip_cleanup: true
     # `skip-existing: true` is required to skip uploading dists, already
     # present in PYPI instead of failing the whole process.
-    # This happenes when other CI (AppVeyor etc.) has already uploaded
+    # This happens when other CI (AppVeyor etc.) has already uploaded
     # the very same dist (usually sdist).
     skip-existing: true
     user: aio-libs-bot
@@ -142,17 +141,18 @@ jobs:
   include:
   - python: 3.7
     dist: xenial
-    sudo: required
+
+  - python: 3.5
+    env:
+      PYTEST_ADDOPTS: -n0
 
   - <<: *_doc_base
-    env:
-    - TARGET=docs
+    name: Checking docs spelling
     script:
     - make doc-spelling
 
   - <<: *_doc_base
-    env:
-    - TARGET=towncrier
+    name: Checking Towncrier fragments
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
@@ -162,8 +162,7 @@ jobs:
     - towncrier --yes
 
   - <<: *_lint_base
-    env:
-    - TARGET=flake8
+    name: Linting source code with flake8
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/flake.txt
@@ -171,14 +170,31 @@ jobs:
     - flake8 aiohttp examples tests
 
   - <<: *_lint_base
-    env:
-    - TARGET="'dist setup check'"
+    name: Linting source code with mypy
+    install:
+    - *upgrade_python_toolset
+    - pip install -r requirements/cython.txt
+    - pip install -r requirements/ci.txt
+    script:
+    - mypy aiohttp
+
+  - <<: *_lint_base
+    name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
-    - python setup.py check --metadata --restructuredtext --strict --verbose
+    - python setup.py check --metadata --restructuredtext --strict --verbose sdist bdist_wheel
+    - twine check dist/*
+
+  - <<: *_lint_base
+    name: Making sure that CONTRIBUTORS.txt remains sorted
+    language: minimal
+    install:
+    - skip
+    script:
+    - LC_ALL=C sort -c CONTRIBUTORS.txt
 
   - <<: *osx_python_base
     python: 3.5.3
@@ -186,6 +202,7 @@ jobs:
     - &env_py35 PYTHON_VERSION=3.5.3
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
   - <<: *osx_python_base
     python: *mainstream_python
     env:
@@ -230,6 +247,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     env:
@@ -252,6 +270,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
     env:
@@ -274,6 +293,7 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
+    - PYTEST_ADDOPTS=-n0
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     env:

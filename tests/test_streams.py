@@ -186,7 +186,7 @@ class TestStreamReader:
         data = await stream.read()
         assert data == b''
 
-    async def test_read_eof_infinit(self) -> None:
+    async def test_read_eof_infinite(self) -> None:
         # Read bytes.
         stream = self._make_one()
         stream.feed_eof()
@@ -712,6 +712,68 @@ class TestStreamReader:
         assert b'' == data
         assert not end_of_chunk
 
+    async def test_readchunk_separate_http_chunk_tail(self) -> None:
+        """Test that stream.readchunk returns (b'', True) when end of
+        http chunk received after body
+        """
+        loop = asyncio.get_event_loop()
+        stream = self._make_one()
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part1')
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part1' == data
+        assert not end_of_chunk
+
+        async def cb():
+            await asyncio.sleep(0.1)
+            stream.end_http_chunk_receiving()
+
+        loop.create_task(cb())
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part2')
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part2' == data
+        assert not end_of_chunk
+
+        stream.end_http_chunk_receiving()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part3')
+        stream.end_http_chunk_receiving()
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part3' == data
+        assert end_of_chunk
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part4')
+        data, end_of_chunk = await stream.readchunk()
+        assert b'part4' == data
+        assert not end_of_chunk
+
+        async def cb():
+            await asyncio.sleep(0.1)
+            stream.end_http_chunk_receiving()
+            stream.feed_eof()
+
+        loop.create_task(cb())
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert not end_of_chunk
+
     async def test___repr__(self) -> None:
         stream = self._make_one()
         assert "<StreamReader>" == repr(stream)
@@ -778,7 +840,7 @@ async def test_empty_stream_reader() -> None:
 
 @pytest.fixture
 async def buffer(loop):
-    return streams.DataQueue(loop=loop)
+    return streams.DataQueue(loop)
 
 
 class TestDataQueue:
@@ -1114,7 +1176,7 @@ async def test_stream_reader_chunks_incomplete() -> None:
 async def test_data_queue_empty() -> None:
     """Tests that async looping yields nothing if nothing is there"""
     loop = asyncio.get_event_loop()
-    buffer = streams.DataQueue(loop=loop)
+    buffer = streams.DataQueue(loop)
     buffer.feed_eof()
 
     async for _ in buffer:  # NOQA
@@ -1124,7 +1186,7 @@ async def test_data_queue_empty() -> None:
 async def test_data_queue_items() -> None:
     """Tests that async looping yields objects identically"""
     loop = asyncio.get_event_loop()
-    buffer = streams.DataQueue(loop=loop)
+    buffer = streams.DataQueue(loop)
 
     items = [object(), object()]
     buffer.feed_data(items[0], 1)

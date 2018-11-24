@@ -3,19 +3,23 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel  # noqa
-from typing import (TYPE_CHECKING, Any, Awaitable, Dict, Iterable, List,
-                    Mapping, Optional, Tuple, Union)
+from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Generator,
+                    Iterable, List, Optional, Tuple)
 
+from multidict import CIMultiDict  # noqa
 from yarl import URL
+
+from .helpers import get_running_loop
+from .typedefs import LooseCookies
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .web_request import Request
+    from .web_request import BaseRequest, Request
     from .web_response import StreamResponse
     from .web_app import Application
     from .web_exceptions import HTTPException
 else:
-    Request = Application = StreamResponse = None
+    BaseRequest = Request = Application = StreamResponse = None
     HTTPException = None
 
 
@@ -47,17 +51,19 @@ class AbstractRouter(ABC):
 
 class AbstractMatchInfo(ABC):
 
+    @property  # pragma: no branch
     @abstractmethod
-    async def handler(self, request: Request) -> StreamResponse:
+    def handler(self) -> Callable[[Request], Awaitable[StreamResponse]]:
         """Execute matched request handler"""
 
+    @property
     @abstractmethod
-    async def expect_handler(self, request: Request) -> None:
+    def expect_handler(self) -> Callable[[Request], Awaitable[None]]:
         """Expect handler for 100-continue processing"""
 
     @property  # pragma: no branch
     @abstractmethod
-    def http_exception(self) -> HTTPException:
+    def http_exception(self) -> Optional[HTTPException]:
         """HTTPException instance raised on router's resolving, or None"""
 
     @abstractmethod  # pragma: no branch
@@ -100,7 +106,7 @@ class AbstractView(ABC):
         return self._request
 
     @abstractmethod
-    def __await__(self) -> Awaitable[StreamResponse]:
+    def __await__(self) -> Generator[Any, None, StreamResponse]:
         """Execute the view handler."""
 
 
@@ -108,7 +114,8 @@ class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, hostname: str) -> List[Dict[str, Any]]:
+    async def resolve(self, host: str,
+                      port: int, family: int) -> List[Dict[str, Any]]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -127,7 +134,7 @@ class AbstractCookieJar(Sized, IterableBase):
 
     def __init__(self, *,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = get_running_loop(loop)
 
     @abstractmethod
     def clear(self) -> None:
@@ -135,8 +142,7 @@ class AbstractCookieJar(Sized, IterableBase):
 
     @abstractmethod
     def update_cookies(self,
-                       cookies: Union[Iterable[Tuple[str, 'BaseCookie[str]']],
-                                      Mapping[str, 'BaseCookie[str]']],
+                       cookies: LooseCookies,
                        response_url: URL=URL()) -> None:
         """Update cookies."""
 
@@ -147,6 +153,10 @@ class AbstractCookieJar(Sized, IterableBase):
 
 class AbstractStreamWriter(ABC):
     """Abstract stream writer."""
+
+    buffer_size = 0
+    output_size = 0
+    length = 0  # type: Optional[int]
 
     @abstractmethod
     async def write(self, chunk: bytes) -> None:
@@ -160,6 +170,19 @@ class AbstractStreamWriter(ABC):
     async def drain(self) -> None:
         """Flush the write buffer."""
 
+    @abstractmethod
+    def enable_compression(self, encoding: str='deflate') -> None:
+        """Enable HTTP body compression"""
+
+    @abstractmethod
+    def enable_chunking(self) -> None:
+        """Enable HTTP chunked mode"""
+
+    @abstractmethod
+    async def write_headers(self, status_line: str,
+                            headers: 'CIMultiDict[str]') -> None:
+        """Write HTTP headers"""
+
 
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""
@@ -170,7 +193,7 @@ class AbstractAccessLogger(ABC):
 
     @abstractmethod
     def log(self,
-            request: Request,
+            request: BaseRequest,
             response: StreamResponse,
             time: float) -> None:
         """Emit log to logger."""

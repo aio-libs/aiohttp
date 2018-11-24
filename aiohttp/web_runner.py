@@ -2,13 +2,21 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
+from typing import Any, List, Optional, Set
 
 from yarl import URL
 
 from .web_app import Application
+from .web_server import Server
 
 
-__all__ = ('TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
+try:
+    from ssl import SSLContext
+except ImportError:
+    SSLContext = object  # type: ignore
+
+
+__all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
            'AppRunner', 'ServerRunner', 'GracefulExit')
 
 
@@ -16,7 +24,7 @@ class GracefulExit(SystemExit):
     code = 1
 
 
-def _raise_graceful_exit():
+def _raise_graceful_exit() -> None:
     raise GracefulExit()
 
 
@@ -24,27 +32,28 @@ class BaseSite(ABC):
     __slots__ = ('_runner', '_shutdown_timeout', '_ssl_context', '_backlog',
                  '_server')
 
-    def __init__(self, runner, *,
-                 shutdown_timeout=60.0, ssl_context=None,
-                 backlog=128):
+    def __init__(self, runner: 'BaseRunner', *,
+                 shutdown_timeout: float=60.0,
+                 ssl_context: Optional[SSLContext]=None,
+                 backlog: int=128) -> None:
         if runner.server is None:
             raise RuntimeError("Call runner.setup() before making a site")
         self._runner = runner
         self._shutdown_timeout = shutdown_timeout
         self._ssl_context = ssl_context
         self._backlog = backlog
-        self._server = None
+        self._server = None  # type: Optional[asyncio.AbstractServer]
 
     @property
     @abstractmethod
-    def name(self):
+    def name(self) -> str:
         pass  # pragma: no cover
 
     @abstractmethod
-    async def start(self):
+    async def start(self) -> None:
         self._runner._reg_site(self)
 
-    async def stop(self):
+    async def stop(self) -> None:
         self._runner._check_site(self)
         if self._server is None:
             self._runner._unreg_site(self)
@@ -52,6 +61,7 @@ class BaseSite(ABC):
         self._server.close()
         await self._server.wait_closed()
         await self._runner.shutdown()
+        assert self._runner.server
         await self._runner.server.shutdown(self._shutdown_timeout)
         self._runner._unreg_site(self)
 
@@ -59,10 +69,12 @@ class BaseSite(ABC):
 class TCPSite(BaseSite):
     __slots__ = ('_host', '_port', '_reuse_address', '_reuse_port')
 
-    def __init__(self, runner, host=None, port=None, *,
-                 shutdown_timeout=60.0, ssl_context=None,
-                 backlog=128, reuse_address=None,
-                 reuse_port=None):
+    def __init__(self, runner: 'BaseRunner',
+                 host: str=None, port: int=None, *,
+                 shutdown_timeout: float=60.0,
+                 ssl_context: Optional[SSLContext]=None,
+                 backlog: int=128, reuse_address: Optional[bool]=None,
+                 reuse_port: Optional[bool]=None) -> None:
         super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
         if host is None:
@@ -75,15 +87,17 @@ class TCPSite(BaseSite):
         self._reuse_port = reuse_port
 
     @property
-    def name(self):
+    def name(self) -> str:
         scheme = 'https' if self._ssl_context else 'http'
         return str(URL.build(scheme=scheme, host=self._host, port=self._port))
 
-    async def start(self):
+    async def start(self) -> None:
         await super().start()
         loop = asyncio.get_event_loop()
+        server = self._runner.server
+        assert server is not None
         self._server = await loop.create_server(
-            self._runner.server, self._host, self._port,
+            server, self._host, self._port,
             ssl=self._ssl_context, backlog=self._backlog,
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port)
@@ -92,32 +106,36 @@ class TCPSite(BaseSite):
 class UnixSite(BaseSite):
     __slots__ = ('_path', )
 
-    def __init__(self, runner, path, *,
-                 shutdown_timeout=60.0, ssl_context=None,
-                 backlog=128):
+    def __init__(self, runner: 'BaseRunner', path: str, *,
+                 shutdown_timeout: float=60.0,
+                 ssl_context: Optional[SSLContext]=None,
+                 backlog: int=128) -> None:
         super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
         self._path = path
 
     @property
-    def name(self):
+    def name(self) -> str:
         scheme = 'https' if self._ssl_context else 'http'
         return '{}://unix:{}:'.format(scheme, self._path)
 
-    async def start(self):
+    async def start(self) -> None:
         await super().start()
         loop = asyncio.get_event_loop()
+        server = self._runner.server
+        assert server is not None
         self._server = await loop.create_unix_server(
-            self._runner.server, self._path,
+            server, self._path,
             ssl=self._ssl_context, backlog=self._backlog)
 
 
 class SockSite(BaseSite):
     __slots__ = ('_sock', '_name')
 
-    def __init__(self, runner, sock, *,
-                 shutdown_timeout=60.0, ssl_context=None,
-                 backlog=128):
+    def __init__(self, runner: 'BaseRunner', sock: socket.socket, *,
+                 shutdown_timeout: float=60.0,
+                 ssl_context: Optional[SSLContext]=None,
+                 backlog: int=128) -> None:
         super().__init__(runner, shutdown_timeout=shutdown_timeout,
                          ssl_context=ssl_context, backlog=backlog)
         self._sock = sock
@@ -130,41 +148,49 @@ class SockSite(BaseSite):
         self._name = name
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
-    async def start(self):
+    async def start(self) -> None:
         await super().start()
         loop = asyncio.get_event_loop()
+        server = self._runner.server
+        assert server is not None
         self._server = await loop.create_server(
-            self._runner.server, sock=self._sock,
+            server, sock=self._sock,
             ssl=self._ssl_context, backlog=self._backlog)
 
 
 class BaseRunner(ABC):
     __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
 
-    def __init__(self, *, handle_signals=False, **kwargs):
+    def __init__(self, *, handle_signals: bool=False, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server = None
-        self._sites = []
+        self._server = None  # type: Optional[Server]
+        self._sites = []  # type: List[BaseSite]
 
     @property
-    def server(self):
+    def server(self) -> Optional[Server]:
         return self._server
 
     @property
-    def addresses(self):
-        return [sock.getsockname()
-                for site in self._sites
-                for sock in site._server.sockets]
+    def addresses(self) -> List[str]:
+        ret = []  # type: List[str]
+        for site in self._sites:
+            server = site._server
+            if server is not None:
+                sockets = server.sockets
+                if sockets is not None:
+                    for sock in sockets:
+                        ret.append(sock.getsockname())
+        return ret
 
     @property
-    def sites(self):
+    def sites(self) -> Set[BaseSite]:
         return set(self._sites)
 
-    async def setup(self):
+    async def setup(self) -> None:
         loop = asyncio.get_event_loop()
 
         if self._handle_signals:
@@ -178,10 +204,10 @@ class BaseRunner(ABC):
         self._server = await self._make_server()
 
     @abstractmethod
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         pass  # pragma: no cover
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         loop = asyncio.get_event_loop()
 
         if self._server is None:
@@ -205,25 +231,25 @@ class BaseRunner(ABC):
                 pass
 
     @abstractmethod
-    async def _make_server(self):
+    async def _make_server(self) -> Server:
         pass  # pragma: no cover
 
     @abstractmethod
-    async def _cleanup_server(self):
+    async def _cleanup_server(self) -> None:
         pass  # pragma: no cover
 
-    def _reg_site(self, site):
+    def _reg_site(self, site: BaseSite) -> None:
         if site in self._sites:
             raise RuntimeError("Site {} is already registered in runner {}"
                                .format(site, self))
         self._sites.append(site)
 
-    def _check_site(self, site):
+    def _check_site(self, site: BaseSite) -> None:
         if site not in self._sites:
             raise RuntimeError("Site {} is not registered in runner {}"
                                .format(site, self))
 
-    def _unreg_site(self, site):
+    def _unreg_site(self, site: BaseSite) -> None:
         if site not in self._sites:
             raise RuntimeError("Site {} is not registered in runner {}"
                                .format(site, self))
@@ -235,17 +261,18 @@ class ServerRunner(BaseRunner):
 
     __slots__ = ('_web_server',)
 
-    def __init__(self, web_server, *, handle_signals=False, **kwargs):
+    def __init__(self, web_server: Server, *,
+                 handle_signals: bool=False, **kwargs: Any) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         pass
 
-    async def _make_server(self):
+    async def _make_server(self) -> Server:
         return self._web_server
 
-    async def _cleanup_server(self):
+    async def _cleanup_server(self) -> None:
         pass
 
 
@@ -254,7 +281,8 @@ class AppRunner(BaseRunner):
 
     __slots__ = ('_app',)
 
-    def __init__(self, app, *, handle_signals=False, **kwargs):
+    def __init__(self, app: Application, *,
+                 handle_signals: bool=False, **kwargs: Any) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         if not isinstance(app, Application):
             raise TypeError("The first argument should be web.Application "
@@ -262,13 +290,13 @@ class AppRunner(BaseRunner):
         self._app = app
 
     @property
-    def app(self):
+    def app(self) -> Application:
         return self._app
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         await self._app.shutdown()
 
-    async def _make_server(self):
+    async def _make_server(self) -> Server:
         loop = asyncio.get_event_loop()
         self._app._set_loop(loop)
         self._app.on_startup.freeze()
@@ -277,5 +305,5 @@ class AppRunner(BaseRunner):
 
         return self._app._make_handler(loop=loop, **self._kwargs)
 
-    async def _cleanup_server(self):
+    async def _cleanup_server(self) -> None:
         await self._app.cleanup()

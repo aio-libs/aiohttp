@@ -20,10 +20,10 @@ install:
 build: false
 
 test_script:
-  - "tools/build.cmd %PYTHON%\\python.exe -m pytest tests"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pytest -c pytest.ci.ini"
 
 after_test:
-  - "tools/build.cmd %PYTHON%\\python.exe setup.py sdist bdist_wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe -m setup sdist bdist_wheel"
 
 artifacts:
   - path: dist\*

@@ -44,7 +44,10 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(str(req.proxy), 'http://proxy.example.com')
 
         # mock all the things!
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro([mock.MagicMock()])
 
         proto = mock.Mock(**{
@@ -75,7 +78,9 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(str(req.proxy), 'http://proxy.example.com')
 
         # mock all the things!
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro([mock.MagicMock()])
 
         proto = mock.Mock(**{
@@ -109,7 +114,9 @@ class TestProxy(unittest.TestCase):
         )
 
     def test_proxy_dns_error(self) -> None:
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             raise_exception=OSError('dont take it serious'))
 
@@ -126,7 +133,9 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(dict(req.headers), expected_headers)
 
     def test_proxy_connection_error(self) -> None:
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro([{
             'hostname': 'www.python.org',
             'host': '127.0.0.1', 'port': 80,
@@ -161,7 +170,9 @@ class TestProxy(unittest.TestCase):
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -204,7 +215,9 @@ class TestProxy(unittest.TestCase):
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -253,7 +266,9 @@ class TestProxy(unittest.TestCase):
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -302,7 +317,9 @@ class TestProxy(unittest.TestCase):
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -343,7 +360,9 @@ class TestProxy(unittest.TestCase):
         proxy_resp.start = make_mocked_coro(
             mock.Mock(status=400, reason='bad request'))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -384,7 +403,9 @@ class TestProxy(unittest.TestCase):
         proxy_resp.start = make_mocked_coro(
             raise_exception=OSError("error message"))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -408,7 +429,9 @@ class TestProxy(unittest.TestCase):
                                   loop=self.loop)
         ClientRequestMock.return_value = proxy_req
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -458,7 +481,9 @@ class TestProxy(unittest.TestCase):
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
@@ -509,7 +534,9 @@ class TestProxy(unittest.TestCase):
         proxy_req.send = make_mocked_coro(proxy_resp)
         proxy_resp.start = make_mocked_coro(mock.Mock(status=200))
 
-        connector = aiohttp.TCPConnector(loop=self.loop)
+        async def make_conn():
+            return aiohttp.TCPConnector()
+        connector = self.loop.run_until_complete(make_conn())
         connector._resolve_host = make_mocked_coro(
             [{'hostname': 'hostname', 'host': '127.0.0.1', 'port': 80,
               'family': socket.AF_INET, 'proto': 0, 'flags': 0}])
