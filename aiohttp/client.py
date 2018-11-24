@@ -175,11 +175,10 @@ class ClientSession:
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
-        self._proxy_info = {
-            'proxy': proxy,
-            'auth': proxy_auth,
-            'headers': proxy_headers,
-        }
+
+        self._session_proxy = proxy
+        self._session_proxy_auth = proxy_auth
+        self._session_proxy_headers = proxy_headers
 
         # Convert to list of tuples
         if headers:
@@ -255,14 +254,14 @@ class ClientSession:
             expect100: bool=False,
             raise_for_status: Optional[bool]=None,
             read_until_eof: bool=True,
-            proxy: Optional[StrOrURL]=sentinel,
-            proxy_auth: Optional[BasicAuth]=sentinel,
+            proxy: Optional[StrOrURL]=None,
+            proxy_auth: Optional[BasicAuth]=None,
             timeout: Union[ClientTimeout, object]=sentinel,
             verify_ssl: Optional[bool]=None,
             fingerprint: Optional[bytes]=None,
             ssl_context: Optional[SSLContext]=None,
             ssl: Optional[Union[SSLContext, bool, Fingerprint]]=None,
-            proxy_headers: Optional[LooseHeaders]=sentinel,
+            proxy_headers: Optional[LooseHeaders]=None,
             trace_request_ctx: Optional[SimpleNamespace]=None
     ) -> ClientResponse:
 
@@ -289,16 +288,6 @@ class ClientSession:
         history = []
         version = self._version
 
-        # Merge with session proxy
-        proxy = self._proxy_info['proxy'] \
-            if proxy is sentinel else proxy
-
-        proxy_auth = self._proxy_info['auth'] \
-            if proxy_auth is sentinel else proxy_auth
-
-        proxy_headers = self._proxy_info['headers'] \
-            if proxy_headers is sentinel else proxy_headers
-
         # Merge with default headers and transform to CIMultiDict
         headers = self._prepare_headers(headers)
         proxy_headers = self._prepare_headers(proxy_headers)
@@ -313,9 +302,19 @@ class ClientSession:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
 
-        if proxy is not None:
+        if proxy is not None and self._session_proxy is None:
             try:
                 proxy = URL(proxy)
+            except ValueError:
+                raise InvalidURL(proxy)
+
+        if proxy is None and self._session_proxy is not None:
+            try:
+                proxy = self._session_proxy
+                proxy_auth = self._session_proxy_auth
+                proxy_headers = self._prepare_headers(
+                    self._session_proxy_headers
+                )
             except ValueError:
                 raise InvalidURL(proxy)
 
