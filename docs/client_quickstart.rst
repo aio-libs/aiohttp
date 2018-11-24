@@ -440,7 +440,8 @@ Supported :class:`ClientTimeout` fields are:
       The maximum allowed timeout for period between reading a new
       data portion from a peer.
 
-All fields are floats, ``None`` or ``0`` disables a particular timeout check.
+All fields are floats, ``None`` or ``0`` disables a particular timeout check, see the
+:class:`ClientTimeout` reference for defaults and addinitional details.
 
 Thus the default timeout is::
 
