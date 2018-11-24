@@ -75,6 +75,13 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
 
     app = cast(Application, app)
 
+    # Configure if and only if in debugging mode and using the default logger
+    if app.debug and access_log.name == 'aiohttp.access':
+        if access_log.level == logging.NOTSET:
+            access_log.setLevel(logging.DEBUG)
+        if not access_log.hasHandlers():
+            access_log.addHandler(logging.StreamHandler())
+
     runner = AppRunner(app, handle_signals=handle_signals,
                        access_log_class=access_log_class,
                        access_log_format=access_log_format,
