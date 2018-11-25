@@ -479,7 +479,7 @@ class Response(StreamResponse):
                  text: Optional[str]=None,
                  headers: Optional[LooseHeaders]=None,
                  content_type: Optional[str]=None,
-                 charset: Optional[str]=None, 
+                 charset: Optional[str]=None,
                  zlib_thread_size: Optional[int]=None) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
@@ -666,7 +666,7 @@ class Response(StreamResponse):
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if coding.value == ContentCoding.gzip 
+                         if coding.value == ContentCoding.gzip
                          else -zlib.MAX_WBITS)
             if self._zlib_thread_size is not None and \
                     len(self._body) > self._zlib_thread_size:
