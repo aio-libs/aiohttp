@@ -94,7 +94,8 @@ class ClientSession:
         '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
-        '_ws_response_class', '_trace_configs'])
+        '_ws_response_class', '_trace_configs', '_session_proxy',
+        '_session_proxy_auth', '_session_proxy_headers'])
 
     _source_traceback = None
     _connector = None
