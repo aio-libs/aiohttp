@@ -657,22 +657,27 @@ class Response(StreamResponse):
 
         return await super()._start(request)
 
-    def _compress_body(self, zlib_mode):
+    def _compress_body(self, zlib_mode: int):
         compressobj = zlib.compressobj(wbits=zlib_mode)
+        body_in = self._body
+        assert body_in is not None
         self._compressed_body = \
-            compressobj.compress(self._body) + compressobj.flush()
+            compressobj.compress(body_in) + compressobj.flush()
 
     async def _do_start_compression(self, coding: ContentCoding) -> None:
         if self._body_payload or self._chunked:
             return await super()._do_start_compression(coding)
+
         if coding != ContentCoding.identity:
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
                          if coding.value == ContentCoding.gzip
                          else -zlib.MAX_WBITS)
+            body_in = self._body
+            assert body_in is not None
             if self._zlib_executor_size is not None and \
-                    len(self._body) > self._zlib_executor_size:
+                    len(body_in) > self._zlib_executor_size:
                 await asyncio.get_event_loop().run_in_executor(
                     self._zlib_executor, self._compress_body, zlib_mode)
             else:
