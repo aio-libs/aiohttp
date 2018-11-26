@@ -1,5 +1,6 @@
 import asyncio  # noqa
 import collections  # noqa
+from concurrent.futures import Executor
 import datetime
 import enum
 import json
@@ -480,7 +481,8 @@ class Response(StreamResponse):
                  headers: Optional[LooseHeaders]=None,
                  content_type: Optional[str]=None,
                  charset: Optional[str]=None,
-                 zlib_thread_size: Optional[int]=None) -> None:
+                 zlib_executor_size: Optional[int]=None,
+                 zlib_executor: Executor=None) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
@@ -534,7 +536,8 @@ class Response(StreamResponse):
             self.body = body
 
         self._compressed_body = None  # type: Optional[bytes]
-        self._zlib_thread_size = zlib_thread_size
+        self._zlib_executor_size = zlib_executor_size
+        self._zlib_executor = zlib_executor
 
     @property
     def body(self) -> Optional[Union[bytes, Payload]]:
@@ -668,14 +671,15 @@ class Response(StreamResponse):
             zlib_mode = (16 + zlib.MAX_WBITS
                          if coding.value == ContentCoding.gzip
                          else -zlib.MAX_WBITS)
-            if self._zlib_thread_size is not None and \
-                    len(self._body) > self._zlib_thread_size:
+            if self._zlib_executor_size is not None and \
+                    len(self._body) > self._zlib_executor_size:
                 await asyncio.get_event_loop().run_in_executor(
-                    None, self._compress_body, zlib_mode)
+                    self._zlib_executor, self._compress_body, zlib_mode)
             else:
                 self._compress_body(zlib_mode)
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._headers[hdrs.CONTENT_LENGTH] = str(len(body_out))
+            self._headers[hdrs.CONTENT_LENGTH] = \
+                str(len(self._compressed_body))
 
 
 def json_response(data: Any=sentinel, *,

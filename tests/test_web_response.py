@@ -424,7 +424,7 @@ async def test_change_content_threaded_compression_enabled() -> None:
     body_thread_size = 1024
     body = b'answer' * body_thread_size
     resp = Response(body=body,
-                    zlib_thread_size=body_thread_size)
+                    zlib_executor_size=body_thread_size)
     resp.enable_compression(ContentCoding.gzip)
 
     await resp.prepare(req)

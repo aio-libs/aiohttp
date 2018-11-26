@@ -805,7 +805,8 @@ Response
 ^^^^^^^^
 
 .. class:: Response(*, body=None, status=200, reason=None, text=None, \
-   headers=None, content_type=None, charset=None, zlib_thread_size=sentinel)
+   headers=None, content_type=None, charset=None, zlib_executor_size=sentinel,
+   zlib_executor=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -830,8 +831,10 @@ Response
    :param str charset: response's charset. ``'utf-8'`` if *text* is
                        passed also, ``None`` otherwise.
 
-   :param int zlib_thread_size: length in bytes which will trigger zlib compression
-                            of body to happen in the default executor
+   :param int zlib_executor_size: length in bytes which will trigger zlib compression
+                            of body to happen in an executor
+
+   :param int zlib_executor: executor to use for zlib compression
 
    .. attribute:: body
 
