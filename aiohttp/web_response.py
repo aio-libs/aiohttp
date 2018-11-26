@@ -657,7 +657,7 @@ class Response(StreamResponse):
 
         return await super()._start(request)
 
-    def _compress_body(self, zlib_mode: int):
+    def _compress_body(self, zlib_mode: int) -> None:
         compressobj = zlib.compressobj(wbits=zlib_mode)
         body_in = self._body
         assert body_in is not None
@@ -682,9 +682,13 @@ class Response(StreamResponse):
                     self._zlib_executor, self._compress_body, zlib_mode)
             else:
                 self._compress_body(zlib_mode)
+
+            body_out = self._compressed_body
+            assert body_out is not None
+
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
             self._headers[hdrs.CONTENT_LENGTH] = \
-                str(len(self._compressed_body))
+                str(len(body_out))
 
 
 def json_response(data: Any=sentinel, *,
