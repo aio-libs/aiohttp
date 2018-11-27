@@ -672,8 +672,7 @@ class Response(StreamResponse):
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
-                         if coding.value == ContentCoding.gzip
-                         else -zlib.MAX_WBITS)
+                         if coding == ContentCoding.gzip else -zlib.MAX_WBITS)
             body_in = self._body
             assert body_in is not None
             if self._zlib_executor_size is not None and \
@@ -687,8 +686,7 @@ class Response(StreamResponse):
             assert body_out is not None
 
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
-            self._headers[hdrs.CONTENT_LENGTH] = \
-                str(len(body_out))
+            self._headers[hdrs.CONTENT_LENGTH] = str(len(body_out))
 
 
 def json_response(data: Any=sentinel, *,
