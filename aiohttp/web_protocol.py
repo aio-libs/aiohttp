@@ -409,8 +409,8 @@ class RequestHandler(BaseProtocol):
                     self.log_debug('Ignored premature client disconnection')
                     break
                 except asyncio.TimeoutError as exc:
-                    self.log_debug('Request handler timed out.')
-                    resp = self.handle_error(request, 504, exc)
+                    self.log_debug('Request handler timed out.', exc_info=exc)
+                    resp = self.handle_error(request, 504)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
                 else:

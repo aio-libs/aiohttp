@@ -53,7 +53,7 @@ async def test_raw_server_handler_timeout(aiohttp_raw_server,
     assert resp.status == 504
 
     await resp.text()
-    logger.debug.assert_called_with("Request handler timed out.")
+    logger.debug.assert_called_with("Request handler timed out.", exc_info=exc)
 
 
 async def test_raw_server_do_not_swallow_exceptions(aiohttp_raw_server,
