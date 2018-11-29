@@ -109,6 +109,11 @@ tests_require = [
     'pytest-xdist',
 ]
 
+extras_require = {
+    'cchardet': ['cchardet'],
+    'aiodns': ['aiodns'],
+}
+
 
 args = dict(
     name='aiohttp',
@@ -153,6 +158,7 @@ args = dict(
     install_requires=install_requires,
     tests_require=tests_require,
     setup_requires=pytest_runner,
+    extras_require=extras_require,
     include_package_data=True,
     ext_modules=extensions,
     cmdclass=dict(build_ext=ve_build_ext),
