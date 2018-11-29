@@ -1833,13 +1833,6 @@ Response errors
    Derived from :exc:`ClientResponseError`
 
 
-.. class:: WSServerHandshakeError
-
-   Web socket server response error.
-
-   Derived from :exc:`ClientResponseError`
-
-
 .. class:: ContentTypeError
 
    Invalid content type.
