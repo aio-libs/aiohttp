@@ -833,8 +833,10 @@ Response
 
    :param int zlib_executor_size: length in bytes which will trigger zlib compression
                             of body to happen in an executor
+        .. versionadded:: 3.5.1
 
    :param int zlib_executor: executor to use for zlib compression
+        .. versionadded:: 3.5.1
 
    .. attribute:: body
 

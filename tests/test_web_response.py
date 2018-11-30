@@ -3,6 +3,7 @@ import datetime
 import gzip
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import pytest
@@ -429,6 +430,20 @@ async def test_change_content_threaded_compression_enabled() -> None:
 
     await resp.prepare(req)
     assert gzip.decompress(resp._compressed_body) == body
+
+
+async def test_change_content_threaded_compression_enabled_explicit() -> None:
+    req = make_request('GET', '/')
+    body_thread_size = 1024
+    body = b'answer' * body_thread_size
+    with ThreadPoolExecutor(1) as executor:
+        resp = Response(body=body,
+                        zlib_executor_size=body_thread_size,
+                        zlib_executor=executor)
+        resp.enable_compression(ContentCoding.gzip)
+
+        await resp.prepare(req)
+        assert gzip.decompress(resp._compressed_body) == body
 
 
 async def test_change_content_length_if_compression_enabled() -> None:
