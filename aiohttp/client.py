@@ -237,6 +237,7 @@ class ClientSession:
             params: Optional[Mapping[str, str]]=None,
             data: Any=None,
             json: Any=None,
+            cookies: Optional[LooseCookies]=None,
             headers: LooseHeaders=None,
             skip_auto_headers: Optional[Iterable[str]]=None,
             auth: Optional[BasicAuth]=None,
@@ -352,7 +353,16 @@ class ClientSession:
                                          "with AUTH argument or credentials "
                                          "encoded in URL")
 
-                    cookies = self._cookie_jar.filter_cookies(url)
+                    session_cookies = self._cookie_jar.filter_cookies(url)
+
+                    if cookies is not None:
+                        tmp_cookie_jar = CookieJar()
+                        tmp_cookie_jar.update_cookies(cookies)
+                        req_cookies = tmp_cookie_jar.filter_cookies(url)
+                        if session_cookies and req_cookies:
+                            session_cookies.load(req_cookies)
+
+                    cookies = session_cookies
 
                     if proxy is not None:
                         proxy = URL(proxy)

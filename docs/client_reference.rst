@@ -216,7 +216,7 @@ The client session supports the context manager protocol for self closing.
       .. deprecated:: 3.5
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
-                         headers=None, skip_auto_headers=None, \
+                         cookies=None, headers=None, skip_auto_headers=None, \
                          auth=None, allow_redirects=True,\
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False, raise_for_status=None,\
@@ -254,6 +254,14 @@ The client session supports the context manager protocol for self closing.
       :param json: Any json compatible python object
                    (optional). *json* and *data* parameters could not
                    be used at the same time.
+
+      :param dict cookies: HTTP Cookies to send with
+                           the request (optional)
+
+         Global session cookies and the explicitly set cookies will be merged
+         when sending the request.
+
+         .. versionadded:: 3.5
 
       :param dict headers: HTTP Headers to send with
                            the request (optional)
