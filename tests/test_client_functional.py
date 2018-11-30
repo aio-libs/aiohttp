@@ -1899,6 +1899,33 @@ async def test_cookies(aiohttp_client) -> None:
     resp.close()
 
 
+async def test_cookies_per_request(aiohttp_client) -> None:
+
+    async def handler(request):
+        assert request.cookies.keys() == {'test1', 'test3', 'test4', 'test6'}
+        assert request.cookies['test1'] == '123'
+        assert request.cookies['test3'] == '456'
+        assert request.cookies['test4'] == '789'
+        assert request.cookies['test6'] == 'abc'
+        return web.Response()
+
+    c = http.cookies.Morsel()
+    c.set('test3', '456', '456')
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(
+        app, cookies={'test1': '123', 'test2': c})
+
+    rc = http.cookies.Morsel()
+    rc.set('test6', 'abc', 'abc')
+
+    resp = await client.get(
+        '/', cookies={'test4': '789', 'test5': rc})
+    assert 200 == resp.status
+    resp.close()
+
+
 async def test_morsel_with_attributes(aiohttp_client) -> None:
     # A comment from original test:
     #
