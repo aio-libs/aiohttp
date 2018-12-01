@@ -31,7 +31,7 @@ from .web_urldispatcher import (AbstractResource, Domain, MaskDomain,
 __all__ = ('Application', 'CleanupError')
 
 
-if TYPE_CHECKING:  # pragma: no branch
+if TYPE_CHECKING:  # pragma: no cover
     _AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
                                          Awaitable[None]]]
@@ -119,7 +119,7 @@ class Application(MutableMapping[str, Any]):
                       DeprecationWarning,
                       stacklevel=2)
 
-    if DEBUG:
+    if DEBUG:  # pragma: no cover
         def __setattr__(self, name: str, val: Any) -> None:
             if name not in self.ATTRS:
                 warnings.warn("Setting custom web.Application.{} attribute "
@@ -403,8 +403,10 @@ class Application(MutableMapping[str, Any]):
         yield _fix_request_current_app(self), True
 
     async def _handle(self, request: Request) -> StreamResponse:
+        loop = asyncio.get_event_loop()
+        debug = loop.get_debug()
         match_info = await self._router.resolve(request)
-        if DEBUG:  # pragma: no cover
+        if debug:  # pragma: no cover
             if not isinstance(match_info, AbstractMatchInfo):
                 raise TypeError("match_info should be AbstractMatchInfo "
                                 "instance, not {!r}".format(match_info))
@@ -432,7 +434,7 @@ class Application(MutableMapping[str, Any]):
 
             resp = await handler(request)
 
-        if DEBUG:
+        if debug:
             if not isinstance(resp, StreamResponse):
                 msg = ("Handler {!r} should return response instance, "
                        "got {!r} [middlewares {!r}]").format(
