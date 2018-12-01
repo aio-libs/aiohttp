@@ -581,6 +581,17 @@ async def test_handle_500(srv, buf, transport, request_handler) -> None:
     assert b'500 Internal Server Error' in buf
 
 
+async def test_handle_504(srv, buf, request_handler) -> None:
+    request_handler.side_effect = asyncio.TimeoutError
+
+    srv.data_received(
+        b'GET / HTTP/1.0\r\n'
+        b'Host: example.com\r\n\r\n')
+    await srv._task_handler
+
+    assert b'504 Gateway Timeout' in buf
+
+
 async def test_keep_alive(make_srv, transport, ceil) -> None:
     loop = asyncio.get_event_loop()
     srv = make_srv(keepalive_timeout=0.05)

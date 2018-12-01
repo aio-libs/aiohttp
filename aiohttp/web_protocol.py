@@ -408,8 +408,8 @@ class RequestHandler(BaseProtocol):
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
-                except asyncio.TimeoutError:
-                    self.log_debug('Request handler timed out.')
+                except asyncio.TimeoutError as exc:
+                    self.log_debug('Request handler timed out.', exc_info=exc)
                     resp = self.handle_error(request, 504)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
