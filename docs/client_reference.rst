@@ -843,7 +843,7 @@ BaseConnector
 
       Read-only property.
 
-   .. method:: close()
+   .. comethod:: close()
 
       Close all opened connections.
 
