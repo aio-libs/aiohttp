@@ -143,8 +143,8 @@ jobs:
   - python: nightly
 
   include:
-  - name: Run without extensions
-  - python: 3.7
+  - name: 3.7 without extensions
+    python: 3.7
     env:
       AIOHTTP_NO_EXTENSIONS: 1
 
