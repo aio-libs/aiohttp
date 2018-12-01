@@ -434,15 +434,6 @@ class Application(MutableMapping[str, Any]):
 
             resp = await handler(request)
 
-        if debug:
-            if not isinstance(resp, StreamResponse):
-                msg = ("Handler {!r} should return response instance, "
-                       "got {!r} [middlewares {!r}]").format(
-                           match_info.handler, type(resp),
-                           [middleware
-                            for app in match_info.apps
-                            for middleware in app.middlewares])
-                raise TypeError(msg)
         return resp
 
     def __call__(self) -> 'Application':
