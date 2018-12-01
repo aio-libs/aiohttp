@@ -1,0 +1,1 @@
+Deprecate bare connector close, use ``async with connector:`` and ``await connector.close()`` instead.
