@@ -158,9 +158,7 @@ Requirements
 - yarl_
 
 Optionally you may install the cChardet_ and aiodns_ libraries (highly
-recommended for sake of speed)::
-
-    $ pip install aiohttp[cchardet,aiodns]
+recommended for sake of speed).
 
 .. _chardet: https://pypi.python.org/pypi/chardet
 .. _aiodns: https://pypi.python.org/pypi/aiodns
