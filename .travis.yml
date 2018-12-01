@@ -9,6 +9,7 @@ sudo: required
 language: python
 
 python:
+- 3.5
 - 3.6
 - &mainstream_python 3.7
 - 3.7-dev
@@ -21,7 +22,6 @@ install:
 - pip install -r requirements/ci.txt
 
 script:
-- make cov-ci-no-ext
 - make cov-ci-run
 
 after_success:
@@ -143,9 +143,10 @@ jobs:
   - python: nightly
 
   include:
-  - python: 3.5
+  - name: Run without extensions
+  - python: 3.7
     env:
-      PYTEST_ADDOPTS: -n0
+      AIOHTTP_NO_EXTENSIONS: 1
 
   - <<: *_doc_base
     name: Checking docs spelling

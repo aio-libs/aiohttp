@@ -15,6 +15,7 @@ import aiohttp
 from aiohttp import (FormData, HttpVersion10, HttpVersion11, TraceConfig,
                      multipart, web)
 
+
 try:
     import ssl
 except ImportError:
@@ -81,6 +82,27 @@ async def test_handler_returns_not_response(aiohttp_server,
     with pytest.raises(aiohttp.ServerDisconnectedError):
         await client.get('/')
 
+    logger.exception.assert_called_with('Unhandled runtime exception',
+                                        exc_info=mock.ANY)
+
+
+async def test_handler_returns_none(aiohttp_server,
+                                    aiohttp_client) -> None:
+    asyncio.get_event_loop().set_debug(True)
+    logger = mock.Mock()
+
+    async def handler(request):
+        return None
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app, logger=logger)
+    client = await aiohttp_client(server)
+
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        await client.get('/')
+
+    # Actual error text is placed in exc_info
     logger.exception.assert_called_with('Unhandled runtime exception',
                                         exc_info=mock.ANY)
 
