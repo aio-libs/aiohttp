@@ -82,6 +82,10 @@ def noop(*args, **kwargs):  # type: ignore
     return  # type: ignore
 
 
+async def noop2(*args: Any, **kwargs: Any) -> None:
+    return
+
+
 coroutines._DEBUG = old_debug  # type: ignore
 
 
