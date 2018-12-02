@@ -432,9 +432,9 @@ class ClientRequest:
             if isinstance(value, Morsel):
                 # Preserve coded_value
                 mrsl_val = value.get(value.key, Morsel())
-                mrsl_val.set(
+                mrsl_val.set(  # type: ignore  # noqa
                     value.key, value.value, value.coded_value
-                )  # type: ignore  # noqa
+                )
                 c[name] = mrsl_val
             else:
                 c[name] = value  # type: ignore
@@ -879,9 +879,7 @@ class ClientResponse(HeadersMixin):
             while True:
                 # read response
                 try:
-                    message, payload = (
-                        await self._protocol.read()
-                    )  # type: ignore  # noqa
+                    message, payload = await self._protocol.read()  # type: ignore
                 except http.HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,

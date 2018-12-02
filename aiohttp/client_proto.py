@@ -226,9 +226,7 @@ class ResponseHandler(BaseProtocol, DataQueue[Tuple[RawResponseMessage, StreamRe
                     self._payload = payload
 
                     if self._skip_payload or message.code in (204, 304):
-                        self.feed_data(
-                            (message, EMPTY_PAYLOAD), 0
-                        )  # type: ignore  # noqa
+                        self.feed_data((message, EMPTY_PAYLOAD), 0)  # type: ignore
                     else:
                         self.feed_data((message, payload), 0)
                 if payload is not None:

@@ -826,9 +826,9 @@ class MultipartWriter(Payload):
             + b"\r\n"
         )
 
-        self._parts.append(
+        self._parts.append(  # type: ignore  # noqa
             (payload, headers, encoding, te_encoding)
-        )  # type: ignore  # noqa
+        )
         return payload
 
     def append_json(

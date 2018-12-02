@@ -382,11 +382,8 @@ class Application(MutableMapping[str, Any]):
             for k, v in self._handler_args.items():
                 kwargs[k] = v
 
-        return Server(
-            self._handle,  # type: ignore
-            request_factory=self._make_request,
-            loop=self._loop,
-            **kwargs
+        return Server(  # type: ignore
+            self._handle, request_factory=self._make_request, loop=self._loop, **kwargs
         )
 
     def make_handler(

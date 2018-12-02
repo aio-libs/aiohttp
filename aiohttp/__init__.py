@@ -4,6 +4,7 @@ __version__ = "3.5.0a1"
 
 from . import hdrs  # noqa
 from .client import *  # noqa
+from .client import ClientSession, ClientTimeout  # noqa
 from .cookiejar import *  # noqa
 from .formdata import *  # noqa
 from .helpers import *  # noqa

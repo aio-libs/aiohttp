@@ -838,8 +838,8 @@ RawResponseMessagePy = RawResponseMessage
 
 try:
     if not NO_EXTENSIONS:  # pragma: no cover
-        from ._http_parser import (
-            HttpRequestParser,  # type: ignore  # noqa
+        from ._http_parser import (  # type: ignore  # noqa
+            HttpRequestParser,
             HttpResponseParser,
             RawRequestMessage,
             RawResponseMessage,

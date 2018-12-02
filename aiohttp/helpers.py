@@ -501,9 +501,9 @@ def rfc822_formatted_time() -> str:
             "Dec",
         )
 
-        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(
+        year, month, day, hh, mm, ss, wd, y, z = time.gmtime(  # type: ignore  # noqa
             now
-        )  # type: ignore  # noqa
+        )
         _cached_formatted_datetime = "%s, %02d %3s %4d %02d:%02d:%02d GMT" % (
             _weekdayname[wd],
             day,

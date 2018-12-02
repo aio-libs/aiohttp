@@ -548,11 +548,8 @@ class StaticResource(PrefixResource):
             ),
         }
 
-    def url_for(
-        self,
-        *,
-        filename: Union[str, Path],  # type: ignore
-        append_version: Optional[bool] = None
+    def url_for(  # type: ignore
+        self, *, filename: Union[str, Path], append_version: Optional[bool] = None
     ) -> URL:
         if append_version is None:
             append_version = self._append_version
@@ -782,8 +779,8 @@ class Domain(AbstractRuleMatching):
             raise ValueError("Scheme not supported")
         url = URL("http://" + domain)
         if not all(
-            self.re_part.fullmatch(x) for x in url.raw_host.split(".")
-        ):  # type: ignore
+            self.re_part.fullmatch(x) for x in url.raw_host.split(".")  # type: ignore
+        ):
             raise ValueError("Domain not valid")
         if url.port == 80:
             return url.raw_host  # type: ignore
