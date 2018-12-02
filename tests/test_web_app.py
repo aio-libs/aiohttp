@@ -559,4 +559,4 @@ def test_app_iter():
     app = web.Application()
     app['a'] = '1'
     app['b'] = '2'
-    assert list(app) == ['a', 'b']
+    assert sorted(list(app)) == ['a', 'b']
