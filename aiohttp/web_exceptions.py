@@ -89,6 +89,11 @@ class HTTPException(Response, Exception):
         text: Optional[str] = None,
         content_type: Optional[str] = None
     ) -> None:
+        if body is not None:
+            warnings.warn(
+                "body argument is deprecated for http web exceptions",
+                DeprecationWarning,
+            )
         Response.__init__(
             self,
             status=self.status_code,

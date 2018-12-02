@@ -12,8 +12,8 @@ isort:
 	echo '"make isort" was removed, use "make fmt" instead"'
 
 fmt:
-	isort -rc $FILES
-	black $FILES
+	isort -rc $(FILES)
+	black $(FILES)
 
 flake: .flake
 
@@ -22,14 +22,14 @@ flake: .flake
                       $(shell find examples -type f)
 	flake8 aiohttp examples tests
 	python setup.py check -rms
-	@if ! black --check $FILES; then \
-            echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-            isort --diff $FILES; \
+	@if ! black --check $(FILES); then \
+            echo "Import black errors, run 'make fmt' to fix them!!!"; \
+            isort --diff $(FILES); \
             false; \
 	fi
-	@if ! black -c -rc $FILES; then \
+	@if ! isort -c -rc $(FILES); then \
             echo "Import sort errors, run 'make fmt' to fix them!!!"; \
-            isort --diff -rc FILES; \
+            isort --diff -rc $(FILES); \
             false; \
 	fi
 	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
