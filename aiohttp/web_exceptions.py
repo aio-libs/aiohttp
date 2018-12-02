@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, Iterable, List, Optional, Set  # noqa
 
 from .typedefs import LooseHeaders, StrOrURL
@@ -85,6 +86,9 @@ class HTTPException(Response, Exception):
                  body: Any=None,
                  text: Optional[str]=None,
                  content_type: Optional[str]=None) -> None:
+        if body is not None:
+            warnings.warn("body argument is deprecated for http web exceptions",
+                          DeprecationWarning)
         Response.__init__(self, status=self.status_code,
                           headers=headers, reason=reason,
                           body=body, text=text, content_type=content_type)
