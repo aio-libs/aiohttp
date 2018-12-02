@@ -17,7 +17,6 @@ def registry():
 
 
 class Payload(payload.Payload):
-
     async def write(self, writer):
         pass
 
@@ -40,27 +39,27 @@ def test_register_unsupported_order(registry) -> None:
 
 
 def test_payload_ctor() -> None:
-    p = Payload('test', encoding='utf-8', filename='test.txt')
-    assert p._value == 'test'
-    assert p._encoding == 'utf-8'
+    p = Payload("test", encoding="utf-8", filename="test.txt")
+    assert p._value == "test"
+    assert p._encoding == "utf-8"
     assert p.size is None
-    assert p.filename == 'test.txt'
-    assert p.content_type == 'text/plain'
+    assert p.filename == "test.txt"
+    assert p.content_type == "text/plain"
 
 
 def test_payload_content_type() -> None:
-    p = Payload('test', headers={'content-type': 'application/json'})
-    assert p.content_type == 'application/json'
+    p = Payload("test", headers={"content-type": "application/json"})
+    assert p.content_type == "application/json"
 
 
 def test_bytes_payload_default_content_type() -> None:
-    p = payload.BytesPayload(b'data')
-    assert p.content_type == 'application/octet-stream'
+    p = payload.BytesPayload(b"data")
+    assert p.content_type == "application/octet-stream"
 
 
 def test_bytes_payload_explicit_content_type() -> None:
-    p = payload.BytesPayload(b'data', content_type='application/custom')
-    assert p.content_type == 'application/custom'
+    p = payload.BytesPayload(b"data", content_type="application/custom")
+    assert p.content_type == "application/custom"
 
 
 def test_bytes_payload_bad_type() -> None:
@@ -69,25 +68,24 @@ def test_bytes_payload_bad_type() -> None:
 
 
 def test_string_payload() -> None:
-    p = payload.StringPayload('test')
-    assert p.encoding == 'utf-8'
-    assert p.content_type == 'text/plain; charset=utf-8'
+    p = payload.StringPayload("test")
+    assert p.encoding == "utf-8"
+    assert p.content_type == "text/plain; charset=utf-8"
 
-    p = payload.StringPayload('test', encoding='koi8-r')
-    assert p.encoding == 'koi8-r'
-    assert p.content_type == 'text/plain; charset=koi8-r'
+    p = payload.StringPayload("test", encoding="koi8-r")
+    assert p.encoding == "koi8-r"
+    assert p.content_type == "text/plain; charset=koi8-r"
 
-    p = payload.StringPayload(
-        'test', content_type='text/plain; charset=koi8-r')
-    assert p.encoding == 'koi8-r'
-    assert p.content_type == 'text/plain; charset=koi8-r'
+    p = payload.StringPayload("test", content_type="text/plain; charset=koi8-r")
+    assert p.encoding == "koi8-r"
+    assert p.content_type == "text/plain; charset=koi8-r"
 
 
 def test_string_io_payload() -> None:
-    s = StringIO('ű' * 5000)
+    s = StringIO("ű" * 5000)
     p = payload.StringIOPayload(s)
-    assert p.encoding == 'utf-8'
-    assert p.content_type == 'text/plain; charset=utf-8'
+    assert p.encoding == "utf-8"
+    assert p.content_type == "text/plain; charset=utf-8"
     assert p.size == 10000
 
 
@@ -97,7 +95,7 @@ def test_async_iterable_payload_default_content_type() -> None:
         pass
 
     p = payload.AsyncIterablePayload(gen())
-    assert p.content_type == 'application/octet-stream'
+    assert p.content_type == "application/octet-stream"
 
 
 def test_async_iterable_payload_explicit_content_type() -> None:
@@ -105,8 +103,8 @@ def test_async_iterable_payload_explicit_content_type() -> None:
     async def gen():
         pass
 
-    p = payload.AsyncIterablePayload(gen(), content_type='application/custom')
-    assert p.content_type == 'application/custom'
+    p = payload.AsyncIterablePayload(gen(), content_type="application/custom")
+    assert p.content_type == "application/custom"
 
 
 def test_async_iterable_payload_not_async_iterable() -> None:
@@ -117,7 +115,7 @@ def test_async_iterable_payload_not_async_iterable() -> None:
 
 async def test_stream_reader_long_lines() -> None:
     loop = asyncio.get_event_loop()
-    DATA = b'0' * 1024 ** 3
+    DATA = b"0" * 1024 ** 3
 
     stream = streams.StreamReader(mock.Mock(), loop=loop)
     stream.feed_data(DATA)

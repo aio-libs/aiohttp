@@ -8,9 +8,11 @@ all: test
 	@touch .install-deps
 
 isort:
-	isort -rc aiohttp
-	isort -rc tests
-	isort -rc examples
+	echo '"make isort" was removed, use "make fmt" instead"'
+
+fmt:
+	isort -rc aiohttp tests examples setup.py tools
+	black aiohttp tests examples setup.py tools
 
 flake: .flake
 

@@ -7,14 +7,13 @@ from aiohttp import client
 
 
 def test_fingerprint_mismatch() -> None:
-    err = client.ServerFingerprintMismatch('exp', 'got', 'host', 8888)
-    expected = ('<ServerFingerprintMismatch expected=exp'
-                ' got=got host=host port=8888>')
+    err = client.ServerFingerprintMismatch("exp", "got", "host", 8888)
+    expected = "<ServerFingerprintMismatch expected=exp" " got=got host=host port=8888>"
     assert expected == repr(err)
 
 
 def test_invalid_url() -> None:
-    url = URL('http://example.com')
+    url = URL("http://example.com")
     err = client.InvalidURL(url)
     assert err.args[0] is url
     assert err.url is url
@@ -22,34 +21,28 @@ def test_invalid_url() -> None:
 
 
 def test_response_default_status() -> None:
-    err = client.ClientResponseError(history=None,
-                                     request_info=None)
+    err = client.ClientResponseError(history=None, request_info=None)
     assert err.status == 0
 
 
 def test_response_status() -> None:
-    err = client.ClientResponseError(status=400,
-                                     history=None,
-                                     request_info=None)
+    err = client.ClientResponseError(status=400, history=None, request_info=None)
     assert err.status == 400
 
 
 def test_response_deprecated_code_property() -> None:
     with pytest.warns(DeprecationWarning):
-        err = client.ClientResponseError(code=400,
-                                         history=None,
-                                         request_info=None)
+        err = client.ClientResponseError(code=400, history=None, request_info=None)
     with pytest.warns(DeprecationWarning):
         assert err.code == err.status
     with pytest.warns(DeprecationWarning):
-        err.code = '404'
+        err.code = "404"
     with pytest.warns(DeprecationWarning):
         assert err.code == err.status
 
 
 def test_response_both_code_and_status() -> None:
     with pytest.raises(ValueError):
-        client.ClientResponseError(code=400,
-                                   status=400,
-                                   history=None,
-                                   request_info=None)
+        client.ClientResponseError(
+            code=400, status=400, history=None, request_info=None
+        )

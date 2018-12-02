@@ -4,8 +4,7 @@ import tempfile
 
 import pytest
 
-
-pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
+pytest_plugins = ["aiohttp.pytest_plugin", "pytester"]
 
 
 @pytest.fixture

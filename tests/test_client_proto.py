@@ -37,7 +37,7 @@ async def test_client_proto_bad_message(loop) -> None:
     proto.connection_made(transport)
     proto.set_response_params()
 
-    proto.data_received(b'HTTP\r\n\r\n')
+    proto.data_received(b"HTTP\r\n\r\n")
     assert proto.should_close
     assert transport.close.called
     assert isinstance(proto.exception(), http.HttpProcessingError)
@@ -49,14 +49,15 @@ async def test_uncompleted_message(loop) -> None:
     proto.connection_made(transport)
     proto.set_response_params(read_until_eof=True)
 
-    proto.data_received(b'HTTP/1.1 301 Moved Permanently\r\n'
-                        b'Location: http://python.org/')
+    proto.data_received(
+        b"HTTP/1.1 301 Moved Permanently\r\n" b"Location: http://python.org/"
+    )
     proto.connection_lost(None)
 
     exc = proto.exception()
     assert isinstance(exc, ServerDisconnectedError)
     assert exc.message.code == 301
-    assert dict(exc.message.headers) == {'Location': 'http://python.org/'}
+    assert dict(exc.message.headers) == {"Location": "http://python.org/"}
 
 
 async def test_client_protocol_readuntil_eof(loop) -> None:
@@ -66,28 +67,31 @@ async def test_client_protocol_readuntil_eof(loop) -> None:
     conn = mock.Mock()
     conn.protocol = proto
 
-    proto.data_received(b'HTTP/1.1 200 Ok\r\n\r\n')
+    proto.data_received(b"HTTP/1.1 200 Ok\r\n\r\n")
 
-    response = ClientResponse('get', URL('http://def-cl-resp.org'),
-                              writer=mock.Mock(),
-                              continue100=None,
-                              timer=TimerNoop(),
-                              request_info=mock.Mock(),
-                              traces=[],
-                              loop=loop,
-                              session=mock.Mock())
+    response = ClientResponse(
+        "get",
+        URL("http://def-cl-resp.org"),
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        request_info=mock.Mock(),
+        traces=[],
+        loop=loop,
+        session=mock.Mock(),
+    )
     proto.set_response_params(read_until_eof=True)
     await response.start(conn)
 
     assert not response.content.is_eof()
 
-    proto.data_received(b'0000')
+    proto.data_received(b"0000")
     data = await response.content.readany()
-    assert data == b'0000'
+    assert data == b"0000"
 
-    proto.data_received(b'1111')
+    proto.data_received(b"1111")
     data = await response.content.readany()
-    assert data == b'1111'
+    assert data == b"1111"
 
     proto.connection_lost(None)
     assert response.content.is_eof()
@@ -95,7 +99,7 @@ async def test_client_protocol_readuntil_eof(loop) -> None:
 
 async def test_empty_data(loop) -> None:
     proto = ResponseHandler(loop=loop)
-    proto.data_received(b'')
+    proto.data_received(b"")
 
     # do nothing
 

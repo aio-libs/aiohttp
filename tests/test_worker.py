@@ -11,8 +11,7 @@ import pytest
 from aiohttp import web
 from aiohttp.test_utils import make_mocked_coro
 
-
-base_worker = pytest.importorskip('aiohttp.worker')
+base_worker = pytest.importorskip("aiohttp.worker")
 
 
 try:
@@ -27,29 +26,33 @@ ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 
 # tokio event loop does not allow to override attributes
 def skip_if_no_dict(loop):
-    if not hasattr(loop, '__dict__'):
+    if not hasattr(loop, "__dict__"):
         pytest.skip("can not override loop attributes")
 
 
 class BaseTestWorker:
-
     def __init__(self):
         self.servers = {}
         self.exit_code = 0
         self._notify_waiter = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
-        self.pid = 'pid'
+        self.pid = "pid"
         self.wsgi = web.Application()
 
 
-class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):  # type: ignore  # noqa
+class AsyncioWorker(
+    BaseTestWorker, base_worker.GunicornWebWorker
+):  # type: ignore  # noqa
     pass
 
 
 PARAMS = [AsyncioWorker]
 if uvloop is not None:
-    class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):  # type: ignore  # noqa
+
+    class UvloopWorker(
+        BaseTestWorker, base_worker.GunicornUVLoopWebWorker
+    ):  # type: ignore  # noqa
         pass
 
     PARAMS.append(UvloopWorker)
@@ -64,7 +67,7 @@ def worker(request, loop):
 
 
 def test_init_process(worker) -> None:
-    with mock.patch('aiohttp.worker.asyncio') as m_asyncio:
+    with mock.patch("aiohttp.worker.asyncio") as m_asyncio:
         try:
             worker.init_process()
         except TypeError:
@@ -96,6 +99,7 @@ def test_run_async_factory(worker, loop) -> None:
 
     async def make_app():
         return app
+
     worker.wsgi = make_app
 
     worker.loop = loop
@@ -111,12 +115,11 @@ def test_handle_quit(worker, loop) -> None:
     worker.handle_quit(object(), object())
     assert not worker.alive
     assert worker.exit_code == 0
-    worker.loop.call_later.asset_called_with(
-        0.1, worker._notify_waiter_done)
+    worker.loop.call_later.asset_called_with(0.1, worker._notify_waiter_done)
 
 
 def test_handle_abort(worker) -> None:
-    with mock.patch('aiohttp.worker.sys') as m_sys:
+    with mock.patch("aiohttp.worker.sys") as m_sys:
         worker.handle_abort(object(), object())
         assert not worker.alive
         assert worker.exit_code == 1
@@ -129,9 +132,7 @@ def test__wait_next_notify(worker) -> None:
     fut = worker._wait_next_notify()
 
     assert worker._notify_waiter == fut
-    worker.loop.call_later.assert_called_with(1.0,
-                                              worker._notify_waiter_done,
-                                              fut)
+    worker.loop.call_later.assert_called_with(1.0, worker._notify_waiter_done, fut)
 
 
 def test__notify_waiter_done(worker) -> None:
@@ -167,11 +168,16 @@ def test_init_signals(worker) -> None:
     assert worker.loop.add_signal_handler.called
 
 
-@pytest.mark.parametrize('source,result', [
-    (ACCEPTABLE_LOG_FORMAT, ACCEPTABLE_LOG_FORMAT),
-    (AsyncioWorker.DEFAULT_GUNICORN_LOG_FORMAT,
-     AsyncioWorker.DEFAULT_AIOHTTP_LOG_FORMAT),
-])
+@pytest.mark.parametrize(
+    "source,result",
+    [
+        (ACCEPTABLE_LOG_FORMAT, ACCEPTABLE_LOG_FORMAT),
+        (
+            AsyncioWorker.DEFAULT_GUNICORN_LOG_FORMAT,
+            AsyncioWorker.DEFAULT_AIOHTTP_LOG_FORMAT,
+        ),
+    ],
+)
 def test__get_valid_log_format_ok(worker, source, result) -> None:
     assert result == worker._get_valid_log_format(source)
 
@@ -179,17 +185,16 @@ def test__get_valid_log_format_ok(worker, source, result) -> None:
 def test__get_valid_log_format_exc(worker) -> None:
     with pytest.raises(ValueError) as exc:
         worker._get_valid_log_format(WRONG_LOG_FORMAT)
-    assert '%(name)s' in str(exc)
+    assert "%(name)s" in str(exc)
 
 
-async def test__run_ok_parent_changed(worker, loop,
-                                      aiohttp_unused_port) -> None:
+async def test__run_ok_parent_changed(worker, loop, aiohttp_unused_port) -> None:
     skip_if_no_dict(loop)
 
     worker.ppid = 0
     worker.alive = True
     sock = socket.socket()
-    addr = ('localhost', aiohttp_unused_port())
+    addr = ("localhost", aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()
@@ -204,8 +209,7 @@ async def test__run_ok_parent_changed(worker, loop,
     await worker._run()
 
     worker.notify.assert_called_with()
-    worker.log.info.assert_called_with("Parent changed, shutting down: %s",
-                                       worker)
+    worker.log.info.assert_called_with("Parent changed, shutting down: %s", worker)
     assert worker._runner.server is None
 
 
@@ -215,7 +219,7 @@ async def test__run_exc(worker, loop, aiohttp_unused_port) -> None:
     worker.ppid = os.getppid()
     worker.alive = True
     sock = socket.socket()
-    addr = ('localhost', aiohttp_unused_port())
+    addr = ("localhost", aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()
@@ -239,15 +243,14 @@ async def test__run_exc(worker, loop, aiohttp_unused_port) -> None:
     assert worker._runner.server is None
 
 
-async def test__run_ok_max_requests_exceeded(worker, loop,
-                                             aiohttp_unused_port):
+async def test__run_ok_max_requests_exceeded(worker, loop, aiohttp_unused_port):
     skip_if_no_dict(loop)
 
     worker.ppid = os.getppid()
     worker.alive = True
     worker.servers = {}
     sock = socket.socket()
-    addr = ('localhost', aiohttp_unused_port())
+    addr = ("localhost", aiohttp_unused_port())
     sock.bind(addr)
     worker.sockets = [sock]
     worker.log = mock.Mock()
@@ -263,8 +266,7 @@ async def test__run_ok_max_requests_exceeded(worker, loop,
     await worker._run()
 
     worker.notify.assert_called_with()
-    worker.log.info.assert_called_with("Max requests, shutting down: %s",
-                                       worker)
+    worker.log.info.assert_called_with("Max requests, shutting down: %s", worker)
 
     assert worker._runner.server is None
 
@@ -273,8 +275,8 @@ def test__create_ssl_context_without_certs_and_ciphers(worker) -> None:
     here = pathlib.Path(__file__).parent
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
-    worker.cfg.certfile = str(here / 'sample.crt')
-    worker.cfg.keyfile = str(here / 'sample.key')
+    worker.cfg.certfile = str(here / "sample.crt")
+    worker.cfg.keyfile = str(here / "sample.key")
     worker.cfg.ca_certs = None
     worker.cfg.ciphers = None
     crt = worker._create_ssl_context(worker.cfg)
@@ -285,10 +287,10 @@ def test__create_ssl_context_with_ciphers(worker) -> None:
     here = pathlib.Path(__file__).parent
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
-    worker.cfg.certfile = str(here / 'sample.crt')
-    worker.cfg.keyfile = str(here / 'sample.key')
+    worker.cfg.certfile = str(here / "sample.crt")
+    worker.cfg.keyfile = str(here / "sample.key")
     worker.cfg.ca_certs = None
-    worker.cfg.ciphers = 'PSK'
+    worker.cfg.ciphers = "PSK"
     ctx = worker._create_ssl_context(worker.cfg)
     assert isinstance(ctx, ssl.SSLContext)
 
@@ -297,9 +299,9 @@ def test__create_ssl_context_with_ca_certs(worker) -> None:
     here = pathlib.Path(__file__).parent
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
-    worker.cfg.certfile = str(here / 'sample.crt')
-    worker.cfg.keyfile = str(here / 'sample.key')
-    worker.cfg.ca_certs = str(here / 'sample.crt')
+    worker.cfg.certfile = str(here / "sample.crt")
+    worker.cfg.keyfile = str(here / "sample.key")
+    worker.cfg.ca_certs = str(here / "sample.crt")
     worker.cfg.ciphers = None
     ctx = worker._create_ssl_context(worker.cfg)
     assert isinstance(ctx, ssl.SSLContext)

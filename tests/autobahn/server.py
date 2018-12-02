@@ -32,10 +32,10 @@ async def wshandler(request):
 
 async def main(loop):
     app = web.Application()
-    app.router.add_route('GET', '/', wshandler)
+    app.router.add_route("GET", "/", wshandler)
 
     handler = app._make_handler()
-    srv = await loop.create_server(handler, '127.0.0.1', 9001)
+    srv = await loop.create_server(handler, "127.0.0.1", 9001)
     print("Server started at http://127.0.0.1:9001")
     return app, srv, handler
 
@@ -46,10 +46,11 @@ async def finish(app, srv, handler):
     await srv.wait_closed()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(levelname)s %(message)s')
+    logging.basicConfig(
+        level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s"
+    )
     app, srv, handler = loop.run_until_complete(main(loop))
     try:
         loop.run_forever()

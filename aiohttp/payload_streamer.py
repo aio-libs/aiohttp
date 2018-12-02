@@ -28,16 +28,16 @@ from typing import Any, Awaitable, Callable, Dict, Tuple
 from .abc import AbstractStreamWriter
 from .payload import Payload, payload_type
 
-
-__all__ = ('streamer',)
+__all__ = ("streamer",)
 
 
 class _stream_wrapper:
-
-    def __init__(self,
-                 coro: Callable[..., Awaitable[None]],
-                 args: Tuple[Any, ...],
-                 kwargs: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        coro: Callable[..., Awaitable[None]],
+        args: Tuple[Any, ...],
+        kwargs: Dict[str, Any],
+    ) -> None:
         self.coro = asyncio.coroutine(coro)
         self.args = args
         self.kwargs = kwargs
@@ -47,11 +47,12 @@ class _stream_wrapper:
 
 
 class streamer:
-
     def __init__(self, coro: Callable[..., Awaitable[None]]) -> None:
-        warnings.warn("@streamer is deprecated, use async generators instead",
-                      DeprecationWarning,
-                      stacklevel=2)
+        warnings.warn(
+            "@streamer is deprecated, use async generators instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.coro = coro
 
     def __call__(self, *args: Any, **kwargs: Any) -> _stream_wrapper:
@@ -60,14 +61,12 @@ class streamer:
 
 @payload_type(_stream_wrapper)
 class StreamWrapperPayload(Payload):
-
     async def write(self, writer: AbstractStreamWriter) -> None:
         await self._value(writer)
 
 
 @payload_type(streamer)
 class StreamPayload(StreamWrapperPayload):
-
     def __init__(self, value: Any, *args: Any, **kwargs: Any) -> None:
         super().__init__(value(), *args, **kwargs)
 
