@@ -51,22 +51,14 @@ cov cover coverage:
 	tox
 
 cov-dev: .develop
-	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest
-	@pytest -c pytest.ci.ini --cov-report=html --cov-append
+	@pytest -c pytest.ci.ini --cov-report=html
 	@echo "open file://`pwd`/htmlcov/index.html"
 
-cov-ci-no-ext: .develop
-	@echo "Run without extensions"
-	@AIOHTTP_NO_EXTENSIONS=1 pytest
-cov-ci-aio-debug: .develop
-	@echo "Run in debug mode"
-	@PYTHONASYNCIODEBUG=1 pytest -c pytest.ci.ini --cov-append
 cov-ci-run: .develop
 	@echo "Regular run"
-	@pytest -c pytest.ci.ini --cov-report=html --cov-append
+	@pytest -c pytest.ci.ini --cov-report=html
 
-cov-dev-full: cov-ci-no-ext cov-ci-aio-debug cov-ci-run
+cov-dev-full: cov-ci-run
 	@echo "open file://`pwd`/htmlcov/index.html"
 
 clean:

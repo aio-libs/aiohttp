@@ -553,3 +553,10 @@ async def test_subapp_on_startup(aiohttp_client) -> None:
     assert ctx_post_called
     assert shutdown_called
     assert cleanup_called
+
+
+def test_app_iter():
+    app = web.Application()
+    app['a'] = '1'
+    app['b'] = '2'
+    assert sorted(list(app)) == ['a', 'b']

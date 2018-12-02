@@ -347,11 +347,35 @@ async def test_double_close(connector, create_session) -> None:
 async def test_del(connector, loop) -> None:
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
-    loop.set_exception_handler(lambda loop, ctx: None)
+    logs = []
+    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
 
     with pytest.warns(ResourceWarning):
         del session
         gc.collect()
+
+    assert len(logs) == 1
+    expected = {'client_session': mock.ANY,
+                'message': 'Unclosed client session'}
+    assert logs[0] == expected
+
+
+async def test_del_debug(connector, loop) -> None:
+    loop.set_debug(True)
+    # N.B. don't use session fixture, it stores extra reference internally
+    session = ClientSession(connector=connector, loop=loop)
+    logs = []
+    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
+
+    with pytest.warns(ResourceWarning):
+        del session
+        gc.collect()
+
+    assert len(logs) == 1
+    expected = {'client_session': mock.ANY,
+                'message': 'Unclosed client session',
+                'source_traceback': mock.ANY}
+    assert logs[0] == expected
 
 
 async def test_context_manager(connector, loop) -> None:
