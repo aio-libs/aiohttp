@@ -129,7 +129,7 @@ Wildcard *HTTP method* is also supported by :func:`route` or
 :meth:`RouteTableDef.route`, allowing a handler to serve incoming
 requests on a *path* having **any** *HTTP method*::
 
-  app.add_routes[web.route('*', '/path', all_handler)]
+  app.add_routes([web.route('*', '/path', all_handler)])
 
 The *HTTP method* can be queried later in the request handler using the
 :attr:`Request.method` property.

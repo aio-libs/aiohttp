@@ -819,7 +819,7 @@ class ClientSession:
         """
         if not self.closed:
             if self._connector is not None and self._connector_owner:
-                self._connector.close()
+                await self._connector.close()
             self._connector = None
 
     @property

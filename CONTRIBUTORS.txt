@@ -172,6 +172,7 @@ Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
 Pavel Polyakov
+Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Philipp A.
@@ -183,6 +184,7 @@ Robert Lu
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt
+Sebastian Acuna
 Sebastian Hanula
 Sebastian Hüther
 Sebastien Geffroy
