@@ -1,4 +1,5 @@
 # Some simple testing tasks (sorry, UNIX only).
+FILES = aiohttp tests examples setup.py tools
 
 all: test
 
@@ -11,8 +12,8 @@ isort:
 	echo '"make isort" was removed, use "make fmt" instead"'
 
 fmt:
-	isort -rc aiohttp tests examples setup.py tools
-	black aiohttp tests examples setup.py tools
+	isort -rc $FILES
+	black $FILES
 
 flake: .flake
 
@@ -21,9 +22,14 @@ flake: .flake
                       $(shell find examples -type f)
 	flake8 aiohttp examples tests
 	python setup.py check -rms
-	@if ! isort -c -rc aiohttp tests examples; then \
-            echo "Import sort errors, run 'make isort' to fix them!!!"; \
-            isort --diff -rc aiohttp tests examples; \
+	@if ! black --check $FILES; then \
+            echo "Import sort errors, run 'make fmt' to fix them!!!"; \
+            isort --diff $FILES; \
+            false; \
+	fi
+	@if ! black -c -rc $FILES; then \
+            echo "Import sort errors, run 'make fmt' to fix them!!!"; \
+            isort --diff -rc FILES; \
             false; \
 	fi
 	@if ! LC_ALL=C sort -c CONTRIBUTORS.txt; then \
