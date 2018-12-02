@@ -1,0 +1,1 @@
+Deprecate body parameter in HTTPException (and derived classes) constructor.
