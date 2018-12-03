@@ -1,6 +1,8 @@
 import asyncio
 from typing import Optional, cast
 
+from .tcp_helpers import tcp_nodelay
+
 
 class BaseProtocol(asyncio.Protocol):
     __slots__ = ('_loop', '_paused', '_drain_waiter',
@@ -46,7 +48,9 @@ class BaseProtocol(asyncio.Protocol):
             self._reading_paused = False
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        self.transport = cast(asyncio.Transport, transport)
+        tr = cast(asyncio.Transport, transport)
+        tcp_nodelay(tr, True)
+        self.transport = tr
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._connection_lost = True
