@@ -38,7 +38,6 @@ from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import (WSHandshakeError, WSMessage, ws_ext_gen,  # noqa
                              ws_ext_parse)
 from .streams import FlowControlDataQueue
-from .tcp_helpers import tcp_cork, tcp_nodelay
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
@@ -400,8 +399,6 @@ class ClientSession:
                             'to host {0}'.format(url)) from exc
 
                     assert conn.transport is not None
-                    tcp_nodelay(conn.transport, True)
-                    tcp_cork(conn.transport, False)
 
                     assert conn.protocol is not None
                     conn.protocol.set_response_params(
@@ -718,7 +715,6 @@ class ClientSession:
             reader = FlowControlDataQueue(
                 proto, limit=2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
             proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
-            tcp_nodelay(transport, True)
             writer = WebSocketWriter(
                 proto, transport, use_mask=True,
                 compress=compress, notakeover=notakeover)
