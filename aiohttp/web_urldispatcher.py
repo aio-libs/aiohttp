@@ -758,7 +758,7 @@ class MaskDomain(Domain):
 
     def __init__(self, domain: str) -> None:
         super().__init__(domain)
-        mask = self._domain.replace('.', '\.').replace('*', '.*')
+        mask = self._domain.replace('.', r'\.').replace('*', '.*')
         self._mask = re.compile(mask)
 
     @property
