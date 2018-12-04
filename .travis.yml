@@ -202,7 +202,6 @@ jobs:
     - &env_py35 PYTHON_VERSION=3.5.3
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
   - <<: *osx_python_base
     python: *mainstream_python
     env:
@@ -247,7 +246,6 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     env:
@@ -270,7 +268,6 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
     env:
@@ -293,7 +290,6 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     env:
