@@ -151,6 +151,13 @@ args = dict(
     packages=['aiohttp'],
     python_requires='>=3.5.3',
     install_requires=install_requires,
+    extras_require={
+        'speedups': [
+            'aiodns',
+            'brotlipy',
+            'cchardet',
+        ],
+    },
     tests_require=tests_require,
     setup_requires=pytest_runner,
     include_package_data=True,
