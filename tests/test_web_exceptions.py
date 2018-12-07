@@ -15,7 +15,7 @@ def buf():
 
 
 @pytest.fixture
-def request(buf):
+def http_request(buf):
     method = 'GET'
     path = '/'
     writer = mock.Mock()
@@ -54,9 +54,9 @@ def test_all_http_exceptions_exported() -> None:
             assert name in web.__all__
 
 
-async def test_HTTPOk(buf, request) -> None:
+async def test_HTTPOk(buf, http_request) -> None:
     resp = web.HTTPOk()
-    await resp.prepare(request)
+    await resp.prepare(http_request)
     await resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match(('HTTP/1.1 200 OK\r\n'
@@ -87,11 +87,11 @@ def test_terminal_classes_has_status_code() -> None:
     assert 1 == codes.most_common(1)[0][1]
 
 
-async def test_HTTPFound(buf, request) -> None:
+async def test_HTTPFound(buf, http_request) -> None:
     resp = web.HTTPFound(location='/redirect')
     assert '/redirect' == resp.location
     assert '/redirect' == resp.headers['location']
-    await resp.prepare(request)
+    await resp.prepare(http_request)
     await resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 302 Found\r\n'
@@ -111,12 +111,12 @@ def test_HTTPFound_empty_location() -> None:
         web.HTTPFound(location=None)
 
 
-async def test_HTTPMethodNotAllowed(buf, request) -> None:
+async def test_HTTPMethodNotAllowed(buf, http_request) -> None:
     resp = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
     assert 'GET' == resp.method
     assert {'POST', 'PUT'} == resp.allowed_methods
     assert 'POST,PUT' == resp.headers['allow']
-    await resp.prepare(request)
+    await resp.prepare(http_request)
     await resp.write_eof()
     txt = buf.decode('utf8')
     assert re.match('HTTP/1.1 405 Method Not Allowed\r\n'
@@ -169,7 +169,7 @@ def test_empty_body_304() -> None:
     resp.body is None
 
 
-def test_link_header_451(buf, request) -> None:
+def test_link_header_451(buf) -> None:
     resp = web.HTTPUnavailableForLegalReasons(link='http://warning.or.kr/')
 
     assert 'http://warning.or.kr/' == resp.link

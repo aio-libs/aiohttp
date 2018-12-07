@@ -12,11 +12,6 @@ def key():
 
 
 @pytest.fixture
-def request():
-    return mock.Mock()
-
-
-@pytest.fixture
 def loop():
     return mock.Mock()
 
