@@ -98,8 +98,6 @@ class ClientSession:
     _source_traceback = None
     _connector = None
 
-    requote_redirect_url = True
-
     def __init__(self, *, connector: Optional[BaseConnector]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
                  cookies: Optional[LooseCookies]=None,
@@ -119,6 +117,7 @@ class ClientSession:
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
+                 requote_redirect_url: bool=True,
                  trace_configs: Optional[List[TraceConfig]]=None) -> None:
 
         if loop is None:
@@ -171,6 +170,7 @@ class ClientSession:
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
+        self._requote_redirect_url = requote_redirect_url
 
         # Convert to list of tuples
         if headers:
@@ -468,7 +468,7 @@ class ClientSession:
 
                         try:
                             r_url = URL(
-                                r_url, encoded=not self.requote_redirect_url)
+                                r_url, encoded=not self._requote_redirect_url)
 
                         except ValueError:
                             raise InvalidURL(r_url)
@@ -840,6 +840,20 @@ class ClientSession:
     def version(self) -> Tuple[int, int]:
         """The session HTTP protocol version."""
         return self._version
+
+    @property
+    def requote_redirect_url(self) -> bool:
+        """Do URL requoting on redirection handling."""
+        return self._requote_redirect_url
+
+    @requote_redirect_url.setter
+    def requote_redirect_url(self, val: bool) -> None:
+        """Do URL requoting on redirection handling."""
+        warnings.warn("session.requote_redirect_url modification "
+                      "is deprecated #2778",
+                      DeprecationWarning,
+                      stacklevel=2)
+        self._requote_redirect_url = val
 
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
