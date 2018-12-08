@@ -687,3 +687,21 @@ async def test_client_session_timeout_args(loop) -> None:
         ClientSession(loop=loop,
                       timeout=client.ClientTimeout(total=10 * 60),
                       conn_timeout=30 * 60)
+
+
+async def test_requote_redirect_url_default() -> None:
+    session = ClientSession()
+    assert session.requote_redirect_url
+
+
+async def test_requote_redirect_url_default_disable() -> None:
+    session = ClientSession(requote_redirect_url=False)
+    assert not session.requote_redirect_url
+
+
+async def test_requote_redirect_setter() -> None:
+    session = ClientSession()
+    assert session.requote_redirect_url
+    with pytest.warns(DeprecationWarning):
+        session.requote_redirect_url = False
+    assert not session.requote_redirect_url
