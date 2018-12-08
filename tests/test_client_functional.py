@@ -599,7 +599,10 @@ async def test_timeout_on_session_read_timeout(aiohttp_client, mocker) -> None:
     app.router.add_route('GET', '/', handler)
 
     conn = aiohttp.TCPConnector()
-    client = await aiohttp_client(app, connector=conn, read_timeout=0.01)
+    client = await aiohttp_client(
+        app,
+        connector=conn,
+        timeout=aiohttp.ClientTimeout(sock_read=0.01))
 
     with pytest.raises(asyncio.TimeoutError):
         await client.get('/')

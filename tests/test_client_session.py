@@ -674,7 +674,10 @@ async def test_client_session_timeout_args(loop) -> None:
     session1 = ClientSession(loop=loop)
     assert session1._timeout == client.DEFAULT_TIMEOUT
 
-    session2 = ClientSession(loop=loop, read_timeout=20*60, conn_timeout=30*60)
+    with pytest.warns(DeprecationWarning):
+        session2 = ClientSession(loop=loop,
+                                 read_timeout=20*60,
+                                 conn_timeout=30*60)
     assert session2._timeout == client.ClientTimeout(total=20*60,
                                                      connect=30*60)
 
