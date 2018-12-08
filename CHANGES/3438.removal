@@ -1,0 +1,1 @@
+Deprecate obsolete ``read_timeout`` and ``conn_timeout`` in ``ClientSession`` constructor.
