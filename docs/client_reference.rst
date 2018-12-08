@@ -48,7 +48,10 @@ The client session supports the context manager protocol for self closing.
                          timeout=sentinel, \
                          raise_for_status=False, \
                          connector_owner=True, \
-                         auto_decompress=True, proxies=None)
+                         auto_decompress=True, \
+                         requote_redirect_url=False, \
+                         trust_env=False, \
+                         trace_configs=None)
 
    The class for creating client sessions and making requests.
 
@@ -176,6 +179,17 @@ The client session supports the context manager protocol for self closing.
 
          Added support for ``~/.netrc`` file.
 
+   :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs if
+                                     automatic redirection is enabled (``True`` by
+                                     default).
+
+      .. versionadded:: 3.5
+
+   :param trace_configs: A list of :class:`TraceConfig` instances used for client
+                         tracing.  ``None`` (default) is used for request tracing
+                         disabling.  See :ref:`aiohttp-client-tracing-reference` for
+                         more information.
+
    .. attribute:: closed
 
       ``True`` if the session has been closed, ``False`` otherwise.
@@ -206,6 +220,10 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 2.1
 
       .. note:: This parameter affects all subsequent requests.
+
+      .. deprecated:: 3.5
+
+         The attribute modification is deprecated.
 
    .. attribute:: loop
 
