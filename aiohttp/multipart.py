@@ -312,7 +312,10 @@ class BodyPartReader:
             idx = window.find(sub, max(0, len(self._prev_chunk) - len(sub)))
         if idx >= 0:
             # pushing boundary back to content
-            self._content.unread_data(window[idx:])
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore",
+                                        category=DeprecationWarning)
+                self._content.unread_data(window[idx:])
             if size > idx:
                 self._prev_chunk = self._prev_chunk[:idx]
             chunk = window[len(self._prev_chunk):idx]
