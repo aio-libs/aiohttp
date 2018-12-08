@@ -154,10 +154,18 @@ class ClientSession:
         if timeout is sentinel:
             self._timeout = DEFAULT_TIMEOUT
             if read_timeout is not sentinel:
+                warnings.warn("read_timeout is deprecated, "
+                              "use timeout argument instead",
+                              DeprecationWarning,
+                              stacklevel=2)
                 self._timeout = attr.evolve(self._timeout, total=read_timeout)
             if conn_timeout is not None:
                 self._timeout = attr.evolve(self._timeout,
                                             connect=conn_timeout)
+                warnings.warn("conn_timeout is deprecated, "
+                              "use timeout argument instead",
+                              DeprecationWarning,
+                              stacklevel=2)
         else:
             self._timeout = timeout  # type: ignore
             if read_timeout is not sentinel:
