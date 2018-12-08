@@ -1,6 +1,7 @@
 setuptools-git==1.2
 mypy==0.641; implementation_name=="cpython"
 mypy-extensions==0.4.1; implementation_name=="cpython"
+idna==2.7
 
 -r ci-wheel.txt
 -r doc.txt
