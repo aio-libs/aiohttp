@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import warnings
 from typing import List  # noqa
 from typing import Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
@@ -211,6 +212,10 @@ class StreamReader(AsyncStreamReaderMixin):
     def unread_data(self, data: bytes) -> None:
         """ rollback reading some data from stream, inserting it to buffer head.
         """
+        warnings.warn("unread_data() is deprecated "
+                      "and will be removed in future releases (#3260)",
+                      DeprecationWarning,
+                      stacklevel=2)
         if not data:
             return
 
