@@ -582,9 +582,10 @@ async def test_keep_alive(make_srv, transport, ceil) -> None:
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
 
-    await asyncio.sleep(0.01)
-    waiter = srv._waiter
-    assert waiter
+    waiter = None
+    while waiter is None:
+        await asyncio.sleep(0)
+        waiter = srv._waiter
     assert srv._keepalive_handle is not None
     assert not transport.close.called
 
