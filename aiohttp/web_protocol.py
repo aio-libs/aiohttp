@@ -400,7 +400,10 @@ class RequestHandler(BaseProtocol):
                 message, payload, self, writer, handler)
             try:
                 try:
-                    resp = await self._request_handler(request)
+                    # a new task is used for copy context vars (#3406)
+                    task = self._loop.create_task(
+                        self._request_handler(request))
+                    resp = await task
                 except HTTPException as exc:
                     resp = exc
                 except asyncio.CancelledError:
