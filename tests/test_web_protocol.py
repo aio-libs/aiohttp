@@ -582,7 +582,7 @@ async def test_keep_alive(make_srv, transport, ceil) -> None:
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
 
-    await asyncio.sleep(0.05)
+    await asyncio.sleep(0.01)
     waiter = srv._waiter
     assert waiter
     assert srv._keepalive_handle is not None
@@ -856,3 +856,4 @@ async def test_two_data_received_without_waking_up_start_task(srv) -> None:
 
     assert len(srv._messages) == 2
     assert srv._waiter.done()
+    await asyncio.sleep(0.01)
