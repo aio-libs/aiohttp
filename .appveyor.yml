@@ -24,7 +24,7 @@ test_script:
   - "tools/build.cmd %PYTHON%\\python.exe -m pytest -c pytest.ci.ini --cov-report xml"
 
 after_test:
-  - "tools/build.cmd %PYTHON%\\python.exe -m codecov -X gcov"
+  - "tools/build.cmd %PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
 
 artifacts:
   - path: dist\*
