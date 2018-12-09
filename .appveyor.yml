@@ -24,7 +24,7 @@ test_script:
   - "tools/build.cmd %PYTHON%\\python.exe -m pytest -c pytest.ci.ini"
 
 after_test:
-  - "tools/build.cmd %PYTHON%\\python.exe -m setup sdist bdist_wheel"
+  - "tools/build.cmd %PYTHON%\\python.exe -m codecov"
 
 artifacts:
   - path: dist\*
