@@ -237,7 +237,7 @@ async def test_simple(srv, buf) -> None:
     srv.data_received(
         b'GET / HTTP/1.1\r\n\r\n')
 
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
     assert buf.startswith(b'HTTP/1.1 200 OK\r\n')
 
 
@@ -450,7 +450,7 @@ async def test_lingering_disabled(make_srv,
         b'Content-Length: 50\r\n\r\n')
     await asyncio.sleep(0)
     assert not transport.close.called
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
     transport.close.assert_called_with()
 
 
@@ -465,7 +465,7 @@ async def test_lingering_timeout(
     srv.connection_made(transport)
     request_handler.side_effect = handle_request
 
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
     assert not transport.close.called
 
     srv.data_received(
@@ -475,7 +475,7 @@ async def test_lingering_timeout(
     await asyncio.sleep(0)
     assert not transport.close.called
 
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
     transport.close.assert_called_with()
 
 
@@ -490,7 +490,7 @@ async def test_handle_payload_access_error(
         b'some data'
     )
     # start request_handler task
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
 
     with pytest.raises(web.PayloadAccessError):
         await request_handler.call_args[0][0].content.read()
@@ -582,7 +582,7 @@ async def test_keep_alive(make_srv, transport, ceil) -> None:
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
 
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
     waiter = srv._waiter
     assert waiter
     assert srv._keepalive_handle is not None
@@ -681,7 +681,7 @@ async def test_close(srv, transport) -> None:
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
 
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
     assert srv._task_handler
     assert srv._waiter
 
@@ -721,7 +721,7 @@ async def test_pipeline_multiple_messages(
     assert len(srv._messages) == 2
     assert srv._waiter is not None
 
-    await asyncio.sleep(0.01)
+    await asyncio.sleep(0.05)
     assert srv._task_handler is not None
     assert srv._waiter is not None
     assert processed == 2
