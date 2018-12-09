@@ -24,7 +24,7 @@ test_script:
   - "tools/build.cmd %PYTHON%\\python.exe -m pytest -c pytest.ci.ini"
 
 after_test:
-  - "tools/build.cmd %PYTHON%\\python.exe -m codecov"
+  - "tools/build.cmd %PYTHON%\\python.exe -m codecov -X gcov"
 
 artifacts:
   - path: dist\*
