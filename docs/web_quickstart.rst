@@ -757,12 +757,3 @@ unsupported method and list of allowed methods::
     HTTPMethodNotAllowed(method, allowed_methods, *,
                          headers=None, reason=None,
                          body=None, text=None, content_type=None)
-
-
-ContextVars support
--------------------
-
-Starting from Python 3.7 asyncio has a :mod:`Context Variables <contextvars>`.
-
-
-.. versionadded:: 3.5
