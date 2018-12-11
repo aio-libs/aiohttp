@@ -20,8 +20,8 @@ from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (Any, Callable, Dict, Iterable, Iterator, List,  # noqa
-                    Mapping, Optional, Pattern, Tuple, Type, TypeVar, Union,
-                    cast)
+                    Mapping, Optional, Pattern, Set, Tuple, Type, TypeVar,
+                    Union, cast)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -635,6 +635,13 @@ def set_result(fut: 'asyncio.Future[_T]', result: _T) -> None:
 def set_exception(fut: 'asyncio.Future[_T]', exc: BaseException) -> None:
     if not fut.done():
         fut.set_exception(exc)
+
+
+def all_tasks(loop: asyncio.AbstractEventLoop) -> Set['asyncio.Task[Any]']:
+    if PY_37:
+        return asyncio.all_tasks(loop)
+    else:
+        return asyncio.Task.all_tasks(loop)
 
 
 class ChainMapProxy(Mapping[str, Any]):
