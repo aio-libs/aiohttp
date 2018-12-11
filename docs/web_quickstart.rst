@@ -757,23 +757,3 @@ unsupported method and list of allowed methods::
     HTTPMethodNotAllowed(method, allowed_methods, *,
                          headers=None, reason=None,
                          body=None, text=None, content_type=None)
-
-
-ContextVars support
--------------------
-
-Starting from Python 3.7 asyncio has :mod:`Context Variables <contextvars>` as a
-context-local storage (a generalization of thread-local concept that works with asyncio
-tasks also).
-
-
-*aiohttp* server supports it in the following way:
-
-* A server inherits a current context used by the server creation. The context is either
-  a context from asyncio task used by creating and starting
-  aiohttp server.
-
-  Initializaton callbacks
-
-
-.. versionadded:: 3.5
