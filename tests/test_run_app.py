@@ -14,8 +14,8 @@ from uuid import uuid4
 import pytest
 
 from aiohttp import web
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.helpers import PY_37
+from aiohttp.test_utils import make_mocked_coro
 
 
 # Test for features of OS' socket support
