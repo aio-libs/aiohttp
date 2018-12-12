@@ -160,7 +160,7 @@ class ResponseHandler(BaseProtocol,
             self._read_timeout_handle.cancel()
 
         if timeout:
-            self._read_timeout_handle = self._loop.call_later(  # type: ignore
+            self._read_timeout_handle = self._loop.call_later(
                 timeout, self._on_read_timeout)
         else:
             self._read_timeout_handle = None

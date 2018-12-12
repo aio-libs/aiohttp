@@ -518,7 +518,7 @@ def teardown_test_loop(loop: asyncio.AbstractEventLoop,
     if not fast:
         gc.collect()
 
-    asyncio.set_event_loop(None)  # type: ignore
+    asyncio.set_event_loop(None)
 
 
 def _create_app_mock() -> mock.MagicMock:
