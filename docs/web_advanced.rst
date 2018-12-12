@@ -407,9 +407,9 @@ tasks also).
 
 *aiohttp* server supports it in the following way:
 
-* A server inherits a current task's context used by the server
-  creation. :func:`aiohttp.web.run_app()` runs a task for handling all underlying dirty
-  job, but :ref:`aiohttp-web-app-runners` can be used as well.
+* A server inherits the current task's context used when creating it.
+  :func:`aiohttp.web.run_app()` runs a task for handling all underlying jobs running
+  the app, but alternatively :ref:`aiohttp-web-app-runners` can be used.
 
 * Application initialization / finalization events (:attr:`Application.cleanup_ctx`,
   :attr:`Application.on_startup` and :attr:`Application.on_shutdown`,
