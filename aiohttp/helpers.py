@@ -50,10 +50,10 @@ except ImportError:
     from typing_extensions import ContextManager
 
 
-if sys.version_info >= (3, 7):  # a constant is needed to be passed by mypy
-    all_tasks = asyncio.all_tasks
-else:
-    all_tasks = asyncio.Task.all_tasks
+all_tasks = asyncio.Task.all_tasks
+
+if PY_37:
+    all_tasks = getattr(asyncio, 'all_tasks')  # use the trick to cheat mypy
 
 
 _T = TypeVar('_T')
