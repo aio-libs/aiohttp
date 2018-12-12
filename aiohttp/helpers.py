@@ -50,6 +50,12 @@ except ImportError:
     from typing_extensions import ContextManager
 
 
+if sys.version_info >= (3, 7):  # a constant is needed to be passed by mypy
+    all_tasks = asyncio.all_tasks
+else:
+    all_tasks = asyncio.Task.all_tasks
+
+
 _T = TypeVar('_T')
 
 
@@ -635,13 +641,6 @@ def set_result(fut: 'asyncio.Future[_T]', result: _T) -> None:
 def set_exception(fut: 'asyncio.Future[_T]', exc: BaseException) -> None:
     if not fut.done():
         fut.set_exception(exc)
-
-
-def all_tasks(loop: asyncio.AbstractEventLoop) -> Set['asyncio.Task[Any]']:
-    if PY_37:
-        return asyncio.all_tasks(loop)
-    else:
-        return asyncio.Task.all_tasks(loop)
 
 
 class ChainMapProxy(Mapping[str, Any]):
