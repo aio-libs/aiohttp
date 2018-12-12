@@ -639,7 +639,7 @@ def set_exception(fut: 'asyncio.Future[_T]', exc: BaseException) -> None:
 
 def all_tasks(loop: asyncio.AbstractEventLoop) -> Set['asyncio.Task[Any]']:
     if PY_37:
-        return asyncio.all_tasks(loop)  # type: ignore
+        return asyncio.all_tasks(loop)
     else:
         return asyncio.Task.all_tasks(loop)
 
