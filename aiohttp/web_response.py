@@ -487,18 +487,18 @@ class Response(StreamResponse):
             raise ValueError("body and text are not allowed together")
 
         if headers is None:
-            headers = CIMultiDict()
+            real_headers = CIMultiDict()  # type: CIMultiDict[str]
         elif not isinstance(headers, CIMultiDict):
-            headers = CIMultiDict(headers)
+            real_headers = CIMultiDict(headers)
         else:
-            headers = cast('CIMultiDict[str]', headers)
+            real_headers = headers  # = cast('CIMultiDict[str]', headers)
 
         if content_type is not None and "charset" in content_type:
             raise ValueError("charset must not be in content_type "
                              "argument")
 
         if text is not None:
-            if hdrs.CONTENT_TYPE in headers:
+            if hdrs.CONTENT_TYPE in real_headers:
                 if content_type or charset:
                     raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
@@ -512,12 +512,12 @@ class Response(StreamResponse):
                     content_type = 'text/plain'
                 if charset is None:
                     charset = 'utf-8'
-                headers[hdrs.CONTENT_TYPE] = (
+                real_headers[hdrs.CONTENT_TYPE] = (
                     content_type + '; charset=' + charset)
                 body = text.encode(charset)
                 text = None
         else:
-            if hdrs.CONTENT_TYPE in headers:
+            if hdrs.CONTENT_TYPE in real_headers:
                 if content_type is not None or charset is not None:
                     raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
@@ -526,9 +526,9 @@ class Response(StreamResponse):
                 if content_type is not None:
                     if charset is not None:
                         content_type += '; charset=' + charset
-                    headers[hdrs.CONTENT_TYPE] = content_type
+                    real_headers[hdrs.CONTENT_TYPE] = content_type
 
-        super().__init__(status=status, reason=reason, headers=headers)
+        super().__init__(status=status, reason=reason, headers=real_headers)
 
         if text is not None:
             self.text = text
