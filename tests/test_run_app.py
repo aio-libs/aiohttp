@@ -639,7 +639,7 @@ def test_run_app_cancels_all_pending_tasks(patched_loop):
     assert task.cancelled()
 
 
-@pytest.mark.skip_if(not PY_37,
+@pytest.mark.skipif(not PY_37,
                      reason="contextvars support is required")
 def test_run_app_context_vars(patched_loop):
     from contextvars import ContextVar
