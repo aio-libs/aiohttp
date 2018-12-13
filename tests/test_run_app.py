@@ -643,21 +643,33 @@ def test_run_app_cancels_failed_tasks(patched_loop):
     app = web.Application()
     task = None
 
+    exc = RuntimeError("FAIL")
+
     async def fail():
-        raise RuntimeError("FAIL")
+        try:
+            await asyncio.sleep(1000)
+        except asyncio.CancelledError:
+            raise exc
 
     async def on_startup(app):
         nonlocal task
         loop = asyncio.get_event_loop()
         task = loop.create_task(fail())
+        await asyncio.sleep(0.01)
 
     app.on_startup.append(on_startup)
 
-    msgs = []
-    patched_loop.set_exception_handler(lambda loop, msg: msgs.append(msg))
+    exc_handler = mock.Mock()
+    patched_loop.set_exception_handler(exc_handler)
     web.run_app(app, print=stopper(patched_loop))
     assert task.done()
-    assert msgs == []
+
+    msg = {
+        'message': 'unhandled exception during asyncio.run() shutdown',
+        'exception': exc,
+        'task': task,
+    }
+    exc_handler.assert_called_with(patched_loop, msg)
 
 
 @pytest.mark.skipif(not PY_37,
