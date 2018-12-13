@@ -639,6 +639,24 @@ def test_run_app_cancels_all_pending_tasks(patched_loop):
     assert task.cancelled()
 
 
+def test_run_app_cancels_done_tasks(patched_loop):
+    app = web.Application()
+    task = None
+
+    async def coro():
+        return 123
+
+    async def on_startup(app):
+        nonlocal task
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(coro())
+
+    app.on_startup.append(on_startup)
+
+    web.run_app(app, print=stopper(patched_loop))
+    assert task.cancelled()
+
+
 def test_run_app_cancels_failed_tasks(patched_loop):
     app = web.Application()
     task = None
