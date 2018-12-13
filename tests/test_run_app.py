@@ -639,6 +639,27 @@ def test_run_app_cancels_all_pending_tasks(patched_loop):
     assert task.cancelled()
 
 
+def test_run_app_cancels_failed_tasks(patched_loop):
+    app = web.Application()
+    task = None
+
+    async def fail():
+        raise RuntimeError("FAIL")
+
+    async def on_startup(app):
+        nonlocal task
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(fail())
+
+    app.on_startup.append(on_startup)
+
+    msgs = []
+    patched_loop.set_exception_handler(lambda loop, msg: msgs.append(msg))
+    web.run_app(app, print=stopper(patched_loop))
+    assert task.done()
+    assert msgs == []
+
+
 @pytest.mark.skipif(not PY_37,
                     reason="contextvars support is required")
 def test_run_app_context_vars(patched_loop):
