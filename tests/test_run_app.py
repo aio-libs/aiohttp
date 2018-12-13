@@ -654,7 +654,7 @@ def test_run_app_cancels_done_tasks(patched_loop):
     app.on_startup.append(on_startup)
 
     web.run_app(app, print=stopper(patched_loop))
-    assert task.cancelled()
+    assert task.done()
 
 
 def test_run_app_cancels_failed_tasks(patched_loop):
