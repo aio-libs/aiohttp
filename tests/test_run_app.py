@@ -14,6 +14,7 @@ from uuid import uuid4
 import pytest
 
 from aiohttp import web
+from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -621,3 +622,103 @@ def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop):
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_called_with()
     mock_logger.addHandler.assert_not_called()
+
+
+def test_run_app_cancels_all_pending_tasks(patched_loop):
+    app = web.Application()
+    task = None
+
+    async def on_startup(app):
+        nonlocal task
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(asyncio.sleep(1000))
+
+    app.on_startup.append(on_startup)
+
+    web.run_app(app, print=stopper(patched_loop))
+    assert task.cancelled()
+
+
+def test_run_app_cancels_done_tasks(patched_loop):
+    app = web.Application()
+    task = None
+
+    async def coro():
+        return 123
+
+    async def on_startup(app):
+        nonlocal task
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(coro())
+
+    app.on_startup.append(on_startup)
+
+    web.run_app(app, print=stopper(patched_loop))
+    assert task.done()
+
+
+def test_run_app_cancels_failed_tasks(patched_loop):
+    app = web.Application()
+    task = None
+
+    exc = RuntimeError("FAIL")
+
+    async def fail():
+        try:
+            await asyncio.sleep(1000)
+        except asyncio.CancelledError:
+            raise exc
+
+    async def on_startup(app):
+        nonlocal task
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(fail())
+        await asyncio.sleep(0.01)
+
+    app.on_startup.append(on_startup)
+
+    exc_handler = mock.Mock()
+    patched_loop.set_exception_handler(exc_handler)
+    web.run_app(app, print=stopper(patched_loop))
+    assert task.done()
+
+    msg = {
+        'message': 'unhandled exception during asyncio.run() shutdown',
+        'exception': exc,
+        'task': task,
+    }
+    exc_handler.assert_called_with(patched_loop, msg)
+
+
+@pytest.mark.skipif(not PY_37,
+                    reason="contextvars support is required")
+def test_run_app_context_vars(patched_loop):
+    from contextvars import ContextVar
+
+    count = 0
+    VAR = ContextVar('VAR', default='default')
+
+    async def on_startup(app):
+        nonlocal count
+        assert 'init' == VAR.get()
+        VAR.set('on_startup')
+        count += 1
+
+    async def on_cleanup(app):
+        nonlocal count
+        assert 'on_startup' == VAR.get()
+        count += 1
+
+    async def init():
+        nonlocal count
+        assert 'default' == VAR.get()
+        VAR.set('init')
+        app = web.Application()
+
+        app.on_startup.append(on_startup)
+        app.on_cleanup.append(on_cleanup)
+        count += 1
+        return app
+
+    web.run_app(init(), print=stopper(patched_loop))
+    assert count == 3
