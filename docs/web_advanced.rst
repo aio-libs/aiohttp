@@ -393,6 +393,82 @@ and safe to use as the key.
 Otherwise, something based on your company name/url would be satisfactory (i.e.
 ``org.company.app``).
 
+
+.. _aiohttp-web-contextvars:
+
+
+ContextVars support
+-------------------
+
+Starting from Python 3.7 asyncio has :mod:`Context Variables <contextvars>` as a
+context-local storage (a generalization of thread-local concept that works with asyncio
+tasks also).
+
+
+*aiohttp* server supports it in the following way:
+
+* A server inherits the current task's context used when creating it.
+  :func:`aiohttp.web.run_app()` runs a task for handling all underlying jobs running
+  the app, but alternatively :ref:`aiohttp-web-app-runners` can be used.
+
+* Application initialization / finalization events (:attr:`Application.cleanup_ctx`,
+  :attr:`Application.on_startup` and :attr:`Application.on_shutdown`,
+  :attr:`Application.on_cleanup`) are executed inside the same context.
+
+  E.g. all context modifications made on application startup a visible on teardown.
+
+* On every request handling *aiohttp* creates a context copy. :term:`web-handler` has
+  all variables installed on initialization stage. But the context modification made by
+  a handler or middleware is invisible to another HTTP request handling call.
+
+An example of context vars usage::
+
+    from contextvars import ContextVar
+
+    from aiohttp import web
+
+    VAR = ContextVar('VAR', default='default')
+
+
+    async def coro():
+        return VAR.get()
+
+
+    async def handler(request):
+        var = VAR.get()
+        VAR.set('handler')
+        ret = await coro()
+        return web.Response(text='\n'.join([var,
+                                            ret]))
+
+
+    async def on_startup(app):
+        print('on_startup', VAR.get())
+        VAR.set('on_startup')
+
+
+    async def on_cleanup(app):
+        print('on_cleanup', VAR.get())
+        VAR.set('on_cleanup')
+
+
+    async def init():
+        print('init', VAR.get())
+        VAR.set('init')
+        app = web.Application()
+        app.router.add_get('/', handler)
+
+        app.on_startup.append(on_startup)
+        app.on_cleanup.append(on_cleanup)
+        return app
+
+
+    web.run_app(init())
+    print('done', VAR.get())
+
+.. versionadded:: 3.5
+
+
 .. _aiohttp-web-middlewares:
 
 Middlewares

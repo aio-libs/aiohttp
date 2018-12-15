@@ -20,8 +20,8 @@ from math import ceil
 from pathlib import Path
 from types import TracebackType
 from typing import (Any, Callable, Dict, Iterable, Iterator, List,  # noqa
-                    Mapping, Optional, Pattern, Tuple, Type, TypeVar, Union,
-                    cast)
+                    Mapping, Optional, Pattern, Set, Tuple, Type, TypeVar,
+                    Union, cast)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -48,6 +48,12 @@ try:
     from typing import ContextManager
 except ImportError:
     from typing_extensions import ContextManager
+
+
+all_tasks = asyncio.Task.all_tasks
+
+if PY_37:
+    all_tasks = getattr(asyncio, 'all_tasks')  # use the trick to cheat mypy
 
 
 _T = TypeVar('_T')
