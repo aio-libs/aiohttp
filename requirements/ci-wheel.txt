@@ -8,7 +8,7 @@ chardet==3.0.4
 coverage==4.5.2
 cython==0.29.2
 gunicorn==19.9.0
-multidict==4.4.2
+multidict==4.5.2
 pytest==3.8.2
 pytest-cov==2.6.0
 pytest-mock==1.10.0
