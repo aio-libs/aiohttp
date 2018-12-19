@@ -942,12 +942,13 @@ class TCPConnector(BaseConnector):
             host = hinfo['host']
             port = hinfo['port']
 
+            server_hostname = req.headers.get('Host') or hinfo['hostname']
             try:
                 transp, proto = await self._wrap_create_connection(
                     self._factory, host, port, timeout=timeout,
                     ssl=sslcontext, family=hinfo['family'],
                     proto=hinfo['proto'], flags=hinfo['flags'],
-                    server_hostname=hinfo['hostname'] if sslcontext else None,
+                    server_hostname=server_hostname if sslcontext else None,
                     local_addr=self._local_addr,
                     req=req, client_error=client_error)
             except ClientConnectorError as exc:
