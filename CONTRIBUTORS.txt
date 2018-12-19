@@ -37,6 +37,7 @@ Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
 Arthur Darcet
+Arthur Vuillard
 Ben Bader
 Benedikt Reinartz
 Boris Feld
