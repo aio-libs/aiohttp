@@ -1,0 +1,2 @@
+Fix the SSL hostname verification when using a `Host` header, and the IP in the URL.
+
