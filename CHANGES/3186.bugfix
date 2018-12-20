@@ -1,1 +1,0 @@
-Return empty bytes with end-of-chunk marker in empty stream reader.

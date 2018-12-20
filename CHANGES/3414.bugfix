@@ -1,2 +1,0 @@
-Fix `asyncio.TimeoutError` stack trace not logged, when it is caught
-in the handler.

@@ -1,1 +1,0 @@
-Ensure Host header is added first to ClientRequest to better replicate browser
