@@ -1,1 +1,0 @@
-Make ``request.url`` accessible when transport is closed.

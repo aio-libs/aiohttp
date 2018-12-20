@@ -1,1 +1,0 @@
-Add ``app.pre_frozen`` state to properly handle startup signals in sub-applications.
