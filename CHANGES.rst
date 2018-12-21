@@ -26,7 +26,7 @@ Features
 - The default ``app`` in the request returned by ``test_utils.make_mocked_request``
   can now have objects assigned to it and retrieved using the ``[]`` operator. (`#3174 <https://github.com/aio-libs/aiohttp/pull/3174>`_)
 - Make ``request.url`` accessible when transport is closed. (`#3177 <https://github.com/aio-libs/aiohttp/pull/3177>`_)
-- Add zlib_executor_size Response parameter to allow compression to run in a background executor to avoid blocking the main thread and potentially triggering health check failures. (`#3205 <https://github.com/aio-libs/aiohttp/pull/3205>`_)
+- Add ``zlib_executor_size`` argument to ``Response`` constructor to allow compression to run in a background executor to avoid blocking the main thread and potentially triggering health check failures. (`#3205 <https://github.com/aio-libs/aiohttp/pull/3205>`_)
 - Enable users to set `ClientTimeout` in `aiohttp.request` (`#3213 <https://github.com/aio-libs/aiohttp/pull/3213>`_)
 - Don't raise a warning if ``NETRC`` environment variable is not set and ``~/.netrc`` file
   doesn't exist. (`#3267 <https://github.com/aio-libs/aiohttp/pull/3267>`_)
@@ -87,7 +87,7 @@ Deprecations and Removals
 - Drop dead ``Connection.detach()`` and ``Connection.writer``. Both methods were broken
   for more than 2 years. (`#3358 <https://github.com/aio-libs/aiohttp/pull/3358>`_)
 - Deprecate ``app.loop``, ``request.loop``, ``client.loop`` and ``connector.loop`` properties. (`#3374 <https://github.com/aio-libs/aiohttp/pull/3374>`_)
-- Depreacte explicit debug argument. Use asyncio debug mode instead. (`#3381 <https://github.com/aio-libs/aiohttp/pull/3381>`_)
+- Deprecate explicit debug argument. Use asyncio debug mode instead. (`#3381 <https://github.com/aio-libs/aiohttp/pull/3381>`_)
 - Deprecate body parameter in HTTPException (and derived classes) constructor. (`#3385 <https://github.com/aio-libs/aiohttp/pull/3385>`_)
 - Deprecate bare connector close, use ``async with connector:`` and ``await connector.close()`` instead. (`#3417 <https://github.com/aio-libs/aiohttp/pull/3417>`_)
 - Deprecate obsolete ``read_timeout`` and ``conn_timeout`` in ``ClientSession`` constructor. (`#3438 <https://github.com/aio-libs/aiohttp/pull/3438>`_)
