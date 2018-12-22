@@ -1704,7 +1704,7 @@ Router is any object that implements :class:`AbstractRouter` interface.
       system call even if the platform supports it. This can be accomplished by
       by setting environment variable ``AIOHTTP_NOSENDFILE=1``.
 
-      If a gzip version of the static content exists at file path + ``.gz``, it
+      If a brotli/gzip version of the static content exists at file path + ``.br|.gz``, it
       will be used for the response.
 
       .. warning::
