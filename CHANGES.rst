@@ -14,7 +14,7 @@ Changelog
 
 .. towncrier release notes start
 
-3.5.0b1 (2018-12-20)
+3.5.0 (2018-12-22)
 ====================
 
 Features
