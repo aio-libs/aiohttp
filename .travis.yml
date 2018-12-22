@@ -226,8 +226,6 @@ jobs:
   - <<: *generic_deploy_base
     <<: *_reset_steps
     env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
-    dist: trusty
-    group: edge
     services:
     - docker
     script:
