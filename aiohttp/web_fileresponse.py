@@ -198,13 +198,26 @@ class FileResponse(StreamResponse):
     ) -> Optional[AbstractStreamWriter]:
         filepath = self._path
 
+        encoding = None
+        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, '')
+
+        brotli = False
+        if 'br' in accept_encoding:
+            brotli_path = filepath.with_name(filepath.name + '.br')
+
+            if brotli_path.is_file():
+                filepath = brotli_path
+                brotli = True
+                encoding = 'br'
+
         gzip = False
-        if 'gzip' in request.headers.get(hdrs.ACCEPT_ENCODING, ''):
+        if not brotli and 'gzip' in accept_encoding:
             gzip_path = filepath.with_name(filepath.name + '.gz')
 
             if gzip_path.is_file():
                 filepath = gzip_path
                 gzip = True
+                encoding = 'gzip'
 
         st = filepath.stat()
 
@@ -222,12 +235,16 @@ class FileResponse(StreamResponse):
             return await super().prepare(request)
 
         if hdrs.CONTENT_TYPE not in self.headers:
-            ct, encoding = mimetypes.guess_type(str(filepath))
+            # Guess Content-Type and encoding of original path,
+            # not of .gz or .br variant, since mimetypes.guess_type
+            # doesn't support Brotli (https://bugs.python.org/issue32021)
+            ct, guessed_encoding = mimetypes.guess_type(str(self._path))
+            if encoding is None:
+                encoding = guessed_encoding
             if not ct:
                 ct = 'application/octet-stream'
             should_set_ct = True
         else:
-            encoding = 'gzip' if gzip else None
             should_set_ct = False
 
         status = HTTPOk.status_code
@@ -309,7 +326,7 @@ class FileResponse(StreamResponse):
             self.content_type = ct  # type: ignore
         if encoding:
             self.headers[hdrs.CONTENT_ENCODING] = encoding
-        if gzip:
+        if brotli or gzip:
             self.headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
         self.last_modified = st.st_mtime  # type: ignore
         self.content_length = count
