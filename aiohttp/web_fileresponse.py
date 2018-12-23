@@ -56,11 +56,15 @@ class SendfileStreamWriter(StreamWriter):
     def _sendfile_cb(self, fut: 'asyncio.Future[None]', out_fd: int) -> None:
         if fut.cancelled():
             return
-        try:
-            if self._do_sendfile(out_fd):
-                set_result(fut, None)
-        except Exception as exc:
-            set_exception(fut, exc)
+
+        def inner() -> None:
+            try:
+                if self._do_sendfile(out_fd):
+                    set_result(fut, None)
+            except Exception as exc:
+                set_exception(fut, exc)
+
+        self.loop.run_in_executor(None, inner)
 
     def _do_sendfile(self, out_fd: int) -> bool:
         try:
@@ -91,7 +95,9 @@ class SendfileStreamWriter(StreamWriter):
         data = b''.join(self._sendfile_buffer)
         try:
             await loop.sock_sendall(out_socket, data)
-            if not self._do_sendfile(out_fd):
+            if not await self.loop.run_in_executor(
+                None, self._do_sendfile, out_fd
+            ):
                 fut = loop.create_future()
                 fut.add_done_callback(partial(self._done_fut, out_fd))
                 loop.add_writer(out_fd, self._sendfile_cb, fut, out_fd)
