@@ -345,6 +345,7 @@ async def test_double_close(connector, create_session) -> None:
 
 
 async def test_del(connector, loop) -> None:
+    loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
     logs = []

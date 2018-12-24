@@ -14,6 +14,12 @@ Changelog
 
 .. towncrier release notes start
 
+3.5.1 (2018-12-24)
+====================
+
+- Fix a regression about ``ClientSession._requote_redirect_url`` modification in debug
+  mode.
+
 3.5.0 (2018-12-22)
 ====================
 

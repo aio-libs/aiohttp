@@ -90,6 +90,7 @@ class ClientSession:
         'requote_redirect_url', '_loop', '_cookie_jar',
         '_connector_owner', '_default_auth',
         '_version', '_json_serialize',
+        '_requote_redirect_url',
         '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
