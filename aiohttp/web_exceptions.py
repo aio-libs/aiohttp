@@ -1,6 +1,10 @@
 import warnings
 from typing import Any, Dict, Iterable, List, Optional, Set  # noqa
 
+from multidict import CIMultiDict
+
+from . import hdrs
+from .http import RESPONSES
 from .typedefs import LooseHeaders, StrOrURL
 from .web_response import Response
 
@@ -70,7 +74,7 @@ __all__ = (
 # HTTP Exceptions
 ############################################################
 
-class HTTPException(Response, Exception):
+class HTTPException(Exception):
 
     # You should set in subclasses:
     # status = 200
@@ -80,25 +84,70 @@ class HTTPException(Response, Exception):
 
     __http_exception__ = True
 
+    __slots__ = ('_reason', '_headers', '_text')
+
     def __init__(self, *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,
-                 body: Any=None,
                  text: Optional[str]=None,
                  content_type: Optional[str]=None) -> None:
-        if body is not None:
-            warnings.warn(
-                "body argument is deprecated for http web exceptions",
-                DeprecationWarning)
-        Response.__init__(self, status=self.status_code,
-                          headers=headers, reason=reason,
-                          body=body, text=text, content_type=content_type)
-        Exception.__init__(self, self.reason)
-        if self.body is None and not self.empty_body:
-            self.text = "{}: {}".format(self.status, self.reason)
+        if reason is None:
+            try:
+                reason = RESPONSES[self.status_code][0]
+            except Exception:
+                reason = ''
+
+        if headers is not None:
+            real_headers = CIMultiDict(headers)
+        else:
+            real_headers = CIMultiDict()
+        if content_type is not None:
+            real_headers[hdrs.CONTENT_TYPE] = content_type
+        elif hdrs.CONTENT_TYPE not in real_headers:
+            real_headers[hdrs.CONTENT_TYPE] = 'text/plain'
+
+        super().__init__(reason)
+
+        self._reason = reason
+
+        if text is None:
+            if not self.empty_body:
+                text = "{}: {}".format(self.status_code, reason)
+        else:
+            if self.empty_body:
+                warnings.warn(
+                    ("text argument is deprecated for HTTP status {} ,"
+                     "the response should be provided without a body").format(
+                         self.status_code),
+                    DeprecationWarning,
+                    stacklevel=2)
+        self._text = text
+        self._headers = real_headers
 
     def __bool__(self) -> bool:
         return True
+
+    @property
+    def status(self) -> int:
+        return self.status_code
+
+    @property
+    def reason(self) -> str:
+        return self._reason
+
+    @property
+    def text(self) -> Optional[str]:
+        return self._text
+
+    @property
+    def headers(self) -> 'CIMultiDict[str]':
+        return self._headers
+
+    def make_response(self) -> Response:
+        return Response(status=self.status_code,
+                        reason=self._reason,
+                        text=self._text,
+                        headers=self._headers)
 
 
 class HTTPError(HTTPException):
@@ -155,13 +204,12 @@ class _HTTPMove(HTTPRedirection):
                  *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,
-                 body: Any=None,
                  text: Optional[str]=None,
                  content_type: Optional[str]=None) -> None:
         if not location:
             raise ValueError("HTTP redirects need a location to redirect to.")
         super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
+                         text=text, content_type=content_type)
         self.headers['Location'] = str(location)
         self.location = location
 
@@ -241,12 +289,11 @@ class HTTPMethodNotAllowed(HTTPClientError):
                  *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,
-                 body: Any=None,
                  text: Optional[str]=None,
                  content_type: Optional[str]=None) -> None:
         allow = ','.join(sorted(allowed_methods))
         super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
+                         text=text, content_type=content_type)
         self.headers['Allow'] = allow
         self.allowed_methods = set(allowed_methods)  # type: Set[str]
         self.method = method.upper()
@@ -347,11 +394,10 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
                  *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,
-                 body: Any=None,
                  text: Optional[str]=None,
                  content_type: Optional[str]=None) -> None:
         super().__init__(headers=headers, reason=reason,
-                         body=body, text=text, content_type=content_type)
+                         text=text, content_type=content_type)
         self.headers['Link'] = '<%s>; rel="blocked-by"' % link
         self.link = link
 

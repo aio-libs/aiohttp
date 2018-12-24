@@ -405,7 +405,7 @@ class RequestHandler(BaseProtocol):
                         self._request_handler(request))
                     resp = await task
                 except HTTPException as exc:
-                    resp = exc
+                    resp = exc.make_response()
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
