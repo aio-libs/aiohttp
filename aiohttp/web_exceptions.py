@@ -2,6 +2,7 @@ import warnings
 from typing import Any, Dict, Iterable, List, Optional, Set  # noqa
 
 from multidict import CIMultiDict
+from yarl import URL
 
 from . import hdrs
 from .http import RESPONSES
@@ -84,8 +85,6 @@ class HTTPException(Exception):
 
     __http_exception__ = True
 
-    __slots__ = ('_reason', '_headers', '_text')
-
     def __init__(self, *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,
@@ -96,19 +95,6 @@ class HTTPException(Exception):
                 reason = RESPONSES[self.status_code][0]
             except Exception:
                 reason = ''
-
-        if headers is not None:
-            real_headers = CIMultiDict(headers)
-        else:
-            real_headers = CIMultiDict()
-        if content_type is not None:
-            real_headers[hdrs.CONTENT_TYPE] = content_type
-        elif hdrs.CONTENT_TYPE not in real_headers:
-            real_headers[hdrs.CONTENT_TYPE] = 'text/plain'
-
-        super().__init__(reason)
-
-        self._reason = reason
 
         if text is None:
             if not self.empty_body:
@@ -121,6 +107,24 @@ class HTTPException(Exception):
                          self.status_code),
                     DeprecationWarning,
                     stacklevel=2)
+
+        if headers is not None:
+            real_headers = CIMultiDict(headers)
+        else:
+            real_headers = CIMultiDict()
+        if content_type is not None:
+            if text:
+                warnings.warn("content_type without text is deprecated",
+                              DeprecationWarning,
+                              stacklevel=2)
+            real_headers[hdrs.CONTENT_TYPE] = content_type
+        elif hdrs.CONTENT_TYPE not in real_headers and text:
+            real_headers[hdrs.CONTENT_TYPE] = 'text/plain'
+
+        super().__init__(reason)
+
+        self._reason = reason
+
         self._text = text
         self._headers = real_headers
 
@@ -211,7 +215,11 @@ class _HTTPMove(HTTPRedirection):
         super().__init__(headers=headers, reason=reason,
                          text=text, content_type=content_type)
         self.headers['Location'] = str(location)
-        self.location = location
+        self._location = URL(location)
+
+    @property
+    def location(self) -> URL:
+        return self._location
 
 
 class HTTPMultipleChoices(_HTTPMove):
@@ -295,8 +303,16 @@ class HTTPMethodNotAllowed(HTTPClientError):
         super().__init__(headers=headers, reason=reason,
                          text=text, content_type=content_type)
         self.headers['Allow'] = allow
-        self.allowed_methods = set(allowed_methods)  # type: Set[str]
-        self.method = method.upper()
+        self._allowed = set(allowed_methods)  # type: Set[str]
+        self._method = method.upper()
+
+    @property
+    def allowed_methods(self) -> Set[str]:
+        return self._allowed
+
+    @property
+    def method(self) -> str:
+        return self._method
 
 
 class HTTPNotAcceptable(HTTPClientError):

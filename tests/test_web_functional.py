@@ -1854,17 +1854,17 @@ async def test_request_tracing(aiohttp_server) -> None:
     await client.close()
 
 
-async def test_return_http_exception_deprecated(aiohttp_client) -> None:
+async def test_raise_http_exception(aiohttp_client) -> None:
 
     async def handler(request):
-        return web.HTTPForbidden()
+        raise web.HTTPForbidden()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
 
-    with pytest.warns(DeprecationWarning):
-        await client.get('/')
+    resp = await client.get('/')
+    assert resp.status == 403
 
 
 async def test_request_path(aiohttp_client) -> None:
