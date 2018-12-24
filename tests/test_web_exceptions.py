@@ -1,5 +1,4 @@
 import collections
-import re
 from traceback import format_exception
 
 import pytest

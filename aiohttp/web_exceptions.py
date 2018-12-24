@@ -102,9 +102,9 @@ class HTTPException(Exception):
         else:
             if self.empty_body:
                 warnings.warn(
-                    ("text argument is deprecated for HTTP status {} ,"
-                     "the response should be provided without a body").format(
-                         self.status_code),
+                    "text argument is deprecated for HTTP status {} ,"
+                    "the response should be provided without a body".format(
+                        self.status_code),
                     DeprecationWarning,
                     stacklevel=2)
 
