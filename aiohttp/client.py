@@ -31,7 +31,7 @@ from .client_ws import ClientWebSocketResponse
 from .connector import *  # noqa
 from .connector import BaseConnector, TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (DEBUG, PY_36, BasicAuth, CeilTimeout, TimeoutHandle,
+from .helpers import (PY_36, BasicAuth, CeilTimeout, TimeoutHandle,
                       get_running_loop, proxies_from_env, sentinel,
                       strip_auth_from_url)
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
@@ -85,19 +85,16 @@ _RetType = TypeVar('_RetType')
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
-    ATTRS = frozenset([
+    __slots__ = (
         '_source_traceback', '_connector',
-        'requote_redirect_url', '_loop', '_cookie_jar',
+        '_loop', '_cookie_jar',
         '_connector_owner', '_default_auth',
         '_version', '_json_serialize',
         '_requote_redirect_url',
         '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
-        '_ws_response_class', '_trace_configs'])
-
-    _source_traceback = None
-    _connector = None
+        '_ws_response_class', '_trace_configs')
 
     def __init__(self, *, connector: Optional[BaseConnector]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
@@ -130,14 +127,18 @@ class ClientSession:
         if connector is None:
             connector = TCPConnector(loop=loop)
 
+        # Initialize these three attrs before raising any exception,
+        # they are used in __del__
+        self._connector = connector  # type: Optional[BaseConnector]
+        self._loop = loop
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))  # type: Optional[traceback.StackSummary]  # noqa
+        else:
+            self._source_traceback = None
+
         if connector._loop is not loop:
             raise RuntimeError(
-                "Session and connector has to use same event loop")
-
-        self._loop = loop
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+                "Session and connector have to use same event loop")
 
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)
@@ -146,7 +147,6 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector  # type: BaseConnector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
@@ -206,15 +206,6 @@ class ClientSession:
                       "is discouraged".format(cls.__name__),
                       DeprecationWarning,
                       stacklevel=2)
-
-    if DEBUG:
-        def __setattr__(self, name: str, val: Any) -> None:
-            if name not in self.ATTRS:
-                warnings.warn("Setting custom ClientSession.{} attribute "
-                              "is discouraged".format(name),
-                              DeprecationWarning,
-                              stacklevel=2)
-            super().__setattr__(name, val)
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if not self.closed:
