@@ -1,11 +1,11 @@
 import warnings
-from typing import Any, Dict, Iterable, List, Optional, Set  # noqa
+from http import HTTPStatus
+from typing import Any, Dict, Iterable, List, Optional, Set, Type, cast  # noqa
 
 from multidict import CIMultiDict
 from yarl import URL
 
 from . import hdrs
-from .http import RESPONSES
 from .typedefs import LooseHeaders, StrOrURL
 from .web_response import Response
 
@@ -82,6 +82,7 @@ class HTTPException(Exception):
 
     status_code = -1
     empty_body = False
+    default_reason = ""  # Initialized at the end of the module
 
     __http_exception__ = True
 
@@ -91,10 +92,7 @@ class HTTPException(Exception):
                  text: Optional[str]=None,
                  content_type: Optional[str]=None) -> None:
         if reason is None:
-            try:
-                reason = RESPONSES[self.status_code][0]
-            except Exception:
-                reason = ''
+            reason = self.default_reason
 
         if text is None:
             if not self.empty_body:
@@ -123,8 +121,6 @@ class HTTPException(Exception):
 
         super().__init__(reason)
 
-        self._reason = reason
-
         self._text = text
         self._headers = real_headers
 
@@ -137,7 +133,7 @@ class HTTPException(Exception):
 
     @property
     def reason(self) -> str:
-        return self._reason
+        return self.args[0]
 
     @property
     def text(self) -> Optional[str]:
@@ -149,7 +145,7 @@ class HTTPException(Exception):
 
     def make_response(self) -> Response:
         return Response(status=self.status_code,
-                        reason=self._reason,
+                        reason=self.reason,
                         text=self._text,
                         headers=self._headers)
 
@@ -472,3 +468,19 @@ class HTTPNotExtended(HTTPServerError):
 
 class HTTPNetworkAuthenticationRequired(HTTPServerError):
     status_code = 511
+
+
+def _initialize_default_reason() -> None:
+    for obj in globals().values():
+        if isinstance(obj, type) and issubclass(obj, HTTPException):
+            exc = cast(Type[HTTPException], obj)
+            if exc.status_code >= 0:
+                try:
+                    status = HTTPStatus(exc.status_code)
+                    exc.default_reason = status.phrase
+                except ValueError:
+                    pass
+
+
+_initialize_default_reason()
+del _initialize_default_reason
