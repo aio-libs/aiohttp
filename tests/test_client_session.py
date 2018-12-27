@@ -305,7 +305,7 @@ def test_connector_loop(loop) -> None:
             async def make_sess():
                 return ClientSession(connector=connector, loop=loop)
             loop.run_until_complete(make_sess())
-        assert re.match("Session and connector has to use same event loop",
+        assert re.match("Session and connector have to use same event loop",
                         str(ctx.value))
 
 

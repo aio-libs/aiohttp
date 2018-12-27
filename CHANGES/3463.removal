@@ -1,0 +1,1 @@
+Make ``ClientSession`` slot-based class, convert debug-mode warning about a wild session modification into a strict error.
