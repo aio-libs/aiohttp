@@ -5,7 +5,6 @@ import os
 import re
 import signal
 import sys
-from contextlib import suppress
 from types import FrameType
 from typing import Any, Optional  # noqa
 
@@ -68,8 +67,10 @@ class GunicornWebWorker(base.Worker):
         self.loop.run_until_complete(self._runner.setup())
         self._task = self.loop.create_task(self._run())
 
-        with suppress(Exception):  # ignore all finalization problems
+        try:  # ignore all finalization problems
             self.loop.run_until_complete(self._task)
+        except Exception as error:
+            self.log.exception(error)
         if sys.version_info >= (3, 6):
             if hasattr(self.loop, 'shutdown_asyncgens'):
                 self.loop.run_until_complete(self.loop.shutdown_asyncgens())
