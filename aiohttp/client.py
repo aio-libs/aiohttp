@@ -102,7 +102,7 @@ class ClientSession:
     def __init__(self, *, connector: Optional[BaseConnector]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
                  cookies: Optional[LooseCookies]=None,
-                 headers: LooseHeaders=None,
+                 headers: Optional[LooseHeaders]=None,
                  skip_auto_headers: Optional[Iterable[str]]=None,
                  auth: Optional[BasicAuth]=None,
                  json_serialize: JSONEncoder=json.dumps,
