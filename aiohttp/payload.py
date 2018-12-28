@@ -6,18 +6,36 @@ import os
 import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
-from typing import (IO, TYPE_CHECKING, Any, ByteString, Callable, Dict,  # noqa
-                    Iterable, List, Optional, Text, TextIO, Tuple, Type, Union)
+from typing import (  # noqa
+    IO,
+    TYPE_CHECKING,
+    Any,
+    ByteString,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Text,
+    TextIO,
+    Tuple,
+    Type,
+    Union,
+)
 
 from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import (PY_36, content_disposition_header, guess_filename,
-                      parse_mimetype, sentinel)
+from .helpers import (
+    PY_36,
+    content_disposition_header,
+    guess_filename,
+    parse_mimetype,
+    sentinel,
+)
 from .streams import DEFAULT_LIMIT, StreamReader
 from .typedefs import JSONEncoder, _CIMultiDict
-
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'BytesPayload', 'StringPayload',

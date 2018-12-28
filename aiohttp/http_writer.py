@@ -11,7 +11,6 @@ from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 
-
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
 
 HttpVersion = collections.namedtuple('HttpVersion', ['major', 'minor'])

@@ -7,15 +7,24 @@ import re
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie  # noqa
 from math import ceil
-from typing import (DefaultDict, Dict, Iterable, Iterator, Mapping,  # noqa
-                    Optional, Set, Tuple, Union, cast)
+from typing import (  # noqa
+    DefaultDict,
+    Dict,
+    Iterable,
+    Iterator,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 from yarl import URL
 
 from .abc import AbstractCookieJar
 from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike
-
 
 __all__ = ('CookieJar', 'DummyCookieJar')
 

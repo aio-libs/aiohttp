@@ -16,7 +16,6 @@ from aiohttp import web
 from .helpers import set_result
 from .web_log import AccessLogger
 
-
 try:
     import ssl
     SSLContext = ssl.SSLContext  # noqa
