@@ -5,7 +5,6 @@ from typing import Optional, Union
 
 from .typedefs import _CIMultiDict
 
-
 __all__ = ('HttpProcessingError',)
 
 

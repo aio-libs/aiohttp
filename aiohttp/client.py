@@ -9,8 +9,21 @@ import sys
 import traceback
 import warnings
 from types import SimpleNamespace, TracebackType
-from typing import (Any, Coroutine, Generator, Generic, Iterable, List,  # noqa
-                    Mapping, Optional, Set, Tuple, Type, TypeVar, Union)
+from typing import (  # noqa
+    Any,
+    Coroutine,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
@@ -33,26 +46,45 @@ from .client_exceptions import ContentTypeError  # noqa
 from .client_exceptions import ServerConnectionError  # noqa
 from .client_exceptions import ServerDisconnectedError  # noqa
 from .client_exceptions import ServerFingerprintMismatch  # noqa
-from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
-                                ServerTimeoutError, TooManyRedirects,
-                                WSServerHandshakeError)
+from .client_exceptions import (
+    ClientError,
+    ClientOSError,
+    InvalidURL,
+    ServerTimeoutError,
+    TooManyRedirects,
+    WSServerHandshakeError,
+)
 from .client_reqrep import RequestInfo  # noqa
-from .client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
-                            _merge_ssl_params)
+from .client_reqrep import (
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    _merge_ssl_params,
+)
 from .client_ws import ClientWebSocketResponse
 from .connector import UnixConnector  # noqa
 from .connector import BaseConnector, TCPConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_36, BasicAuth, CeilTimeout, TimeoutHandle,
-                      get_running_loop, proxies_from_env, sentinel,
-                      strip_auth_from_url)
+from .helpers import (
+    PY_36,
+    BasicAuth,
+    CeilTimeout,
+    TimeoutHandle,
+    get_running_loop,
+    proxies_from_env,
+    sentinel,
+    strip_auth_from_url,
+)
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http_websocket import (WSHandshakeError, WSMessage, ws_ext_gen,  # noqa
-                             ws_ext_parse)
+from .http_websocket import (  # noqa
+    WSHandshakeError,
+    WSMessage,
+    ws_ext_gen,
+    ws_ext_parse,
+)
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
-
 
 __all__ = (client_exceptions.__all__ +  # noqa
            client_reqrep.__all__ +  # noqa

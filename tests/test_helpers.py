@@ -12,7 +12,6 @@ from yarl import URL
 
 from aiohttp import helpers
 
-
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
 

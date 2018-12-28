@@ -10,8 +10,18 @@ import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
 from http.cookies import SimpleCookie
-from typing import (TYPE_CHECKING, Any, Dict, Iterator, Mapping,  # noqa
-                    MutableMapping, Optional, Tuple, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 from multidict import CIMultiDict, istr
 
@@ -21,7 +31,6 @@ from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
-
 
 __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
 

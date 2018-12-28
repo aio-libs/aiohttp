@@ -11,55 +11,120 @@ from .abc import AbstractAccessLogger
 from .helpers import all_tasks
 from .log import access_logger
 from .web_app import Application, CleanupError
-from .web_exceptions import (HTTPAccepted, HTTPBadGateway, HTTPBadRequest,
-                             HTTPClientError, HTTPConflict, HTTPCreated,
-                             HTTPError, HTTPException, HTTPExpectationFailed,
-                             HTTPFailedDependency, HTTPForbidden, HTTPFound,
-                             HTTPGatewayTimeout, HTTPGone,
-                             HTTPInsufficientStorage, HTTPInternalServerError,
-                             HTTPLengthRequired, HTTPMethodNotAllowed,
-                             HTTPMisdirectedRequest, HTTPMovedPermanently,
-                             HTTPMultipleChoices,
-                             HTTPNetworkAuthenticationRequired, HTTPNoContent,
-                             HTTPNonAuthoritativeInformation,
-                             HTTPNotAcceptable, HTTPNotExtended, HTTPNotFound,
-                             HTTPNotImplemented, HTTPNotModified, HTTPOk,
-                             HTTPPartialContent, HTTPPaymentRequired,
-                             HTTPPermanentRedirect, HTTPPreconditionFailed,
-                             HTTPPreconditionRequired,
-                             HTTPProxyAuthenticationRequired, HTTPRedirection,
-                             HTTPRequestEntityTooLarge,
-                             HTTPRequestHeaderFieldsTooLarge,
-                             HTTPRequestRangeNotSatisfiable,
-                             HTTPRequestTimeout, HTTPRequestURITooLong,
-                             HTTPResetContent, HTTPSeeOther, HTTPServerError,
-                             HTTPServiceUnavailable, HTTPSuccessful,
-                             HTTPTemporaryRedirect, HTTPTooManyRequests,
-                             HTTPUnauthorized, HTTPUnavailableForLegalReasons,
-                             HTTPUnprocessableEntity, HTTPUnsupportedMediaType,
-                             HTTPUpgradeRequired, HTTPUseProxy,
-                             HTTPVariantAlsoNegotiates,
-                             HTTPVersionNotSupported)
+from .web_exceptions import (
+    HTTPAccepted,
+    HTTPBadGateway,
+    HTTPBadRequest,
+    HTTPClientError,
+    HTTPConflict,
+    HTTPCreated,
+    HTTPError,
+    HTTPException,
+    HTTPExpectationFailed,
+    HTTPFailedDependency,
+    HTTPForbidden,
+    HTTPFound,
+    HTTPGatewayTimeout,
+    HTTPGone,
+    HTTPInsufficientStorage,
+    HTTPInternalServerError,
+    HTTPLengthRequired,
+    HTTPMethodNotAllowed,
+    HTTPMisdirectedRequest,
+    HTTPMovedPermanently,
+    HTTPMultipleChoices,
+    HTTPNetworkAuthenticationRequired,
+    HTTPNoContent,
+    HTTPNonAuthoritativeInformation,
+    HTTPNotAcceptable,
+    HTTPNotExtended,
+    HTTPNotFound,
+    HTTPNotImplemented,
+    HTTPNotModified,
+    HTTPOk,
+    HTTPPartialContent,
+    HTTPPaymentRequired,
+    HTTPPermanentRedirect,
+    HTTPPreconditionFailed,
+    HTTPPreconditionRequired,
+    HTTPProxyAuthenticationRequired,
+    HTTPRedirection,
+    HTTPRequestEntityTooLarge,
+    HTTPRequestHeaderFieldsTooLarge,
+    HTTPRequestRangeNotSatisfiable,
+    HTTPRequestTimeout,
+    HTTPRequestURITooLong,
+    HTTPResetContent,
+    HTTPSeeOther,
+    HTTPServerError,
+    HTTPServiceUnavailable,
+    HTTPSuccessful,
+    HTTPTemporaryRedirect,
+    HTTPTooManyRequests,
+    HTTPUnauthorized,
+    HTTPUnavailableForLegalReasons,
+    HTTPUnprocessableEntity,
+    HTTPUnsupportedMediaType,
+    HTTPUpgradeRequired,
+    HTTPUseProxy,
+    HTTPVariantAlsoNegotiates,
+    HTTPVersionNotSupported,
+)
 from .web_fileresponse import FileResponse
 from .web_log import AccessLogger
 from .web_middlewares import middleware, normalize_path_middleware
-from .web_protocol import (PayloadAccessError, RequestHandler,
-                           RequestPayloadError)
+from .web_protocol import (
+    PayloadAccessError,
+    RequestHandler,
+    RequestPayloadError,
+)
 from .web_request import BaseRequest, FileField, Request
-from .web_response import (ContentCoding, Response, StreamResponse,
-                           json_response)
-from .web_routedef import (AbstractRouteDef, RouteDef, RouteTableDef,
-                           StaticDef, delete, get, head, options, patch, post,
-                           put, route, static, view)
-from .web_runner import (AppRunner, BaseRunner, BaseSite, GracefulExit,
-                         ServerRunner, SockSite, TCPSite, UnixSite)
+from .web_response import (
+    ContentCoding,
+    Response,
+    StreamResponse,
+    json_response,
+)
+from .web_routedef import (
+    AbstractRouteDef,
+    RouteDef,
+    RouteTableDef,
+    StaticDef,
+    delete,
+    get,
+    head,
+    options,
+    patch,
+    post,
+    put,
+    route,
+    static,
+    view,
+)
+from .web_runner import (
+    AppRunner,
+    BaseRunner,
+    BaseSite,
+    GracefulExit,
+    ServerRunner,
+    SockSite,
+    TCPSite,
+    UnixSite,
+)
 from .web_server import Server
-from .web_urldispatcher import (AbstractResource, AbstractRoute,
-                                DynamicResource, PlainResource, Resource,
-                                ResourceRoute, StaticResource, UrlDispatcher,
-                                UrlMappingMatchInfo, View)
+from .web_urldispatcher import (
+    AbstractResource,
+    AbstractRoute,
+    DynamicResource,
+    PlainResource,
+    Resource,
+    ResourceRoute,
+    StaticResource,
+    UrlDispatcher,
+    UrlMappingMatchInfo,
+    View,
+)
 from .web_ws import WebSocketReady, WebSocketResponse, WSMsgType
-
 
 __all__ = (
     # web_app

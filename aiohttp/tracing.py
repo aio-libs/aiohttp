@@ -8,7 +8,6 @@ from yarl import URL
 from .client_reqrep import ClientResponse
 from .signals import Signal
 
-
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
 

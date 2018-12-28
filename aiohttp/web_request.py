@@ -10,8 +10,18 @@ import warnings
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
-from typing import (TYPE_CHECKING, Any, Dict, Iterator, Mapping,  # noqa
-                    MutableMapping, Optional, Tuple, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 from urllib.parse import parse_qsl
 
 import attr
@@ -24,11 +34,15 @@ from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .http_parser import RawRequestMessage
 from .multipart import MultipartReader
 from .streams import EmptyStreamReader, StreamReader
-from .typedefs import (DEFAULT_JSON_DECODER, JSONDecoder, LooseHeaders,
-                       RawHeaders, StrOrURL)
+from .typedefs import (
+    DEFAULT_JSON_DECODER,
+    JSONDecoder,
+    LooseHeaders,
+    RawHeaders,
+    StrOrURL,
+)
 from .web_exceptions import HTTPRequestEntityTooLarge
 from .web_response import StreamResponse
-
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
 

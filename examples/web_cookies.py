@@ -6,7 +6,6 @@ from pprint import pformat
 
 from aiohttp import web
 
-
 tmpl = '''\
 <html>
     <body>
