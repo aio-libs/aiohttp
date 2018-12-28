@@ -9,7 +9,6 @@ from yarl import URL
 from .web_app import Application
 from .web_server import Server
 
-
 try:
     from ssl import SSLContext
 except ImportError:

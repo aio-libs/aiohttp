@@ -6,7 +6,6 @@ import os
 
 from aiohttp import web
 
-
 WS_FILE = os.path.join(os.path.dirname(__file__), 'websocket.html')
 
 

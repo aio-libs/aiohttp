@@ -1,41 +1,216 @@
 __version__ = '4.0.0a0'
 
-# This relies on each of the submodules having an __all__ variable.
+from typing import Tuple  # noqa
 
-from . import hdrs  # noqa
-from .client import *  # noqa
-from .client import ClientSession, ServerFingerprintMismatch  # noqa
-from .cookiejar import *  # noqa
-from .formdata import *  # noqa
-from .helpers import *  # noqa
-from .http import (HttpVersion, HttpVersion10, HttpVersion11,  # noqa
-                   WSMsgType, WSCloseCode, WSMessage, WebSocketError)  # noqa
-from .multipart import *  # noqa
-from .payload import *  # noqa
-from .payload_streamer import *  # noqa
-from .resolver import *  # noqa
-from .signals import *  # noqa
-from .streams import *  # noqa
-from .tracing import *  # noqa
+from . import hdrs
+from .client import (
+    BaseConnector,
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientError,
+    ClientHttpProxyError,
+    ClientOSError,
+    ClientPayloadError,
+    ClientProxyConnectionError,
+    ClientResponse,
+    ClientRequest,
+    ClientResponseError,
+    ClientSSLError,
+    ClientSession,
+    ClientTimeout,
+    ClientWebSocketResponse,
+    ContentTypeError,
+    Fingerprint,
+    InvalidURL,
+    RequestInfo,
+    ServerConnectionError,
+    ServerDisconnectedError,
+    ServerFingerprintMismatch,
+    ServerTimeoutError,
+    TCPConnector,
+    UnixConnector,
+    WSServerHandshakeError,
+    request
+)
+
+from .cookiejar import CookieJar, DummyCookieJar
+from .formdata import FormData
+from .helpers import BasicAuth, ChainMapProxy
+from .http import (
+    HttpVersion,
+    HttpVersion10,
+    HttpVersion11,
+    WSMsgType,
+    WSCloseCode,
+    WSMessage,
+    WebSocketError
+)
+
+from .multipart import (
+    BadContentDispositionHeader,
+    BadContentDispositionParam,
+    BodyPartReader,
+    MultipartReader,
+    MultipartWriter,
+    content_disposition_filename,
+    parse_content_disposition
+)
+
+from .payload import (
+    AsyncIterablePayload,
+    BufferedReaderPayload,
+    BytesIOPayload,
+    BytesPayload,
+    IOBasePayload,
+    JsonPayload,
+    PAYLOAD_REGISTRY,
+    Payload,
+    StringIOPayload,
+    StringPayload,
+    TextIOPayload,
+    get_payload,
+    payload_type
+)
+
+from .payload_streamer import streamer
+
+from .resolver import AsyncResolver, DefaultResolver, ThreadedResolver
+
+from .signals import Signal
+
+from .streams import (
+    DataQueue,
+    EMPTY_PAYLOAD,
+    EofStream,
+    FlowControlDataQueue,
+    StreamReader
+)
+
+from .tracing import (
+    TraceConfig,
+    TraceConnectionCreateEndParams,
+    TraceConnectionCreateStartParams,
+    TraceConnectionQueuedEndParams,
+    TraceConnectionQueuedStartParams,
+    TraceConnectionReuseconnParams,
+    TraceDnsCacheHitParams,
+    TraceDnsCacheMissParams,
+    TraceDnsResolveHostEndParams,
+    TraceDnsResolveHostStartParams,
+    TraceRequestChunkSentParams,
+    TraceRequestEndParams,
+    TraceRequestExceptionParams,
+    TraceRequestRedirectParams,
+    TraceRequestStartParams,
+    TraceResponseChunkReceivedParams
+)
+
+__all__ = (
+    'hdrs',
+    # client
+    'BaseConnector',
+    'ClientConnectionError',
+    'ClientConnectorCertificateError',
+    'ClientConnectorError',
+    'ClientConnectorSSLError',
+    'ClientError',
+    'ClientHttpProxyError',
+    'ClientOSError',
+    'ClientPayloadError',
+    'ClientProxyConnectionError',
+    'ClientResponse',
+    'ClientRequest',
+    'ClientResponseError',
+    'ClientSSLError',
+    'ClientSession',
+    'ClientTimeout',
+    'ClientWebSocketResponse',
+    'ContentTypeError',
+    'Fingerprint',
+    'InvalidURL',
+    'RequestInfo',
+    'ServerConnectionError',
+    'ServerDisconnectedError',
+    'ServerFingerprintMismatch',
+    'ServerTimeoutError',
+    'TCPConnector',
+    'UnixConnector',
+    'WSServerHandshakeError',
+    'request',
+    # cookiejar
+    'CookieJar',
+    'DummyCookieJar',
+    # formdata
+    'FormData',
+    # helpers
+    'BasicAuth',
+    'ChainMapProxy',
+    # http
+    'HttpVersion',
+    'HttpVersion10',
+    'HttpVersion11',
+    'WSMsgType',
+    'WSCloseCode',
+    'WSMessage',
+    'WebSocketError',
+    # multipart
+    'BadContentDispositionHeader',
+    'BadContentDispositionParam',
+    'BodyPartReader',
+    'MultipartReader',
+    'MultipartWriter',
+    'content_disposition_filename',
+    'parse_content_disposition',
+    # payload
+    'AsyncIterablePayload',
+    'BufferedReaderPayload',
+    'BytesIOPayload',
+    'BytesPayload',
+    'IOBasePayload',
+    'JsonPayload',
+    'PAYLOAD_REGISTRY',
+    'Payload',
+    'StringIOPayload',
+    'StringPayload',
+    'TextIOPayload',
+    'get_payload',
+    'payload_type',
+    # payload_streamer
+    'streamer',
+    # resolver
+    'AsyncResolver',
+    'DefaultResolver',
+    'ThreadedResolver',
+    # signals
+    'Signal',
+    'DataQueue',
+    'EMPTY_PAYLOAD',
+    'EofStream',
+    'FlowControlDataQueue',
+    'StreamReader',
+    # tracing
+    'TraceConfig',
+    'TraceConnectionCreateEndParams',
+    'TraceConnectionCreateStartParams',
+    'TraceConnectionQueuedEndParams',
+    'TraceConnectionQueuedStartParams',
+    'TraceConnectionReuseconnParams',
+    'TraceDnsCacheHitParams',
+    'TraceDnsCacheMissParams',
+    'TraceDnsResolveHostEndParams',
+    'TraceDnsResolveHostStartParams',
+    'TraceRequestChunkSentParams',
+    'TraceRequestEndParams',
+    'TraceRequestExceptionParams',
+    'TraceRequestRedirectParams',
+    'TraceRequestStartParams',
+    'TraceResponseChunkReceivedParams',
+)  # type: Tuple[str, ...]
 
 try:
     from .worker import GunicornWebWorker, GunicornUVLoopWebWorker  # noqa
-    workers = ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
+    __all__ += ('GunicornWebWorker', 'GunicornUVLoopWebWorker')
 except ImportError:  # pragma: no cover
-    workers = ()  # type: ignore
-
-
-__all__ = (client.__all__ +  # noqa
-           cookiejar.__all__ +  # noqa
-           formdata.__all__ +  # noqa
-           helpers.__all__ +  # noqa
-           multipart.__all__ +  # noqa
-           payload.__all__ +  # noqa
-           payload_streamer.__all__ +  # noqa
-           streams.__all__ +  # noqa
-           signals.__all__ +  # noqa
-           tracing.__all__ + # noqa
-           ('hdrs', 'HttpVersion', 'HttpVersion10', 'HttpVersion11',
-            'WSMsgType', 'WSCloseCode',
-            'WebSocketError', 'WSMessage',
-           ) + workers)
+    pass

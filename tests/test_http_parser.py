@@ -10,9 +10,12 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import http_exceptions, streams
-from aiohttp.http_parser import (DeflateBuffer, HttpPayloadParser,
-                                 HttpRequestParserPy, HttpResponseParserPy)
-
+from aiohttp.http_parser import (
+    DeflateBuffer,
+    HttpPayloadParser,
+    HttpRequestParserPy,
+    HttpResponseParserPy,
+)
 
 try:
     import brotli

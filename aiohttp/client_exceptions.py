@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from .typedefs import _CIMultiDict
 
-
 try:
     import ssl
     SSLContext = ssl.SSLContext

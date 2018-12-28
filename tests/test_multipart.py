@@ -8,14 +8,17 @@ import pytest
 
 import aiohttp
 from aiohttp import payload
-from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
-                          CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
+from aiohttp.hdrs import (
+    CONTENT_DISPOSITION,
+    CONTENT_ENCODING,
+    CONTENT_TRANSFER_ENCODING,
+    CONTENT_TYPE,
+)
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import MultipartResponseWrapper
 from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_coro
-
 
 BOUNDARY = b'--:'
 

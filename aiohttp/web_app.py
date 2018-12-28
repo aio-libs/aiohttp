@@ -2,14 +2,33 @@ import asyncio
 import logging
 import warnings
 from functools import partial
-from typing import (TYPE_CHECKING, Any, AsyncIterator, Awaitable,  # noqa
-                    Callable, Dict, Iterable, Iterator, List, Mapping,
-                    MutableMapping, Optional, Sequence, Tuple, Type, Union,
-                    cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from . import hdrs
-from .abc import (AbstractAccessLogger, AbstractMatchInfo, AbstractRouter,
-                  AbstractStreamWriter)
+from .abc import (
+    AbstractAccessLogger,
+    AbstractMatchInfo,
+    AbstractRouter,
+    AbstractStreamWriter,
+)
 from .frozenlist import FrozenList
 from .helpers import DEBUG
 from .http_parser import RawRequestMessage
@@ -23,10 +42,14 @@ from .web_request import Request
 from .web_response import StreamResponse
 from .web_routedef import AbstractRouteDef
 from .web_server import Server
-from .web_urldispatcher import (AbstractResource, Domain, MaskDomain,
-                                MatchedSubAppResource, PrefixedSubAppResource,
-                                UrlDispatcher)
-
+from .web_urldispatcher import (
+    AbstractResource,
+    Domain,
+    MaskDomain,
+    MatchedSubAppResource,
+    PrefixedSubAppResource,
+    UrlDispatcher,
+)
 
 __all__ = ('Application', 'CleanupError')
 

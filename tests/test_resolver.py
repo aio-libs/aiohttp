@@ -7,7 +7,6 @@ import pytest
 
 from aiohttp.resolver import AsyncResolver, DefaultResolver, ThreadedResolver
 
-
 try:
     import aiodns
     gethostbyname = hasattr(aiodns.DNSResolver, 'gethostbyname')

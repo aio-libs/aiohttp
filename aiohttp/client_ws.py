@@ -8,12 +8,21 @@ import async_timeout
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
 from .helpers import call_later, set_result
-from .http import (WS_CLOSED_MESSAGE, WS_CLOSING_MESSAGE, WebSocketError,
-                   WSMessage, WSMsgType)
+from .http import (
+    WS_CLOSED_MESSAGE,
+    WS_CLOSING_MESSAGE,
+    WebSocketError,
+    WSMessage,
+    WSMsgType,
+)
 from .http_websocket import WebSocketWriter  # WSMessage
 from .streams import EofStream, FlowControlDataQueue  # noqa
-from .typedefs import (DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER, JSONDecoder,
-                       JSONEncoder)
+from .typedefs import (
+    DEFAULT_JSON_DECODER,
+    DEFAULT_JSON_ENCODER,
+    JSONDecoder,
+    JSONEncoder,
+)
 
 
 class ClientWebSocketResponse:

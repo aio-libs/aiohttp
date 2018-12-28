@@ -9,44 +9,116 @@ import sys
 import traceback
 import warnings
 from types import SimpleNamespace, TracebackType
-from typing import (Any, Coroutine, Generator, Generic, Iterable, List,  # noqa
-                    Mapping, Optional, Set, Tuple, Type, TypeVar, Union)
+from typing import (  # noqa
+    Any,
+    Coroutine,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
-from . import client_exceptions, client_reqrep
-from . import connector as connector_mod
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
-from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
-                                ServerTimeoutError, TooManyRedirects,
-                                WSServerHandshakeError)
-from .client_reqrep import *  # noqa
-from .client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
-                            _merge_ssl_params)
+from .client_exceptions import (
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientError,
+    ClientHttpProxyError,
+    ClientOSError,
+    ClientPayloadError,
+    ClientProxyConnectionError,
+    ClientResponseError,
+    ClientSSLError,
+    ContentTypeError,
+    InvalidURL,
+    ServerConnectionError,
+    ServerDisconnectedError,
+    ServerFingerprintMismatch,
+    ServerTimeoutError,
+    TooManyRedirects,
+    WSServerHandshakeError,
+)
+from .client_reqrep import (
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    RequestInfo,
+    _merge_ssl_params,
+)
 from .client_ws import ClientWebSocketResponse
-from .connector import *  # noqa
-from .connector import BaseConnector, TCPConnector
+from .connector import BaseConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
-from .helpers import (PY_36, BasicAuth, CeilTimeout, TimeoutHandle,
-                      get_running_loop, proxies_from_env, sentinel,
-                      strip_auth_from_url)
+from .helpers import (
+    PY_36,
+    BasicAuth,
+    CeilTimeout,
+    TimeoutHandle,
+    get_running_loop,
+    proxies_from_env,
+    sentinel,
+    strip_auth_from_url,
+)
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http_websocket import (WSHandshakeError, WSMessage, ws_ext_gen,  # noqa
-                             ws_ext_parse)
+from .http_websocket import (  # noqa
+    WSHandshakeError,
+    WSMessage,
+    ws_ext_gen,
+    ws_ext_parse,
+)
 from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
-
-__all__ = (client_exceptions.__all__ +  # noqa
-           client_reqrep.__all__ +  # noqa
-           connector_mod.__all__ +  # noqa
-           ('ClientSession', 'ClientTimeout',
-            'ClientWebSocketResponse', 'request'))
+__all__ = (
+    # client_exceptions
+    'ClientConnectionError',
+    'ClientConnectorCertificateError',
+    'ClientConnectorError',
+    'ClientConnectorSSLError',
+    'ClientError',
+    'ClientHttpProxyError',
+    'ClientOSError',
+    'ClientPayloadError',
+    'ClientProxyConnectionError',
+    'ClientResponseError',
+    'ClientSSLError',
+    'ContentTypeError',
+    'InvalidURL',
+    'ServerConnectionError',
+    'ServerDisconnectedError',
+    'ServerFingerprintMismatch',
+    'ServerTimeoutError',
+    'TooManyRedirects',
+    'WSServerHandshakeError',
+    # client_reqrep
+    'ClientRequest',
+    'ClientResponse',
+    'Fingerprint',
+    'RequestInfo',
+    # connector
+    'BaseConnector',
+    'TCPConnector',
+    'UnixConnector',
+    # client_ws
+    'ClientWebSocketResponse',
+    # client
+    'ClientSession',
+    'ClientTimeout',
+    'request')
 
 
 try:

@@ -7,7 +7,6 @@ import pytest
 from aiohttp.abc import AbstractAccessLogger
 from aiohttp.web_log import AccessLogger
 
-
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
 
