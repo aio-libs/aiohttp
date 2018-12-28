@@ -11,9 +11,25 @@ from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
-from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Container,  # noqa
-                    Dict, Generator, Iterable, Iterator, List, Mapping,
-                    Optional, Set, Sized, Tuple, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Container,
+    Dict,
+    Generator,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Sized,
+    Tuple,
+    Union,
+    cast,
+)
 
 from yarl import URL
 
@@ -22,13 +38,17 @@ from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
 from .helpers import DEBUG
 from .http import HttpVersion11
 from .typedefs import PathLike
-from .web_exceptions import (HTTPException, HTTPExpectationFailed,
-                             HTTPForbidden, HTTPMethodNotAllowed, HTTPNotFound)
+from .web_exceptions import (
+    HTTPException,
+    HTTPExpectationFailed,
+    HTTPForbidden,
+    HTTPMethodNotAllowed,
+    HTTPNotFound,
+)
 from .web_fileresponse import FileResponse
 from .web_request import Request
 from .web_response import Response, StreamResponse
 from .web_routedef import AbstractRouteDef
-
 
 __all__ = ('UrlDispatcher', 'UrlMappingMatchInfo',
            'AbstractResource', 'Resource', 'PlainResource', 'DynamicResource',
