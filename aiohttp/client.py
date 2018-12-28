@@ -20,15 +20,27 @@ from . import client_exceptions, client_reqrep
 from . import connector as connector_mod
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
-from .client_exceptions import *  # noqa
+from .client_exceptions import ClientConnectionError  # noqa
+from .client_exceptions import ClientConnectorCertificateError  # noqa
+from .client_exceptions import ClientConnectorError  # noqa
+from .client_exceptions import ClientConnectorSSLError  # noqa
+from .client_exceptions import ClientHttpProxyError  # noqa
+from .client_exceptions import ClientPayloadError  # noqa
+from .client_exceptions import ClientProxyConnectionError  # noqa
+from .client_exceptions import ClientResponseError  # noqa
+from .client_exceptions import ClientSSLError  # noqa
+from .client_exceptions import ContentTypeError  # noqa
+from .client_exceptions import ServerConnectionError  # noqa
+from .client_exceptions import ServerDisconnectedError  # noqa
+from .client_exceptions import ServerFingerprintMismatch  # noqa
 from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
                                 ServerTimeoutError, TooManyRedirects,
                                 WSServerHandshakeError)
-from .client_reqrep import *  # noqa
+from .client_reqrep import RequestInfo  # noqa
 from .client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
                             _merge_ssl_params)
 from .client_ws import ClientWebSocketResponse
-from .connector import *  # noqa
+from .connector import UnixConnector  # noqa
 from .connector import BaseConnector, TCPConnector
 from .cookiejar import CookieJar
 from .helpers import (PY_36, BasicAuth, CeilTimeout, TimeoutHandle,
