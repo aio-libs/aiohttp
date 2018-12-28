@@ -29,41 +29,38 @@ import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
-from . import client_exceptions, client_reqrep
-from . import connector as connector_mod
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
-from .client_exceptions import ClientConnectionError  # noqa
-from .client_exceptions import ClientConnectorCertificateError  # noqa
-from .client_exceptions import ClientConnectorError  # noqa
-from .client_exceptions import ClientConnectorSSLError  # noqa
-from .client_exceptions import ClientHttpProxyError  # noqa
-from .client_exceptions import ClientPayloadError  # noqa
-from .client_exceptions import ClientProxyConnectionError  # noqa
-from .client_exceptions import ClientResponseError  # noqa
-from .client_exceptions import ClientSSLError  # noqa
-from .client_exceptions import ContentTypeError  # noqa
-from .client_exceptions import ServerConnectionError  # noqa
-from .client_exceptions import ServerDisconnectedError  # noqa
-from .client_exceptions import ServerFingerprintMismatch  # noqa
 from .client_exceptions import (
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
     ClientError,
+    ClientHttpProxyError,
     ClientOSError,
+    ClientPayloadError,
+    ClientProxyConnectionError,
+    ClientResponseError,
+    ClientSSLError,
+    ContentTypeError,
     InvalidURL,
+    ServerConnectionError,
+    ServerDisconnectedError,
+    ServerFingerprintMismatch,
     ServerTimeoutError,
     TooManyRedirects,
     WSServerHandshakeError,
 )
-from .client_reqrep import RequestInfo  # noqa
 from .client_reqrep import (
     ClientRequest,
     ClientResponse,
     Fingerprint,
+    RequestInfo,
     _merge_ssl_params,
 )
 from .client_ws import ClientWebSocketResponse
-from .connector import UnixConnector  # noqa
-from .connector import BaseConnector, TCPConnector
+from .connector import BaseConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     PY_36,
@@ -86,11 +83,42 @@ from .streams import FlowControlDataQueue
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
-__all__ = (client_exceptions.__all__ +  # noqa
-           client_reqrep.__all__ +  # noqa
-           connector_mod.__all__ +  # noqa
-           ('ClientSession', 'ClientTimeout',
-            'ClientWebSocketResponse', 'request'))
+__all__ = (
+    # client_exceptions
+    'ClientConnectionError',
+    'ClientConnectorCertificateError',
+    'ClientConnectorError',
+    'ClientConnectorSSLError',
+    'ClientError',
+    'ClientHttpProxyError',
+    'ClientOSError',
+    'ClientPayloadError',
+    'ClientProxyConnectionError',
+    'ClientResponseError',
+    'ClientSSLError',
+    'ContentTypeError',
+    'InvalidURL',
+    'ServerConnectionError',
+    'ServerDisconnectedError',
+    'ServerFingerprintMismatch',
+    'ServerTimeoutError',
+    'TooManyRedirects',
+    'WSServerHandshakeError',
+    # client_reqrep
+    'ClientRequest',
+    'ClientResponse',
+    'Fingerprint',
+    'RequestInfo',
+    # connector
+    'BaseConnector',
+    'TCPConnector',
+    'UnixConnector',
+    # client_ws
+    'ClientWebSocketResponse',
+    # client
+    'ClientSession',
+    'ClientTimeout',
+    'request')
 
 
 try:
