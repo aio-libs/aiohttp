@@ -1,7 +1,5 @@
 __version__ = '4.0.0a0'
 
-# This relies on each of the submodules having an __all__ variable.
-
 from typing import Tuple  # noqa
 
 from . import hdrs
