@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional
 from .abc import AbstractResolver
 from .helpers import get_running_loop
 
-
 __all__ = ('ThreadedResolver', 'AsyncResolver', 'DefaultResolver')
 
 try:

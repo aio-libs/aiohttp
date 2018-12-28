@@ -16,8 +16,12 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
-from aiohttp.client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
-                                   _merge_ssl_params)
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    _merge_ssl_params,
+)
 from aiohttp.test_utils import make_mocked_coro
 
 

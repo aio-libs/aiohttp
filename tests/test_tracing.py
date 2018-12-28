@@ -4,21 +4,25 @@ from unittest.mock import Mock
 
 import pytest
 
-from aiohttp.tracing import (Trace, TraceConfig,
-                             TraceConnectionCreateEndParams,
-                             TraceConnectionCreateStartParams,
-                             TraceConnectionQueuedEndParams,
-                             TraceConnectionQueuedStartParams,
-                             TraceConnectionReuseconnParams,
-                             TraceDnsCacheHitParams, TraceDnsCacheMissParams,
-                             TraceDnsResolveHostEndParams,
-                             TraceDnsResolveHostStartParams,
-                             TraceRequestChunkSentParams,
-                             TraceRequestEndParams,
-                             TraceRequestExceptionParams,
-                             TraceRequestRedirectParams,
-                             TraceRequestStartParams,
-                             TraceResponseChunkReceivedParams)
+from aiohttp.tracing import (
+    Trace,
+    TraceConfig,
+    TraceConnectionCreateEndParams,
+    TraceConnectionCreateStartParams,
+    TraceConnectionQueuedEndParams,
+    TraceConnectionQueuedStartParams,
+    TraceConnectionReuseconnParams,
+    TraceDnsCacheHitParams,
+    TraceDnsCacheMissParams,
+    TraceDnsResolveHostEndParams,
+    TraceDnsResolveHostStartParams,
+    TraceRequestChunkSentParams,
+    TraceRequestEndParams,
+    TraceRequestExceptionParams,
+    TraceRequestRedirectParams,
+    TraceRequestStartParams,
+    TraceResponseChunkReceivedParams,
+)
 
 
 class TestTraceConfig:

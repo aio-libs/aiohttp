@@ -10,29 +10,51 @@ from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
 from types import TracebackType
-from typing import (TYPE_CHECKING, Any, Awaitable, Callable,  # noqa
-                    DefaultDict, Dict, Iterator, List, Optional, Set, Tuple,
-                    Type, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    DefaultDict,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import attr
 
 from . import hdrs, helpers
 from .abc import AbstractResolver
-from .client_exceptions import (ClientConnectionError,
-                                ClientConnectorCertificateError,
-                                ClientConnectorError, ClientConnectorSSLError,
-                                ClientHttpProxyError,
-                                ClientProxyConnectionError,
-                                ServerFingerprintMismatch, cert_errors,
-                                ssl_errors)
+from .client_exceptions import (
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientHttpProxyError,
+    ClientProxyConnectionError,
+    ServerFingerprintMismatch,
+    cert_errors,
+    ssl_errors,
+)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import (PY_36, CeilTimeout, get_running_loop, is_ip_address,
-                      noop2, sentinel)
+from .helpers import (
+    PY_36,
+    CeilTimeout,
+    get_running_loop,
+    is_ip_address,
+    noop2,
+    sentinel,
+)
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
-
 
 try:
     import ssl

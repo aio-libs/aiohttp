@@ -6,7 +6,6 @@ import pytest
 import aiohttp
 from aiohttp.client_reqrep import _merge_ssl_params
 
-
 ssl = pytest.importorskip('ssl')
 
 

@@ -9,7 +9,6 @@ import pytest
 import aiohttp
 from aiohttp import web
 
-
 try:
     import ssl
 except ImportError:

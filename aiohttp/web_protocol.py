@@ -6,16 +6,28 @@ from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
 from logging import Logger
-from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Optional, Type,
-                    cast)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Optional,
+    Type,
+    cast,
+)
 
 import yarl
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout, current_task
-from .http import (HttpProcessingError, HttpRequestParser, HttpVersion10,
-                   RawRequestMessage, StreamWriter)
+from .http import (
+    HttpProcessingError,
+    HttpRequestParser,
+    HttpVersion10,
+    RawRequestMessage,
+    StreamWriter,
+)
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
@@ -23,7 +35,6 @@ from .web_exceptions import HTTPException
 from .web_log import AccessLogger
 from .web_request import BaseRequest
 from .web_response import Response, StreamResponse
-
 
 __all__ = ('RequestHandler', 'RequestPayloadError', 'PayloadAccessError')
 

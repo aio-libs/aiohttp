@@ -9,7 +9,6 @@ from .streams import StreamReader
 from .web_protocol import RequestHandler, _RequestFactory, _RequestHandler
 from .web_request import BaseRequest
 
-
 __all__ = ('Server',)
 
 

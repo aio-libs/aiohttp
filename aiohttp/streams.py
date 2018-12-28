@@ -8,7 +8,6 @@ from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
 
-
 try:  # pragma: no cover
     from typing import Deque  # noqa
 except ImportError:

@@ -16,7 +16,6 @@ from .helpers import NO_EXTENSIONS
 from .log import ws_logger
 from .streams import DataQueue
 
-
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
            'WebSocketReader', 'WebSocketWriter', 'WSMessage',
            'WebSocketError', 'WSMsgType', 'WSCloseCode')

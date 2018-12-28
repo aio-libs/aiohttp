@@ -6,7 +6,6 @@ from .web_request import Request
 from .web_response import StreamResponse
 from .web_urldispatcher import SystemRoute
 
-
 __all__ = (
     'middleware',
     'normalize_path_middleware',

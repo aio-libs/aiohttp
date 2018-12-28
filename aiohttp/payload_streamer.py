@@ -28,7 +28,6 @@ from typing import Any, Awaitable, Callable, Dict, Tuple
 from .abc import AbstractStreamWriter
 from .payload import Payload, payload_type
 
-
 __all__ = ('streamer',)
 
 
