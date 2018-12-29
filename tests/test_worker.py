@@ -42,7 +42,8 @@ class BaseTestWorker:
         self.wsgi = web.Application()
 
 
-class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):  # type: ignore  # noqa
+class AsyncioWorker(BaseTestWorker,  # type: ignore
+                    base_worker.GunicornWebWorker):
     pass
 
 
@@ -197,15 +198,11 @@ async def test__run_ok_parent_changed(worker, loop,
     worker.cfg.max_requests = 0
     worker.cfg.is_ssl = False
 
-    worker._runner = web.AppRunner(worker.wsgi)
-    await worker._runner.setup()
-
     await worker._run()
 
     worker.notify.assert_called_with()
     worker.log.info.assert_called_with("Parent changed, shutting down: %s",
                                        worker)
-    assert worker._runner.server is None
 
 
 async def test__run_exc(worker, loop, aiohttp_unused_port) -> None:
@@ -223,9 +220,6 @@ async def test__run_exc(worker, loop, aiohttp_unused_port) -> None:
     worker.cfg.max_requests = 0
     worker.cfg.is_ssl = False
 
-    worker._runner = web.AppRunner(worker.wsgi)
-    await worker._runner.setup()
-
     def raiser():
         waiter = worker._notify_waiter
         worker.alive = False
@@ -235,37 +229,6 @@ async def test__run_exc(worker, loop, aiohttp_unused_port) -> None:
     await worker._run()
 
     worker.notify.assert_called_with()
-    assert worker._runner.server is None
-
-
-async def test__run_ok_max_requests_exceeded(worker, loop,
-                                             aiohttp_unused_port):
-    skip_if_no_dict(loop)
-
-    worker.ppid = os.getppid()
-    worker.alive = True
-    worker.servers = {}
-    sock = socket.socket()
-    addr = ('localhost', aiohttp_unused_port())
-    sock.bind(addr)
-    worker.sockets = [sock]
-    worker.log = mock.Mock()
-    worker.loop = loop
-    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
-    worker.cfg.max_requests = 10
-    worker.cfg.is_ssl = False
-
-    worker._runner = web.AppRunner(worker.wsgi)
-    await worker._runner.setup()
-    worker._runner.server.requests_count = 30
-
-    await worker._run()
-
-    worker.notify.assert_called_with()
-    worker.log.info.assert_called_with("Max requests, shutting down: %s",
-                                       worker)
-
-    assert worker._runner.server is None
 
 
 def test__create_ssl_context_without_certs_and_ciphers(worker) -> None:

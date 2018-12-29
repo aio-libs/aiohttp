@@ -52,7 +52,7 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self) -> None:
-        self._task = self.loop.create_task(self._run(self.wsgi))
+        self._task = self.loop.create_task(self._run())
 
         try:  # ignore all finalization problems
             self.loop.run_until_complete(self._task)
@@ -64,20 +64,17 @@ class GunicornWebWorker(base.Worker):
 
         sys.exit(self.exit_code)
 
-    async def _run(
-            self,
-            app: Union[Application, Callable[[], Awaitable[Application]]]
-    ) -> None:
-        if isinstance(app, Application):
-            real_app = app
-        elif asyncio.iscoroutinefunction(app):
-            real_app = await app()
+    async def _run(self) -> None:
+        if isinstance(self.wsgi, Application):
+            app = self.wsgi
+        elif asyncio.iscoroutinefunction(self.wsgi):
+            app = await self.wsgi()
         else:
             raise RuntimeError("wsgi app should be either Application or "
                                "async function returning Application, got {}"
                                .format(app))
         access_log = self.log.access_log if self.cfg.accesslog else None
-        runner = web.AppRunner(real_app,
+        runner = web.AppRunner(app,
                                logger=self.log,
                                keepalive_timeout=self.cfg.keepalive,
                                access_log=access_log,
