@@ -6,7 +6,7 @@ import re
 import signal
 import sys
 from types import FrameType
-from typing import Any, Optional  # noqa
+from typing import Any, Awaitable, Callable, Optional, Union  # noqa
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -14,6 +14,7 @@ from gunicorn.workers import base
 from aiohttp import web
 
 from .helpers import set_result
+from .web_app import Application
 from .web_log import AccessLogger
 
 try:
@@ -37,7 +38,6 @@ class GunicornWebWorker(base.Worker):
     def __init__(self, *args: Any, **kw: Any) -> None:  # pragma: no cover
         super().__init__(*args, **kw)
 
-        self._runner = None  # type: Optional[web.AppRunner]
         self._task = None  # type: Optional[asyncio.Task[None]]
         self.exit_code = 0
         self._notify_waiter = None  # type: Optional[asyncio.Future[bool]]
@@ -52,35 +52,42 @@ class GunicornWebWorker(base.Worker):
         super().init_process()
 
     def run(self) -> None:
-        access_log = self.log.access_log if self.cfg.accesslog else None
-        params = dict(
-            logger=self.log,
-            keepalive_timeout=self.cfg.keepalive,
-            access_log=access_log,
-            access_log_format=self._get_valid_log_format(
-                self.cfg.access_log_format))
-        if asyncio.iscoroutinefunction(self.wsgi):  # type: ignore
-            self.wsgi = self.loop.run_until_complete(
-                self.wsgi())  # type: ignore
-        self._runner = web.AppRunner(self.wsgi, **params)
-        self.loop.run_until_complete(self._runner.setup())
-        self._task = self.loop.create_task(self._run())
+        self._task = self.loop.create_task(self._run(self.wsgi))
 
         try:  # ignore all finalization problems
             self.loop.run_until_complete(self._task)
         except Exception as error:
             self.log.exception(error)
         if sys.version_info >= (3, 6):
-            if hasattr(self.loop, 'shutdown_asyncgens'):
-                self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
 
         sys.exit(self.exit_code)
 
-    async def _run(self) -> None:
+    async def _run(
+            self,
+            app: Union[Application, Callable[[], Awaitable[Application]]]
+    ) -> None:
+        if isinstance(app, Application):
+            real_app = app
+        elif asyncio.iscoroutinefunction(app):
+            real_app = await app()
+        else:
+            raise RuntimeError("wsgi app should be either Application or "
+                               "async function returning Application, got {}"
+                               .format(app))
+        access_log = self.log.access_log if self.cfg.accesslog else None
+        runner = web.AppRunner(real_app,
+                               logger=self.log,
+                               keepalive_timeout=self.cfg.keepalive,
+                               access_log=access_log,
+                               access_log_format=self._get_valid_log_format(
+                                   self.cfg.access_log_format))
+        await runner.setup()
+
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
 
-        runner = self._runner
+        runner = runner
         assert runner is not None
         server = runner.server
         assert server is not None
