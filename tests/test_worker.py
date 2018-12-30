@@ -9,7 +9,6 @@ from unittest import mock
 import pytest
 
 from aiohttp import web
-from aiohttp.test_utils import make_mocked_coro
 
 base_worker = pytest.importorskip('aiohttp.worker')
 
@@ -49,7 +48,8 @@ class AsyncioWorker(BaseTestWorker,  # type: ignore
 
 PARAMS = [AsyncioWorker]
 if uvloop is not None:
-    class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):  # type: ignore  # noqa
+    class UvloopWorker(BaseTestWorker,  # type: ignore
+                       base_worker.GunicornUVLoopWebWorker):
         pass
 
     PARAMS.append(UvloopWorker)
@@ -79,12 +79,13 @@ def test_run(worker, loop) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    worker.cfg.is_ssl = False
+    worker.sockets = []
 
     worker.loop = loop
-    worker._run = make_mocked_coro(None)
     with pytest.raises(SystemExit):
         worker.run()
-    assert worker._run.called
+    worker.log.exception.assert_not_called()
     assert loop.is_closed()
 
 
@@ -92,6 +93,8 @@ def test_run_async_factory(worker, loop) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    worker.cfg.is_ssl = False
+    worker.sockets = []
     app = worker.wsgi
 
     async def make_app():
@@ -99,10 +102,24 @@ def test_run_async_factory(worker, loop) -> None:
     worker.wsgi = make_app
 
     worker.loop = loop
-    worker._run = make_mocked_coro(None)
+    worker.alive = False
     with pytest.raises(SystemExit):
         worker.run()
-    assert worker._run.called
+    worker.log.exception.assert_not_called()
+    assert loop.is_closed()
+
+
+def test_run_not_app(worker, loop) -> None:
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+
+    worker.loop = loop
+    worker.wsgi = "not-app"
+    worker.alive = False
+    with pytest.raises(SystemExit):
+        worker.run()
+    worker.log.exception.assert_called_with('Exception in gunicorn worker')
     assert loop.is_closed()
 
 

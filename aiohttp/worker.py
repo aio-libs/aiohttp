@@ -56,8 +56,8 @@ class GunicornWebWorker(base.Worker):
 
         try:  # ignore all finalization problems
             self.loop.run_until_complete(self._task)
-        except Exception as error:
-            self.log.exception(error)
+        except Exception:
+            self.log.exception("Exception in gunicorn worker")
         if sys.version_info >= (3, 6):
             self.loop.run_until_complete(self.loop.shutdown_asyncgens())
         self.loop.close()
@@ -72,7 +72,7 @@ class GunicornWebWorker(base.Worker):
         else:
             raise RuntimeError("wsgi app should be either Application or "
                                "async function returning Application, got {}"
-                               .format(app))
+                               .format(self.wsgi))
         access_log = self.log.access_log if self.cfg.accesslog else None
         runner = web.AppRunner(app,
                                logger=self.log,
