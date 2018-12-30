@@ -1,0 +1,2 @@
+Use the same task for app initialization and web server handling in gunicorn workers.
+It allows to use Python3.7 context vars smoothly.
