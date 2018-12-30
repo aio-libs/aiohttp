@@ -1,14 +1,24 @@
 import abc
 import os  # noqa
-from typing import (TYPE_CHECKING, Any, Awaitable, Callable, Dict, Iterator,
-                    List, Optional, Sequence, Union, overload)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Union,
+    overload,
+)
 
 import attr
 
 from . import hdrs
 from .abc import AbstractView
 from .typedefs import PathLike
-
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_urldispatcher import UrlDispatcher

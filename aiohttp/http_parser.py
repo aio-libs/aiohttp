@@ -13,14 +13,18 @@ from yarl import URL
 from . import hdrs
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS, BaseTimerContext
-from .http_exceptions import (BadStatusLine, ContentEncodingError,
-                              ContentLengthError, InvalidHeader, LineTooLong,
-                              TransferEncodingError)
+from .http_exceptions import (
+    BadStatusLine,
+    ContentEncodingError,
+    ContentLengthError,
+    InvalidHeader,
+    LineTooLong,
+    TransferEncodingError,
+)
 from .http_writer import HttpVersion, HttpVersion10
 from .log import internal_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
-
 
 try:
     import brotli
@@ -747,7 +751,7 @@ RawRequestMessagePy = RawRequestMessage
 RawResponseMessagePy = RawResponseMessage
 
 try:
-    if not NO_EXTENSIONS:  # pragma: no cover
+    if not NO_EXTENSIONS:
         from ._http_parser import (HttpRequestParser,  # type: ignore  # noqa
                                    HttpResponseParser,
                                    RawRequestMessage,

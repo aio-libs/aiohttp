@@ -1,1 +1,0 @@
-Fix task cancellation when ``sendfile()`` syscall is used by static file handling.

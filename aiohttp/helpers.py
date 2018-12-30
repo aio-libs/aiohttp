@@ -19,9 +19,23 @@ from contextlib import suppress
 from math import ceil
 from pathlib import Path
 from types import TracebackType
-from typing import (Any, Callable, Dict, Iterable, Iterator, List,  # noqa
-                    Mapping, Optional, Pattern, Tuple, Type, TypeVar, Union,
-                    cast)
+from typing import (  # noqa
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -33,7 +47,6 @@ from yarl import URL
 from . import hdrs
 from .log import client_logger, internal_logger
 from .typedefs import PathLike  # noqa
-
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
 
@@ -48,6 +61,12 @@ try:
     from typing import ContextManager
 except ImportError:
     from typing_extensions import ContextManager
+
+
+all_tasks = asyncio.Task.all_tasks
+
+if PY_37:
+    all_tasks = getattr(asyncio, 'all_tasks')  # use the trick to cheat mypy
 
 
 _T = TypeVar('_T')
@@ -80,6 +99,10 @@ coroutines._DEBUG = False  # type: ignore
 @asyncio.coroutine
 def noop(*args, **kwargs):  # type: ignore
     return  # type: ignore
+
+
+async def noop2(*args: Any, **kwargs: Any) -> None:
+    return
 
 
 coroutines._DEBUG = old_debug  # type: ignore

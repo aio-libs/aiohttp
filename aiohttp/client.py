@@ -9,45 +9,116 @@ import sys
 import traceback
 import warnings
 from types import SimpleNamespace, TracebackType
-from typing import (Any, Coroutine, Generator, Generic, Iterable, List,  # noqa
-                    Mapping, Optional, Set, Tuple, Type, TypeVar, Union)
+from typing import (  # noqa
+    Any,
+    Coroutine,
+    Generator,
+    Generic,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
 from yarl import URL
 
-from . import client_exceptions, client_reqrep
-from . import connector as connector_mod
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
-from .client_exceptions import *  # noqa
-from .client_exceptions import (ClientError, ClientOSError, InvalidURL,
-                                ServerTimeoutError, TooManyRedirects,
-                                WSServerHandshakeError)
-from .client_reqrep import *  # noqa
-from .client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
-                            _merge_ssl_params)
+from .client_exceptions import (
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientError,
+    ClientHttpProxyError,
+    ClientOSError,
+    ClientPayloadError,
+    ClientProxyConnectionError,
+    ClientResponseError,
+    ClientSSLError,
+    ContentTypeError,
+    InvalidURL,
+    ServerConnectionError,
+    ServerDisconnectedError,
+    ServerFingerprintMismatch,
+    ServerTimeoutError,
+    TooManyRedirects,
+    WSServerHandshakeError,
+)
+from .client_reqrep import (
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    RequestInfo,
+    _merge_ssl_params,
+)
 from .client_ws import ClientWebSocketResponse
-from .connector import *  # noqa
-from .connector import BaseConnector, TCPConnector
+from .connector import BaseConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
-from .helpers import (DEBUG, PY_36, BasicAuth, CeilTimeout, TimeoutHandle,
-                      get_running_loop, proxies_from_env, sentinel,
-                      strip_auth_from_url)
+from .helpers import (
+    PY_36,
+    BasicAuth,
+    CeilTimeout,
+    TimeoutHandle,
+    get_running_loop,
+    proxies_from_env,
+    sentinel,
+    strip_auth_from_url,
+)
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http_websocket import (WSHandshakeError, WSMessage, ws_ext_gen,  # noqa
-                             ws_ext_parse)
+from .http_websocket import (  # noqa
+    WSHandshakeError,
+    WSMessage,
+    ws_ext_gen,
+    ws_ext_parse,
+)
 from .streams import FlowControlDataQueue
-from .tcp_helpers import tcp_cork, tcp_nodelay
 from .tracing import Trace, TraceConfig
 from .typedefs import JSONEncoder, LooseCookies, LooseHeaders, StrOrURL
 
-
-__all__ = (client_exceptions.__all__ +  # noqa
-           client_reqrep.__all__ +  # noqa
-           connector_mod.__all__ +  # noqa
-           ('ClientSession', 'ClientTimeout',
-            'ClientWebSocketResponse', 'request'))
+__all__ = (
+    # client_exceptions
+    'ClientConnectionError',
+    'ClientConnectorCertificateError',
+    'ClientConnectorError',
+    'ClientConnectorSSLError',
+    'ClientError',
+    'ClientHttpProxyError',
+    'ClientOSError',
+    'ClientPayloadError',
+    'ClientProxyConnectionError',
+    'ClientResponseError',
+    'ClientSSLError',
+    'ContentTypeError',
+    'InvalidURL',
+    'ServerConnectionError',
+    'ServerDisconnectedError',
+    'ServerFingerprintMismatch',
+    'ServerTimeoutError',
+    'TooManyRedirects',
+    'WSServerHandshakeError',
+    # client_reqrep
+    'ClientRequest',
+    'ClientResponse',
+    'Fingerprint',
+    'RequestInfo',
+    # connector
+    'BaseConnector',
+    'TCPConnector',
+    'UnixConnector',
+    # client_ws
+    'ClientWebSocketResponse',
+    # client
+    'ClientSession',
+    'ClientTimeout',
+    'request')
 
 
 try:
@@ -86,26 +157,21 @@ _RetType = TypeVar('_RetType')
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
-    ATTRS = frozenset([
+    __slots__ = (
         '_source_traceback', '_connector',
-        'requote_redirect_url', '_loop', '_cookie_jar',
+        '_loop', '_cookie_jar',
         '_connector_owner', '_default_auth',
         '_version', '_json_serialize',
+        '_requote_redirect_url',
         '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
-        '_ws_response_class', '_trace_configs', '_session_proxy',
-        '_session_proxy_auth', '_session_proxy_headers'])
-
-    _source_traceback = None
-    _connector = None
-
-    requote_redirect_url = True
+        '_ws_response_class', '_trace_configs')
 
     def __init__(self, *, connector: Optional[BaseConnector]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
                  cookies: Optional[LooseCookies]=None,
-                 headers: LooseHeaders=None,
+                 headers: Optional[LooseHeaders]=None,
                  skip_auto_headers: Optional[Iterable[str]]=None,
                  auth: Optional[BasicAuth]=None,
                  json_serialize: JSONEncoder=json.dumps,
@@ -121,10 +187,8 @@ class ClientSession:
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
-                 trace_configs: Optional[List[TraceConfig]]=None,
-                 proxy: Optional[StrOrURL]=None,
-                 proxy_auth: Optional[BasicAuth]=None,
-                 proxy_headers: Optional[LooseHeaders]=None) -> None:
+                 requote_redirect_url: bool=True,
+                 trace_configs: Optional[List[TraceConfig]]=None) -> None:
 
         if loop is None:
             if connector is not None:
@@ -135,14 +199,18 @@ class ClientSession:
         if connector is None:
             connector = TCPConnector(loop=loop)
 
+        # Initialize these three attrs before raising any exception,
+        # they are used in __del__
+        self._connector = connector  # type: Optional[BaseConnector]
+        self._loop = loop
+        if loop.get_debug():
+            self._source_traceback = traceback.extract_stack(sys._getframe(1))  # type: Optional[traceback.StackSummary]  # noqa
+        else:
+            self._source_traceback = None
+
         if connector._loop is not loop:
             raise RuntimeError(
-                "Session and connector has to use same event loop")
-
-        self._loop = loop
-
-        if loop.get_debug():
-            self._source_traceback = traceback.extract_stack(sys._getframe(1))
+                "Session and connector have to use same event loop")
 
         if cookie_jar is None:
             cookie_jar = CookieJar(loop=loop)
@@ -151,7 +219,6 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector  # type: BaseConnector
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
@@ -159,10 +226,18 @@ class ClientSession:
         if timeout is sentinel:
             self._timeout = DEFAULT_TIMEOUT
             if read_timeout is not sentinel:
+                warnings.warn("read_timeout is deprecated, "
+                              "use timeout argument instead",
+                              DeprecationWarning,
+                              stacklevel=2)
                 self._timeout = attr.evolve(self._timeout, total=read_timeout)
             if conn_timeout is not None:
                 self._timeout = attr.evolve(self._timeout,
                                             connect=conn_timeout)
+                warnings.warn("conn_timeout is deprecated, "
+                              "use timeout argument instead",
+                              DeprecationWarning,
+                              stacklevel=2)
         else:
             self._timeout = timeout  # type: ignore
             if read_timeout is not sentinel:
@@ -176,6 +251,7 @@ class ClientSession:
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
+        self._requote_redirect_url = requote_redirect_url
 
         self._session_proxy = proxy
         self._session_proxy_auth = proxy_auth
@@ -207,15 +283,6 @@ class ClientSession:
                       DeprecationWarning,
                       stacklevel=2)
 
-    if DEBUG:
-        def __setattr__(self, name: str, val: Any) -> None:
-            if name not in self.ATTRS:
-                warnings.warn("Setting custom ClientSession.{} attribute "
-                              "is discouraged".format(name),
-                              DeprecationWarning,
-                              stacklevel=2)
-            super().__setattr__(name, val)
-
     def __del__(self, _warnings: Any=warnings) -> None:
         if not self.closed:
             if PY_36:
@@ -245,6 +312,7 @@ class ClientSession:
             params: Optional[Mapping[str, str]]=None,
             data: Any=None,
             json: Any=None,
+            cookies: Optional[LooseCookies]=None,
             headers: LooseHeaders=None,
             skip_auto_headers: Optional[Iterable[str]]=None,
             auth: Optional[BasicAuth]=None,
@@ -370,7 +438,16 @@ class ClientSession:
                                          "with AUTH argument or credentials "
                                          "encoded in URL")
 
-                    cookies = self._cookie_jar.filter_cookies(url)
+                    session_cookies = self._cookie_jar.filter_cookies(url)
+
+                    if cookies is not None:
+                        tmp_cookie_jar = CookieJar()
+                        tmp_cookie_jar.update_cookies(cookies)
+                        req_cookies = tmp_cookie_jar.filter_cookies(url)
+                        if session_cookies and req_cookies:
+                            session_cookies.load(req_cookies)
+
+                    cookies = session_cookies
 
                     if proxy is not None:
                         proxy = URL(proxy)
@@ -408,8 +485,6 @@ class ClientSession:
                             'to host {0}'.format(url)) from exc
 
                     assert conn.transport is not None
-                    tcp_nodelay(conn.transport, True)
-                    tcp_cork(conn.transport, False)
 
                     assert conn.protocol is not None
                     conn.protocol.set_response_params(
@@ -479,7 +554,7 @@ class ClientSession:
 
                         try:
                             r_url = URL(
-                                r_url, encoded=not self.requote_redirect_url)
+                                r_url, encoded=not self._requote_redirect_url)
 
                         except ValueError:
                             raise InvalidURL(r_url)
@@ -726,7 +801,6 @@ class ClientSession:
             reader = FlowControlDataQueue(
                 proto, limit=2 ** 16, loop=self._loop)  # type: FlowControlDataQueue[WSMessage]  # noqa
             proto.set_parser(WebSocketReader(reader, max_msg_size), reader)
-            tcp_nodelay(transport, True)
             writer = WebSocketWriter(
                 proto, transport, use_mask=True,
                 compress=compress, notakeover=notakeover)
@@ -827,7 +901,7 @@ class ClientSession:
         """
         if not self.closed:
             if self._connector is not None and self._connector_owner:
-                self._connector.close()
+                await self._connector.close()
             self._connector = None
 
     @property
@@ -852,6 +926,20 @@ class ClientSession:
     def version(self) -> Tuple[int, int]:
         """The session HTTP protocol version."""
         return self._version
+
+    @property
+    def requote_redirect_url(self) -> bool:
+        """Do URL requoting on redirection handling."""
+        return self._requote_redirect_url
+
+    @requote_redirect_url.setter
+    def requote_redirect_url(self, val: bool) -> None:
+        """Do URL requoting on redirection handling."""
+        warnings.warn("session.requote_redirect_url modification "
+                      "is deprecated #2778",
+                      DeprecationWarning,
+                      stacklevel=2)
+        self._requote_redirect_url = val
 
     @property
     def loop(self) -> asyncio.AbstractEventLoop:

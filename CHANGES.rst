@@ -14,83 +14,92 @@ Changelog
 
 .. towncrier release notes start
 
-3.4.4 (2018-09-05)
-==================
+3.5.1 (2018-12-24)
+====================
 
-- Fix installation from sources when compiling toolkit is not available (`#3241 <https://github.com/aio-libs/aiohttp/pull/3241>`_)
+- Fix a regression about ``ClientSession._requote_redirect_url`` modification in debug
+  mode.
 
-3.4.3 (2018-09-04)
-==================
-
-- Add ``app.pre_frozen`` state to properly handle startup signals in sub-applications. (`#3237 <https://github.com/aio-libs/aiohttp/pull/3237>`_)
-
-
-3.4.2 (2018-09-01)
-==================
-
-- Fix ``iter_chunks`` type annotation (`#3230 <https://github.com/aio-libs/aiohttp/pull/3230>`_)
-
-3.4.1 (2018-08-28)
-==================
-
-- Fix empty header parsing regression. (`#3218 <https://github.com/aio-libs/aiohttp/pull/3218>`_)
-- Fix BaseRequest.raw_headers doc. (`#3215 <https://github.com/aio-libs/aiohttp/pull/3215>`_)
-- Fix documentation building on ReadTheDocs (`#3221 <https://github.com/aio-libs/aiohttp/pull/3221>`_)
-
-
-3.4.0 (2018-08-25)
-==================
+3.5.0 (2018-12-22)
+====================
 
 Features
 --------
 
-- Add type hints (`#3049 <https://github.com/aio-libs/aiohttp/pull/3049>`_)
-- Add ``raise_for_status`` request parameter (`#3073 <https://github.com/aio-libs/aiohttp/pull/3073>`_)
-- Add type hints to HTTP client (`#3092 <https://github.com/aio-libs/aiohttp/pull/3092>`_)
-- Minor server optimizations (`#3095 <https://github.com/aio-libs/aiohttp/pull/3095>`_)
-- Preserve the cause when `HTTPException` is raised from another exception. (`#3096 <https://github.com/aio-libs/aiohttp/pull/3096>`_)
-- Add `close_boundary` option in `MultipartWriter.write` method. Support streaming (`#3104 <https://github.com/aio-libs/aiohttp/pull/3104>`_)
-- Added a ``remove_slash`` option to the ``normalize_path_middleware`` factory. (`#3173 <https://github.com/aio-libs/aiohttp/pull/3173>`_)
-- The class `AbstractRouteDef` is importable from `aiohttp.web`. (`#3183 <https://github.com/aio-libs/aiohttp/pull/3183>`_)
+- The library type annotations are checked in strict mode now.
+- Add support for setting cookies for individual request (`#2387 <https://github.com/aio-libs/aiohttp/pull/2387>`_)
+- Application.add_domain implementation (`#2809 <https://github.com/aio-libs/aiohttp/pull/2809>`_)
+- The default ``app`` in the request returned by ``test_utils.make_mocked_request``
+  can now have objects assigned to it and retrieved using the ``[]`` operator. (`#3174 <https://github.com/aio-libs/aiohttp/pull/3174>`_)
+- Make ``request.url`` accessible when transport is closed. (`#3177 <https://github.com/aio-libs/aiohttp/pull/3177>`_)
+- Add ``zlib_executor_size`` argument to ``Response`` constructor to allow compression to run in a background executor to avoid blocking the main thread and potentially triggering health check failures. (`#3205 <https://github.com/aio-libs/aiohttp/pull/3205>`_)
+- Enable users to set `ClientTimeout` in `aiohttp.request` (`#3213 <https://github.com/aio-libs/aiohttp/pull/3213>`_)
+- Don't raise a warning if ``NETRC`` environment variable is not set and ``~/.netrc`` file
+  doesn't exist. (`#3267 <https://github.com/aio-libs/aiohttp/pull/3267>`_)
+- Add default logging handler to web.run_app
+
+  If the `Application.debug` flag is set and the default logger `aiohttp.access` is used, access logs will now be output using a `stderr` `StreamHandler` if no handlers are attached. Furthermore, if the default logger has no log level set, the log level will be set to `DEBUG`. (`#3324 <https://github.com/aio-libs/aiohttp/pull/3324>`_)
+- Add method argument to ``session.ws_connect()``.
+
+  Sometimes server API requires a different HTTP method for WebSocket connection establishment.
+
+  For example, ``Docker exec`` needs POST. (`#3378 <https://github.com/aio-libs/aiohttp/pull/3378>`_)
+- Create a task per request handling. (`#3406 <https://github.com/aio-libs/aiohttp/pull/3406>`_)
 
 
 Bugfixes
 --------
 
-- Prevent double closing when client connection is released before the
-  last ``data_received()`` callback. (`#3031 <https://github.com/aio-libs/aiohttp/pull/3031>`_)
-- Make redirect with `normalize_path_middleware` work when using url encoded paths. (`#3051 <https://github.com/aio-libs/aiohttp/pull/3051>`_)
-- Postpone web task creation to connection establishment. (`#3052 <https://github.com/aio-libs/aiohttp/pull/3052>`_)
-- Fix ``sock_read`` timeout. (`#3053 <https://github.com/aio-libs/aiohttp/pull/3053>`_)
-- When using a server-request body as the `data=` argument of a client request, iterate over the content with `readany` instead of `readline` to avoid `Line too long` errors. (`#3054 <https://github.com/aio-libs/aiohttp/pull/3054>`_)
-- fix `UrlDispatcher` has no attribute `add_options`, add `web.options` (`#3062 <https://github.com/aio-libs/aiohttp/pull/3062>`_)
-- correct filename in content-disposition with multipart body (`#3064 <https://github.com/aio-libs/aiohttp/pull/3064>`_)
-- Many HTTP proxies has buggy keepalive support.
-  Let's not reuse connection but close it after processing every response. (`#3070 <https://github.com/aio-libs/aiohttp/pull/3070>`_)
-- raise 413 "Payload Too Large" rather than raising ValueError in request.post()
-  Add helpful debug message to 413 responses (`#3087 <https://github.com/aio-libs/aiohttp/pull/3087>`_)
-- Fix `StreamResponse` equality, now that they are `MutableMapping` objects. (`#3100 <https://github.com/aio-libs/aiohttp/pull/3100>`_)
-- Fix server request objects comparison (`#3116 <https://github.com/aio-libs/aiohttp/pull/3116>`_)
-- Do not hang on `206 Partial Content` response with `Content-Encoding: gzip` (`#3123 <https://github.com/aio-libs/aiohttp/pull/3123>`_)
-- Fix timeout precondition checkers (`#3145 <https://github.com/aio-libs/aiohttp/pull/3145>`_)
+- Enable passing `access_log_class` via `handler_args` (`#3158 <https://github.com/aio-libs/aiohttp/pull/3158>`_)
+- Return empty bytes with end-of-chunk marker in empty stream reader. (`#3186 <https://github.com/aio-libs/aiohttp/pull/3186>`_)
+- Accept ``CIMultiDictProxy`` instances for ``headers`` argument in ``web.Response``
+  constructor. (`#3207 <https://github.com/aio-libs/aiohttp/pull/3207>`_)
+- Don't uppercase HTTP method in parser (`#3233 <https://github.com/aio-libs/aiohttp/pull/3233>`_)
+- Make method match regexp RFC-7230 compliant (`#3235 <https://github.com/aio-libs/aiohttp/pull/3235>`_)
+- Add ``app.pre_frozen`` state to properly handle startup signals in sub-applications. (`#3237 <https://github.com/aio-libs/aiohttp/pull/3237>`_)
+- Enhanced parsing and validation of helpers.BasicAuth.decode. (`#3239 <https://github.com/aio-libs/aiohttp/pull/3239>`_)
+- Change imports from collections module in preparation for 3.8. (`#3258 <https://github.com/aio-libs/aiohttp/pull/3258>`_)
+- Ensure Host header is added first to ClientRequest to better replicate browser (`#3265 <https://github.com/aio-libs/aiohttp/pull/3265>`_)
+- Fix forward compatibility with Python 3.8: importing ABCs directly from the collections module will not be supported anymore. (`#3273 <https://github.com/aio-libs/aiohttp/pull/3273>`_)
+- Keep the query string by `normalize_path_middleware`. (`#3278 <https://github.com/aio-libs/aiohttp/pull/3278>`_)
+- Fix missing parameter ``raise_for_status`` for aiohttp.request() (`#3290 <https://github.com/aio-libs/aiohttp/pull/3290>`_)
+- Bracket IPv6 addresses in the HOST header (`#3304 <https://github.com/aio-libs/aiohttp/pull/3304>`_)
+- Fix default message for server ping and pong frames. (`#3308 <https://github.com/aio-libs/aiohttp/pull/3308>`_)
+- Fix tests/test_connector.py typo and tests/autobahn/server.py duplicate loop def. (`#3337 <https://github.com/aio-libs/aiohttp/pull/3337>`_)
+- Fix false-negative indicator end_of_HTTP_chunk in StreamReader.readchunk function (`#3361 <https://github.com/aio-libs/aiohttp/pull/3361>`_)
+- Release HTTP response before raising status exception (`#3364 <https://github.com/aio-libs/aiohttp/pull/3364>`_)
+- Fix task cancellation when ``sendfile()`` syscall is used by static file handling. (`#3383 <https://github.com/aio-libs/aiohttp/pull/3383>`_)
+- Fix stack trace for ``asyncio.TimeoutError`` which was not logged, when it is caught
+  in the handler. (`#3414 <https://github.com/aio-libs/aiohttp/pull/3414>`_)
 
 
 Improved Documentation
 ----------------------
 
-- Add a new FAQ entry that clarifies that you should not reuse response
-  objects in middleware functions. (`#3020 <https://github.com/aio-libs/aiohttp/pull/3020>`_)
-- Add FAQ section "Why is creating a ClientSession outside of an event loop dangerous?" (`#3072 <https://github.com/aio-libs/aiohttp/pull/3072>`_)
-- Fix link to Rambler (`#3115 <https://github.com/aio-libs/aiohttp/pull/3115>`_)
-- Fix TCPSite documentation on the Server Reference page. (`#3146 <https://github.com/aio-libs/aiohttp/pull/3146>`_)
-- Fix documentation build configuration file for Windows. (`#3147 <https://github.com/aio-libs/aiohttp/pull/3147>`_)
-- Remove no longer existing lingering_timeout parameter of Application.make_handler from documentation. (`#3151 <https://github.com/aio-libs/aiohttp/pull/3151>`_)
-- Mention that ``app.make_handler`` is deprecated, recommend to use runners
-  API instead. (`#3157 <https://github.com/aio-libs/aiohttp/pull/3157>`_)
+- Improve documentation of ``Application.make_handler`` parameters. (`#3152 <https://github.com/aio-libs/aiohttp/pull/3152>`_)
+- Fix BaseRequest.raw_headers doc. (`#3215 <https://github.com/aio-libs/aiohttp/pull/3215>`_)
+- Fix typo in TypeError exception reason in ``web.Application._handle`` (`#3229 <https://github.com/aio-libs/aiohttp/pull/3229>`_)
+- Make server access log format placeholder %b documentation reflect
+  behavior and docstring. (`#3307 <https://github.com/aio-libs/aiohttp/pull/3307>`_)
 
 
 Deprecations and Removals
 -------------------------
 
-- Drop ``loop.current_task()`` from ``helpers.current_task()`` (`#2826 <https://github.com/aio-libs/aiohttp/pull/2826>`_)
-- Drop ``reader`` parameter from ``request.multipart()``. (`#3090 <https://github.com/aio-libs/aiohttp/pull/3090>`_)
+- Deprecate modification of ``session.requote_redirect_url`` (`#2278 <https://github.com/aio-libs/aiohttp/pull/2278>`_)
+- Deprecate ``stream.unread_data()`` (`#3260 <https://github.com/aio-libs/aiohttp/pull/3260>`_)
+- Deprecated use of boolean in ``resp.enable_compression()`` (`#3318 <https://github.com/aio-libs/aiohttp/pull/3318>`_)
+- Encourage creation of aiohttp public objects inside a coroutine (`#3331 <https://github.com/aio-libs/aiohttp/pull/3331>`_)
+- Drop dead ``Connection.detach()`` and ``Connection.writer``. Both methods were broken
+  for more than 2 years. (`#3358 <https://github.com/aio-libs/aiohttp/pull/3358>`_)
+- Deprecate ``app.loop``, ``request.loop``, ``client.loop`` and ``connector.loop`` properties. (`#3374 <https://github.com/aio-libs/aiohttp/pull/3374>`_)
+- Deprecate explicit debug argument. Use asyncio debug mode instead. (`#3381 <https://github.com/aio-libs/aiohttp/pull/3381>`_)
+- Deprecate body parameter in HTTPException (and derived classes) constructor. (`#3385 <https://github.com/aio-libs/aiohttp/pull/3385>`_)
+- Deprecate bare connector close, use ``async with connector:`` and ``await connector.close()`` instead. (`#3417 <https://github.com/aio-libs/aiohttp/pull/3417>`_)
+- Deprecate obsolete ``read_timeout`` and ``conn_timeout`` in ``ClientSession`` constructor. (`#3438 <https://github.com/aio-libs/aiohttp/pull/3438>`_)
+
+
+Misc
+----
+
+- #3341, #3351

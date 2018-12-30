@@ -9,29 +9,52 @@ from contextlib import suppress
 from http.cookies import SimpleCookie
 from itertools import cycle, islice
 from time import monotonic
-from typing import (TYPE_CHECKING, Any, Awaitable, Callable,  # noqa
-                    DefaultDict, Dict, Iterator, List, Optional, Set, Tuple,
-                    Type, Union, cast)
+from types import TracebackType
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    DefaultDict,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import attr
 
 from . import hdrs, helpers
 from .abc import AbstractResolver
-from .client_exceptions import (ClientConnectionError,
-                                ClientConnectorCertificateError,
-                                ClientConnectorError, ClientConnectorSSLError,
-                                ClientHttpProxyError,
-                                ClientProxyConnectionError,
-                                ServerFingerprintMismatch, cert_errors,
-                                ssl_errors)
+from .client_exceptions import (
+    ClientConnectionError,
+    ClientConnectorCertificateError,
+    ClientConnectorError,
+    ClientConnectorSSLError,
+    ClientHttpProxyError,
+    ClientProxyConnectionError,
+    ServerFingerprintMismatch,
+    cert_errors,
+    ssl_errors,
+)
 from .client_proto import ResponseHandler
 from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
-from .helpers import (PY_36, CeilTimeout, get_running_loop, is_ip_address,
-                      noop, sentinel)
+from .helpers import (
+    PY_36,
+    CeilTimeout,
+    get_running_loop,
+    is_ip_address,
+    noop2,
+    sentinel,
+)
 from .http import RESPONSES
 from .locks import EventResultOrError
 from .resolver import DefaultResolver
-
 
 try:
     import ssl
@@ -48,6 +71,24 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientTimeout  # noqa
     from .client_reqrep import ConnectionKey  # noqa
     from .tracing import Trace  # noqa
+
+
+class _DeprecationWaiter:
+    __slots__ = ('_awaitable', '_awaited')
+
+    def __init__(self, awaitable: Awaitable[Any]) -> None:
+        self._awaitable = awaitable
+        self._awaited = False
+
+    def __await__(self) -> Any:
+        self._awaited = True
+        return self._awaitable.__await__()
+
+    def __del__(self) -> None:
+        if not self._awaited:
+            warnings.warn("Connector.close() is a coroutine, "
+                          "please use await connector.close()",
+                          DeprecationWarning)
 
 
 class Connection:
@@ -223,7 +264,7 @@ class BaseConnector:
 
         conns = [repr(c) for c in self._conns.values()]
 
-        self.close()
+        self._close()
 
         if PY_36:
             kwargs = {'source': self}
@@ -240,10 +281,23 @@ class BaseConnector:
         self._loop.call_exception_handler(context)
 
     def __enter__(self) -> 'BaseConnector':
+        warnings.warn('"witn Connector():" is deprecated, '
+                      'use "async with Connector():" instead',
+                      DeprecationWarning)
         return self
 
     def __exit__(self, *exc: Any) -> None:
         self.close()
+
+    async def __aenter__(self) -> 'BaseConnector':
+        return self
+
+    async def __aexit__(self,
+                        exc_type: Optional[Type[BaseException]]=None,
+                        exc_value: Optional[BaseException]=None,
+                        exc_traceback: Optional[TracebackType]=None
+                        ) -> None:
+        await self.close()
 
     @property
     def force_close(self) -> bool:
@@ -334,14 +388,18 @@ class BaseConnector:
 
     def close(self) -> Awaitable[None]:
         """Close all opened transports."""
+        self._close()
+        return _DeprecationWaiter(noop2())
+
+    def _close(self) -> None:
         if self._closed:
-            return noop()
+            return
 
         self._closed = True
 
         try:
             if self._loop.is_closed():
-                return noop()
+                return
 
             # cancel cleanup task
             if self._cleanup_handle:
@@ -369,7 +427,6 @@ class BaseConnector:
             self._cleanup_handle = None
             self._cleanup_closed_transports.clear()
             self._cleanup_closed_handle = None
-        return noop()
 
     @property
     def closed(self) -> bool:

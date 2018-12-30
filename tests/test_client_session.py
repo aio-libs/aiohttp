@@ -305,7 +305,7 @@ def test_connector_loop(loop) -> None:
             async def make_sess():
                 return ClientSession(connector=connector, loop=loop)
             loop.run_until_complete(make_sess())
-        assert re.match("Session and connector has to use same event loop",
+        assert re.match("Session and connector have to use same event loop",
                         str(ctx.value))
 
 
@@ -345,13 +345,38 @@ async def test_double_close(connector, create_session) -> None:
 
 
 async def test_del(connector, loop) -> None:
+    loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
-    loop.set_exception_handler(lambda loop, ctx: None)
+    logs = []
+    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
 
     with pytest.warns(ResourceWarning):
         del session
         gc.collect()
+
+    assert len(logs) == 1
+    expected = {'client_session': mock.ANY,
+                'message': 'Unclosed client session'}
+    assert logs[0] == expected
+
+
+async def test_del_debug(connector, loop) -> None:
+    loop.set_debug(True)
+    # N.B. don't use session fixture, it stores extra reference internally
+    session = ClientSession(connector=connector, loop=loop)
+    logs = []
+    loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
+
+    with pytest.warns(ResourceWarning):
+        del session
+        gc.collect()
+
+    assert len(logs) == 1
+    expected = {'client_session': mock.ANY,
+                'message': 'Unclosed client session',
+                'source_traceback': mock.ANY}
+    assert logs[0] == expected
 
 
 async def test_context_manager(connector, loop) -> None:
@@ -650,7 +675,10 @@ async def test_client_session_timeout_args(loop) -> None:
     session1 = ClientSession(loop=loop)
     assert session1._timeout == client.DEFAULT_TIMEOUT
 
-    session2 = ClientSession(loop=loop, read_timeout=20*60, conn_timeout=30*60)
+    with pytest.warns(DeprecationWarning):
+        session2 = ClientSession(loop=loop,
+                                 read_timeout=20*60,
+                                 conn_timeout=30*60)
     assert session2._timeout == client.ClientTimeout(total=20*60,
                                                      connect=30*60)
 
@@ -663,3 +691,21 @@ async def test_client_session_timeout_args(loop) -> None:
         ClientSession(loop=loop,
                       timeout=client.ClientTimeout(total=10 * 60),
                       conn_timeout=30 * 60)
+
+
+async def test_requote_redirect_url_default() -> None:
+    session = ClientSession()
+    assert session.requote_redirect_url
+
+
+async def test_requote_redirect_url_default_disable() -> None:
+    session = ClientSession(requote_redirect_url=False)
+    assert not session.requote_redirect_url
+
+
+async def test_requote_redirect_setter() -> None:
+    session = ClientSession()
+    assert session.requote_redirect_url
+    with pytest.warns(DeprecationWarning):
+        session.requote_redirect_url = False
+    assert not session.requote_redirect_url

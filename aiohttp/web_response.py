@@ -7,10 +7,21 @@ import math
 import time
 import warnings
 import zlib
+from concurrent.futures import Executor
 from email.utils import parsedate
 from http.cookies import SimpleCookie
-from typing import (TYPE_CHECKING, Any, Dict, Iterator, Mapping,  # noqa
-                    MutableMapping, Optional, Tuple, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 from multidict import CIMultiDict, istr
 
@@ -20,7 +31,6 @@ from .helpers import HeadersMixin, rfc822_formatted_time, sentinel
 from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
-
 
 __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
 
@@ -310,7 +320,7 @@ class StreamResponse(BaseClass, HeadersMixin):
             ctype = self._content_type
         self._headers[CONTENT_TYPE] = ctype
 
-    def _do_start_compression(self, coding: ContentCoding) -> None:
+    async def _do_start_compression(self, coding: ContentCoding) -> None:
         if coding != ContentCoding.identity:
             assert self._payload_writer is not None
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
@@ -319,15 +329,15 @@ class StreamResponse(BaseClass, HeadersMixin):
             # remove the header
             self._headers.popall(hdrs.CONTENT_LENGTH, None)
 
-    def _start_compression(self, request: 'BaseRequest') -> None:
+    async def _start_compression(self, request: 'BaseRequest') -> None:
         if self._compression_force:
-            self._do_start_compression(self._compression_force)
+            await self._do_start_compression(self._compression_force)
         else:
             accept_encoding = request.headers.get(
                 hdrs.ACCEPT_ENCODING, '').lower()
             for coding in ContentCoding:
                 if coding.value in accept_encoding:
-                    self._do_start_compression(coding)
+                    await self._do_start_compression(coding)
                     return
 
     async def prepare(
@@ -359,7 +369,7 @@ class StreamResponse(BaseClass, HeadersMixin):
             headers.add(hdrs.SET_COOKIE, value)
 
         if self._compression:
-            self._start_compression(request)
+            await self._start_compression(request)
 
         if self._chunked:
             if version != HttpVersion11:
@@ -479,23 +489,25 @@ class Response(StreamResponse):
                  text: Optional[str]=None,
                  headers: Optional[LooseHeaders]=None,
                  content_type: Optional[str]=None,
-                 charset: Optional[str]=None) -> None:
+                 charset: Optional[str]=None,
+                 zlib_executor_size: Optional[int]=None,
+                 zlib_executor: Executor=None) -> None:
         if body is not None and text is not None:
             raise ValueError("body and text are not allowed together")
 
         if headers is None:
-            headers = CIMultiDict()
+            real_headers = CIMultiDict()  # type: CIMultiDict[str]
         elif not isinstance(headers, CIMultiDict):
-            headers = CIMultiDict(headers)
+            real_headers = CIMultiDict(headers)
         else:
-            headers = cast('CIMultiDict[str]', headers)
+            real_headers = headers  # = cast('CIMultiDict[str]', headers)
 
         if content_type is not None and "charset" in content_type:
             raise ValueError("charset must not be in content_type "
                              "argument")
 
         if text is not None:
-            if hdrs.CONTENT_TYPE in headers:
+            if hdrs.CONTENT_TYPE in real_headers:
                 if content_type or charset:
                     raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
@@ -509,12 +521,12 @@ class Response(StreamResponse):
                     content_type = 'text/plain'
                 if charset is None:
                     charset = 'utf-8'
-                headers[hdrs.CONTENT_TYPE] = (
+                real_headers[hdrs.CONTENT_TYPE] = (
                     content_type + '; charset=' + charset)
                 body = text.encode(charset)
                 text = None
         else:
-            if hdrs.CONTENT_TYPE in headers:
+            if hdrs.CONTENT_TYPE in real_headers:
                 if content_type is not None or charset is not None:
                     raise ValueError("passing both Content-Type header and "
                                      "content_type or charset params "
@@ -523,9 +535,9 @@ class Response(StreamResponse):
                 if content_type is not None:
                     if charset is not None:
                         content_type += '; charset=' + charset
-                    headers[hdrs.CONTENT_TYPE] = content_type
+                    real_headers[hdrs.CONTENT_TYPE] = content_type
 
-        super().__init__(status=status, reason=reason, headers=headers)
+        super().__init__(status=status, reason=reason, headers=real_headers)
 
         if text is not None:
             self.text = text
@@ -533,6 +545,8 @@ class Response(StreamResponse):
             self.body = body
 
         self._compressed_body = None  # type: Optional[bytes]
+        self._zlib_executor_size = zlib_executor_size
+        self._zlib_executor = zlib_executor
 
     @property
     def body(self) -> Optional[Union[bytes, Payload]]:
@@ -652,19 +666,34 @@ class Response(StreamResponse):
 
         return await super()._start(request)
 
-    def _do_start_compression(self, coding: ContentCoding) -> None:
+    def _compress_body(self, zlib_mode: int) -> None:
+        compressobj = zlib.compressobj(wbits=zlib_mode)
+        body_in = self._body
+        assert body_in is not None
+        self._compressed_body = \
+            compressobj.compress(body_in) + compressobj.flush()
+
+    async def _do_start_compression(self, coding: ContentCoding) -> None:
         if self._body_payload or self._chunked:
-            return super()._do_start_compression(coding)
+            return await super()._do_start_compression(coding)
+
         if coding != ContentCoding.identity:
             # Instead of using _payload_writer.enable_compression,
             # compress the whole body
             zlib_mode = (16 + zlib.MAX_WBITS
                          if coding == ContentCoding.gzip else -zlib.MAX_WBITS)
-            compressobj = zlib.compressobj(wbits=zlib_mode)
             body_in = self._body
             assert body_in is not None
-            body_out = compressobj.compress(body_in) + compressobj.flush()
-            self._compressed_body = body_out
+            if self._zlib_executor_size is not None and \
+                    len(body_in) > self._zlib_executor_size:
+                await asyncio.get_event_loop().run_in_executor(
+                    self._zlib_executor, self._compress_body, zlib_mode)
+            else:
+                self._compress_body(zlib_mode)
+
+            body_out = self._compressed_body
+            assert body_out is not None
+
             self._headers[hdrs.CONTENT_ENCODING] = coding.value
             self._headers[hdrs.CONTENT_LENGTH] = str(len(body_out))
 

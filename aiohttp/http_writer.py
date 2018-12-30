@@ -11,7 +11,6 @@ from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import NO_EXTENSIONS
 
-
 __all__ = ('StreamWriter', 'HttpVersion', 'HttpVersion10', 'HttpVersion11')
 
 HttpVersion = collections.namedtuple('HttpVersion', ['major', 'minor'])
@@ -167,7 +166,7 @@ _serialize_headers = _py_serialize_headers
 try:
     import aiohttp._http_writer as _http_writer  # type: ignore
     _c_serialize_headers = _http_writer._serialize_headers
-    if not NO_EXTENSIONS:  # pragma: no cover
+    if not NO_EXTENSIONS:
         _serialize_headers = _c_serialize_headers
 except ImportError:
     pass

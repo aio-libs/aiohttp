@@ -9,9 +9,9 @@ sudo: required
 language: python
 
 python:
+- 3.5
 - 3.6
 - &mainstream_python 3.7
-- 3.7-dev
 - nightly
 - &pypy3 pypy3.5
 
@@ -21,8 +21,6 @@ install:
 - pip install -r requirements/ci.txt
 
 script:
-- make cov-ci-no-ext
-- make cov-ci-aio-debug
 - make cov-ci-run
 
 after_success:
@@ -140,13 +138,13 @@ os: linux
 jobs:
   fast_finish: true
   allow_failures:
-  - python: 3.7-dev
   - python: nightly
 
   include:
-  - python: 3.5
+  - name: 3.7 without extensions
+    python: 3.7
     env:
-      PYTEST_ADDOPTS: -n0
+      AIOHTTP_NO_EXTENSIONS: 1
 
   - <<: *_doc_base
     name: Checking docs spelling
@@ -204,7 +202,6 @@ jobs:
     - &env_py35 PYTHON_VERSION=3.5.3
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
   - <<: *osx_python_base
     python: *mainstream_python
     env:
@@ -229,8 +226,6 @@ jobs:
   - <<: *generic_deploy_base
     <<: *_reset_steps
     env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
-    dist: trusty
-    group: edge
     services:
     - docker
     script:
@@ -249,7 +244,6 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     env:
@@ -272,7 +266,6 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
     env:
@@ -295,7 +288,6 @@ jobs:
     - *env_py35
     - *env_pyenv
     - *env_path
-    - PYTEST_ADDOPTS=-n0
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
     env:

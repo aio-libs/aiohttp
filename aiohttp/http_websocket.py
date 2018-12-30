@@ -16,7 +16,6 @@ from .helpers import NO_EXTENSIONS
 from .log import ws_logger
 from .streams import DataQueue
 
-
 __all__ = ('WS_CLOSED_MESSAGE', 'WS_CLOSING_MESSAGE', 'WS_KEY',
            'WebSocketReader', 'WebSocketWriter', 'WSMessage',
            'WebSocketError', 'WSMsgType', 'WSCloseCode')
@@ -139,7 +138,7 @@ def _websocket_mask_python(mask: bytes, data: bytearray) -> None:
         data[3::4] = data[3::4].translate(d)
 
 
-if NO_EXTENSIONS:
+if NO_EXTENSIONS:  # pragma: no cover
     _websocket_mask = _websocket_mask_python
 else:
     try:

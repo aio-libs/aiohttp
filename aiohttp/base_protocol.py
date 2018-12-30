@@ -1,7 +1,7 @@
 import asyncio
 from typing import Optional, cast
 
-from .log import internal_logger
+from .tcp_helpers import tcp_nodelay
 
 
 class BaseProtocol(asyncio.Protocol):
@@ -20,14 +20,10 @@ class BaseProtocol(asyncio.Protocol):
     def pause_writing(self) -> None:
         assert not self._paused
         self._paused = True
-        if self._loop.get_debug():
-            internal_logger.debug("%r pauses writing", self)
 
     def resume_writing(self) -> None:
         assert self._paused
         self._paused = False
-        if self._loop.get_debug():
-            internal_logger.debug("%r resumes writing", self)
 
         waiter = self._drain_waiter
         if waiter is not None:
@@ -52,7 +48,9 @@ class BaseProtocol(asyncio.Protocol):
             self._reading_paused = False
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
-        self.transport = cast(asyncio.Transport, transport)
+        tr = cast(asyncio.Transport, transport)
+        tcp_nodelay(tr, True)
+        self.transport = tr
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._connection_lost = True

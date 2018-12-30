@@ -3,8 +3,12 @@ from contextlib import suppress
 from typing import Any, Optional, Tuple
 
 from .base_protocol import BaseProtocol
-from .client_exceptions import (ClientOSError, ClientPayloadError,
-                                ServerDisconnectedError, ServerTimeoutError)
+from .client_exceptions import (
+    ClientOSError,
+    ClientPayloadError,
+    ServerDisconnectedError,
+    ServerTimeoutError,
+)
 from .helpers import BaseTimerContext
 from .http import HttpResponseParser, RawResponseMessage
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
@@ -160,7 +164,7 @@ class ResponseHandler(BaseProtocol,
             self._read_timeout_handle.cancel()
 
         if timeout:
-            self._read_timeout_handle = self._loop.call_later(  # type: ignore
+            self._read_timeout_handle = self._loop.call_later(
                 timeout, self._on_read_timeout)
         else:
             self._read_timeout_handle = None

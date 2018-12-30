@@ -95,6 +95,7 @@ Gregory Haynes
 Gus Goulart
 Gustavo Carneiro
 Günther Jena
+Hans Adema
 Harmon Y.
 Hu Bo
 Hugo Herter
@@ -172,6 +173,7 @@ Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
 Pavel Polyakov
+Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Philipp A.
@@ -184,6 +186,7 @@ Robert Lu
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt
+Sebastian Acuna
 Sebastian Hanula
 Sebastian Hüther
 Sebastien Geffroy
@@ -240,6 +243,7 @@ Yannick Koechlin
 Yannick Péroux
 Ye Cao
 Yegor Roganov
+Yifei Kong
 Young-Ho Cha
 Yuriy Shatrov
 Yury Selivanov

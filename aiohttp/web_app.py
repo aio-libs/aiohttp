@@ -2,14 +2,33 @@ import asyncio
 import logging
 import warnings
 from functools import partial
-from typing import (TYPE_CHECKING, Any, AsyncIterator, Awaitable,  # noqa
-                    Callable, Dict, Iterable, Iterator, List, Mapping,
-                    MutableMapping, Optional, Sequence, Tuple, Type, Union,
-                    cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from . import hdrs
-from .abc import (AbstractAccessLogger, AbstractMatchInfo, AbstractRouter,
-                  AbstractStreamWriter)
+from .abc import (
+    AbstractAccessLogger,
+    AbstractMatchInfo,
+    AbstractRouter,
+    AbstractStreamWriter,
+)
 from .frozenlist import FrozenList
 from .helpers import DEBUG
 from .http_parser import RawRequestMessage
@@ -23,15 +42,19 @@ from .web_request import Request
 from .web_response import StreamResponse
 from .web_routedef import AbstractRouteDef
 from .web_server import Server
-from .web_urldispatcher import (AbstractResource, Domain, MaskDomain,
-                                MatchedSubAppResource, PrefixedSubAppResource,
-                                UrlDispatcher)
-
+from .web_urldispatcher import (
+    AbstractResource,
+    Domain,
+    MaskDomain,
+    MatchedSubAppResource,
+    PrefixedSubAppResource,
+    UrlDispatcher,
+)
 
 __all__ = ('Application', 'CleanupError')
 
 
-if TYPE_CHECKING:  # pragma: no branch
+if TYPE_CHECKING:  # pragma: no cover
     _AppSignal = Signal[Callable[['Application'], Awaitable[None]]]
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
                                          Awaitable[None]]]
@@ -119,7 +142,7 @@ class Application(MutableMapping[str, Any]):
                       DeprecationWarning,
                       stacklevel=2)
 
-    if DEBUG:
+    if DEBUG:  # pragma: no cover
         def __setattr__(self, name: str, val: Any) -> None:
             if name not in self.ATTRS:
                 warnings.warn("Setting custom web.Application.{} attribute "
@@ -403,8 +426,10 @@ class Application(MutableMapping[str, Any]):
         yield _fix_request_current_app(self), True
 
     async def _handle(self, request: Request) -> StreamResponse:
+        loop = asyncio.get_event_loop()
+        debug = loop.get_debug()
         match_info = await self._router.resolve(request)
-        if DEBUG:  # pragma: no cover
+        if debug:  # pragma: no cover
             if not isinstance(match_info, AbstractMatchInfo):
                 raise TypeError("match_info should be AbstractMatchInfo "
                                 "instance, not {!r}".format(match_info))
@@ -432,15 +457,6 @@ class Application(MutableMapping[str, Any]):
 
             resp = await handler(request)
 
-        if DEBUG:
-            if not isinstance(resp, StreamResponse):
-                msg = ("Handler {!r} should return response instance, "
-                       "got {!r} [middlewares {!r}]").format(
-                           match_info.handler, type(resp),
-                           [middleware
-                            for app in match_info.apps
-                            for middleware in app.middlewares])
-                raise TypeError(msg)
         return resp
 
     def __call__(self) -> 'Application':

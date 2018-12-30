@@ -222,12 +222,21 @@ async def test_create_conn(loop) -> None:
 
 async def test_context_manager(loop) -> None:
     conn = aiohttp.BaseConnector(loop=loop)
-    conn.close = mock.Mock()
 
-    with conn as c:
+    with pytest.warns(DeprecationWarning):
+        with conn as c:
+            assert conn is c
+
+    assert conn.closed
+
+
+async def test_async_context_manager(loop) -> None:
+    conn = aiohttp.BaseConnector(loop=loop)
+
+    async with conn as c:
         assert conn is c
 
-    assert conn.close.called
+    assert conn.closed
 
 
 async def test_close(loop) -> None:

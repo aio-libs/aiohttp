@@ -8,7 +8,6 @@ import pytest
 
 from aiohttp import streams
 
-
 DATA = b'line1\nline2\nline3\n'
 
 
@@ -211,7 +210,8 @@ class TestStreamReader:
             await stream.read()
             await stream.read()
             await stream.read()
-        stream.unread_data(b'data')
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(b'data')
         await stream.read()
         await stream.read()
         assert not internal_logger.warning.called
@@ -434,7 +434,8 @@ class TestStreamReader:
         data = await stream.read(5)
         assert b'line1' == data
 
-        stream.unread_data(data)
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(data)
 
         data = await stream.read(5)
         assert b'line1' == data
@@ -442,7 +443,8 @@ class TestStreamReader:
         data = await stream.read(4)
         assert b'line' == data
 
-        stream.unread_data(b'line1line')
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(b'line1line')
 
         data = b''
         while len(data) < 10:
@@ -452,19 +454,22 @@ class TestStreamReader:
         data = await stream.read(7)
         assert b'onemore' == data
 
-        stream.unread_data(data)
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(data)
 
         data = b''
         while len(data) < 11:
             data += await stream.read(11)
         assert b'onemoreline' == data
 
-        stream.unread_data(b'line')
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(b'line')
         data = await stream.read(4)
         assert b'line' == data
 
         stream.feed_eof()
-        stream.unread_data(b'at_eof')
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(b'at_eof')
         data = await stream.read(6)
         assert b'at_eof' == data
 
@@ -666,7 +671,8 @@ class TestStreamReader:
         data, end_of_chunk = await stream.readchunk()
 
         # Try to unread a part of the first chunk
-        stream.unread_data(b'rt1')
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(b'rt1')
 
         # The end_of_chunk signal was already received for the first chunk,
         # so we receive up to the second one
@@ -675,7 +681,8 @@ class TestStreamReader:
         assert end_of_chunk
 
         # Unread a part of the second chunk
-        stream.unread_data(b'rt2')
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(b'rt2')
 
         data, end_of_chunk = await stream.readchunk()
         assert b'rt2' == data
@@ -814,7 +821,8 @@ class TestStreamReader:
         stream = self._make_one()
         stream.feed_data(b'line1')
         stream.feed_eof()
-        stream.unread_data(b'')
+        with pytest.warns(DeprecationWarning):
+            stream.unread_data(b'')
 
         data = await stream.read(5)
         assert b'line1' == data

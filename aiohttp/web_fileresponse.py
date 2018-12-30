@@ -3,8 +3,17 @@ import mimetypes
 import os
 import pathlib
 from functools import partial
-from typing import (IO, TYPE_CHECKING, Any, Awaitable, Callable, List,  # noqa
-                    Optional, Union, cast)
+from typing import (  # noqa
+    IO,
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    List,
+    Optional,
+    Union,
+    cast,
+)
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -13,11 +22,14 @@ from .helpers import set_exception, set_result
 from .http_writer import StreamWriter
 from .log import server_logger
 from .typedefs import LooseHeaders
-from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
-                             HTTPPreconditionFailed,
-                             HTTPRequestRangeNotSatisfiable)
+from .web_exceptions import (
+    HTTPNotModified,
+    HTTPOk,
+    HTTPPartialContent,
+    HTTPPreconditionFailed,
+    HTTPRequestRangeNotSatisfiable,
+)
 from .web_response import StreamResponse
-
 
 __all__ = ('FileResponse',)
 

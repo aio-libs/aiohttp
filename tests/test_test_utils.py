@@ -11,9 +11,11 @@ from aiohttp.test_utils import AioHTTPTestCase
 from aiohttp.test_utils import RawTestServer as _RawTestServer
 from aiohttp.test_utils import TestClient as _TestClient
 from aiohttp.test_utils import TestServer as _TestServer
-from aiohttp.test_utils import (loop_context, make_mocked_request,
-                                unittest_run_loop)
-
+from aiohttp.test_utils import (
+    loop_context,
+    make_mocked_request,
+    unittest_run_loop,
+)
 
 _hello_world_str = "Hello, world"
 _hello_world_bytes = _hello_world_str.encode('utf-8')

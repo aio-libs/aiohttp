@@ -7,20 +7,43 @@ import warnings
 import zlib
 from collections import deque
 from types import TracebackType
-from typing import (TYPE_CHECKING, Any, Dict, Iterator, List, Mapping,  # noqa
-                    Optional, Sequence, Tuple, Type, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiMapping  # noqa
 
-from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
-                   CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
+from .hdrs import (
+    CONTENT_DISPOSITION,
+    CONTENT_ENCODING,
+    CONTENT_LENGTH,
+    CONTENT_TRANSFER_ENCODING,
+    CONTENT_TYPE,
+)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
-from .payload import (JsonPayload, LookupError, Order, Payload, StringPayload,
-                      get_payload, payload_type)
+from .payload import (
+    JsonPayload,
+    LookupError,
+    Order,
+    Payload,
+    StringPayload,
+    get_payload,
+    payload_type,
+)
 from .streams import StreamReader
-
 
 __all__ = ('MultipartReader', 'MultipartWriter', 'BodyPartReader',
            'BadContentDispositionHeader', 'BadContentDispositionParam',
@@ -312,7 +335,10 @@ class BodyPartReader:
             idx = window.find(sub, max(0, len(self._prev_chunk) - len(sub)))
         if idx >= 0:
             # pushing boundary back to content
-            self._content.unread_data(window[idx:])
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore",
+                                        category=DeprecationWarning)
+                self._content.unread_data(window[idx:])
             if size > idx:
                 self._prev_chunk = self._prev_chunk[:idx]
             chunk = window[len(self._prev_chunk):idx]
