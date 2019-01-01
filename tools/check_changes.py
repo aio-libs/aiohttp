@@ -27,7 +27,7 @@ def main(argv):
     changes = root / 'CHANGES'
     failed = False
     for fname in changes.iterdir():
-        if fname.name == '.gitignore':
+        if fname.name in ('.gitignore', '.TEMPLATE.rst'):
             continue
         if fname.suffix not in ALLOWED_SUFFIXES:
             if not failed:
