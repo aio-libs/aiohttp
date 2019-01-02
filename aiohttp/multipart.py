@@ -702,9 +702,6 @@ class MultipartWriter(Payload):
         super().__init__(None, content_type=ctype)
 
         self._parts = []  # type: List[_Part]  # noqa
-        self._headers = CIMultiDict()  # type: CIMultiDict[str]
-        assert self.content_type is not None
-        self._headers[CONTENT_TYPE] = self.content_type
 
     def __enter__(self) -> 'MultipartWriter':
         return self
@@ -769,28 +766,18 @@ class MultipartWriter(Payload):
             headers = CIMultiDict()
 
         if isinstance(obj, Payload):
-            if obj.headers is not None:
-                obj.headers.update(headers)
-            else:
-                if isinstance(headers, CIMultiDict):
-                    obj._headers = headers
-                else:
-                    obj._headers = CIMultiDict(headers)
+            obj.headers.update(headers)
             return self.append_payload(obj)
         else:
             try:
-                return self.append_payload(get_payload(obj, headers=headers))
+                payload = get_payload(obj, headers=headers)
             except LookupError:
-                raise TypeError
+                raise TypeError('Cannot create payload from %r' % obj)
+            else:
+                return self.append_payload(payload)
 
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
-        # content-type
-        assert payload.headers is not None
-        if CONTENT_TYPE not in payload.headers:
-            assert payload.content_type is not None
-            payload.headers[CONTENT_TYPE] = payload.content_type
-
         # compression
         encoding = payload.headers.get(CONTENT_ENCODING, '').lower()  # type: Optional[str]  # noqa
         if encoding and encoding not in ('deflate', 'gzip', 'identity'):
