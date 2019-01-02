@@ -220,7 +220,8 @@ class FileResponse(StreamResponse):
                 filepath = gzip_path
                 gzip = True
 
-        st = filepath.stat()
+        loop = asyncio.get_event_loop()
+        st = await loop.run_in_executor(None, filepath.stat)
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
@@ -336,8 +337,8 @@ class FileResponse(StreamResponse):
             self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
                 real_start, real_start + count - 1, file_size)
 
-        with filepath.open('rb') as fobj:
+        with (await loop.run_in_executor(None, filepath.open, 'rb')) as fobj:
             if start:  # be aware that start could be None or int=0 here.
-                fobj.seek(start)
+                await loop.run_in_executor(None, fobj.seek, start)
 
             return await self._sendfile(request, fobj, count)
