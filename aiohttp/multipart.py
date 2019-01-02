@@ -677,7 +677,7 @@ class MultipartReader:
             self._last_part = None
 
 
-_Part = Tuple[Payload, 'MultiMapping[str]', str, str]
+_Part = Tuple[Payload, str, str]
 
 
 class MultipartWriter(Payload):
@@ -812,12 +812,7 @@ class MultipartWriter(Payload):
         if size is not None and not (encoding or te_encoding):
             payload.headers[CONTENT_LENGTH] = str(size)
 
-        # render headers
-        headers = ''.join(
-            [k + ': ' + v + '\r\n' for k, v in payload.headers.items()]
-        ).encode('utf-8') + b'\r\n'
-
-        self._parts.append((payload, headers, encoding, te_encoding))  # type: ignore  # noqa
+        self._parts.append((payload, encoding, te_encoding))  # type: ignore
         return payload
 
     def append_json(
@@ -858,13 +853,13 @@ class MultipartWriter(Payload):
             return 0
 
         total = 0
-        for part, headers, encoding, te_encoding in self._parts:
+        for part, encoding, te_encoding in self._parts:
             if encoding or te_encoding or part.size is None:
                 return None
 
             total += int(
                 2 + len(self._boundary) + 2 +  # b'--'+self._boundary+b'\r\n'
-                part.size + len(headers) +
+                part.size + len(part._binary_headers) +
                 2  # b'\r\n'
             )
 
@@ -877,9 +872,9 @@ class MultipartWriter(Payload):
         if not self._parts:
             return
 
-        for part, headers, encoding, te_encoding in self._parts:
+        for part, encoding, te_encoding in self._parts:
             await writer.write(b'--' + self._boundary + b'\r\n')
-            await writer.write(headers)
+            await writer.write(part._binary_headers)
 
             if encoding or te_encoding:
                 w = MultipartPayloadWriter(writer)
