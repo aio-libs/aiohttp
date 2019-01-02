@@ -1,3 +1,4 @@
+import asyncio
 import enum
 import io
 import json
@@ -285,13 +286,18 @@ class IOBasePayload(Payload):
             self.set_content_disposition(disposition, filename=self._filename)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
+        loop = asyncio.get_event_loop()
         try:
-            chunk = self._value.read(DEFAULT_LIMIT)
+            chunk = await loop.run_in_executor(
+                None, self._value.read, DEFAULT_LIMIT
+            )
             while chunk:
                 await writer.write(chunk)
-                chunk = self._value.read(DEFAULT_LIMIT)
+                chunk = await loop.run_in_executor(
+                    None, self._value.read, DEFAULT_LIMIT
+                )
         finally:
-            self._value.close()
+            await loop.run_in_executor(None, self._value.close)
 
 
 class TextIOPayload(IOBasePayload):
@@ -330,13 +336,18 @@ class TextIOPayload(IOBasePayload):
             return None
 
     async def write(self, writer: AbstractStreamWriter) -> None:
+        loop = asyncio.get_event_loop()
         try:
-            chunk = self._value.read(DEFAULT_LIMIT)
+            chunk = await loop.run_in_executor(
+                None, self._value.read, DEFAULT_LIMIT
+            )
             while chunk:
                 await writer.write(chunk.encode(self._encoding))
-                chunk = self._value.read(DEFAULT_LIMIT)
+                chunk = await loop.run_in_executor(
+                    None, self._value.read, DEFAULT_LIMIT
+                )
         finally:
-            self._value.close()
+            await loop.run_in_executor(None, self._value.close)
 
 
 class BytesIOPayload(IOBasePayload):
