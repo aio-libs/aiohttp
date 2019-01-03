@@ -165,6 +165,15 @@ class Payload(ABC):
         return self._headers
 
     @property
+    def _binary_headers(self) -> bytes:
+        if self.headers is None:
+            # FIXME: This case actually is unreachable.
+            return b''  # pragma: no cover
+        return ''.join(
+            [k + ': ' + v + '\r\n' for k, v in self.headers.items()]
+        ).encode('utf-8') + b'\r\n'
+
+    @property
     def encoding(self) -> Optional[str]:
         """Payload encoding"""
         return self._encoding

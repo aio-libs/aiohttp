@@ -1008,9 +1008,6 @@ class TestMultipartWriter:
         part = writer._parts[0][0]
         assert part.headers[CONTENT_TYPE] == 'test/passed'
 
-    async def test_write(self, writer, stream) -> None:
-        await writer.write(stream)
-
     def test_with(self) -> None:
         with aiohttp.MultipartWriter(boundary=':') as writer:
             writer.append('foo')
@@ -1032,6 +1029,25 @@ class TestMultipartWriter:
         with pytest.raises(TypeError):
             with aiohttp.MultipartWriter(boundary=':') as writer:
                 writer.append(None)
+
+    async def test_write_preserves_content_disposition(
+        self, buf, stream
+    ) -> None:
+        with aiohttp.MultipartWriter(boundary=':') as writer:
+            part = writer.append(b'foo', headers={CONTENT_TYPE: 'test/passed'})
+            part.set_content_disposition('form-data', filename='bug')
+        await writer.write(stream)
+
+        headers, message = bytes(buf).split(b'\r\n\r\n', 1)
+
+        assert headers == (
+            b'--:\r\n'
+            b'Content-Type: test/passed\r\n'
+            b'Content-Length: 3\r\n'
+            b'Content-Disposition:'
+            b' form-data; filename="bug"; filename*=utf-8\'\'bug'
+        )
+        assert message == b'foo\r\n--:--\r\n'
 
 
 async def test_async_for_reader() -> None:
