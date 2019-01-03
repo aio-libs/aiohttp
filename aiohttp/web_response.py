@@ -1,5 +1,5 @@
 import asyncio  # noqa
-import collections  # noqa
+import collections.abc  # noqa
 import datetime
 import enum
 import json
@@ -39,7 +39,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .web_request import BaseRequest  # noqa
     BaseClass = MutableMapping[str, Any]
 else:
-    BaseClass = collections.MutableMapping
+    BaseClass = collections.abc.MutableMapping
 
 
 class ContentCoding(enum.Enum):
