@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 import datetime
 import gzip
 import json
@@ -94,7 +94,7 @@ def test_stream_response_eq() -> None:
 
 def test_stream_response_is_mutable_mapping() -> None:
     resp = StreamResponse()
-    assert isinstance(resp, collections.MutableMapping)
+    assert isinstance(resp, collections.abc.MutableMapping)
     resp['key'] = 'value'
     assert 'value' == resp['key']
 
