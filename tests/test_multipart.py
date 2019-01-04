@@ -1117,7 +1117,10 @@ class TestMultipartWriter:
         """
         with open(__file__, 'rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
-                part = writer.append(fobj)
+                part = writer.append(
+                    fobj,
+                    headers={CONTENT_TYPE: 'text/plain'},
+                )
 
             content_length = part.size
 
@@ -1131,7 +1134,7 @@ class TestMultipartWriter:
 
         assert headers == (
             b'--:\r\n'
-            b'Content-Type: text/x-python\r\n'
+            b'Content-Type: text/plain\r\n'
             b'Content-Disposition:'
             b' attachments; filename="bug.py"; filename*=utf-8\'\'bug.py\r\n'
             b'Content-Length: %s'
