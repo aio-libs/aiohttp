@@ -5,6 +5,7 @@ import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
+from http import HTTPStatus
 from logging import Logger
 from typing import (
     TYPE_CHECKING,
@@ -524,25 +525,27 @@ class RequestHandler(BaseProtocol):
         self.log_exception("Error handling request", exc_info=exc)
 
         ct = 'text/plain'
-        if status == 500:
-            msg = 'Server got itself in trouble'
+        if status == HTTPStatus.INTERNAL_SERVER_ERROR:
+            title = '500 Internal Server Error'
+            msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
+            tb = None
+            if self.debug:
+                with suppress(Exception):
+                    tb = traceback.format_exc()
+
             if 'text/html' in request.headers.get('Accept', ''):
-                if self.debug:
-                    with suppress(Exception):
-                        tb = html_escape(traceback.format_exc())
-                        msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
+                if tb:
+                    tb = html_escape(tb)
+                    msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
                 message = (
                     "<html><head>"
-                    "<title>500 Internal Server Error</title>"
-                    "</head><body>\n<h1>500 Internal Server Error</h1>"
+                    "<title>{title}</title>"
+                    "</head><body>\n<h1>{title}</h1>"
                     "<br>\n{msg}\n</body></html>\n"
-                ).format(msg=msg)
+                ).format(title=title, msg=msg)
                 ct = 'text/html'
             else:
-                if self.debug:
-                    with suppress(Exception):
-                        msg = traceback.format_exc()
-                message = '500 Internal Server Error\n\n' + msg
+                message = title + '\n\n' + (tb or msg)
 
         resp = Response(status=status, text=message, content_type=ct)
         resp.force_close()
