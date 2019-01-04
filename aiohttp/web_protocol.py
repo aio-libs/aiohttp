@@ -526,9 +526,9 @@ class RequestHandler(BaseProtocol):
 
         ct = 'text/plain'
         if status == HTTPStatus.INTERNAL_SERVER_ERROR:
-            title = (
-                str(HTTPStatus.INTERNAL_SERVER_ERROR.value) +
-                ' ' + HTTPStatus.INTERNAL_SERVER_ERROR.phrase
+            title = '{http_status_code:d} {http_response_reason}'.format(
+                http_status_code=str(HTTPStatus.INTERNAL_SERVER_ERROR.value),
+                http_response_reason=HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
             )
             msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
             tb = None
