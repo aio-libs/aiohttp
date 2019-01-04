@@ -33,7 +33,7 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server,
     assert resp.headers['Content-Type'].startswith('text/plain')
 
     txt = await resp.text()
-    assert txt.startswith("500 Internal Server Error")
+    assert txt.startswith('500 Internal Server Error')
     assert 'Traceback' not in txt
 
     logger.exception.assert_called_with(
