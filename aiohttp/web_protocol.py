@@ -523,36 +523,28 @@ class RequestHandler(BaseProtocol):
         information. It always closes current connection."""
         self.log_exception("Error handling request", exc_info=exc)
 
+        ct = 'text/plain'
         if status == 500:
+            msg = 'Server got itself in trouble'
             if 'text/html' in request.headers.get('Accept', ''):
                 if self.debug:
                     with suppress(Exception):
-                        tb = traceback.format_exc()
-                        tb = html_escape(tb)
+                        tb = html_escape(traceback.format_exc())
                         msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
-                else:
-                    msg = 'Server got itself in trouble'
-                msg = (
+                message = (
                     "<html><head>"
                     "<title>500 Internal Server Error</title>"
                     "</head><body>\n<h1>500 Internal Server Error</h1>"
                     "<br>\n{msg}\n</body></html>\n"
                 ).format(msg=msg)
-                resp = Response(status=status, text=msg,
-                                content_type='text/html')
+                ct = 'text/html'
             else:
                 if self.debug:
                     with suppress(Exception):
                         msg = traceback.format_exc()
-                else:
-                    msg = 'Server got itself in trouble'
-                msg = '500 Internal Server Error\n\n' + msg
-                resp = Response(status=status, text=msg,
-                                content_type='text/plain')
-        else:
-            resp = Response(status=status, text=message,
-                            content_type='text/plain')
+                message = '500 Internal Server Error\n\n' + msg
 
+        resp = Response(status=status, text=message, content_type=ct)
         resp.force_close()
 
         # some data already got sent, connection is broken
