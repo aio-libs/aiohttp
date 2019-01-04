@@ -107,7 +107,7 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server,
     assert resp.headers['Content-Type'].startswith('text/plain')
 
     txt = await resp.text()
-    assert "Traceback:" in txt
+    assert 'Traceback (most recent call last):\n' in txt
 
     logger.exception.assert_called_with(
         "Error handling request",
@@ -128,7 +128,12 @@ async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
     assert resp.headers['Content-Type'].startswith('text/html')
 
     txt = await resp.text()
-    assert txt.startswith("<h1>500 Internal Server Error</h1>")
+    assert txt == (
+        '<html><head><title>500 Internal Server Error</title></head><body>\n'
+        '<h1>500 Internal Server Error</h1><br>\n'
+        'Server got itself in trouble\n'
+        '</body></html>\n'
+    )
     assert "Traceback" not in txt
 
     logger.exception.assert_called_with(
@@ -150,8 +155,12 @@ async def test_raw_server_html_exception_debug(aiohttp_raw_server,
     assert resp.headers['Content-Type'].startswith('text/html')
 
     txt = await resp.text()
-    assert txt.startswith("<h1>500 Internal Server Error</h1>")
-    assert "<h2>Traceback:</h2>" in txt
+    assert txt.startswith(
+        '<html><head><title>500 Internal Server Error</title></head><body>\n'
+        '<h1>500 Internal Server Error</h1><br>\n'
+        '<h2>Traceback:</h2>\n'
+        '<pre>Traceback (most recent call last):\n'
+    )
 
     logger.exception.assert_called_with(
         "Error handling request", exc_info=exc)

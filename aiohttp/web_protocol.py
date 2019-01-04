@@ -1,6 +1,5 @@
 import asyncio
 import asyncio.streams
-import textwrap
 import traceback
 import warnings
 from collections import deque
@@ -526,32 +525,28 @@ class RequestHandler(BaseProtocol):
 
         if status == 500:
             if 'text/html' in request.headers.get('Accept', ''):
-                msg = "<h1>500 Internal Server Error</h1>"
                 if self.debug:
                     with suppress(Exception):
                         tb = traceback.format_exc()
                         tb = html_escape(tb)
-                        msg += '<br><h2>Traceback:</h2>\n<pre>'
-                        msg += tb
-                        msg += '</pre>'
+                        msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
                 else:
-                    msg += "Server got itself in trouble"
-                    msg = (
-                        "<html><head>"
-                        "<title>500 Internal Server Error</title>"
-                        "</head><body>{msg}</body></html>"
-                    ).format(msg)
+                    msg = 'Server got itself in trouble'
+                msg = (
+                    "<html><head>"
+                    "<title>500 Internal Server Error</title>"
+                    "</head><body>\n<h1>500 Internal Server Error</h1>"
+                    "<br>\n{msg}\n</body></html>\n"
+                ).format(msg=msg)
                 resp = Response(status=status, text=msg,
                                 content_type='text/html')
             else:
-                msg = '500 Internal Server Error'
                 if self.debug:
                     with suppress(Exception):
-                        msg += '\n\nTraceback:\n'
-                        tb = traceback.format_exc()
-                        msg += textwrap.indent(tb, '    ')
+                        msg = traceback.format_exc()
                 else:
-                    msg += '\n\nServer got itself in trouble'
+                    msg = 'Server got itself in trouble'
+                msg = '500 Internal Server Error\n\n' + msg
                 resp = Response(status=status, text=msg,
                                 content_type='text/plain')
         else:
