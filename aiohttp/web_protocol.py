@@ -551,7 +551,7 @@ class RequestHandler(BaseProtocol):
                                 content_type='text/plain')
         else:
             resp = Response(status=status, text=message,
-                            content_type='text/html')
+                            content_type='text/plain')
 
         resp.force_close()
 

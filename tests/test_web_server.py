@@ -34,7 +34,7 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server,
 
     txt = await resp.text()
     assert txt.startswith("500 Internal Server Error")
-    assert "Traceback:" not in txt
+    assert 'Traceback' not in txt
 
     logger.exception.assert_called_with(
         "Error handling request",
@@ -134,7 +134,6 @@ async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
         'Server got itself in trouble\n'
         '</body></html>\n'
     )
-    assert "Traceback" not in txt
 
     logger.exception.assert_called_with(
         "Error handling request", exc_info=exc)
