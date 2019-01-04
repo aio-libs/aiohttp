@@ -128,9 +128,10 @@ async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
     assert resp.headers['Content-Type'].startswith('text/html')
 
     txt = await resp.text()
+    debug(txt)
     assert txt == (
         '<html><head><title>500 Internal Server Error</title></head><body>\n'
-        '<h1>500 Internal Server Error</h1><br>\n'
+        '<h1>500 Internal Server Error</h1>\n'
         'Server got itself in trouble\n'
         '</body></html>\n'
     )
@@ -156,7 +157,8 @@ async def test_raw_server_html_exception_debug(aiohttp_raw_server,
     txt = await resp.text()
     assert txt.startswith(
         '<html><head><title>500 Internal Server Error</title></head><body>\n'
-        '<h1>500 Internal Server Error</h1><br>\n'
+        '<h1>500 Internal Server Error</h1>\n'
+        'Server got itself in trouble\n'
         '<h2>Traceback:</h2>\n'
         '<pre>Traceback (most recent call last):\n'
     )

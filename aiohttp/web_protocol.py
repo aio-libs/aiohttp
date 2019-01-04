@@ -536,16 +536,18 @@ class RequestHandler(BaseProtocol):
             if 'text/html' in request.headers.get('Accept', ''):
                 if tb:
                     tb = html_escape(tb)
-                    msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
+                    msg += '\n<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
                 message = (
                     "<html><head>"
                     "<title>{title}</title>"
                     "</head><body>\n<h1>{title}</h1>"
-                    "<br>\n{msg}\n</body></html>\n"
+                    "\n{msg}\n</body></html>\n"
                 ).format(title=title, msg=msg)
                 ct = 'text/html'
             else:
-                message = title + '\n\n' + (tb or msg)
+                if tb:
+                    msg += '\n' + tb
+                message = title + '\n\n' + msg
 
         resp = Response(status=status, text=message, content_type=ct)
         resp.force_close()
