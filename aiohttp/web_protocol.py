@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+import textwrap
 import traceback
 import warnings
 from collections import deque
@@ -524,19 +525,35 @@ class RequestHandler(BaseProtocol):
         self.log_exception("Error handling request", exc_info=exc)
 
         if status == 500:
-            msg = "<h1>500 Internal Server Error</h1>"
-            if self.debug:
-                with suppress(Exception):
-                    tb = traceback.format_exc()
-                    tb = html_escape(tb)
-                    msg += '<br><h2>Traceback:</h2>\n<pre>'
-                    msg += tb
-                    msg += '</pre>'
+            if 'text/html' in request.headers.get('Accept', ''):
+                msg = "<h1>500 Internal Server Error</h1>"
+                if self.debug:
+                    with suppress(Exception):
+                        tb = traceback.format_exc()
+                        tb = html_escape(tb)
+                        msg += '<br><h2>Traceback:</h2>\n<pre>'
+                        msg += tb
+                        msg += '</pre>'
+                else:
+                    msg += "Server got itself in trouble"
+                    msg = (
+                        "<html><head>"
+                        "<title>500 Internal Server Error</title>"
+                        "</head><body>{msg}</body></html>"
+                    ).format(msg)
+                resp = Response(status=status, text=msg,
+                                content_type='text/html')
             else:
-                msg += "Server got itself in trouble"
-                msg = ("<html><head><title>500 Internal Server Error</title>"
-                       "</head><body>" + msg + "</body></html>")
-            resp = Response(status=status, text=msg, content_type='text/html')
+                msg = '500 Internal Server Error'
+                if self.debug:
+                    with suppress(Exception):
+                        msg += '\n\nTraceback:\n'
+                        tb = traceback.format_exc()
+                        msg += textwrap.indent(tb, '    ')
+                else:
+                    msg += '\n\nServer got itself in trouble'
+                resp = Response(status=status, text=msg,
+                                content_type='text/plain')
         else:
             resp = Response(status=status, text=message,
                             content_type='text/html')
