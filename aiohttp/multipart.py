@@ -721,6 +721,9 @@ class MultipartWriter(Payload):
     def __len__(self) -> int:
         return len(self._parts)
 
+    def __bool__(self) -> bool:
+        return True
+
     _valid_tchar_regex = re.compile(br"\A[!#$%&'*+\-.^_`|~\w]+\Z")
     _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
 
@@ -849,9 +852,6 @@ class MultipartWriter(Payload):
     @property
     def size(self) -> Optional[int]:
         """Size of the payload."""
-        if not self._parts:
-            return 0
-
         total = 0
         for part, encoding, te_encoding in self._parts:
             if encoding or te_encoding or part.size is None:
@@ -869,9 +869,6 @@ class MultipartWriter(Payload):
     async def write(self, writer: Any,
                     close_boundary: bool=True) -> None:
         """Write body."""
-        if not self._parts:
-            return
-
         for part, encoding, te_encoding in self._parts:
             await writer.write(b'--' + self._boundary + b'\r\n')
             await writer.write(part._binary_headers)
