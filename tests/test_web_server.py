@@ -128,7 +128,6 @@ async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
     assert resp.headers['Content-Type'].startswith('text/html')
 
     txt = await resp.text()
-    debug(txt)
     assert txt == (
         '<html><head><title>500 Internal Server Error</title></head><body>\n'
         '<h1>500 Internal Server Error</h1>\n'
