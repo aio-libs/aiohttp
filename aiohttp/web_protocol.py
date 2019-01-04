@@ -526,7 +526,10 @@ class RequestHandler(BaseProtocol):
 
         ct = 'text/plain'
         if status == HTTPStatus.INTERNAL_SERVER_ERROR:
-            title = '500 Internal Server Error'
+            title = (
+                str(HTTPStatus.INTERNAL_SERVER_ERROR.value) + ' '
+                + HTTPStatus.INTERNAL_SERVER_ERROR.phrase
+            )
             msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
             tb = None
             if self.debug:
