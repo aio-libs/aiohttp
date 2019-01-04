@@ -6,6 +6,7 @@ from http.cookies import BaseCookie, Morsel  # noqa
 from typing import (
     TYPE_CHECKING,
     Any,
+    AsyncIterator,
     Awaitable,
     Callable,
     Dict,
@@ -206,3 +207,103 @@ class AbstractAccessLogger(ABC):
             response: StreamResponse,
             time: float) -> None:
         """Emit log to logger."""
+
+
+class AbstractStream(ABC):
+    """Abstract stream.
+
+    Has at least two implementations: a stream with Content-Length
+    and HTTP chunked one.
+    """
+
+    @abstractmethod
+    def __aiter__(self) -> AsyncIterator[bytes]:
+        """Iterate over input lines."""
+
+    @abstractmethod
+    def iter_chunked(self, n: int) -> AsyncIterator[bytes]:
+        """Returns an asynchronous iterator that yields chunks of size n."""
+
+    @abstractmethod
+    def iter_any(self) -> AsyncIterator[bytes]:
+        """Returns an asynchronous iterator that yields all the available
+        data as soon as it is received
+        """
+
+    @abstractmethod
+    def iter_chunks(self) -> AsyncIterator[Tuple[bytes, bool]]:
+        """Returns an asynchronous iterator that yields chunks of data
+        as they are received by the server. The yielded objects are tuples
+        of (bytes, bool) as returned by the StreamReader.readchunk method.
+        """
+
+    @abstractmethod
+    def exception(self) -> Optional[BaseException]:
+        """Return stream exception if any."""
+
+    @abstractmethod
+    def set_exception(self, exc: BaseException) -> None:
+        """Set stream exception.
+
+        Internal method.
+        """
+
+    @abstractmethod
+    def on_eof(self, callback: Callable[[], None]) -> None:
+        """Register a callback called on end of stream.
+
+        Internal method.
+        """
+
+    @abstractmethod
+    def feed_eof(self) -> None:
+        """EOF received.
+
+        Internal method.
+        """
+
+    @abstractmethod
+    def is_eof(self) -> bool:
+        """Return True if EOF received."""
+
+    @abstractmethod
+    def at_eof(self) -> bool:
+        """Return True if EOF received and all buffered data are read."""
+
+    @abstractmethod
+    async def wait_eof(self) -> None:
+        """Wait for EOF."""
+
+    @abstractmethod
+    def feed_data(self, data: bytes, n: int=0) -> None:
+        """Stream data are received.
+
+        Internal method.
+        """
+
+    @abstractmethod
+    async def readline(self) -> bytes:
+        """Read a line."""
+
+    @abstractmethod
+    async def read(self, n: int=-1) -> bytes:
+        """Read up to n bytes or the whole stream if n == -1."""
+
+    @abstractmethod
+    async def readany(self) -> bytes:
+        """Read all buffered data if the buffer is not empty.
+
+        Wait for any data for empty buffer before the return.
+        """
+
+    @abstractmethod
+    async def readchunk(self) -> Tuple[bytes, bool]:
+        """Read data chunk."""
+
+    @abstractmethod
+    async def readexactly(self, n: int) -> bytes:
+        """Read exactly n bytes."""
+
+    @abstractmethod
+    def read_nowait(self) -> bytes:
+        """Returns buffered data, or empty bytes if the buffer is empty."""

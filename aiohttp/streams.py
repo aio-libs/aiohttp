@@ -4,6 +4,7 @@ import warnings
 from typing import List  # noqa
 from typing import Awaitable, Callable, Generic, Optional, Tuple, TypeVar
 
+from .abc import AbstractStream
 from .base_protocol import BaseProtocol
 from .helpers import BaseTimerContext, set_exception, set_result
 from .log import internal_logger
@@ -66,17 +67,12 @@ class AsyncStreamReaderMixin:
         return AsyncStreamIterator(self.readline)  # type: ignore
 
     def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n.
-
-        Python-3.5 available for Python 3.5+ only
-        """
+        """Returns an asynchronous iterator that yields chunks of size n."""
         return AsyncStreamIterator(lambda: self.read(n))  # type: ignore
 
     def iter_any(self) -> AsyncStreamIterator[bytes]:
         """Returns an asynchronous iterator that yields all the available
         data as soon as it is received
-
-        Python-3.5 available for Python 3.5+ only
         """
         return AsyncStreamIterator(self.readany)  # type: ignore
 
@@ -84,13 +80,11 @@ class AsyncStreamReaderMixin:
         """Returns an asynchronous iterator that yields chunks of data
         as they are received by the server. The yielded objects are tuples
         of (bytes, bool) as returned by the StreamReader.readchunk method.
-
-        Python-3.5 available for Python 3.5+ only
         """
         return ChunkTupleAsyncStreamIterator(self)  # type: ignore
 
 
-class StreamReader(AsyncStreamReaderMixin):
+class StreamReader(AsyncStreamReaderMixin, AbstractStream):
     """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
@@ -457,7 +451,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return b''.join(chunks) if chunks else b''
 
 
-class EmptyStreamReader(AsyncStreamReaderMixin):
+class EmptyStreamReader(AsyncStreamReaderMixin, AbstractStream):
 
     def exception(self) -> Optional[BaseException]:
         return None
