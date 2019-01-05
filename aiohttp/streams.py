@@ -248,21 +248,38 @@ class StreamReader(AsyncStreamReaderMixin):
 
     def begin_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
+            if self.total_bytes:
+                raise RuntimeError("Called begin_http_chunk_receiving when"
+                                   "some data was already fed")
             self._http_chunk_splits = []
 
     def end_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
             raise RuntimeError("Called end_chunk_receiving without calling "
                                "begin_chunk_receiving first")
-        if not self._http_chunk_splits or \
-                self._http_chunk_splits[-1] != self.total_bytes:
-            self._http_chunk_splits.append(self.total_bytes)
 
-            # wake up readchunk when end of http chunk received
-            waiter = self._waiter
-            if waiter is not None:
-                self._waiter = None
-                set_result(waiter, False)
+        # self._http_chunk_splits contains logical byte offsets from start of
+        # the body transfer. Each offset is the offset of the end of a chunk.
+        # "Logical" means bytes, accessible for a user.
+        # If no chunks containig logical data were received, current position
+        # is difinitely zero.
+        pos = self._http_chunk_splits[-1] if self._http_chunk_splits else 0
+
+        if self.total_bytes == pos:
+            # We should not add empty chunks here. So we check for that.
+            # Note, when chunked + gzip is used, we can receive a chunk
+            # of compressed data, but that data may not be enough for gzip FSM
+            # to yield any uncompressed data. That's why current position may
+            # not change after receiving a chunk.
+            return
+
+        self._http_chunk_splits.append(self.total_bytes)
+
+        # wake up readchunk when end of http chunk received
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            set_result(waiter, False)
 
     async def _wait(self, func_name: str) -> None:
         # StreamReader uses a future to link the protocol feed_data() method
