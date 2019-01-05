@@ -3,7 +3,6 @@
 import asyncio
 import gc
 import hashlib
-import os.path
 import platform
 import socket
 import ssl
@@ -1999,20 +1998,16 @@ async def test_resolver_not_called_with_address_is_ip(loop) -> None:
     resolver.resolve.assert_not_called()
 
 
-async def test_tcp_connector_raise_connector_ssl_error(aiohttp_server) -> None:
+async def test_tcp_connector_raise_connector_ssl_error(
+        aiohttp_server, ssl_ctx,
+) -> None:
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    here = os.path.join(os.path.dirname(__file__), '..', 'tests')
-    keyfile = os.path.join(here, 'sample.key')
-    certfile = os.path.join(here, 'sample.crt')
-    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    sslcontext.load_cert_chain(certfile, keyfile)
-
-    srv = await aiohttp_server(app, ssl=sslcontext)
+    srv = await aiohttp_server(app, ssl=ssl_ctx)
 
     port = unused_port()
     conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', port))
@@ -2038,27 +2033,22 @@ async def test_tcp_connector_raise_connector_ssl_error(aiohttp_server) -> None:
 
 
 async def test_tcp_connector_do_not_raise_connector_ssl_error(
-        aiohttp_server) -> None:
+        aiohttp_server, ssl_ctx, client_ssl_ctx,
+) -> None:
     async def handler(request):
         return web.Response()
 
     app = web.Application()
     app.router.add_get('/', handler)
 
-    here = os.path.join(os.path.dirname(__file__), '..', 'tests')
-    keyfile = os.path.join(here, 'sample.key')
-    certfile = os.path.join(here, 'sample.crt')
-    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    sslcontext.load_cert_chain(certfile, keyfile)
-
-    srv = await aiohttp_server(app, ssl=sslcontext)
+    srv = await aiohttp_server(app, ssl=ssl_ctx)
     port = unused_port()
     conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', port))
 
     session = aiohttp.ClientSession(connector=conn)
     url = srv.make_url('/')
 
-    r = await session.get(url, ssl=sslcontext)
+    r = await session.get(url, ssl=client_ssl_ctx)
 
     r.release()
     first_conn = next(iter(conn._conns.values()))[0][0]
@@ -2068,7 +2058,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     except AttributeError:
         _sslcontext = first_conn.transport._sslcontext
 
-    assert _sslcontext is sslcontext
+    assert _sslcontext is client_ssl_ctx
     r.close()
 
     await session.close()
