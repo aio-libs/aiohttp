@@ -1,7 +1,6 @@
 """Tests for aiohttp/worker.py"""
 import asyncio
 import os
-import pathlib
 import socket
 import ssl
 from unittest import mock
@@ -248,37 +247,43 @@ async def test__run_exc(worker, loop, aiohttp_unused_port) -> None:
     worker.notify.assert_called_with()
 
 
-def test__create_ssl_context_without_certs_and_ciphers(worker) -> None:
-    here = pathlib.Path(__file__).parent
+def test__create_ssl_context_without_certs_and_ciphers(
+        worker,
+        tls_certificate_pem_path,
+) -> None:
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
-    worker.cfg.certfile = str(here / 'sample.crt')
-    worker.cfg.keyfile = str(here / 'sample.key')
+    worker.cfg.certfile = tls_certificate_pem_path
+    worker.cfg.keyfile = tls_certificate_pem_path
     worker.cfg.ca_certs = None
     worker.cfg.ciphers = None
-    crt = worker._create_ssl_context(worker.cfg)
-    assert isinstance(crt, ssl.SSLContext)
+    ctx = worker._create_ssl_context(worker.cfg)
+    assert isinstance(ctx, ssl.SSLContext)
 
 
-def test__create_ssl_context_with_ciphers(worker) -> None:
-    here = pathlib.Path(__file__).parent
+def test__create_ssl_context_with_ciphers(
+        worker,
+        tls_certificate_pem_path,
+) -> None:
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
-    worker.cfg.certfile = str(here / 'sample.crt')
-    worker.cfg.keyfile = str(here / 'sample.key')
+    worker.cfg.certfile = tls_certificate_pem_path
+    worker.cfg.keyfile = tls_certificate_pem_path
     worker.cfg.ca_certs = None
     worker.cfg.ciphers = 'PSK'
     ctx = worker._create_ssl_context(worker.cfg)
     assert isinstance(ctx, ssl.SSLContext)
 
 
-def test__create_ssl_context_with_ca_certs(worker) -> None:
-    here = pathlib.Path(__file__).parent
+def test__create_ssl_context_with_ca_certs(
+        worker,
+        tls_ca_certificate_pem_path, tls_certificate_pem_path,
+) -> None:
     worker.cfg.ssl_version = ssl.PROTOCOL_SSLv23
     worker.cfg.cert_reqs = ssl.CERT_OPTIONAL
-    worker.cfg.certfile = str(here / 'sample.crt')
-    worker.cfg.keyfile = str(here / 'sample.key')
-    worker.cfg.ca_certs = str(here / 'sample.crt')
+    worker.cfg.certfile = tls_certificate_pem_path
+    worker.cfg.keyfile = tls_certificate_pem_path
+    worker.cfg.ca_certs = tls_ca_certificate_pem_path
     worker.cfg.ciphers = None
     ctx = worker._create_ssl_context(worker.cfg)
     assert isinstance(ctx, ssl.SSLContext)
