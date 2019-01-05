@@ -1270,11 +1270,11 @@ async def test_custom_req_rep(loop) -> None:
     conn.close()
 
 
-def test_verify_ssl_false_with_ssl_context(loop) -> None:
+def test_verify_ssl_false_with_ssl_context(loop, ssl_ctx) -> None:
     with pytest.warns(DeprecationWarning):
         with pytest.raises(ValueError):
             _merge_ssl_params(None, verify_ssl=False,
-                              ssl_context=mock.Mock(), fingerprint=None)
+                              ssl_context=ssl_ctx, fingerprint=None)
 
 
 def test_bad_fingerprint(loop) -> None:

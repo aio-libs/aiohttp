@@ -264,8 +264,11 @@ async def test_post_data_textio_encoding(aiohttp_client) -> None:
     assert 200 == resp.status
 
 
-async def test_ssl_client(ssl_ctx, aiohttp_server, aiohttp_client) -> None:
-    connector = aiohttp.TCPConnector(ssl=False)
+async def test_ssl_client(
+        aiohttp_server, ssl_ctx,
+        aiohttp_client, client_ssl_ctx,
+) -> None:
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
 
     async def handler(request):
         return web.Response(text='Test message')
