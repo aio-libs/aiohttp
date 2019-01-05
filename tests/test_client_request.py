@@ -801,7 +801,7 @@ async def test_chunked_transfer_encoding(loop, conn) -> None:
 
 async def test_file_upload_not_chunked(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
@@ -828,7 +828,7 @@ async def test_precompressed_data_stays_intact(loop) -> None:
 
 async def test_file_upload_not_chunked_seek(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         f.seek(100)
         req = ClientRequest(
@@ -842,7 +842,7 @@ async def test_file_upload_not_chunked_seek(loop) -> None:
 
 async def test_file_upload_force_chunked(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
