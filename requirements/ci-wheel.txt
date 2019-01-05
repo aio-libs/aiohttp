@@ -13,6 +13,7 @@ pytest==4.0.2
 pytest-cov==2.6.0
 pytest-mock==1.10.0
 tox==3.6.0
+trustme==0.4.0
 twine==1.12.1
 yarl==1.3.0
 

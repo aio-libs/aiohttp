@@ -128,8 +128,8 @@ def test_static(router) -> None:
     info = resource.get_info()
     assert info['prefix'] == '/prefix'
     assert info['directory'] == folder
-    url = resource.url_for(filename='sample.key')
-    assert url == URL('/prefix/sample.key')
+    url = resource.url_for(filename='aiohttp.png')
+    assert url == URL('/prefix/aiohttp.png')
 
 
 def test_head_deco(router) -> None:
