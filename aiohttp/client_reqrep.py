@@ -692,7 +692,7 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None)
-        self._body = None  # type: Any
+        self._body = None  # type: Optional[bytes]
         self._writer = writer  # type: Optional[asyncio.Task[None]]
         self._continue = continue100  # None by default
         self._closed = True
@@ -1028,14 +1028,10 @@ class ClientResponse(HeadersMixin):
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
 
-        stripped = self._body.strip()  # type: ignore
-        if not stripped:
-            return None
-
         if encoding is None:
             encoding = self.get_encoding()
 
-        return loads(stripped.decode(encoding))
+        return loads(self._body.decode(encoding))  # type: ignore
 
     async def __aenter__(self) -> 'ClientResponse':
         return self

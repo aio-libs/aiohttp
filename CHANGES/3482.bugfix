@@ -1,0 +1,1 @@
+Do not return `None` on `await response.json()` when body is empty. Instead, raise `json.JSONDecodeError` as expected.
