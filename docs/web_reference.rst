@@ -805,8 +805,8 @@ Response
 ^^^^^^^^
 
 .. class:: Response(*, body=None, status=200, reason=None, text=None, \
-   headers=None, content_type=None, charset=None, zlib_executor_size=sentinel,
-   zlib_executor=None)
+                    headers=None, content_type=None, charset=None, \
+                    zlib_executor_size=sentinel, zlib_executor=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
