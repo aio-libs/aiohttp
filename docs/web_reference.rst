@@ -1207,7 +1207,7 @@ WebSocketReady
 
 
 json_response
--------------
+^^^^^^^^^^^^^
 
 .. function:: json_response([data], *, text=None, body=None, \
                             status=200, reason=None, headers=None, \
