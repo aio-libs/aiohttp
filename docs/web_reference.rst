@@ -805,8 +805,8 @@ Response
 ^^^^^^^^
 
 .. class:: Response(*, body=None, status=200, reason=None, text=None, \
-   headers=None, content_type=None, charset=None, zlib_executor_size=sentinel,
-   zlib_executor=None)
+                    headers=None, content_type=None, charset=None, \
+                    zlib_executor_size=sentinel, zlib_executor=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -1207,7 +1207,7 @@ WebSocketReady
 
 
 json_response
--------------
+^^^^^^^^^^^^^
 
 .. function:: json_response([data], *, text=None, body=None, \
                             status=200, reason=None, headers=None, \
@@ -1217,6 +1217,40 @@ json_response
 Return :class:`Response` with predefined ``'application/json'``
 content type and *data* encoded by ``dumps`` parameter
 (:func:`json.dumps` by default).
+
+HTTP Exceptions
+^^^^^^^^^^^^^^^
+Errors can also be returned by raising a HTTP exception instance from within
+the handler.
+
+.. class:: HTTPException(*, headers=None, reason=None, text=None, content_type=None)
+
+   Low-level HTTP failure.
+
+   :param headers: headers for the response
+   :type headers: dict or multidict.CIMultiDict
+
+   :param str reason: reason included in the response
+
+   :param str text: response's body
+
+   :param str content_type: response's content type.  This is passed through
+      to the :class:`Response` initializer.
+
+   Sub-classes of ``HTTPException`` exist for the standard HTTP response codes
+   as described in :ref:`aiohttp-web-exceptions` and the expected usage is to
+   simply raise the appropriate exception type to respond with a specific HTTP
+   response code.
+
+   Since ``HTTPException`` is a sub-class of :class:`Response`, it contains the
+   methods and properties that allow you to directly manipulate details of the
+   response.
+
+   .. attribute:: status_code
+
+      HTTP status code for this exception class.  This attribute is usually
+      defined at the class level.  ``self.status_code`` is passed to the
+      :class:`Response` initializer.
 
 
 .. _aiohttp-web-app-and-router:
