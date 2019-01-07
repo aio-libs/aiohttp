@@ -5,6 +5,7 @@ import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
+from http import HTTPStatus
 from logging import Logger
 from typing import (
     TYPE_CHECKING,
@@ -523,24 +524,34 @@ class RequestHandler(BaseProtocol):
         information. It always closes current connection."""
         self.log_exception("Error handling request", exc_info=exc)
 
-        if status == 500:
-            msg = "<h1>500 Internal Server Error</h1>"
+        ct = 'text/plain'
+        if status == HTTPStatus.INTERNAL_SERVER_ERROR:
+            title = '{0.value} {0.phrase}'.format(
+                HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+            msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
+            tb = None
             if self.debug:
                 with suppress(Exception):
                     tb = traceback.format_exc()
-                    tb = html_escape(tb)
-                    msg += '<br><h2>Traceback:</h2>\n<pre>'
-                    msg += tb
-                    msg += '</pre>'
-            else:
-                msg += "Server got itself in trouble"
-                msg = ("<html><head><title>500 Internal Server Error</title>"
-                       "</head><body>" + msg + "</body></html>")
-            resp = Response(status=status, text=msg, content_type='text/html')
-        else:
-            resp = Response(status=status, text=message,
-                            content_type='text/html')
 
+            if 'text/html' in request.headers.get('Accept', ''):
+                if tb:
+                    tb = html_escape(tb)
+                    msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
+                message = (
+                    "<html><head>"
+                    "<title>{title}</title>"
+                    "</head><body>\n<h1>{title}</h1>"
+                    "\n{msg}\n</body></html>\n"
+                ).format(title=title, msg=msg)
+                ct = 'text/html'
+            else:
+                if tb:
+                    msg = tb
+                message = title + '\n\n' + msg
+
+        resp = Response(status=status, text=message, content_type=ct)
         resp.force_close()
 
         # some data already got sent, connection is broken
