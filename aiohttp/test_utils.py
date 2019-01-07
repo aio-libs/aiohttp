@@ -219,7 +219,7 @@ class RawTestServer(BaseTestServer):
                            debug: bool=True,
                            **kwargs: Any) -> ServerRunner:
         srv = Server(
-            self._handler, loop=self._loop, debug=True, **kwargs)
+            self._handler, loop=self._loop, debug=debug, **kwargs)
         return ServerRunner(srv, debug=debug, **kwargs)
 
 
