@@ -10,7 +10,7 @@ cython==0.29.2
 gunicorn==19.9.0
 multidict==4.5.2
 pytest==4.1.0
-pytest-cov==2.6.0
+pytest-cov==2.6.1
 pytest-mock==1.10.0
 tox==3.6.1
 trustme==0.4.0
