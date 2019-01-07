@@ -299,7 +299,7 @@ async def test_handle_error__utf(
     await asyncio.sleep(0)
 
     assert b'HTTP/1.0 500 Internal Server Error' in buf
-    assert b'Content-Type: text/html; charset=utf-8' in buf
+    assert b'Content-Type: text/plain; charset=utf-8' in buf
     pattern = escape("RuntimeError: что-то пошло не так")
     assert pattern.encode('utf-8') in buf
     assert not srv._keepalive

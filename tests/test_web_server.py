@@ -26,13 +26,15 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server,
         raise exc
 
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler, logger=logger)
+    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
     cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 500
+    assert resp.headers['Content-Type'].startswith('text/plain')
 
     txt = await resp.text()
-    assert "<h1>500 Internal Server Error</h1>" in txt
+    assert txt.startswith('500 Internal Server Error')
+    assert 'Traceback' not in txt
 
     logger.exception.assert_called_with(
         "Error handling request",
@@ -102,10 +104,62 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server,
     cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 500
+    assert resp.headers['Content-Type'].startswith('text/plain')
 
     txt = await resp.text()
-    assert "<h2>Traceback:</h2>" in txt
+    assert 'Traceback (most recent call last):\n' in txt
 
     logger.exception.assert_called_with(
         "Error handling request",
         exc_info=exc)
+
+
+async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
+    exc = RuntimeError("custom runtime error")
+
+    async def handler(request):
+        raise exc
+
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
+    cli = await aiohttp_client(server)
+    resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
+    assert resp.status == 500
+    assert resp.headers['Content-Type'].startswith('text/html')
+
+    txt = await resp.text()
+    assert txt == (
+        '<html><head><title>500 Internal Server Error</title></head><body>\n'
+        '<h1>500 Internal Server Error</h1>\n'
+        'Server got itself in trouble\n'
+        '</body></html>\n'
+    )
+
+    logger.exception.assert_called_with(
+        "Error handling request", exc_info=exc)
+
+
+async def test_raw_server_html_exception_debug(aiohttp_raw_server,
+                                               aiohttp_client):
+    exc = RuntimeError("custom runtime error")
+
+    async def handler(request):
+        raise exc
+
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger, debug=True)
+    cli = await aiohttp_client(server)
+    resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
+    assert resp.status == 500
+    assert resp.headers['Content-Type'].startswith('text/html')
+
+    txt = await resp.text()
+    assert txt.startswith(
+        '<html><head><title>500 Internal Server Error</title></head><body>\n'
+        '<h1>500 Internal Server Error</h1>\n'
+        '<h2>Traceback:</h2>\n'
+        '<pre>Traceback (most recent call last):\n'
+    )
+
+    logger.exception.assert_called_with(
+        "Error handling request", exc_info=exc)
