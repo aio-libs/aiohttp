@@ -157,7 +157,6 @@ async def test_raw_server_html_exception_debug(aiohttp_raw_server,
     assert txt.startswith(
         '<html><head><title>500 Internal Server Error</title></head><body>\n'
         '<h1>500 Internal Server Error</h1>\n'
-        'Server got itself in trouble\n'
         '<h2>Traceback:</h2>\n'
         '<pre>Traceback (most recent call last):\n'
     )

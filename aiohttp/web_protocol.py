@@ -526,9 +526,8 @@ class RequestHandler(BaseProtocol):
 
         ct = 'text/plain'
         if status == HTTPStatus.INTERNAL_SERVER_ERROR:
-            title = '{http_status_code:d} {http_response_reason}'.format(
-                http_status_code=str(HTTPStatus.INTERNAL_SERVER_ERROR.value),
-                http_response_reason=HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
+            title = '{0.value} {0.phrase}'.format(
+                HTTPStatus.INTERNAL_SERVER_ERROR
             )
             msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
             tb = None
@@ -539,7 +538,7 @@ class RequestHandler(BaseProtocol):
             if 'text/html' in request.headers.get('Accept', ''):
                 if tb:
                     tb = html_escape(tb)
-                    msg += '\n<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
+                    msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
                 message = (
                     "<html><head>"
                     "<title>{title}</title>"
@@ -549,7 +548,7 @@ class RequestHandler(BaseProtocol):
                 ct = 'text/html'
             else:
                 if tb:
-                    msg += '\n' + tb
+                    msg = tb
                 message = title + '\n\n' + msg
 
         resp = Response(status=status, text=message, content_type=ct)
