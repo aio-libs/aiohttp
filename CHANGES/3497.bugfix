@@ -1,0 +1,1 @@
+Ignore done tasks when cancels pending activities on ``web.run_app`` finalization.
