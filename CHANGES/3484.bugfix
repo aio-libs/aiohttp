@@ -1,1 +1,0 @@
-``Payload.size`` type annotation changesd from `Optional[float]` to `Optional[int]`.
