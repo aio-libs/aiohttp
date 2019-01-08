@@ -20,8 +20,8 @@ Changelog
 Features
 --------
 
-- FileResponse from web_fileresponse.py uses a ThreadPoolExecutor to work with files asynchronously.
-  I/O based payloads from payload.py uses a ThreadPoolExecutor to work with I/O objects asynchronously.
+- ``FileResponse`` from ``web_fileresponse.py`` uses a ``ThreadPoolExecutor`` to work with files asynchronously.
+  I/O based payloads from ``payload.py`` uses a ``ThreadPoolExecutor`` to work with I/O objects asynchronously.
   `#3313 <https://github.com/aio-libs/aiohttp/issues/3313>`_
 - Internal Server Errors in plain text if the browser does not support HTML.
   `#3483 <https://github.com/aio-libs/aiohttp/issues/3483>`_
@@ -32,7 +32,7 @@ Bugfixes
 
 - Preserve MultipartWriter parts headers on write.
 
-  Refactor the way how Payload.headers are handled. Payload instances now always
+  Refactor the way how ``Payload.headers`` are handled. Payload instances now always
   have headers and Content-Type defined.
 
   Fix Payload Content-Disposition header reset after initial creation.
@@ -48,7 +48,7 @@ Bugfixes
   `#3477 <https://github.com/aio-libs/aiohttp/issues/3477>`_
 - Replace ``collections.MutableMapping`` with ``collections.abc.MutableMapping`` to avoid a deprecation warning.
   `#3480 <https://github.com/aio-libs/aiohttp/issues/3480>`_
-- ``Payload.size`` type annotation changesd from `Optional[float]` to `Optional[int]`.
+- ``Payload.size`` type annotation changed from `Optional[float]` to `Optional[int]`.
   `#3484 <https://github.com/aio-libs/aiohttp/issues/3484>`_
 - Ignore done tasks when cancels pending activities on ``web.run_app`` finalization.
   `#3497 <https://github.com/aio-libs/aiohttp/issues/3497>`_
