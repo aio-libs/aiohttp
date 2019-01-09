@@ -1,5 +1,6 @@
 import hashlib
 import pathlib
+import platform
 import shutil
 import ssl
 import tempfile
@@ -22,6 +23,9 @@ def shorttmpdir():
 
 @pytest.fixture
 def tls_certificate_authority():
+    if (platform.system() == 'Linux' and
+            platform.architecture() == ('32bit', 'ELF')):
+        pytest.xfail("trustme fails on 32bit Linux")
     return trustme.CA()
 
 
