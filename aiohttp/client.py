@@ -129,10 +129,10 @@ except ImportError:  # pragma: no cover
 
 @attr.s(frozen=True, slots=True)
 class ClientTimeout:
-    total = attr.ib(type=float, default=None)
-    connect = attr.ib(type=float, default=None)
-    sock_read = attr.ib(type=float, default=None)
-    sock_connect = attr.ib(type=float, default=None)
+    total = attr.ib(type=Optional[float], default=None)
+    connect = attr.ib(type=Optional[float], default=None)
+    sock_read = attr.ib(type=Optional[float], default=None)
+    sock_connect = attr.ib(type=Optional[float], default=None)
 
     # pool_queue_timeout = attr.ib(type=float, default=None)
     # dns_resolution_timeout = attr.ib(type=float, default=None)
