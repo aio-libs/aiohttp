@@ -1,1 +1,0 @@
-Fix type stubs for ``aiohttp.web.run_app(access_log=True)`` and fix edge case of ``access_log=True`` and the event loop being in debug mode.
