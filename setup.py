@@ -106,7 +106,7 @@ pytest_runner = ['pytest-runner'] if NEEDS_PYTEST else []
 tests_require = [
     'pytest', 'gunicorn',
     'pytest-timeout', 'async-generator',
-    'pytest-xdist',
+    'pytest-xdist', 'trustme',
 ]
 
 
