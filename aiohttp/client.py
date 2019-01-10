@@ -430,7 +430,7 @@ class ClientSession:
                         tmp_cookie_jar = CookieJar()
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
-                        if session_cookies and req_cookies:
+                        if req_cookies:
                             session_cookies.load(req_cookies)
 
                     cookies = session_cookies
