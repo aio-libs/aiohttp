@@ -7,7 +7,6 @@ from yarl import URL
 
 from . import hdrs
 from .typedefs import LooseHeaders, StrOrURL
-from .web_response import Response
 
 __all__ = (
     'HTTPException',
@@ -141,12 +140,6 @@ class HTTPException(Exception):
     @property
     def headers(self) -> 'CIMultiDict[str]':
         return self._headers
-
-    def make_response(self) -> Response:
-        return Response(status=self.status_code,
-                        reason=self.reason,
-                        text=self._text,
-                        headers=self._headers)
 
 
 class HTTPError(HTTPException):
@@ -401,7 +394,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
     status_code = 451
 
     def __init__(self,
-                 link: str,
+                 link: StrOrURL,
                  *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,
@@ -409,8 +402,12 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
                  content_type: Optional[str]=None) -> None:
         super().__init__(headers=headers, reason=reason,
                          text=text, content_type=content_type)
-        self.headers['Link'] = '<%s>; rel="blocked-by"' % link
-        self.link = link
+        self.headers['Link'] = '<{}>; rel="blocked-by"'.format(str(link))
+        self._link = URL(link)
+
+    @property
+    def link(self):
+        return self._link
 
 
 ############################################################

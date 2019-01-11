@@ -141,12 +141,6 @@ Base HTTP Exception
 
       HTTP headers for the exception, :class:`multidict.CIMultiDict`
 
-   .. method:: make_response()
-
-      Return a :class:`Response` object constructed from the exception. :attr:`status`,
-      :attr:`reason`, :attr:`text` and :attr:`headers` response properties are
-      initialized from the exception.
-
 
 Successful Exceptions
 ---------------------
@@ -155,7 +149,7 @@ HTTP exceptions for status code in range 200-299. They are not *errors* but spec
 classes reflected in exceptions hierarchy. E.g. ``raise web.HTTPNoContent`` may look
 strange a little but the construction is absolutely legal.
 
-.. exception3:: HTTPSuccessful
+.. exception:: HTTPSuccessful
 
    A base class for the category, a subclass of :exc:`HTTPException`.
 
@@ -255,8 +249,7 @@ web.HTTPMovedPermanently(location='/new/path')``.
 Client Errors
 -------------
 
-HTTP exceptions for status code in range 400-499, e.g. ``raise
-web.HTTPNotFound()``.
+HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound()``.
 
 .. exception:: HTTPClientError
 
@@ -336,18 +329,137 @@ web.HTTPNotFound()``.
    An exception for *412 Precondition Failed*, a subclass of
    :exc:`HTTPClientError`.
 
-.. exception:: HTTPLengthRequired
+.. exception:: HTTPRequestEntityTooLarge(max_size, actual_size, **kwargs)
 
-   An exception for *411 Length Required*, a subclass of :exc:`HTTPClientError`.
+   An exception for *413 Entity Too Large*, a subclass of :exc:`HTTPClientError`.
 
-.. exception:: HTTPLengthRequired
+   :param int max_size: Maximum allowed request body size
 
-   An exception for *411 Length Required*, a subclass of :exc:`HTTPClientError`.
+   :param int actual_size: Actual received size
 
-.. exception:: HTTPLengthRequired
+   For other acceptable parameters see :exc:`HTTPException` constructor.
 
-   An exception for *411 Length Required*, a subclass of :exc:`HTTPClientError`.
+.. exception:: HTTPRequestURITooLong
 
-.. exception:: HTTPLengthRequired
+   An exception for *414 URI is too long*, a subclass of :exc:`HTTPClientError`.
 
-   An exception for *411 Length Required*, a subclass of :exc:`HTTPClientError`.
+.. exception:: HTTPUnsupportedMediaType
+
+   An exception for *415 Entity body in unsupported format*, a subclass of
+   :exc:`HTTPClientError`.
+
+.. exception:: HTTPRequestRangeNotSatisfiable
+
+   An exception for *416 Cannot satisfy request range*, a subclass of
+   :exc:`HTTPClientError`.
+
+.. exception:: HTTPExpectationFailed
+
+   An exception for *417 Expect condition could not be satisfied*, a subclass of
+   :exc:`HTTPClientError`.
+
+.. exception:: HTTPMisdirectedRequest
+
+   An exception for *421 Misdirected Request*, a subclass of :exc:`HTTPClientError`.
+
+.. exception:: HTTPUnprocessableEntity
+
+   An exception for *422 Unprocessable Entity*, a subclass of :exc:`HTTPClientError`.
+
+.. exception:: HTTPFailedDependency
+
+   An exception for *424 Failed Dependency*, a subclass of :exc:`HTTPClientError`.
+
+.. exception:: HTTPUpgradeRequired
+
+   An exception for *426 Upgrade Required*, a subclass of :exc:`HTTPClientError`.
+
+.. exception:: HTTPPreconditionRequired
+
+   An exception for *428 Precondition Required*, a subclass of :exc:`HTTPClientError`.
+
+.. exception:: HTTPTooManyRequests
+
+   An exception for *429 Too Many Requests*, a subclass of :exc:`HTTPClientError`.
+
+.. exception:: HTTPRequestHeaderFieldsTooLarge
+
+   An exception for *431 Requests Header Fields Too Large*, a subclass of
+   :exc:`HTTPClientError`.
+
+.. exception:: HTTPUnavailableForLegalReasons(link, *, \
+                                              headers=None, \
+                                              reason=None, \
+                                              text=None, \
+                                              content_type=None)
+
+
+   An exception for *451 Unavailable For Legal Reasons*, a subclass of
+   :exc:`HTTPClientError`.
+
+   :param link: A link to a resource with information for blocking reason,
+                :class:`str` or :class:`URL`
+
+   For other parameters see :exc:`HTTPException` constructor.
+
+   .. attribute:: link
+
+      A :class:`URL` link to a resource with information for blocking reason,
+      read-only property.
+
+
+Server Errors
+-------------
+
+HTTP exceptions for status code in range 500-599, e.g. ``raise web.HTTPBadGateway()``.
+
+
+.. exception:: HTTPServerError
+
+   A base class for the category, a subclass of :exc:`HTTPException`.
+
+.. exception:: HTTPInternalServerError
+
+   An exception for *500 Server got itself in trouble*, a subclass of
+   :exc:`HTTPServerError`.
+
+.. exception:: HTTPNotImplemented
+
+   An exception for *501 Server does not support this operation*, a subclass of
+   :exc:`HTTPServerError`.
+
+.. exception:: HTTPBadGateway
+
+   An exception for *502 Invalid responses from another server/proxy*, a
+   subclass of :exc:`HTTPServerError`.
+
+.. exception:: HTTPServiceUnavailable
+
+   An exception for *503 The server cannot process the request due to a high
+   load*, a subclass of :exc:`HTTPServerError`.
+
+.. exception:: HTTPGatewayTimeout
+
+   An exception for *504 The gateway server did not receive a timely response*,
+   a subclass of :exc:`HTTPServerError`.
+
+.. exception:: HTTPVersionNotSupported
+
+   An exception for *505 Cannot fulfill request*, a subclass of :exc:`HTTPServerError`.
+
+.. exception:: HTTPVariantAlsoNegotiates
+
+   An exception for *506 Variant Also Negotiates*, a subclass of :exc:`HTTPServerError`.
+
+.. exception:: HTTPInsufficientStorage
+
+   An exception for *507 Insufficient Storage*, a subclass of :exc:`HTTPServerError`.
+
+.. exception:: HTTPNotExtended
+
+   An exception for *510 Not Extended*, a subclass of :exc:`HTTPServerError`.
+
+.. exception:: HTTPNetworkAuthenticationRequired
+
+   An exception for *511 Network Authentication Required*, a subclass of
+   :exc:`HTTPServerError`.
