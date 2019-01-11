@@ -126,7 +126,7 @@ def test_empty_text_304() -> None:
 def test_link_header_451() -> None:
     resp = web.HTTPUnavailableForLegalReasons(link='http://warning.or.kr/')
 
-    assert 'http://warning.or.kr/' == resp.link
+    assert URL('http://warning.or.kr/') == resp.link
     assert '<http://warning.or.kr/>; rel="blocked-by"' == resp.headers['Link']
 
 
