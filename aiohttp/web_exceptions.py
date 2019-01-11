@@ -335,8 +335,8 @@ class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
 
     def __init__(self,
-                 max_size: float,
-                 actual_size: float,
+                 max_size: int,
+                 actual_size: int,
                  **kwargs: Any) -> None:
         kwargs.setdefault(
             'text',
@@ -406,7 +406,7 @@ class HTTPUnavailableForLegalReasons(HTTPClientError):
         self._link = URL(link)
 
     @property
-    def link(self):
+    def link(self) -> URL:
         return self._link
 
 
