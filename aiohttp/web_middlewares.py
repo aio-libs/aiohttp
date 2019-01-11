@@ -1,7 +1,7 @@
 import re
 from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
-from .web_exceptions import HTTPMovedPermanently, HTTPMove
+from .web_exceptions import HTTPMove, HTTPMovedPermanently
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_urldispatcher import SystemRoute
