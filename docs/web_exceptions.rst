@@ -286,7 +286,7 @@ HTTP exceptions for status code in range 400-499, e.g. ``raise web.HTTPNotFound(
    :param str method: requested but not allowed HTTP method.
 
    :param allowed_methods: an iterable of allowed HTTP methods (:class:`str`),
-                           *Allow* HTTP header is constracted from
+                           *Allow* HTTP header is constructed from
                            the sequence separated by comma.
 
    For other arguments see :exc:`HTTPException` constructor.
