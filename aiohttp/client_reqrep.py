@@ -931,8 +931,10 @@ class ClientResponse(HeadersMixin):
         return noop()
 
     def raise_for_status(self) -> None:
+        # self.reason is only None if self.start() hasn't been called:
+        if self.reason is None:
+            raise TypeError("Expected a Reason-Phrase as a string")
         if 400 <= self.status:
-            assert self.reason  # always not None for started response
             self.release()
             raise ClientResponseError(
                 self.request_info,
