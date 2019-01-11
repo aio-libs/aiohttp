@@ -362,7 +362,10 @@ class StreamReader(AsyncStreamReaderMixin):
                 blocks.append(block)
             return b''.join(blocks)
 
-        if not self._buffer and not self._eof:
+        # TODO: should be `if` instead of `while`
+        # because waiter maybe triggered on chunk end,
+        # without feeding any data
+        while not self._buffer and not self._eof:
             await self._wait('read')
 
         return self._read_nowait(n)
@@ -371,7 +374,10 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        if not self._buffer and not self._eof:
+        # TODO: should be `if` instead of `while`
+        # because waiter maybe triggered on chunk end,
+        # without feeding any data
+        while not self._buffer and not self._eof:
             await self._wait('readany')
 
         return self._read_nowait(-1)
