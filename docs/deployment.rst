@@ -272,15 +272,15 @@ as command line flags or in your config file.
 
 In this case, we will use:
 
-* the *'--bind'* flag to set the server's socket address;
-* the *'--worker-class'* flag to tell Gunicorn that we want to use a
+* the ``--bind`` flag to set the server's socket address;
+* the ``--worker-class`` flag to tell Gunicorn that we want to use a
   custom worker subclass instead of one of the Gunicorn default worker
   types;
-* you may also want to use the *'--workers'* flag to tell Gunicorn how
+* you may also want to use the ``--workers`` flag to tell Gunicorn how
   many worker processes to use for handling requests. (See the
   documentation for recommendations on `How Many Workers?
   <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
-* you may also want to use the *'--accesslog'* flag to enable the access
+* you may also want to use the ``--accesslog`` flag to enable the access
   log to be populated. (See :ref:`logging <gunicorn-accesslog>` for more information.)
 
 The custom worker subclass is defined in ``aiohttp.GunicornWebWorker``::

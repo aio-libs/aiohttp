@@ -7,20 +7,43 @@ import warnings
 import zlib
 from collections import deque
 from types import TracebackType
-from typing import (TYPE_CHECKING, Any, Dict, Iterator, List, Mapping,  # noqa
-                    Optional, Sequence, Tuple, Type, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiMapping  # noqa
 
-from .hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING, CONTENT_LENGTH,
-                   CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
+from .hdrs import (
+    CONTENT_DISPOSITION,
+    CONTENT_ENCODING,
+    CONTENT_LENGTH,
+    CONTENT_TRANSFER_ENCODING,
+    CONTENT_TYPE,
+)
 from .helpers import CHAR, TOKEN, parse_mimetype, reify
 from .http import HeadersParser
-from .payload import (JsonPayload, LookupError, Order, Payload, StringPayload,
-                      get_payload, payload_type)
+from .payload import (
+    JsonPayload,
+    LookupError,
+    Order,
+    Payload,
+    StringPayload,
+    get_payload,
+    payload_type,
+)
 from .streams import StreamReader
-
 
 __all__ = ('MultipartReader', 'MultipartWriter', 'BodyPartReader',
            'BadContentDispositionHeader', 'BadContentDispositionParam',
@@ -654,7 +677,7 @@ class MultipartReader:
             self._last_part = None
 
 
-_Part = Tuple[Payload, 'MultiMapping[str]', str, str]
+_Part = Tuple[Payload, str, str]
 
 
 class MultipartWriter(Payload):
@@ -679,9 +702,6 @@ class MultipartWriter(Payload):
         super().__init__(None, content_type=ctype)
 
         self._parts = []  # type: List[_Part]  # noqa
-        self._headers = CIMultiDict()  # type: CIMultiDict[str]
-        assert self.content_type is not None
-        self._headers[CONTENT_TYPE] = self.content_type
 
     def __enter__(self) -> 'MultipartWriter':
         return self
@@ -746,28 +766,18 @@ class MultipartWriter(Payload):
             headers = CIMultiDict()
 
         if isinstance(obj, Payload):
-            if obj.headers is not None:
-                obj.headers.update(headers)
-            else:
-                if isinstance(headers, CIMultiDict):
-                    obj._headers = headers
-                else:
-                    obj._headers = CIMultiDict(headers)
+            obj.headers.update(headers)
             return self.append_payload(obj)
         else:
             try:
-                return self.append_payload(get_payload(obj, headers=headers))
+                payload = get_payload(obj, headers=headers)
             except LookupError:
-                raise TypeError
+                raise TypeError('Cannot create payload from %r' % obj)
+            else:
+                return self.append_payload(payload)
 
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
-        # content-type
-        assert payload.headers is not None
-        if CONTENT_TYPE not in payload.headers:
-            assert payload.content_type is not None
-            payload.headers[CONTENT_TYPE] = payload.content_type
-
         # compression
         encoding = payload.headers.get(CONTENT_ENCODING, '').lower()  # type: Optional[str]  # noqa
         if encoding and encoding not in ('deflate', 'gzip', 'identity'):
@@ -789,12 +799,7 @@ class MultipartWriter(Payload):
         if size is not None and not (encoding or te_encoding):
             payload.headers[CONTENT_LENGTH] = str(size)
 
-        # render headers
-        headers = ''.join(
-            [k + ': ' + v + '\r\n' for k, v in payload.headers.items()]
-        ).encode('utf-8') + b'\r\n'
-
-        self._parts.append((payload, headers, encoding, te_encoding))  # type: ignore  # noqa
+        self._parts.append((payload, encoding, te_encoding))  # type: ignore
         return payload
 
     def append_json(
@@ -835,13 +840,13 @@ class MultipartWriter(Payload):
             return 0
 
         total = 0
-        for part, headers, encoding, te_encoding in self._parts:
+        for part, encoding, te_encoding in self._parts:
             if encoding or te_encoding or part.size is None:
                 return None
 
             total += int(
                 2 + len(self._boundary) + 2 +  # b'--'+self._boundary+b'\r\n'
-                part.size + len(headers) +
+                part.size + len(part._binary_headers) +
                 2  # b'\r\n'
             )
 
@@ -854,9 +859,9 @@ class MultipartWriter(Payload):
         if not self._parts:
             return
 
-        for part, headers, encoding, te_encoding in self._parts:
+        for part, encoding, te_encoding in self._parts:
             await writer.write(b'--' + self._boundary + b'\r\n')
-            await writer.write(headers)
+            await writer.write(part._binary_headers)
 
             if encoding or te_encoding:
                 w = MultipartPayloadWriter(writer)

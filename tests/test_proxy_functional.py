@@ -643,7 +643,7 @@ async def test_proxy_auth() -> None:
     async with aiohttp.ClientSession() as session:
         with pytest.raises(
                 ValueError,
-                message="proxy_auth must be None or BasicAuth() tuple"):
+                match=r"proxy_auth must be None or BasicAuth\(\) tuple"):
             await session.get('http://python.org',
                               proxy='http://proxy.example.com',
                               proxy_auth=('user', 'pass'))

@@ -1,3 +1,4 @@
+import asyncio
 import enum
 import io
 import json
@@ -6,18 +7,34 @@ import os
 import warnings
 from abc import ABC, abstractmethod
 from itertools import chain
-from typing import (IO, TYPE_CHECKING, Any, ByteString, Callable, Dict,  # noqa
-                    Iterable, List, Optional, Text, TextIO, Tuple, Type, Union)
+from typing import (
+    IO,
+    TYPE_CHECKING,
+    Any,
+    ByteString,
+    Dict,
+    Iterable,
+    Optional,
+    Text,
+    TextIO,
+    Tuple,
+    Type,
+    Union,
+)
 
 from multidict import CIMultiDict
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import (PY_36, content_disposition_header, guess_filename,
-                      parse_mimetype, sentinel)
+from .helpers import (
+    PY_36,
+    content_disposition_header,
+    guess_filename,
+    parse_mimetype,
+    sentinel,
+)
 from .streams import DEFAULT_LIMIT, StreamReader
 from .typedefs import JSONEncoder, _CIMultiDict
-
 
 __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'BytesPayload', 'StringPayload',
@@ -26,6 +43,10 @@ __all__ = ('PAYLOAD_REGISTRY', 'get_payload', 'payload_type', 'Payload',
            'AsyncIterablePayload')
 
 TOO_LARGE_BYTES_BODY = 2 ** 20  # 1 MB
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from typing import List  # noqa
 
 
 class LookupError(Exception):
@@ -101,9 +122,8 @@ class PayloadRegistry:
 
 class Payload(ABC):
 
-    _size = None  # type: Optional[float]
-    _headers = None  # type: Optional[_CIMultiDict]
-    _content_type = 'application/octet-stream'  # type: Optional[str]
+    _default_content_type = 'application/octet-stream'  # type: str
+    _size = None  # type: Optional[int]
 
     def __init__(self,
                  value: Any,
@@ -118,21 +138,23 @@ class Payload(ABC):
                  filename: Optional[str]=None,
                  encoding: Optional[str]=None,
                  **kwargs: Any) -> None:
-        self._value = value
         self._encoding = encoding
         self._filename = filename
-        if headers is not None:
-            self._headers = CIMultiDict(headers)
-            if content_type is sentinel and hdrs.CONTENT_TYPE in self._headers:
-                content_type = self._headers[hdrs.CONTENT_TYPE]
-
-        if content_type is sentinel:
-            content_type = None
-
-        self._content_type = content_type
+        self._headers = CIMultiDict()  # type: _CIMultiDict
+        self._value = value
+        if content_type is not sentinel and content_type is not None:
+            self._headers[hdrs.CONTENT_TYPE] = content_type
+        elif self._filename is not None:
+            content_type = mimetypes.guess_type(self._filename)[0]
+            if content_type is None:
+                content_type = self._default_content_type
+            self._headers[hdrs.CONTENT_TYPE] = content_type
+        else:
+            self._headers[hdrs.CONTENT_TYPE] = self._default_content_type
+        self._headers.update(headers or {})
 
     @property
-    def size(self) -> Optional[float]:
+    def size(self) -> Optional[int]:
         """Size of the payload."""
         return self._size
 
@@ -142,9 +164,15 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> Optional[_CIMultiDict]:
+    def headers(self) -> _CIMultiDict:
         """Custom item headers"""
         return self._headers
+
+    @property
+    def _binary_headers(self) -> bytes:
+        return ''.join(
+            [k + ': ' + v + '\r\n' for k, v in self.headers.items()]
+        ).encode('utf-8') + b'\r\n'
 
     @property
     def encoding(self) -> Optional[str]:
@@ -152,24 +180,15 @@ class Payload(ABC):
         return self._encoding
 
     @property
-    def content_type(self) -> Optional[str]:
+    def content_type(self) -> str:
         """Content type"""
-        if self._content_type is not None:
-            return self._content_type
-        elif self._filename is not None:
-            mime = mimetypes.guess_type(self._filename)[0]
-            return 'application/octet-stream' if mime is None else mime
-        else:
-            return Payload._content_type
+        return self._headers[hdrs.CONTENT_TYPE]
 
     def set_content_disposition(self,
                                 disptype: str,
                                 quote_fields: bool=True,
                                 **params: Any) -> None:
         """Sets ``Content-Disposition`` header."""
-        if self._headers is None:
-            self._headers = CIMultiDict()
-
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
             disptype, quote_fields=quote_fields, **params)
 
@@ -264,16 +283,24 @@ class IOBasePayload(Payload):
         super().__init__(value, *args, **kwargs)
 
         if self._filename is not None and disposition is not None:
-            self.set_content_disposition(disposition, filename=self._filename)
+            if hdrs.CONTENT_DISPOSITION not in self.headers:
+                self.set_content_disposition(
+                    disposition, filename=self._filename
+                )
 
     async def write(self, writer: AbstractStreamWriter) -> None:
+        loop = asyncio.get_event_loop()
         try:
-            chunk = self._value.read(DEFAULT_LIMIT)
+            chunk = await loop.run_in_executor(
+                None, self._value.read, DEFAULT_LIMIT
+            )
             while chunk:
                 await writer.write(chunk)
-                chunk = self._value.read(DEFAULT_LIMIT)
+                chunk = await loop.run_in_executor(
+                    None, self._value.read, DEFAULT_LIMIT
+                )
         finally:
-            self._value.close()
+            await loop.run_in_executor(None, self._value.close)
 
 
 class TextIOPayload(IOBasePayload):
@@ -305,26 +332,31 @@ class TextIOPayload(IOBasePayload):
         )
 
     @property
-    def size(self) -> Optional[float]:
+    def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except OSError:
             return None
 
     async def write(self, writer: AbstractStreamWriter) -> None:
+        loop = asyncio.get_event_loop()
         try:
-            chunk = self._value.read(DEFAULT_LIMIT)
+            chunk = await loop.run_in_executor(
+                None, self._value.read, DEFAULT_LIMIT
+            )
             while chunk:
                 await writer.write(chunk.encode(self._encoding))
-                chunk = self._value.read(DEFAULT_LIMIT)
+                chunk = await loop.run_in_executor(
+                    None, self._value.read, DEFAULT_LIMIT
+                )
         finally:
-            self._value.close()
+            await loop.run_in_executor(None, self._value.close)
 
 
 class BytesIOPayload(IOBasePayload):
 
     @property
-    def size(self) -> float:
+    def size(self) -> int:
         position = self._value.tell()
         end = self._value.seek(0, os.SEEK_END)
         self._value.seek(position)
@@ -334,7 +366,7 @@ class BytesIOPayload(IOBasePayload):
 class BufferedReaderPayload(IOBasePayload):
 
     @property
-    def size(self) -> Optional[float]:
+    def size(self) -> Optional[int]:
         try:
             return os.fstat(self._value.fileno()).st_size - self._value.tell()
         except OSError:

@@ -9,7 +9,6 @@ import pytest
 import aiohttp
 from aiohttp import web
 
-
 try:
     import ssl
 except ImportError:
@@ -268,18 +267,16 @@ async def test_static_file_if_modified_since_future_date(aiohttp_client,
 
 
 @pytest.mark.skipif(not ssl, reason="ssl not supported")
-async def test_static_file_ssl(aiohttp_server, aiohttp_client) -> None:
+async def test_static_file_ssl(
+        aiohttp_server, ssl_ctx,
+        aiohttp_client, client_ssl_ctx,
+) -> None:
     dirname = os.path.dirname(__file__)
     filename = 'data.unknown_mime_type'
-    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    ssl_ctx.load_cert_chain(
-        os.path.join(dirname, 'sample.crt'),
-        os.path.join(dirname, 'sample.key')
-    )
     app = web.Application()
     app.router.add_static('/static', dirname)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    conn = aiohttp.TCPConnector(ssl=False)
+    conn = aiohttp.TCPConnector(ssl=client_ssl_ctx)
     client = await aiohttp_client(server, connector=conn)
 
     resp = await client.get('/static/'+filename)

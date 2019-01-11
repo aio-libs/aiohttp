@@ -3,6 +3,7 @@
 
 import gc
 import sys
+from json import JSONDecodeError
 from unittest import mock
 
 import pytest
@@ -586,11 +587,11 @@ async def test_json_no_content(loop, session) -> None:
                               loop=loop,
                               session=session)
     response._headers = {
-        'Content-Type': 'data/octet-stream'}
+        'Content-Type': 'application/json'}
     response._body = b''
 
-    res = await response.json(content_type=None)
-    assert res is None
+    with pytest.raises(JSONDecodeError):
+        await response.json(content_type=None)
 
 
 async def test_json_override_encoding(loop, session) -> None:

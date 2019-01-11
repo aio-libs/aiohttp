@@ -3,8 +3,17 @@ import mimetypes
 import os
 import pathlib
 from functools import partial
-from typing import (IO, TYPE_CHECKING, Any, Awaitable, Callable, List,  # noqa
-                    Optional, Union, cast)
+from typing import (  # noqa
+    IO,
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    List,
+    Optional,
+    Union,
+    cast,
+)
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -13,11 +22,14 @@ from .helpers import set_exception, set_result
 from .http_writer import StreamWriter
 from .log import server_logger
 from .typedefs import LooseHeaders
-from .web_exceptions import (HTTPNotModified, HTTPOk, HTTPPartialContent,
-                             HTTPPreconditionFailed,
-                             HTTPRequestRangeNotSatisfiable)
+from .web_exceptions import (
+    HTTPNotModified,
+    HTTPOk,
+    HTTPPartialContent,
+    HTTPPreconditionFailed,
+    HTTPRequestRangeNotSatisfiable,
+)
 from .web_response import StreamResponse
-
 
 __all__ = ('FileResponse',)
 
@@ -167,22 +179,24 @@ class FileResponse(StreamResponse):
         # os.sendfile() system call. This should be used on systems
         # that don't support the os.sendfile().
 
-        # To avoid blocking the event loop & to keep memory usage low,
-        # fobj is transferred in chunks controlled by the
-        # constructor's chunk_size argument.
+        # To keep memory usage low,fobj is transferred in chunks
+        # controlled by the constructor's chunk_size argument.
 
         writer = await super().prepare(request)
         assert writer is not None
 
         chunk_size = self._chunk_size
+        loop = asyncio.get_event_loop()
 
-        chunk = fobj.read(chunk_size)
+        chunk = await loop.run_in_executor(None, fobj.read, chunk_size)
         while chunk:
             await writer.write(chunk)
             count = count - chunk_size
             if count <= 0:
                 break
-            chunk = fobj.read(min(chunk_size, count))
+            chunk = await loop.run_in_executor(
+                None, fobj.read, min(chunk_size, count)
+            )
 
         await writer.drain()
         return writer
@@ -206,7 +220,8 @@ class FileResponse(StreamResponse):
                 filepath = gzip_path
                 gzip = True
 
-        st = filepath.stat()
+        loop = asyncio.get_event_loop()
+        st = await loop.run_in_executor(None, filepath.stat)
 
         modsince = request.if_modified_since
         if modsince is not None and st.st_mtime <= modsince.timestamp():
@@ -322,8 +337,8 @@ class FileResponse(StreamResponse):
             self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
                 real_start, real_start + count - 1, file_size)
 
-        with filepath.open('rb') as fobj:
+        with (await loop.run_in_executor(None, filepath.open, 'rb')) as fobj:
             if start:  # be aware that start could be None or int=0 here.
-                fobj.seek(start)
+                await loop.run_in_executor(None, fobj.seek, start)
 
             return await self._sendfile(request, fobj, count)

@@ -8,8 +8,19 @@ import warnings
 from hashlib import md5, sha1, sha256
 from http.cookies import CookieError, Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import (TYPE_CHECKING, Any, Dict, Iterable, List, Mapping,  # noqa
-                    Optional, Tuple, Type, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import attr
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
@@ -17,18 +28,35 @@ from yarl import URL
 
 from . import hdrs, helpers, http, multipart, payload
 from .abc import AbstractStreamWriter
-from .client_exceptions import (ClientConnectionError, ClientOSError,
-                                ClientResponseError, ContentTypeError,
-                                InvalidURL, ServerFingerprintMismatch)
+from .client_exceptions import (
+    ClientConnectionError,
+    ClientOSError,
+    ClientResponseError,
+    ContentTypeError,
+    InvalidURL,
+    ServerFingerprintMismatch,
+)
 from .formdata import FormData
-from .helpers import (PY_36, BaseTimerContext, BasicAuth, HeadersMixin,  # noqa
-                      TimerNoop, noop, reify, set_result)
+from .helpers import (  # noqa
+    PY_36,
+    BaseTimerContext,
+    BasicAuth,
+    HeadersMixin,
+    TimerNoop,
+    noop,
+    reify,
+    set_result,
+)
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11, StreamWriter
 from .log import client_logger
 from .streams import StreamReader  # noqa
-from .typedefs import (DEFAULT_JSON_DECODER, JSONDecoder, LooseCookies,
-                       LooseHeaders, RawHeaders)
-
+from .typedefs import (
+    DEFAULT_JSON_DECODER,
+    JSONDecoder,
+    LooseCookies,
+    LooseHeaders,
+    RawHeaders,
+)
 
 try:
     import ssl
@@ -467,16 +495,14 @@ class ClientRequest:
                     if hdrs.CONTENT_LENGTH not in self.headers:
                         self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
-        # set content-type
-        if (hdrs.CONTENT_TYPE not in self.headers and
-                hdrs.CONTENT_TYPE not in self.skip_auto_headers):
-            self.headers[hdrs.CONTENT_TYPE] = body.content_type
-
         # copy payload headers
-        if body.headers:
-            for (key, value) in body.headers.items():
-                if key not in self.headers:
-                    self.headers[key] = value
+        assert body.headers
+        for (key, value) in body.headers.items():
+            if key in self.headers:
+                continue
+            if key in self.skip_auto_headers:
+                continue
+            self.headers[key] = value
 
     def update_expect_continue(self, expect: bool=False) -> None:
         if expect:
@@ -664,7 +690,7 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None)
-        self._body = None  # type: Any
+        self._body = None  # type: Optional[bytes]
         self._writer = writer  # type: Optional[asyncio.Task[None]]
         self._continue = continue100  # None by default
         self._closed = True
@@ -1000,14 +1026,10 @@ class ClientResponse(HeadersMixin):
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
 
-        stripped = self._body.strip()  # type: ignore
-        if not stripped:
-            return None
-
         if encoding is None:
             encoding = self.get_encoding()
 
-        return loads(stripped.decode(encoding))
+        return loads(self._body.decode(encoding))  # type: ignore
 
     async def __aenter__(self) -> 'ClientResponse':
         return self

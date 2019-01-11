@@ -7,44 +7,249 @@ from collections.abc import Iterable
 from importlib import import_module
 from typing import Any, Awaitable, Callable, List, Optional, Type, Union, cast
 
-from . import (web_app, web_exceptions, web_fileresponse, web_middlewares,
-               web_protocol, web_request, web_response, web_routedef,
-               web_runner, web_server, web_urldispatcher, web_ws)
 from .abc import AbstractAccessLogger
 from .helpers import all_tasks
 from .log import access_logger
-from .web_app import *  # noqa
-from .web_app import Application
-from .web_exceptions import *  # noqa
-from .web_fileresponse import *  # noqa
+from .web_app import Application, CleanupError
+from .web_exceptions import (
+    HTTPAccepted,
+    HTTPBadGateway,
+    HTTPBadRequest,
+    HTTPClientError,
+    HTTPConflict,
+    HTTPCreated,
+    HTTPError,
+    HTTPException,
+    HTTPExpectationFailed,
+    HTTPFailedDependency,
+    HTTPForbidden,
+    HTTPFound,
+    HTTPGatewayTimeout,
+    HTTPGone,
+    HTTPInsufficientStorage,
+    HTTPInternalServerError,
+    HTTPLengthRequired,
+    HTTPMethodNotAllowed,
+    HTTPMisdirectedRequest,
+    HTTPMovedPermanently,
+    HTTPMultipleChoices,
+    HTTPNetworkAuthenticationRequired,
+    HTTPNoContent,
+    HTTPNonAuthoritativeInformation,
+    HTTPNotAcceptable,
+    HTTPNotExtended,
+    HTTPNotFound,
+    HTTPNotImplemented,
+    HTTPNotModified,
+    HTTPOk,
+    HTTPPartialContent,
+    HTTPPaymentRequired,
+    HTTPPermanentRedirect,
+    HTTPPreconditionFailed,
+    HTTPPreconditionRequired,
+    HTTPProxyAuthenticationRequired,
+    HTTPRedirection,
+    HTTPRequestEntityTooLarge,
+    HTTPRequestHeaderFieldsTooLarge,
+    HTTPRequestRangeNotSatisfiable,
+    HTTPRequestTimeout,
+    HTTPRequestURITooLong,
+    HTTPResetContent,
+    HTTPSeeOther,
+    HTTPServerError,
+    HTTPServiceUnavailable,
+    HTTPSuccessful,
+    HTTPTemporaryRedirect,
+    HTTPTooManyRequests,
+    HTTPUnauthorized,
+    HTTPUnavailableForLegalReasons,
+    HTTPUnprocessableEntity,
+    HTTPUnsupportedMediaType,
+    HTTPUpgradeRequired,
+    HTTPUseProxy,
+    HTTPVariantAlsoNegotiates,
+    HTTPVersionNotSupported,
+)
+from .web_fileresponse import FileResponse
 from .web_log import AccessLogger
-from .web_middlewares import *  # noqa
-from .web_protocol import *  # noqa
-from .web_request import *  # noqa
-from .web_response import *  # noqa
-from .web_routedef import *  # noqa
-from .web_runner import (AppRunner, BaseRunner, BaseSite, GracefulExit,  # noqa
-                         ServerRunner, SockSite, TCPSite, UnixSite)
-from .web_server import *  # noqa
-from .web_urldispatcher import *  # noqa
-from .web_ws import *  # noqa
+from .web_middlewares import middleware, normalize_path_middleware
+from .web_protocol import (
+    PayloadAccessError,
+    RequestHandler,
+    RequestPayloadError,
+)
+from .web_request import BaseRequest, FileField, Request
+from .web_response import (
+    ContentCoding,
+    Response,
+    StreamResponse,
+    json_response,
+)
+from .web_routedef import (
+    AbstractRouteDef,
+    RouteDef,
+    RouteTableDef,
+    StaticDef,
+    delete,
+    get,
+    head,
+    options,
+    patch,
+    post,
+    put,
+    route,
+    static,
+    view,
+)
+from .web_runner import (
+    AppRunner,
+    BaseRunner,
+    BaseSite,
+    GracefulExit,
+    ServerRunner,
+    SockSite,
+    TCPSite,
+    UnixSite,
+)
+from .web_server import Server
+from .web_urldispatcher import (
+    AbstractResource,
+    AbstractRoute,
+    DynamicResource,
+    PlainResource,
+    Resource,
+    ResourceRoute,
+    StaticResource,
+    UrlDispatcher,
+    UrlMappingMatchInfo,
+    View,
+)
+from .web_ws import WebSocketReady, WebSocketResponse, WSMsgType
 
-
-__all__ = (web_protocol.__all__ +
-           web_app.__all__ +
-           web_fileresponse.__all__ +
-           web_request.__all__ +
-           web_response.__all__ +
-           web_routedef.__all__ +
-           web_exceptions.__all__ +
-           web_urldispatcher.__all__ +
-           web_ws.__all__ +
-           web_server.__all__ +
-           web_runner.__all__ +
-           web_middlewares.__all__ +
-           ('run_app', 'BaseSite', 'TCPSite', 'UnixSite',
-            'SockSite', 'BaseRunner',
-            'AppRunner', 'ServerRunner', 'GracefulExit'))
+__all__ = (
+    # web_app
+    'Application',
+    'CleanupError',
+    # web_exceptions
+    'HTTPAccepted',
+    'HTTPBadGateway',
+    'HTTPBadRequest',
+    'HTTPClientError',
+    'HTTPConflict',
+    'HTTPCreated',
+    'HTTPError',
+    'HTTPException',
+    'HTTPExpectationFailed',
+    'HTTPFailedDependency',
+    'HTTPForbidden',
+    'HTTPFound',
+    'HTTPGatewayTimeout',
+    'HTTPGone',
+    'HTTPInsufficientStorage',
+    'HTTPInternalServerError',
+    'HTTPLengthRequired',
+    'HTTPMethodNotAllowed',
+    'HTTPMisdirectedRequest',
+    'HTTPMovedPermanently',
+    'HTTPMultipleChoices',
+    'HTTPNetworkAuthenticationRequired',
+    'HTTPNoContent',
+    'HTTPNonAuthoritativeInformation',
+    'HTTPNotAcceptable',
+    'HTTPNotExtended',
+    'HTTPNotFound',
+    'HTTPNotImplemented',
+    'HTTPNotModified',
+    'HTTPOk',
+    'HTTPPartialContent',
+    'HTTPPaymentRequired',
+    'HTTPPermanentRedirect',
+    'HTTPPreconditionFailed',
+    'HTTPPreconditionRequired',
+    'HTTPProxyAuthenticationRequired',
+    'HTTPRedirection',
+    'HTTPRequestEntityTooLarge',
+    'HTTPRequestHeaderFieldsTooLarge',
+    'HTTPRequestRangeNotSatisfiable',
+    'HTTPRequestTimeout',
+    'HTTPRequestURITooLong',
+    'HTTPResetContent',
+    'HTTPSeeOther',
+    'HTTPServerError',
+    'HTTPServiceUnavailable',
+    'HTTPSuccessful',
+    'HTTPTemporaryRedirect',
+    'HTTPTooManyRequests',
+    'HTTPUnauthorized',
+    'HTTPUnavailableForLegalReasons',
+    'HTTPUnprocessableEntity',
+    'HTTPUnsupportedMediaType',
+    'HTTPUpgradeRequired',
+    'HTTPUseProxy',
+    'HTTPVariantAlsoNegotiates',
+    'HTTPVersionNotSupported',
+    # web_fileresponse
+    'FileResponse',
+    # web_middlewares
+    'middleware',
+    'normalize_path_middleware',
+    # web_protocol
+    'PayloadAccessError',
+    'RequestHandler',
+    'RequestPayloadError',
+    # web_request
+    'BaseRequest',
+    'FileField',
+    'Request',
+    # web_response
+    'ContentCoding',
+    'Response',
+    'StreamResponse',
+    'json_response',
+    # web_routedef
+    'AbstractRouteDef',
+    'RouteDef',
+    'RouteTableDef',
+    'StaticDef',
+    'delete',
+    'get',
+    'head',
+    'options',
+    'patch',
+    'post',
+    'put',
+    'route',
+    'static',
+    'view',
+    # web_runner
+    'AppRunner',
+    'BaseRunner',
+    'BaseSite',
+    'GracefulExit',
+    'ServerRunner',
+    'SockSite',
+    'TCPSite',
+    'UnixSite',
+    # web_server
+    'Server',
+    # web_urldispatcher
+    'AbstractResource',
+    'AbstractRoute',
+    'DynamicResource',
+    'PlainResource',
+    'Resource',
+    'ResourceRoute',
+    'StaticResource',
+    'UrlDispatcher',
+    'UrlMappingMatchInfo',
+    'View',
+    # web_ws
+    'WebSocketReady',
+    'WebSocketResponse',
+    'WSMsgType',
+    # web
+    'run_app',
+)
 
 
 try:
@@ -64,7 +269,7 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
                    backlog: int=128,
                    access_log_class: Type[AbstractAccessLogger]=AccessLogger,
                    access_log_format: str=AccessLogger.LOG_FORMAT,
-                   access_log: logging.Logger=access_logger,
+                   access_log: Optional[logging.Logger]=access_logger,
                    handle_signals: bool=True,
                    reuse_address: Optional[bool]=None,
                    reuse_port: Optional[bool]=None) -> None:
@@ -178,7 +383,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             backlog: int=128,
             access_log_class: Type[AbstractAccessLogger]=AccessLogger,
             access_log_format: str=AccessLogger.LOG_FORMAT,
-            access_log: logging.Logger=access_logger,
+            access_log: Optional[logging.Logger]=access_logger,
             handle_signals: bool=True,
             reuse_address: Optional[bool]=None,
             reuse_port: Optional[bool]=None) -> None:
@@ -186,7 +391,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
     loop = asyncio.get_event_loop()
 
     # Configure if and only if in debugging mode and using the default logger
-    if loop.get_debug() and access_log.name == 'aiohttp.access':
+    if loop.get_debug() and access_log and access_log.name == 'aiohttp.access':
         if access_log.level == logging.NOTSET:
             access_log.setLevel(logging.DEBUG)
         if not access_log.hasHandlers():

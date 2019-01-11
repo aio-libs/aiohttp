@@ -8,14 +8,17 @@ import pytest
 
 import aiohttp
 from aiohttp import payload
-from aiohttp.hdrs import (CONTENT_DISPOSITION, CONTENT_ENCODING,
-                          CONTENT_TRANSFER_ENCODING, CONTENT_TYPE)
+from aiohttp.hdrs import (
+    CONTENT_DISPOSITION,
+    CONTENT_ENCODING,
+    CONTENT_TRANSFER_ENCODING,
+    CONTENT_TYPE,
+)
 from aiohttp.helpers import parse_mimetype
 from aiohttp.multipart import MultipartResponseWrapper
 from aiohttp.streams import DEFAULT_LIMIT as stream_reader_default_limit
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_coro
-
 
 BOUNDARY = b'--:'
 
@@ -851,8 +854,8 @@ async def test_writer_serialize_with_content_encoding_gzip(buf, stream,
     await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    assert (b'--:\r\nContent-Encoding: gzip\r\n'
-            b'Content-Type: text/plain; charset=utf-8' == headers)
+    assert (b'--:\r\nContent-Type: text/plain; charset=utf-8\r\n'
+            b'Content-Encoding: gzip' == headers)
 
     decompressor = zlib.decompressobj(wbits=16+zlib.MAX_WBITS)
     data = decompressor.decompress(message.split(b'\r\n')[0])
@@ -866,8 +869,8 @@ async def test_writer_serialize_with_content_encoding_deflate(buf, stream,
     await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    assert (b'--:\r\nContent-Encoding: deflate\r\n'
-            b'Content-Type: text/plain; charset=utf-8' == headers)
+    assert (b'--:\r\nContent-Type: text/plain; charset=utf-8\r\n'
+            b'Content-Encoding: deflate' == headers)
 
     thing = b'\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00\r\n--:--\r\n'
     assert thing == message
@@ -880,8 +883,8 @@ async def test_writer_serialize_with_content_encoding_identity(buf, stream,
     await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    assert (b'--:\r\nContent-Encoding: identity\r\n'
-            b'Content-Type: application/octet-stream\r\n'
+    assert (b'--:\r\nContent-Type: application/octet-stream\r\n'
+            b'Content-Encoding: identity\r\n'
             b'Content-Length: 16' == headers)
 
     assert thing == message.split(b'\r\n')[0]
@@ -899,8 +902,8 @@ async def test_writer_with_content_transfer_encoding_base64(buf, stream,
     await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    assert (b'--:\r\nContent-Transfer-Encoding: base64\r\n'
-            b'Content-Type: text/plain; charset=utf-8' ==
+    assert (b'--:\r\nContent-Type: text/plain; charset=utf-8\r\n'
+            b'Content-Transfer-Encoding: base64' ==
             headers)
 
     assert b'VGltZSB0byBSZWxheCE=' == message.split(b'\r\n')[0]
@@ -913,8 +916,8 @@ async def test_writer_content_transfer_encoding_quote_printable(buf, stream,
     await writer.write(stream)
     headers, message = bytes(buf).split(b'\r\n\r\n', 1)
 
-    assert (b'--:\r\nContent-Transfer-Encoding: quoted-printable\r\n'
-            b'Content-Type: text/plain; charset=utf-8' == headers)
+    assert (b'--:\r\nContent-Type: text/plain; charset=utf-8\r\n'
+            b'Content-Transfer-Encoding: quoted-printable' == headers)
 
     assert (b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
             b' =D0=BC=D0=B8=D1=80!' == message.split(b'\r\n')[0])
@@ -1005,9 +1008,6 @@ class TestMultipartWriter:
         part = writer._parts[0][0]
         assert part.headers[CONTENT_TYPE] == 'test/passed'
 
-    async def test_write(self, writer, stream) -> None:
-        await writer.write(stream)
-
     def test_with(self) -> None:
         with aiohttp.MultipartWriter(boundary=':') as writer:
             writer.append('foo')
@@ -1029,6 +1029,117 @@ class TestMultipartWriter:
         with pytest.raises(TypeError):
             with aiohttp.MultipartWriter(boundary=':') as writer:
                 writer.append(None)
+
+    async def test_write_preserves_content_disposition(
+        self, buf, stream
+    ) -> None:
+        with aiohttp.MultipartWriter(boundary=':') as writer:
+            part = writer.append(b'foo', headers={CONTENT_TYPE: 'test/passed'})
+            part.set_content_disposition('form-data', filename='bug')
+        await writer.write(stream)
+
+        headers, message = bytes(buf).split(b'\r\n\r\n', 1)
+
+        assert headers == (
+            b'--:\r\n'
+            b'Content-Type: test/passed\r\n'
+            b'Content-Length: 3\r\n'
+            b'Content-Disposition:'
+            b' form-data; filename="bug"; filename*=utf-8\'\'bug'
+        )
+        assert message == b'foo\r\n--:--\r\n'
+
+    async def test_preserve_content_disposition_header(self, buf, stream):
+        """
+        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
+        """
+        with open(__file__, 'rb') as fobj:
+            with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
+                part = writer.append(
+                    fobj,
+                    headers={
+                        CONTENT_DISPOSITION: 'attachments; filename="bug.py"',
+                        CONTENT_TYPE: 'text/python',
+                    }
+                )
+            content_length = part.size
+            await writer.write(stream)
+
+        assert part.headers[CONTENT_TYPE] == 'text/python'
+        assert part.headers[CONTENT_DISPOSITION] == (
+            'attachments; filename="bug.py"'
+        )
+
+        headers, _ = bytes(buf).split(b'\r\n\r\n', 1)
+
+        assert headers == (
+            b'--:\r\n'
+            b'Content-Type: text/python\r\n'
+            b'Content-Disposition: attachments; filename="bug.py"\r\n'
+            b'Content-Length: %s'
+            b'' % (str(content_length).encode(),)
+        )
+
+    async def test_set_content_disposition_override(self, buf, stream):
+        """
+        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
+        """
+        with open(__file__, 'rb') as fobj:
+            with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
+                part = writer.append(
+                    fobj,
+                    headers={
+                        CONTENT_DISPOSITION: 'attachments; filename="bug.py"',
+                        CONTENT_TYPE: 'text/python',
+                    }
+                )
+            content_length = part.size
+            await writer.write(stream)
+
+        assert part.headers[CONTENT_TYPE] == 'text/python'
+        assert part.headers[CONTENT_DISPOSITION] == (
+            'attachments; filename="bug.py"'
+        )
+
+        headers, _ = bytes(buf).split(b'\r\n\r\n', 1)
+
+        assert headers == (
+            b'--:\r\n'
+            b'Content-Type: text/python\r\n'
+            b'Content-Disposition: attachments; filename="bug.py"\r\n'
+            b'Content-Length: %s'
+            b'' % (str(content_length).encode(),)
+        )
+
+    async def test_reset_content_disposition_header(self, buf, stream):
+        """
+        https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
+        """
+        with open(__file__, 'rb') as fobj:
+            with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
+                part = writer.append(
+                    fobj,
+                    headers={CONTENT_TYPE: 'text/plain'},
+                )
+
+            content_length = part.size
+
+            assert CONTENT_DISPOSITION in part.headers
+
+            part.set_content_disposition('attachments', filename='bug.py')
+
+            await writer.write(stream)
+
+        headers, _ = bytes(buf).split(b'\r\n\r\n', 1)
+
+        assert headers == (
+            b'--:\r\n'
+            b'Content-Type: text/plain\r\n'
+            b'Content-Disposition:'
+            b' attachments; filename="bug.py"; filename*=utf-8\'\'bug.py\r\n'
+            b'Content-Length: %s'
+            b'' % (str(content_length).encode(),)
+        )
 
 
 async def test_async_for_reader() -> None:

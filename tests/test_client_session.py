@@ -305,7 +305,7 @@ def test_connector_loop(loop) -> None:
             async def make_sess():
                 return ClientSession(connector=connector, loop=loop)
             loop.run_until_complete(make_sess())
-        assert re.match("Session and connector has to use same event loop",
+        assert re.match("Session and connector have to use same event loop",
                         str(ctx.value))
 
 
@@ -345,6 +345,7 @@ async def test_double_close(connector, create_session) -> None:
 
 
 async def test_del(connector, loop) -> None:
+    loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector, loop=loop)
     logs = []

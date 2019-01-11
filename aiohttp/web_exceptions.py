@@ -9,7 +9,6 @@ from . import hdrs
 from .typedefs import LooseHeaders, StrOrURL
 from .web_response import Response
 
-
 __all__ = (
     'HTTPException',
     'HTTPError',

@@ -19,9 +19,23 @@ from contextlib import suppress
 from math import ceil
 from pathlib import Path
 from types import TracebackType
-from typing import (Any, Callable, Dict, Iterable, Iterator, List,  # noqa
-                    Mapping, Optional, Pattern, Set, Tuple, Type, TypeVar,
-                    Union, cast)
+from typing import (  # noqa
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 from urllib.parse import quote
 from urllib.request import getproxies
 
@@ -33,7 +47,6 @@ from yarl import URL
 from . import hdrs
 from .log import client_logger, internal_logger
 from .typedefs import PathLike  # noqa
-
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
 
@@ -50,10 +63,15 @@ except ImportError:
     from typing_extensions import ContextManager
 
 
-all_tasks = asyncio.Task.all_tasks
+def all_tasks(
+        loop: Optional[asyncio.AbstractEventLoop] = None
+) -> Set['asyncio.Task[Any]']:
+    tasks = list(asyncio.Task.all_tasks(loop))  # type: ignore
+    return {t for t in tasks if not t.done()}
+
 
 if PY_37:
-    all_tasks = getattr(asyncio, 'all_tasks')  # use the trick to cheat mypy
+    all_tasks = getattr(asyncio, 'all_tasks')  # noqa
 
 
 _T = TypeVar('_T')

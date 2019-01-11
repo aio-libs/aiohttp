@@ -9,16 +9,27 @@ import sys
 import unittest
 from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import (TYPE_CHECKING, Any, Callable, Iterator, List,  # noqa
-                    Optional, Type, Union)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Optional,
+    Type,
+    Union,
+)
 from unittest import mock
 
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 import aiohttp
-from aiohttp.client import (ClientResponse, _RequestContextManager,
-                            _WSRequestContextManager)
+from aiohttp.client import (
+    ClientResponse,
+    _RequestContextManager,
+    _WSRequestContextManager,
+)
 
 from . import ClientSession, hdrs
 from .abc import AbstractCookieJar
@@ -27,10 +38,17 @@ from .client_ws import ClientWebSocketResponse  # noqa
 from .helpers import sentinel
 from .http import HttpVersion, RawRequestMessage
 from .signals import Signal
-from .web import (Application, AppRunner, BaseRunner, Request, Server,
-                  ServerRunner, SockSite, UrlMappingMatchInfo)
+from .web import (
+    Application,
+    AppRunner,
+    BaseRunner,
+    Request,
+    Server,
+    ServerRunner,
+    SockSite,
+    UrlMappingMatchInfo,
+)
 from .web_protocol import _RequestHandler
-
 
 if TYPE_CHECKING:  # pragma: no cover
     from ssl import SSLContext
@@ -201,7 +219,7 @@ class RawTestServer(BaseTestServer):
                            debug: bool=True,
                            **kwargs: Any) -> ServerRunner:
         srv = Server(
-            self._handler, loop=self._loop, debug=True, **kwargs)
+            self._handler, loop=self._loop, debug=debug, **kwargs)
         return ServerRunner(srv, debug=debug, **kwargs)
 
 

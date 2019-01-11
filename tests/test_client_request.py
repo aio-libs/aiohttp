@@ -16,8 +16,12 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
-from aiohttp.client_reqrep import (ClientRequest, ClientResponse, Fingerprint,
-                                   _merge_ssl_params)
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientResponse,
+    Fingerprint,
+    _merge_ssl_params,
+)
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -797,7 +801,7 @@ async def test_chunked_transfer_encoding(loop, conn) -> None:
 
 async def test_file_upload_not_chunked(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
@@ -824,7 +828,7 @@ async def test_precompressed_data_stays_intact(loop) -> None:
 
 async def test_file_upload_not_chunked_seek(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         f.seek(100)
         req = ClientRequest(
@@ -838,7 +842,7 @@ async def test_file_upload_not_chunked_seek(loop) -> None:
 
 async def test_file_upload_force_chunked(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
@@ -1266,11 +1270,11 @@ async def test_custom_req_rep(loop) -> None:
     conn.close()
 
 
-def test_verify_ssl_false_with_ssl_context(loop) -> None:
+def test_verify_ssl_false_with_ssl_context(loop, ssl_ctx) -> None:
     with pytest.warns(DeprecationWarning):
         with pytest.raises(ValueError):
             _merge_ssl_params(None, verify_ssl=False,
-                              ssl_context=mock.Mock(), fingerprint=None)
+                              ssl_context=ssl_ctx, fingerprint=None)
 
 
 def test_bad_fingerprint(loop) -> None:

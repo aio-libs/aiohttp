@@ -8,7 +8,6 @@ import pytest
 
 from aiohttp import streams
 
-
 DATA = b'line1\nline2\nline3\n'
 
 
@@ -719,6 +718,35 @@ class TestStreamReader:
         data, end_of_chunk = await stream.readchunk()
         assert b'' == data
         assert not end_of_chunk
+
+    async def test_read_empty_chunks(self) -> None:
+        """Test that feeding empty chunks does not break stream"""
+        stream = self._make_one()
+
+        # Simulate empty first chunk. This is significant special case
+        stream.begin_http_chunk_receiving()
+        stream.end_http_chunk_receiving()
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'ungzipped')
+        stream.end_http_chunk_receiving()
+
+        # Possible when compression is enabled.
+        stream.begin_http_chunk_receiving()
+        stream.end_http_chunk_receiving()
+
+        # is also possible
+        stream.begin_http_chunk_receiving()
+        stream.end_http_chunk_receiving()
+
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b' data')
+        stream.end_http_chunk_receiving()
+
+        stream.feed_eof()
+
+        data = await stream.read()
+        assert data == b'ungzipped data'
 
     async def test_readchunk_separate_http_chunk_tail(self) -> None:
         """Test that stream.readchunk returns (b'', True) when end of

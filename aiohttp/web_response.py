@@ -1,5 +1,5 @@
 import asyncio  # noqa
-import collections  # noqa
+import collections.abc  # noqa
 import datetime
 import enum
 import json
@@ -10,8 +10,18 @@ import zlib
 from concurrent.futures import Executor
 from email.utils import parsedate
 from http.cookies import SimpleCookie
-from typing import (TYPE_CHECKING, Any, Dict, Iterator, Mapping,  # noqa
-                    MutableMapping, Optional, Tuple, Union, cast)
+from typing import (  # noqa
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterator,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 from multidict import CIMultiDict, istr
 
@@ -22,7 +32,6 @@ from .http import RESPONSES, SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
 from .typedefs import JSONEncoder, LooseHeaders
 
-
 __all__ = ('ContentCoding', 'StreamResponse', 'Response', 'json_response')
 
 
@@ -30,7 +39,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .web_request import BaseRequest  # noqa
     BaseClass = MutableMapping[str, Any]
 else:
-    BaseClass = collections.MutableMapping
+    BaseClass = collections.abc.MutableMapping
 
 
 class ContentCoding(enum.Enum):
