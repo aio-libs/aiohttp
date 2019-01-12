@@ -956,7 +956,7 @@ signal handlers as shown in the example below::
 
 
   async def start_background_tasks(app):
-      app['redis_listener'] = app.loop.create_task(listen_to_redis(app))
+      app['redis_listener'] = asyncio.create_task(listen_to_redis(app))
 
 
   async def cleanup_background_tasks(app):
