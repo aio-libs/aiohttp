@@ -14,6 +14,17 @@ Changelog
 
 .. towncrier release notes start
 
+3.5.4 (2019-01-12)
+==================
+
+Bugfixes
+--------
+
+- Fix stream ``.read()`` / ``.readany()`` / ``.iter_any()`` which used to return a
+  partial content only in case of compressed content
+  `#3525 <https://github.com/aio-libs/aiohttp/issues/3525>`_
+
+
 3.5.3 (2019-01-10)
 ==================
 
