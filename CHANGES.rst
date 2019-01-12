@@ -14,6 +14,34 @@ Changelog
 
 .. towncrier release notes start
 
+3.5.4 (2019-01-12)
+==================
+
+Bugfixes
+--------
+
+- Fix stream ``.read()`` / ``.readany()`` / ``.iter_any()`` which used to return a
+  partial content only in case of compressed content
+  `#3525 <https://github.com/aio-libs/aiohttp/issues/3525>`_
+
+
+3.5.3 (2019-01-10)
+==================
+
+Bugfixes
+--------
+
+- Fix type stubs for ``aiohttp.web.run_app(access_log=True)`` and fix edge case of ``access_log=True`` and the event loop being in debug mode.
+  `#3504 <https://github.com/aio-libs/aiohttp/issues/3504>`_
+- Fix ``aiohttp.ClientTimeout`` type annotations to accept ``None`` for fields
+  `#3511 <https://github.com/aio-libs/aiohttp/issues/3511>`_
+- Send custom per-request cookies even if session jar is empty
+  `#3515 <https://github.com/aio-libs/aiohttp/issues/3515>`_
+- Restore Linux binary wheels publishing on PyPI
+
+----
+
+
 3.5.2 (2019-01-08)
 ==================
 
