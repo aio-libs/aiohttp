@@ -89,7 +89,7 @@ def test_HTTPFound_empty_location() -> None:
 
 
 async def test_HTTPMethodNotAllowed() -> None:
-    exc = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
+    exc = web.HTTPMethodNotAllowed('GET', ['POST', 'PUT'])
     assert 'GET' == exc.method
     assert {'POST', 'PUT'} == exc.allowed_methods
     assert 'POST,PUT' == exc.headers['allow']
