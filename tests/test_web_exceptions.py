@@ -17,6 +17,42 @@ def test_all_http_exceptions_exported() -> None:
             assert name in web.__all__
 
 
+async def test_ctor() -> None:
+    resp = web.HTTPOk()
+    assert resp.text == "200: OK"
+    assert resp.headers == {'Content-Type': 'text/plain'}
+    assert resp.reason == "OK"
+    assert resp.status == 200
+    assert bool(resp)
+
+
+async def test_ctor_with_headers() -> None:
+    resp = web.HTTPOk(headers={"X-Custom": "value"})
+    assert resp.text == "200: OK"
+    assert resp.headers == {'Content-Type': 'text/plain', "X-Custom": "value"}
+    assert resp.reason == "OK"
+    assert resp.status == 200
+
+
+async def test_ctor_content_type() -> None:
+    with pytest.warns(DeprecationWarning):
+        resp = web.HTTPOk(content_type="custom")
+    assert resp.text == "200: OK"
+    assert resp.headers == {'Content-Type': 'custom'}
+    assert resp.reason == "OK"
+    assert resp.status == 200
+    assert bool(resp)
+
+
+async def test_ctor_text_for_empty_body() -> None:
+    with pytest.warns(DeprecationWarning):
+        resp = web.HTTPResetContent(text="text")
+    assert resp.text == "text"
+    assert resp.headers == {'Content-Type': 'text/plain'}
+    assert resp.reason == "Reset Content"
+    assert resp.status == 205
+
+
 def test_terminal_classes_has_status_code() -> None:
     terminals = set()
     for name in dir(web):
