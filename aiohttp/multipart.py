@@ -243,7 +243,7 @@ class BodyPartReader:
         headers: Mapping[str, Optional[str]],
         content: StreamReader,
         *,
-        _newline: bytes = b'\r\n',
+        _newline: bytes = b'\r\n'
     ) -> None:
         self.headers = headers
         self._boundary = boundary
