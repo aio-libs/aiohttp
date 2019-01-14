@@ -1919,6 +1919,22 @@ async def test_cookies_per_request(aiohttp_client) -> None:
     resp.close()
 
 
+async def test_cookies_on_empty_session_jar(aiohttp_client) -> None:
+    async def handler(request):
+        assert 'custom-cookie' in request.cookies
+        assert request.cookies['custom-cookie'] == 'abc'
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(
+        app, cookies=None)
+
+    resp = await client.get('/', cookies={'custom-cookie': 'abc'})
+    assert 200 == resp.status
+    resp.close()
+
+
 async def test_morsel_with_attributes(aiohttp_client) -> None:
     # A comment from original test:
     #
