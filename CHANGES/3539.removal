@@ -1,0 +1,1 @@
+Disallow creation of aiohttp objects (``ClientSession``, ``Connector`` etc.) without running event loop.

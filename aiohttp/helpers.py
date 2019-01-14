@@ -12,7 +12,6 @@ import platform
 import re
 import sys
 import time
-import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
@@ -45,7 +44,7 @@ from multidict import MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
-from .log import client_logger, internal_logger
+from .log import client_logger
 from .typedefs import PathLike  # noqa
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
@@ -266,12 +265,7 @@ def get_running_loop(
     if loop is None:
         loop = asyncio.get_event_loop()
     if not loop.is_running():
-        warnings.warn("The object should be created from async function",
-                      DeprecationWarning, stacklevel=3)
-        if loop.get_debug():
-            internal_logger.warning(
-                "The object should be created from async function",
-                stack_info=True)
+        raise RuntimeError("The object should be created from async function")
     return loop
 
 
