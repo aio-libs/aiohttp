@@ -870,6 +870,35 @@ class TestMultipartReader:
         assert first.at_eof()
         assert not second.at_eof()
 
+    async def test_read_mixed_newlines(self) -> None:
+        reader = aiohttp.MultipartReader(
+            {CONTENT_TYPE: 'multipart/mixed;boundary=":"'},
+            Stream(
+                b''.join([
+                    b'--:\n',
+                    b'Content-Type: multipart/related;boundary=--:--\n',
+                    b'\n',
+                    b'----:--\r\n',
+                    b'\r\n',
+                    b'test\r\n',
+                    b'----:--\r\n',
+                    b'\r\n',
+                    b'passed\r\n',
+                    b'----:----\r\n',
+                    b'\n',
+                    b'--:--',
+                ])
+            )
+        )
+        while True:
+            part = await reader.next()
+            if part is None:
+                break
+            while True:
+                subpart = await part.next()
+                if subpart is None:
+                    break
+
 
 async def test_writer(writer) -> None:
     assert writer.size == 0
