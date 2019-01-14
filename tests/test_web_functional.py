@@ -791,37 +791,6 @@ async def test_response_with_async_gen(aiohttp_client, fname) -> None:
     assert resp.headers.get('Content-Length') == str(len(resp_data))
 
 
-async def test_response_with_streamer(aiohttp_client, fname) -> None:
-
-    with fname.open('rb') as f:
-        data = f.read()
-
-    data_size = len(data)
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer, f_name):
-            with f_name.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    async def handler(request):
-        headers = {'Content-Length': str(data_size)}
-        return web.Response(body=stream(fname), headers=headers)
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    resp_data = await resp.read()
-    assert resp_data == data
-    assert resp.headers.get('Content-Length') == str(len(resp_data))
-
-
 async def test_response_with_async_gen_no_params(aiohttp_client,
                                                  fname) -> None:
 
@@ -841,37 +810,6 @@ async def test_response_with_async_gen_no_params(aiohttp_client,
     async def handler(request):
         headers = {'Content-Length': str(data_size)}
         return web.Response(body=stream(), headers=headers)
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    resp_data = await resp.read()
-    assert resp_data == data
-    assert resp.headers.get('Content-Length') == str(len(resp_data))
-
-
-async def test_response_with_streamer_no_params(aiohttp_client, fname) -> None:
-
-    with fname.open('rb') as f:
-        data = f.read()
-
-    data_size = len(data)
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer):
-            with fname.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    async def handler(request):
-        headers = {'Content-Length': str(data_size)}
-        return web.Response(body=stream, headers=headers)
 
     app = web.Application()
     app.router.add_get('/', handler)
