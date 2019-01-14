@@ -17,3 +17,6 @@ indent_style = tab
 
 [*.{yml,yaml}]
 indent_size = 2
+
+[*.rst]
+max_line_length = 80
