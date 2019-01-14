@@ -1519,51 +1519,16 @@ async def test_POST_STREAM_DATA(aiohttp_client, fname) -> None:
     with fname.open('rb') as f:
         data_size = len(f.read())
 
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer, fname):
-            with fname.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    resp = await client.post(
-        '/', data=stream(fname), headers={'Content-Length': str(data_size)})
-    assert 200 == resp.status
-    resp.close()
-
-
-async def test_POST_STREAM_DATA_no_params(aiohttp_client, fname) -> None:
-
-    async def handler(request):
-        assert request.content_type == 'application/octet-stream'
-        content = await request.read()
+    @async_generator
+    async def gen(fname):
         with fname.open('rb') as f:
-            expected = f.read()
-            assert request.content_length == len(expected)
-            assert content == expected
-
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post('/', handler)
-    client = await aiohttp_client(app)
-
-    with fname.open('rb') as f:
-        data_size = len(f.read())
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer):
-            with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                await yield_(data)
                 data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
 
     resp = await client.post(
-        '/', data=stream, headers={'Content-Length': str(data_size)})
+        '/', data=gen(fname), headers={'Content-Length': str(data_size)})
     assert 200 == resp.status
     resp.close()
 
