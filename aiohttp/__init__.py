@@ -74,8 +74,6 @@ from .payload import (
     payload_type
 )
 
-from .payload_streamer import streamer
-
 from .resolver import AsyncResolver, DefaultResolver, ThreadedResolver
 
 from .signals import Signal
@@ -177,8 +175,6 @@ __all__ = (
     'TextIOPayload',
     'get_payload',
     'payload_type',
-    # payload_streamer
-    'streamer',
     # resolver
     'AsyncResolver',
     'DefaultResolver',
