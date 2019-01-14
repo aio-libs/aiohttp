@@ -242,11 +242,12 @@ class BodyPartReader:
         boundary: bytes,
         headers: Mapping[str, Optional[str]],
         content: StreamReader,
-        newline: bytes = b'\r\n',
+        *,
+        _newline: bytes = b'\r\n',
     ) -> None:
         self.headers = headers
         self._boundary = boundary
-        self._newline = newline
+        self._newline = _newline
         self._content = content
         self._at_eof = False
         length = self.headers.get(CONTENT_LENGTH, None)
@@ -531,11 +532,12 @@ class MultipartReader:
         self,
         headers: Mapping[str, str],
         content: StreamReader,
-        newline: bytes = b'\r\n',
+        *,
+        _newline: bytes = b'\r\n',
     ) -> None:
         self.headers = headers
         self._boundary = ('--' + self._get_boundary()).encode()
-        self._newline = newline
+        self._newline = _newline
         self._content = content
         self._last_part = None
         self._at_eof = False
@@ -609,11 +611,11 @@ class MultipartReader:
             if self.multipart_reader_cls is None:
                 return type(self)(headers, self._content)
             return self.multipart_reader_cls(
-                headers, self._content, self._newline
+                headers, self._content, _newline=self._newline
             )
         else:
             return self.part_reader_cls(
-                self._boundary, headers, self._content, self._newline
+                self._boundary, headers, self._content, _newline=self._newline
             )
 
     def _get_boundary(self) -> str:

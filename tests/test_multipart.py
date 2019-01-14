@@ -125,14 +125,18 @@ class TestPartReader:
 
     async def test_next(self, newline) -> None:
         data = b'Hello, world!%s--:' % newline
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = await obj.next()
         assert b'Hello, world!' == result
         assert obj.at_eof()
 
     async def test_next_next(self, newline) -> None:
         data = b'Hello, world!%s--:' % newline
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = await obj.next()
         assert b'Hello, world!' == result
         assert obj.at_eof()
@@ -141,7 +145,9 @@ class TestPartReader:
 
     async def test_read(self, newline) -> None:
         data = b'Hello, world!%s--:' % newline
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = await obj.read()
         assert b'Hello, world!' == result
         assert obj.at_eof()
@@ -154,7 +160,9 @@ class TestPartReader:
 
     async def test_read_chunk_without_content_length(self, newline) -> None:
         data = b'Hello, world!%s--:' % newline
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         c1 = await obj.read_chunk(8)
         c2 = await obj.read_chunk(8)
         c3 = await obj.read_chunk(8)
@@ -176,7 +184,9 @@ class TestPartReader:
             prepare(b'!%s--:' % newline),
             prepare(b'')
         ]):
-            obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, newline)
+            obj = aiohttp.BodyPartReader(
+                BOUNDARY, {}, stream, _newline=newline
+            )
             c1 = await obj.read_chunk(8)
             assert c1 == b'Hello, '
             c2 = await obj.read_chunk(8)
@@ -186,7 +196,9 @@ class TestPartReader:
 
     async def test_read_all_at_once(self, newline) -> None:
         data = b'Hello, World!%s--:--%s' % (newline, newline)
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = await obj.read_chunk()
         assert b'Hello, World!' == result
         result = await obj.read_chunk()
@@ -195,7 +207,9 @@ class TestPartReader:
 
     async def test_read_incomplete_body_chunked(self, newline) -> None:
         data = b'Hello, World!%s--' % newline
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = b''
         with pytest.raises(AssertionError):
             for _ in range(4):
@@ -217,7 +231,9 @@ class TestPartReader:
             prepare(b'--:'),
             prepare(b'')
         ]):
-            obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, newline)
+            obj = aiohttp.BodyPartReader(
+                BOUNDARY, {}, stream, _newline=newline
+            )
             c1 = await obj.read_chunk(12)
             assert c1 == b'Hello, World'
             c2 = await obj.read_chunk(8)
@@ -227,7 +243,9 @@ class TestPartReader:
 
     async def test_multi_read_chunk(self, newline) -> None:
         data = b'Hello,%s--:%s%sworld!%s--:--' % ((newline,) * 4)
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = await obj.read_chunk(8)
         assert b'Hello,' == result
         result = await obj.read_chunk(8)
@@ -243,7 +261,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {'CONTENT-LENGTH': size},
             StreamWithShortenRead(expected + tail),
-            newline,
+            _newline=newline,
         )
         result = bytearray()
         while True:
@@ -258,14 +276,16 @@ class TestPartReader:
     async def test_read_does_not_read_boundary(self, newline) -> None:
         data = b'Hello, world!%s--:' % newline
         stream = Stream(data)
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, newline)
+        obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)
         result = await obj.read()
         assert b'Hello, world!' == result
         assert b'--:' == (await stream.read())
 
     async def test_multiread(self, newline) -> None:
         data = b'Hello,%s--:%s%sworld!%s--:--' % ((newline,) * 4)
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = await obj.read()
         assert b'Hello,' == result
         result = await obj.read()
@@ -274,7 +294,9 @@ class TestPartReader:
 
     async def test_read_multiline(self, newline) -> None:
         data = b'Hello\n,\r\nworld!%s--:--' % newline
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, Stream(data), newline)
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {}, Stream(data), _newline=newline
+        )
         result = await obj.read()
         assert b'Hello\n,\r\nworld!' == result
         result = await obj.read()
@@ -288,7 +310,7 @@ class TestPartReader:
             BOUNDARY,
             {'CONTENT-LENGTH': 100500},
             Stream(data + tail),
-            newline,
+            _newline=newline,
         )
         result = await obj.read()
         assert data == result
@@ -300,7 +322,7 @@ class TestPartReader:
             Stream(b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x03\x0b\xc9\xccMU'
                    b'(\xc9W\x08J\xcdI\xacP\x04\x00$\xfb\x9eV\x0e\x00\x00\x00'
                    b'%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.read(decode=True)
         assert b'Time to Relax!' == result
@@ -311,7 +333,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'deflate'},
             Stream(data + tail),
-            newline,
+            _newline=newline,
         )
         result = await obj.read(decode=True)
         assert b'Time to Relax!' == result
@@ -322,7 +344,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'identity'},
             Stream(thing + b'%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.read(decode=True)
         assert thing == result
@@ -331,7 +353,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_ENCODING: 'snappy'},
             Stream(b'\x0e4Time to Relax!%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         with pytest.raises(RuntimeError):
             await obj.read(decode=True)
@@ -342,7 +364,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'base64'},
             Stream(b'VGltZSB0byBSZWxheCE=%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.read(decode=True)
         assert b'Time to Relax!' == result
@@ -354,7 +376,7 @@ class TestPartReader:
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'quoted-printable'},
             Stream(b'=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,'
                    b' =D0=BC=D0=B8=D1=80!%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.read(decode=True)
         expected = (b'\xd0\x9f\xd1\x80\xd0\xb8\xd0\xb2\xd0\xb5\xd1\x82,'
@@ -370,7 +392,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: encoding},
             Stream(data + b'%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.read(decode=True)
         assert data == result
@@ -381,7 +403,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'unknown'},
             Stream(b'\x0e4Time to Relax!%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         with pytest.raises(RuntimeError):
             await obj.read(decode=True)
@@ -391,7 +413,7 @@ class TestPartReader:
             BOUNDARY,
             {},
             Stream(b'Hello, world!%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.text()
         assert 'Hello, world!' == result
@@ -403,7 +425,7 @@ class TestPartReader:
             BOUNDARY,
             {},
             Stream(data.encode('utf-8') + tail),
-            newline,
+            _newline=newline,
         )
         result = await obj.text()
         assert data == result
@@ -415,7 +437,7 @@ class TestPartReader:
             BOUNDARY,
             {},
             Stream(data.encode('cp1251') + tail),
-            newline,
+            _newline=newline,
         )
         result = await obj.text(encoding='cp1251')
         assert data == result
@@ -427,7 +449,7 @@ class TestPartReader:
             BOUNDARY,
             {CONTENT_TYPE: 'text/plain;charset=cp1251'},
             Stream(data.encode('cp1251') + tail),
-            newline,
+            _newline=newline,
         )
         result = await obj.text()
         assert data == result
@@ -441,7 +463,7 @@ class TestPartReader:
             BOUNDARY,
             {CONTENT_ENCODING: 'deflate', CONTENT_TYPE: 'text/plain'},
             Stream(data),
-            newline,
+            _newline=newline,
         )
         result = await obj.text()
         assert 'Time to Relax!' == result
@@ -457,7 +479,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/json'},
             Stream(b'{"test": "passed"}%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.json()
         assert {'test': 'passed'} == result
@@ -468,7 +490,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/json'},
             Stream(data + tail),
-            newline,
+            _newline=newline,
         )
         result = await obj.json(encoding='cp1251')
         assert {'тест': 'пассед'} == result
@@ -479,7 +501,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/json; charset=cp1251'},
             Stream(data + tail),
-            newline,
+            _newline=newline,
         )
         result = await obj.json()
         assert {'тест': 'пассед'} == result
@@ -490,7 +512,7 @@ class TestPartReader:
                        CONTENT_TYPE: 'application/json'},
             Stream(b'\xabV*I-.Q\xb2RP*H,.NMQ\xaa\x05\x00'
                    b'%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.json()
         assert {'test': 'passed'} == result
@@ -508,7 +530,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
             Stream(data),
-            newline,
+            _newline=newline,
         )
         result = await obj.form()
         assert [('foo', 'bar'), ('foo', 'baz'), ('boo', '')] == result
@@ -518,7 +540,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {CONTENT_TYPE: 'application/x-www-form-urlencoded'},
             Stream(data),
-            newline,
+            _newline=newline,
         )
         result = await obj.form(encoding='cp1251')
         assert [('foo', 'bar'), ('foo', 'baz'), ('boo', '')] == result
@@ -529,7 +551,7 @@ class TestPartReader:
             BOUNDARY,
             {CONTENT_TYPE: 'application/x-www-form-urlencoded; charset=utf-8'},
             Stream(data),
-            newline,
+            _newline=newline,
         )
         result = await obj.form()
         assert [('foo', 'bar'), ('foo', 'baz'), ('boo', '')] == result
@@ -551,7 +573,7 @@ class TestPartReader:
             BOUNDARY,
             {},
             Stream(data),
-            newline,
+            _newline=newline,
         )
         result = await obj.readline()
         assert b'Hello\n' == result
@@ -570,7 +592,7 @@ class TestPartReader:
             BOUNDARY,
             {},
             stream,
-            newline,
+            _newline=newline,
         )
         remained = b'--:\r\n\r\nworld!%s--:--' % newline
         await obj.release()
@@ -581,7 +603,7 @@ class TestPartReader:
         obj = aiohttp.BodyPartReader(
             BOUNDARY, {'CONTENT-LENGTH': 100500},
             Stream(b'.' * 100500 + b'%s--:--' % newline),
-            newline,
+            _newline=newline,
         )
         result = await obj.release()
         assert result is None
@@ -595,7 +617,7 @@ class TestPartReader:
             BOUNDARY,
             {},
             stream,
-            newline,
+            _newline=newline,
         )
         await obj.release()
         await obj.release()
@@ -614,7 +636,7 @@ class TestPartReader:
         stream = StreamReader(protocol)
         stream.feed_data(b'0' * size + b'%s--:--' % newline)
         stream.feed_eof()
-        obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, newline)
+        obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)
         data = await obj.read()
         assert len(data) == size
 
