@@ -533,7 +533,7 @@ class MultipartReader:
         headers: Mapping[str, str],
         content: StreamReader,
         *,
-        _newline: bytes = b'\r\n',
+        _newline: bytes = b'\r\n'
     ) -> None:
         self.headers = headers
         self._boundary = ('--' + self._get_boundary()).encode()
