@@ -35,12 +35,21 @@ async def test_ctor_with_headers() -> None:
 
 
 async def test_ctor_content_type() -> None:
-    with pytest.warns(DeprecationWarning):
-        resp = web.HTTPOk(content_type="custom")
-    assert resp.text == "200: OK"
+    resp = web.HTTPOk(text="text", content_type="custom")
+    assert resp.text == "text"
     assert resp.headers == {'Content-Type': 'custom'}
     assert resp.reason == "OK"
     assert resp.status == 200
+    assert bool(resp)
+
+
+async def test_ctor_content_type_without_text() -> None:
+    with pytest.warns(DeprecationWarning):
+        resp = web.HTTPResetContent(content_type="custom")
+    assert resp.text is None
+    assert resp.headers == {'Content-Type': 'custom'}
+    assert resp.reason == "Reset Content"
+    assert resp.status == 205
     assert bool(resp)
 
 

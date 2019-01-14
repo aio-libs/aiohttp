@@ -109,8 +109,9 @@ class HTTPException(Exception):
             real_headers = CIMultiDict(headers)
         else:
             real_headers = CIMultiDict()
+
         if content_type is not None:
-            if text:
+            if not text:
                 warnings.warn("content_type without text is deprecated "
                               "in aiohttp 4.0 (#3462)",
                               DeprecationWarning,
