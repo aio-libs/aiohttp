@@ -932,7 +932,8 @@ class ClientResponse(HeadersMixin):
 
     def raise_for_status(self) -> None:
         if 400 <= self.status:
-            assert self.reason  # always not None for started response
+            # reason should always be not None for a started response
+            assert self.reason is not None
             self.release()
             raise ClientResponseError(
                 self.request_info,
