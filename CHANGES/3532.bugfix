@@ -1,0 +1,2 @@
+Raise a ClientResponseError instead of an AssertionError for a blank
+HTTP Reason Phrase.
