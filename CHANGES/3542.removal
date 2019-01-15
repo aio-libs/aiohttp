@@ -1,1 +1,1 @@
-Forbid unknown ``web.Application`` attributes access
+Setting ``web.Application`` custom attributes is now forbidden
