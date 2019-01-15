@@ -560,3 +560,11 @@ def test_app_iter():
     app['a'] = '1'
     app['b'] = '2'
     assert sorted(list(app)) == ['a', 'b']
+
+
+def test_app_forbid_nonslot_attr():
+    app = web.Application()
+    with pytest.raises(AttributeError):
+        app.unknow_attr
+    with pytest.raises(AttributeError):
+        app.unknow_attr = 1
