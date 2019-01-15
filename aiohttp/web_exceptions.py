@@ -82,8 +82,6 @@ class HTTPException(Exception):
     empty_body = False
     default_reason = ""  # Initialized at the end of the module
 
-    __http_exception__ = True
-
     def __init__(self, *,
                  headers: Optional[LooseHeaders]=None,
                  reason: Optional[str]=None,

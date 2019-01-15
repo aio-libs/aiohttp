@@ -1,7 +1,6 @@
 import asyncio
 import asyncio.streams
 import traceback
-import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
@@ -429,25 +428,18 @@ class RequestHandler(BaseProtocol):
                     resp = self.handle_error(request, 504)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
-                else:
-                    # Deprecation warning (See #2415)
-                    if getattr(resp, '__http_exception__', False):
-                        warnings.warn(
-                            "returning HTTPException object is deprecated "
-                            "(#2415) and will be removed, "
-                            "please raise the exception instead",
-                            DeprecationWarning)
 
-                if self.debug:
-                    if not isinstance(resp, StreamResponse):
-                        if resp is None:
-                            raise RuntimeError("Missing return "
-                                               "statement on request handler")
-                        else:
-                            raise RuntimeError("Web-handler should return "
-                                               "a response instance, "
-                                               "got {!r}".format(resp))
-                await resp.prepare(request)
+                try:
+                    prepare_meth = resp.prepare
+                except AttributeError:
+                    if resp is None:
+                        raise RuntimeError("Missing return "
+                                           "statement on request handler")
+                    else:
+                        raise RuntimeError("Web-handler should return "
+                                           "a response instance, "
+                                           "got {!r}".format(resp))
+                await prepare_meth(request)
                 await resp.write_eof()
 
                 # notify server about keep-alive
