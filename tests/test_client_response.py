@@ -668,6 +668,24 @@ def test_raise_for_status_4xx() -> None:
     assert response.closed
 
 
+def test_raise_for_status_4xx_without_reason() -> None:
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
+    response.status = 404
+    response.reason = ''
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert str(cm.value.status) == '404'
+    assert str(cm.value.message) == ''
+    assert response.closed
+
+
 def test_resp_host() -> None:
     response = ClientResponse('get', URL('http://del-cl-resp.org'),
                               request_info=mock.Mock(),
