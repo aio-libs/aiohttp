@@ -158,19 +158,6 @@ def test_repr_non_ascii_reason() -> None:
         in repr(response)
 
 
-def test_url_obj_deprecated() -> None:
-    response = ClientResponse('get', URL('http://fake-host.org/'),
-                              request_info=mock.Mock(),
-                              writer=mock.Mock(),
-                              continue100=None,
-                              timer=TimerNoop(),
-                              traces=[],
-                              loop=mock.Mock(),
-                              session=mock.Mock())
-    with pytest.warns(DeprecationWarning):
-        response.url_obj
-
-
 async def test_read_and_release_connection(loop, session) -> None:
     response = ClientResponse('get', URL('http://def-cl-resp.org'),
                               request_info=mock.Mock(),
