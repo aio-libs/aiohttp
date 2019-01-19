@@ -160,9 +160,9 @@ class Application(MutableMapping[str, Any]):
     ########
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
-        # Technically the loop can be None
+        # Technically the loop can be None,
         # but we mask it by explicit type cast
-        # to provide more convinient type annotation
+        # to provide more convenient type annotation.
         warnings.warn("loop property is deprecated",
                       DeprecationWarning,
                       stacklevel=2)
