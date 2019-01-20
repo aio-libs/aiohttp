@@ -345,8 +345,7 @@ class RequestHandler(BaseProtocol):
                    response: StreamResponse,
                    time: float,
                    exc_info: Optional[ExcInfo]) -> None:
-        if self.access_logger is not None:
-            self.access_logger.log(request, response, time, exc_info)
+        self.access_logger.log(request, response, time, exc_info)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
         if self.debug:
@@ -452,7 +451,8 @@ class RequestHandler(BaseProtocol):
                 self._keepalive = bool(resp.keep_alive)
 
                 # log access
-                self.log_access(request, resp, loop.time() - now, exc_info)
+                if self.access_log:
+                    self.log_access(request, resp, loop.time() - now, exc_info)
 
                 # check payload
                 if not payload.is_eof():
