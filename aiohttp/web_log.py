@@ -4,9 +4,9 @@ import logging
 import os
 import re
 from collections import namedtuple
-from typing import Callable, Dict, Iterable, List, Tuple  # noqa
+from typing import Callable, Dict, Iterable, List, Optional, Tuple  # noqa
 
-from .abc import AbstractAccessLogger
+from .abc import AbstractAccessLogger, ExcInfo
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
@@ -213,7 +213,8 @@ class AccessLogger(AbstractAccessLogger):
     def log(self,
             request: BaseRequest,
             response: StreamResponse,
-            time: float) -> None:
+            time: float,
+            exc: Optional[ExcInfo]) -> None:
         try:
             fmt_info = self._format_line(request, response, time)
 

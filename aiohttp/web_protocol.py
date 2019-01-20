@@ -1,5 +1,6 @@
 import asyncio
 import asyncio.streams
+import sys
 import traceback
 from collections import deque
 from contextlib import suppress
@@ -18,7 +19,7 @@ from typing import (
 
 import yarl
 
-from .abc import AbstractAccessLogger, AbstractStreamWriter
+from .abc import AbstractAccessLogger, AbstractStreamWriter, ExcInfo
 from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout, current_task
 from .http import (
@@ -342,9 +343,10 @@ class RequestHandler(BaseProtocol):
     def log_access(self,
                    request: BaseRequest,
                    response: StreamResponse,
-                   time: float) -> None:
+                   time: float,
+                   exc_info: Optional[ExcInfo]) -> None:
         if self.access_logger is not None:
-            self.access_logger.log(request, response, time)
+            self.access_logger.log(request, response, time, exc_info)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
         if self.debug:
@@ -410,6 +412,7 @@ class RequestHandler(BaseProtocol):
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:
+                exc_info = None
                 try:
                     # a new task is used for copy context vars (#3406)
                     task = self._loop.create_task(
@@ -420,14 +423,17 @@ class RequestHandler(BaseProtocol):
                                     reason=exc.reason,
                                     text=exc.text,
                                     headers=exc.headers)
+                    exc_info = sys.exc_info()
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
                 except asyncio.TimeoutError as exc:
                     self.log_debug('Request handler timed out.', exc_info=exc)
                     resp = self.handle_error(request, 504)
+                    exc_info = sys.exc_info()
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
+                    exc_info = sys.exc_info()
 
                 try:
                     prepare_meth = resp.prepare
@@ -446,8 +452,7 @@ class RequestHandler(BaseProtocol):
                 self._keepalive = bool(resp.keep_alive)
 
                 # log access
-                if self.access_log:
-                    self.log_access(request, resp, loop.time() - now)
+                self.log_access(request, resp, loop.time() - now, exc_info)
 
                 # check payload
                 if not payload.is_eof():
