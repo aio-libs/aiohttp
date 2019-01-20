@@ -195,7 +195,11 @@ class AbstractStreamWriter(ABC):
         """Write HTTP headers"""
 
 
-ExcInfo = Tuple[Type[Exception], Exception, TracebackType]
+ExcInfo = Tuple[
+    Optional[Type[BaseException]],
+    Optional[BaseException],
+    Optional[TracebackType]
+]
 
 
 class AbstractAccessLogger(ABC):
