@@ -388,31 +388,29 @@ class StreamReader(AsyncStreamReaderMixin):
         of the data corresponds to the end of a HTTP chunk , otherwise it is
         always False.
         """
-        if self._exception is not None:
-            raise self._exception
+        while True:
+            if self._exception is not None:
+                raise self._exception
 
-        if not self._buffer and not self._eof:
-            if (self._http_chunk_splits and
-                    self._cursor == self._http_chunk_splits[0]):
-                # end of http chunk without available data
-                self._http_chunk_splits = self._http_chunk_splits[1:]
-                return (b"", True)
-            await self._wait('readchunk')
-
-        if not self._buffer and not self._http_chunk_splits:
-            # end of file
-            return (b"", False)
-        elif self._http_chunk_splits is not None:
             while self._http_chunk_splits:
-                pos = self._http_chunk_splits[0]
-                self._http_chunk_splits = self._http_chunk_splits[1:]
+                pos = self._http_chunk_splits.pop(0)
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
                     return (self._read_nowait(pos-self._cursor), True)
-            return (self._read_nowait(-1), False)
-        else:
-            return (self._read_nowait_chunk(-1), False)
+                internal_logger.warning('Skipping HTTP chunk end due to data '
+                                        'consumption beyond chunk boundary')
+
+            if self._buffer:
+                return (self._read_nowait_chunk(-1), False)
+                # return (self._read_nowait(-1), False)
+
+            if self._eof:
+                # Special case for signifying EOF.
+                # (b'', True) is not a final return value actually.
+                return (b'', False)
+
+            await self._wait('readchunk')
 
     async def readexactly(self, n: int) -> bytes:
         if self._exception is not None:
@@ -467,6 +465,7 @@ class StreamReader(AsyncStreamReaderMixin):
         return data
 
     def _read_nowait(self, n: int) -> bytes:
+        """ Read not more than n bytes, or whole buffer is n == -1 """
         chunks = []
 
         while self._buffer:
