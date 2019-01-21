@@ -23,3 +23,4 @@ project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 * `Home Assistant <https://home-assistant.io>`_ Home Automation Platform.
 * `Backend.AI <https://backend.ai>`_ Code execution API service.
 * `doh-proxy <https://github.com/facebookexperimental/doh-proxy>`_ DNS Over HTTPS Proxy.
+* `Mariner <https://gitlab.com/radek-sprta/mariner>`_ Command-line torrent searcher.
