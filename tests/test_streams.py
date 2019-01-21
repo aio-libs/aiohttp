@@ -649,6 +649,39 @@ class TestStreamReader:
         assert b'' == data
         assert not end_of_chunk
 
+    async def test_readany_chunk_end_race(self) -> None:
+        stream = self._make_one()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part1')
+
+        data = await stream.readany()
+        assert data == b'part1'
+
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(stream.readany())
+
+        # Give a chance for task to create waiter and start waiting for it.
+        await asyncio.sleep(0.1)
+        assert stream._waiter is not None
+        assert not task.done()  # Just for sure.
+
+        # This will trigger waiter, but without feeding any data.
+        # The stream should re-create waiter again.
+        stream.end_http_chunk_receiving()
+
+        # Give a chance for task to resolve.
+        # If everything is OK, previous action SHOULD NOT resolve the task.
+        await asyncio.sleep(0.1)
+        assert not task.done()  # The actual test.
+
+        stream.begin_http_chunk_receiving()
+        # This SHOULD unblock the task actually.
+        stream.feed_data(b'part2')
+        stream.end_http_chunk_receiving()
+
+        data = await task
+        assert data == b'part2'
+
     async def test_end_chunk_receiving_without_begin(self) -> None:
         stream = self._make_one()
         with pytest.raises(RuntimeError):
