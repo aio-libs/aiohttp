@@ -4,6 +4,7 @@ import asyncio
 import base64
 import binascii
 import cgi
+import codecs
 import functools
 import inspect
 import netrc
@@ -632,7 +633,13 @@ class HeadersMixin:
         raw = self._headers.get(hdrs.CONTENT_TYPE)  # type: ignore
         if self._stored_content_type != raw:
             self._parse_content_type(raw)
-        return self._content_dict.get('charset')  # type: ignore
+        charset = self._content_dict.get('charset')  # type: ignore
+        if charset is not None:
+            try:
+                codecs.lookup(charset)
+            except LookupError:
+                raise ValueError('Invalid Content-Type encoding')
+        return charset
 
     @property
     def content_length(self) -> Optional[int]:

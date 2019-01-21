@@ -41,7 +41,7 @@ from .typedefs import (
     RawHeaders,
     StrOrURL,
 )
-from .web_exceptions import HTTPRequestEntityTooLarge
+from .web_exceptions import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
 from .web_response import StreamResponse
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
@@ -575,7 +575,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     async def text(self) -> str:
         """Return BODY as text using encoding from .charset."""
         bytes_body = await self.read()
-        encoding = self.charset or 'utf-8'
+        try:
+            encoding = self.charset or 'utf-8'
+        except ValueError:
+            raise HTTPUnsupportedMediaType()
         return bytes_body.decode(encoding)
 
     async def json(self, *, loads: JSONDecoder=DEFAULT_JSON_DECODER) -> Any:
@@ -651,7 +654,10 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         else:
             data = await self.read()
             if data:
-                charset = self.charset or 'utf-8'
+                try:
+                    charset = self.charset or 'utf-8'
+                except ValueError:
+                    raise HTTPUnsupportedMediaType()
                 out.extend(
                     parse_qsl(
                         data.rstrip().decode(charset),
