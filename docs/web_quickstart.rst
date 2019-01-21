@@ -594,6 +594,8 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
+            # ws.__next__() automatically terminates the loop
+            # after ws.close() or ws.exception() is called
             if msg.type == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()
@@ -601,7 +603,7 @@ with the peer::
                     await ws.send_str(msg.data + '/answer')
             elif msg.type == aiohttp.WSMsgType.ERROR:
                 print('ws connection closed with exception %s' %
-                      ws.exception())
+                      ws.exception())                
 
         print('websocket connection closed')
 
