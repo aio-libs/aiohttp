@@ -122,8 +122,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer = collections.deque()  # type: Deque[bytes]
         self._buffer_offset = 0
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[bool]]
-        self._eof_waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._waiter = None  # type: Optional[asyncio.Future[None]]
+        self._eof_waiter = None  # type: Optional[asyncio.Future[None]]
         self._exception = None  # type: Optional[BaseException]
         self._timer = timer
         self._eof_callbacks = []  # type: List[Callable[[], None]]
@@ -156,8 +156,8 @@ class StreamReader(AsyncStreamReaderMixin):
 
         waiter = self._eof_waiter
         if waiter is not None:
-            set_exception(waiter, exc)
             self._eof_waiter = None
+            set_exception(waiter, exc)
 
     def on_eof(self, callback: Callable[[], None]) -> None:
         if self._eof:
@@ -174,12 +174,12 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, True)
+            set_result(waiter, None)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            set_result(waiter, True)
+            set_result(waiter, None)
 
         for cb in self._eof_callbacks:
             try:
@@ -240,7 +240,7 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, False)
+            set_result(waiter, None)
 
         if (self._size > self._high_water and
                 not self._protocol._reading_paused):
@@ -279,7 +279,7 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, False)
+            set_result(waiter, None)
 
     async def _wait(self, func_name: str) -> None:
         # StreamReader uses a future to link the protocol feed_data() method
@@ -537,7 +537,7 @@ class DataQueue(Generic[_T]):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._waiter = None  # type: Optional[asyncio.Future[None]]
         self._exception = None  # type: Optional[BaseException]
         self._size = 0
         self._buffer = collections.deque()  # type: Deque[Tuple[_T, int]]
@@ -560,8 +560,8 @@ class DataQueue(Generic[_T]):
 
         waiter = self._waiter
         if waiter is not None:
-            set_exception(waiter, exc)
             self._waiter = None
+            set_exception(waiter, exc)
 
     def feed_data(self, data: _T, size: int=0) -> None:
         self._size += size
@@ -570,7 +570,7 @@ class DataQueue(Generic[_T]):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, True)
+            set_result(waiter, None)
 
     def feed_eof(self) -> None:
         self._eof = True
@@ -578,7 +578,7 @@ class DataQueue(Generic[_T]):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, False)
+            set_result(waiter, None)
 
     async def read(self) -> _T:
         if not self._buffer and not self._eof:
