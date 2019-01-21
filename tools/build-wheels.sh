@@ -22,6 +22,10 @@ arch=`uname -m`
 
 echo
 echo
+echo "Building ${package_name} dist has been requested"
+
+echo
+echo
 echo "Compile wheels"
 for PYTHON in ${PYTHON_VERSIONS}; do
     /opt/python/${PYTHON}/bin/pip install -r /io/requirements/cython.txt
