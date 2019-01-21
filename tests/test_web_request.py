@@ -11,7 +11,7 @@ from aiohttp import HttpVersion
 from aiohttp.helpers import DEBUG
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import HTTPRequestEntityTooLarge
+from aiohttp.web import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
 
 
 @pytest.fixture
@@ -84,6 +84,14 @@ def test_content_type_from_spec_with_charset() -> None:
         CIMultiDict([('CONTENT-TYPE', 'text/html; charset=UTF-8')]))
     assert 'text/html' == req.content_type
     assert 'UTF-8' == req.charset
+
+
+def test_content_type_from_spec_with_bad_charset() -> None:
+    req = make_mocked_request(
+        'Get', '/',
+        CIMultiDict([('CONTENT-TYPE', 'text/html; charset=test')]))
+    with pytest.raises(ValueError):
+        assert req.charset == 'test'
 
 
 def test_calc_content_type_on_getting_charset() -> None:
@@ -533,6 +541,18 @@ async def test_make_too_big_request(protocol) -> None:
         await req.read()
 
     assert err.value.status_code == 413
+
+
+async def test_request_with_wrong_content_type_encoding(protocol) -> None:
+    payload = StreamReader(protocol)
+    payload.feed_data(b'{}')
+    payload.feed_eof()
+    headers = {'Content-Type': 'text/html; charset=test'}
+    req = make_mocked_request('POST', '/', payload=payload, headers=headers)
+
+    with pytest.raises(HTTPUnsupportedMediaType) as err:
+        await req.text()
+    assert err.value.status_code == 415
 
 
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
