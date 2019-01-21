@@ -65,7 +65,7 @@ except ImportError:
 def all_tasks(
         loop: Optional[asyncio.AbstractEventLoop] = None
 ) -> Set['asyncio.Task[Any]']:
-    tasks = list(asyncio.Task.all_tasks(loop))  # type: ignore
+    tasks = list(asyncio.Task.all_tasks(loop))
     return {t for t in tasks if not t.done()}
 
 
@@ -252,11 +252,13 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task:  # type: ignore  # noqa  # Return type is intentionally Generic here
+def current_task(
+        loop: Optional[asyncio.AbstractEventLoop]=None
+) -> 'asyncio.Task[Any]':
     if PY_37:
         return asyncio.current_task(loop=loop)  # type: ignore
     else:
-        return asyncio.Task.current_task(loop=loop)  # type: ignore
+        return asyncio.Task.current_task(loop=loop)
 
 
 def get_running_loop(
