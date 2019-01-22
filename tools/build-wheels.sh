@@ -33,7 +33,7 @@ echo "Compile wheels"
 for PYTHON in ${PYTHON_VERSIONS}; do
     /opt/python/${PYTHON}/bin/pip install -r "${WORKDIR_PATH}/requirements/cython.txt"
     /opt/python/${PYTHON}/bin/pip install -r "${WORKDIR_PATH}/requirements/wheel.txt"
-    /opt/python/${PYTHON}/bin/pip wheel "${WORKDIR_PATH}/" -w "${WORKDIR_PATH}/io/dist/"
+    /opt/python/${PYTHON}/bin/pip wheel "${WORKDIR_PATH}/" -w "${WORKDIR_PATH}/dist/"
 done
 
 echo
