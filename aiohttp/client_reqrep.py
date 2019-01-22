@@ -670,12 +670,6 @@ class ClientResponse(HeadersMixin):
         return self._url
 
     @reify
-    def url_obj(self) -> URL:
-        warnings.warn(
-            "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
-        return self._url
-
-    @reify
     def real_url(self) -> URL:
         return self._real_url
 

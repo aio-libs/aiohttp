@@ -102,13 +102,13 @@ def test_non_app() -> None:
 
 @pytest.mark.skipif(platform.system() == "Windows",
                     reason="Unix socket support is required")
-async def test_addresses(make_runner, shorttmpdir) -> None:
+async def test_addresses(make_runner, tmpdir) -> None:
     _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
     await runner.setup()
     tcp = web.SockSite(runner, _sock)
     await tcp.start()
-    path = str(shorttmpdir / 'tmp.sock')
+    path = str(tmpdir / 'tmp.sock')
     unix = web.UnixSite(runner, path)
     await unix.start()
     actual_addrs = runner.addresses

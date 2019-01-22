@@ -23,12 +23,7 @@ from typing import (  # noqa
 )
 
 from . import hdrs
-from .abc import (
-    AbstractAccessLogger,
-    AbstractMatchInfo,
-    AbstractRouter,
-    AbstractStreamWriter,
-)
+from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractStreamWriter
 from .frozenlist import FrozenList
 from .http_parser import RawRequestMessage
 from .log import web_logger
@@ -86,20 +81,12 @@ class Application(MutableMapping[str, Any]):
 
     def __init__(self, *,
                  logger: logging.Logger=web_logger,
-                 router: Optional[UrlDispatcher]=None,
                  middlewares: Sequence[_Middleware]=(),
                  handler_args: Mapping[str, Any]=None,
                  client_max_size: int=1024**2,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
                  debug: Any=...  # mypy doesn't support ellipsis
                  ) -> None:
-        if router is None:
-            router = UrlDispatcher()
-        else:
-            warnings.warn("router argument is deprecated", DeprecationWarning,
-                          stacklevel=2)
-        assert isinstance(router, AbstractRouter), router
-
         if loop is not None:
             warnings.warn("loop argument is deprecated", DeprecationWarning,
                           stacklevel=2)
@@ -109,7 +96,7 @@ class Application(MutableMapping[str, Any]):
                           DeprecationWarning,
                           stacklevel=2)
         self._debug = debug
-        self._router = router  # type: UrlDispatcher
+        self._router = UrlDispatcher()
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
@@ -173,9 +160,9 @@ class Application(MutableMapping[str, Any]):
     ########
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
-        # Technically the loop can be None
+        # Technically the loop can be None,
         # but we mask it by explicit type cast
-        # to provide more convinient type annotation
+        # to provide more convenient type annotation.
         warnings.warn("loop property is deprecated",
                       DeprecationWarning,
                       stacklevel=2)

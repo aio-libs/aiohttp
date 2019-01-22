@@ -594,6 +594,8 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
+            # ws.__next__() automatically terminates the loop
+            # after ws.close() or ws.exception() is called
             if msg.type == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()
