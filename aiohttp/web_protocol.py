@@ -1,6 +1,5 @@
 import asyncio
 import asyncio.streams
-import sys
 import traceback
 from collections import deque
 from contextlib import suppress
@@ -19,7 +18,7 @@ from typing import (
 
 import yarl
 
-from .abc import AbstractAccessLogger, AbstractStreamWriter, ExcInfo
+from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout, current_task
 from .http import (
@@ -343,9 +342,8 @@ class RequestHandler(BaseProtocol):
     def log_access(self,
                    request: BaseRequest,
                    response: StreamResponse,
-                   time: float,
-                   exc_info: Optional[ExcInfo]) -> None:
-        self.access_logger.log(request, response, time, exc_info)
+                   request_start: float) -> None:
+        self.access_logger.log(request, response, self._loop.time() - request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
         if self.debug:
@@ -403,6 +401,7 @@ class RequestHandler(BaseProtocol):
 
             message, payload = self._messages.popleft()
 
+            now = None
             if self.access_log:
                 now = loop.time()
 
@@ -411,7 +410,6 @@ class RequestHandler(BaseProtocol):
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:
-                exc_info = None
                 try:
                     # a new task is used for copy context vars (#3406)
                     task = self._loop.create_task(
@@ -422,37 +420,21 @@ class RequestHandler(BaseProtocol):
                                     reason=exc.reason,
                                     text=exc.text,
                                     headers=exc.headers)
-                    exc_info = sys.exc_info()
+                    await self.finish_response(request, resp, now)
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
                 except asyncio.TimeoutError as exc:
                     self.log_debug('Request handler timed out.', exc_info=exc)
                     resp = self.handle_error(request, 504)
-                    exc_info = sys.exc_info()
+                    await self.finish_response(request, resp, now)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
-                    exc_info = sys.exc_info()
-
-                try:
-                    prepare_meth = resp.prepare
-                except AttributeError:
-                    if resp is None:
-                        raise RuntimeError("Missing return "
-                                           "statement on request handler")
-                    else:
-                        raise RuntimeError("Web-handler should return "
-                                           "a response instance, "
-                                           "got {!r}".format(resp))
-                await prepare_meth(request)
-                await resp.write_eof()
+                else:
+                    await self.finish_response(request, resp, now)
 
                 # notify server about keep-alive
                 self._keepalive = bool(resp.keep_alive)
-
-                # log access
-                if self.access_log:
-                    self.log_access(request, resp, loop.time() - now, exc_info)
 
                 # check payload
                 if not payload.is_eof():
@@ -512,6 +494,32 @@ class RequestHandler(BaseProtocol):
             self._task_handler = None
             if self.transport is not None and self._error_handler is None:
                 self.transport.close()
+
+    async def finish_response(self,
+                              request: BaseRequest,
+                              resp: StreamResponse,
+                              now: Optional[float]):
+        """
+        Prepare the response and write_eof, then log access. This has to
+        be called within the context of any exception so the access logger
+        can get exception information.
+        """
+        try:
+            prepare_meth = resp.prepare
+        except AttributeError:
+            if resp is None:
+                raise RuntimeError("Missing return "
+                                   "statement on request handler")
+            else:
+                raise RuntimeError("Web-handler should return "
+                                   "a response instance, "
+                                   "got {!r}".format(resp))
+        await prepare_meth(request)
+        await resp.write_eof()
+
+        # log access
+        if self.access_log:
+            self.log_access(request, resp, now)
 
     def handle_error(self,
                      request: BaseRequest,

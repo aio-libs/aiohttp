@@ -3,7 +3,6 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
 from http.cookies import BaseCookie, Morsel  # noqa
-from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -15,7 +14,6 @@ from typing import (
     List,
     Optional,
     Tuple,
-    Type,
 )
 
 from multidict import CIMultiDict  # noqa
@@ -195,13 +193,6 @@ class AbstractStreamWriter(ABC):
         """Write HTTP headers"""
 
 
-ExcInfo = Tuple[
-    Optional[Type[BaseException]],
-    Optional[BaseException],
-    Optional[TracebackType]
-]
-
-
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""
 
@@ -213,6 +204,5 @@ class AbstractAccessLogger(ABC):
     def log(self,
             request: BaseRequest,
             response: StreamResponse,
-            time: float,
-            exc_info: Optional[ExcInfo]) -> None:
+            time: float) -> None:
         """Emit log to logger."""

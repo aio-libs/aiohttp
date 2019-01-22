@@ -82,7 +82,7 @@ def test_access_logger_dicts() -> None:
     request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1),
                         remote="127.0.0.2")
     response = mock.Mock(headers={"Content-Length": 123})
-    access_logger.log(request, response, 0.0, None)
+    access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called
     expected = 'Mock/1.0 123 -'
     extra = {
@@ -100,7 +100,7 @@ def test_access_logger_unix_socket() -> None:
     request = mock.Mock(headers={"User-Agent": "Mock/1.0"}, version=(1, 1),
                         remote="")
     response = mock.Mock()
-    access_logger.log(request, response, 0.0, None)
+    access_logger.log(request, response, 0.0)
     assert not mock_logger.error.called
     expected = '||'
     mock_logger.info.assert_called_with(expected, extra={'remote_address': ''})
@@ -115,37 +115,37 @@ def test_logger_no_message() -> None:
         'request_header': {'content-type': '(no headers)'}
     }
 
-    access_logger.log(None, None, 0.0, None)
+    access_logger.log(None, None, 0.0)
     mock_logger.info.assert_called_with("- (no headers)", extra=extra_dict)
 
 
 def test_logger_internal_error() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%D")
-    access_logger.log(None, None, 'invalid', None)
+    access_logger.log(None, None, 'invalid')
     mock_logger.exception.assert_called_with("Error in logging")
 
 
 def test_logger_no_transport() -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, "%a")
-    access_logger.log(None, None, 0, None)
+    access_logger.log(None, None, 0)
     mock_logger.info.assert_called_with("-", extra={'remote_address': '-'})
 
 
 def test_logger_abc() -> None:
     class Logger(AbstractAccessLogger):
-        def log(self, request, response, time, exc_info):
+        def log(self, request, response, time):
             1 / 0
 
     mock_logger = mock.Mock()
     access_logger = Logger(mock_logger, None)
 
     with pytest.raises(ZeroDivisionError):
-        access_logger.log(None, None, None, None)
+        access_logger.log(None, None, None)
 
     class Logger(AbstractAccessLogger):
-        def log(self, request, response, time, exc_info):
+        def log(self, request, response, time):
             self.logger.info(self.log_format.format(
                 request=request,
                 response=response,
@@ -154,5 +154,5 @@ def test_logger_abc() -> None:
 
     mock_logger = mock.Mock()
     access_logger = Logger(mock_logger, '{request} {response} {time}')
-    access_logger.log('request', 'response', 1, None)
+    access_logger.log('request', 'response', 1)
     mock_logger.info.assert_called_with('request response 1')
