@@ -53,11 +53,11 @@ from .client_exceptions import (
     WSServerHandshakeError,
 )
 from .client_reqrep import (
+    SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
     Fingerprint,
     RequestInfo,
-    _merge_ssl_params,
 )
 from .client_ws import ClientWebSocketResponse
 from .connector import BaseConnector, TCPConnector, UnixConnector
@@ -322,9 +322,6 @@ class ClientSession:
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
             timeout: Union[ClientTimeout, object]=sentinel,
-            verify_ssl: Optional[bool]=None,
-            fingerprint: Optional[bytes]=None,
-            ssl_context: Optional[SSLContext]=None,
             ssl: Optional[Union[SSLContext, bool, Fingerprint]]=None,
             proxy_headers: Optional[LooseHeaders]=None,
             trace_request_ctx: Optional[SimpleNamespace]=None
@@ -337,7 +334,9 @@ class ClientSession:
         if self.closed:
             raise RuntimeError('Session is closed')
 
-        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError("ssl should be SSLContext, bool, Fingerprint, "
+                            "or None, got {!r} instead.".format(ssl))
 
         if data is not None and json is not None:
             raise ValueError(
@@ -620,9 +619,6 @@ class ClientSession:
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
             ssl: Union[SSLContext, bool, None, Fingerprint]=None,
-            verify_ssl: Optional[bool]=None,
-            fingerprint: Optional[bytes]=None,
-            ssl_context: Optional[SSLContext]=None,
             proxy_headers: Optional[LooseHeaders]=None,
             compress: int=0,
             max_msg_size: int=4*1024*1024) -> '_WSRequestContextManager':
@@ -642,9 +638,6 @@ class ClientSession:
                              proxy=proxy,
                              proxy_auth=proxy_auth,
                              ssl=ssl,
-                             verify_ssl=verify_ssl,
-                             fingerprint=fingerprint,
-                             ssl_context=ssl_context,
                              proxy_headers=proxy_headers,
                              compress=compress,
                              max_msg_size=max_msg_size))
@@ -665,9 +658,6 @@ class ClientSession:
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
             ssl: Union[SSLContext, bool, None, Fingerprint]=None,
-            verify_ssl: Optional[bool]=None,
-            fingerprint: Optional[bytes]=None,
-            ssl_context: Optional[SSLContext]=None,
             proxy_headers: Optional[LooseHeaders]=None,
             compress: int=0,
             max_msg_size: int=4*1024*1024
@@ -698,7 +688,9 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
-        ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError("ssl should be SSLContext, bool, Fingerprint, "
+                            "or None, got {!r} instead.".format(ssl))
 
         # send request
         resp = await self.request(method, url,

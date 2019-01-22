@@ -16,12 +16,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
-from aiohttp.client_reqrep import (
-    ClientRequest,
-    ClientResponse,
-    Fingerprint,
-    _merge_ssl_params,
-)
+from aiohttp.client_reqrep import ClientRequest, ClientResponse, Fingerprint
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -1147,13 +1142,6 @@ async def test_custom_req_rep(loop) -> None:
     resp.close()
     await session.close()
     conn.close()
-
-
-def test_verify_ssl_false_with_ssl_context(loop, ssl_ctx) -> None:
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(ValueError):
-            _merge_ssl_params(None, verify_ssl=False,
-                              ssl_context=ssl_ctx, fingerprint=None)
 
 
 def test_bad_fingerprint(loop) -> None:

@@ -240,8 +240,7 @@ The client session supports the context manager protocol for self closing.
                          compress=None, chunked=None, expect100=False, raise_for_status=None,\
                          read_until_eof=True, proxy=None, proxy_auth=None,\
                          timeout=sentinel, ssl=None, \
-                         verify_ssl=None, fingerprint=None, \
-                         ssl_context=None, proxy_headers=None)
+                         proxy_headers=None)
       :async-with:
       :coroutine:
 
@@ -352,45 +351,7 @@ The client session supports the context manager protocol for self closing.
                   validation, :class:`ssl.SSLContext` for custom SSL
                   certificate validation.
 
-                  Supersedes *verify_ssl*, *ssl_context* and
-                  *fingerprint* parameters.
-
          .. versionadded:: 3.0
-
-      :param bool verify_ssl: Perform SSL certificate validation for
-         *HTTPS* requests (enabled by default). May be disabled to
-         skip validation for sites with invalid certificates.
-
-         .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=False``
-
-      :param bytes fingerprint: Pass the SHA256 digest of the expected
-         certificate in DER format to verify that the certificate the
-         server presents matches. Useful for `certificate pinning
-         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
-
-         Warning: use of MD5 or SHA1 digests is insecure and removed.
-
-         .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=aiohttp.Fingerprint(digest)``
-
-      :param ssl.SSLContext ssl_context: ssl context used for processing
-         *HTTPS* requests (optional).
-
-         *ssl_context* may be used for configuring certification
-         authority channel, supported SSL options etc.
-
-         .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=ssl_context``
 
       :param abc.Mapping proxy_headers: HTTP headers to send to the proxy if the
          parameter proxy has been provided.
@@ -544,8 +505,7 @@ The client session supports the context manager protocol for self closing.
                             origin=None, \
                             headers=None, \
                             proxy=None, proxy_auth=None, ssl=None, \
-                            verify_ssl=None, fingerprint=None, \
-                            ssl_context=None, proxy_headers=None, \
+                            proxy_headers=None, \
                             compress=0, max_msg_size=4194304)
       :async-with:
       :coroutine:
@@ -598,45 +558,7 @@ The client session supports the context manager protocol for self closing.
                   validation, :class:`ssl.SSLContext` for custom SSL
                   certificate validation.
 
-                  Supersedes *verify_ssl*, *ssl_context* and
-                  *fingerprint* parameters.
-
          .. versionadded:: 3.0
-
-      :param bool verify_ssl: Perform SSL certificate validation for
-         *HTTPS* requests (enabled by default). May be disabled to
-         skip validation for sites with invalid certificates.
-
-         .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=False``
-
-      :param bytes fingerprint: Pass the SHA256 digest of the expected
-         certificate in DER format to verify that the certificate the
-         server presents matches. Useful for `certificate pinning
-         <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
-
-         Note: use of MD5 or SHA1 digests is insecure and deprecated.
-
-         .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=aiohttp.Fingerprint(digest)``
-
-      :param ssl.SSLContext ssl_context: ssl context used for processing
-         *HTTPS* requests (optional).
-
-         *ssl_context* may be used for configuring certification
-         authority channel, supported SSL options etc.
-
-         .. versionadded:: 2.3
-
-         .. deprecated:: 3.0
-
-            Use ``ssl=ssl_context``
 
       :param dict proxy_headers: HTTP headers to send to the proxy if the
          parameter proxy has been provided.
@@ -890,9 +812,9 @@ BaseConnector
 TCPConnector
 ^^^^^^^^^^^^
 
-.. class:: TCPConnector(*, ssl=None, verify_ssl=True, fingerprint=None, \
+.. class:: TCPConnector(*, ssl=None, \
                  use_dns_cache=True, ttl_dns_cache=10, \
-                 family=0, ssl_context=None, local_addr=None, \
+                 family=0, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, loop=None)
@@ -914,29 +836,7 @@ TCPConnector
                   validation, :class:`ssl.SSLContext` for custom SSL
                   certificate validation.
 
-                  Supersedes *verify_ssl*, *ssl_context* and
-                  *fingerprint* parameters.
-
          .. versionadded:: 3.0
-
-   :param bool verify_ssl: perform SSL certificate validation for
-      *HTTPS* requests (enabled by default). May be disabled to
-      skip validation for sites with invalid certificates.
-
-      .. deprecated:: 2.3
-
-         Pass *verify_ssl* to ``ClientSession.get()`` etc.
-
-   :param bytes fingerprint: pass the SHA256 digest of the expected
-      certificate in DER format to verify that the certificate the
-      server presents matches. Useful for `certificate pinning
-      <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
-
-      Note: use of MD5 or SHA1 digests is insecure and deprecated.
-
-      .. deprecated:: 2.3
-
-         Pass *verify_ssl* to ``ClientSession.get()`` etc.
 
    :param bool use_dns_cache: use internal cache for DNS lookups, ``True``
       by default.
@@ -981,12 +881,6 @@ TCPConnector
                       concrete version please pass
                       :const:`socket.AF_INET` or
                       :const:`socket.AF_INET6` explicitly.
-
-   :param ssl.SSLContext ssl_context: SSL context used for processing
-      *HTTPS* requests (optional).
-
-      *ssl_context* may be used for configuring certification
-      authority channel, supported SSL options etc.
 
    :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
       socket locally if specified.
@@ -1732,6 +1626,9 @@ CookieJar
 .. class:: Fingerprint(digest)
 
    Fingerprint helper for checking SSL certificates by *SHA256* digest.
+
+   Useful for `certificate pinning
+   <https://en.wikipedia.org/wiki/Transport_Layer_Security#Certificate_pinning>`_.
 
    :param bytes digest: *SHA256* digest for certificate in DER-encoded
                         binary form (see

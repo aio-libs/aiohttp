@@ -4,7 +4,6 @@ from unittest import mock
 import pytest
 
 import aiohttp
-from aiohttp.client_reqrep import _merge_ssl_params
 
 ssl = pytest.importorskip('ssl')
 
@@ -33,54 +32,3 @@ def test_fingerprint_check_no_ssl() -> None:
     transport = mock.Mock()
     transport.get_extra_info.return_value = None
     assert fp.check(transport) is None
-
-
-def test__merge_ssl_params_verify_ssl() -> None:
-    with pytest.warns(DeprecationWarning):
-        assert _merge_ssl_params(None, False, None, None) is False
-
-
-def test__merge_ssl_params_verify_ssl_conflict() -> None:
-    ctx = ssl.SSLContext()
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(ValueError):
-            _merge_ssl_params(ctx, False, None, None)
-
-
-def test__merge_ssl_params_ssl_context() -> None:
-    ctx = ssl.SSLContext()
-    with pytest.warns(DeprecationWarning):
-        assert _merge_ssl_params(None, None, ctx, None) is ctx
-
-
-def test__merge_ssl_params_ssl_context_conflict() -> None:
-    ctx1 = ssl.SSLContext()
-    ctx2 = ssl.SSLContext()
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(ValueError):
-            _merge_ssl_params(ctx1, None, ctx2, None)
-
-
-def test__merge_ssl_params_fingerprint() -> None:
-    digest = hashlib.sha256(b'123').digest()
-    with pytest.warns(DeprecationWarning):
-        ret = _merge_ssl_params(None, None, None, digest)
-        assert ret.fingerprint == digest
-
-
-def test__merge_ssl_params_fingerprint_conflict() -> None:
-    fingerprint = aiohttp.Fingerprint(hashlib.sha256(b'123').digest())
-    ctx = ssl.SSLContext()
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(ValueError):
-            _merge_ssl_params(ctx, None, None, fingerprint)
-
-
-def test__merge_ssl_params_ssl() -> None:
-    ctx = ssl.SSLContext()
-    assert ctx is _merge_ssl_params(ctx, None, None, None)
-
-
-def test__merge_ssl_params_invlid() -> None:
-    with pytest.raises(TypeError):
-        _merge_ssl_params(object(), None, None, None)

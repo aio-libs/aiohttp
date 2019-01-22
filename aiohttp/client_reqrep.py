@@ -142,46 +142,6 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = type(None)
 
 
-def _merge_ssl_params(
-        ssl: Union['SSLContext', bool, Fingerprint, None],
-        verify_ssl: Optional[bool],
-        ssl_context: Optional['SSLContext'],
-        fingerprint: Optional[bytes]
-) -> Union['SSLContext', bool, Fingerprint, None]:
-    if verify_ssl is not None and not verify_ssl:
-        warnings.warn("verify_ssl is deprecated, use ssl=False instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = False
-    if ssl_context is not None:
-        warnings.warn("ssl_context is deprecated, use ssl=context instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = ssl_context
-    if fingerprint is not None:
-        warnings.warn("fingerprint is deprecated, "
-                      "use ssl=Fingerprint(fingerprint) instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = Fingerprint(fingerprint)
-    if not isinstance(ssl, SSL_ALLOWED_TYPES):
-        raise TypeError("ssl should be SSLContext, bool, Fingerprint or None, "
-                        "got {!r} instead.".format(ssl))
-    return ssl
-
-
 @attr.s(slots=True, frozen=True)
 class ConnectionKey:
     # the key should contain an information about used proxy / TLS
