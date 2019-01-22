@@ -43,7 +43,7 @@ from .client_exceptions import (
     ssl_errors,
 )
 from .client_proto import ResponseHandler
-from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
+from .client_reqrep import SSL_ALLOWED_TYPES, ClientRequest, Fingerprint
 from .helpers import (
     PY_36,
     CeilTimeout,
@@ -710,11 +710,9 @@ class TCPConnector(BaseConnector):
     loop - Optional event loop.
     """
 
-    def __init__(self, *, verify_ssl: bool=True,
-                 fingerprint: Optional[bytes]=None,
+    def __init__(self, *,
                  use_dns_cache: bool=True, ttl_dns_cache: int=10,
                  family: int=0,
-                 ssl_context: Optional[SSLContext]=None,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
                  local_addr: Optional[str]=None,
                  resolver: Optional[AbstractResolver]=None,
@@ -729,8 +727,10 @@ class TCPConnector(BaseConnector):
                          enable_cleanup_closed=enable_cleanup_closed,
                          loop=loop)
 
-        self._ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context,
-                                      fingerprint)
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError("ssl should be SSLContext, bool, Fingerprint, "
+                            "or None, got {!r} instead.".format(ssl))
+        self._ssl = ssl
         if resolver is None:
             resolver = DefaultResolver(loop=self._loop)
         self._resolver = resolver
