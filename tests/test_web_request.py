@@ -86,14 +86,6 @@ def test_content_type_from_spec_with_charset() -> None:
     assert 'UTF-8' == req.charset
 
 
-def test_content_type_from_spec_with_bad_charset() -> None:
-    req = make_mocked_request(
-        'Get', '/',
-        CIMultiDict([('CONTENT-TYPE', 'text/html; charset=test')]))
-    with pytest.raises(ValueError):
-        assert req.charset == 'test'
-
-
 def test_calc_content_type_on_getting_charset() -> None:
     req = make_mocked_request(
         'Get', '/',

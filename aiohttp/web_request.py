@@ -575,11 +575,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     async def text(self) -> str:
         """Return BODY as text using encoding from .charset."""
         bytes_body = await self.read()
+        encoding = self.charset or 'utf-8'
         try:
-            encoding = self.charset or 'utf-8'
-        except ValueError:
+            return bytes_body.decode(encoding)
+        except LookupError:
             raise HTTPUnsupportedMediaType()
-        return bytes_body.decode(encoding)
 
     async def json(self, *, loads: JSONDecoder=DEFAULT_JSON_DECODER) -> Any:
         """Return BODY as JSON."""
@@ -654,13 +654,15 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         else:
             data = await self.read()
             if data:
+                charset = self.charset or 'utf-8'
+                bytes_query = data.rstrip()
                 try:
-                    charset = self.charset or 'utf-8'
-                except ValueError:
+                    query = bytes_query.decode(charset)
+                except LookupError:
                     raise HTTPUnsupportedMediaType()
                 out.extend(
                     parse_qsl(
-                        data.rstrip().decode(charset),
+                        qs=query,
                         keep_blank_values=True,
                         encoding=charset))
 
