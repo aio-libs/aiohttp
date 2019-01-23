@@ -342,8 +342,11 @@ class RequestHandler(BaseProtocol):
     def log_access(self,
                    request: BaseRequest,
                    response: StreamResponse,
-                   request_start: float) -> None:
-        self.access_logger.log(request, response, self._loop.time() - request_start)
+                   request_start: Optional[float]) -> None:
+        if self.access_logger is not None:
+            request_start = cast(float, request_start)
+            self.access_logger.log(request, response,
+                                   self._loop.time() - request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
         if self.debug:
@@ -430,6 +433,7 @@ class RequestHandler(BaseProtocol):
                     await self.finish_response(request, resp, now)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
+                    await self.finish_response(request, resp, now)
                 else:
                     await self.finish_response(request, resp, now)
 
@@ -498,7 +502,7 @@ class RequestHandler(BaseProtocol):
     async def finish_response(self,
                               request: BaseRequest,
                               resp: StreamResponse,
-                              now: Optional[float]):
+                              now: Optional[float]) -> None:
         """
         Prepare the response and write_eof, then log access. This has to
         be called within the context of any exception so the access logger
@@ -516,10 +520,7 @@ class RequestHandler(BaseProtocol):
                                    "got {!r}".format(resp))
         await prepare_meth(request)
         await resp.write_eof()
-
-        # log access
-        if self.access_log:
-            self.log_access(request, resp, now)
+        self.log_access(request, resp, now)
 
     def handle_error(self,
                      request: BaseRequest,
