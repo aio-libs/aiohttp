@@ -353,7 +353,6 @@ response::
         # don't do this!
         cached = web.Response(status=200, text='Hi, I am cached!')
 
-        @web.middleware
         async def middleware(request, handler):
             # ignoring response for the sake of this example
             _res = handler(request)

@@ -1348,7 +1348,6 @@ async def test_subapp_middleware_context(aiohttp_client,
     values = []
 
     def show_app_context(appname):
-        @web.middleware
         async def middleware(request, handler):
             values.append('{}: {}'.format(
                 appname, request.app['my_value']))

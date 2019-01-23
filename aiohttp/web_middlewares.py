@@ -1,4 +1,5 @@
 import re
+import warnings
 from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
 from .web_exceptions import HTTPMove, HTTPMovedPermanently
@@ -31,7 +32,9 @@ async def _check_request_resolves(request: Request,
 
 
 def middleware(f: _Func) -> _Func:
-    f.__middleware_version__ = 1  # type: ignore
+    warnings.warn(
+        'Middleware decorator is depreciated and its behaviour is default, '
+        'you can simply remove this decorator.', DeprecationWarning)
     return f
 
 
@@ -76,7 +79,6 @@ def normalize_path_middleware(
     correct_configuration = not (append_slash and remove_slash)
     assert correct_configuration, "Cannot both remove and append slash"
 
-    @middleware
     async def impl(request: Request, handler: _Handler) -> StreamResponse:
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
@@ -111,10 +113,8 @@ def normalize_path_middleware(
     return impl
 
 
-def _fix_request_current_app(app: 'Application') -> _Middleware:
-
-    @middleware
-    async def impl(request: Request, handler: _Handler) -> StreamResponse:
-        with request.match_info.set_current_app(app):
-            return await handler(request)
-    return impl
+async def _fix_request_current_app(
+    request: Request, handler: _Handler
+) -> StreamResponse:
+    with request.match_info.set_current_app(request.app):
+        return await handler(request)
