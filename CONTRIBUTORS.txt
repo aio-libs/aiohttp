@@ -26,6 +26,7 @@ Alexey Popravka
 Alexey Stepanov
 Amin Etesamian
 Amy Boyle
+Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
 Andrew Leech
