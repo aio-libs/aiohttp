@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
 import warnings
-from collections.abc import Callable
 
 import pytest
 

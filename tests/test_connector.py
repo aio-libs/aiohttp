@@ -1114,8 +1114,9 @@ async def test_cleanup_close_ssl_transport(ssl_key) -> None:
     testset = {ssl_key: [(proto, 10)]}
 
     loop = mock.Mock()
-    loop.time.return_value = 300
+    loop.time.return_value = asyncio.get_event_loop().time() + 300
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+    conn._loop = loop
     conn._conns = testset
     existing_handle = conn._cleanup_handle = mock.Mock()
 
@@ -1123,42 +1124,6 @@ async def test_cleanup_close_ssl_transport(ssl_key) -> None:
     assert existing_handle.cancel.called
     assert conn._conns == {}
     assert conn._cleanup_closed_transports == [transport]
-
-
-async def test_cleanup2() -> None:
-    testset = {1: [(mock.Mock(), 300)]}
-    testset[1][0][0].is_connected.return_value = True
-
-    loop = mock.Mock()
-    loop.time.return_value = 300
-
-    conn = aiohttp.BaseConnector(keepalive_timeout=10)
-    conn._conns = testset
-    conn._cleanup()
-    assert conn._conns == testset
-
-    assert conn._cleanup_handle is not None
-    loop.call_at.assert_called_with(310, mock.ANY, mock.ANY)
-    conn.close()
-
-
-async def test_cleanup3(key) -> None:
-    testset = {key: [(mock.Mock(), 290.1),
-                     (mock.Mock(), 305.1)]}
-    testset[key][0][0].is_connected.return_value = True
-
-    loop = mock.Mock()
-    loop.time.return_value = 308.5
-
-    conn = aiohttp.BaseConnector(keepalive_timeout=10)
-    conn._conns = testset
-
-    conn._cleanup()
-    assert conn._conns == {key: [testset[key][1]]}
-
-    assert conn._cleanup_handle is not None
-    loop.call_at.assert_called_with(319, mock.ANY, mock.ANY)
-    conn.close()
 
 
 async def test_cleanup_closed(loop, mocker) -> None:
