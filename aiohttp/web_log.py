@@ -103,11 +103,11 @@ class AccessLogger(AbstractAccessLogger):
         for atom in self.FORMAT_RE.findall(log_format):
             if atom[1] == '':
                 format_key1 = self.LOG_FORMAT_MAP[atom[0]]
-                m = getattr(AccessLogger, '_format_%s' % atom[0])
+                m = getattr(self.__class__, '_format_%s' % atom[0])
                 key_method = KeyMethod(format_key1, m)
             else:
                 format_key2 = (self.LOG_FORMAT_MAP[atom[2]], atom[1])
-                m = getattr(AccessLogger, '_format_%s' % atom[2])
+                m = getattr(self.__class__, '_format_%s' % atom[2])
                 key_method = KeyMethod(format_key2,
                                        functools.partial(m, atom[1]))
 
