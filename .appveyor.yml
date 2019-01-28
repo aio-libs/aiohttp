@@ -13,7 +13,7 @@ install:
   # Ensure the Git Submoduldes have been pulled down too
   - git submodule update --init --recursive
 
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U pip wheel setuptools"
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U 'pip<19' wheel setuptools"
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/cython.txt"
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 

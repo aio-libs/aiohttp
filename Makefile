@@ -110,7 +110,7 @@ doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W -E"
 
 install:
-	@pip install -U pip
+	@pip install -U 'pip<19'
 	@pip install -Ur requirements/dev.txt
 
 .PHONY: all build flake test vtest cov clean doc
