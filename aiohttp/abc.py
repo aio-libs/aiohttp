@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
@@ -141,9 +140,8 @@ else:
 class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
 
-    def __init__(self, *,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        self._loop = get_running_loop(loop)
+    def __init__(self) -> None:
+        self._loop = get_running_loop()
 
     @abstractmethod
     def clear(self) -> None:

@@ -1126,14 +1126,13 @@ async def test_custom_req_rep(loop) -> None:
     async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
         return mock.Mock()
-    connector = BaseConnector(loop=loop)
+    connector = BaseConnector()
     connector._create_connection = create_connection
 
     session = aiohttp.ClientSession(
         request_class=CustomRequest,
         response_class=CustomResponse,
-        connector=connector,
-        loop=loop)
+        connector=connector)
 
     resp = await session.request(
         'get', URL('http://example.com/path/to'))

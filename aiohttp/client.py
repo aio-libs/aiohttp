@@ -169,7 +169,6 @@ class ClientSession:
         '_ws_response_class', '_trace_configs')
 
     def __init__(self, *, connector: Optional[BaseConnector]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  cookies: Optional[LooseCookies]=None,
                  headers: Optional[LooseHeaders]=None,
                  skip_auto_headers: Optional[Iterable[str]]=None,
@@ -190,14 +189,10 @@ class ClientSession:
                  requote_redirect_url: bool=True,
                  trace_configs: Optional[List[TraceConfig]]=None) -> None:
 
-        if loop is None:
-            if connector is not None:
-                loop = connector._loop
-
-        loop = get_running_loop(loop)
+        loop = get_running_loop()
 
         if connector is None:
-            connector = TCPConnector(loop=loop)
+            connector = TCPConnector()
 
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
@@ -213,7 +208,7 @@ class ClientSession:
                 "Session and connector have to use same event loop")
 
         if cookie_jar is None:
-            cookie_jar = CookieJar(loop=loop)
+            cookie_jar = CookieJar()
         self._cookie_jar = cookie_jar
 
         if cookies is not None:
@@ -1055,8 +1050,7 @@ def request(
         timeout: Union[ClientTimeout, object]=sentinel,
         cookies: Optional[LooseCookies]=None,
         version: HttpVersion=http.HttpVersion11,
-        connector: Optional[BaseConnector]=None,
-        loop: Optional[asyncio.AbstractEventLoop]=None
+        connector: Optional[BaseConnector]=None
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
     method - HTTP method
@@ -1095,10 +1089,10 @@ def request(
     connector_owner = False
     if connector is None:
         connector_owner = True
-        connector = TCPConnector(loop=loop, force_close=True)
+        connector = TCPConnector(force_close=True)
 
     session = ClientSession(
-        loop=loop, cookies=cookies, version=version, timeout=timeout,
+        cookies=cookies, version=version, timeout=timeout,
         connector=connector, connector_owner=connector_owner)
 
     return _SessionRequestContextManager(

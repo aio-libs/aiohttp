@@ -239,7 +239,7 @@ def aiohttp_server(loop):  # type: ignore
 
     async def go(app, *, port=None, **kwargs):  # type: ignore
         server = TestServer(app, port=port)
-        await server.start_server(loop=loop, **kwargs)
+        await server.start_server(**kwargs)
         servers.append(server)
         return server
 
@@ -269,7 +269,7 @@ def aiohttp_raw_server(loop):  # type: ignore
 
     async def go(handler, *, port=None, **kwargs):  # type: ignore
         server = RawTestServer(handler, port=port)
-        await server.start_server(loop=loop, **kwargs)
+        await server.start_server(**kwargs)
         servers.append(server)
         return server
 
@@ -299,21 +299,13 @@ def aiohttp_client(loop):  # type: ignore
     """
     clients = []
 
-    async def go(__param, *args, server_kwargs=None, **kwargs):  # type: ignore
-
-        if (isinstance(__param, Callable) and  # type: ignore
-                not isinstance(__param, (Application, BaseTestServer))):
-            __param = __param(loop, *args, **kwargs)
-            kwargs = {}
-        else:
-            assert not args, "args should be empty"
-
+    async def go(__param, *, server_kwargs=None, **kwargs):  # type: ignore
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
-            server = TestServer(__param, loop=loop, **server_kwargs)
-            client = TestClient(server, loop=loop, **kwargs)
+            server = TestServer(__param, **server_kwargs)
+            client = TestClient(server, **kwargs)
         elif isinstance(__param, BaseTestServer):
-            client = TestClient(__param, loop=loop, **kwargs)
+            client = TestClient(__param, **kwargs)
         else:
             raise ValueError("Unknown argument type: %r" % type(__param))
 

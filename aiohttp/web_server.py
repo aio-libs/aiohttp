@@ -18,9 +18,8 @@ class Server:
                  handler: _RequestHandler,
                  *,
                  request_factory: Optional[_RequestFactory]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  **kwargs: Any) -> None:
-        self._loop = get_running_loop(loop)
+        self._loop = get_running_loop()
         self._connections = {}  # type: Dict[RequestHandler, asyncio.Transport]
         self._kwargs = kwargs
         self.requests_count = 0

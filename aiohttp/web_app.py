@@ -341,7 +341,7 @@ class Application(MutableMapping[str, Any]):
 
         return Server(self._handle,  # type: ignore
                       request_factory=self._make_request,
-                      loop=self._loop, **kwargs)
+                      **kwargs)
 
     def make_handler(self, *,
                      loop: Optional[asyncio.AbstractEventLoop]=None,

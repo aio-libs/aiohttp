@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import os  # noqa
 import pathlib
@@ -50,9 +49,8 @@ class CookieJar(AbstractCookieJar):
 
     MAX_TIME = 2051215261.0  # so far in future (2035-01-01)
 
-    def __init__(self, *, unsafe: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        super().__init__(loop=loop)
+    def __init__(self, *, unsafe: bool=False) -> None:
+        super().__init__()
         self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
@@ -334,9 +332,8 @@ class DummyCookieJar(AbstractCookieJar):
 
     """
 
-    def __init__(self, *,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        super().__init__(loop=loop)
+    def __init__(self) -> None:
+        super().__init__()
 
     def __iter__(self) -> 'Iterator[Morsel[str]]':
         while False:

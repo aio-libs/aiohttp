@@ -22,7 +22,7 @@ from aiohttp.helpers import DEBUG, PY_36
 @pytest.fixture
 def connector(loop):
     async def make_conn():
-        return BaseConnector(loop=loop)
+        return BaseConnector()
     conn = loop.run_until_complete(make_conn())
     proto = mock.Mock()
     conn._conns['a'] = [(proto, 123)]
@@ -36,7 +36,7 @@ def create_session(loop):
 
     async def maker(*args, **kwargs):
         nonlocal session
-        session = ClientSession(*args, loop=loop, **kwargs)
+        session = ClientSession(*args, **kwargs)
         return session
     yield maker
     if session is not None:
@@ -272,7 +272,7 @@ async def test_closed(session) -> None:
 
 
 async def test_connector(create_session, loop, mocker) -> None:
-    connector = TCPConnector(loop=loop)
+    connector = TCPConnector()
     mocker.spy(connector, 'close')
     session = await create_session(connector=connector)
     assert session.connector is connector
@@ -303,7 +303,7 @@ def test_connector_loop(loop) -> None:
         stack.enter_context(contextlib.closing(connector))
         with pytest.raises(RuntimeError) as ctx:
             async def make_sess():
-                return ClientSession(connector=connector, loop=loop)
+                return ClientSession(connector=connector)
             loop.run_until_complete(make_sess())
         assert re.match("Session and connector have to use same event loop",
                         str(ctx.value))
@@ -347,7 +347,7 @@ async def test_double_close(connector, create_session) -> None:
 async def test_del(connector, loop) -> None:
     loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
-    session = ClientSession(connector=connector, loop=loop)
+    session = ClientSession(connector=connector)
     logs = []
     loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
 
@@ -364,7 +364,7 @@ async def test_del(connector, loop) -> None:
 async def test_del_debug(connector, loop) -> None:
     loop.set_debug(True)
     # N.B. don't use session fixture, it stores extra reference internally
-    session = ClientSession(connector=connector, loop=loop)
+    session = ClientSession(connector=connector)
     logs = []
     loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
 
@@ -381,14 +381,14 @@ async def test_del_debug(connector, loop) -> None:
 
 async def test_context_manager(connector, loop) -> None:
     with pytest.raises(TypeError):
-        with ClientSession(loop=loop, connector=connector) as session:
+        with ClientSession(connector=connector) as session:
             pass
 
         assert session.closed
 
 
 async def test_borrow_connector_loop(connector, create_session, loop) -> None:
-    session = ClientSession(connector=connector, loop=None)
+    session = ClientSession(connector=connector)
     try:
         assert session._loop, loop
     finally:
@@ -494,12 +494,12 @@ async def test_cookie_jar_usage(loop, aiohttp_client) -> None:
 
 
 async def test_session_default_version(loop) -> None:
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     assert session.version == aiohttp.HttpVersion11
 
 
 async def test_session_loop(loop) -> None:
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     with pytest.warns(DeprecationWarning):
         assert session.loop is loop
     await session.close()
@@ -599,7 +599,6 @@ async def test_request_tracing_exception(loop) -> None:
         connect_patched.return_value = f
 
         session = aiohttp.ClientSession(
-            loop=loop,
             trace_configs=[trace_config]
         )
 
@@ -666,30 +665,27 @@ def test_client_session_inheritance() -> None:
 @pytest.mark.skipif(not DEBUG,
                     reason="The check is applied in DEBUG mode only")
 async def test_client_session_custom_attr(loop) -> None:
-    session = ClientSession(loop=loop)
+    session = ClientSession()
     with pytest.warns(DeprecationWarning):
         session.custom = None
 
 
 async def test_client_session_timeout_args(loop) -> None:
-    session1 = ClientSession(loop=loop)
+    session1 = ClientSession()
     assert session1._timeout == client.DEFAULT_TIMEOUT
 
     with pytest.warns(DeprecationWarning):
-        session2 = ClientSession(loop=loop,
-                                 read_timeout=20*60,
+        session2 = ClientSession(read_timeout=20*60,
                                  conn_timeout=30*60)
     assert session2._timeout == client.ClientTimeout(total=20*60,
                                                      connect=30*60)
 
     with pytest.raises(ValueError):
-        ClientSession(loop=loop,
-                      timeout=client.ClientTimeout(total=10*60),
+        ClientSession(timeout=client.ClientTimeout(total=10*60),
                       read_timeout=20*60)
 
     with pytest.raises(ValueError):
-        ClientSession(loop=loop,
-                      timeout=client.ClientTimeout(total=10 * 60),
+        ClientSession(timeout=client.ClientTimeout(total=10 * 60),
                       conn_timeout=30 * 60)
 
 
