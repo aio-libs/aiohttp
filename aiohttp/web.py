@@ -87,6 +87,7 @@ from .web_response import (
 )
 from .web_routedef import (
     AbstractRouteDef,
+    ClassRouteTableDef,
     RouteDef,
     RouteTableDef,
     StaticDef,
@@ -221,6 +222,7 @@ __all__ = (
     'route',
     'static',
     'view',
+    'ClassRouteTableDef',
     # web_runner
     'AppRunner',
     'BaseRunner',

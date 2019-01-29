@@ -1,4 +1,5 @@
 import abc
+import inspect
 import os  # noqa
 from typing import (
     TYPE_CHECKING,
@@ -30,7 +31,7 @@ else:
 
 __all__ = ('AbstractRouteDef', 'RouteDef', 'StaticDef', 'RouteTableDef',
            'head', 'options', 'get', 'post', 'patch', 'put', 'delete',
-           'route', 'view', 'static')
+           'route', 'view', 'static', 'ClassRouteTableDef')
 
 
 class AbstractRouteDef(abc.ABC):
@@ -191,3 +192,28 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     def static(self, prefix: str, path: PathLike,
                **kwargs: Any) -> None:
         self._items.append(StaticDef(prefix, path, kwargs))
+
+
+class ClassRouteTableDef(RouteTableDef):
+    def __repr__(self) -> str:
+        return "<ClassRouteTableDef count={}>".format(len(self._items))
+
+    def route(self,
+              method: str,
+              path: str,
+              **kwargs: Any) -> _Deco:
+        def inner(handler: Any) -> Any:
+            # Is Any rather than _HandlerType because of mypy limitations, see
+            # https://github.com/python/mypy/issues/3882 and
+            # https://github.com/python/mypy/issues/2087
+            handler.route_info = (method, path, kwargs)
+            return handler
+        return inner
+
+    def add_class(self, instance: Any) -> None:
+        def predicate(member: Any) -> bool:
+            return all((inspect.iscoroutinefunction(member),
+                        hasattr(member, "route_info")))
+        for _, handler in inspect.getmembers(instance, predicate):
+            method, path, kwargs = handler.route_info
+            super().route(method, path, **kwargs)(handler)
