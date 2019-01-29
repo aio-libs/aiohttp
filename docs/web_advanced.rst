@@ -493,7 +493,7 @@ response. For example, here's a simple *middleware* which appends
    As of version ``4.0.0`` "new-style" middleware is default and the
    ``@middleware`` decorator is not required (and is deprecated), you can
    simply remove the decorator. "Old-style" middleware (a coroutine which
-   returned a coroutine) is not longer supported.
+   returned a coroutine) is no longer supported.
 
 .. note::
 
