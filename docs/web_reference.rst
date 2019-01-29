@@ -2394,10 +2394,10 @@ classes (Flask style)::
            self.some_value = some_value
 
        @routes.get('/some_value')
-       async def handle_get(request):
+       async def handle_get(self, request):
            return web.Response(text=self.some_value)
 
-   routes.add_class(Example(5))
+   routes.add_class_routes(Example(5))
    app.router.add_routes(routes)
 
 .. class:: ClassRouteTableDef()
@@ -2409,14 +2409,15 @@ classes (Flask style)::
    provides also methods like ``get()`` and ``post()`` for adding new
    route definitions.
 
-   None of the routes are added to the route table until :func:`add_class` is
-   called, they are only added to the table whence :func:`add_class` is called.
-   Hence, you **must** call :func:`add_class` for this to work.
+   None of the routes are added to the route table until
+   :func:`add_class_routes` is called, they are only added to the table whence
+   :func:`add_class_routes` is called. Hence, you **must** call
+   :func:`add_class_routes` for this to work.
 
 
    .. versionadded:: 4.0
 
-   .. method:: add_class(instance)
+   .. method:: add_class_routes(instance)
 
       Add a class instance's routing functions to the route table.
 

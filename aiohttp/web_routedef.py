@@ -210,7 +210,7 @@ class ClassRouteTableDef(RouteTableDef):
             return handler
         return inner
 
-    def add_class(self, instance: Any) -> None:
+    def add_class_routes(self, instance: Any) -> None:
         def predicate(member: Any) -> bool:
             return all((inspect.iscoroutinefunction(member),
                         hasattr(member, "route_info")))

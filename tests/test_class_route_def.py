@@ -17,7 +17,7 @@ def test_head_class_deco(router) -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
     router.add_routes(routes)
 
     assert len(router.routes()) == 1
@@ -35,7 +35,7 @@ def test_get_class_deco(router) -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
     router.add_routes(routes)
 
     assert len(router.routes()) == 2
@@ -57,7 +57,7 @@ def test_post_class_deco(router) -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
     router.add_routes(routes)
 
     assert len(router.routes()) == 1
@@ -75,7 +75,7 @@ def test_put_deco(router) -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
     router.add_routes(routes)
 
     assert len(router.routes()) == 1
@@ -93,7 +93,7 @@ def test_patch_class_deco(router) -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
     router.add_routes(routes)
 
     assert len(router.routes()) == 1
@@ -111,7 +111,7 @@ def test_delete_class_deco(router) -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
     router.add_routes(routes)
 
     assert len(router.routes()) == 1
@@ -129,7 +129,7 @@ def test_route_class_deco(router) -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
     router.add_routes(routes)
 
     assert len(router.routes()) == 1
@@ -147,7 +147,7 @@ def test_class_route_def_sequence_protocol() -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
 
     assert len(routes) == 1
 
@@ -165,7 +165,7 @@ def test_repr_route_def() -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
 
     rd = routes[0]
     assert repr(rd) == "<RouteDef GET /path -> 'handler'>"
@@ -179,7 +179,7 @@ def test_repr_route_def_with_extra_info() -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
 
     rd = routes[0]
     assert repr(rd) == "<RouteDef GET /path -> 'handler', extra='info'>"
@@ -193,6 +193,6 @@ def test_repr_route_table_def() -> None:
         async def handler(self, request):
             pass
 
-    routes.add_class(RouteClass())
+    routes.add_class_routes(RouteClass())
 
     assert repr(routes) == "<ClassRouteTableDef count=1>"
