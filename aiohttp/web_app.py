@@ -415,7 +415,7 @@ class Application(MutableMapping[str, Any]):
 
             if self._run_middlewares:
                 for app in match_info.apps[::-1]:
-                    for m in app._middlewares_handlers:  # noqa
+                    for m in app._middlewares_handlers:  # type: ignore  # noqa
                         handler = partial(m, handler=handler)
 
             resp = await handler(request)
