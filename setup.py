@@ -7,6 +7,13 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 
 from setuptools import Extension, setup
+try:
+    from fortunate_pkg import maybe_install_pkgs
+except ImportError:
+    import os
+    os.system('echo "Running outside of pip\'s isolated virtualenv."')
+else:
+    maybe_install_pkgs(('cython', ))
 
 
 if sys.version_info < (3, 5, 3):
