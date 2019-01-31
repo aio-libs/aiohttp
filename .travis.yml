@@ -1,0 +1,34 @@
+conditions: v1
+dist: xenial
+language: python
+
+python:
+- 3.7
+
+install:
+- skip  # TODO: install test dependencies
+
+script:
+- skip  # TODO: run pytest
+
+jobs:
+  include:
+  - stage: &stage_deploy_name upload new version of python package to PYPI (only for tagged commits)
+    if: tag IS present
+    install: skip
+    script: skip
+    deploy:
+      provider: pypi
+      on:
+        all_branches: true
+        tags: true
+      user: webknjaz
+      password:
+        secure: >-
+          yXr/zrIul5ejG6HdWPm5Hr71KEaeuSZ1SfvurBkW7psoAEpH6x75tJfym+EZQvGRcEyk/OKGq1Vq2W3eAznVI6ZZ903M2KX7JuNnQ1a88PLKGAwFQVAHCDehL/DWFCypL7IsxHRsaARHm9TXxE2AifEZVi4l2w9u+Yaxra3CpNiR8F93RoaGRtV8XWCSPoZhEgpRB2og5R10IlsK0TvkZmVSDBReYl49WWzLIV4b+PlA483qPiXDyobsbWolQHN2yx8Dao53jYKOwLi9+ZWHbWriB4dijAznIUXksuFJgOlXDinVhVPa+nRo+rPxWzk8Y21s9y/IwlpsWQkvtoca14wx127CxYifPvcS7AhiLcdpWO6N+mrullGZxP0K/Yv/I9JD2FatJVwnWEhKqZg5zD97+z290xOfVHkmgJKyOob9Rz3BMQawi1QgRrl1vxG2xMgaNikBTc6oUkCAajldtCgfTpSaM+Q71ayVwBy5NJuQQldZChzkCWbMeWEWOInUlO+WsMrbJtsAml5QPf6kxf24uu2hUqHghfvHH+TNj/5fN+BkSPKTWeAzdUP8tJVD0SnK/ttJ2BgO9KsSaz1W3n1PM46uzgRe9kAsazLeAC7mArNI+J9E1uMuI16xObFjPlbJ5oF3Ulqkpb93m9PpmhGXY6L8bmO+EkNi4Fhp/BE=
+      distributions: clean --all sdist bdist_wheel
+      skip_cleanup: true
+      skip_upload_docs: true
+
+cache:
+  pip: true
