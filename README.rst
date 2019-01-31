@@ -1,3 +1,9 @@
+.. image:: https://img.shields.io/pypi/v/fortunate-pkg.svg
+   :target: https://pypi.org/project/fortunate-pkg
+
+.. image:: https://img.shields.io/travis/com/webknjaz/fortunate-pkg/master.svg?label=Linux%20build%20%40%20Travis%20CI
+   :target: https://travis-ci.com/webknjaz/fortunate-pkg
+
 This is a failure-ignoring installer.
 
 Status
