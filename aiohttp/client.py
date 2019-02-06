@@ -432,7 +432,6 @@ class ClientSession:
                         if req_cookies:
                             all_cookies.load(req_cookies)
 
-
                     if proxy is not None:
                         proxy = URL(proxy)
                     elif self._trust_env:
