@@ -1,0 +1,1 @@
+``Signal`` type annotation changed from `Signal[Callable[['TraceConfig'], Awaitable[None]]]` to `Signal[Callable[ClientSession, SimpleNamespace, ...]`.
