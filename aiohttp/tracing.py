@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Callable, Type, Union
+from typing import TYPE_CHECKING, Awaitable, Callable, Type, Union
 
 import attr
 from multidict import CIMultiDict  # noqa
@@ -11,17 +11,24 @@ from .signals import Signal
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
 
-    params = Union[
-        'TraceRequestStartParams', 'TraceRequestEndParams',
-        'TraceRequestExceptionParams', 'TraceConnectionQueuedStartParams',
-        'TraceConnectionQueuedEndParams', 'TraceConnectionCreateStartParams',
-        'TraceConnectionCreateEndParams', 'TraceConnectionReuseconnParams',
-        'TraceDnsResolveHostStartParams', 'TraceDnsResolveHostEndParams',
-        'TraceDnsCacheHitParams', 'TraceDnsCacheMissParams',
-        'TraceRequestRedirectParams',
-        'TraceRequestChunkSentParams', 'TraceResponseChunkReceivedParams',
+    _args = Union[
+        [ClientSession, SimpleNamespace, 'TraceRequestStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestExceptionParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionQueuedStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionQueuedEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionCreateStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionCreateEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionReuseconnParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsResolveHostStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsResolveHostEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsCacheHitParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsCacheMissParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestRedirectParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestChunkSentParams'],
+        [ClientSession, SimpleNamespace, 'TraceResponseChunkReceivedParams'],
     ]
-    _Signal = Signal[Callable[[ClientSession, SimpleNamespace, params], None]]
+    _Signal = Signal[Callable[_args, Awaitable[None]]]
 else:
     _Signal = Signal
 
