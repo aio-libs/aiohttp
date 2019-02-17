@@ -152,6 +152,7 @@ Mathias Fröjdman
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
+Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov

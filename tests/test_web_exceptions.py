@@ -133,6 +133,11 @@ def test_HTTPFound_empty_location() -> None:
         web.HTTPFound(location=None)
 
 
+def test_HTTPFound_location_CRLF() -> None:
+    exc = web.HTTPFound(location='/redirect\r\n')
+    assert '\r\n' not in exc.headers['Location']
+
+
 async def test_HTTPMethodNotAllowed() -> None:
     exc = web.HTTPMethodNotAllowed('GET', ['POST', 'PUT'])
     assert 'GET' == exc.method
