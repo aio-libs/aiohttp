@@ -296,7 +296,7 @@ retrieved by :attr:`View.request` property.
 After implementing the view (``MyView`` from example above) should be
 registered in application's router::
 
-   web.view('/path/to', MyView)
+   web.view('/path/to', MyView) or app.router.add_route('*', '/path/to', MyView)
 
 or::
 
