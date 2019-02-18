@@ -163,8 +163,8 @@ class _HTTPMove(HTTPRedirection):
             raise ValueError("HTTP redirects need a location to redirect to.")
         super().__init__(headers=headers, reason=reason,
                          body=body, text=text, content_type=content_type)
-        self.location = URL(location)
-        self.headers['Location'] = str(self.location)
+        self.headers['Location'] = str(URL(location))
+        self.location = location
 
 
 class HTTPMultipleChoices(_HTTPMove):
