@@ -1,1 +1,1 @@
-towncrier==18.6.0
+towncrier==19.2.0
