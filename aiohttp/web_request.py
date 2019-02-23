@@ -32,7 +32,7 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .http_parser import RawRequestMessage
-from .multipart import MultipartReader
+from .multipart import MultipartReader, BodyPartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -608,46 +608,49 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             multipart = await self.multipart()
             max_size = self._client_max_size
 
-            field = await multipart.next()
-            while field is not None:
+            async for field in multipart:
                 size = 0
-                content_type = field.headers.get(hdrs.CONTENT_TYPE)
+                field_content_type = field.headers.get(hdrs.CONTENT_TYPE)
 
-                if field.filename:
-                    # store file in temp file
-                    tmp = tempfile.TemporaryFile()
-                    chunk = await field.read_chunk(size=2**16)
-                    while chunk:
-                        chunk = field.decode(chunk)
-                        tmp.write(chunk)
-                        size += len(chunk)
+                if isinstance(field, BodyPartReader):
+                    if field.filename:
+                        assert field_content_type is not None, 'Cannot read file without knowing what it is'
+                        # store file in temp file
+                        tmp = tempfile.TemporaryFile()
+                        chunk = await field.read_chunk(size=2**16)
+                        while chunk:
+                            chunk = field.decode(chunk)
+                            tmp.write(chunk)
+                            size += len(chunk)
+                            if 0 < max_size < size:
+                                raise HTTPRequestEntityTooLarge(
+                                    max_size=max_size,
+                                    actual_size=size
+                                )
+                            chunk = await field.read_chunk(size=2**16)
+                        tmp.seek(0)
+
+                        ff = FileField(
+                            field.name,
+                            field.filename,
+                            cast(io.BufferedReader, tmp),
+                            field_content_type,
+                            CIMultiDictProxy(CIMultiDict(**field.headers)),
+                        )
+                        out.add(field.name, ff)
+                    else:
+                        value = await field.read(decode=True)
+                        if content_type is None or \
+                                content_type.startswith('text/'):
+                            charset = field.get_charset(default='utf-8')
+                            value = value.decode(charset)
+                        out.add(field.name, value)
+                        size += len(value)
                         if 0 < max_size < size:
                             raise HTTPRequestEntityTooLarge(
                                 max_size=max_size,
                                 actual_size=size
                             )
-                        chunk = await field.read_chunk(size=2**16)
-                    tmp.seek(0)
-
-                    ff = FileField(field.name, field.filename,
-                                   cast(io.BufferedReader, tmp),
-                                   content_type, field.headers)
-                    out.add(field.name, ff)
-                else:
-                    value = await field.read(decode=True)
-                    if content_type is None or \
-                            content_type.startswith('text/'):
-                        charset = field.get_charset(default='utf-8')
-                        value = value.decode(charset)
-                    out.add(field.name, value)
-                    size += len(value)
-                    if 0 < max_size < size:
-                        raise HTTPRequestEntityTooLarge(
-                            max_size=max_size,
-                            actual_size=size
-                        )
-
-                field = await multipart.next()
         else:
             data = await self.read()
             if data:

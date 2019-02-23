@@ -1,0 +1,4 @@
+Improve typing annotations for multipart.
+
+Use `async for` instead of `while` loop for
+reading full multipart data in `web_request.Request#post` functionality.

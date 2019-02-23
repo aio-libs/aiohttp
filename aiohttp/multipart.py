@@ -240,7 +240,7 @@ class BodyPartReader:
     def __init__(
         self,
         boundary: bytes,
-        headers: Mapping[str, Optional[str]],
+        headers: Mapping[str, str],
         content: StreamReader,
         *,
         _newline: bytes = b'\r\n'
@@ -443,7 +443,7 @@ class BodyPartReader:
         return data
 
     def _decode_content(self, data: bytes) -> bytes:
-        encoding = cast(str, self.headers[CONTENT_ENCODING]).lower()
+        encoding = self.headers[CONTENT_ENCODING].lower()
 
         if encoding == 'deflate':
             return zlib.decompress(data, -zlib.MAX_WBITS)
@@ -455,7 +455,7 @@ class BodyPartReader:
             raise RuntimeError('unknown content encoding: {}'.format(encoding))
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
-        encoding = cast(str, self.headers[CONTENT_TRANSFER_ENCODING]).lower()
+        encoding = self.headers[CONTENT_TRANSFER_ENCODING].lower()
 
         if encoding == 'base64':
             return base64.b64decode(data)
@@ -539,7 +539,7 @@ class MultipartReader:
         self._boundary = ('--' + self._get_boundary()).encode()
         self._newline = _newline
         self._content = content
-        self._last_part = None
+        self._last_part = None  # type: Optional[Union[MultipartReader, BodyPartReader]]
         self._at_eof = False
         self._at_bof = True
         self._unread = []  # type: List[bytes]
@@ -547,7 +547,7 @@ class MultipartReader:
     def __aiter__(self) -> 'MultipartReader':
         return self
 
-    async def __anext__(self) -> Any:
+    async def __anext__(self) -> Union['MultipartReader', BodyPartReader]:
         part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
@@ -569,11 +569,11 @@ class MultipartReader:
         """
         return self._at_eof
 
-    async def next(self) -> Any:
+    async def next(self) -> Optional[Union['MultipartReader', BodyPartReader]]:
         """Emits the next multipart body part."""
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
-            return
+            return None
         await self._maybe_release_last_part()
         if self._at_bof:
             await self._read_until_first_boundary()
@@ -581,7 +581,7 @@ class MultipartReader:
         else:
             await self._read_boundary()
         if self._at_eof:  # we just read the last boundary, nothing to do there
-            return
+            return None
         self._last_part = await self.fetch_next_part()
         return self._last_part
 
@@ -598,7 +598,10 @@ class MultipartReader:
         headers = await self._read_headers()
         return self._get_part_reader(headers)
 
-    def _get_part_reader(self, headers: 'CIMultiDictProxy[str]') -> Any:
+    def _get_part_reader(
+        self,
+        headers: 'CIMultiDictProxy[str]',
+    ) -> Union['MultipartReader', BodyPartReader]:
         """Dispatches the response by the `Content-Type` header, returning
         suitable reader instance.
 
