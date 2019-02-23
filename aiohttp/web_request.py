@@ -32,7 +32,7 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .http_parser import RawRequestMessage
-from .multipart import MultipartReader, BodyPartReader
+from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -614,7 +614,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
                 if isinstance(field, BodyPartReader):
                     if field.filename:
-                        assert field_content_type is not None, 'Cannot read file without knowing what it is'
+                        assert field_content_type is not None, \
+                            'Cannot read file without knowing what it is'
                         # store file in temp file
                         tmp = tempfile.TemporaryFile()
                         chunk = await field.read_chunk(size=2**16)

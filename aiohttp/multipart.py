@@ -539,7 +539,7 @@ class MultipartReader:
         self._boundary = ('--' + self._get_boundary()).encode()
         self._newline = _newline
         self._content = content
-        self._last_part = None  # type: Optional[Union[MultipartReader, BodyPartReader]]
+        self._last_part = None
         self._at_eof = False
         self._at_bof = True
         self._unread = []  # type: List[bytes]
