@@ -594,6 +594,8 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
+            # ws.__next__() automatically terminates the loop
+            # after ws.close() or ws.exception() is called
             if msg.type == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()
@@ -650,110 +652,3 @@ Example with login validation::
     app.router.add_get('/', index, name='index')
     app.router.add_get('/login', login, name='login')
     app.router.add_post('/login', login, name='login')
-
-.. _aiohttp-web-exceptions:
-
-Exceptions
-----------
-
-:mod:`aiohttp.web` defines a set of exceptions for every *HTTP status code*.
-
-Each exception is a subclass of :class:`~HTTPException` and relates to a single
-HTTP status code::
-
-    async def handler(request):
-        raise aiohttp.web.HTTPFound('/redirect')
-
-.. warning::
-
-   Returning :class:`~HTTPException` or its subclasses is deprecated and will
-   be removed in subsequent aiohttp versions.
-
-Each exception class has a status code according to :rfc:`2068`:
-codes with 100-300 are not really errors; 400s are client errors,
-and 500s are server errors.
-
-HTTP Exception hierarchy chart::
-
-   Exception
-     HTTPException
-       HTTPSuccessful
-         * 200 - HTTPOk
-         * 201 - HTTPCreated
-         * 202 - HTTPAccepted
-         * 203 - HTTPNonAuthoritativeInformation
-         * 204 - HTTPNoContent
-         * 205 - HTTPResetContent
-         * 206 - HTTPPartialContent
-       HTTPRedirection
-         * 300 - HTTPMultipleChoices
-         * 301 - HTTPMovedPermanently
-         * 302 - HTTPFound
-         * 303 - HTTPSeeOther
-         * 304 - HTTPNotModified
-         * 305 - HTTPUseProxy
-         * 307 - HTTPTemporaryRedirect
-         * 308 - HTTPPermanentRedirect
-       HTTPError
-         HTTPClientError
-           * 400 - HTTPBadRequest
-           * 401 - HTTPUnauthorized
-           * 402 - HTTPPaymentRequired
-           * 403 - HTTPForbidden
-           * 404 - HTTPNotFound
-           * 405 - HTTPMethodNotAllowed
-           * 406 - HTTPNotAcceptable
-           * 407 - HTTPProxyAuthenticationRequired
-           * 408 - HTTPRequestTimeout
-           * 409 - HTTPConflict
-           * 410 - HTTPGone
-           * 411 - HTTPLengthRequired
-           * 412 - HTTPPreconditionFailed
-           * 413 - HTTPRequestEntityTooLarge
-           * 414 - HTTPRequestURITooLong
-           * 415 - HTTPUnsupportedMediaType
-           * 416 - HTTPRequestRangeNotSatisfiable
-           * 417 - HTTPExpectationFailed
-           * 421 - HTTPMisdirectedRequest
-           * 422 - HTTPUnprocessableEntity
-           * 424 - HTTPFailedDependency
-           * 426 - HTTPUpgradeRequired
-           * 428 - HTTPPreconditionRequired
-           * 429 - HTTPTooManyRequests
-           * 431 - HTTPRequestHeaderFieldsTooLarge
-           * 451 - HTTPUnavailableForLegalReasons
-         HTTPServerError
-           * 500 - HTTPInternalServerError
-           * 501 - HTTPNotImplemented
-           * 502 - HTTPBadGateway
-           * 503 - HTTPServiceUnavailable
-           * 504 - HTTPGatewayTimeout
-           * 505 - HTTPVersionNotSupported
-           * 506 - HTTPVariantAlsoNegotiates
-           * 507 - HTTPInsufficientStorage
-           * 510 - HTTPNotExtended
-           * 511 - HTTPNetworkAuthenticationRequired
-
-All HTTP exceptions have the same constructor signature::
-
-    HTTPNotFound(*, headers=None, reason=None,
-                 body=None, text=None, content_type=None)
-
-If not directly specified, *headers* will be added to the *default
-response headers*.
-
-Classes :class:`HTTPMultipleChoices`, :class:`HTTPMovedPermanently`,
-:class:`HTTPFound`, :class:`HTTPSeeOther`, :class:`HTTPUseProxy`,
-:class:`HTTPTemporaryRedirect` have the following constructor signature::
-
-    HTTPFound(location, *, headers=None, reason=None,
-              body=None, text=None, content_type=None)
-
-where *location* is value for *Location HTTP header*.
-
-:class:`HTTPMethodNotAllowed` is constructed by providing the incoming
-unsupported method and list of allowed methods::
-
-    HTTPMethodNotAllowed(method, allowed_methods, *,
-                         headers=None, reason=None,
-                         body=None, text=None, content_type=None)

@@ -3,6 +3,7 @@
 
 import gc
 import sys
+from json import JSONDecodeError
 from unittest import mock
 
 import pytest
@@ -155,19 +156,6 @@ def test_repr_non_ascii_reason() -> None:
     response.reason = '\u03bb'
     assert "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>"\
         in repr(response)
-
-
-def test_url_obj_deprecated() -> None:
-    response = ClientResponse('get', URL('http://fake-host.org/'),
-                              request_info=mock.Mock(),
-                              writer=mock.Mock(),
-                              continue100=None,
-                              timer=TimerNoop(),
-                              traces=[],
-                              loop=mock.Mock(),
-                              session=mock.Mock())
-    with pytest.warns(DeprecationWarning):
-        response.url_obj
 
 
 async def test_read_and_release_connection(loop, session) -> None:
@@ -586,11 +574,11 @@ async def test_json_no_content(loop, session) -> None:
                               loop=loop,
                               session=session)
     response._headers = {
-        'Content-Type': 'data/octet-stream'}
+        'Content-Type': 'application/json'}
     response._body = b''
 
-    res = await response.json(content_type=None)
-    assert res is None
+    with pytest.raises(JSONDecodeError):
+        await response.json(content_type=None)
 
 
 async def test_json_override_encoding(loop, session) -> None:
@@ -665,6 +653,24 @@ def test_raise_for_status_4xx() -> None:
         response.raise_for_status()
     assert str(cm.value.status) == '409'
     assert str(cm.value.message) == "CONFLICT"
+    assert response.closed
+
+
+def test_raise_for_status_4xx_without_reason() -> None:
+    response = ClientResponse('get', URL('http://def-cl-resp.org'),
+                              request_info=mock.Mock(),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              traces=[],
+                              loop=mock.Mock(),
+                              session=mock.Mock())
+    response.status = 404
+    response.reason = ''
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert str(cm.value.status) == '404'
+    assert str(cm.value.message) == ''
     assert response.closed
 
 

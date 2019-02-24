@@ -23,14 +23,8 @@ from typing import (  # noqa
 )
 
 from . import hdrs
-from .abc import (
-    AbstractAccessLogger,
-    AbstractMatchInfo,
-    AbstractRouter,
-    AbstractStreamWriter,
-)
+from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractStreamWriter
 from .frozenlist import FrozenList
-from .helpers import DEBUG
 from .http_parser import RawRequestMessage
 from .log import web_logger
 from .signals import Signal
@@ -78,29 +72,21 @@ else:
 
 
 class Application(MutableMapping[str, Any]):
-    ATTRS = frozenset([
+    __slots__ = (
         'logger', '_debug', '_router', '_loop', '_handler_args',
         '_middlewares', '_middlewares_handlers', '_run_middlewares',
         '_state', '_frozen', '_pre_frozen', '_subapps',
         '_on_response_prepare', '_on_startup', '_on_shutdown',
-        '_on_cleanup', '_client_max_size', '_cleanup_ctx'])
+        '_on_cleanup', '_client_max_size', '_cleanup_ctx')
 
     def __init__(self, *,
                  logger: logging.Logger=web_logger,
-                 router: Optional[UrlDispatcher]=None,
                  middlewares: Sequence[_Middleware]=(),
                  handler_args: Mapping[str, Any]=None,
                  client_max_size: int=1024**2,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
                  debug: Any=...  # mypy doesn't support ellipsis
                  ) -> None:
-        if router is None:
-            router = UrlDispatcher()
-        else:
-            warnings.warn("router argument is deprecated", DeprecationWarning,
-                          stacklevel=2)
-        assert isinstance(router, AbstractRouter), router
-
         if loop is not None:
             warnings.warn("loop argument is deprecated", DeprecationWarning,
                           stacklevel=2)
@@ -110,7 +96,7 @@ class Application(MutableMapping[str, Any]):
                           DeprecationWarning,
                           stacklevel=2)
         self._debug = debug
-        self._router = router  # type: UrlDispatcher
+        self._router = UrlDispatcher()
         self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
@@ -141,15 +127,6 @@ class Application(MutableMapping[str, Any]):
                       "is discouraged".format(cls.__name__),
                       DeprecationWarning,
                       stacklevel=2)
-
-    if DEBUG:  # pragma: no cover
-        def __setattr__(self, name: str, val: Any) -> None:
-            if name not in self.ATTRS:
-                warnings.warn("Setting custom web.Application.{} attribute "
-                              "is discouraged".format(name),
-                              DeprecationWarning,
-                              stacklevel=2)
-            super().__setattr__(name, val)
 
     # MutableMapping API
 
@@ -183,9 +160,9 @@ class Application(MutableMapping[str, Any]):
     ########
     @property
     def loop(self) -> asyncio.AbstractEventLoop:
-        # Technically the loop can be None
+        # Technically the loop can be None,
         # but we mask it by explicit type cast
-        # to provide more convinient type annotation
+        # to provide more convenient type annotation.
         warnings.warn("loop property is deprecated",
                       DeprecationWarning,
                       stacklevel=2)

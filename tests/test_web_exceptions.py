@@ -1,47 +1,10 @@
 import collections
-import re
 from traceback import format_exception
-from unittest import mock
 
 import pytest
+from yarl import URL
 
-from aiohttp import helpers, signals, web
-from aiohttp.test_utils import make_mocked_request
-
-
-@pytest.fixture
-def buf():
-    return bytearray()
-
-
-@pytest.fixture
-def http_request(buf):
-    method = 'GET'
-    path = '/'
-    writer = mock.Mock()
-    writer.drain.return_value = ()
-
-    def append(data=b''):
-        buf.extend(data)
-        return helpers.noop()
-
-    async def write_headers(status_line, headers):
-        headers = status_line + '\r\n' + ''.join(
-            [k + ': ' + v + '\r\n' for k, v in headers.items()])
-        headers = headers.encode('utf-8') + b'\r\n'
-        buf.extend(headers)
-
-    writer.buffer_data.side_effect = append
-    writer.write.side_effect = append
-    writer.write_eof.side_effect = append
-    writer.write_headers.side_effect = write_headers
-
-    app = mock.Mock()
-    app._debug = False
-    app.on_response_prepare = signals.Signal(app)
-    app.on_response_prepare.freeze()
-    req = make_mocked_request(method, path, app=app, writer=writer)
-    return req
+from aiohttp import web
 
 
 def test_all_http_exceptions_exported() -> None:
@@ -54,17 +17,49 @@ def test_all_http_exceptions_exported() -> None:
             assert name in web.__all__
 
 
-async def test_HTTPOk(buf, http_request) -> None:
+async def test_ctor() -> None:
     resp = web.HTTPOk()
-    await resp.prepare(http_request)
-    await resp.write_eof()
-    txt = buf.decode('utf8')
-    assert re.match(('HTTP/1.1 200 OK\r\n'
-                     'Content-Type: text/plain; charset=utf-8\r\n'
-                     'Content-Length: 7\r\n'
-                     'Date: .+\r\n'
-                     'Server: .+\r\n\r\n'
-                     '200: OK'), txt)
+    assert resp.text == "200: OK"
+    assert resp.headers == {'Content-Type': 'text/plain'}
+    assert resp.reason == "OK"
+    assert resp.status == 200
+    assert bool(resp)
+
+
+async def test_ctor_with_headers() -> None:
+    resp = web.HTTPOk(headers={"X-Custom": "value"})
+    assert resp.text == "200: OK"
+    assert resp.headers == {'Content-Type': 'text/plain', "X-Custom": "value"}
+    assert resp.reason == "OK"
+    assert resp.status == 200
+
+
+async def test_ctor_content_type() -> None:
+    resp = web.HTTPOk(text="text", content_type="custom")
+    assert resp.text == "text"
+    assert resp.headers == {'Content-Type': 'custom'}
+    assert resp.reason == "OK"
+    assert resp.status == 200
+    assert bool(resp)
+
+
+async def test_ctor_content_type_without_text() -> None:
+    with pytest.warns(DeprecationWarning):
+        resp = web.HTTPResetContent(content_type="custom")
+    assert resp.text is None
+    assert resp.headers == {'Content-Type': 'custom'}
+    assert resp.reason == "Reset Content"
+    assert resp.status == 205
+    assert bool(resp)
+
+
+async def test_ctor_text_for_empty_body() -> None:
+    with pytest.warns(DeprecationWarning):
+        resp = web.HTTPResetContent(text="text")
+    assert resp.text == "text"
+    assert resp.headers == {'Content-Type': 'text/plain'}
+    assert resp.reason == "Reset Content"
+    assert resp.status == 205
 
 
 def test_terminal_classes_has_status_code() -> None:
@@ -87,20 +82,47 @@ def test_terminal_classes_has_status_code() -> None:
     assert 1 == codes.most_common(1)[0][1]
 
 
-async def test_HTTPFound(buf, http_request) -> None:
-    resp = web.HTTPFound(location='/redirect')
-    assert '/redirect' == resp.location
+async def test_HTTPOk(aiohttp_client) -> None:
+
+    async def handler(request):
+        raise web.HTTPOk()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    cli = await aiohttp_client(app)
+
+    resp = await cli.get('/')
+    assert 200 == resp.status
+    txt = await resp.text()
+    assert "200: OK" == txt
+
+
+async def test_HTTPFound(aiohttp_client) -> None:
+
+    async def handler(request):
+        raise web.HTTPFound(location='/redirect')
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    cli = await aiohttp_client(app)
+
+    resp = await cli.get('/', allow_redirects=False)
+    assert 302 == resp.status
+    txt = await resp.text()
+    assert "302: Found" == txt
     assert '/redirect' == resp.headers['location']
-    await resp.prepare(http_request)
-    await resp.write_eof()
-    txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 302 Found\r\n'
-                    'Content-Type: text/plain; charset=utf-8\r\n'
-                    'Location: /redirect\r\n'
-                    'Content-Length: 10\r\n'
-                    'Date: .+\r\n'
-                    'Server: .+\r\n\r\n'
-                    '302: Found', txt)
+
+
+def test_HTTPFound_location_str() -> None:
+    exc = web.HTTPFound(location='/redirect')
+    assert exc.location == URL('/redirect')
+    assert exc.headers['Location'] == '/redirect'
+
+
+def test_HTTPFound_location_url() -> None:
+    exc = web.HTTPFound(location=URL('/redirect'))
+    assert exc.location == URL('/redirect')
+    assert exc.headers['Location'] == '/redirect'
 
 
 def test_HTTPFound_empty_location() -> None:
@@ -111,68 +133,50 @@ def test_HTTPFound_empty_location() -> None:
         web.HTTPFound(location=None)
 
 
-async def test_HTTPMethodNotAllowed(buf, http_request) -> None:
-    resp = web.HTTPMethodNotAllowed('get', ['POST', 'PUT'])
-    assert 'GET' == resp.method
-    assert {'POST', 'PUT'} == resp.allowed_methods
-    assert 'POST,PUT' == resp.headers['allow']
-    await resp.prepare(http_request)
-    await resp.write_eof()
-    txt = buf.decode('utf8')
-    assert re.match('HTTP/1.1 405 Method Not Allowed\r\n'
-                    'Content-Type: text/plain; charset=utf-8\r\n'
-                    'Allow: POST,PUT\r\n'
-                    'Content-Length: 23\r\n'
-                    'Date: .+\r\n'
-                    'Server: .+\r\n\r\n'
-                    '405: Method Not Allowed', txt)
+def test_HTTPFound_location_CRLF() -> None:
+    exc = web.HTTPFound(location='/redirect\r\n')
+    assert '\r\n' not in exc.headers['Location']
 
 
-def test_override_body_with_text() -> None:
+async def test_HTTPMethodNotAllowed() -> None:
+    exc = web.HTTPMethodNotAllowed('GET', ['POST', 'PUT'])
+    assert 'GET' == exc.method
+    assert {'POST', 'PUT'} == exc.allowed_methods
+    assert 'POST,PUT' == exc.headers['allow']
+    assert '405: Method Not Allowed' == exc.text
+
+
+def test_with_text() -> None:
     resp = web.HTTPNotFound(text="Page not found")
     assert 404 == resp.status
-    assert "Page not found".encode('utf-8') == resp.body
     assert "Page not found" == resp.text
-    assert "text/plain" == resp.content_type
-    assert "utf-8" == resp.charset
+    assert "text/plain" == resp.headers['Content-Type']
 
 
-def test_override_body_with_binary() -> None:
-    txt = "<html><body>Page not found</body></html>"
-    with pytest.warns(DeprecationWarning):
-        resp = web.HTTPNotFound(body=txt.encode('utf-8'),
-                                content_type="text/html")
-    assert 404 == resp.status
-    assert txt.encode('utf-8') == resp.body
-    assert txt == resp.text
-    assert "text/html" == resp.content_type
-    assert resp.charset is None
-
-
-def test_default_body() -> None:
+def test_default_text() -> None:
     resp = web.HTTPOk()
-    assert b'200: OK' == resp.body
+    assert '200: OK' == resp.text
 
 
-def test_empty_body_204() -> None:
+def test_empty_text_204() -> None:
     resp = web.HTTPNoContent()
-    assert resp.body is None
+    assert resp.text is None
 
 
-def test_empty_body_205() -> None:
+def test_empty_text_205() -> None:
     resp = web.HTTPNoContent()
-    assert resp.body is None
+    assert resp.text is None
 
 
-def test_empty_body_304() -> None:
+def test_empty_text_304() -> None:
     resp = web.HTTPNoContent()
-    resp.body is None
+    resp.text is None
 
 
-def test_link_header_451(buf) -> None:
+def test_link_header_451() -> None:
     resp = web.HTTPUnavailableForLegalReasons(link='http://warning.or.kr/')
 
-    assert 'http://warning.or.kr/' == resp.link
+    assert URL('http://warning.or.kr/') == resp.link
     assert '<http://warning.or.kr/>; rel="blocked-by"' == resp.headers['Link']
 
 

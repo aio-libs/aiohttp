@@ -5,7 +5,7 @@ import pytest
 from async_generator import async_generator, yield_
 
 from aiohttp import log, web
-from aiohttp.abc import AbstractAccessLogger, AbstractRouter
+from aiohttp.abc import AbstractAccessLogger
 from aiohttp.helpers import DEBUG, PY_36
 from aiohttp.test_utils import make_mocked_coro
 
@@ -152,13 +152,6 @@ async def test_app_register_coro() -> None:
     await app.cleanup()
     assert fut.done()
     assert 123 == fut.result()
-
-
-def test_non_default_router() -> None:
-    router = mock.Mock(spec=AbstractRouter)
-    with pytest.warns(DeprecationWarning):
-        app = web.Application(router=router)
-    assert router is app.router
 
 
 def test_logging() -> None:
@@ -560,3 +553,11 @@ def test_app_iter():
     app['a'] = '1'
     app['b'] = '2'
     assert sorted(list(app)) == ['a', 'b']
+
+
+def test_app_forbid_nonslot_attr():
+    app = web.Application()
+    with pytest.raises(AttributeError):
+        app.unknow_attr
+    with pytest.raises(AttributeError):
+        app.unknow_attr = 1

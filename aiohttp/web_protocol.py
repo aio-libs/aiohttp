@@ -1,10 +1,10 @@
 import asyncio
 import asyncio.streams
 import traceback
-import warnings
 from collections import deque
 from contextlib import suppress
 from html import escape as html_escape
+from http import HTTPStatus
 from logging import Logger
 from typing import (
     TYPE_CHECKING,
@@ -416,7 +416,10 @@ class RequestHandler(BaseProtocol):
                         self._request_handler(request))
                     resp = await task
                 except HTTPException as exc:
-                    resp = exc
+                    resp = Response(status=exc.status,
+                                    reason=exc.reason,
+                                    text=exc.text,
+                                    headers=exc.headers)
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
@@ -425,25 +428,18 @@ class RequestHandler(BaseProtocol):
                     resp = self.handle_error(request, 504)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
-                else:
-                    # Deprecation warning (See #2415)
-                    if getattr(resp, '__http_exception__', False):
-                        warnings.warn(
-                            "returning HTTPException object is deprecated "
-                            "(#2415) and will be removed, "
-                            "please raise the exception instead",
-                            DeprecationWarning)
 
-                if self.debug:
-                    if not isinstance(resp, StreamResponse):
-                        if resp is None:
-                            raise RuntimeError("Missing return "
-                                               "statement on request handler")
-                        else:
-                            raise RuntimeError("Web-handler should return "
-                                               "a response instance, "
-                                               "got {!r}".format(resp))
-                await resp.prepare(request)
+                try:
+                    prepare_meth = resp.prepare
+                except AttributeError:
+                    if resp is None:
+                        raise RuntimeError("Missing return "
+                                           "statement on request handler")
+                    else:
+                        raise RuntimeError("Web-handler should return "
+                                           "a response instance, "
+                                           "got {!r}".format(resp))
+                await prepare_meth(request)
                 await resp.write_eof()
 
                 # notify server about keep-alive
@@ -523,24 +519,34 @@ class RequestHandler(BaseProtocol):
         information. It always closes current connection."""
         self.log_exception("Error handling request", exc_info=exc)
 
-        if status == 500:
-            msg = "<h1>500 Internal Server Error</h1>"
+        ct = 'text/plain'
+        if status == HTTPStatus.INTERNAL_SERVER_ERROR:
+            title = '{0.value} {0.phrase}'.format(
+                HTTPStatus.INTERNAL_SERVER_ERROR
+            )
+            msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
+            tb = None
             if self.debug:
                 with suppress(Exception):
                     tb = traceback.format_exc()
-                    tb = html_escape(tb)
-                    msg += '<br><h2>Traceback:</h2>\n<pre>'
-                    msg += tb
-                    msg += '</pre>'
-            else:
-                msg += "Server got itself in trouble"
-                msg = ("<html><head><title>500 Internal Server Error</title>"
-                       "</head><body>" + msg + "</body></html>")
-            resp = Response(status=status, text=msg, content_type='text/html')
-        else:
-            resp = Response(status=status, text=message,
-                            content_type='text/html')
 
+            if 'text/html' in request.headers.get('Accept', ''):
+                if tb:
+                    tb = html_escape(tb)
+                    msg = '<h2>Traceback:</h2>\n<pre>{}</pre>'.format(tb)
+                message = (
+                    "<html><head>"
+                    "<title>{title}</title>"
+                    "</head><body>\n<h1>{title}</h1>"
+                    "\n{msg}\n</body></html>\n"
+                ).format(title=title, msg=msg)
+                ct = 'text/html'
+            else:
+                if tb:
+                    msg = tb
+                message = title + '\n\n' + msg
+
+        resp = Response(status=status, text=message, content_type=ct)
         resp.force_close()
 
         # some data already got sent, connection is broken

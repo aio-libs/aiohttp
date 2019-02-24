@@ -1,0 +1,6 @@
+Preserve MultipartWriter parts headers on write.
+
+Refactor the way how Payload.headers are handled. Payload instances now always
+have headers and Content-Type defined.
+
+Fix Payload Content-Disposition header reset after initial creation.

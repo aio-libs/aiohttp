@@ -82,6 +82,7 @@ Eric Sheng
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
+Eugene Tolmachev
 Evert Lammerts
 Fan Yu
 FichteFoll
@@ -120,6 +121,7 @@ Joel Watts
 Jon Nabozny
 Joongi Kim
 Josep Cugat
+Joshu Coats
 Julia Tsemusheva
 Julien Duponchelle
 Jungkook Park
@@ -151,6 +153,7 @@ Mathias Fröjdman
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
+Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
