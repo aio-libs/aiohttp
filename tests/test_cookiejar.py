@@ -597,6 +597,21 @@ class TestCookieJarSafe(TestCookieJarBase):
         # Assert that there is a cookie.
         assert len(jar) == 1
 
+    def test_duplicate_cookie_different_folder(self) -> None:
+        async def make_jar():
+            return CookieJar(unsafe=True)
+        jar = self.loop.run_until_complete(make_jar())
+        jar.update_cookies(SimpleCookie('dup="one"; Path=/one/;'))
+        jar.update_cookies(SimpleCookie('dup="two"; Path=/two/;'))
+
+        assert len(jar) == 2
+        jar.update_cookies(SimpleCookie(
+            'dup=""; Expires=Thu, 01 Jan 1970 00:00:00 GMT'))
+        assert len(jar) == 2
+        jar.update_cookies(SimpleCookie(
+            'dup=""; Path=/one/; Expires=Thu, 01 Jan 1970 00:00:00 GMT'))
+        assert len(jar) == 1
+
 
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie('foo=bar; Domain=example.com;')
