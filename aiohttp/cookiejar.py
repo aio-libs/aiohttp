@@ -53,11 +53,11 @@ class CookieJar(AbstractCookieJar):
     def __init__(self, *, unsafe: bool=False,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
         super().__init__(loop=loop)
-        self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie]  # noqa
-        self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
+        self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[Tuple[str, str], SimpleCookie]  # noqa
+        self._host_only_cookies = set()  # type: Set[Tuple[str, str, str]]
         self._unsafe = unsafe
         self._next_expiration = ceil(self._loop.time())
-        self._expirations = {}  # type: Dict[Tuple[str, str], int]
+        self._expirations = {}  # type: Dict[Tuple[str, str, str], int]
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
@@ -93,11 +93,11 @@ class CookieJar(AbstractCookieJar):
         to_del = []
         cookies = self._cookies
         expirations = self._expirations
-        for (domain, name), when in expirations.items():
+        for (domain, path, name), when in expirations.items():
             if when <= now:
-                cookies[domain].pop(name, None)
-                to_del.append((domain, name))
-                self._host_only_cookies.discard((domain, name))
+                cookies[(domain, path)].pop(name, None)
+                to_del.append((domain, path, name))
+                self._host_only_cookies.discard((domain, path, name))
             else:
                 next_expiration = min(next_expiration, when)
         for key in to_del:
@@ -105,10 +105,11 @@ class CookieJar(AbstractCookieJar):
 
         self._next_expiration = ceil(next_expiration)
 
-    def _expire_cookie(self, when: float, domain: str, name: str) -> None:
+    def _expire_cookie(self, when: float, domain: str,
+                       path: str, name: str) -> None:
         iwhen = int(when)
         self._next_expiration = min(self._next_expiration, iwhen)
-        self._expirations[(domain, name)] = iwhen
+        self._expirations[(domain, path, name)] = iwhen
 
     def update_cookies(self,
                        cookies: LooseCookies,
@@ -129,28 +130,6 @@ class CookieJar(AbstractCookieJar):
                 tmp[name] = cookie  # type: ignore
                 cookie = tmp[name]
 
-            domain = cookie["domain"]
-
-            # ignore domains with trailing dots
-            if domain.endswith('.'):
-                domain = ""
-                del cookie["domain"]
-
-            if not domain and hostname is not None:
-                # Set the cookie's domain to the response hostname
-                # and set its host-only-flag
-                self._host_only_cookies.add((hostname, name))
-                domain = cookie["domain"] = hostname
-
-            if domain.startswith("."):
-                # Remove leading dot
-                domain = domain[1:]
-                cookie["domain"] = domain
-
-            if hostname and not self._is_domain_match(domain, hostname):
-                # Setting cookies for different domains is not allowed
-                continue
-
             path = cookie["path"]
             if not path or not path.startswith("/"):
                 # Set the cookie's path to the response path
@@ -162,12 +141,34 @@ class CookieJar(AbstractCookieJar):
                     path = "/" + path[1:path.rfind("/")]
                 cookie["path"] = path
 
+            domain = cookie["domain"]
+
+            # ignore domains with trailing dots
+            if domain.endswith('.'):
+                domain = ""
+                del cookie["domain"]
+
+            if not domain and hostname is not None:
+                # Set the cookie's domain to the response hostname
+                # and set its host-only-flag
+                self._host_only_cookies.add((hostname, path, name))
+                domain = cookie["domain"] = hostname
+
+            if domain.startswith("."):
+                # Remove leading dot
+                domain = domain[1:]
+                cookie["domain"] = domain
+
+            if hostname and not self._is_domain_match(domain, hostname):
+                # Setting cookies for different domains is not allowed
+                continue
+
             max_age = cookie["max-age"]
             if max_age:
                 try:
                     delta_seconds = int(max_age)
                     self._expire_cookie(self._loop.time() + delta_seconds,
-                                        domain, name)
+                                        domain, path, name)
                 except ValueError:
                     cookie["max-age"] = ""
 
@@ -177,11 +178,11 @@ class CookieJar(AbstractCookieJar):
                     expire_time = self._parse_date(expires)
                     if expire_time:
                         self._expire_cookie(expire_time.timestamp(),
-                                            domain, name)
+                                            domain, path, name)
                     else:
                         cookie["expires"] = ""
 
-            self._cookies[domain][name] = cookie
+            self._cookies[(domain, path)][name] = cookie
 
         self._do_expiration()
 
@@ -196,6 +197,7 @@ class CookieJar(AbstractCookieJar):
         for cookie in self:
             name = cookie.key
             domain = cookie["domain"]
+            path = cookie["path"]
 
             # Send shared cookies
             if not domain:
@@ -205,13 +207,13 @@ class CookieJar(AbstractCookieJar):
             if not self._unsafe and is_ip_address(hostname):
                 continue
 
-            if (domain, name) in self._host_only_cookies:
+            if (domain, path, name) in self._host_only_cookies:
                 if domain != hostname:
                     continue
             elif not self._is_domain_match(domain, hostname):
                 continue
 
-            if not self._is_path_match(request_url.path, cookie["path"]):
+            if not self._is_path_match(request_url.path, path):
                 continue
 
             if is_not_secure and cookie["secure"]:
