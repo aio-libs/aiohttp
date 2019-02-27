@@ -108,6 +108,7 @@ Igor Pavlov
 Ingmar Steen
 Jacob Champion
 Jaesung Lee
+Jaime Velasco
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
