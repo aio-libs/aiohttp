@@ -128,6 +128,26 @@ class UnixSite(BaseSite):
             ssl=self._ssl_context, backlog=self._backlog)
 
 
+class NamedPipeSite(BaseSite):
+    __slots__ = ('_path', )
+
+    def __init__(self, runner: 'BaseRunner', path: str, *,
+                 shutdown_timeout: float=60.0) -> None:
+        super().__init__(runner, shutdown_timeout=shutdown_timeout)
+        self._path = path
+
+    @property
+    def name(self) -> str:
+        return self._path
+
+    async def start(self) -> None:
+        await super().start()
+        loop = asyncio.get_event_loop()
+        server = self._runner.server
+        assert server is not None
+        self._server = await loop.start_serving_pipe(server, self._path)
+
+
 class SockSite(BaseSite):
     __slots__ = ('_sock', '_name')
 

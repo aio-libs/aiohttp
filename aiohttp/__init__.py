@@ -31,6 +31,7 @@ from .client import (
     ServerTimeoutError,
     TCPConnector,
     UnixConnector,
+    NamedPipeConnector,
     WSServerHandshakeError,
     request
 )
@@ -135,6 +136,7 @@ __all__ = (
     'ServerTimeoutError',
     'TCPConnector',
     'UnixConnector',
+    'NamedPipeConnector',
     'WSServerHandshakeError',
     'request',
     # cookiejar
