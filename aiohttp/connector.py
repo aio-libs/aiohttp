@@ -64,7 +64,8 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore
 
 
-__all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector', 'NamedPipeConnector')
+__all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector',
+           'NamedPipeConnector')
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -1131,7 +1132,7 @@ class UnixConnector(BaseConnector):
 class NamedPipeConnector(BaseConnector):
     """Named pipe connector.
     Only supported by the proactor event loop.
-    See also: https://docs.python.org/3.7/library/asyncio-eventloop.html?highlight=proactor#working-with-pipes
+    See also: https://docs.python.org/3.7/library/asyncio-eventloop.html
 
     path - Windows named pipe path.
     keepalive_timeout - (optional) Keep-alive timeout.
@@ -1161,12 +1162,17 @@ class NamedPipeConnector(BaseConnector):
                                  timeout: 'ClientTimeout') -> ResponseHandler:
         try:
             with CeilTimeout(timeout.sock_connect):
-                _, proto = await self._loop.create_pipe_connection(self._factory, self._path)
-                # the drain is required so that the connection_made is called and transport is set
-                # otherwise it is not set before the `assert conn.transport is not None`
+                _, proto = \
+                    await self._loop.create_pipe_connection(  # type: ignore
+                        self._factory, self._path
+                    )
+                # the drain is required so that the connection_made is called
+                # and transport is set otherwise it is not set before the
+                # `assert conn.transport is not None`
                 # in client.py's _request method
                 await asyncio.sleep(0)
-                # other option is to set transport like `proto.transport = trans` manually
+                # other option is to manually set transport like
+                # `proto.transport = trans`
         except OSError as exc:
             raise ClientConnectorError(req.connection_key, exc) from exc
 

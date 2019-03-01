@@ -60,7 +60,12 @@ from .client_reqrep import (
     RequestInfo,
 )
 from .client_ws import ClientWebSocketResponse
-from .connector import BaseConnector, TCPConnector, UnixConnector, NamedPipeConnector
+from .connector import (
+    BaseConnector,
+    TCPConnector,
+    UnixConnector,
+    NamedPipeConnector
+)
 from .cookiejar import CookieJar
 from .helpers import (
     PY_36,

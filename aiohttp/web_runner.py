@@ -145,7 +145,9 @@ class NamedPipeSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.start_serving_pipe(server, self._path)
+        self._server = await loop.start_serving_pipe(  # type: ignore
+            server, self._path
+        )
 
 
 class SockSite(BaseSite):
