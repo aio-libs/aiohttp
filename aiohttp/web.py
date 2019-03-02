@@ -110,6 +110,7 @@ from .web_runner import (
     SockSite,
     TCPSite,
     UnixSite,
+    NamedPipeSite,
 )
 from .web_server import Server
 from .web_urldispatcher import (
@@ -230,6 +231,7 @@ __all__ = (
     'SockSite',
     'TCPSite',
     'UnixSite',
+    'NamedPipeSite',
     # web_server
     'Server',
     # web_urldispatcher

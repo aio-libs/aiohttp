@@ -161,7 +161,8 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore
     """
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
-        existing_loop = pyfuncitem.funcargs.get('loop', None)
+        existing_loop = pyfuncitem.funcargs.get('proactor_loop')\
+            or pyfuncitem.funcargs.get('loop', None)
         with _runtime_warning_context():
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {arg: pyfuncitem.funcargs[arg]

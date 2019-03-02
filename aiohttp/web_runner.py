@@ -16,7 +16,7 @@ except ImportError:
 
 
 __all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
-           'AppRunner', 'ServerRunner', 'GracefulExit')
+           'AppRunner', 'ServerRunner', 'GracefulExit', 'NamedPipeSite')
 
 
 class GracefulExit(SystemExit):
@@ -58,7 +58,9 @@ class BaseSite(ABC):
             self._runner._unreg_site(self)
             return  # not started yet
         self._server.close()
-        await self._server.wait_closed()
+        # named pipes do not have wait_closed property
+        if hasattr(self._server, 'wait_closed'):
+            await self._server.wait_closed()
         await self._runner.shutdown()
         assert self._runner.server
         await self._runner.server.shutdown(self._shutdown_timeout)
@@ -145,9 +147,10 @@ class NamedPipeSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.start_serving_pipe(  # type: ignore
+        _server = await loop.start_serving_pipe(  # type: ignore
             server, self._path
         )
+        self._server = _server[0]
 
 
 class SockSite(BaseSite):
