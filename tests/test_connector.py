@@ -67,8 +67,13 @@ def unix_server(loop, unix_sockname):
 
 @pytest.fixture
 def proactor_loop():
-    policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
-    asyncio.set_event_loop_policy(policy)
+    if not PY_37:
+        policy = asyncio.get_event_loop_policy()
+        policy._loop_factory = asyncio.ProactorEventLoop
+    else:
+        policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
+        asyncio.set_event_loop_policy(policy)
+
     loop_context(policy.new_event_loop)
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
