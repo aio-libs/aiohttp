@@ -328,6 +328,9 @@ class StreamReader(AsyncStreamReaderMixin):
             if not_enough:
                 await self._wait('readline')
 
+        # fixes memory leak: https://github.com/aio-libs/aiohttp/issues/3631
+        self._http_chunk_splits = []
+
         return b''.join(line)
 
     async def read(self, n: int=-1) -> bytes:
