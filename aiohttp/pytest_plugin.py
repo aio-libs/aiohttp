@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 import pytest
 
-from aiohttp.helpers import isasyncgenfunction
+from aiohttp.helpers import isasyncgenfunction, PY_37
 from aiohttp.web import Application
 
 from .test_utils import (
@@ -213,6 +213,21 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore
     with loop_context(fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
+        asyncio.set_event_loop(_loop)
+        yield _loop
+
+
+@pytest.fixture
+def proactor_loop():  # type: ignore
+    if not PY_37:
+        policy = asyncio.get_event_loop_policy()
+        policy._loop_factory = asyncio.ProactorEventLoop  # type: ignore
+    else:
+        policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
+        asyncio.set_event_loop_policy(policy)
+
+    loop_context(policy.new_event_loop)
+    with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 

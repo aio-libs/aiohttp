@@ -20,7 +20,7 @@ from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.connector import Connection, _DNSCacheTable
 from aiohttp.helpers import PY_37
-from aiohttp.test_utils import make_mocked_coro, unused_port, loop_context
+from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
 
@@ -63,21 +63,6 @@ def unix_server(loop, unix_sockname):
 
     for runner in runners:
         loop.run_until_complete(runner.cleanup())
-
-
-@pytest.fixture
-def proactor_loop():
-    if not PY_37:
-        policy = asyncio.get_event_loop_policy()
-        policy._loop_factory = asyncio.ProactorEventLoop
-    else:
-        policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
-        asyncio.set_event_loop_policy(policy)
-
-    loop_context(policy.new_event_loop)
-    with loop_context(policy.new_event_loop) as _loop:
-        asyncio.set_event_loop(_loop)
-        yield _loop
 
 
 @pytest.fixture
@@ -2015,7 +2000,7 @@ async def test_unix_connector_permission(loop) -> None:
         await connector.connect(req, None, ClientTimeout())
 
 
-@pytest.mark.skipif(sys.platform != "win32",
+@pytest.mark.skipif(platform.system() != "Windows",
                     reason="Proactor Event loop present only in Windows")
 async def test_named_pipe_connector_not_found(proactor_loop) -> None:
     path = r'\\.\pipe\{}'.format(uuid.uuid4().hex)
@@ -2028,7 +2013,7 @@ async def test_named_pipe_connector_not_found(proactor_loop) -> None:
         await connector.connect(req, None, ClientTimeout())
 
 
-@pytest.mark.skipif(sys.platform != "win32",
+@pytest.mark.skipif(platform.system() != "Windows",
                     reason="Proactor Event loop present only in Windows")
 async def test_named_pipe_connector_permission(proactor_loop) -> None:
     proactor_loop.create_pipe_connection = make_mocked_coro(
@@ -2178,7 +2163,7 @@ async def test_unix_connector(unix_server, unix_sockname) -> None:
     await session.close()
 
 
-@pytest.mark.skipif(sys.platform != "win32",
+@pytest.mark.skipif(platform.system() != "Windows",
                     reason="Proactor Event loop present only in Windows")
 async def test_named_pipe_connector(
     proactor_loop,

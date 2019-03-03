@@ -25,6 +25,7 @@ Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
 Amin Etesamian
+Amit Tulshyan
 Amy Boyle
 Andrei Ursulenko
 Andrej Antonov
