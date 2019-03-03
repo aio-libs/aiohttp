@@ -1,0 +1,1 @@
+Fixes issue with `StreamReader.readline` infinitely growing list `self._http_chunk_splits` when iterating over streamed POST data line by line

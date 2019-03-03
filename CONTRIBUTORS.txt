@@ -152,6 +152,7 @@ Martin Richard
 Mathias Fröjdman
 Matthieu Hauglustaine
 Matthieu Rigal
+Matthijs van der Kroon
 Michael Ihnatenko
 Mikhail Burshteyn
 Mikhail Kashkin
