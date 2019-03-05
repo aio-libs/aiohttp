@@ -136,7 +136,7 @@ class NamedPipeSite(BaseSite):
     def __init__(self, runner: 'BaseRunner', path: str, *,
                  shutdown_timeout: float=60.0) -> None:
         loop = asyncio.get_event_loop()
-        assert isinstance(loop, asyncio.ProactorEventLoop)
+        assert isinstance(loop, asyncio.ProactorEventLoop)  # type: ignore
         super().__init__(runner, shutdown_timeout=shutdown_timeout)
         self._path = path
 

@@ -114,14 +114,3 @@ async def test_addresses(make_runner, tmpdir) -> None:
     actual_addrs = runner.addresses
     expected_host, expected_post = _sock.getsockname()[:2]
     assert actual_addrs == [(expected_host, expected_post), path]
-
-
-@pytest.mark.skipif(platform.system() != "Windows",
-                    reason="Proactor Event loop present only in Windows")
-async def test_named_pipe_path_win(proactor_loop, app, pipe_name) -> None:
-    runner = web.AppRunner(app)
-    await runner.setup()
-    pipe = web.NamedPipeSite(runner, pipe_name)
-    await pipe.start()
-    assert pipe_name == pipe.name
-    await runner.cleanup()

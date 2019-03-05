@@ -1147,7 +1147,7 @@ class NamedPipeConnector(BaseConnector):
                  keepalive_timeout: Union[object, float, None]=sentinel,
                  limit: int=100, limit_per_host: int=0,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        assert isinstance(self._loop, asyncio.ProactorEventLoop)
+        assert isinstance(self._loop, asyncio.ProactorEventLoop)  # type: ignore
         super().__init__(force_close=force_close,
                          keepalive_timeout=keepalive_timeout,
                          limit=limit, limit_per_host=limit_per_host, loop=loop)
