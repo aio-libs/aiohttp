@@ -226,7 +226,6 @@ def proactor_loop():  # type: ignore
         policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
         asyncio.set_event_loop_policy(policy)
 
-    loop_context(policy.new_event_loop)
     with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
