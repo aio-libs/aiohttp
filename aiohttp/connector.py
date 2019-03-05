@@ -1147,7 +1147,9 @@ class NamedPipeConnector(BaseConnector):
                  keepalive_timeout: Union[object, float, None]=sentinel,
                  limit: int=100, limit_per_host: int=0,
                  loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        assert isinstance(self._loop, asyncio.ProactorEventLoop)  # type: ignore
+        if not isinstance(self._loop, asyncio.ProactorEventLoop):  # type: ignore # noqa
+            raise RuntimeError("Named Pipes only available in proactor"
+                               "loop under windows")
         super().__init__(force_close=force_close,
                          keepalive_timeout=keepalive_timeout,
                          limit=limit, limit_per_host=limit_per_host, loop=loop)
@@ -1163,10 +1165,8 @@ class NamedPipeConnector(BaseConnector):
                                  timeout: 'ClientTimeout') -> ResponseHandler:
         try:
             with CeilTimeout(timeout.sock_connect):
-                _, proto = (
-                    await self._loop.create_pipe_connection(  # type: ignore
-                        self._factory, self._path
-                    )
+                _, proto = await self._loop.create_pipe_connection(  # type: ignore # noqa
+                    self._factory, self._path
                 )
                 # the drain is required so that the connection_made is called
                 # and transport is set otherwise it is not set before the
