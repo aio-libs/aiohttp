@@ -14,9 +14,8 @@ try:
 except ImportError:
     SSLContext = object  # type: ignore
 
-
-__all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
-           'AppRunner', 'ServerRunner', 'GracefulExit', 'NamedPipeSite')
+__all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'NamedPipeSite', 'SockSite',
+           'BaseRunner', 'AppRunner', 'ServerRunner', 'GracefulExit')
 
 
 class GracefulExit(SystemExit):
