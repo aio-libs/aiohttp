@@ -1,1 +1,1 @@
-Close session created inside method ``aiohttp.request`` when unhandled exception occurs
+Close session created inside ``aiohttp.request`` when unhandled exception occurs
