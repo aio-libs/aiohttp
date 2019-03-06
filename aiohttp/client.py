@@ -1020,8 +1020,9 @@ class _SessionRequestContextManager:
         self._session = session
 
     async def __aenter__(self) -> ClientResponse:
-        self._resp = await self._coro
-        return self._resp
+        async with self._session:
+            self._resp = await self._coro
+            return self._resp
 
     async def __aexit__(self,
                         exc_type: Optional[Type[BaseException]],
@@ -1029,7 +1030,6 @@ class _SessionRequestContextManager:
                         tb: Optional[TracebackType]) -> None:
         assert self._resp is not None
         self._resp.close()
-        await self._session.close()
 
 
 def request(
