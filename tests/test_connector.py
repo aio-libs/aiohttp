@@ -2002,9 +2002,18 @@ async def test_unix_connector_permission(loop) -> None:
 
 @pytest.mark.skipif(platform.system() != "Windows",
                     reason="Proactor Event loop present only in Windows")
-async def test_named_pipe_connector_not_found(proactor_loop) -> None:
-    path = r'\\.\pipe\{}'.format(uuid.uuid4().hex)
-    connector = aiohttp.NamedPipeConnector(path, loop=proactor_loop)
+async def test_named_pipe_connector_wrong_loop(loop, pipe_name) -> None:
+    with pytest.raises(RuntimeError):
+        aiohttp.NamedPipeConnector(pipe_name, loop=loop)
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_connector_not_found(
+    proactor_loop,
+    pipe_name
+) -> None:
+    connector = aiohttp.NamedPipeConnector(pipe_name, loop=proactor_loop)
 
     req = ClientRequest(
         'GET', URL('http://www.python.org'),
