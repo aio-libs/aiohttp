@@ -273,7 +273,7 @@ All backward incompatible changes are explicitly marked in
 How do I enable gzip compression globally for my entire application?
 --------------------------------------------------------------------
 
-It's impossible. Choosing what to compress and what not to compress is
+It's impossible. Choosing what to compress and what not to compress
 is a tricky matter.
 
 If you need global compression, write a custom middleware. Or
