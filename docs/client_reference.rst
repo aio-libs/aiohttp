@@ -51,7 +51,10 @@ The client session supports the context manager protocol for self closing.
                          auto_decompress=True, \
                          requote_redirect_url=False, \
                          trust_env=False, \
-                         trace_configs=None)
+                         trace_configs=None, \
+                         proxy=None, \
+                         proxy_auth=None, \
+                         proxy_headers=None)
 
    The class for creating client sessions and making requests.
 
@@ -189,6 +192,12 @@ The client session supports the context manager protocol for self closing.
                          tracing.  ``None`` (default) is used for request tracing
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
+
+   :param proxy: Proxy url that you want to use with the session.
+   
+   :param proxy_auth: Authentication credentials for proxy url that you want to use with the session.
+   
+   :param proxy_headers: Proxy headers that you want to use with the session.
 
    .. attribute:: closed
 
