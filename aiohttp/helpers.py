@@ -12,7 +12,6 @@ import platform
 import re
 import sys
 import time
-import warnings
 import weakref
 from collections import namedtuple
 from contextlib import suppress
@@ -45,7 +44,7 @@ from multidict import MultiDict, MultiDictProxy
 from yarl import URL
 
 from . import hdrs
-from .log import client_logger, internal_logger
+from .log import client_logger
 from .typedefs import PathLike  # noqa
 
 __all__ = ('BasicAuth', 'ChainMapProxy')
@@ -63,10 +62,15 @@ except ImportError:
     from typing_extensions import ContextManager
 
 
-all_tasks = asyncio.Task.all_tasks
+def all_tasks(
+        loop: Optional[asyncio.AbstractEventLoop] = None
+) -> Set['asyncio.Task[Any]']:
+    tasks = list(asyncio.Task.all_tasks(loop))
+    return {t for t in tasks if not t.done()}
+
 
 if PY_37:
-    all_tasks = getattr(asyncio, 'all_tasks')  # use the trick to cheat mypy
+    all_tasks = getattr(asyncio, 'all_tasks')  # noqa
 
 
 _T = TypeVar('_T')
@@ -248,11 +252,13 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
     return ret
 
 
-def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task:  # type: ignore  # noqa  # Return type is intentionally Generic here
+def current_task(
+        loop: Optional[asyncio.AbstractEventLoop]=None
+) -> 'asyncio.Task[Any]':
     if PY_37:
         return asyncio.current_task(loop=loop)  # type: ignore
     else:
-        return asyncio.Task.current_task(loop=loop)  # type: ignore
+        return asyncio.Task.current_task(loop=loop)
 
 
 def get_running_loop(
@@ -261,12 +267,7 @@ def get_running_loop(
     if loop is None:
         loop = asyncio.get_event_loop()
     if not loop.is_running():
-        warnings.warn("The object should be created from async function",
-                      DeprecationWarning, stacklevel=3)
-        if loop.get_debug():
-            internal_logger.warning(
-                "The object should be created from async function",
-                stack_info=True)
+        raise RuntimeError("The object should be created from async function")
     return loop
 
 
@@ -423,7 +424,7 @@ _ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
 
 def _is_ip_address(
         regex: Pattern[str], regexb: Pattern[bytes],
-        host: Optional[Union[str, bytes]])-> bool:
+        host: Optional[Union[str, bytes]]) -> bool:
     if host is None:
         return False
     if isinstance(host, str):

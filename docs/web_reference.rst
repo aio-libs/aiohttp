@@ -805,8 +805,8 @@ Response
 ^^^^^^^^
 
 .. class:: Response(*, body=None, status=200, reason=None, text=None, \
-   headers=None, content_type=None, charset=None, zlib_executor_size=sentinel,
-   zlib_executor=None)
+                    headers=None, content_type=None, charset=None, \
+                    zlib_executor_size=sentinel, zlib_executor=None)
 
    The most usable response class, inherited from :class:`StreamResponse`.
 
@@ -1207,7 +1207,7 @@ WebSocketReady
 
 
 json_response
--------------
+^^^^^^^^^^^^^
 
 .. function:: json_response([data], *, text=None, body=None, \
                             status=200, reason=None, headers=None, \
@@ -1252,7 +1252,7 @@ properties for later access from a :ref:`handler<aiohttp-web-handler>` via the
 Although :class:`Application` is a :obj:`dict`-like object, it can't be
 duplicated like one using :meth:`Application.copy`.
 
-.. class:: Application(*, logger=<default>, router=None,middlewares=(), \
+.. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
                        loop=None, debug=...)
 
@@ -1261,15 +1261,6 @@ duplicated like one using :meth:`Application.copy`.
    :param logger: :class:`logging.Logger` instance for storing application logs.
 
                   By default the value is ``logging.getLogger("aiohttp.web")``
-
-   :param router: :class:`aiohttp.abc.AbstractRouter` instance, the system
-                  creates :class:`UrlDispatcher` by default if
-                  *router* is ``None``.
-
-      .. deprecated:: 3.3
-
-         The custom routers support is deprecated, the parameter will
-         be removed in 4.0.
 
    :param middlewares: :class:`list` of middleware factories, see
                        :ref:`aiohttp-web-middlewares` for details.

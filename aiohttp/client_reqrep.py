@@ -142,46 +142,6 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = type(None)
 
 
-def _merge_ssl_params(
-        ssl: Union['SSLContext', bool, Fingerprint, None],
-        verify_ssl: Optional[bool],
-        ssl_context: Optional['SSLContext'],
-        fingerprint: Optional[bytes]
-) -> Union['SSLContext', bool, Fingerprint, None]:
-    if verify_ssl is not None and not verify_ssl:
-        warnings.warn("verify_ssl is deprecated, use ssl=False instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = False
-    if ssl_context is not None:
-        warnings.warn("ssl_context is deprecated, use ssl=context instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = ssl_context
-    if fingerprint is not None:
-        warnings.warn("fingerprint is deprecated, "
-                      "use ssl=Fingerprint(fingerprint) instead",
-                      DeprecationWarning,
-                      stacklevel=3)
-        if ssl is not None:
-            raise ValueError("verify_ssl, ssl_context, fingerprint and ssl "
-                             "parameters are mutually exclusive")
-        else:
-            ssl = Fingerprint(fingerprint)
-    if not isinstance(ssl, SSL_ALLOWED_TYPES):
-        raise TypeError("ssl should be SSLContext, bool, Fingerprint or None, "
-                        "got {!r} instead.".format(ssl))
-    return ssl
-
-
 @attr.s(slots=True, frozen=True)
 class ConnectionKey:
     # the key should contain an information about used proxy / TLS
@@ -495,16 +455,14 @@ class ClientRequest:
                     if hdrs.CONTENT_LENGTH not in self.headers:
                         self.headers[hdrs.CONTENT_LENGTH] = str(size)
 
-        # set content-type
-        if (hdrs.CONTENT_TYPE not in self.headers and
-                hdrs.CONTENT_TYPE not in self.skip_auto_headers):
-            self.headers[hdrs.CONTENT_TYPE] = body.content_type
-
         # copy payload headers
-        if body.headers:
-            for (key, value) in body.headers.items():
-                if key not in self.headers:
-                    self.headers[key] = value
+        assert body.headers
+        for (key, value) in body.headers.items():
+            if key in self.headers:
+                continue
+            if key in self.skip_auto_headers:
+                continue
+            self.headers[key] = value
 
     def update_expect_continue(self, expect: bool=False) -> None:
         if expect:
@@ -692,7 +650,7 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None)
-        self._body = None  # type: Any
+        self._body = None  # type: Optional[bytes]
         self._writer = writer  # type: Optional[asyncio.Task[None]]
         self._continue = continue100  # None by default
         self._closed = True
@@ -709,12 +667,6 @@ class ClientResponse(HeadersMixin):
 
     @reify
     def url(self) -> URL:
-        return self._url
-
-    @reify
-    def url_obj(self) -> URL:
-        warnings.warn(
-            "Deprecated, use .url #1654", DeprecationWarning, stacklevel=2)
         return self._url
 
     @reify
@@ -934,7 +886,8 @@ class ClientResponse(HeadersMixin):
 
     def raise_for_status(self) -> None:
         if 400 <= self.status:
-            assert self.reason  # always not None for started response
+            # reason should always be not None for a started response
+            assert self.reason is not None
             self.release()
             raise ClientResponseError(
                 self.request_info,
@@ -1028,14 +981,10 @@ class ClientResponse(HeadersMixin):
                              'unexpected mimetype: %s' % ctype),
                     headers=self.headers)
 
-        stripped = self._body.strip()  # type: ignore
-        if not stripped:
-            return None
-
         if encoding is None:
             encoding = self.get_encoding()
 
-        return loads(stripped.decode(encoding))
+        return loads(self._body.decode(encoding))  # type: ignore
 
     async def __aenter__(self) -> 'ClientResponse':
         return self

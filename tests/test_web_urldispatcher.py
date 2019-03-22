@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from aiohttp import abc, web
+from aiohttp import web
 from aiohttp.web_urldispatcher import SystemRoute
 
 
@@ -310,23 +310,6 @@ def test_system_route() -> None:
     assert "<SystemRoute 201: test>" == repr(route)
     assert 201 == route.status
     assert 'test' == route.reason
-
-
-async def test_412_is_returned(aiohttp_client) -> None:
-
-    class MyRouter(abc.AbstractRouter):
-
-        async def resolve(self, request):
-            raise web.HTTPPreconditionFailed()
-
-    with pytest.warns(DeprecationWarning):
-        app = web.Application(router=MyRouter())
-
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-
-    assert resp.status == 412
 
 
 async def test_allow_head(aiohttp_client) -> None:

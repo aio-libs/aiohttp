@@ -178,7 +178,7 @@ Any of session's request methods like :func:`request`,
 `json` parameter::
 
   async with aiohttp.ClientSession() as session:
-      async with session.post(url, json={'test': 'object'})
+      await session.post(url, json={'test': 'object'})
 
 
 By default session uses python's standard :mod:`json` module for
@@ -355,12 +355,6 @@ can chain get and post requests together::
 
    Python 3.5 has no native support for asynchronous generators, use
    ``async_generator`` library as workaround.
-
-.. deprecated:: 3.1
-
-   ``aiohttp`` still supports ``aiohttp.streamer`` decorator but this
-   approach is deprecated in favor of *asynchronous generators* as
-   shown above.
 
 
 .. _aiohttp-client-websockets:

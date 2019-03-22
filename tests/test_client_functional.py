@@ -6,7 +6,6 @@ import io
 import json
 import pathlib
 import socket
-import ssl
 from unittest import mock
 
 import pytest
@@ -26,17 +25,8 @@ def here():
 
 
 @pytest.fixture
-def ssl_ctx(here):
-    ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    ssl_ctx.load_cert_chain(
-        str(here / 'sample.crt'),
-        str(here / 'sample.key'))
-    return ssl_ctx
-
-
-@pytest.fixture
 def fname(here):
-    return here / 'sample.key'
+    return here / 'conftest.py'
 
 
 def ceil(val):
@@ -274,8 +264,11 @@ async def test_post_data_textio_encoding(aiohttp_client) -> None:
     assert 200 == resp.status
 
 
-async def test_ssl_client(ssl_ctx, aiohttp_server, aiohttp_client) -> None:
-    connector = aiohttp.TCPConnector(ssl=False)
+async def test_ssl_client(
+        aiohttp_server, ssl_ctx,
+        aiohttp_client, client_ssl_ctx,
+) -> None:
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
 
     async def handler(request):
         return web.Response(text='Test message')
@@ -291,17 +284,16 @@ async def test_ssl_client(ssl_ctx, aiohttp_server, aiohttp_client) -> None:
     assert txt == 'Test message'
 
 
-async def test_tcp_connector_fingerprint_ok(aiohttp_server, aiohttp_client,
-                                            ssl_ctx):
-
-    fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
-                   b'\xcb~7U\x14D@L'
-                   b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b')
+async def test_tcp_connector_fingerprint_ok(
+        aiohttp_server, aiohttp_client,
+        ssl_ctx, tls_certificate_fingerprint_sha256,
+):
+    tls_fingerprint = Fingerprint(tls_certificate_fingerprint_sha256)
 
     async def handler(request):
         return web.Response(text='Test message')
 
-    connector = aiohttp.TCPConnector(ssl=Fingerprint(fingerprint))
+    connector = aiohttp.TCPConnector(ssl=tls_fingerprint)
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
@@ -312,17 +304,14 @@ async def test_tcp_connector_fingerprint_ok(aiohttp_server, aiohttp_client,
     resp.close()
 
 
-async def test_tcp_connector_fingerprint_fail(aiohttp_server, aiohttp_client,
-                                              ssl_ctx):
-
-    fingerprint = (b'0\x9a\xc9D\x83\xdc\x91\'\x88\x91\x11\xa1d\x97\xfd'
-                   b'\xcb~7U\x14D@L'
-                   b'\x11\xab\x99\xa8\xae\xb7\x14\xee\x8b')
-
+async def test_tcp_connector_fingerprint_fail(
+        aiohttp_server, aiohttp_client,
+        ssl_ctx, tls_certificate_fingerprint_sha256,
+):
     async def handler(request):
         return web.Response(text='Test message')
 
-    bad_fingerprint = b'\x00' * len(fingerprint)
+    bad_fingerprint = b'\x00' * len(tls_certificate_fingerprint_sha256)
 
     connector = aiohttp.TCPConnector(ssl=Fingerprint(bad_fingerprint))
 
@@ -335,7 +324,7 @@ async def test_tcp_connector_fingerprint_fail(aiohttp_server, aiohttp_client,
         await client.get('/')
     exc = cm.value
     assert exc.expected == bad_fingerprint
-    assert exc.got == fingerprint
+    assert exc.got == tls_certificate_fingerprint_sha256
 
 
 async def test_format_task_get(aiohttp_server) -> None:
@@ -1402,7 +1391,7 @@ async def test_POST_FILES_SINGLE_content_disposition(
                                         'text/plain',
                                         'application/octet-stream']
         assert request.headers['content-disposition'] == (
-            "inline; filename=\"sample.key\"; filename*=utf-8''sample.key")
+            "inline; filename=\"conftest.py\"; filename*=utf-8''conftest.py")
 
         return web.Response()
 
@@ -1428,6 +1417,7 @@ async def test_POST_FILES_SINGLE_BINARY(aiohttp_client, fname) -> None:
         # then use 'application/octet-stream' default
         assert request.content_type in ['application/pgp-keys',
                                         'text/plain',
+                                        'text/x-python',
                                         'application/octet-stream']
         return web.Response()
 
@@ -1529,51 +1519,16 @@ async def test_POST_STREAM_DATA(aiohttp_client, fname) -> None:
     with fname.open('rb') as f:
         data_size = len(f.read())
 
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer, fname):
-            with fname.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    resp = await client.post(
-        '/', data=stream(fname), headers={'Content-Length': str(data_size)})
-    assert 200 == resp.status
-    resp.close()
-
-
-async def test_POST_STREAM_DATA_no_params(aiohttp_client, fname) -> None:
-
-    async def handler(request):
-        assert request.content_type == 'application/octet-stream'
-        content = await request.read()
+    @async_generator
+    async def gen(fname):
         with fname.open('rb') as f:
-            expected = f.read()
-            assert request.content_length == len(expected)
-            assert content == expected
-
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post('/', handler)
-    client = await aiohttp_client(app)
-
-    with fname.open('rb') as f:
-        data_size = len(f.read())
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer):
-            with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                await yield_(data)
                 data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
 
     resp = await client.post(
-        '/', data=stream, headers={'Content-Length': str(data_size)})
+        '/', data=gen(fname), headers={'Content-Length': str(data_size)})
     assert 200 == resp.status
     resp.close()
 
@@ -1925,6 +1880,50 @@ async def test_cookies_per_request(aiohttp_client) -> None:
 
     resp = await client.get(
         '/', cookies={'test4': '789', 'test5': rc})
+    assert 200 == resp.status
+    resp.close()
+
+
+async def test_cookies_redirect(aiohttp_client) -> None:
+
+    async def redirect1(request):
+        ret = web.Response(status=301, headers={'Location': '/redirect2'})
+        ret.set_cookie('c', '1')
+        return ret
+
+    async def redirect2(request):
+        ret = web.Response(status=301, headers={'Location': '/'})
+        ret.set_cookie('c', '2')
+        return ret
+
+    async def handler(request):
+        assert request.cookies.keys() == {'c'}
+        assert request.cookies['c'] == '2'
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/redirect1', redirect1)
+    app.router.add_get('/redirect2', redirect2)
+    app.router.add_get('/', handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/redirect1')
+    assert 200 == resp.status
+    resp.close()
+
+
+async def test_cookies_on_empty_session_jar(aiohttp_client) -> None:
+    async def handler(request):
+        assert 'custom-cookie' in request.cookies
+        assert request.cookies['custom-cookie'] == 'abc'
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(
+        app, cookies=None)
+
+    resp = await client.get('/', cookies={'custom-cookie': 'abc'})
     assert 200 == resp.status
     resp.close()
 

@@ -16,12 +16,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import BaseConnector, hdrs, payload
-from aiohttp.client_reqrep import (
-    ClientRequest,
-    ClientResponse,
-    Fingerprint,
-    _merge_ssl_params,
-)
+from aiohttp.client_reqrep import ClientRequest, ClientResponse, Fingerprint
 from aiohttp.test_utils import make_mocked_coro
 
 
@@ -801,7 +796,7 @@ async def test_chunked_transfer_encoding(loop, conn) -> None:
 
 async def test_file_upload_not_chunked(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
@@ -828,7 +823,7 @@ async def test_precompressed_data_stays_intact(loop) -> None:
 
 async def test_file_upload_not_chunked_seek(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         f.seek(100)
         req = ClientRequest(
@@ -842,7 +837,7 @@ async def test_file_upload_not_chunked_seek(loop) -> None:
 
 async def test_file_upload_force_chunked(loop) -> None:
     here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'sample.key')
+    fname = os.path.join(here, 'aiohttp.png')
     with open(fname, 'rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
@@ -879,27 +874,6 @@ async def test_data_stream(loop, buf, conn) -> None:
     async def gen():
         await yield_(b'binary data')
         await yield_(b' result')
-
-    req = ClientRequest(
-        'POST', URL('http://python.org/'), data=gen(), loop=loop)
-    assert req.chunked
-    assert req.headers['TRANSFER-ENCODING'] == 'chunked'
-
-    resp = await req.send(conn)
-    assert asyncio.isfuture(req._writer)
-    await resp.wait_for_close()
-    assert req._writer is None
-    assert buf.split(b'\r\n\r\n', 1)[1] == \
-        b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
-    await req.close()
-
-
-async def test_data_stream_deprecated(loop, buf, conn) -> None:
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def gen(writer):
-            await writer.write(b'binary data')
-            await writer.write(b' result')
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -959,69 +933,12 @@ async def test_data_stream_exc(loop, conn) -> None:
     await req.close()
 
 
-async def test_data_stream_exc_deprecated(loop, conn) -> None:
-    fut = loop.create_future()
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def gen(writer):
-            await writer.write(b'binary data')
-            await fut
-
-    req = ClientRequest(
-        'POST', URL('http://python.org/'), data=gen(), loop=loop)
-    assert req.chunked
-    assert req.headers['TRANSFER-ENCODING'] == 'chunked'
-
-    async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
-        fut.set_exception(ValueError)
-
-    loop.create_task(throw_exc())
-
-    await req.send(conn)
-    await req._writer
-    # assert conn.close.called
-    assert conn.protocol.set_exception.called
-    await req.close()
-
-
 async def test_data_stream_exc_chain(loop, conn) -> None:
     fut = loop.create_future()
 
     @async_generator
     async def gen():
         await fut
-
-    req = ClientRequest('POST', URL('http://python.org/'),
-                        data=gen(), loop=loop)
-
-    inner_exc = ValueError()
-
-    async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
-        fut.set_exception(inner_exc)
-
-    loop.create_task(throw_exc())
-
-    await req.send(conn)
-    await req._writer
-    # assert connection.close.called
-    assert conn.protocol.set_exception.called
-    outer_exc = conn.protocol.set_exception.call_args[0][0]
-    assert isinstance(outer_exc, ValueError)
-    assert inner_exc is outer_exc
-    assert inner_exc is outer_exc
-    await req.close()
-
-
-async def test_data_stream_exc_chain_deprecated(loop, conn) -> None:
-    fut = loop.create_future()
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def gen(writer):
-            await fut
 
     req = ClientRequest('POST', URL('http://python.org/'),
                         data=gen(), loop=loop)
@@ -1070,33 +987,6 @@ async def test_data_stream_continue(loop, buf, conn) -> None:
     resp.close()
 
 
-async def test_data_stream_continue_deprecated(loop, buf, conn) -> None:
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def gen(writer):
-            await writer.write(b'binary data')
-            await writer.write(b' result')
-            await writer.write_eof()
-
-    req = ClientRequest(
-        'POST', URL('http://python.org/'), data=gen(),
-        expect100=True, loop=loop)
-    assert req.chunked
-
-    async def coro():
-        await asyncio.sleep(0.0001, loop=loop)
-        req._continue.set_result(1)
-
-    loop.create_task(coro())
-
-    resp = await req.send(conn)
-    await req._writer
-    assert buf.split(b'\r\n\r\n', 1)[1] == \
-        b'b\r\nbinary data\r\n7\r\n result\r\n0\r\n\r\n'
-    await req.close()
-    resp.close()
-
-
 async def test_data_continue(loop, buf, conn) -> None:
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=b'data',
@@ -1121,22 +1011,6 @@ async def test_close(loop, buf, conn) -> None:
     async def gen():
         await asyncio.sleep(0.00001)
         await yield_(b'result')
-
-    req = ClientRequest(
-        'POST', URL('http://python.org/'), data=gen(), loop=loop)
-    resp = await req.send(conn)
-    await req.close()
-    assert buf.split(b'\r\n\r\n', 1)[1] == b'6\r\nresult\r\n0\r\n\r\n'
-    await req.close()
-    resp.close()
-
-
-async def test_close_deprecated(loop, buf, conn) -> None:
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def gen(writer):
-            await asyncio.sleep(0.00001, loop=loop)
-            await writer.write(b'result')
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -1268,13 +1142,6 @@ async def test_custom_req_rep(loop) -> None:
     resp.close()
     await session.close()
     conn.close()
-
-
-def test_verify_ssl_false_with_ssl_context(loop) -> None:
-    with pytest.warns(DeprecationWarning):
-        with pytest.raises(ValueError):
-            _merge_ssl_params(None, verify_ssl=False,
-                              ssl_context=mock.Mock(), fingerprint=None)
 
 
 def test_bad_fingerprint(loop) -> None:

@@ -14,6 +14,90 @@ Changelog
 
 .. towncrier release notes start
 
+3.5.4 (2019-01-12)
+==================
+
+Bugfixes
+--------
+
+- Fix stream ``.read()`` / ``.readany()`` / ``.iter_any()`` which used to return a
+  partial content only in case of compressed content
+  `#3525 <https://github.com/aio-libs/aiohttp/issues/3525>`_
+
+
+3.5.3 (2019-01-10)
+==================
+
+Bugfixes
+--------
+
+- Fix type stubs for ``aiohttp.web.run_app(access_log=True)`` and fix edge case of ``access_log=True`` and the event loop being in debug mode.
+  `#3504 <https://github.com/aio-libs/aiohttp/issues/3504>`_
+- Fix ``aiohttp.ClientTimeout`` type annotations to accept ``None`` for fields
+  `#3511 <https://github.com/aio-libs/aiohttp/issues/3511>`_
+- Send custom per-request cookies even if session jar is empty
+  `#3515 <https://github.com/aio-libs/aiohttp/issues/3515>`_
+- Restore Linux binary wheels publishing on PyPI
+
+----
+
+
+3.5.2 (2019-01-08)
+==================
+
+Features
+--------
+
+- ``FileResponse`` from ``web_fileresponse.py`` uses a ``ThreadPoolExecutor`` to work with files asynchronously.
+  I/O based payloads from ``payload.py`` uses a ``ThreadPoolExecutor`` to work with I/O objects asynchronously.
+  `#3313 <https://github.com/aio-libs/aiohttp/issues/3313>`_
+- Internal Server Errors in plain text if the browser does not support HTML.
+  `#3483 <https://github.com/aio-libs/aiohttp/issues/3483>`_
+
+
+Bugfixes
+--------
+
+- Preserve MultipartWriter parts headers on write.
+
+  Refactor the way how ``Payload.headers`` are handled. Payload instances now always
+  have headers and Content-Type defined.
+
+  Fix Payload Content-Disposition header reset after initial creation.
+  `#3035 <https://github.com/aio-libs/aiohttp/issues/3035>`_
+- Log suppressed exceptions in ``GunicornWebWorker``.
+  `#3464 <https://github.com/aio-libs/aiohttp/issues/3464>`_
+- Remove wildcard imports.
+  `#3468 <https://github.com/aio-libs/aiohttp/issues/3468>`_
+- Use the same task for app initialization and web server handling in gunicorn workers.
+  It allows to use Python3.7 context vars smoothly.
+  `#3471 <https://github.com/aio-libs/aiohttp/issues/3471>`_
+- Fix handling of chunked+gzipped response when first chunk does not give uncompressed data
+  `#3477 <https://github.com/aio-libs/aiohttp/issues/3477>`_
+- Replace ``collections.MutableMapping`` with ``collections.abc.MutableMapping`` to avoid a deprecation warning.
+  `#3480 <https://github.com/aio-libs/aiohttp/issues/3480>`_
+- ``Payload.size`` type annotation changed from `Optional[float]` to `Optional[int]`.
+  `#3484 <https://github.com/aio-libs/aiohttp/issues/3484>`_
+- Ignore done tasks when cancels pending activities on ``web.run_app`` finalization.
+  `#3497 <https://github.com/aio-libs/aiohttp/issues/3497>`_
+
+
+Improved Documentation
+----------------------
+
+- Add documentation for ``aiohttp.web.HTTPException``.
+  `#3490 <https://github.com/aio-libs/aiohttp/issues/3490>`_
+
+
+Misc
+----
+
+- `#3487 <https://github.com/aio-libs/aiohttp/issues/3487>`_
+
+
+----
+
+
 3.5.1 (2018-12-24)
 ====================
 

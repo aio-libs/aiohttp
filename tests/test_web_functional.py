@@ -34,7 +34,7 @@ def here():
 
 @pytest.fixture
 def fname(here):
-    return here / 'sample.key'
+    return here / 'conftest.py'
 
 
 async def test_simple_get(aiohttp_client) -> None:
@@ -298,7 +298,7 @@ async def test_post_single_file(aiohttp_client) -> None:
 
     async def handler(request):
         data = await request.post()
-        assert ['sample.crt'] == list(data.keys())
+        assert ['data.unknown_mime_type'] == list(data.keys())
         for fs in data.values():
             check_file(fs)
             fs.file.close()
@@ -309,7 +309,7 @@ async def test_post_single_file(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    fname = here / 'sample.crt'
+    fname = here / 'data.unknown_mime_type'
 
     resp = await client.post('/', data=[fname.open()])
     assert 200 == resp.status
@@ -361,7 +361,7 @@ async def test_post_files(aiohttp_client) -> None:
 
     async def handler(request):
         data = await request.post()
-        assert ['sample.crt', 'sample.key'] == list(data.keys())
+        assert ['data.unknown_mime_type', 'conftest.py'] == list(data.keys())
         for fs in data.values():
             check_file(fs)
             fs.file.close()
@@ -372,8 +372,8 @@ async def test_post_files(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with (here / 'sample.crt').open() as f1:
-        with (here / 'sample.key').open() as f2:
+    with (here / 'data.unknown_mime_type').open() as f1:
+        with (here / 'conftest.py').open() as f2:
             resp = await client.post('/', data=[f1, f2])
             assert 200 == resp.status
 
@@ -791,37 +791,6 @@ async def test_response_with_async_gen(aiohttp_client, fname) -> None:
     assert resp.headers.get('Content-Length') == str(len(resp_data))
 
 
-async def test_response_with_streamer(aiohttp_client, fname) -> None:
-
-    with fname.open('rb') as f:
-        data = f.read()
-
-    data_size = len(data)
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer, f_name):
-            with f_name.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    async def handler(request):
-        headers = {'Content-Length': str(data_size)}
-        return web.Response(body=stream(fname), headers=headers)
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    resp_data = await resp.read()
-    assert resp_data == data
-    assert resp.headers.get('Content-Length') == str(len(resp_data))
-
-
 async def test_response_with_async_gen_no_params(aiohttp_client,
                                                  fname) -> None:
 
@@ -853,37 +822,6 @@ async def test_response_with_async_gen_no_params(aiohttp_client,
     assert resp.headers.get('Content-Length') == str(len(resp_data))
 
 
-async def test_response_with_streamer_no_params(aiohttp_client, fname) -> None:
-
-    with fname.open('rb') as f:
-        data = f.read()
-
-    data_size = len(data)
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer):
-            with fname.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    async def handler(request):
-        headers = {'Content-Length': str(data_size)}
-        return web.Response(body=stream, headers=headers)
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    resp_data = await resp.read()
-    assert resp_data == data
-    assert resp.headers.get('Content-Length') == str(len(resp_data))
-
-
 async def test_response_with_file(aiohttp_client, fname) -> None:
 
     with fname.open('rb') as f:
@@ -899,12 +837,17 @@ async def test_response_with_file(aiohttp_client, fname) -> None:
     resp = await client.get('/')
     assert 200 == resp.status
     resp_data = await resp.read()
+    expected_content_disposition = (
+        'attachment; filename="conftest.py"; filename*=utf-8\'\'conftest.py'
+    )
     assert resp_data == data
     assert resp.headers.get('Content-Type') in (
-        'application/octet-stream', 'application/pgp-keys')
+        'application/octet-stream', 'text/x-python', 'text/plain',
+    )
     assert resp.headers.get('Content-Length') == str(len(resp_data))
-    assert (resp.headers.get('Content-Disposition') ==
-            'attachment; filename="sample.key"; filename*=utf-8\'\'sample.key')
+    assert (
+        resp.headers.get('Content-Disposition') == expected_content_disposition
+    )
 
 
 async def test_response_with_file_ctype(aiohttp_client, fname) -> None:
@@ -923,11 +866,15 @@ async def test_response_with_file_ctype(aiohttp_client, fname) -> None:
     resp = await client.get('/')
     assert 200 == resp.status
     resp_data = await resp.read()
+    expected_content_disposition = (
+        'attachment; filename="conftest.py"; filename*=utf-8\'\'conftest.py'
+    )
     assert resp_data == data
     assert resp.headers.get('Content-Type') == 'text/binary'
     assert resp.headers.get('Content-Length') == str(len(resp_data))
-    assert (resp.headers.get('Content-Disposition') ==
-            'attachment; filename="sample.key"; filename*=utf-8\'\'sample.key')
+    assert (
+        resp.headers.get('Content-Disposition') == expected_content_disposition
+    )
 
 
 async def test_response_with_payload_disp(aiohttp_client, fname) -> None:
@@ -1859,17 +1806,17 @@ async def test_request_tracing(aiohttp_server) -> None:
     await client.close()
 
 
-async def test_return_http_exception_deprecated(aiohttp_client) -> None:
+async def test_raise_http_exception(aiohttp_client) -> None:
 
     async def handler(request):
-        return web.HTTPForbidden()
+        raise web.HTTPForbidden()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
 
-    with pytest.warns(DeprecationWarning):
-        await client.get('/')
+    resp = await client.get('/')
+    assert resp.status == 403
 
 
 async def test_request_path(aiohttp_client) -> None:
