@@ -24,7 +24,7 @@ from yarl import URL
 
 from .abc import AbstractCookieJar
 from .helpers import is_ip_address
-from .typedefs import LooseCookies, PathLike
+from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ('CookieJar', 'DummyCookieJar')
 
@@ -185,7 +185,7 @@ class CookieJar(AbstractCookieJar):
 
         self._do_expiration()
 
-    def filter_cookies(self, request_url: URL=URL()) -> 'BaseCookie[str]':
+    def filter_cookies(self, request_url: StrOrURL=URL()) -> 'BaseCookie[str]':
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
         request_url = URL(request_url)
@@ -353,5 +353,5 @@ class DummyCookieJar(AbstractCookieJar):
                        response_url: URL=URL()) -> None:
         pass
 
-    def filter_cookies(self, request_url: URL) -> 'BaseCookie[str]':
+    def filter_cookies(self, request_url: StrOrURL) -> 'BaseCookie[str]':
         return SimpleCookie()

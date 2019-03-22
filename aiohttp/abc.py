@@ -20,7 +20,7 @@ from multidict import CIMultiDict  # noqa
 from yarl import URL
 
 from .helpers import get_running_loop
-from .typedefs import LooseCookies
+from .typedefs import LooseCookies, StrOrURL
 
 if TYPE_CHECKING:  # pragma: no cover
     from .web_request import BaseRequest, Request
@@ -156,7 +156,7 @@ class AbstractCookieJar(Sized, IterableBase):
         """Update cookies."""
 
     @abstractmethod
-    def filter_cookies(self, request_url: URL) -> 'BaseCookie[str]':
+    def filter_cookies(self, request_url: StrOrURL) -> 'BaseCookie[str]':
         """Return the jar's cookies filtered by their attributes."""
 
 
