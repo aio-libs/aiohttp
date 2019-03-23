@@ -1,0 +1,2 @@
+Fix dropped connections on graceful shutdown
+This fixes a bug introduced in dd30b2af1fd0d643e02ef5023f1d8a68a75b5301
