@@ -23,10 +23,6 @@ class ForceExit(SystemExit):
     code = 1
 
 
-def _force_exit() -> None:
-    raise ForceExit()
-
-
 class BaseSite(ABC):
     __slots__ = ('_runner', '_shutdown_timeout', '_ssl_context', '_backlog',
                  '_server')
@@ -169,6 +165,7 @@ class BaseRunner(ABC):
         self._kwargs = kwargs
         self._server = None  # type: Optional[Server]
         self._sites = []  # type: List[BaseSite]
+        self._close_event = None  # type: Optional[asyncio.Event]
 
     @property
     def server(self) -> Optional[Server]:
@@ -196,8 +193,8 @@ class BaseRunner(ABC):
         if self._handle_signals:
             try:
                 self._close_event = asyncio.Event()
-                loop.add_signal_handler(signal.SIGINT, self.close)
-                loop.add_signal_handler(signal.SIGTERM, self.close)
+                loop.add_signal_handler(signal.SIGINT, self._sig_close)
+                loop.add_signal_handler(signal.SIGTERM, self._sig_close)
             except NotImplementedError:  # pragma: no cover
                 # add_signal_handler is not implemented on Windows
                 pass
@@ -209,6 +206,8 @@ class BaseRunner(ABC):
         pass  # pragma: no cover
 
     async def wait_for_close(self) -> None:
+        if self._close_event is None:
+            raise RuntimeError("Signal handling is not enabled")
         await self._close_event.wait()
 
     async def cleanup(self) -> None:
@@ -234,9 +233,11 @@ class BaseRunner(ABC):
                 # remove_signal_handler is not implemented on Windows
                 pass
 
-    def close(self) -> None:
+    def _sig_close(self) -> None:
+        if self._close_event is None:
+            raise RuntimeError("Signal handling is not enabled")
         if self._close_event.is_set():
-            _force_exit()
+            raise ForceExit()
         self._close_event.set()
 
     @abstractmethod
