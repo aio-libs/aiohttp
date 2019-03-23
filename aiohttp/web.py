@@ -105,7 +105,7 @@ from .web_runner import (
     AppRunner,
     BaseRunner,
     BaseSite,
-    GracefulExit,
+    ForceExit,
     ServerRunner,
     SockSite,
     TCPSite,
@@ -225,7 +225,7 @@ __all__ = (
     'AppRunner',
     'BaseRunner',
     'BaseSite',
-    'GracefulExit',
+    'ForceExit',
     'ServerRunner',
     'SockSite',
     'TCPSite',
@@ -344,8 +344,8 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
             names = sorted(str(s.name) for s in runner.sites)
             print("======== Running on {} ========\n"
                   "(Press CTRL+C to quit)".format(', '.join(names)))
-        while True:
-            await asyncio.sleep(3600)  # sleep forever by 1 hour intervals
+
+        await runner.wait_for_close()
     finally:
         await runner.cleanup()
 
@@ -413,7 +413,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
                                          handle_signals=handle_signals,
                                          reuse_address=reuse_address,
                                          reuse_port=reuse_port))
-    except (GracefulExit, KeyboardInterrupt):  # pragma: no cover
+    except (ForceExit, KeyboardInterrupt):  # pragma: no cover
         pass
     finally:
         _cancel_all_tasks(loop)

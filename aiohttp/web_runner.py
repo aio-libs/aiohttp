@@ -16,15 +16,15 @@ except ImportError:
 
 
 __all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
-           'AppRunner', 'ServerRunner', 'GracefulExit')
+           'AppRunner', 'ServerRunner', 'ForceExit')
 
 
-class GracefulExit(SystemExit):
+class ForceExit(SystemExit):
     code = 1
 
 
-def _raise_graceful_exit() -> None:
-    raise GracefulExit()
+def _force_exit() -> None:
+    raise ForceExit()
 
 
 class BaseSite(ABC):
@@ -161,13 +161,14 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites')
+    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites', '_close_event')
 
     def __init__(self, *, handle_signals: bool=False, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None  # type: Optional[Server]
         self._sites = []  # type: List[BaseSite]
+        self._close_event = asyncio.Event()
 
     @property
     def server(self) -> Optional[Server]:
@@ -194,8 +195,8 @@ class BaseRunner(ABC):
 
         if self._handle_signals:
             try:
-                loop.add_signal_handler(signal.SIGINT, _raise_graceful_exit)
-                loop.add_signal_handler(signal.SIGTERM, _raise_graceful_exit)
+                loop.add_signal_handler(signal.SIGINT, self.close)
+                loop.add_signal_handler(signal.SIGTERM, self.close)
             except NotImplementedError:  # pragma: no cover
                 # add_signal_handler is not implemented on Windows
                 pass
@@ -205,6 +206,9 @@ class BaseRunner(ABC):
     @abstractmethod
     async def shutdown(self) -> None:
         pass  # pragma: no cover
+
+    async def wait_for_close(self) -> None:
+        await self._close_event.wait()
 
     async def cleanup(self) -> None:
         loop = asyncio.get_event_loop()
@@ -228,6 +232,11 @@ class BaseRunner(ABC):
             except NotImplementedError:  # pragma: no cover
                 # remove_signal_handler is not implemented on Windows
                 pass
+
+    def close(self) -> None:
+        if self._close_event.is_set():
+            _force_exit()
+        self._close_event.set()
 
     @abstractmethod
     async def _make_server(self) -> Server:
