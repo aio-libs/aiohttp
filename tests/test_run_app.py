@@ -15,7 +15,7 @@ import pytest
 
 from aiohttp import web
 from aiohttp.helpers import PY_37
-from aiohttp.test_utils import make_mocked_coro
+from aiohttp.test_utils import make_mocked_coro, unused_port
 
 # Test for features of OS' socket support
 _has_unix_domain_socks = hasattr(socket, 'AF_UNIX')
@@ -502,6 +502,64 @@ def test_sigterm() -> None:
             break
     proc.terminate()
     assert proc.wait() == 0
+
+
+_script_test_graceful_shutdown_server = """
+from aiohttp import web
+import asyncio
+
+async def handler(request):
+    await asyncio.sleep(5)
+    return web.Response(text='OK')
+
+app = web.Application()
+app.add_routes([web.get('/', handler)])
+web.run_app(app, host='localhost', port={PORT}, access_log=None)
+"""
+
+_script_test_graceful_shutdown_client = """
+import aiohttp
+import asyncio
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        async with session.get('http://localhost:{PORT}/') as resp:
+            print('CONNECT')
+            print(await resp.text())
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
+"""
+
+
+def test_graceful_shutdown() -> None:
+    skip_if_on_windows()
+
+    free_port = unused_port()
+
+    server = subprocess.Popen([
+        sys.executable, "-u", "-c",
+        _script_test_graceful_shutdown_server.format(PORT=free_port)],
+        stdout=subprocess.PIPE)
+
+    for line in server.stdout:
+        if line.startswith(b"======== Running on"):
+            break
+
+    client = subprocess.Popen([
+        sys.executable, "-u", "-c",
+        _script_test_graceful_shutdown_client.format(PORT=free_port)],
+        stdout=subprocess.PIPE)
+
+    connect = client.stdout.readline().strip()
+    assert connect == b'CONNECT'
+
+    server.terminate()
+    client.wait()
+    ok = client.stdout.readline().strip()
+
+    assert ok == b'OK'
+    assert server.wait() == 0
 
 
 def test_startup_cleanup_signals_even_on_failure(patched_loop) -> None:

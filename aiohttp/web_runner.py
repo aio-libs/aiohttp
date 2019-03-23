@@ -161,14 +161,14 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC):
-    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites', '_close_event')
+    __slots__ = ('_handle_signals', '_kwargs', '_server', '_sites',
+                 '_close_event')
 
     def __init__(self, *, handle_signals: bool=False, **kwargs: Any) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server = None  # type: Optional[Server]
         self._sites = []  # type: List[BaseSite]
-        self._close_event = asyncio.Event()
 
     @property
     def server(self) -> Optional[Server]:
@@ -195,6 +195,7 @@ class BaseRunner(ABC):
 
         if self._handle_signals:
             try:
+                self._close_event = asyncio.Event()
                 loop.add_signal_handler(signal.SIGINT, self.close)
                 loop.add_signal_handler(signal.SIGTERM, self.close)
             except NotImplementedError:  # pragma: no cover
