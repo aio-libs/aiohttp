@@ -207,8 +207,10 @@ class BaseRunner(ABC):
 
     async def wait_for_close(self) -> None:
         if self._close_event is None:
-            raise RuntimeError("Signal handling is not enabled")
-        await self._close_event.wait()
+            while True:
+                await asyncio.sleep(3600)
+        else:
+            await self._close_event.wait()
 
     async def cleanup(self) -> None:
         loop = asyncio.get_event_loop()
