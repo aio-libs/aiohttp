@@ -128,7 +128,9 @@ class TestNormalizePathMiddleware:
         ('/resource2?p1=1&p2=2', 404),
         ('/resource2/?p1=1&p2=2', 200),
         ('/resource2/a/b%2Fc', 404),
-        ('/resource2/a/b%2Fc/', 200)
+        ('/resource2/a/b%2Fc/', 200),
+        ('/resource12', 404),
+        ('/resource12345', 404)
     ])
     async def test_remove_trailing_when_necessary(self, path,
                                                   status, cli) -> None:
@@ -274,6 +276,25 @@ class TestNormalizePathMiddleware:
     async def test_cannot_remove_and_add_slash(self) -> None:
         with pytest.raises(AssertionError):
             web.normalize_path_middleware(append_slash=True, remove_slash=True)
+
+
+async def test_bug_3669(aiohttp_client):
+    async def paymethod(request):
+        return web.Response(text="OK")
+
+    app = web.Application()
+    app.router.add_route('GET', '/paymethod', paymethod)
+    app.middlewares.append(
+        web.normalize_path_middleware(append_slash=False, remove_slash=True)
+    )
+
+    client = await aiohttp_client(
+        app, server_kwargs={'skip_url_asserts': True}
+    )
+
+    resp = await client.get('/paymethods')
+    assert resp.status == 404
+    assert resp.url.path != '/paymethod'
 
 
 async def test_old_style_middleware(loop, aiohttp_client) -> None:
