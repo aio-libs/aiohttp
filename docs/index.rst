@@ -178,7 +178,7 @@ Policy for Backward Incompatible Changes
 *aiohttp* keeps backward compatibility.
 
 After deprecating some *Public API* (method, class, function argument,
-etc.) the library guaranties the usage of *deprecated API* is still
+etc.) the library guarantees the usage of *deprecated API* is still
 allowed at least for a year and half after publishing new release with
 deprecation.
 
