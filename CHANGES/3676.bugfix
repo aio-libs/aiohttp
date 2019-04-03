@@ -1,0 +1,1 @@
+Stop iterating over chunk when last chunk reading provided the end flag.

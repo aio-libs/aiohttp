@@ -49,14 +49,16 @@ class ChunkTupleAsyncStreamIterator:
 
     def __init__(self, stream: 'StreamReader') -> None:
         self._stream = stream
+        self._hasnext = True
 
     def __aiter__(self) -> 'ChunkTupleAsyncStreamIterator':
         return self
 
     async def __anext__(self) -> Tuple[bytes, bool]:
-        rv = await self._stream.readchunk()
-        if rv == (b'', False):
-            raise StopAsyncIteration  # NOQA
+        if self._hasnext:
+            raise StopAsyncIteration  # NOQA            
+        (rv, end) = await self._stream.readchunk()
+        self._hasnext = not end
         return rv
 
 
