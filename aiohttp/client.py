@@ -166,7 +166,8 @@ class ClientSession:
         '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
-        '_ws_response_class', '_trace_configs')
+        '_ws_response_class', '_trace_configs', '_session_proxy',
+        '_session_proxy_auth', '_session_proxy_headers')
 
     def __init__(self, *, connector: Optional[BaseConnector]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
@@ -188,7 +189,10 @@ class ClientSession:
                  auto_decompress: bool=True,
                  trust_env: bool=False,
                  requote_redirect_url: bool=True,
-                 trace_configs: Optional[List[TraceConfig]]=None) -> None:
+                 trace_configs: Optional[List[TraceConfig]]=None,
+                 proxy: Optional[StrOrURL]=None,
+                 proxy_auth: Optional[BasicAuth]=None,
+                 proxy_headers: Optional[LooseHeaders]=None) -> None:
 
         if loop is None:
             if connector is not None:
@@ -252,6 +256,10 @@ class ClientSession:
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
         self._requote_redirect_url = requote_redirect_url
+
+        self._session_proxy = proxy
+        self._session_proxy_auth = proxy_auth
+        self._session_proxy_headers = proxy_headers
 
         # Convert to list of tuples
         if headers:
@@ -366,9 +374,19 @@ class ClientSession:
             for i in skip_auto_headers:
                 skip_headers.add(istr(i))
 
-        if proxy is not None:
+        if proxy is not None and self._session_proxy is None:
             try:
                 proxy = URL(proxy)
+            except ValueError:
+                raise InvalidURL(proxy)
+
+        if proxy is None and self._session_proxy is not None:
+            try:
+                proxy = self._session_proxy
+                proxy_auth = self._session_proxy_auth
+                proxy_headers = self._prepare_headers(
+                    self._session_proxy_headers
+                )
             except ValueError:
                 raise InvalidURL(proxy)
 
