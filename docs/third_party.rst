@@ -109,6 +109,9 @@ They may be perfect or not -- we don't know.
 Please add your library reference here first and after some time
 period ask to raise the status.
 
+- `aiomixcloud <https://github.com/amikrop/aiomixcloud>`
+  Mixcloud API wrapper for Python and Async IO.
+
 - `aiohttp-cache <https://github.com/cr0hn/aiohttp-cache>`_ A cache
   system for aiohttp server.
 
