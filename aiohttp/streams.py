@@ -346,31 +346,18 @@ class StreamReader(AsyncStreamReaderMixin):
                         'Multiple access to StreamReader in eof state, '
                         'might be infinite loop.', stack_info=True)
 
-        if not n:
-            return b''
+        blocks = []  # type: List[bytes]
+        while n != 0:
+            block = await self.readany(n)
+            if not block:
+                break
+            blocks.append(block)
+            if n > 0:
+                n -= len(block)
+                assert n >= 0
+        return b''.join(blocks)
 
-        if n < 0:
-            # This used to just loop creating a new waiter hoping to
-            # collect everything in self._buffer, but that would
-            # deadlock if the subprocess sends more than self.limit
-            # bytes.  So just call self.readany() until EOF.
-            blocks = []
-            while True:
-                block = await self.readany()
-                if not block:
-                    break
-                blocks.append(block)
-            return b''.join(blocks)
-
-        # TODO: should be `if` instead of `while`
-        # because waiter maybe triggered on chunk end,
-        # without feeding any data
-        while not self._buffer and not self._eof:
-            await self._wait('read')
-
-        return self._read_nowait(n)
-
-    async def readany(self) -> bytes:
+    async def readany(self, n: int=-1) -> bytes:
         if self._exception is not None:
             raise self._exception
 
@@ -380,7 +367,7 @@ class StreamReader(AsyncStreamReaderMixin):
         while not self._buffer and not self._eof:
             await self._wait('readany')
 
-        return self._read_nowait(-1)
+        return self._read_nowait(n)
 
     async def readchunk(self) -> Tuple[bytes, bool]:
         """Returns a tuple of (data, end_of_http_chunk). When chunked transfer
@@ -416,17 +403,13 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks = []  # type: List[bytes]
-        while n > 0:
-            block = await self.read(n)
-            if not block:
-                partial = b''.join(blocks)
-                raise asyncio.streams.IncompleteReadError(
-                    partial, len(partial) + n)
-            blocks.append(block)
-            n -= len(block)
+        if n < 0:
+            raise ValueError('Number of bytes can not be negative')
 
-        return b''.join(blocks)
+        block = await self.read(n)
+        if len(block) < n:
+            raise asyncio.streams.IncompleteReadError(block, n)
+        return block
 
     def read_nowait(self, n: int=-1) -> bytes:
         # default was changed to be consistent with .read(-1)

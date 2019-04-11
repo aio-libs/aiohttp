@@ -29,16 +29,24 @@ Reading Methods
    Read up to *n* bytes. If *n* is not provided, or set to ``-1``, read until
    EOF and return all read bytes.
 
+   This function blocks asynchronously until either:
+
+   * reads *n* bytes (if *n* is not provided or set to ``-1``),
+   * an exception raised,
+   * EOF reached.
+
+   On success, the function returns bytes read.
    If the EOF was received and the internal buffer is empty, return an
    empty bytes object.
 
    :param int n: how many bytes to read, ``-1`` for the whole stream.
 
-   :return bytes: the given data
+   :return bytes: the given data.
 
-.. comethod:: StreamReader.readany()
+.. comethod:: StreamReader.readany(n=-1)
 
    Read next data portion for the stream.
+   If *n* is specified, limit size of portion to *n* bytes.
 
    Returns immediately if internal buffer has a data.
 
@@ -49,11 +57,11 @@ Reading Methods
    Read exactly *n* bytes.
 
    Raise an :exc:`asyncio.IncompleteReadError` if the end of the
-   stream is reached before *n* can be read, the
+   stream is reached before *n* bytes can be read, the
    :attr:`asyncio.IncompleteReadError.partial` attribute of the
-   exception contains the partial read bytes.
+   exception contains the partially read bytes.
 
-   :param int n: how many bytes to read.
+   :param int n: how many bytes to read. Positive or zero.
 
    :return bytes: the given data
 

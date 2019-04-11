@@ -403,8 +403,9 @@ class TestStreamReader:
         stream = self._make_one()
         stream.feed_data(self.DATA)
 
-        data = await stream.readexactly(-1)
-        assert b'' == data
+        with pytest.raises(ValueError):
+            await stream.readexactly(-1)
+
         stream.feed_eof()
         data = await stream.read()
         assert self.DATA == data
