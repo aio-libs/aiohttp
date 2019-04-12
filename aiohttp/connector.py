@@ -281,7 +281,7 @@ class BaseConnector:
         self._loop.call_exception_handler(context)
 
     def __enter__(self) -> 'BaseConnector':
-        warnings.warn('"witn Connector():" is deprecated, '
+        warnings.warn('"with Connector():" is deprecated, '
                       'use "async with Connector():" instead',
                       DeprecationWarning)
         return self
