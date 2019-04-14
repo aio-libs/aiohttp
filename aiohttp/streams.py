@@ -122,8 +122,8 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer = collections.deque()  # type: Deque[bytes]
         self._buffer_offset = 0
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[bool]]
-        self._eof_waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._waiter = None  # type: Optional[asyncio.Future[None]]
+        self._eof_waiter = None  # type: Optional[asyncio.Future[None]]
         self._exception = None  # type: Optional[BaseException]
         self._timer = timer
         self._eof_callbacks = []  # type: List[Callable[[], None]]
@@ -156,8 +156,8 @@ class StreamReader(AsyncStreamReaderMixin):
 
         waiter = self._eof_waiter
         if waiter is not None:
-            set_exception(waiter, exc)
             self._eof_waiter = None
+            set_exception(waiter, exc)
 
     def on_eof(self, callback: Callable[[], None]) -> None:
         if self._eof:
@@ -174,12 +174,12 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, True)
+            set_result(waiter, None)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            set_result(waiter, True)
+            set_result(waiter, None)
 
         for cb in self._eof_callbacks:
             try:
@@ -240,7 +240,7 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, False)
+            set_result(waiter, None)
 
         if (self._size > self._high_water and
                 not self._protocol._reading_paused):
@@ -279,7 +279,7 @@ class StreamReader(AsyncStreamReaderMixin):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, False)
+            set_result(waiter, None)
 
     async def _wait(self, func_name: str) -> None:
         # StreamReader uses a future to link the protocol feed_data() method
@@ -388,31 +388,29 @@ class StreamReader(AsyncStreamReaderMixin):
         of the data corresponds to the end of a HTTP chunk , otherwise it is
         always False.
         """
-        if self._exception is not None:
-            raise self._exception
+        while True:
+            if self._exception is not None:
+                raise self._exception
 
-        if not self._buffer and not self._eof:
-            if (self._http_chunk_splits and
-                    self._cursor == self._http_chunk_splits[0]):
-                # end of http chunk without available data
-                self._http_chunk_splits = self._http_chunk_splits[1:]
-                return (b"", True)
-            await self._wait('readchunk')
-
-        if not self._buffer and not self._http_chunk_splits:
-            # end of file
-            return (b"", False)
-        elif self._http_chunk_splits is not None:
             while self._http_chunk_splits:
-                pos = self._http_chunk_splits[0]
-                self._http_chunk_splits = self._http_chunk_splits[1:]
+                pos = self._http_chunk_splits.pop(0)
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
                     return (self._read_nowait(pos-self._cursor), True)
-            return (self._read_nowait(-1), False)
-        else:
-            return (self._read_nowait_chunk(-1), False)
+                internal_logger.warning('Skipping HTTP chunk end due to data '
+                                        'consumption beyond chunk boundary')
+
+            if self._buffer:
+                return (self._read_nowait_chunk(-1), False)
+                # return (self._read_nowait(-1), False)
+
+            if self._eof:
+                # Special case for signifying EOF.
+                # (b'', True) is not a final return value actually.
+                return (b'', False)
+
+            await self._wait('readchunk')
 
     async def readexactly(self, n: int) -> bytes:
         if self._exception is not None:
@@ -462,11 +460,17 @@ class StreamReader(AsyncStreamReaderMixin):
         self._size -= len(data)
         self._cursor += len(data)
 
+        chunk_splits = self._http_chunk_splits
+        # Prevent memory leak: drop useless chunk splits
+        while chunk_splits and chunk_splits[0] < self._cursor:
+            chunk_splits.pop(0)
+
         if self._size < self._low_water and self._protocol._reading_paused:
             self._protocol.resume_reading()
         return data
 
     def _read_nowait(self, n: int) -> bytes:
+        """ Read not more than n bytes, or whole buffer is n == -1 """
         chunks = []
 
         while self._buffer:
@@ -537,7 +541,7 @@ class DataQueue(Generic[_T]):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
-        self._waiter = None  # type: Optional[asyncio.Future[bool]]
+        self._waiter = None  # type: Optional[asyncio.Future[None]]
         self._exception = None  # type: Optional[BaseException]
         self._size = 0
         self._buffer = collections.deque()  # type: Deque[Tuple[_T, int]]
@@ -560,8 +564,8 @@ class DataQueue(Generic[_T]):
 
         waiter = self._waiter
         if waiter is not None:
-            set_exception(waiter, exc)
             self._waiter = None
+            set_exception(waiter, exc)
 
     def feed_data(self, data: _T, size: int=0) -> None:
         self._size += size
@@ -570,7 +574,7 @@ class DataQueue(Generic[_T]):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, True)
+            set_result(waiter, None)
 
     def feed_eof(self) -> None:
         self._eof = True
@@ -578,7 +582,7 @@ class DataQueue(Generic[_T]):
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_result(waiter, False)
+            set_result(waiter, None)
 
     async def read(self) -> _T:
         if not self._buffer and not self._eof:

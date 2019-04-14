@@ -500,7 +500,7 @@ class StaticResource(PrefixResource):
                  expect_handler: Optional[_ExpectHandler]=None,
                  chunk_size: int=256 * 1024,
                  show_index: bool=False, follow_symlinks: bool=False,
-                 append_version: bool=False)-> None:
+                 append_version: bool=False) -> None:
         super().__init__(prefix, name=name)
         try:
             directory = Path(directory)
