@@ -1,5 +1,17 @@
 [build-system]
-requires = ["fortunate-pkg"]
+#requires = ["../fortunate_pkg"]
+#requires = ["fortunate-pkg", "setuptools>=40.2", "wheel"]
+requires = ["./build-aiohttp[pep517]"]
+
+#build-backend = "setuptools.build_meta"
+build-backend = "build_aiohttp.api"
+
+# NOTE: in-tree backend path usage is not yet implemented in pip
+# Ref: https://www.python.org/dev/peps/pep-0517/#in-tree-build-backends
+backend-path = "./build-aiohttp"
+
+[tool.fortunate-pkg.build-system]
+optionally-requires = ["Cython"]
 
 [tool.towncrier]
 package = "aiohttp"

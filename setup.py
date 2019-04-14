@@ -7,13 +7,6 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
                               DistutilsPlatformError)
 
 from setuptools import Extension, setup
-try:
-    from fortunate_pkg import maybe_install_pkgs
-except ImportError:
-    import os
-    os.system('echo "Running outside of pip\'s isolated virtualenv."')
-else:
-    maybe_install_pkgs(('cython', ))
 
 
 if sys.version_info < (3, 5, 3):
@@ -23,11 +16,15 @@ here = pathlib.Path(__file__).parent
 
 try:
     from Cython.Build import cythonize
+    print('😄 Cython got imported.')
     USE_CYTHON = True
 except ImportError:
+    print('😔 Cython import failed.', file=sys.stderr)
     USE_CYTHON = False
 
-if (here / '.git').exists() and not USE_CYTHON:
+IS_BUILD = {'sdist', 'bdist_wheel'}.intersection(sys.argv)
+
+if IS_BUILD and (here / '.git').exists() and not USE_CYTHON:
     print("Install cython when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  pip install cython", file=sys.stderr)
