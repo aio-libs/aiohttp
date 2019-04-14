@@ -569,3 +569,8 @@ are changed so that aiohttp itself can wait on the underlying
 connection to close. Please follow issue `#1925
 <https://github.com/aio-libs/aiohttp/issues/1925>`_ for the progress
 on this.
+
+HTTP Pipelining
+---------------
+
+aiohttp does not support HTTP/HTTPS pipelining.
