@@ -1,6 +1,6 @@
 [build-system]
 # NOTE: Pip will install these dependencies into an isolated venv
-requires = ["fortunate-pkg[pep517] == 0.2.0"]
+requires = ["fortunate-pkg[pep517] == 0.2.1"]
 
 # NOTE: Modern setuptools implements a PEP 517 backend available at:
 # build-backend = "setuptools.build_meta"
