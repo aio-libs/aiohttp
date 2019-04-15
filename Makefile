@@ -3,7 +3,6 @@
 all: test
 
 .install-deps: $(shell find requirements -type f)
-	pip install -r requirements/cython.txt
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 

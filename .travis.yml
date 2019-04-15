@@ -17,7 +17,6 @@ python:
 
 install:
 - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
-- pip install -r requirements/cython.txt
 - pip install -r requirements/ci.txt
 
 script:
@@ -155,7 +154,6 @@ jobs:
     name: Checking Towncrier fragments
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt
     - pip install -r requirements/towncrier.txt
     script:
@@ -173,7 +171,6 @@ jobs:
     name: Linting source code with mypy
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt
     script:
     - mypy aiohttp
@@ -182,7 +179,6 @@ jobs:
     name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose sdist bdist_wheel
@@ -230,7 +226,6 @@ jobs:
     - docker
     script:
     - ./tools/run_docker.sh "aiohttp"
-    - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt  # to compile *.c files by Cython
     deploy:
       <<: *deploy_step

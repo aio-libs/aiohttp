@@ -18,7 +18,7 @@ build-backend = "fortunate_pkg.pep517_backend"
 # NOTE: complete this will be ignored. This will ensure that Cython is
 # NOTE: available in the build venv if the external environments
 # NOTE: allow it.
-optionally-requires = ["Cython"]
+optionally-requires = ["Cython == 0.29.6"]
 
 [tool.towncrier]
 package = "aiohttp"
