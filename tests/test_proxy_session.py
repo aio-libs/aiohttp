@@ -12,10 +12,7 @@ def proxy_test_server(aiohttp_raw_server, loop, monkeypatch):
 
     _patch_ssl_transport(monkeypatch)
 
-    default_response = dict(
-        status=200,
-        headers=None,
-        body=None)
+    default_response = {'status': 200, 'headers': None, 'body': None}
 
     proxy_mock = mock.Mock()
 
