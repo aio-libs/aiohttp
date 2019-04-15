@@ -17,6 +17,7 @@ print(setuptools.__file__)
 print(__file__)
 print(sys.argv)
 print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..').iterdir()))
+print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay').iterdir()))
 if sys.platform == 'linux':
     print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'python3.7' / 'lib' / 'site-packages').iterdir()))
 else:
