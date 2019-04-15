@@ -8,6 +8,14 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
 
 from setuptools import Extension, setup
 
+# DEBUG on
+import os
+import setuptools
+print(os.getenv('PYTHONPATH'))
+print(setuptools.__file__)
+print(__file__)
+# DEBUG off
+
 
 if sys.version_info < (3, 5, 3):
     raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
