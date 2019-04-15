@@ -1,16 +1,23 @@
 [build-system]
-#requires = ["../fortunate_pkg"]
-#requires = ["fortunate-pkg", "setuptools>=40.2", "wheel"]
-requires = ["./build-aiohttp[pep517]"]
+# NOTE: Pip will install these dependencies into an isolated venv
+requires = ["fortunate-pkg[pep517] == 0.2.0"]
 
-#build-backend = "setuptools.build_meta"
-build-backend = "build_aiohttp.api"
+# NOTE: Modern setuptools implements a PEP 517 backend available at:
+# build-backend = "setuptools.build_meta"
+# NOTE: But we going to use a custom one since our requirements are
+# NOTE: too project-specific.
+build-backend = "fortunate_pkg.pep517_backend"
 
 # NOTE: in-tree backend path usage is not yet implemented in pip
 # Ref: https://www.python.org/dev/peps/pep-0517/#in-tree-build-backends
-backend-path = "./build-aiohttp"
+# NOTE: future config could look like this:
+# backend-path = "./build-aiohttp"
 
 [tool.fortunate-pkg.build-system]
+# NOTE: These distribution will be `pip install`ed but failure to
+# NOTE: complete this will be ignored. This will ensure that Cython is
+# NOTE: available in the build venv if the external environments
+# NOTE: allow it.
 optionally-requires = ["Cython"]
 
 [tool.towncrier]
