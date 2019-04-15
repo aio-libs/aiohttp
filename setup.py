@@ -17,6 +17,7 @@ print(setuptools.__file__)
 print(__file__)
 print(sys.argv)
 print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'Lib' / 'site-packages').iterdir()))
+print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..').iterdir()))
 # DEBUG off
 
 
