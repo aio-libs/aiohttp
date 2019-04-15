@@ -20,7 +20,8 @@ print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..').iterdir()))
 print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay').iterdir()))
 print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib').iterdir()))
 if sys.platform == 'linux':
-    print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib' / 'site-packages').iterdir()))
+    print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib' / 'python3.7').iterdir()))
+    print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib' / 'python3.7' / 'site-packages').iterdir()))
 else:
     print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'Lib' / 'site-packages').iterdir()))
 # DEBUG off
