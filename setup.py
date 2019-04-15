@@ -18,8 +18,9 @@ print(__file__)
 print(sys.argv)
 print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..').iterdir()))
 print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay').iterdir()))
+print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib').iterdir()))
 if sys.platform == 'linux':
-    print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'python3.7' / 'lib' / 'site-packages').iterdir()))
+    print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib' / 'site-packages').iterdir()))
 else:
     print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'Lib' / 'site-packages').iterdir()))
 # DEBUG off
