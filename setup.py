@@ -14,6 +14,7 @@ import setuptools
 print(os.getenv('PYTHONPATH'))
 print(setuptools.__file__)
 print(__file__)
+print(sys.argv)
 # DEBUG off
 
 
