@@ -24,7 +24,7 @@ if sys.platform == 'linux':
     print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib' / 'python3.7' / 'site-packages').iterdir()))
 else:
     print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'Lib' / 'site-packages').iterdir()))
-raise RuntimeError
+#raise RuntimeError
 # DEBUG off
 
 
