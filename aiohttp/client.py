@@ -437,16 +437,14 @@ class ClientSession:
                                          "with AUTH argument or credentials "
                                          "encoded in URL")
 
-                    session_cookies = self._cookie_jar.filter_cookies(url)
+                    all_cookies = self._cookie_jar.filter_cookies(url)
 
                     if cookies is not None:
                         tmp_cookie_jar = CookieJar()
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
                         if req_cookies:
-                            session_cookies.load(req_cookies)
-
-                    cookies = session_cookies
+                            all_cookies.load(req_cookies)
 
                     if proxy is not None:
                         proxy = URL(proxy)
@@ -460,7 +458,7 @@ class ClientSession:
                     req = self._request_class(
                         method, url, params=params, headers=headers,
                         skip_auto_headers=skip_headers, data=data,
-                        cookies=cookies, auth=auth, version=version,
+                        cookies=all_cookies, auth=auth, version=version,
                         compress=compress, chunked=chunked,
                         expect100=expect100, loop=self._loop,
                         response_class=self._response_class,

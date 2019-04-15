@@ -96,7 +96,7 @@ def normalize_path_middleware(
             if merge_slashes and append_slash:
                 paths_to_check.append(
                     re.sub('//+', '/', path + '/'))
-            if merge_slashes and remove_slash:
+            if merge_slashes and remove_slash and path.endswith('/'):
                 merged_slashes = re.sub('//+', '/', path)
                 paths_to_check.append(merged_slashes[:-1])
 
