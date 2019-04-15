@@ -8,26 +8,6 @@ from distutils.errors import (CCompilerError, DistutilsExecError,
 
 from setuptools import Extension, setup
 
-# DEBUG on
-import os
-import pathlib
-import setuptools
-print(os.getenv('PYTHONPATH'))
-print(setuptools.__file__)
-print(__file__)
-print(sys.argv)
-print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..').iterdir()))
-#print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay').iterdir()))
-#print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib').iterdir()))
-print(list((pathlib.Path(setuptools.__file__) / '..').resolve().iterdir()))
-print(list((pathlib.Path(setuptools.__file__) / '..' / '..').resolve().iterdir()))
-#if sys.platform == 'linux':
-#    #print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'lib' / 'python3.7' / 'site-packages').iterdir()))
-#else:
-#    print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'Lib' / 'site-packages').iterdir()))
-#raise RuntimeError
-# DEBUG off
-
 
 if sys.version_info < (3, 5, 3):
     raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
