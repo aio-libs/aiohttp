@@ -10,11 +10,13 @@ from setuptools import Extension, setup
 
 # DEBUG on
 import os
+import pathlib
 import setuptools
 print(os.getenv('PYTHONPATH'))
 print(setuptools.__file__)
 print(__file__)
 print(sys.argv)
+print(list((pathlib.Path(os.getenv('PYTHONPATH')) / '..' / 'overlay' / 'Lib' / 'site-packages').iterdir()))
 # DEBUG off
 
 
