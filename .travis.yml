@@ -16,7 +16,7 @@ python:
 - &pypy3 pypy3.5
 
 install:
-- &upgrade_python_toolset pip install --upgrade 'pip<19' wheel setuptools
+- &upgrade_python_toolset pip install --upgrade pip wheel setuptools
 - pip install -r requirements/cython.txt
 - pip install -r requirements/ci.txt
 
