@@ -4,4 +4,4 @@ mypy-extensions==0.4.1; implementation_name=="cpython"
 
 -r ci-wheel.txt
 -r doc.txt
--e .
+.
