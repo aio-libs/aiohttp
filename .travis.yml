@@ -179,7 +179,8 @@ jobs:
     name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/ci.txt -r requirements/doc.txt
+    - pip install pep517 -r requirements/ci.txt -r requirements/doc.txt
+    - python -m pep517.build --source --binary --out-dir ./dist/ .
     script:
     - python -m setup check --metadata --restructuredtext --strict --verbose
     - twine check dist/*
