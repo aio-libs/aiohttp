@@ -535,7 +535,7 @@ advise against it. :class:`aiohttp.ClientSession` maintains a
 connection pool. Contained connections can be reused if necessary to gain some
 performance improvements. If you plan on reusing the session, a.k.a. creating
 **persistent session**, you can use either :ref:`aiohttp-web-signals` or
-:attr:`Application.cleanup_ctx`. If possible we advise using :attr:`Application.cleanup_ctx`,
+:ref:`aiohttp-web-cleanup-ctx`. If possible we advise using :ref:`aiohttp-web-cleanup-ctx`,
 as it results in more compact code::
 
     app.cleanup_ctx.append(persistent_session)
