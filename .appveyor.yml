@@ -44,6 +44,10 @@ deploy_script:
           Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username aio-libs-bot --password $env:PYPI_PASSWD --skip-existing"
       }
 
+on_finish:
+  - ps: >-
+      $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
 #notifications:
 #  - provider: Webhook
 #    url: https://ci.appveyor.com/api/github/webhook?id=08c7793w1tp839fl
