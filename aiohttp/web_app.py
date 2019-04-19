@@ -389,7 +389,7 @@ class Application(MutableMapping[str, Any]):
 
     def _prepare_middleware(self) -> Iterator[_Middleware]:
         yield from reversed(self._middlewares)
-        yield _fix_request_current_app
+        yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
         loop = asyncio.get_event_loop()

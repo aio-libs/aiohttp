@@ -113,8 +113,8 @@ def normalize_path_middleware(
     return impl
 
 
-async def _fix_request_current_app(
-    request: Request, handler: _Handler
-) -> StreamResponse:
-    with request.match_info.set_current_app(request.app):
-        return await handler(request)
+def _fix_request_current_app(app: "Application") -> _Middleware:
+    async def impl(request: Request, handler: _Handler) -> StreamResponse:
+        with request.match_info.set_current_app(app):
+            return await handler(request)
+    return impl
