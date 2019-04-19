@@ -24,6 +24,7 @@ install:
     tools/build.cmd %PYTHON%\python.exe -m
     pip install -U pip wheel setuptools
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
+  - rm -rf aiohttp
 
 build_script:
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install pep517"
