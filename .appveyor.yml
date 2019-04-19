@@ -14,7 +14,9 @@ environment:
 init:
   - "chcp 65001"
   - ps: >-
-      iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+      if($env:appveyor_repo_tag -eq 'True') {
+        iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+      }
 
 install:
   # Ensure the Git Submoduldes have been pulled down too
@@ -48,7 +50,10 @@ deploy_script:
 
 on_finish:
   - ps: >-
-      $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+      if($env:appveyor_repo_tag -eq 'True') {
+        $blockRdp = $true
+        iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+      }
 
 #notifications:
 #  - provider: Webhook
