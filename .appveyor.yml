@@ -22,15 +22,17 @@ install:
 
   - >-
     tools/build.cmd %PYTHON%\python.exe -m
-    pip install -U pip wheel setuptools fortunate_pkg[pep517]
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install --no-build-isolation -r requirements/ci.txt"
+    pip install -U pip wheel setuptools
+  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 build_script:
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install pep517"
   - "tools/build.cmd %PYTHON%\\python.exe -m pep517.build --source --binary --out-dir ./dist/ ."
 
 test_script:
+  - mv aiohttp aiohttp.bak
   - "tools/build.cmd %PYTHON%\\python.exe -m pytest -c pytest.ci.ini --cov-report xml"
+  - mv aiohttp.bak aiohttp
 
 after_test:
   - "tools/build.cmd %PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
