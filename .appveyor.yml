@@ -51,7 +51,8 @@ deploy_script:
 on_finish:
   - ps: >-
       if($env:APPVEYOR_RDP_DEBUG -eq 'True') {
-        $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+        $blockRdp = $true
+        iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
       }
 
 #notifications:
