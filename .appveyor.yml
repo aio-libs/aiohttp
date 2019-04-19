@@ -13,6 +13,10 @@ environment:
 
 init:
   - "chcp 65001"
+  - ps: >-
+      if($env:APPVEYOR_RDP_DEBUG -eq 'True') {
+        iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+      }
 
 install:
   # Ensure the Git Submoduldes have been pulled down too
@@ -40,6 +44,13 @@ deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
           Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username aio-libs-bot --password $env:PYPI_PASSWD --skip-existing"
+      }
+
+on_finish:
+  - ps: >-
+      if($env:APPVEYOR_RDP_DEBUG -eq 'True') {
+        $blockRdp = $true
+        iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
       }
 
 #notifications:
