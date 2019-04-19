@@ -22,7 +22,7 @@ install:
 
   - >-
     tools/build.cmd %PYTHON%\python.exe -m
-    pip install -U pip wheel setuptools
+    pip install -U pip wheel setuptools fortunate_pkg[pep517]
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install --no-build-isolation -r requirements/ci.txt"
 
 build_script:
