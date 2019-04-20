@@ -3,6 +3,7 @@
 all: test
 
 .install-deps: $(shell find requirements -type f)
+	pip install fortunate_pkg[pep517] cython
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
