@@ -57,3 +57,4 @@ virtualenv.py
 .pytest_cache
 .vscode
 .mypy_cache
+pip-wheel-metadata/
