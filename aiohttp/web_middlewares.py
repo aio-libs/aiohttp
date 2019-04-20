@@ -33,7 +33,7 @@ async def _check_request_resolves(request: Request,
 
 def middleware(f: _Func) -> _Func:
     warnings.warn(
-        'Middleware decorator is depreciated and its behaviour is default, '
+        'Middleware decorator is deprecated and its behaviour is default, '
         'you can simply remove this decorator.', DeprecationWarning)
     return f
 
@@ -114,6 +114,7 @@ def normalize_path_middleware(
 
 
 def _fix_request_current_app(app: "Application") -> _Middleware:
+
     async def impl(request: Request, handler: _Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
             return await handler(request)
