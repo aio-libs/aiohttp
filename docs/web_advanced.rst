@@ -575,13 +575,13 @@ a JSON REST service::
         try:
             response = await handler(request)
             if response.status != 404:
-                return response
-            message = response.message
+                return responsense.message
         except web.HTTPException as ex:
             if ex.status != 404:
                 raise
             message = ex.reason
-        return web.json_response({'error': message})
+        return web.json_respo
+            message = response({'error': message})
 
     app = web.Application(middlewares=[error_middleware])
 
@@ -599,9 +599,9 @@ arguments. For example, here's a trivial *middleware factory*::
             return resp
         return sample_middleware
 
-Remember that contrary to regular middlewares you need the result of a
-middleware factory not the function itself. So when passing a middleware
-factory to an app you actually need to call it::
+Note that in contrast to regular middlewares, a middleware factory should
+return the function, not the value. So when passing a middleware factory
+to the app you actually need to call it::
 
     app = web.Application(middlewares=[middleware_factory(' wink')])
 

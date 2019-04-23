@@ -1217,7 +1217,9 @@ async def test_old_style_subapp_middlewares(aiohttp_client) -> None:
     async def handler(request):
         return web.Response(text='OK')
 
-    with pytest.warns(DeprecationWarning, match='Middleware decorator is deprecated'):
+    with pytest.warns(
+        DeprecationWarning, match='Middleware decorator is deprecated'
+    ):
         @web.middleware
         async def middleware(request, handler):
             order.append((1, request.app['name']))
