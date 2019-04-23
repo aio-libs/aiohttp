@@ -13,7 +13,7 @@ python:
 - 3.6
 - &mainstream_python 3.7
 - nightly
-- &pypy3 pypy3.5
+- &pypy3 pypy3.5-6.0.0
 
 install:
 - &upgrade_python_toolset pip install --upgrade 'pip<19' wheel setuptools
@@ -58,7 +58,7 @@ _helpers:
   language: generic
   python: *pypy3
   env:
-  - &env_pypy3 PYTHON_VERSION=pypy3.5-5.10.0
+  - &env_pypy3 PYTHON_VERSION=pypy3.6-7.1.1
   - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
   - &env_path PATH="$PYENV_ROOT/bin:$PATH"
   before_install:
