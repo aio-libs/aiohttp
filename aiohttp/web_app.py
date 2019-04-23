@@ -55,7 +55,7 @@ if TYPE_CHECKING:  # pragma: no cover
     _Handler = Callable[[Request], Awaitable[StreamResponse]]
     _Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
     _Middlewares = FrozenList[_Middleware]
-    _MiddlewaresHandlers = Optional[Sequence[_Middleware]]
+    _MiddlewaresHandlers = Sequence[_Middleware]
     _Subapps = List['Application']
 else:
     # No type checker mode, skip types
@@ -64,7 +64,7 @@ else:
     _Handler = Callable
     _Middleware = Callable
     _Middlewares = FrozenList
-    _MiddlewaresHandlers = Optional[Sequence]
+    _MiddlewaresHandlers = Sequence
     _Subapps = List
 
 
@@ -101,7 +101,7 @@ class Application(MutableMapping[str, Any]):
         self._middlewares = FrozenList(middlewares)  # type: _Middlewares
 
         # initialized on freezing
-        self._middlewares_handlers = None  # type: _MiddlewaresHandlers
+        self._middlewares_handlers = tuple()  # type: _MiddlewaresHandlers
         # initialized on freezing
         self._run_middlewares = None  # type: Optional[bool]
 
@@ -415,7 +415,8 @@ class Application(MutableMapping[str, Any]):
 
             if self._run_middlewares:
                 for app in match_info.apps[::-1]:
-                    for m in app._middlewares_handlers:  # type: ignore  # noqa
+                    assert app.pre_frozen, "middleware handlers are not ready"
+                    for m in app._middlewares_handlers:  # noqa
                         handler = partial(m, handler=handler)
 
             resp = await handler(request)
