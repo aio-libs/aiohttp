@@ -265,8 +265,8 @@ The client session supports the context manager protocol for self closing.
                      - :class:`str` with preferably url-encoded content
                        (**Warning:** content will not be encoded by *aiohttp*)
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Dictionary, list/tuple of lists/tuples of length two, bytes, or
+                   file-like object to send in the body of the request (optional)
 
       :param json: Any json compatible python object
                    (optional). *json* and *data* parameters could not
@@ -399,8 +399,8 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Dictionary, list/tuple of lists/tuples of length two, bytes, or
+                   file-like object to send in the body of the request (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -418,8 +418,8 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Dictionary, list/tuple of lists/tuples of length two, bytes, or
+                   file-like object to send in the body of the request (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -488,8 +488,8 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Dictionary, list/tuple of lists/tuples of length two, bytes, or
+                   file-like object to send in the body of the request (optional)
 
 
       :return ClientResponse: a :class:`client response
@@ -630,8 +630,8 @@ certification chaining.
    :param dict params: Parameters to be sent in the query
                        string of the new request (optional)
 
-   :param data: Dictionary, bytes, or file-like object to
-                send in the body of the request (optional)
+   :param data: Dictionary, list/tuple of lists/tuples of length two, bytes, or
+                file-like object to send in the body of the request (optional)
 
    :param json: Any json compatible python object (optional). *json* and *data*
                 parameters could not be used at the same time.
