@@ -345,7 +345,7 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
             print("======== Running on {} ========\n"
                   "(Press CTRL+C to quit)".format(', '.join(names)))
         while True:
-            await asyncio.sleep(3600)  # sleep forever by 1 hour intervals
+            await asyncio.sleep(1)  # sleep forever by 1 second intervals
     finally:
         await runner.cleanup()
 
