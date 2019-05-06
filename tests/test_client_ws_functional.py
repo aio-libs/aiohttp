@@ -535,7 +535,7 @@ async def test_heartbeat(aiohttp_client, ceil) -> None:
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type == aiohttp.WSMsgType.ping:
+        if msg.type == aiohttp.WSMsgType.PING:
             ping_received = True
         await ws.close()
         return ws
@@ -560,7 +560,7 @@ async def test_heartbeat_no_pong(aiohttp_client, ceil) -> None:
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type == aiohttp.WSMsgType.ping:
+        if msg.type == aiohttp.WSMsgType.PING:
             ping_received = True
         await ws.receive()
         return ws
