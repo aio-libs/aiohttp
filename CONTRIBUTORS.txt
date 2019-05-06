@@ -79,6 +79,7 @@ Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
+Emil Melnikov
 Enrique Saez
 Eric Sheng
 Erich Healy
@@ -203,6 +204,7 @@ Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
+Stepan Pletnev
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang

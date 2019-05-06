@@ -83,7 +83,7 @@ _WSMessageBase = collections.namedtuple('_WSMessageBase',
 class WSMessage(_WSMessageBase):
 
     def json(self, *,  # type: ignore
-             loads: Callable[[Any], Any]=json.loads) -> None:
+             loads: Callable[[Any], Any]=json.loads) -> Any:
         """Return parsed JSON data.
 
         .. versionadded:: 0.22
