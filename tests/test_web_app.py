@@ -280,11 +280,9 @@ def test_app_inheritance() -> None:
             pass
 
 
-@pytest.mark.skipif(not DEBUG,
-                    reason="The check is applied in DEBUG mode only")
 def test_app_custom_attr() -> None:
     app = web.Application()
-    with pytest.warns(DeprecationWarning):
+    with pytest.raises(AttributeError):
         app.custom = None
 
 
