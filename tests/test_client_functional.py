@@ -2348,13 +2348,6 @@ async def test_aiohttp_request_context_manager(aiohttp_server) -> None:
         assert resp.status == 200
 
 
-async def test_aiohttp_request_ctx_manager_not_found() -> None:
-
-    with pytest.raises(aiohttp.ClientConnectionError):
-        async with aiohttp.request('GET', 'http://wrong-dns-name.com'):
-            assert False, "never executed"  # pragma: no cover
-
-
 async def test_aiohttp_request_coroutine(aiohttp_server) -> None:
     async def handler(request):
         return web.Response()
