@@ -412,16 +412,6 @@ def test_websocket_mask_cython_empty() -> None:
     assert message == bytearray()
 
 
-def test_msgtype_aliases() -> None:
-    assert aiohttp.WSMsgType.TEXT == aiohttp.WSMsgType.text
-    assert aiohttp.WSMsgType.BINARY == aiohttp.WSMsgType.binary
-    assert aiohttp.WSMsgType.PING == aiohttp.WSMsgType.ping
-    assert aiohttp.WSMsgType.PONG == aiohttp.WSMsgType.pong
-    assert aiohttp.WSMsgType.CLOSE == aiohttp.WSMsgType.close
-    assert aiohttp.WSMsgType.CLOSED == aiohttp.WSMsgType.closed
-    assert aiohttp.WSMsgType.ERROR == aiohttp.WSMsgType.error
-
-
 def test_parse_compress_frame_single(parser) -> None:
     parser.parse_frame(struct.pack('!BB', 0b11000001, 0b00000001))
     res = parser.parse_frame(b'1')

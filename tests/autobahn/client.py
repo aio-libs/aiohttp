@@ -18,11 +18,11 @@ async def client(loop, url, name):
         while True:
             msg = await ws.receive()
 
-            if msg.type == aiohttp.WSMsgType.text:
+            if msg.type == aiohttp.WSMsgType.TEXT:
                 await ws.send_str(msg.data)
-            elif msg.type == aiohttp.WSMsgType.binary:
+            elif msg.type == aiohttp.WSMsgType.BINARY:
                 await ws.send_bytes(msg.data)
-            elif msg.type == aiohttp.WSMsgType.close:
+            elif msg.type == aiohttp.WSMsgType.CLOSE:
                 await ws.close()
                 break
             else:
