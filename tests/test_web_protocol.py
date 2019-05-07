@@ -858,3 +858,30 @@ async def test_two_data_received_without_waking_up_start_task(srv) -> None:
     assert len(srv._messages) == 2
     assert srv._waiter.done()
     await asyncio.sleep(0.01)
+
+
+async def test_client_disconnect(aiohttp_server) -> None:
+
+    async def handler(request):
+        await request.content.read(10)
+        return web.Response()
+
+    logger = mock.Mock()
+    app = web.Application()
+    app._debug = True
+    app.router.add_route('POST', '/', handler)
+    server = await aiohttp_server(app, logger=logger)
+
+    _, writer = await asyncio.open_connection('127.0.0.1', server.port)
+    writer.write("""POST / HTTP/1.1\r
+Connection: keep-alive\r
+Content-Length: 10\r
+Host: localhost:{port}\r
+\r
+""".format(port=server.port).encode("ascii"))
+    await writer.drain()
+    await asyncio.sleep(0.1)
+    writer.write(b"x")
+    writer.close()
+    await asyncio.sleep(0.1)
+    logger.debug.assert_called_with('Ignored premature client disconnection 2')
