@@ -6,6 +6,7 @@ from hashlib import md5, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
+from unittest import mock
 
 import pytest
 import trustme
@@ -72,6 +73,15 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
 
+@pytest.fixture
+def create_mocked_conn(loop):
+    def _proto_factory(conn_closing_result=None, **kwargs):
+        proto = mock.Mock(**kwargs)
+        proto.closed = loop.create_future()
+        proto.closed.set_result(conn_closing_result)
+        return proto
+
+    yield _proto_factory
 
 @pytest.fixture
 def unix_sockname(tmp_path, tmp_path_factory):

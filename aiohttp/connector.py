@@ -754,12 +754,10 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    async def close(self) -> None:
-        """Close all ongoing DNS calls."""
+    def _close(self) -> None:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
-
-        await super().close()
+        super()._close()
 
     @property
     def family(self) -> int:
