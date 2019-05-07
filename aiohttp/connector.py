@@ -185,6 +185,10 @@ class Connection:
 
 class _TransportPlaceholder:
     """ placeholder for BaseConnector.connect function """
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        fut = loop.create_future()
+        fut.set_result(None)
+        self.closed = fut  # type: asyncio.Future[Optional[Exception]]  # noqa
 
     def close(self) -> None:
         pass
@@ -287,7 +291,7 @@ class BaseConnector:
         return self
 
     def __exit__(self, *exc: Any) -> None:
-        self.close()
+        self._close()
 
     async def __aenter__(self) -> 'BaseConnector':
         return self
@@ -386,20 +390,25 @@ class BaseConnector:
                 self, '_cleanup_closed',
                 self._cleanup_closed_period, self._loop)
 
-    def close(self) -> Awaitable[None]:
+    async def close(self) -> None:
         """Close all opened transports."""
-        self._close()
-        return _DeprecationWaiter(noop2())
+        waiters = self._close()
+        if waiters:
+            await asyncio.gather(*waiters,
+                                 loop=self._loop,
+                                 return_exceptions=True)
 
-    def _close(self) -> None:
+    def _close(self) -> List[asyncio.Future]:
+        waiters = []
+
         if self._closed:
-            return
+            return waiters
 
         self._closed = True
 
         try:
             if self._loop.is_closed():
-                return
+                return waiters
 
             # cancel cleanup task
             if self._cleanup_handle:
@@ -412,13 +421,17 @@ class BaseConnector:
             for data in self._conns.values():
                 for proto, t0 in data:
                     proto.close()
+                    waiters.append(proto.closed)
 
             for proto in self._acquired:
                 proto.close()
+                waiters.append(proto.closed)
 
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
                     transport.abort()
+
+            return waiters
 
         finally:
             self._conns.clear()
@@ -510,7 +523,7 @@ class BaseConnector:
 
         proto = self._get(key)
         if proto is None:
-            placeholder = cast(ResponseHandler, _TransportPlaceholder())
+            placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
 
@@ -741,12 +754,12 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def close(self) -> Awaitable[None]:
+    async def close(self) -> None:
         """Close all ongoing DNS calls."""
         for ev in self._throttle_dns_events.values():
             ev.cancel()
 
-        return super().close()
+        await super().close()
 
     @property
     def family(self) -> int:
