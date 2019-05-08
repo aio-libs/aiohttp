@@ -123,28 +123,28 @@ def _serialize_headers(str status_line, headers):
     try:
         if _write_str(&writer, status_line) < 0:
             raise
-        if _write_byte(&writer, '\r') < 0:
+        if _write_byte(&writer, b'\r') < 0:
             raise
-        if _write_byte(&writer, '\n') < 0:
+        if _write_byte(&writer, b'\n') < 0:
             raise
 
         for key, val in headers.items():
             if _write_str(&writer, to_str(key)) < 0:
                 raise
-            if _write_byte(&writer, ':') < 0:
+            if _write_byte(&writer, b':') < 0:
                 raise
-            if _write_byte(&writer, ' ') < 0:
+            if _write_byte(&writer, b' ') < 0:
                 raise
             if _write_str(&writer, to_str(val)) < 0:
                 raise
-            if _write_byte(&writer, '\r') < 0:
+            if _write_byte(&writer, b'\r') < 0:
                 raise
-            if _write_byte(&writer, '\n') < 0:
+            if _write_byte(&writer, b'\n') < 0:
                 raise
 
-        if _write_byte(&writer, '\r') < 0:
+        if _write_byte(&writer, b'\r') < 0:
             raise
-        if _write_byte(&writer, '\n') < 0:
+        if _write_byte(&writer, b'\n') < 0:
             raise
 
         return PyBytes_FromStringAndSize(writer.buf, writer.pos)
