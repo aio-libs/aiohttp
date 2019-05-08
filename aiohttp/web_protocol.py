@@ -444,8 +444,22 @@ class RequestHandler(BaseProtocol):
                             raise RuntimeError("Web-handler should return "
                                                "a response instance, "
                                                "got {!r}".format(resp))
-                await resp.prepare(request)
-                await resp.write_eof()
+                try:
+                    prepare_meth = resp.prepare
+                except AttributeError:
+                    if resp is None:
+                        raise RuntimeError("Missing return "
+                                           "statement on request handler")
+                    else:
+                        raise RuntimeError("Web-handler should return "
+                                           "a response instance, "
+                                           "got {!r}".format(resp))
+                try:
+                    await prepare_meth(request)
+                    await resp.write_eof()
+                except ConnectionResetError:
+                    self.log_debug('Ignored premature client disconnection 2')
+                    break
 
                 # notify server about keep-alive
                 self._keepalive = bool(resp.keep_alive)
