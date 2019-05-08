@@ -1,0 +1,2 @@
+Properly handle ConnectionResetError, to silence the "Cannot write to closing
+transport" exception when clients disconnect uncleanly.
