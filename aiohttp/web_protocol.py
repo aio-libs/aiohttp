@@ -410,10 +410,10 @@ class RequestHandler(BaseProtocol):
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:
+                # a new task is used for copy context vars (#3406)
+                task = self._loop.create_task(
+                    self._request_handler(request))
                 try:
-                    # a new task is used for copy context vars (#3406)
-                    task = self._loop.create_task(
-                        self._request_handler(request))
                     resp = await task
                 except HTTPException as exc:
                     resp = Response(status=exc.status,
