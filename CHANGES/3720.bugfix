@@ -1,0 +1,1 @@
+Fixed return type annotation for WSMessage.json()

@@ -26,6 +26,7 @@ Alexey Popravka
 Alexey Stepanov
 Amin Etesamian
 Amy Boyle
+Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
 Andrew Leech
@@ -66,6 +67,7 @@ Denilson Amorim
 Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
+Diogo Dutra da Mata
 Dmitriy Safonov
 Dmitry Doroshev
 Dmitry Lukashin
@@ -77,6 +79,7 @@ Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
+Emil Melnikov
 Enrique Saez
 Eric Sheng
 Erich Healy
@@ -149,9 +152,11 @@ Mariano Anaya
 Martin Melka
 Martin Richard
 Mathias Fröjdman
+Mathieu Dugré
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
+Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
@@ -198,6 +203,7 @@ Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
+Stepan Pletnev
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang

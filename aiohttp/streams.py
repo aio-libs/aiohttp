@@ -460,6 +460,11 @@ class StreamReader(AsyncStreamReaderMixin):
         self._size -= len(data)
         self._cursor += len(data)
 
+        chunk_splits = self._http_chunk_splits
+        # Prevent memory leak: drop useless chunk splits
+        while chunk_splits and chunk_splits[0] < self._cursor:
+            chunk_splits.pop(0)
+
         if self._size < self._low_water and self._protocol._reading_paused:
             self._protocol.resume_reading()
         return data

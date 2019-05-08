@@ -106,7 +106,7 @@ class RequestHandler(BaseProtocol):
     """
     KEEPALIVE_RESCHEDULE_DELAY = 1
 
-    __slots__ = ('_request_count', '_keep_alive', '_manager',
+    __slots__ = ('_request_count', '_keepalive', '_manager',
                  '_request_handler', '_request_factory', '_tcp_keepalive',
                  '_keepalive_time', '_keepalive_handle', '_keepalive_timeout',
                  '_lingering_time', '_messages', '_message_tail',
@@ -439,8 +439,12 @@ class RequestHandler(BaseProtocol):
                         raise RuntimeError("Web-handler should return "
                                            "a response instance, "
                                            "got {!r}".format(resp))
-                await prepare_meth(request)
-                await resp.write_eof()
+                try:
+                    await prepare_meth(request)
+                    await resp.write_eof()
+                except ConnectionResetError:
+                    self.log_debug('Ignored premature client disconnection 2')
+                    break
 
                 # notify server about keep-alive
                 self._keepalive = bool(resp.keep_alive)
