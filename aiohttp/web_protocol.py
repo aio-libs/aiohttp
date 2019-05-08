@@ -411,10 +411,10 @@ class RequestHandler(BaseProtocol):
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:
+                # a new task is used for copy context vars (#3406)
+                task = self._loop.create_task(
+                    self._request_handler(request))
                 try:
-                    # a new task is used for copy context vars (#3406)
-                    task = self._loop.create_task(
-                        self._request_handler(request))
                     resp = await task
                 except HTTPException as exc:
                     resp = exc
@@ -434,6 +434,9 @@ class RequestHandler(BaseProtocol):
                             "(#2415) and will be removed, "
                             "please raise the exception instead",
                             DeprecationWarning)
+
+                # Drop the processed task from asyncio.Task.all_tasks() early
+                del task
 
                 if self.debug:
                     if not isinstance(resp, StreamResponse):
