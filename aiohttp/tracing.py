@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Callable, Type
+from typing import TYPE_CHECKING, Awaitable, Callable, Type, Union
 
 import attr
 from multidict import CIMultiDict  # noqa
@@ -11,7 +11,24 @@ from .signals import Signal
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
 
-    _Signal = Signal[Callable[['TraceConfig'], Awaitable[None]]]
+    _SignalArgs = Union[
+        [ClientSession, SimpleNamespace, 'TraceRequestStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestExceptionParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionQueuedStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionQueuedEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionCreateStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionCreateEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceConnectionReuseconnParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsResolveHostStartParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsResolveHostEndParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsCacheHitParams'],
+        [ClientSession, SimpleNamespace, 'TraceDnsCacheMissParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestRedirectParams'],
+        [ClientSession, SimpleNamespace, 'TraceRequestChunkSentParams'],
+        [ClientSession, SimpleNamespace, 'TraceResponseChunkReceivedParams'],
+    ]
+    _Signal = Signal[Callable[_SignalArgs, Awaitable[None]]]
 else:
     _Signal = Signal
 
