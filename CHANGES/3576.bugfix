@@ -1,0 +1,1 @@
+Fix an issue where cookies would sometimes not be set during a redirect.
