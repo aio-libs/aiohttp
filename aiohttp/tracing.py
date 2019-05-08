@@ -12,23 +12,24 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
 
     _SignalArgs = Union[
-        [ClientSession, SimpleNamespace, 'TraceRequestStartParams'],
-        [ClientSession, SimpleNamespace, 'TraceRequestEndParams'],
-        [ClientSession, SimpleNamespace, 'TraceRequestExceptionParams'],
-        [ClientSession, SimpleNamespace, 'TraceConnectionQueuedStartParams'],
-        [ClientSession, SimpleNamespace, 'TraceConnectionQueuedEndParams'],
-        [ClientSession, SimpleNamespace, 'TraceConnectionCreateStartParams'],
-        [ClientSession, SimpleNamespace, 'TraceConnectionCreateEndParams'],
-        [ClientSession, SimpleNamespace, 'TraceConnectionReuseconnParams'],
-        [ClientSession, SimpleNamespace, 'TraceDnsResolveHostStartParams'],
-        [ClientSession, SimpleNamespace, 'TraceDnsResolveHostEndParams'],
-        [ClientSession, SimpleNamespace, 'TraceDnsCacheHitParams'],
-        [ClientSession, SimpleNamespace, 'TraceDnsCacheMissParams'],
-        [ClientSession, SimpleNamespace, 'TraceRequestRedirectParams'],
-        [ClientSession, SimpleNamespace, 'TraceRequestChunkSentParams'],
-        [ClientSession, SimpleNamespace, 'TraceResponseChunkReceivedParams'],
+        'TraceRequestStartParams',
+        'TraceRequestEndParams',
+        'TraceRequestExceptionParams',
+        'TraceConnectionQueuedStartParams',
+        'TraceConnectionQueuedEndParams',
+        'TraceConnectionCreateStartParams',
+        'TraceConnectionCreateEndParams',
+        'TraceConnectionReuseconnParams',
+        'TraceDnsResolveHostStartParams',
+        'TraceDnsResolveHostEndParams',
+        'TraceDnsCacheHitParams',
+        'TraceDnsCacheMissParams',
+        'TraceRequestRedirectParams',
+        'TraceRequestChunkSentParams',
+        'TraceResponseChunkReceivedParams',
     ]
-    _Signal = Signal[Callable[_SignalArgs, Awaitable[None]]]
+    _Signal = Signal[Callable[[ClientSession, SimpleNamespace, _SignalArgs],
+                              Awaitable[None]]]
 else:
     _Signal = Signal
 
