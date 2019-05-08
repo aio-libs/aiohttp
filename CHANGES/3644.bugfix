@@ -1,0 +1,1 @@
+Fix _keepalive field in __slots__ of web_protocol.RequestHandler.
