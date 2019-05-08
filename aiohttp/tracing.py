@@ -11,7 +11,7 @@ from .signals import Signal
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
 
-    _args = Union[
+    _SignalArgs = Union[
         [ClientSession, SimpleNamespace, 'TraceRequestStartParams'],
         [ClientSession, SimpleNamespace, 'TraceRequestEndParams'],
         [ClientSession, SimpleNamespace, 'TraceRequestExceptionParams'],
@@ -28,7 +28,7 @@ if TYPE_CHECKING:  # pragma: no cover
         [ClientSession, SimpleNamespace, 'TraceRequestChunkSentParams'],
         [ClientSession, SimpleNamespace, 'TraceResponseChunkReceivedParams'],
     ]
-    _Signal = Signal[Callable[_args, Awaitable[None]]]
+    _Signal = Signal[Callable[_SignalArgs, Awaitable[None]]]
 else:
     _Signal = Signal
 
