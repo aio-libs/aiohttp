@@ -1,6 +1,6 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-PYXS = $(shell find aiohttp -type f -name '*.pyx')
+PYXS = $(wildcard aiohttp/*.pyx)
 
 all: test
 
