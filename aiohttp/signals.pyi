@@ -2,6 +2,7 @@ from typing import Any, Generic, TypeVar
 
 from aiohttp.frozenlist import FrozenList
 
+
 __all__ = ('Signal',)
 
 
