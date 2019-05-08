@@ -428,6 +428,8 @@ class RequestHandler(BaseProtocol):
                     resp = self.handle_error(request, 504)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
+                # Drop the processed task from asyncio.Task.all_tasks() early
+                del task
 
                 try:
                     prepare_meth = resp.prepare
