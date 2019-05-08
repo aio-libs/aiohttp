@@ -20,3 +20,4 @@
 Makefile @webknjaz @asvetlov
 setup.py @webknjaz @asvetlov
 setup.cfg @webknjaz @asvetlov
+tox.ini @webknjaz
