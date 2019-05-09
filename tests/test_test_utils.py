@@ -217,8 +217,9 @@ def test_make_mocked_request_transport() -> None:
 
 async def test_test_client_props(loop) -> None:
     app = _create_example_app()
-    client = _TestClient(_TestServer(app, host='127.0.0.1', loop=loop),
-                         loop=loop)
+    server = _TestServer(app, scheme='http', host='127.0.0.1', loop=loop)
+    client = _TestClient(server, loop=loop)
+    assert client.scheme == 'http'
     assert client.host == '127.0.0.1'
     assert client.port is None
     async with client:
@@ -233,8 +234,9 @@ async def test_test_client_raw_server_props(loop) -> None:
     async def hello(request):
         return web.Response(body=_hello_world_bytes)
 
-    client = _TestClient(_RawTestServer(hello, host='127.0.0.1', loop=loop),
-                         loop=loop)
+    server = _RawTestServer(hello, scheme='http', host='127.0.0.1', loop=loop)
+    client = _TestClient(server, loop=loop)
+    assert client.scheme == 'http'
     assert client.host == '127.0.0.1'
     assert client.port is None
     async with client:

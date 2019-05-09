@@ -1,5 +1,14 @@
-from typing import (Generic, Iterable, Iterator, List, MutableSequence,
-                    Optional, TypeVar, Union, overload)
+from typing import (
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    MutableSequence,
+    Optional,
+    TypeVar,
+    Union,
+    overload,
+)
 
 _T = TypeVar('_T')
 _Arg = Union[List[_T], Iterable[_T]]
