@@ -246,7 +246,6 @@ def test_app_run_middlewares() -> None:
     root.freeze()
     assert root._run_middlewares is False
 
-    @web.middleware
     async def middleware(request, handler):
         return await handler(request)
 

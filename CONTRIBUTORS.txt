@@ -37,6 +37,7 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
