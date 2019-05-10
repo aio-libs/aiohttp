@@ -57,6 +57,7 @@ Chris Moore
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
+Cong Xu
 Damien Nadé
 Dan Xu
 Daniel García
