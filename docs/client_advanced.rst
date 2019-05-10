@@ -81,7 +81,7 @@ between multiple requests::
         await session.get(
             'http://httpbin.org/cookies/set?my_cookie=my_value')
         filtered = session.cookie_jar.filter_cookies(
-            'http://httpbin.org')
+            URL('http://httpbin.org'))
         assert filtered['my_cookie'].value == 'my_value'
         async with session.get('http://httpbin.org/cookies') as r:
             json_body = await r.json()
