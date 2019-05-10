@@ -53,12 +53,9 @@ if TYPE_CHECKING:  # pragma: no cover
     _RespPrepareSignal = Signal[Callable[[Request, StreamResponse],
                                          Awaitable[None]]]
     _Handler = Callable[[Request], Awaitable[StreamResponse]]
-    _Middleware = Union[Callable[[Request, _Handler],
-                                 Awaitable[StreamResponse]],
-                        Callable[['Application', _Handler],  # old-style
-                                 Awaitable[_Handler]]]
+    _Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
     _Middlewares = FrozenList[_Middleware]
-    _MiddlewaresHandlers = Optional[Sequence[Tuple[_Middleware, bool]]]
+    _MiddlewaresHandlers = Sequence[_Middleware]
     _Subapps = List['Application']
 else:
     # No type checker mode, skip types
@@ -67,7 +64,7 @@ else:
     _Handler = Callable
     _Middleware = Callable
     _Middlewares = FrozenList
-    _MiddlewaresHandlers = Optional[Sequence]
+    _MiddlewaresHandlers = Sequence
     _Subapps = List
 
 
@@ -104,7 +101,7 @@ class Application(MutableMapping[str, Any]):
         self._middlewares = FrozenList(middlewares)  # type: _Middlewares
 
         # initialized on freezing
-        self._middlewares_handlers = None  # type: _MiddlewaresHandlers
+        self._middlewares_handlers = tuple()  # type: _MiddlewaresHandlers
         # initialized on freezing
         self._run_middlewares = None  # type: Optional[bool]
 
@@ -390,17 +387,9 @@ class Application(MutableMapping[str, Any]):
             self._loop,
             client_max_size=self._client_max_size)
 
-    def _prepare_middleware(self) -> Iterator[Tuple[_Middleware, bool]]:
-        for m in reversed(self._middlewares):
-            if getattr(m, '__middleware_version__', None) == 1:
-                yield m, True
-            else:
-                warnings.warn('old-style middleware "{!r}" deprecated, '
-                              'see #2252'.format(m),
-                              DeprecationWarning, stacklevel=2)
-                yield m, False
-
-        yield _fix_request_current_app(self), True
+    def _prepare_middleware(self) -> Iterator[_Middleware]:
+        yield from reversed(self._middlewares)
+        yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
         loop = asyncio.get_event_loop()
@@ -426,11 +415,9 @@ class Application(MutableMapping[str, Any]):
 
             if self._run_middlewares:
                 for app in match_info.apps[::-1]:
-                    for m, new_style in app._middlewares_handlers:  # type: ignore  # noqa
-                        if new_style:
-                            handler = partial(m, handler=handler)
-                        else:
-                            handler = await m(app, handler)  # type: ignore
+                    assert app.pre_frozen, "middleware handlers are not ready"
+                    for m in app._middlewares_handlers:  # noqa
+                        handler = partial(m, handler=handler)
 
             resp = await handler(request)
 

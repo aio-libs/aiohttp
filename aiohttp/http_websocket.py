@@ -52,15 +52,6 @@ class WSMsgType(IntEnum):
     CLOSED = 0x101
     ERROR = 0x102
 
-    text = TEXT
-    binary = BINARY
-    ping = PING
-    pong = PONG
-    close = CLOSE
-    closing = CLOSING
-    closed = CLOSED
-    error = ERROR
-
 
 WS_KEY = b'258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
@@ -83,7 +74,7 @@ _WSMessageBase = collections.namedtuple('_WSMessageBase',
 class WSMessage(_WSMessageBase):
 
     def json(self, *,  # type: ignore
-             loads: Callable[[Any], Any]=json.loads) -> None:
+             loads: Callable[[Any], Any]=json.loads) -> Any:
         """Return parsed JSON data.
 
         .. versionadded:: 0.22

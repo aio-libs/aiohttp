@@ -49,6 +49,7 @@ sources
 var/*
 venv
 virtualenv.py
+.install-cython
 .install-deps
 .develop
 .gitconfig
@@ -57,3 +58,4 @@ virtualenv.py
 .pytest_cache
 .vscode
 .mypy_cache
+pip-wheel-metadata

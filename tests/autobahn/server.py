@@ -17,11 +17,11 @@ async def wshandler(request):
     while True:
         msg = await ws.receive()
 
-        if msg.type == web.WSMsgType.text:
+        if msg.type == web.WSMsgType.TEXT:
             await ws.send_str(msg.data)
-        elif msg.type == web.WSMsgType.binary:
+        elif msg.type == web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
-        elif msg.type == web.WSMsgType.close:
+        elif msg.type == web.WSMsgType.CLOSE:
             await ws.close()
             break
         else:

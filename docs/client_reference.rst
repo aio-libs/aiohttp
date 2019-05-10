@@ -862,15 +862,14 @@ TCPConnector
       If *limit* is ``0`` the connector has no limit (default: 0).
 
    :param aiohttp.abc.AbstractResolver resolver: custom resolver
-      instance to use.  ``aiohttp.DefaultResolver`` by
-      default (asynchronous if ``aiodns>=1.1`` is installed).
+      instance to use. ``aiohttp.DefaultResolver`` by default.
 
       Custom resolvers allow to resolve hostnames differently than the
       way the host is configured.
 
-      The resolver is ``aiohttp.ThreadedResolver`` by default,
-      asynchronous version is pretty robust but might fail in
-      very rare cases.
+      The resolver is ``aiohttp.ThreadedResolver`` by default. Asynchronous
+      version ``aiohttp.AsyncResolver`` (requires ``aiodns>=1.1``) is pretty
+      robust but might fail in very rare cases.
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,

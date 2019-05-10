@@ -106,7 +106,7 @@ class RequestHandler(BaseProtocol):
     """
     KEEPALIVE_RESCHEDULE_DELAY = 1
 
-    __slots__ = ('_request_count', '_keep_alive', '_manager',
+    __slots__ = ('_request_count', '_keepalive', '_manager',
                  '_request_handler', '_request_factory', '_tcp_keepalive',
                  '_keepalive_time', '_keepalive_handle', '_keepalive_timeout',
                  '_lingering_time', '_messages', '_message_tail',
@@ -413,29 +413,35 @@ class RequestHandler(BaseProtocol):
             request = self._request_factory(
                 message, payload, self, writer, handler)
             try:
+                # a new task is used for copy context vars (#3406)
+                task = self._loop.create_task(
+                    self._request_handler(request))
                 try:
-                    # a new task is used for copy context vars (#3406)
-                    task = self._loop.create_task(
-                        self._request_handler(request))
                     resp = await task
                 except HTTPException as exc:
                     resp = Response(status=exc.status,
                                     reason=exc.reason,
                                     text=exc.text,
                                     headers=exc.headers)
-                    await self.finish_response(request, resp, now)
+                    req_reset = await self.finish_response(request, resp, now)
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
                 except asyncio.TimeoutError as exc:
                     self.log_debug('Request handler timed out.', exc_info=exc)
                     resp = self.handle_error(request, 504)
-                    await self.finish_response(request, resp, now)
+                    req_reset = await self.finish_response(request, resp, now)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
-                    await self.finish_response(request, resp, now)
+                    req_reset = await self.finish_response(request, resp, now)
                 else:
-                    await self.finish_response(request, resp, now)
+                    req_reset = await self.finish_response(request, resp, now)
+
+                # Drop the processed task from asyncio.Task.all_tasks() early
+                del task
+                if req_reset:
+                    self.log_debug('Ignored premature client disconnection 2')
+                    break
 
                 # notify server about keep-alive
                 self._keepalive = bool(resp.keep_alive)
@@ -502,11 +508,12 @@ class RequestHandler(BaseProtocol):
     async def finish_response(self,
                               request: BaseRequest,
                               resp: StreamResponse,
-                              now: Optional[float]) -> None:
+                              now: Optional[float]) -> bool:
         """
         Prepare the response and write_eof, then log access. This has to
         be called within the context of any exception so the access logger
-        can get exception information.
+        can get exception information. Returns True if the client disconnects
+        prematurely.
         """
         try:
             prepare_meth = resp.prepare
@@ -518,9 +525,13 @@ class RequestHandler(BaseProtocol):
                 raise RuntimeError("Web-handler should return "
                                    "a response instance, "
                                    "got {!r}".format(resp))
-        await prepare_meth(request)
-        await resp.write_eof()
+        try:
+            await prepare_meth(request)
+            await resp.write_eof()
+        except ConnectionResetError:
+            return True
         self.log_access(request, resp, now)
+        return False
 
     def handle_error(self,
                      request: BaseRequest,

@@ -424,7 +424,7 @@ _ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
 
 def _is_ip_address(
         regex: Pattern[str], regexb: Pattern[bytes],
-        host: Optional[Union[str, bytes]])-> bool:
+        host: Optional[Union[str, bytes]]) -> bool:
     if host is None:
         return False
     if isinstance(host, str):
