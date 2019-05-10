@@ -14,23 +14,6 @@ if sys.version_info < (3, 5, 3):
 
 here = pathlib.Path(__file__).parent
 
-try:
-    from Cython.Build import cythonize
-    print('😄 Cython got imported.')
-    USE_CYTHON = True
-except ImportError:
-    print('😔 Cython import failed.', file=sys.stderr)
-    USE_CYTHON = False
-
-IS_BUILD = {'sdist', 'bdist_wheel'}.intersection(sys.argv)
-
-if IS_BUILD and (here / '.git').exists() and not USE_CYTHON:
-    print("Install cython when building from git clone", file=sys.stderr)
-    print("Hint:", file=sys.stderr)
-    print("  pip install cython", file=sys.stderr)
-    sys.exit(1)
-
-
 if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md'):
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
@@ -38,26 +21,21 @@ if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md'):
     sys.exit(2)
 
 
-ext = '.pyx' if USE_CYTHON else '.c'
+# NOTE: makefile cythonizes all Cython modules
 
-
-extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket' + ext]),
+extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket.c']),
               Extension('aiohttp._http_parser',
-                        ['aiohttp/_http_parser' + ext,
+                        ['aiohttp/_http_parser.c',
                          'vendor/http-parser/http_parser.c',
                          'aiohttp/_find_header.c'],
                         define_macros=[('HTTP_PARSER_STRICT', 0)],
                         ),
               Extension('aiohttp._frozenlist',
-                        ['aiohttp/_frozenlist' + ext]),
+                        ['aiohttp/_frozenlist.c']),
               Extension('aiohttp._helpers',
-                        ['aiohttp/_helpers' + ext]),
+                        ['aiohttp/_helpers.c']),
               Extension('aiohttp._http_writer',
-                        ['aiohttp/_http_writer' + ext])]
-
-
-if USE_CYTHON:
-    extensions = cythonize(extensions)
+                        ['aiohttp/_http_writer.c'])]
 
 
 class BuildFailed(Exception):

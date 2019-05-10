@@ -10,6 +10,10 @@ environment:
     - PYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37"
     - PYTHON: "C:\\Python37-x64"
+  MAKE: C:\MinGW\bin\mingw32-make.exe
+
+cache:
+  - '%LOCALAPPDATA%\pip\Cache'
 
 init:
   - "chcp 65001"
@@ -25,6 +29,7 @@ install:
   - >-
     tools/build.cmd %PYTHON%\python.exe -m
     pip install -U pip wheel setuptools
+  - '%MAKE% cythonize'
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 build_script:

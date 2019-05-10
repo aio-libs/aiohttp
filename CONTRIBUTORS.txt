@@ -79,6 +79,7 @@ Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
+Emil Melnikov
 Enrique Saez
 Eric Sheng
 Erich Healy
@@ -151,6 +152,7 @@ Mariano Anaya
 Martin Melka
 Martin Richard
 Mathias Fröjdman
+Mathieu Dugré
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
@@ -201,6 +203,7 @@ Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
+Stepan Pletnev
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang
