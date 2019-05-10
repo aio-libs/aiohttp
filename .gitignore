@@ -49,6 +49,7 @@ sources
 var/*
 venv
 virtualenv.py
+.install-cython
 .install-deps
 .develop
 .gitconfig

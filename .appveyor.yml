@@ -8,13 +8,16 @@ environment:
     - PYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37"
     - PYTHON: "C:\\Python37-x64"
+  MAKE: C:\MinGW\bin\mingw32-make.exe
 
 install:
   # Ensure the Git Submoduldes have been pulled down too
   - git submodule update --init --recursive
 
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -U pip wheel setuptools"
-  - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/cython.txt"
+  - >-
+    tools/build.cmd %PYTHON%\python.exe -m
+    pip install -U pip wheel setuptools
+  - '%MAKE% cythonize'
   - "tools/build.cmd %PYTHON%\\python.exe -m pip install -r requirements/ci.txt"
 
 build_script:
