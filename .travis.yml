@@ -16,8 +16,8 @@ python:
 - &pypy3 pypy3.5-6.0.0
 
 install:
-- &upgrade_python_toolset pip install --upgrade 'pip<19' wheel setuptools
-- pip install -r requirements/cython.txt
+- &upgrade_python_toolset pip install --upgrade pip wheel setuptools
+- make cythonize
 - pip install -r requirements/ci.txt
 
 script:
