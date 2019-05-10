@@ -1,0 +1,1 @@
+Raise ``web_exceptions.HTTPUnsupportedMediaType`` when invalid `Content-Type` encoding passed.
