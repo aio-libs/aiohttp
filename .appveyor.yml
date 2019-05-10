@@ -11,6 +11,9 @@ environment:
     - PYTHON: "C:\\Python37"
     - PYTHON: "C:\\Python37-x64"
 
+cache:
+  - '%LOCALAPPDATA%\pip\Cache'
+
 init:
   - "chcp 65001"
   - ps: >-
