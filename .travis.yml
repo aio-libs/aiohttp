@@ -17,7 +17,7 @@ python:
 
 install:
 - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
-- pip install -r requirements/cython.txt
+- make cythonize
 - pip install -r requirements/ci.txt
 
 script:
