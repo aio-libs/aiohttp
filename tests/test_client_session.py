@@ -16,7 +16,7 @@ from aiohttp import client, hdrs, web
 from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
-from aiohttp.helpers import DEBUG, PY_36
+from aiohttp.helpers import PY_36
 
 
 @pytest.fixture
@@ -124,7 +124,7 @@ async def test_init_cookies_with_list_of_tuples(create_session) -> None:
 
 
 async def test_merge_headers(create_session) -> None:
-        # Check incoming simple dict
+    # Check incoming simple dict
     session = await create_session(headers={"h1": "header1",
                                             "h2": "header2"})
     headers = session._prepare_headers({"h1": "h1"})
@@ -663,11 +663,9 @@ def test_client_session_inheritance() -> None:
             pass
 
 
-@pytest.mark.skipif(not DEBUG,
-                    reason="The check is applied in DEBUG mode only")
 async def test_client_session_custom_attr(loop) -> None:
     session = ClientSession(loop=loop)
-    with pytest.warns(DeprecationWarning):
+    with pytest.raises(AttributeError):
         session.custom = None
 
 

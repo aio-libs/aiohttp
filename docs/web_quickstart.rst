@@ -54,6 +54,12 @@ with shiny route decorators.
 emphasize their equality, switching from one style to another is very
 trivial.
 
+.. note::
+   You can get a powerful aiohttp template by running one command. 
+   To do this, simply use our `boilerplate for quick start with aiohttp 
+   <https://create-aio-app.readthedocs.io/pages/aiohttp_quick_start.html>`_.
+
+
 .. seealso::
 
    :ref:`aiohttp-web-graceful-shutdown` section explains what :func:`run_app`
@@ -594,6 +600,8 @@ with the peer::
         await ws.prepare(request)
 
         async for msg in ws:
+            # ws.__next__() automatically terminates the loop
+            # after ws.close() or ws.exception() is called
             if msg.type == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
                     await ws.close()

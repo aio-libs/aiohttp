@@ -109,6 +109,12 @@ They may be perfect or not -- we don't know.
 Please add your library reference here first and after some time
 period ask to raise the status.
 
+- `octomachinery <https://octomachinery.dev>`_ A framework for developing
+  GitHub Apps and GitHub Actions. Python 3.7+ is required.
+
+- `aiomixcloud <https://github.com/amikrop/aiomixcloud>`_
+  Mixcloud API wrapper for Python and Async IO.
+
 - `aiohttp-cache <https://github.com/cr0hn/aiohttp-cache>`_ A cache
   system for aiohttp server.
 

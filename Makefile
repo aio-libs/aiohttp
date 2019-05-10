@@ -1,9 +1,19 @@
 # Some simple testing tasks (sorry, UNIX only).
 
+PYXS = $(wildcard aiohttp/*.pyx)
+
 all: test
 
-.install-deps: $(shell find requirements -type f)
+.install-cython:
 	pip install -r requirements/cython.txt
+	touch .install-cython
+
+aiohttp/%.c: aiohttp/%.pyx
+	cython -3 -o $@ $< -I aiohttp
+
+cythonize: .install-cython $(PYXS:.pyx=.c)
+
+.install-deps: cythonize $(shell find requirements -type f)
 	pip install -r requirements/dev.txt
 	@touch .install-deps
 
@@ -110,7 +120,7 @@ doc-spelling:
 	@make -C docs spelling SPHINXOPTS="-W -E"
 
 install:
-	@pip install -U pip
+	@pip install -U 'pip<19'
 	@pip install -Ur requirements/dev.txt
 
 .PHONY: all build flake test vtest cov clean doc

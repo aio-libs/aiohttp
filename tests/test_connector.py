@@ -1205,6 +1205,11 @@ async def test_tcp_connector_ctor(loop) -> None:
     assert conn.family == 0
 
 
+async def test_invalid_ssl_param() -> None:
+    with pytest.raises(TypeError):
+        aiohttp.TCPConnector(ssl=object())
+
+
 async def test_tcp_connector_ctor_fingerprint_valid(loop) -> None:
     valid = aiohttp.Fingerprint(hashlib.sha256(b"foo").digest())
     conn = aiohttp.TCPConnector(ssl=valid, loop=loop)

@@ -253,6 +253,10 @@ class TestClient:
         await self._server.start_server(loop=self._loop)
 
     @property
+    def scheme(self) -> Union[str, object]:
+        return self._server.scheme
+
+    @property
     def host(self) -> str:
         return self._server.host
 
