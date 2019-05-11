@@ -83,16 +83,6 @@ def read(f):
     return (here / f).read_text('utf-8').strip()
 
 
-NEEDS_PYTEST = {'pytest', 'test'}.intersection(sys.argv)
-pytest_runner = ['pytest-runner'] if NEEDS_PYTEST else []
-
-tests_require = [
-    'pytest', 'gunicorn',
-    'pytest-timeout', 'async-generator',
-    'pytest-xdist',
-]
-
-
 args = dict(
     name='aiohttp',
     version=version,
@@ -141,8 +131,6 @@ args = dict(
             'cchardet',
         ],
     },
-    tests_require=tests_require,
-    setup_requires=pytest_runner,
     include_package_data=True,
     ext_modules=extensions,
     cmdclass=dict(build_ext=ve_build_ext),
