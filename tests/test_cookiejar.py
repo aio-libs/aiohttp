@@ -277,6 +277,12 @@ async def test_filter_cookie_with_unicode_domain(loop) -> None:
         ),
     ),
 )
+async def test_filter_cookies_str_deprecated(loop: asyncio.AbstractEventLoop) -> None:
+    jar = CookieJar()
+    with pytest.warns(DeprecationWarning):
+        jar.filter_cookies("http://éé.com")
+
+
 async def test_filter_cookies_with_domain_path_lookup_multilevelpath(
     loop,
     url,
