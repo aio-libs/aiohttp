@@ -4,6 +4,7 @@ import os  # noqa
 import pathlib
 import pickle
 import re
+import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie  # noqa
 from math import ceil
@@ -188,7 +189,11 @@ class CookieJar(AbstractCookieJar):
     def filter_cookies(self, request_url: URL=URL()) -> 'BaseCookie[str]':
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
-        request_url = URL(request_url)
+        if not isinstance(request_url, URL):
+            warnings.warn("The method accepts yarl.URL instances only, got {}"
+                          .format(type(request_url)),
+                          DeprecationWarning)
+            request_url = URL(request_url)
         filtered = SimpleCookie()
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")

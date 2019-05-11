@@ -189,6 +189,12 @@ async def test_filter_cookie_with_unicode_domain(loop) -> None:
     assert len(jar.filter_cookies(URL("http://xn--9caa.com"))) == 1
 
 
+async def test_filter_cookies_str_deprecated(loop) -> None:
+    jar = CookieJar()
+    with pytest.warns(DeprecationWarning):
+        jar.filter_cookies("http://éé.com")
+
+
 async def test_domain_filter_ip_cookie_send(loop) -> None:
     jar = CookieJar(loop=loop)
     cookies = SimpleCookie(
