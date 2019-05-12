@@ -342,9 +342,8 @@ class RequestHandler(BaseProtocol):
     def log_access(self,
                    request: BaseRequest,
                    response: StreamResponse,
-                   request_start: Optional[float]) -> None:
+                   request_start: float) -> None:
         if self.access_logger is not None:
-            request_start = cast(float, request_start)
             self.access_logger.log(request, response,
                                    self._loop.time() - request_start)
 
@@ -404,9 +403,7 @@ class RequestHandler(BaseProtocol):
 
             message, payload = self._messages.popleft()
 
-            now = None
-            if self.access_log:
-                now = loop.time()
+            start = loop.time()
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
@@ -423,23 +420,23 @@ class RequestHandler(BaseProtocol):
                                     reason=exc.reason,
                                     text=exc.text,
                                     headers=exc.headers)
-                    req_reset = await self.finish_response(request, resp, now)
+                    reset = await self.finish_response(request, resp, start)
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
                 except asyncio.TimeoutError as exc:
                     self.log_debug('Request handler timed out.', exc_info=exc)
                     resp = self.handle_error(request, 504)
-                    req_reset = await self.finish_response(request, resp, now)
+                    reset = await self.finish_response(request, resp, start)
                 except Exception as exc:
                     resp = self.handle_error(request, 500, exc)
-                    req_reset = await self.finish_response(request, resp, now)
+                    reset = await self.finish_response(request, resp, start)
                 else:
-                    req_reset = await self.finish_response(request, resp, now)
+                    reset = await self.finish_response(request, resp, start)
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
-                if req_reset:
+                if reset:
                     self.log_debug('Ignored premature client disconnection 2')
                     break
 
@@ -508,7 +505,7 @@ class RequestHandler(BaseProtocol):
     async def finish_response(self,
                               request: BaseRequest,
                               resp: StreamResponse,
-                              now: Optional[float]) -> bool:
+                              start_time: float) -> bool:
         """
         Prepare the response and write_eof, then log access. This has to
         be called within the context of any exception so the access logger
@@ -529,9 +526,11 @@ class RequestHandler(BaseProtocol):
             await prepare_meth(request)
             await resp.write_eof()
         except ConnectionResetError:
+            self.log_access(request, resp, start_time)
             return True
-        self.log_access(request, resp, now)
-        return False
+        else:
+            self.log_access(request, resp, start_time)
+            return False
 
     def handle_error(self,
                      request: BaseRequest,
