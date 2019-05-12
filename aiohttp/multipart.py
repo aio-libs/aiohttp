@@ -654,7 +654,9 @@ class MultipartReader:
             elif chunk.startswith(self._boundary):
                 _, newline = chunk.split(self._boundary, 1)
             if newline is not None:
-                assert newline in (b'\r\n', b'\n'), (newline, chunk, self._boundary)
+                assert newline in (b'\r\n', b'\n'), (newline,
+                                                     chunk,
+                                                     self._boundary)
                 self._newline = newline
 
             chunk = chunk.rstrip()
