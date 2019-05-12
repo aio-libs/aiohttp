@@ -647,15 +647,20 @@ class MultipartReader:
             if chunk == b'':
                 raise ValueError("Could not find starting boundary %r"
                                  % (self._boundary))
-            if chunk.startswith(self._boundary):
+            newline = None
+            end_boundary = self._boundary + b'--'
+            if chunk.startswith(end_boundary):
+                _, newline = chunk.split(end_boundary, 1)
+            elif chunk.startswith(self._boundary):
                 _, newline = chunk.split(self._boundary, 1)
-                assert newline in (b'\r\n', b'\n')
+            if newline is not None:
+                assert newline in (b'\r\n', b'\n'), (newline, chunk, self._boundary)
                 self._newline = newline
 
             chunk = chunk.rstrip()
             if chunk == self._boundary:
                 return
-            elif chunk == self._boundary + b'--':
+            elif chunk == end_boundary:
                 self._at_eof = True
                 return
 
