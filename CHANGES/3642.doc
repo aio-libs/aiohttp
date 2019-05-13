@@ -1,0 +1,1 @@
+Modify documentation for Resolvers to make it clear that asynchronous resolver is not used by default when aiodns is installed.

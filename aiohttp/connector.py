@@ -714,7 +714,7 @@ class TCPConnector(BaseConnector):
                  use_dns_cache: bool=True, ttl_dns_cache: int=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
-                 local_addr: Optional[str]=None,
+                 local_addr: Optional[Tuple[str, int]]=None,
                  resolver: Optional[AbstractResolver]=None,
                  keepalive_timeout: Union[None, float, object]=sentinel,
                  force_close: bool=False,
