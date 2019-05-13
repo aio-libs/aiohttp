@@ -525,6 +525,52 @@ insensitive)::
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
 
+.. _aiohttp-persistent-session:
+
+Persistent session
+------------------
+
+Even though creating a session on demand seems like tempting idea, we
+advise against it. :class:`aiohttp.ClientSession` maintains a
+connection pool. Contained connections can be reused if necessary to gain some
+performance improvements. If you plan on reusing the session, a.k.a. creating
+**persistent session**, you can use either :ref:`aiohttp-web-signals` or
+:ref:`aiohttp-web-cleanup-ctx`. If possible we advise using :ref:`aiohttp-web-cleanup-ctx`,
+as it results in more compact code::
+
+    app.cleanup_ctx.append(persistent_session)
+
+    async def persistent_session(app):
+       app['PERSISTENT_SESSION'] = session = aiohttp.ClientSession()
+       yield
+       await session.close()
+
+    async def my_request_handler(request):
+       session = request.app['PERSISTENT_SESSION']
+       async with session.get("http://python.org") as resp:
+           print(resp.status)
+
+
+This approach can be successfully used to define numerous of session given certain
+requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
+instances are created and where artifacts such as :class:`aiohttp.connector.BaseConnector`
+can be safely shared between sessions if needed.
+
+In the end all you have to do is to close all sessions after `yield` statement::
+
+    async def multiple_sessions(app):
+       app['PERSISTENT_SESSION_1'] = session_1 = aiohttp.ClientSession()
+       app['PERSISTENT_SESSION_2'] = session_2 = aiohttp.ClientSession()
+       app['PERSISTENT_SESSION_3'] = session_3 = aiohttp.ClientSession()
+
+       yield
+
+       await asyncio.gather(*[
+           session_1.close(),
+           session_2.close(),
+           session_3.close(),
+       ])
+
 Graceful Shutdown
 -----------------
 

@@ -61,6 +61,9 @@ Other HTTP methods are available as well::
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
 
+   You may find more information about creating persistent sessions
+   in :ref:`aiohttp-persistent-session`.
+
 A session context manager usage is not mandatory
 but ``await session.close()`` method
 should be called in this case, e.g.::
