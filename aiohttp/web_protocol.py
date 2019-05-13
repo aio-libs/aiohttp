@@ -76,10 +76,7 @@ class AccessLoggerWrapper(AbstractAsyncAccessLogger):
     """
     def __init__(self, access_logger: AbstractAccessLogger):
         self.access_logger = access_logger
-        super().__init__(
-            self.access_logger.logger,
-            self.access_logger.log_format,
-        )
+        super().__init__()
 
     async def log(self,
                   request: BaseRequest,
