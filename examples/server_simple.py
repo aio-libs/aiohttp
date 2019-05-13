@@ -13,11 +13,11 @@ async def wshandle(request):
     await ws.prepare(request)
 
     async for msg in ws:
-        if msg.type == web.WSMsgType.text:
+        if msg.type == web.WSMsgType.TEXT:
             await ws.send_str("Hello, {}".format(msg.data))
-        elif msg.type == web.WSMsgType.binary:
+        elif msg.type == web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
-        elif msg.type == web.WSMsgType.close:
+        elif msg.type == web.WSMsgType.CLOSE:
             break
 
     return ws

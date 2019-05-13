@@ -659,7 +659,7 @@ async def test_heartbeat(loop, aiohttp_client, ceil) -> None:
     ws = await client.ws_connect('/', autoping=False)
     msg = await ws.receive()
 
-    assert msg.type == aiohttp.WSMsgType.ping
+    assert msg.type == aiohttp.WSMsgType.PING
 
     await ws.close()
 
@@ -686,7 +686,7 @@ async def test_heartbeat_no_pong(loop, aiohttp_client, ceil) -> None:
     client = await aiohttp_client(app)
     ws = await client.ws_connect('/', autoping=False)
     msg = await ws.receive()
-    assert msg.type == aiohttp.WSMsgType.ping
+    assert msg.type == aiohttp.WSMsgType.PING
     await ws.receive()
 
     assert cancelled

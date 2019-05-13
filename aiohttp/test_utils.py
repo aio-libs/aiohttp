@@ -74,6 +74,8 @@ def unused_port() -> int:
 
 
 class BaseTestServer(ABC):
+    __test__ = False
+
     def __init__(self,
                  *,
                  scheme: Union[str, object]=sentinel,
@@ -226,6 +228,7 @@ class TestClient:
     To write functional tests for aiohttp based servers.
 
     """
+    __test__ = False
 
     def __init__(self, server: BaseTestServer, *,
                  cookie_jar: Optional[AbstractCookieJar]=None,
@@ -244,6 +247,10 @@ class TestClient:
 
     async def start_server(self) -> None:
         await self._server.start_server()
+
+    @property
+    def scheme(self) -> Union[str, object]:
+        return self._server.scheme
 
     @property
     def host(self) -> str:

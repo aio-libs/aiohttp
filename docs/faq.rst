@@ -273,7 +273,7 @@ All backward incompatible changes are explicitly marked in
 How do I enable gzip compression globally for my entire application?
 --------------------------------------------------------------------
 
-It's impossible. Choosing what to compress and what not to compress is
+It's impossible. Choosing what to compress and what not to compress
 is a tricky matter.
 
 If you need global compression, write a custom middleware. Or
@@ -353,7 +353,6 @@ response::
         # don't do this!
         cached = web.Response(status=200, text='Hi, I am cached!')
 
-        @web.middleware
         async def middleware(request, handler):
             # ignoring response for the sake of this example
             _res = handler(request)

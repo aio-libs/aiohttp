@@ -1,5 +1,4 @@
 import hashlib
-import platform
 import ssl
 
 import pytest
@@ -10,9 +9,6 @@ pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
 
 @pytest.fixture
 def tls_certificate_authority():
-    if (platform.system() == 'Linux' and
-            platform.architecture() == ('32bit', 'ELF')):
-        pytest.xfail("trustme fails on 32bit Linux")
     return trustme.CA()
 
 

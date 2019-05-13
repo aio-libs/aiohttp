@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Awaitable, Callable, Type
+from typing import TYPE_CHECKING, Awaitable, Callable, Type, Union
 
 import attr
 from multidict import CIMultiDict  # noqa
@@ -11,7 +11,25 @@ from .signals import Signal
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
 
-    _Signal = Signal[Callable[['TraceConfig'], Awaitable[None]]]
+    _SignalArgs = Union[
+        'TraceRequestStartParams',
+        'TraceRequestEndParams',
+        'TraceRequestExceptionParams',
+        'TraceConnectionQueuedStartParams',
+        'TraceConnectionQueuedEndParams',
+        'TraceConnectionCreateStartParams',
+        'TraceConnectionCreateEndParams',
+        'TraceConnectionReuseconnParams',
+        'TraceDnsResolveHostStartParams',
+        'TraceDnsResolveHostEndParams',
+        'TraceDnsCacheHitParams',
+        'TraceDnsCacheMissParams',
+        'TraceRequestRedirectParams',
+        'TraceRequestChunkSentParams',
+        'TraceResponseChunkReceivedParams',
+    ]
+    _Signal = Signal[Callable[[ClientSession, SimpleNamespace, _SignalArgs],
+                              Awaitable[None]]]
 else:
     _Signal = Signal
 

@@ -280,7 +280,7 @@ class BaseConnector:
         self._loop.call_exception_handler(context)
 
     def __enter__(self) -> 'BaseConnector':
-        warnings.warn('"witn Connector():" is deprecated, '
+        warnings.warn('"with Connector():" is deprecated, '
                       'use "async with Connector():" instead',
                       DeprecationWarning)
         return self
@@ -713,7 +713,7 @@ class TCPConnector(BaseConnector):
                  use_dns_cache: bool=True, ttl_dns_cache: int=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
-                 local_addr: Optional[str]=None,
+                 local_addr: Optional[Tuple[str, int]]=None,
                  resolver: Optional[AbstractResolver]=None,
                  keepalive_timeout: Union[None, float, object]=sentinel,
                  force_close: bool=False,
