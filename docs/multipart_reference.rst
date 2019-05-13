@@ -119,7 +119,7 @@ Multipart reference
 
       Readonly :class:`str` property.
 
-   .. attribute:: name
+   .. attribute:: filename
 
       A field *filename* specified in ``Content-Disposition`` header or ``None``
       if missed or header is malformed.
