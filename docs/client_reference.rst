@@ -265,8 +265,10 @@ The client session supports the context manager protocol for self closing.
                      - :class:`str` with preferably url-encoded content
                        (**Warning:** content will not be encoded by *aiohttp*)
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: The data to send in the body of the request. This can be a
+                   :class:`FormData` object or anything that can be passed into
+                   :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
+                   (optional)
 
       :param json: Any json compatible python object
                    (optional). *json* and *data* parameters could not
@@ -399,8 +401,9 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Data to send in the body of the request; see
+                   :meth:`request<aiohttp.ClientSession.request>`
+                   for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -418,8 +421,9 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Data to send in the body of the request; see
+                   :meth:`request<aiohttp.ClientSession.request>`
+                   for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -488,9 +492,9 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
-
+      :param data: Data to send in the body of the request; see
+                   :meth:`request<aiohttp.ClientSession.request>`
+                   for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -630,8 +634,10 @@ certification chaining.
    :param dict params: Parameters to be sent in the query
                        string of the new request (optional)
 
-   :param data: Dictionary, bytes, or file-like object to
-                send in the body of the request (optional)
+   :param data: The data to send in the body of the request. This can be a
+                :class:`FormData` object or anything that can be passed into
+                :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
+                (optional)
 
    :param json: Any json compatible python object (optional). *json* and *data*
                 parameters could not be used at the same time.
@@ -862,15 +868,14 @@ TCPConnector
       If *limit* is ``0`` the connector has no limit (default: 0).
 
    :param aiohttp.abc.AbstractResolver resolver: custom resolver
-      instance to use.  ``aiohttp.DefaultResolver`` by
-      default (asynchronous if ``aiodns>=1.1`` is installed).
+      instance to use. ``aiohttp.DefaultResolver`` by default.
 
       Custom resolvers allow to resolve hostnames differently than the
       way the host is configured.
 
-      The resolver is ``aiohttp.ThreadedResolver`` by default,
-      asynchronous version is pretty robust but might fail in
-      very rare cases.
+      The resolver is ``aiohttp.ThreadedResolver`` by default. Asynchronous
+      version ``aiohttp.AsyncResolver`` (requires ``aiodns>=1.1``) is pretty
+      robust but might fail in very rare cases.
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
@@ -1645,6 +1650,79 @@ CookieJar
       await session.get(url, ssl=aiohttp.Fingerprint(digest))
 
    .. versionadded:: 3.0
+
+FormData
+^^^^^^^^
+
+A :class:`FormData` object contains the form data and also handles
+encoding it into a body that is either ``multipart/form-data`` or
+``application/x-www-form-urlencoded``. ``multipart/form-data`` is
+used if at least one field is an :class:`io.IOBase` object or was
+added with at least one optional argument to :meth:`add_field<aiohttp.FormData.add_field>`
+(``content_type``, ``filename``, or ``content_transfer_encoding``).
+Otherwise, ``application/x-www-form-urlencoded`` is used.
+
+:class:`FormData` instances are callable and return a :class:`Payload`
+on being called.
+
+.. class:: FormData(fields, quote_fields=True, charset=None)
+
+   Helper class for multipart/form-data and application/x-www-form-urlencoded body generation.
+
+   :param fields: A container for the key/value pairs of this form.
+
+                  Possible types are:
+
+                  - :class:`dict`
+                  - :class:`tuple` or :class:`list`
+                  - :class:`io.IOBase`, e.g. a file-like object
+                  - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
+
+                  If it is a :class:`tuple` or :class:`list`, it must be a valid argument
+                  for :meth:`add_fields<aiohttp.FormData.add_fields>`.
+
+                  For :class:`dict`, :class:`multidict.MultiDict`, and :class:`multidict.MultiDictProxy`,
+                  the keys and values must be valid `name` and `value` arguments to
+                  :meth:`add_field<aiohttp.FormData.add_field>`, respectively.
+
+   .. method:: add_field(name, value, content_type=None, filename=None,\
+                         content_transfer_encoding=None)
+
+      Add a field to the form.
+
+      :param str name: Name of the field
+
+      :param value: Value of the field
+
+                    Possible types are:
+
+                    - :class:`str`
+                    - :class:`bytes`, :class:`bytesarray`, or :class:`memoryview`
+                    - :class:`io.IOBase`, e.g. a file-like object
+
+      :param str content_type: The field's content-type header (optional)
+
+      :param str filename: The field's filename (optional)
+
+                           If this is not set and ``value`` is a :class:`bytes`, :class:`bytesarray`,
+                           or :class:`memoryview` object, the `name` argument is used as the filename
+                           unless ``content_transfer_encoding`` is specified.
+
+                           If ``filename`` is not set and ``value`` is an :class:`io.IOBase`
+                           object, the filename is extracted from the object if possible.
+
+      :param str content_transfer_encoding: The field's content-transfer-encoding
+                                            header (optional)
+
+   .. method:: add_fields(fields)
+
+      Add one or more fields to the form.
+
+      :param fields: An iterable containing:
+
+                     - :class:`io.IOBase`, e.g. a file-like object
+                     - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
+                     - :class:`tuple` or :class:`list` of length two, containing a name-value pair
 
 Client exceptions
 -----------------

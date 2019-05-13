@@ -234,7 +234,27 @@ async def test_multipart(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=writer, headers=writer.headers)
+    resp = await client.post('/', data=writer)
+    assert 200 == resp.status
+    await resp.release()
+
+
+async def test_multipart_empty(aiohttp_client) -> None:
+    with multipart.MultipartWriter() as writer:
+        pass
+
+    async def handler(request):
+        reader = await request.multipart()
+        assert isinstance(reader, multipart.MultipartReader)
+        async for part in reader:
+            assert False, 'Unexpected part found in reader: {!r}'.format(part)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.post('/', data=writer)
     assert 200 == resp.status
     await resp.release()
 
@@ -264,7 +284,7 @@ async def test_multipart_content_transfer_encoding(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=writer, headers=writer.headers)
+    resp = await client.post('/', data=writer)
     assert 200 == resp.status
     await resp.release()
 
@@ -1211,35 +1231,39 @@ async def test_subapp_cannot_add_app_in_handler(aiohttp_client) -> None:
     assert resp.status == 500
 
 
-async def test_subapp_middlewares(aiohttp_client) -> None:
+async def test_old_style_subapp_middlewares(aiohttp_client) -> None:
     order = []
 
     async def handler(request):
         return web.Response(text='OK')
 
-    async def middleware_factory(app, handler):
-
-        async def middleware(request):
-            order.append((1, app))
+    with pytest.warns(
+        DeprecationWarning, match='Middleware decorator is deprecated'
+    ):
+        @web.middleware
+        async def middleware(request, handler):
+            order.append((1, request.app['name']))
             resp = await handler(request)
             assert 200 == resp.status
-            order.append((2, app))
+            order.append((2, request.app['name']))
             return resp
-        return middleware
 
-    app = web.Application(middlewares=[middleware_factory])
-    subapp1 = web.Application(middlewares=[middleware_factory])
-    subapp2 = web.Application(middlewares=[middleware_factory])
+    app = web.Application(middlewares=[middleware])
+    subapp1 = web.Application(middlewares=[middleware])
+    subapp2 = web.Application(middlewares=[middleware])
+    app['name'] = 'app'
+    subapp1['name'] = 'subapp1'
+    subapp2['name'] = 'subapp2'
+
     subapp2.router.add_get('/to', handler)
-    with pytest.warns(DeprecationWarning):
-        subapp1.add_subapp('/b/', subapp2)
-        app.add_subapp('/a/', subapp1)
-        client = await aiohttp_client(app)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/a/b/to')
     assert resp.status == 200
-    assert [(1, app), (1, subapp1), (1, subapp2),
-            (2, subapp2), (2, subapp1), (2, app)] == order
+    assert [(1, 'app'), (1, 'subapp1'), (1, 'subapp2'),
+            (2, 'subapp2'), (2, 'subapp1'), (2, 'app')] == order
 
 
 async def test_subapp_on_response_prepare(aiohttp_client) -> None:
@@ -1348,7 +1372,6 @@ async def test_subapp_middleware_context(aiohttp_client,
     values = []
 
     def show_app_context(appname):
-        @web.middleware
         async def middleware(request, handler):
             values.append('{}: {}'.format(
                 appname, request.app['my_value']))
