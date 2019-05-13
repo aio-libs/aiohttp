@@ -51,7 +51,7 @@ This option is highly recommended:
 Installing speedups altogether
 ------------------------------
 
-The following will get you :term:`aiohttp` along with :term:`chardet`,
+The following will get you ``aiohttp`` along with :term:`chardet`,
 :term:`aiodns` and :term:`brotlipy` in one bundle. No need to type
 separate commands anymore!
 
