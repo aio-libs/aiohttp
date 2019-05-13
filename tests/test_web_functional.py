@@ -234,7 +234,27 @@ async def test_multipart(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=writer, headers=writer.headers)
+    resp = await client.post('/', data=writer)
+    assert 200 == resp.status
+    await resp.release()
+
+
+async def test_multipart_empty(aiohttp_client) -> None:
+    with multipart.MultipartWriter() as writer:
+        pass
+
+    async def handler(request):
+        reader = await request.multipart()
+        assert isinstance(reader, multipart.MultipartReader)
+        async for part in reader:
+            assert False, 'Unexpected part found in reader: {!r}'.format(part)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.post('/', data=writer)
     assert 200 == resp.status
     await resp.release()
 
@@ -264,7 +284,7 @@ async def test_multipart_content_transfer_encoding(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=writer, headers=writer.headers)
+    resp = await client.post('/', data=writer)
     assert 200 == resp.status
     await resp.release()
 

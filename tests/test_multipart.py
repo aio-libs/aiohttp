@@ -730,7 +730,7 @@ class TestMultipartReader:
 
 
 async def test_writer(writer) -> None:
-    assert writer.size == 0
+    assert writer.size == 7
     assert writer.boundary == ':'
 
 
@@ -846,6 +846,11 @@ async def test_writer_write_no_close_boundary(buf, stream) -> None:
          b'Content-Length: 11\r\n\r\n'
          b'one=1&two=2'
          b'\r\n') == bytes(buf))
+
+
+async def test_writer_write_no_parts(buf, stream, writer) -> None:
+    await writer.write(stream)
+    assert b'--:--\r\n' == bytes(buf)
 
 
 async def test_writer_serialize_with_content_encoding_gzip(buf, stream,
