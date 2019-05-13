@@ -105,6 +105,12 @@ Example of a drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
                            f'done in {time}s: {response.status}')
 
 
+.. versionadded:: 4.0.0
+
+
+``AccessLogger.log()`` can now access any exception raised while processing
+the request with ``sys.exc_info()``.
+
 .. _gunicorn-accesslog:
 
 Gunicorn access logs
@@ -122,9 +128,6 @@ This configuration can be either a path or ``'-'``. If the application uses
 a custom logging setup intercepting the ``'gunicorn.access'`` logger,
 accesslog_ should be set to ``'-'`` to prevent Gunicorn to create an empty
 access log file upon every startup.
-
-
-
 
 Error logs
 ----------
