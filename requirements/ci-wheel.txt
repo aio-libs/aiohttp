@@ -10,7 +10,7 @@ gunicorn==19.9.0
 multidict==4.5.2
 pytest==4.5.0
 pytest-cov==2.7.1
-pytest-mock==1.10.1
+pytest-mock==1.10.4
 tox==3.10.0
 trustme==0.5.1
 twine==1.13.0
