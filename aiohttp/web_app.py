@@ -155,16 +155,6 @@ class Application(MutableMapping[str, Any]):
         return iter(self._state)
 
     ########
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        # Technically the loop can be None,
-        # but we mask it by explicit type cast
-        # to provide more convenient type annotation.
-        warnings.warn("loop property is deprecated",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return cast(asyncio.AbstractEventLoop, self._loop)
-
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()

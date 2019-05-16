@@ -20,41 +20,6 @@ def test_app_call() -> None:
     assert app is app()
 
 
-def test_app_default_loop() -> None:
-    app = web.Application()
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is None
-
-
-async def test_set_loop() -> None:
-    loop = asyncio.get_event_loop()
-    app = web.Application()
-    app._set_loop(loop)
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is loop
-
-
-def test_set_loop_default_loop() -> None:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    app = web.Application()
-    app._set_loop(None)
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is loop
-    asyncio.set_event_loop(None)
-
-
-def test_set_loop_with_different_loops() -> None:
-    loop = asyncio.new_event_loop()
-    app = web.Application()
-    app._set_loop(loop)
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is loop
-
-    with pytest.raises(RuntimeError):
-        app._set_loop(loop=object())
-
-
 @pytest.mark.parametrize('debug', [True, False])
 async def test_app_make_handler_debug_exc(mocker, debug) -> None:
     with pytest.warns(DeprecationWarning):
