@@ -48,6 +48,17 @@ This option is highly recommended:
 
    $ pip install aiodns
 
+Installing speedups altogether
+------------------------------
+
+The following will get you ``aiohttp`` along with :term:`chardet`,
+:term:`aiodns` and ``brotlipy`` in one bundle. No need to type
+separate commands anymore!
+
+.. code-block:: bash
+
+   $ pip install aiohttp[speedups]
+
 Getting Started
 ===============
 
