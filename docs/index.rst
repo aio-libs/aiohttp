@@ -76,8 +76,9 @@ Client example::
             html = await fetch(session, 'http://python.org')
             print(html)
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    if __name__ == '__main__':
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(main())
 
 Server example::
 
@@ -92,7 +93,8 @@ Server example::
     app.add_routes([web.get('/', handle),
                     web.get('/{name}', handle)])
 
-    web.run_app(app)
+    if __name__ == '__main__':
+        web.run_app(app)
 
 
 For more information please visit :ref:`aiohttp-client` and
