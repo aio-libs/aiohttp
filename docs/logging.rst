@@ -93,7 +93,7 @@ The default access log format is::
 
 *access_log_class* introduced.
 
-Example of a drop-in replacement for :class:`aiohttp.web_log.AccessLogger`::
+Example of a drop-in replacement for the default access logger::
 
   from aiohttp.abc import AbstractAccessLogger
 
