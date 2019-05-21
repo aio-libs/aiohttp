@@ -189,10 +189,10 @@ class RequestHandler(BaseProtocol):
         self.debug = debug
         self.access_log = access_log
         if access_log:
-            access_logger = access_log_class(access_log, access_log_format)
-            if isinstance(access_logger, AbstractAsyncAccessLogger):
-                self.access_logger = access_logger  # type: Optional[AbstractAsyncAccessLogger]  # noqa
+            if issubclass(access_log_class, AbstractAsyncAccessLogger):
+                self.access_logger = access_log_class()  # type: Optional[AbstractAsyncAccessLogger]  # noqa
             else:
+                access_logger = access_log_class(access_log, access_log_format)
                 self.access_logger = AccessLoggerWrapper(access_logger)
         else:
             self.access_logger = None
