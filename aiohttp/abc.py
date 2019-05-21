@@ -209,7 +209,11 @@ class AbstractAccessLogger(ABC):
 
 
 class AbstractAsyncAccessLogger(ABC):
-    """Abstract async writer to access log."""
+    """Abstract asynchronous writer to access log."""
+
+    def __init__(self, logger: logging.Logger, log_format: str) -> None:
+        self.logger = logger
+        self.log_format = log_format
 
     @abstractmethod
     async def log(self,

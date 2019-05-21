@@ -5,8 +5,9 @@ from unittest import mock
 
 import pytest
 
-from aiohttp.abc import AbstractAccessLogger
+from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
 from aiohttp.web_log import AccessLogger
+from aiohttp.web_response import Response
 
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
@@ -178,3 +179,24 @@ async def test_exc_info_context(aiohttp_raw_server, aiohttp_client):
     resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
     assert resp.status == 500
     assert exc_msg == 'RuntimeError: intentional runtime error'
+
+
+async def test_async_logger(aiohttp_raw_server, aiohttp_client):
+    msg = None
+
+    class Logger(AbstractAsyncAccessLogger):
+        async def log(self, request, response, time):
+            nonlocal msg
+            msg = '{}: {}'.format(request.path, response.status)
+
+    async def handler(request):
+        return Response(text='ok')
+
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler,
+                                      access_log_class=Logger,
+                                      logger=logger)
+    cli = await aiohttp_client(server)
+    resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
+    assert resp.status == 200
+    assert msg == '/path/to: 200'

@@ -13,6 +13,7 @@ from typing import (
     Callable,
     Optional,
     Type,
+    Union,
     cast,
 )
 
@@ -54,6 +55,10 @@ _RequestFactory = Callable[[RawRequestMessage,
                            BaseRequest]
 
 _RequestHandler = Callable[[BaseRequest], Awaitable[StreamResponse]]
+_AnyAbstractAccessLogger = Union[
+    Type[AbstractAsyncAccessLogger],
+    Type[AbstractAccessLogger],
+]
 
 
 ERROR = RawRequestMessage(
@@ -140,7 +145,7 @@ class RequestHandler(BaseProtocol):
                  keepalive_timeout: float=75.,  # NGINX default is 75 secs
                  tcp_keepalive: bool=True,
                  logger: Logger=server_logger,
-                 access_log_class: Type[AbstractAccessLogger]=AccessLogger,
+                 access_log_class: _AnyAbstractAccessLogger=AccessLogger,
                  access_log: Logger=access_logger,
                  access_log_format: str=AccessLogger.LOG_FORMAT,
                  debug: bool=False,
