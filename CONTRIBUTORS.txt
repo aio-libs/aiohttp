@@ -37,6 +37,7 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
@@ -56,6 +57,7 @@ Chris Moore
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
+Cong Xu
 Damien Nadé
 Dan Xu
 Daniel García
@@ -109,6 +111,7 @@ Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
 Ingmar Steen
+Ivan Larin
 Jacob Champion
 Jaesung Lee
 Jake Davis

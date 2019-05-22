@@ -647,15 +647,22 @@ class MultipartReader:
             if chunk == b'':
                 raise ValueError("Could not find starting boundary %r"
                                  % (self._boundary))
-            if chunk.startswith(self._boundary):
+            newline = None
+            end_boundary = self._boundary + b'--'
+            if chunk.startswith(end_boundary):
+                _, newline = chunk.split(end_boundary, 1)
+            elif chunk.startswith(self._boundary):
                 _, newline = chunk.split(self._boundary, 1)
-                assert newline in (b'\r\n', b'\n')
+            if newline is not None:
+                assert newline in (b'\r\n', b'\n'), (newline,
+                                                     chunk,
+                                                     self._boundary)
                 self._newline = newline
 
             chunk = chunk.rstrip()
             if chunk == self._boundary:
                 return
-            elif chunk == self._boundary + b'--':
+            elif chunk == end_boundary:
                 self._at_eof = True
                 return
 
@@ -744,6 +751,9 @@ class MultipartWriter(Payload):
 
     def __len__(self) -> int:
         return len(self._parts)
+
+    def __bool__(self) -> bool:
+        return True
 
     _valid_tchar_regex = re.compile(br"\A[!#$%&'*+\-.^_`|~\w]+\Z")
     _invalid_qdtext_char_regex = re.compile(br"[\x00-\x08\x0A-\x1F\x7F]")
@@ -863,9 +873,6 @@ class MultipartWriter(Payload):
     @property
     def size(self) -> Optional[int]:
         """Size of the payload."""
-        if not self._parts:
-            return 0
-
         total = 0
         for part, encoding, te_encoding in self._parts:
             if encoding or te_encoding or part.size is None:
@@ -883,9 +890,6 @@ class MultipartWriter(Payload):
     async def write(self, writer: Any,
                     close_boundary: bool=True) -> None:
         """Write body."""
-        if not self._parts:
-            return
-
         for part, encoding, te_encoding in self._parts:
             await writer.write(b'--' + self._boundary + b'\r\n')
             await writer.write(part._binary_headers)

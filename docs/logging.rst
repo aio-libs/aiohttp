@@ -93,7 +93,7 @@ The default access log format is::
 
 *access_log_class* introduced.
 
-Example of a drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
+Example of a drop-in replacement for the default access logger::
 
   from aiohttp.abc import AbstractAccessLogger
 
@@ -104,6 +104,12 @@ Example of a drop-in replacement for :class:`aiohttp.helpers.AccessLogger`::
                            f'"{request.method} {request.path} '
                            f'done in {time}s: {response.status}')
 
+
+.. versionadded:: 4.0.0
+
+
+``AccessLogger.log()`` can now access any exception raised while processing
+the request with ``sys.exc_info()``.
 
 .. _gunicorn-accesslog:
 
@@ -122,9 +128,6 @@ This configuration can be either a path or ``'-'``. If the application uses
 a custom logging setup intercepting the ``'gunicorn.access'`` logger,
 accesslog_ should be set to ``'-'`` to prevent Gunicorn to create an empty
 access log file upon every startup.
-
-
-
 
 Error logs
 ----------

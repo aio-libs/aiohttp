@@ -1,6 +1,5 @@
 from typing import Any
 
-
 class reify:
     def __init__(self, wrapped: Any) -> None: ...
 

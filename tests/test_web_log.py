@@ -1,5 +1,6 @@
 import datetime
 import platform
+import sys
 from unittest import mock
 
 import pytest
@@ -156,3 +157,24 @@ def test_logger_abc() -> None:
     access_logger = Logger(mock_logger, '{request} {response} {time}')
     access_logger.log('request', 'response', 1)
     mock_logger.info.assert_called_with('request response 1')
+
+
+async def test_exc_info_context(aiohttp_raw_server, aiohttp_client):
+    exc_msg = None
+
+    class Logger(AbstractAccessLogger):
+        def log(self, request, response, time):
+            nonlocal exc_msg
+            exc_msg = '{0.__name__}: {1}'.format(*sys.exc_info())
+
+    async def handler(request):
+        raise RuntimeError('intentional runtime error')
+
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler,
+                                      access_log_class=Logger,
+                                      logger=logger)
+    cli = await aiohttp_client(server)
+    resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
+    assert resp.status == 500
+    assert exc_msg == 'RuntimeError: intentional runtime error'
