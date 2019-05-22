@@ -161,7 +161,7 @@ and :ref:`aiohttp-web-signals` handlers.
    .. attribute:: path
 
       The URL including *PATH INFO* without the host or scheme. e.g.,
-      ``/app/blog``. The path is URL-unquoted. For raw path info see
+      ``/app/blog``. The path is URL-decoded. For raw path info see
       :attr:`raw_path`.
 
       Read-only :class:`str` property.
@@ -169,11 +169,11 @@ and :ref:`aiohttp-web-signals` handlers.
    .. attribute:: raw_path
 
       The URL including raw *PATH INFO* without the host or scheme.
-      Warning, the path may be quoted and may contains non valid URL
+      Warning, the path may be URL-encoded and may contain invalid URL
       characters, e.g.
       ``/my%2Fpath%7Cwith%21some%25strange%24characters``.
 
-      For unquoted version please take a look on :attr:`path`.
+      For URL-decoded version please take a look on :attr:`path`.
 
       Read-only :class:`str` property.
 
