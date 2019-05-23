@@ -111,6 +111,28 @@ Example of a drop-in replacement for the default access logger::
 ``AccessLogger.log()`` can now access any exception raised while processing
 the request with ``sys.exc_info()``.
 
+
+.. versionadded:: 4.0.0
+
+
+If your logging needs to perform IO you can instead inherit from
+:class:`aiohttp.abc.AbstractAsyncAccessLogger`::
+
+
+  from aiohttp.abc import AbstractAsyncAccessLogger
+
+  class AccessLogger(AbstractAsyncAccessLogger):
+
+      async def log(self, request, response, time):
+          logging_service = request.app['logging_service']
+          await logging_service.log(f'{request.remote} '
+                                    f'"{request.method} {request.path} '
+                                    f'done in {time}s: {response.status}')
+
+
+This also allows access to the results of coroutines on the ``request`` and
+``response``, e.g. ``request.text()``.
+
 .. _gunicorn-accesslog:
 
 Gunicorn access logs

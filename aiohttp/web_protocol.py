@@ -13,12 +13,17 @@ from typing import (
     Callable,
     Optional,
     Type,
+    Union,
     cast,
 )
 
 import yarl
 
-from .abc import AbstractAccessLogger, AbstractStreamWriter
+from .abc import (
+    AbstractAccessLogger,
+    AbstractAsyncAccessLogger,
+    AbstractStreamWriter,
+)
 from .base_protocol import BaseProtocol
 from .helpers import CeilTimeout, current_task
 from .http import (
@@ -50,6 +55,10 @@ _RequestFactory = Callable[[RawRequestMessage,
                            BaseRequest]
 
 _RequestHandler = Callable[[BaseRequest], Awaitable[StreamResponse]]
+_AnyAbstractAccessLogger = Union[
+    Type[AbstractAsyncAccessLogger],
+    Type[AbstractAccessLogger],
+]
 
 
 ERROR = RawRequestMessage(
@@ -63,6 +72,22 @@ class RequestPayloadError(Exception):
 
 class PayloadAccessError(Exception):
     """Payload was accessed after response was sent."""
+
+
+class AccessLoggerWrapper(AbstractAsyncAccessLogger):
+    """
+    Wraps an AbstractAccessLogger so it behaves
+    like an AbstractAsyncAccessLogger.
+    """
+    def __init__(self, access_logger: AbstractAccessLogger):
+        self.access_logger = access_logger
+        super().__init__()
+
+    async def log(self,
+                  request: BaseRequest,
+                  response: StreamResponse,
+                  request_start: float) -> None:
+        self.access_logger.log(request, response, request_start)
 
 
 class RequestHandler(BaseProtocol):
@@ -120,7 +145,7 @@ class RequestHandler(BaseProtocol):
                  keepalive_timeout: float=75.,  # NGINX default is 75 secs
                  tcp_keepalive: bool=True,
                  logger: Logger=server_logger,
-                 access_log_class: Type[AbstractAccessLogger]=AccessLogger,
+                 access_log_class: _AnyAbstractAccessLogger=AccessLogger,
                  access_log: Logger=access_logger,
                  access_log_format: str=AccessLogger.LOG_FORMAT,
                  debug: bool=False,
@@ -164,8 +189,11 @@ class RequestHandler(BaseProtocol):
         self.debug = debug
         self.access_log = access_log
         if access_log:
-            self.access_logger = access_log_class(
-                access_log, access_log_format)  # type: Optional[AbstractAccessLogger]  # noqa
+            if issubclass(access_log_class, AbstractAsyncAccessLogger):
+                self.access_logger = access_log_class()  # type: Optional[AbstractAsyncAccessLogger]  # noqa
+            else:
+                access_logger = access_log_class(access_log, access_log_format)
+                self.access_logger = AccessLoggerWrapper(access_logger)
         else:
             self.access_logger = None
 
@@ -339,13 +367,13 @@ class RequestHandler(BaseProtocol):
             self.transport.close()
             self.transport = None
 
-    def log_access(self,
-                   request: BaseRequest,
-                   response: StreamResponse,
-                   request_start: float) -> None:
+    async def log_access(self,
+                         request: BaseRequest,
+                         response: StreamResponse,
+                         request_start: float) -> None:
         if self.access_logger is not None:
-            self.access_logger.log(request, response,
-                                   self._loop.time() - request_start)
+            await self.access_logger.log(request, response,
+                                         self._loop.time() - request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
         if self.debug:
@@ -526,10 +554,10 @@ class RequestHandler(BaseProtocol):
             await prepare_meth(request)
             await resp.write_eof()
         except ConnectionResetError:
-            self.log_access(request, resp, start_time)
+            await self.log_access(request, resp, start_time)
             return True
         else:
-            self.log_access(request, resp, start_time)
+            await self.log_access(request, resp, start_time)
             return False
 
     def handle_error(self,
