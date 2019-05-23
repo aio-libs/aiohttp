@@ -321,3 +321,11 @@ By default aiohttp uses own defaults::
 
 For more information please read :ref:`Format Specification for Access
 Log <aiohttp-logging-access-log-format-spec>`.
+
+
+Debug Mode
+---------------------
+
+use ``web.run_app(app, debug=True)`` to easily turn on debug messages.
+
+reload need <https://docs.aiohttp.org/en/latest/web_advanced.html#dev-tools>
