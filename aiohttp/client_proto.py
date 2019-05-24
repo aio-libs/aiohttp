@@ -9,7 +9,7 @@ from .client_exceptions import (
     ServerDisconnectedError,
     ServerTimeoutError,
 )
-from .helpers import BaseTimerContext, set_result
+from .helpers import BaseTimerContext, set_exception, set_result
 from .http import HttpResponseParser, RawResponseMessage
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
@@ -73,7 +73,7 @@ class ResponseHandler(BaseProtocol,
         self._drop_timeout()
 
         if exc is not None:
-            self.closed.set_exception(exc)
+            set_exception(self.closed, exc)
         else:
             set_result(self.closed, None)
 
