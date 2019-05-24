@@ -179,7 +179,6 @@ class WebSocketResponse(StreamResponse):
         response_headers = CIMultiDict(  # type: ignore
             {hdrs.UPGRADE: 'websocket',
              hdrs.CONNECTION: 'upgrade',
-             hdrs.TRANSFER_ENCODING: 'chunked',
              hdrs.SEC_WEBSOCKET_ACCEPT: accept_val})
 
         notakeover = False
