@@ -284,15 +284,6 @@ class BaseConnector:
             context['source_traceback'] = self._source_traceback
         self._loop.call_exception_handler(context)
 
-    def __enter__(self) -> 'BaseConnector':
-        warnings.warn('"with Connector():" is deprecated, '
-                      'use "async with Connector():" instead',
-                      DeprecationWarning)
-        return self
-
-    def __exit__(self, *exc: Any) -> None:
-        self._close_immediately()
-
     async def __aenter__(self) -> 'BaseConnector':
         return self
 
@@ -427,6 +418,7 @@ class BaseConnector:
                 proto.close()
                 waiters.append(proto.closed)
 
+            # TODO (A Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
                     transport.abort()

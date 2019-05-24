@@ -1,7 +1,6 @@
 import asyncio
 from typing import Optional, cast
 
-from aiohttp import abc
 from .tcp_helpers import tcp_nodelay
 
 
@@ -55,7 +54,6 @@ class BaseProtocol(asyncio.Protocol):
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._connection_lost = True
-
         # Wake up the writer if currently paused.
         self.transport = None
         if not self._paused:
@@ -81,7 +79,3 @@ class BaseProtocol(asyncio.Protocol):
         waiter = self._loop.create_future()
         self._drain_waiter = waiter
         await waiter
-
-    @abc.abstractmethod
-    def close(self) -> None:
-        pass
