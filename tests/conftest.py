@@ -73,6 +73,7 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
 
+
 @pytest.fixture
 def create_mocked_conn(loop):
     def _proto_factory(conn_closing_result=None, **kwargs):

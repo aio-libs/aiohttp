@@ -333,7 +333,8 @@ async def test_release(loop, key, create_mocked_conn) -> None:
     await conn.close()
 
 
-async def test_release_ssl_transport(loop, ssl_key, create_mocked_conn) -> None:
+async def test_release_ssl_transport(loop, ssl_key,
+                                     create_mocked_conn) -> None:
     conn = aiohttp.BaseConnector(loop=loop, enable_cleanup_closed=True)
     conn._release_waiter = mock.Mock()
 
@@ -489,7 +490,8 @@ async def test_tcp_connector_certificate_error(loop) -> None:
     assert isinstance(ctx.value, aiohttp.ClientSSLError)
 
 
-async def test_tcp_connector_multiple_hosts_errors(loop, create_mocked_conn) -> None:
+async def test_tcp_connector_multiple_hosts_errors(loop,
+                                                   create_mocked_conn) -> None:
     conn = aiohttp.TCPConnector(loop=loop)
 
     ip1 = '192.168.1.1'
@@ -878,6 +880,7 @@ async def test_tcp_connector_dns_tracing_cache_disabled(loop,
 
 async def test_tcp_connector_dns_tracing_throttle_requests(
         loop, dns_response) -> None:
+
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_dns_cache_hit = mock.Mock(
@@ -946,7 +949,8 @@ async def test_get_pop_empty_conns(loop) -> None:
     assert not conn._conns
 
 
-async def test_release_close_do_not_add_to_pool(loop, key, create_mocked_conn) -> None:
+async def test_release_close_do_not_add_to_pool(loop, key,
+                                                create_mocked_conn) -> None:
     # see issue #473
     conn = aiohttp.BaseConnector(loop=loop)
 
@@ -957,8 +961,9 @@ async def test_release_close_do_not_add_to_pool(loop, key, create_mocked_conn) -
     assert not conn._conns
 
 
-async def test_release_close_do_not_delete_existing_connections(key,
-                                                                create_mocked_conn) -> None:  # noqa
+async def test_release_close_do_not_delete_existing_connections(
+        key, create_mocked_conn) -> None:
+
     proto1 = create_mocked_conn()
 
     conn = aiohttp.BaseConnector()
@@ -1115,7 +1120,8 @@ async def test_cleanup(key) -> None:
     assert conn._cleanup_handle is not None
 
 
-async def test_cleanup_close_ssl_transport(ssl_key, create_mocked_conn) -> None:
+async def test_cleanup_close_ssl_transport(ssl_key,
+                                           create_mocked_conn) -> None:
     proto = create_mocked_conn()
     transport = proto.transport
     testset = {ssl_key: [(proto, 10)]}
@@ -1410,7 +1416,8 @@ async def test_connect_with_limit(loop, key, create_mocked_conn) -> None:
     await conn.close()
 
 
-async def test_connect_queued_operation_tracing(loop, key, create_mocked_conn) -> None:
+async def test_connect_queued_operation_tracing(loop, key,
+                                                create_mocked_conn) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_queued_start = mock.Mock(
@@ -1470,7 +1477,8 @@ async def test_connect_queued_operation_tracing(loop, key, create_mocked_conn) -
     await conn.close()
 
 
-async def test_connect_reuseconn_tracing(loop, key, create_mocked_conn) -> None:
+async def test_connect_reuseconn_tracing(loop, key,
+                                         create_mocked_conn) -> None:
     session = mock.Mock()
     trace_config_ctx = mock.Mock()
     on_connection_reuseconn = mock.Mock(
@@ -1510,7 +1518,9 @@ async def test_connect_reuseconn_tracing(loop, key, create_mocked_conn) -> None:
     await conn.close()
 
 
-async def test_connect_with_limit_and_limit_per_host(loop, key, create_mocked_conn) -> None:
+async def test_connect_with_limit_and_limit_per_host(
+        loop, key, create_mocked_conn) -> None:
+
     proto = create_mocked_conn()
     proto.is_connected.return_value = True
 
@@ -1544,7 +1554,9 @@ async def test_connect_with_limit_and_limit_per_host(loop, key, create_mocked_co
     await conn.close()
 
 
-async def test_connect_with_no_limit_and_limit_per_host(loop, key, create_mocked_conn) -> None:  # noqa
+async def test_connect_with_no_limit_and_limit_per_host(
+        loop, key, create_mocked_conn) -> None:
+
     proto = create_mocked_conn()
     proto.is_connected.return_value = True
 
@@ -1735,7 +1747,8 @@ async def test_connect_waiters_cleanup(loop, create_mocked_conn) -> None:
     assert not conn._waiters.keys()
 
 
-async def test_connect_waiters_cleanup_key_error(loop, create_mocked_conn) -> None:
+async def test_connect_waiters_cleanup_key_error(loop,
+                                                 create_mocked_conn) -> None:
     proto = create_mocked_conn()
     proto.is_connected.return_value = True
 
@@ -1758,7 +1771,8 @@ async def test_connect_waiters_cleanup_key_error(loop, create_mocked_conn) -> No
     assert not conn._waiters.keys() == []
 
 
-async def test_close_with_acquired_connection(loop, create_mocked_conn) -> None:
+async def test_close_with_acquired_connection(loop,
+                                              create_mocked_conn) -> None:
     proto = create_mocked_conn()
     proto.is_connected.return_value = True
 
@@ -1893,8 +1907,9 @@ async def test_cancelled_waiter(loop, create_mocked_conn) -> None:
         await conn2
 
 
-async def test_error_on_connection_with_cancelled_waiter(loop, key,
-                                                         create_mocked_conn) -> None:  # noqa
+async def test_error_on_connection_with_cancelled_waiter(
+        loop, key, create_mocked_conn) -> None:
+
     conn = aiohttp.BaseConnector(limit=1, loop=loop)
 
     req = mock.Mock()

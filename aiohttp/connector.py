@@ -49,7 +49,6 @@ from .helpers import (
     CeilTimeout,
     get_running_loop,
     is_ip_address,
-    noop2,
     sentinel,
 )
 from .http import RESPONSES
@@ -515,7 +514,8 @@ class BaseConnector:
 
         proto = self._get(key)
         if proto is None:
-            placeholder = cast(ResponseHandler, _TransportPlaceholder(self._loop))
+            placeholder = cast(ResponseHandler,
+                               _TransportPlaceholder(self._loop))
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
 
