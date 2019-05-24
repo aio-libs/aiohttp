@@ -388,8 +388,8 @@ class BaseConnector:
                                  loop=self._loop,
                                  return_exceptions=True)
 
-    def _close_immediately(self) -> List[asyncio.Future]:
-        waiters = []
+    def _close_immediately(self) -> List[asyncio.Future[Optional[Exception]]]:
+        waiters: List[asyncio.Future[Optional[Exception]]] = []
 
         if self._closed:
             return waiters
@@ -746,7 +746,7 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def _close_immediately(self) -> List[asyncio.Future]:
+    def _close_immediately(self) -> List[asyncio.Future[Optional[Exception]]]:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
         return super()._close_immediately()
