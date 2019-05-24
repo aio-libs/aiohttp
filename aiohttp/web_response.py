@@ -371,13 +371,10 @@ class StreamResponse(BaseClass, HeadersMixin):
         if self._compression:
             await self._start_compression(request)
 
-        if all([
-            'websocket' == headers.get(hdrs.UPGRADE, '').lower().strip(),
-            'upgrade' == headers.get(hdrs.CONNECTION, '').lower()
-        ]):
-            websocket_response = True
-        else:
-            websocket_response = False
+        websocket_response = (
+            'websocket' == headers.get(hdrs.UPGRADE, '').lower().strip() and
+            'upgrade' == headers.get(hdrs.CONNECTION, '').lower().strip()
+        )
 
         if self._chunked:
             if version != HttpVersion11:
@@ -385,7 +382,7 @@ class StreamResponse(BaseClass, HeadersMixin):
                     "Using chunked encoding is forbidden "
                     "for HTTP/{0.major}.{0.minor}".format(request.version))
             writer.enable_chunking()
-            if websocket_response is False:
+            if not websocket_response:
                 headers[hdrs.TRANSFER_ENCODING] = 'chunked'
             if hdrs.CONTENT_LENGTH in headers:
                 del headers[hdrs.CONTENT_LENGTH]
@@ -394,7 +391,7 @@ class StreamResponse(BaseClass, HeadersMixin):
             if writer.length is None:
                 if version >= HttpVersion11:
                     writer.enable_chunking()
-                    if websocket_response is False:
+                    if not websocket_response:
                         headers[hdrs.TRANSFER_ENCODING] = 'chunked'
                     if hdrs.CONTENT_LENGTH in headers:
                         del headers[hdrs.CONTENT_LENGTH]
