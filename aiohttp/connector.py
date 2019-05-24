@@ -268,7 +268,7 @@ class BaseConnector:
 
         conns = [repr(c) for c in self._conns.values()]
 
-        self._close()
+        self._close_immediately()
 
         if PY_36:
             kwargs = {'source': self}
@@ -291,7 +291,7 @@ class BaseConnector:
         return self
 
     def __exit__(self, *exc: Any) -> None:
-        self._close()
+        self._close_immediately()
 
     async def __aenter__(self) -> 'BaseConnector':
         return self
@@ -392,13 +392,13 @@ class BaseConnector:
 
     async def close(self) -> None:
         """Close all opened transports."""
-        waiters = self._close()
+        waiters = self._close_immediately()
         if waiters:
             await asyncio.gather(*waiters,
                                  loop=self._loop,
                                  return_exceptions=True)
 
-    def _close(self) -> List[asyncio.Future]:
+    def _close_immediately(self) -> List[asyncio.Future]:
         waiters = []
 
         if self._closed:
@@ -754,10 +754,10 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def _close(self) -> None:
+    def _close_immediately(self) -> None:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
-        super()._close()
+        super()._close_immediately()
 
     @property
     def family(self) -> int:
