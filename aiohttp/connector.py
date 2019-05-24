@@ -746,10 +746,10 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def _close_immediately(self) -> None:
+    def _close_immediately(self) -> List[asyncio.Future]:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
-        super()._close_immediately()
+        return super()._close_immediately()
 
     @property
     def family(self) -> int:
