@@ -71,6 +71,8 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client_reqrep import ConnectionKey  # noqa
     from .tracing import Trace  # noqa
 
+_ListOfFutures = List['asyncio.Future[Optional[Exception]]']
+
 
 class _DeprecationWaiter:
     __slots__ = ('_awaitable', '_awaited')
@@ -382,14 +384,14 @@ class BaseConnector:
 
     async def close(self) -> None:
         """Close all opened transports."""
-        waiters = self._close_immediately()
+        waiters: _ListOfFutures = self._close_immediately()
         if waiters:
             await asyncio.gather(*waiters,
                                  loop=self._loop,
                                  return_exceptions=True)
 
-    def _close_immediately(self) -> List[asyncio.Future[Optional[Exception]]]:
-        waiters: List[asyncio.Future[Optional[Exception]]] = []
+    def _close_immediately(self) -> _ListOfFutures:
+        waiters: _ListOfFutures = []
 
         if self._closed:
             return waiters
@@ -746,7 +748,7 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def _close_immediately(self) -> List[asyncio.Future[Optional[Exception]]]:
+    def _close_immediately(self) -> _ListOfFutures:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
         return super()._close_immediately()
