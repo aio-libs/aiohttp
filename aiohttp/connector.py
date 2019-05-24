@@ -417,7 +417,7 @@ class BaseConnector:
                 proto.close()
                 waiters.append(proto.closed)
 
-            # TODO (A Yushovskiy, 24-May-2019) collect transp. closing futures
+            # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
                     transport.abort()
