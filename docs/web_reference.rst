@@ -2725,7 +2725,7 @@ Utilities
    :param app: :class:`Application` instance to run or a *coroutine*
                that returns an application.
 
-   :param bool debug: same as `loop.set_debug(True)`
+   :param bool debug: enable :ref:`asyncio debug mode <asyncio-debug-mode>` if ``True``.
 
    :param str host: TCP/IP host or a sequence of hosts for HTTP server.
                     Default is ``'0.0.0.0'`` if *port* has been specified
