@@ -727,4 +727,4 @@ def test_run_app_with_debug_true(patched_loop):
     app = web.Application()
 
     web.run_app(app, debug=True, print=stopper(patched_loop))
-    assert True == asyncio.get_event_loop().get_debug()
+    assert True is asyncio.get_event_loop().get_debug()
