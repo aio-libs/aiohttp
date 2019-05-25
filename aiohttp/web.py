@@ -389,7 +389,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             reuse_address: Optional[bool]=None,
             reuse_port: Optional[bool]=None) -> None:
     """Run an app locally"""
-    # behavior like asyncio.run() as a main entry point for asyncio programs
+    # The function design follows asyncio.run() behavior
     loop = asyncio.new_event_loop()
     loop.set_debug(debug)
 
