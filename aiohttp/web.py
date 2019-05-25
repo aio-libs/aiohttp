@@ -424,6 +424,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
         if sys.version_info >= (3, 6):  # don't use PY_36 to pass mypy
             loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
+        asyncio.set_event_loop(None)
 
 
 def main(argv: List[str]) -> None:
