@@ -2695,8 +2695,8 @@ Utilities
    .. seealso:: :ref:`aiohttp-web-file-upload`
 
 
-.. function:: run_app(app, *, host=None, port=None, path=None, \
-                      sock=None, shutdown_timeout=60.0, \
+.. function:: run_app(app, *, debug=False, host=None, port=None, \
+                      path=None, sock=None, shutdown_timeout=60.0, \
                       ssl_context=None, print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
@@ -2724,6 +2724,8 @@ Utilities
 
    :param app: :class:`Application` instance to run or a *coroutine*
                that returns an application.
+
+   :param bool debug: same as `loop.set_debug(True)`
 
    :param str host: TCP/IP host or a sequence of hosts for HTTP server.
                     Default is ``'0.0.0.0'`` if *port* has been specified
