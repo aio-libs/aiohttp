@@ -393,7 +393,6 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
     loop = asyncio.new_event_loop()
     loop.set_debug(debug)
 
-
     # Configure if and only if in debugging mode and using the default logger
     if loop.get_debug() and access_log and access_log.name == 'aiohttp.access':
         if access_log.level == logging.NOTSET:
