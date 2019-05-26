@@ -346,7 +346,7 @@ def test_run_app_custom_backlog(patched_loop) -> None:
 def test_run_app_custom_backlog_unix(patched_loop) -> None:
     app = web.Application()
     web._run_app(app, path='/tmp/tmpsock.sock',
-                backlog=10, print=stopper(patched_loop))
+                 backlog=10, print=stopper(patched_loop))
 
     patched_loop.create_unix_server.assert_called_with(
         mock.ANY, '/tmp/tmpsock.sock', ssl=None, backlog=10)
@@ -555,8 +555,8 @@ def test_run_app_default_logger(monkeypatch, patched_loop):
 
     app = web.Application()
     web._run_app(app,
-                print=stopper(patched_loop),
-                access_log=mock_logger)
+                 print=stopper(patched_loop),
+                 access_log=mock_logger)
     mock_logger.setLevel.assert_any_call(logging.DEBUG)
     mock_logger.hasHandlers.assert_called_with()
     assert isinstance(mock_logger.addHandler.call_args[0][0],
@@ -576,8 +576,8 @@ def test_run_app_default_logger_setup_requires_debug(patched_loop):
 
     app = web.Application()
     web._run_app(app,
-                print=stopper(patched_loop),
-                access_log=mock_logger)
+                 print=stopper(patched_loop),
+                 access_log=mock_logger)
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
     mock_logger.addHandler.assert_not_called()
@@ -596,8 +596,8 @@ def test_run_app_default_logger_setup_requires_default_logger(patched_loop):
 
     app = web.Application()
     web._run_app(app,
-                print=stopper(patched_loop),
-                access_log=mock_logger)
+                 print=stopper(patched_loop),
+                 access_log=mock_logger)
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
     mock_logger.addHandler.assert_not_called()
@@ -616,8 +616,8 @@ def test_run_app_default_logger_setup_only_if_unconfigured(patched_loop):
 
     app = web.Application()
     web._run_app(app,
-                print=stopper(patched_loop),
-                access_log=mock_logger)
+                 print=stopper(patched_loop),
+                 access_log=mock_logger)
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_called_with()
     mock_logger.addHandler.assert_not_called()
@@ -721,3 +721,10 @@ def test_run_app_context_vars(patched_loop):
 
     web._run_app(init(), print=stopper(patched_loop))
     assert count == 3
+
+
+def test_run_app_with_debug_true(patched_loop):
+    app = web.Application()
+
+    web._run_app(app, debug=True, print=stopper(patched_loop))
+    assert True is asyncio.get_event_loop().get_debug()
