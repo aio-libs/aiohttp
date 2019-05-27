@@ -141,6 +141,7 @@ Kay Zheng
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Valetov
 Kyrylo Perevozchikov
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
