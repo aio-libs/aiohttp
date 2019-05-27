@@ -127,7 +127,7 @@ args = dict(
     extras_require={
         'speedups': [
             'aiodns',
-            'brotlipy',
+            'Brotli',
             'cchardet',
         ],
     },
