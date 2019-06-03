@@ -1,2 +1,2 @@
-pytest==4.5.0
+pytest==4.6.1
 twine==1.13.0
