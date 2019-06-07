@@ -1,13 +1,11 @@
+.. currentmodule:: aiohttp
+
+
 .. _aiohttp-structures:
 
 
 Common data structures
 ======================
-
-.. module:: aiohttp
-
-.. currentmodule:: aiohttp
-
 
 Common data structures used by *aiohttp* internally.
 
