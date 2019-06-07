@@ -1,10 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-logging:
 
 Logging
 =======
-
-.. currentmodule:: aiohttp
-
 
 *aiohttp* uses standard :mod:`logging` for tracking the
 library activity.

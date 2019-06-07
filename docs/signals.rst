@@ -1,7 +1,7 @@
+.. currentmodule:: aiohttp
+
 Signals
 =======
-
-.. currentmodule:: aiohttp
 
 Signal is a list of registered asynchronous callbacks.
 

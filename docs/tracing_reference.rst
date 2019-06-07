@@ -1,9 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-tracing-reference:
 
 Tracing Reference
 =================
-
-.. currentmodule:: aiohttp
 
 .. versionadded:: 3.0
 

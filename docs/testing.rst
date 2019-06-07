@@ -1,9 +1,9 @@
+.. module:: aiohttp.test_utils
+
 .. _aiohttp-testing:
 
 Testing
 =======
-
-.. currentmodule:: aiohttp.test_utils
 
 Testing aiohttp web servers
 ---------------------------

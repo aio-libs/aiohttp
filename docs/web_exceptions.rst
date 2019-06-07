@@ -1,9 +1,9 @@
+.. currentmodule:: aiohttp.web
+
 .. _aiohttp-web-exceptions:
 
 Web Server Exceptions
 =====================
-
-.. currentmodule:: aiohttp.web
 
 Overview
 --------

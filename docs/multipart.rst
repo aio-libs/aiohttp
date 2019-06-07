@@ -1,4 +1,4 @@
-.. module:: aiohttp
+.. currentmodule:: aiohttp
 
 .. _aiohttp-multipart:
 

@@ -1,10 +1,9 @@
+.. currentmodule:: aiohttp.web
+
 .. _aiohttp-web-advanced:
 
 Web Server Advanced
 ===================
-
-.. currentmodule:: aiohttp.web
-
 
 Unicode support
 ---------------

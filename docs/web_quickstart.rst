@@ -1,10 +1,9 @@
+.. currentmodule:: aiohttp.web
+
 .. _aiohttp-web-quickstart:
 
 Web Server Quickstart
 =====================
-
-.. currentmodule:: aiohttp.web
-
 
 Run a Simple Web Server
 -----------------------
@@ -55,8 +54,8 @@ emphasize their equality, switching from one style to another is very
 trivial.
 
 .. note::
-   You can get a powerful aiohttp template by running one command. 
-   To do this, simply use our `boilerplate for quick start with aiohttp 
+   You can get a powerful aiohttp template by running one command.
+   To do this, simply use our `boilerplate for quick start with aiohttp
    <https://create-aio-app.readthedocs.io/pages/aiohttp_quick_start.html>`_.
 
 
