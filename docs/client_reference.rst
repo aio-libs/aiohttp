@@ -1,11 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-reference:
 
 Client Reference
 ================
-
-.. module:: aiohttp
-.. currentmodule:: aiohttp
-
 
 Client Session
 --------------

@@ -1,10 +1,10 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-quickstart:
 
 ===================
  Client Quickstart
 ===================
-
-.. currentmodule:: aiohttp
 
 Eager to get started? This page gives a good introduction in how to
 get started with aiohttp client API.

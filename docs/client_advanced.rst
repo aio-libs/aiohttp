@@ -1,9 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-advanced:
 
 Advanced Client Usage
 =====================
-
-.. currentmodule:: aiohttp
 
 .. _aiohttp-client-session:
 
