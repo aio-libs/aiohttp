@@ -28,19 +28,24 @@ stages:
     - script: |
         sudo apt-get update
         sudo apt-get install libenchant-dev
-        pip install -r requirements/doc.txt -r requirements/doc-spelling.txt
+        pip install -r requirements/doc.txt -r requirements/doc-spelling.txt -r requirements/towncrier.txt -r requirements/flake.txt -r requirements/ci.txt.
+      displayName: 'Install dependencies'
+
+    - script: |
         make doc-spelling
       displayName: 'Checking docs spelling'
 
     - script: |
-        pip install -r requirements/towncrier.txt
         towncrier --yes
       displayName: 'Checking towncrier fragments'
 
     - script: |
-        pip install -r requirements/flake.txt
         flake8 aiohttp examples tests
       displayName: Linting source code with flake8'
+
+    - script: |
+        mypy aiohttp
+      displayName: Linting source code with mypy'
 
 
 - stage: test
