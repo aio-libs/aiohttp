@@ -87,6 +87,15 @@ stages:
         Python37-Win64:
           python.version: '3.7'
           image: 'vs2017-win2016'
+        Python35-MacOSX:
+          python.version: '3.5'
+          image: 'macOS-10.14'
+        Python36-MacOSX:
+          python.version: '3.6'
+          image: 'macOS-10.14'
+        Python37-MacOSX:
+          python.version: '3.7'
+          image: 'macOS-10.14'
 
     pool:
       vmImage: $[ variables['image'] ]
@@ -113,6 +122,7 @@ stages:
       displayName: 'Install dependencies'
 
     - script: |
+        python -c 'print("Start testing")'
         pytest -c pytest.ci.ini -s -v --cov aiohttp --cov-report html tests
       displayName: 'Test'
 
