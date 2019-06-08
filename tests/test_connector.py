@@ -43,9 +43,8 @@ def ssl_key():
 
 
 @pytest.fixture
-def unix_sockname(tmp_path_factory):
-    return str((tmp_path_factory.getbasetemp() /
-                str(uuid.uuid4())).with_suffix('.sock'))
+def unix_sockname(tmp_path):
+    return str(tmp_path / 'socket.sock')
 
 
 @pytest.fixture
@@ -57,7 +56,14 @@ def unix_server(loop, unix_sockname):
         runners.append(runner)
         await runner.setup()
         site = web.UnixSite(runner, unix_sockname)
-        await site.start()
+        try:
+            await site.start()
+        except OSError as exc:
+            if str(exc) == "AF_UNIX path too long":
+                if sys.platform == "linux":
+                    raise
+                pytest.skip("Some UNIXes has too strict limitation "
+                             "for sockname length")
 
     yield go
 
