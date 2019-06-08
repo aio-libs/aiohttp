@@ -11,11 +11,11 @@ pool:
   vmImage: 'ubuntu-latest'
 strategy:
   matrix:
-    Python35:
+    Python35-Linux:
       python.version: '3.5'
-    Python36:
+    Python36-Linux:
       python.version: '3.6'
-    Python37:
+    Python37-Lunux:
       python.version: '3.7'
 
 steps:
