@@ -184,7 +184,7 @@ jobs:
     - *upgrade_python_toolset
     - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
-    - python setup.py check --metadata --restructuredtext --strict --verbose sdist bdist_wheel
+    - AIOHTTP_NO_EXTENSIONS=1 python setup.py --verbose sdist bdist_wheel
     - twine check dist/*
 
   - <<: *_lint_base
