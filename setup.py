@@ -1,16 +1,23 @@
+import os
 import pathlib
 import sys
-from distutils.command.build_ext import build_ext
-from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
 
 from setuptools import Extension, setup
 
 if sys.version_info < (3, 6):
-    raise RuntimeError("aiohttp 3.7+ requires Python 3.6+")
+    raise RuntimeError("aiohttp 3.x requires Python 3.6+")
 
+
+NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))  # type: bool
 HERE = pathlib.Path(__file__).parent
+IS_GIT_REPO = (HERE / ".git").exists()
 
-if (HERE / ".git").exists() and not (HERE / "vendor/http-parser/README.md").exists():
+
+if sys.implementation.name != "cpython":
+    NO_EXTENSIONS = True
+
+
+if IS_GIT_REPO and not (HERE / "vendor/http-parser/README.md").exists():
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  git submodule update --init", file=sys.stderr)
@@ -35,33 +42,10 @@ extensions = [
 ]
 
 
-class BuildFailed(Exception):
-    pass
+build_type = "Pure" if NO_EXTENSIONS else "Accelerated"
+setup_kwargs = {} if NO_EXTENSIONS else {"ext_modules": extensions}
 
-
-class ve_build_ext(build_ext):
-    # This class allows C extension building to fail.
-
-    def run(self):
-        try:
-            build_ext.run(self)
-        except (DistutilsPlatformError, FileNotFoundError):
-            raise BuildFailed()
-
-    def build_extension(self, ext):
-        try:
-            build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError, DistutilsPlatformError, ValueError):
-            raise BuildFailed()
-
-
-try:
-    setup(
-        ext_modules=extensions,
-        cmdclass=dict(build_ext=ve_build_ext),
-    )
-except BuildFailed:
-    print("************************************************************")
-    print("Cannot compile C accelerator module, use pure python version")
-    print("************************************************************")
-    setup()
+print("*********************", file=sys.stderr)
+print("* {build_type} build *".format_map(locals()), file=sys.stderr)
+print("*********************", file=sys.stderr)
+setup(**setup_kwargs)
