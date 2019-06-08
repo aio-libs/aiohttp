@@ -10,6 +10,8 @@ trigger:
 stages:
 - stage: prechecks
   displayName: "Pre-Checks"
+  variables:
+    AIOHTTP_NO_EXTENSIONS: 1
   jobs:
   - job: precheck
     pool:
@@ -29,8 +31,16 @@ stages:
         pip install -r requirements/doc.txt -r requirements/doc-spelling.txt
         make doc-spelling
       displayName: 'Checking docs spelling'
-      env:
-        AIOHTTP_NO_EXTENSIONS: 1
+
+    - script: |
+        pip install -r requirements/towncrier.txt
+        towncrier --yes
+      displayName: 'Checking towncrier fragments'
+
+    - script: |
+        pip install -r requirements/flake.txt
+        flake8 aiohttp examples tests
+      displayName: Linting source code with flake8'
 
 
 - stage: test
