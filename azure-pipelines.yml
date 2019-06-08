@@ -105,4 +105,3 @@ stages:
         pip install codecov
         codecov
       displayName: 'Upload coverage reports'
-'
