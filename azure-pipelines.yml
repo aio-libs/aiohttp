@@ -117,7 +117,7 @@ stages:
       displayName: 'Install prerequirements'
 
     - script: |
-        pip install -r requirements/ci.txt pytest-azurepipelines
+        pip install -r requirements/ci.txt
         pip install .
       displayName: 'Install dependencies'
 
