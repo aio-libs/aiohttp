@@ -110,7 +110,15 @@ async def test_addresses(make_runner, tmpdir) -> None:
     await tcp.start()
     path = str(tmpdir / 'tmp.sock')
     unix = web.UnixSite(runner, path)
-    await unix.start()
+    try:
+        await unix.start()
+    except OSError as exc:
+        if str(exc) == "AF_UNIX path too long":
+            if sys.platform == "linux":
+                raise
+            pytest.skip("Some UNIXes has too strict limitation "
+                        "for sockname length")
+        raise
     actual_addrs = runner.addresses
     expected_host, expected_post = _sock.getsockname()[:2]
     assert actual_addrs == [(expected_host, expected_post), path]

@@ -64,6 +64,7 @@ def unix_server(loop, unix_sockname):
                     raise
                 pytest.skip("Some UNIXes has too strict limitation "
                             "for sockname length")
+            raise
 
     yield go
 
