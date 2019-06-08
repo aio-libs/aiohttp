@@ -18,8 +18,9 @@ stages:
     - checkout: self
       clean: true
 
-    - task: UsePythonVersio@0
-      versionSpec: '3.6'
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.6'
       displayName: 'Use Python 3.6'
 
     - script: |
