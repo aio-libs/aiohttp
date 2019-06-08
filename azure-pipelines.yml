@@ -87,9 +87,6 @@ stages:
         Python37-Win64:
           python.version: '3.7'
           image: 'vs2017-win2016'
-        Python35-MacOSX:
-          python.version: '3.5'
-          image: 'macOS-10.14'
         Python36-MacOSX:
           python.version: '3.6'
           image: 'macOS-10.14'
