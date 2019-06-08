@@ -11,7 +11,7 @@ stages:
 - stage: prechecks
   displayName: "Pre-Checks"
   jobs:
-  - job: precheck-job
+  - job: precheck
     pool:
       vmImage: 'ubuntu-latest'
     steps:
