@@ -83,13 +83,13 @@ stages:
           image: 'ubuntu-latest'
         Python35-Win64:
           python.version: '3.5'
-          image: 'windows-2019'
+          image: 'vs2015-win2012r2'
         Python36-Win64:
           python.version: '3.6'
-          image: 'windows-2019'
+          image: 'vs2017-win2016'
         Python37-Win64:
           python.version: '3.7'
-          image: 'windows-2019'
+          image: 'vs2017-win2016'
 
     pool:
       vmImage: $[ variables['image'] ]
@@ -102,6 +102,7 @@ stages:
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '$(python.version)'
+        architecture: 'x64'
       displayName: 'Use Python $(python.version)'
 
     - script: |
