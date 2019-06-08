@@ -43,8 +43,8 @@ def ssl_key():
 
 
 @pytest.fixture
-def unix_sockname(tmp_path):
-    return str(tmp_path / 'socket.sock')
+def unix_sockname(tmp_path_factory):
+    return str((tmp_path_factory.getbasetemp() / str(uuid4())).with_suffix('.sock'))
 
 
 @pytest.fixture
