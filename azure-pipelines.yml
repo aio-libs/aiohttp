@@ -36,5 +36,5 @@ steps:
   displayName: 'Install dependencies'
 
 - script: |
-    make test
+    pytest -c pytest.ci.ini -s -v
   displayName: 'Test'
