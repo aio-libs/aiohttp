@@ -45,12 +45,20 @@ stages:
 
     - script: |
         flake8 aiohttp examples tests
-      displayName: Linting source code with flake8'
+      displayName: 'Linting source code with flake8'
 
     - script: |
         mypy aiohttp
-      displayName: Linting source code with mypy'
+      displayName: 'Linting source code with mypy'
 
+    - script: |
+        python setup.py --verbose sdist bdist_wheel
+        twine check dist/*
+      displayName: 'Verifying distribution package metadata'
+
+    - script: |
+        LC_ALL=C sort -c CONTRIBUTORS.txt
+      displayName: 'Making sure that CONTRIBUTORS.txt remains sorted'
 
 - stage: test
   displayName: "Run tests"
