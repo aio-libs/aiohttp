@@ -63,7 +63,7 @@ def unix_server(loop, unix_sockname):
                 if sys.platform == "linux":
                     raise
                 pytest.skip("Some UNIXes has too strict limitation "
-                             "for sockname length")
+                            "for sockname length")
 
     yield go
 
