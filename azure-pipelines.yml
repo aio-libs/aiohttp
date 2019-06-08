@@ -105,7 +105,6 @@ stages:
     - task: UsePythonVersion@0
       inputs:
         versionSpec: '$(python.version)'
-        architecture: 'x86'
       displayName: 'Use Python $(python.version)'
 
     - script: |
