@@ -32,6 +32,7 @@ steps:
 
 - script: |
     pip install -r requirements/ci.txt pytest-azurepipelines
+    pip install .
   displayName: 'Install dependencies'
 
 - script: |
