@@ -81,9 +81,6 @@ stages:
         Python37-Lunux:
           python.version: '3.7'
           image: 'ubuntu-latest'
-        Python35-Win64:
-          python.version: '3.5'
-          image: 'vs2015-win2012r2'
         Python36-Win64:
           python.version: '3.6'
           image: 'vs2017-win2016'
