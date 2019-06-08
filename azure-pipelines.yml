@@ -10,24 +10,25 @@ trigger:
 stages:
 - stage: prechecks
   displayName: "Pre-Checks"
+  jobs:
+  - job: precheck-job
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: self
+      clean: true
 
-  pool:
-    vmImage: 'ubuntu-latest'
-  steps:
-  - checkout: self
-    clean: true
+    - task: UsePythonVersio@0
+      versionSpec: '3.6'
+      displayName: 'Use Python 3.6'
 
-  - task: UsePythonVersio@0
-    versionSpec: '3.6'
-    displayName: 'Use Python 3.6'
-
-  - script: |
-      sudo apt-get update
-      sudo apt-get install libenchant-dev
-      pip install -r requirements/doc.txt -r requirements/doc-spelling.txt
-      make doc-spelling
-    displayName: 'Checking docs spelling'
-    env:
+    - script: |
+        sudo apt-get update
+        sudo apt-get install libenchant-dev
+        pip install -r requirements/doc.txt -r requirements/doc-spelling.txt
+        make doc-spelling
+      displayName: 'Checking docs spelling'
+      env:
         AIOHTTP_NO_EXTENSIONS: 1
 
 
