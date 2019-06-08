@@ -7,38 +7,43 @@ trigger:
 - master
 - ?.?
 
-pool:
-  vmImage: 'ubuntu-latest'
-strategy:
-  matrix:
-    Python35-Linux:
-      python.version: '3.5'
-    Python36-Linux:
-      python.version: '3.6'
-    Python37-Lunux:
-      python.version: '3.7'
+stages:
+- stage: test
+  displayName: "Run tests"
+  jobs:
+  - job: test
+    pool:
+      vmImage: 'ubuntu-latest'
+    strategy:
+      matrix:
+        Python35-Linux:
+          python.version: '3.5'
+        Python36-Linux:
+          python.version: '3.6'
+        Python37-Lunux:
+          python.version: '3.7'
 
-steps:
-- checkout: self
-  clean: true
-  submodules: true
+    steps:
+    - checkout: self
+      clean: true
+      submodules: true
 
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '$(python.version)'
-  displayName: 'Use Python $(python.version)'
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(python.version)'
+      displayName: 'Use Python $(python.version)'
 
-- script: |
-    python -m pip install --upgrade pip
-    pip install -r requirements/cython.txt
-    make cythonize
-  displayName: 'Install prerequirements'
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements/cython.txt
+        make cythonize
+      displayName: 'Install prerequirements'
 
-- script: |
-    pip install -r requirements/ci.txt pytest-azurepipelines
-    pip install .
-  displayName: 'Install dependencies'
+    - script: |
+        pip install -r requirements/ci.txt pytest-azurepipelines
+        pip install .
+      displayName: 'Install dependencies'
 
-- script: |
-    pytest -c pytest.ci.ini -s -v
-  displayName: 'Test'
+    - script: |
+        pytest -c pytest.ci.ini -s -v
+      displayName: 'Test'
