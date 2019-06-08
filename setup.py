@@ -44,28 +44,6 @@ extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket.c']),
                         ['aiohttp/_http_writer.c'])]
 
 
-class BuildFailed(Exception):
-    pass
-
-
-class ve_build_ext(build_ext):
-    # This class allows C extension building to fail.
-
-    def run(self):
-        try:
-            build_ext.run(self)
-        except (DistutilsPlatformError, FileNotFoundError):
-            raise BuildFailed()
-
-    def build_extension(self, ext):
-        try:
-            build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError,
-                DistutilsPlatformError, ValueError):
-            raise BuildFailed()
-
-
-
 txt = (here / 'aiohttp' / '__init__.py').read_text('utf-8')
 try:
     version = re.findall(r"^__version__ = '([^']+)'\r?$",
@@ -144,7 +122,6 @@ if not NO_EXTENSIONS:
     print("* Accellerated build *")
     print("**********************")
     setup(ext_modules=extensions,
-          cmdclass=dict(build_ext=ve_build_ext),
           **args)
 else:
     print("*********************")
