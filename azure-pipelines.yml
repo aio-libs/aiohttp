@@ -7,6 +7,10 @@ trigger:
 - master
 - ?.?
 
+pr:
+- master
+- ?.?
+
 stages:
 - stage: prechecks
   displayName: "Pre-Checks"
@@ -28,7 +32,7 @@ stages:
     - script: |
         sudo apt-get update
         sudo apt-get install libenchant-dev
-        pip install -r requirements/doc.txt -r requirements/doc-spelling.txt -r requirements/towncrier.txt -r requirements/flake.txt -r requirements/ci.txt.
+        pip install -r requirements/doc.txt -r requirements/doc-spelling.txt -r requirements/towncrier.txt -r requirements/flake.txt -r requirements/ci.txt .
       displayName: 'Install dependencies'
 
     - script: |
