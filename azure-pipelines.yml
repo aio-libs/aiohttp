@@ -4,12 +4,17 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
 
 trigger:
-- master
-- ?.?
-
+  batch: true
+  branches:
+    include:
+    - master
+    - ?.?
+    - refs/tags/*
 pr:
-- master
-- ?.?
+  branches:
+    include:
+    - master
+    - ?.?
 
 stages:
 - stage: prechecks
@@ -65,16 +70,29 @@ stages:
   displayName: "Run tests"
   jobs:
   - job: test
-    pool:
-      vmImage: 'ubuntu-latest'
     strategy:
       matrix:
         Python35-Linux:
           python.version: '3.5'
+          image: 'ubuntu-latest'
         Python36-Linux:
           python.version: '3.6'
+          image: 'ubuntu-latest'
         Python37-Lunux:
           python.version: '3.7'
+          image: 'ubuntu-latest'
+        Python35-Win64:
+          python.version: '3.5'
+          image: 'windows-2019'
+        Python36-Win64:
+          python.version: '3.6'
+          image: 'windows-2019'
+        Python37-Win64:
+          python.version: '3.7'
+          image: 'windows-2019'
+
+    pool:
+      vmImage: $[ variables['image'] ]
 
     steps:
     - checkout: self
@@ -88,7 +106,6 @@ stages:
 
     - script: |
         python -m pip install --upgrade pip
-        pip install -r requirements/cython.txt
         make cythonize
       displayName: 'Install prerequirements'
 
