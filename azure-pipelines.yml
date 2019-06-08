@@ -37,4 +37,4 @@ steps:
 
 - script: |
     make test
-  displayName: Test'
+  displayName: 'Test'
