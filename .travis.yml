@@ -174,7 +174,7 @@ jobs:
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt
+    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt
     script:
     - mypy aiohttp
 
@@ -182,8 +182,7 @@ jobs:
     name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt -r requirements/doc.txt
+    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
     - python setup.py check --metadata --restructuredtext --strict --verbose sdist bdist_wheel
     - twine check dist/*
