@@ -100,3 +100,8 @@ stages:
     - script: |
         pytest -c pytest.ci.ini -s -v
       displayName: 'Test'
+
+    - script: |
+        pip install codecov
+        codecov
+      diplayName: 'Upload coverage reports'
