@@ -98,10 +98,11 @@ stages:
       displayName: 'Install dependencies'
 
     - script: |
-        pytest -c pytest.ci.ini -s -v
+        pytest -c pytest.ci.ini -s -v --cov aiohttp --cov-report html
       displayName: 'Test'
 
     - script: |
         pip install codecov
         codecov
-      diplayName: 'Upload coverage reports'
+      diplayName: 'Upload coverage reports
+'
