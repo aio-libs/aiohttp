@@ -118,7 +118,7 @@ stages:
       displayName: 'Install dependencies'
 
     - script: |
-        pytest -c pytest.ci.ini -s -v --cov aiohttp --cov-report html tests
+        pytest -c pytest.ci.ini --color=yes -s -v --cov=aiohttp --cov-report=html tests
       displayName: 'Test'
 
     - script: |
