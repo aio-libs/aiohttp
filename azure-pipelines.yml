@@ -122,7 +122,6 @@ stages:
       displayName: 'Install dependencies'
 
     - script: |
-        python -c 'print("Start testing")'
         pytest -c pytest.ci.ini -s -v --cov aiohttp --cov-report html tests
       displayName: 'Test'
 
