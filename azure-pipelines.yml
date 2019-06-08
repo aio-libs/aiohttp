@@ -27,14 +27,13 @@ steps:
 - script: |
     python -m pip install --upgrade pip
     pip install -r requirements/cython.txt
+    make cythonize
   displayName: 'Install prerequirements'
 
 - script: |
-    make cythonize
-    pip install -r requirements/ci.txt
+    pip install -r requirements/ci.txt pytest-azurepipelines
   displayName: 'Install dependencies'
 
 - script: |
-    pip install pytest pytest-azurepipelines
-    pytest
-  displayName: 'pytest'
+    make test
+  displayName: Test'
