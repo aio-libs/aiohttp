@@ -23,7 +23,6 @@ from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
-
 IS_HPUX = sys.platform.startswith('hp-ux')
 """Specifies whether the current runtime is HP-UX."""
 IS_LINUX = sys.platform.startswith('linux')
