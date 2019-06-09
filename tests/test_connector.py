@@ -24,6 +24,10 @@ from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
 
+IS_HPUX = sys.platform.startswith('hp-ux')
+"""Specifies whether the current runtime is HP-UX."""
+IS_LINUX = sys.platform.startswith('linux')
+"""Specifies whether the current runtime is HP-UX."""
 IS_UNIX = hasattr(socket, 'AF_UNIX')
 """Specifies whether the current runtime is *NIX."""
 
@@ -51,7 +55,35 @@ def ssl_key():
 @pytest.fixture
 @needs_unix
 def unix_sockname(tmp_path):
-    return str(tmp_path / 'socket.sock')
+    """Generate an fs path to the UNIX domain socket for testing.
+
+    N.B. Different OS kernels have different fs path length limitations
+    for it. For Linux, it's 108, for HP-UX it's 92 (or higher) depending
+    on its version. For for most of the BSDs (Open, Free, macOS) it's
+    mostly 104 but sometimes it can be down to 100.
+
+    Ref: https://github.com/aio-libs/aiohttp/issues/3572
+    """
+    max_sock_len = 92 if IS_HPUX else 108 if IS_LINUX else 100
+    """Amount of bytes allocated for the UNIX socket path by OS kernel.
+
+    Ref: https://unix.stackexchange.com/a/367012/27133
+    """
+
+    sock_path = str(tmp_path / 'socket.sock')
+    sock_path_len = len(sock_path.encode())
+
+    # exit-check to verify that it's correct and simplify debugging
+    # in the future
+    assert sock_path_len <= max_sock_len, (
+        f'Suggested UNIX socket ({sock_path}) is {sock_path_len} bytes '
+        f'long but the current kernel only has {max_sock_len} bytes '
+        'allocated to hold it so it must be shorter. '
+        'See https://github.com/aio-libs/aiohttp/issues/3572 '
+        'for more info.'
+    )
+
+    return sock_path
 
 
 @pytest.fixture
