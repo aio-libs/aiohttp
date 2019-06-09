@@ -3,6 +3,7 @@ import asyncio
 import os
 import socket
 import ssl
+import sys
 from unittest import mock
 
 import pytest
