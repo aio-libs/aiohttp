@@ -133,5 +133,5 @@ stages:
 
     - script: |
         pip install codecov
-        codecov
+        python -m codecov -f coverage.xml -X gcov
       displayName: 'Upload coverage reports'
