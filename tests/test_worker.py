@@ -3,7 +3,6 @@ import asyncio
 import os
 import socket
 import ssl
-import sys
 from unittest import mock
 
 import pytest
@@ -11,9 +10,6 @@ import pytest
 from aiohttp import web
 
 base_worker = pytest.importorskip('aiohttp.worker')
-
-if sys.platform == 'win32':
-    pytest.skip("GUnicord worker tests don't support Windows")
 
 
 try:
