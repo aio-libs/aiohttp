@@ -93,6 +93,10 @@ stages:
         Python37-MacOSX:
           python.version: '3.7'
           image: 'macOS-10.14'
+        PyPy-Linux:
+          python.version: 'pypy3'
+          image: 'ubuntu-latest'
+          AIOHTTP_NO_EXTENSIONS: 1
 
     pool:
       vmImage: $[ variables['image'] ]
