@@ -13,6 +13,9 @@ if sys.version_info < (3, 5, 3):
 
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))  # type: bool
 
+if sys.implementation.name != "cpython":
+    NO_EXTENSIONS = True
+
 
 here = pathlib.Path(__file__).parent
 
