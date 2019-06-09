@@ -101,6 +101,8 @@ stages:
     pool:
       vmImage: $[ variables['image'] ]
 
+    timeoutInMinutes: 7
+
     steps:
     - checkout: self
       clean: true
