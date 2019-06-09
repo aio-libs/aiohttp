@@ -96,12 +96,15 @@ stages:
         PyPy-Linux:
           python.version: 'pypy3'
           image: 'ubuntu-latest'
+        Python37-Lunux-Pure:
+          python.version: '3.7'
+          image: 'ubuntu-latest'
           AIOHTTP_NO_EXTENSIONS: 1
 
     pool:
       vmImage: $[ variables['image'] ]
 
-    timeoutInMinutes: 7
+    timeoutInMinutes: 10
 
     steps:
     - checkout: self
