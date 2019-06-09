@@ -3,12 +3,16 @@
 import asyncio
 import gc
 import hashlib
+import os
 import platform
 import socket
 import ssl
 import sys
 import uuid
 from collections import deque
+from hashlib import md5
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest import mock
 
 import pytest
@@ -53,7 +57,7 @@ def ssl_key():
 
 @pytest.fixture
 @needs_unix
-def unix_sockname(tmp_path):
+def unix_sockname(tmp_path, tmp_path_factory):
     """Generate an fs path to the UNIX domain socket for testing.
 
     N.B. Different OS kernels have different fs path length limitations
@@ -69,20 +73,64 @@ def unix_sockname(tmp_path):
     Ref: https://unix.stackexchange.com/a/367012/27133
     """
 
-    sock_path = str(tmp_path / 'socket.sock')
+    sock_file_name = 'unix.sock'
+
+    root_tmp_dir = Path('/tmp').resolve()
+    os_tmp_dir = Path(os.getenv('TMPDIR', '/tmp')).resolve()
+    original_base_tmp_path = Path(tmp_path_factory.getbasetemp())
+
+    original_base_tmp_path_hash = md5(
+        str(original_base_tmp_path).encode(),
+    ).hexdigest()
+
+    def make_tmp_dir(base_tmp_dir):
+        return TemporaryDirectory(
+            dir=base_tmp_dir,
+            prefix='pt-',
+            suffix='-{}'.format(original_base_tmp_path_hash),
+        )
+
+    def assert_sock_fits(sock_path):
+        sock_path_len = len(sock_path.encode())
+        # exit-check to verify that it's correct and simplify debugging
+        # in the future
+        assert sock_path_len <= max_sock_len, (
+            'Suggested UNIX socket ({sock_path}) is {sock_path_len} bytes '
+            'long but the current kernel only has {max_sock_len} bytes '
+            'allocated to hold it so it must be shorter. '
+            'See https://github.com/aio-libs/aiohttp/issues/3572 '
+            'for more info.'
+        ).format_map(locals())
+
+    sock_path = str(tmp_path.resolve() / sock_file_name)
     sock_path_len = len(sock_path.encode())
 
-    # exit-check to verify that it's correct and simplify debugging
-    # in the future
-    assert sock_path_len <= max_sock_len, (
-        f'Suggested UNIX socket ({sock_path}) is {sock_path_len} bytes '
-        f'long but the current kernel only has {max_sock_len} bytes '
-        'allocated to hold it so it must be shorter. '
-        'See https://github.com/aio-libs/aiohttp/issues/3572 '
-        'for more info.'
-    )
+    if original_base_tmp_path == root_tmp_dir and os_tmp_dir == root_tmp_dir:
+        assert_sock_fits(sock_path)
 
-    return sock_path
+    if sock_path_len <= max_sock_len:
+        yield sock_path
+        return
+
+    with make_tmp_dir(os_tmp_dir) as tmpd:
+        sock_path = str(tmpd.resolve() / sock_file_name)
+        sock_path_len = len(sock_path.encode())
+
+        if os_tmp_dir == root_tmp_dir:
+            assert_sock_fits(sock_path)
+        # exit-check to verify that it's correct and simplify debugging
+        # in the future
+        if sock_path_len <= max_sock_len:
+            yield sock_path
+            return
+
+    with make_tmp_dir(root_tmp_dir) as tmpd:
+        sock_path = str(tmpd.resolve() / sock_file_name)
+
+        assert_sock_fits(sock_path)
+
+        yield sock_path
+        return
 
 
 @pytest.fixture
