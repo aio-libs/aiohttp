@@ -72,13 +72,13 @@ stages:
   - job: test
     strategy:
       matrix:
-        Py35-Lin:
+        Py35-Linux:
           python.version: '3.5'
           image: 'ubuntu-latest'
-        Py36-Lin:
+        Py36-Linux:
           python.version: '3.6'
           image: 'ubuntu-latest'
-        Py37-Lin:
+        Py37-Linux:
           python.version: '3.7'
           image: 'ubuntu-latest'
         Py36-Win64:
@@ -87,16 +87,16 @@ stages:
         Py37-Win64:
           python.version: '3.7'
           image: 'vs2017-win2016'
-        Py36-Ma:
+        Py36-Mac:
           python.version: '3.6'
           image: 'macOS-10.14'
         Py37-Mac:
           python.version: '3.7'
           image: 'macOS-10.14'
-        PyPy3-Lin:
+        PyPy3-Linux:
           python.version: 'pypy3'
           image: 'ubuntu-latest'
-        Py37-Lin-Pure:
+        Py37-Linux-Pure:
           python.version: '3.7'
           image: 'ubuntu-latest'
           AIOHTTP_NO_EXTENSIONS: 1
