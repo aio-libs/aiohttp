@@ -96,6 +96,7 @@ stages:
         PyPy3:
           python.version: 'pypy3'
           image: 'ubuntu-latest'
+          AIOHTTP_NO_EXTENSIONS: 1
         Py37-Pure:
           python.version: '3.7'
           image: 'ubuntu-latest'
