@@ -94,7 +94,7 @@ def unix_sockname(tmp_path, tmp_path_factory):
 
     root_tmp_dir = Path('/tmp').resolve()
     os_tmp_dir = Path(os.getenv('TMPDIR', '/tmp')).resolve()
-    original_base_tmp_path = Path(tmp_path_factory.getbasetemp())
+    original_base_tmp_path = Path(str(tmp_path_factory.getbasetemp()))
 
     original_base_tmp_path_hash = md5(
         str(original_base_tmp_path).encode(),
