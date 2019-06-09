@@ -1,11 +1,9 @@
-import asyncio
 from io import StringIO
-from unittest import mock
 
 import pytest
 from async_generator import async_generator
 
-from aiohttp import payload, streams
+from aiohttp import payload
 
 
 @pytest.fixture
