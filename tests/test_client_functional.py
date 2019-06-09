@@ -1222,7 +1222,7 @@ async def test_POST_FILES_DEFLATE(aiohttp_client, fname) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    with fname.open() as f:
+    with fname.open('rb') as f:
         resp = await client.post(
             '/',
             data={'some': f},
