@@ -11,6 +11,9 @@ from aiohttp import web
 
 base_worker = pytest.importorskip('aiohttp.worker')
 
+if sys.platform == 'win32':
+    pytest.skip("GUnicord worker tests don't support Windows")
+
 
 try:
     import uvloop
