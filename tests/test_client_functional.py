@@ -1,5 +1,3 @@
-"""HTTP client functional tests against aiohttp.web server"""
-
 import asyncio
 import http.cookies
 import io
