@@ -100,8 +100,6 @@ def test_non_app() -> None:
         web.AppRunner(object())
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="Unix socket support is required")
 async def test_addresses(make_runner, unix_sockname) -> None:
     _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
