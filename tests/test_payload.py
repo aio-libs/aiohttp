@@ -1,11 +1,9 @@
-import asyncio
 from io import StringIO
-from unittest import mock
 
 import pytest
 from async_generator import async_generator
 
-from aiohttp import payload, streams
+from aiohttp import payload
 
 
 @pytest.fixture
@@ -113,21 +111,3 @@ def test_async_iterable_payload_not_async_iterable() -> None:
 
     with pytest.raises(TypeError):
         payload.AsyncIterablePayload(object())
-
-
-async def test_stream_reader_long_lines() -> None:
-    loop = asyncio.get_event_loop()
-    DATA = b'0' * 1024 ** 3
-
-    stream = streams.StreamReader(mock.Mock(), loop=loop)
-    stream.feed_data(DATA)
-    stream.feed_eof()
-    body = payload.get_payload(stream)
-
-    writer = mock.Mock()
-    writer.write.return_value = loop.create_future()
-    writer.write.return_value.set_result(None)
-    await body.write(writer)
-    writer.write.assert_called_once_with(mock.ANY)
-    (chunk,), _ = writer.write.call_args
-    assert len(chunk) == len(DATA)
