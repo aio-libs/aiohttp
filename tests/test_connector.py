@@ -23,10 +23,7 @@ from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 
-IS_UNIX = hasattr(socket, 'AF_UNIX')
-"""Specifies whether the current runtime is *NIX."""
-
-needs_unix = pytest.mark.skipif(not IS_UNIX, reason='requires UNIX sockets')
+from conftest import needs_unix
 
 
 @pytest.fixture()
