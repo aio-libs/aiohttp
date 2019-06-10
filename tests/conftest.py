@@ -95,7 +95,7 @@ def unix_sockname(tmp_path, tmp_path_factory):
 
     sock_file_name = 'unix.sock'
     unique_prefix = '{!s}-'.format(uuid4())
-    unique_prefix_len = len(unique_prefix)
+    unique_prefix_len = len(unique_prefix.encode())
 
     root_tmp_dir = Path('/tmp').resolve()
     os_tmp_dir = Path(os.getenv('TMPDIR', '/tmp')).resolve()
