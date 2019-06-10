@@ -5,6 +5,7 @@ import sys
 from hashlib import md5, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from uuid import uuid4
 
 import pytest
 import trustme
@@ -91,10 +92,14 @@ def unix_sockname(tmp_path, tmp_path_factory):
     """
 
     sock_file_name = 'unix.sock'
+    unique_prefix = '{!s}-'.format(uuid4())
+    unique_prefix_len = len(unique_prefix)
 
     root_tmp_dir = Path('/tmp').resolve()
     os_tmp_dir = Path(os.getenv('TMPDIR', '/tmp')).resolve()
-    original_base_tmp_path = Path(str(tmp_path_factory.getbasetemp()))
+    original_base_tmp_path = Path(
+        str(tmp_path_factory.getbasetemp()),
+    ).resolve()
 
     original_base_tmp_path_hash = md5(
         str(original_base_tmp_path).encode(),
@@ -119,32 +124,29 @@ def unix_sockname(tmp_path, tmp_path_factory):
             'for more info.'
         ).format_map(locals())
 
-    sock_path = str(tmp_path.resolve() / sock_file_name)
-    sock_path_len = len(sock_path.encode())
+    paths = original_base_tmp_path, os_tmp_dir, root_tmp_dir
+    unique_paths = [p for n, p in enumerate(paths) if p not in paths[:n]]
+    paths_num = len(unique_paths)
 
-    if original_base_tmp_path == root_tmp_dir and os_tmp_dir == root_tmp_dir:
-        assert_sock_fits(sock_path)
+    for num, tmp_dir_path in enumerate(paths, 1):
+        with make_tmp_dir(tmp_dir_path) as tmpd:
+            tmpd = Path(tmpd).resolve()
+            sock_path = str(tmpd / sock_file_name)
+            sock_path_len = len(sock_path.encode())
 
-    if sock_path_len <= max_sock_len:
-        yield sock_path
-        return
+            if num >= paths_num:
+                # exit-check to verify that it's correct and simplify
+                # debugging in the future
+                assert_sock_fits(sock_path)
 
-    with make_tmp_dir(os_tmp_dir) as tmpd:
-        sock_path = str(tmpd.resolve() / sock_file_name)
-        sock_path_len = len(sock_path.encode())
-
-        if os_tmp_dir == root_tmp_dir:
-            assert_sock_fits(sock_path)
-        # exit-check to verify that it's correct and simplify debugging
-        # in the future
-        if sock_path_len <= max_sock_len:
-            yield sock_path
-            return
-
-    with make_tmp_dir(root_tmp_dir) as tmpd:
-        sock_path = str(tmpd.resolve() / sock_file_name)
-
-        assert_sock_fits(sock_path)
-
-        yield sock_path
-        return
+            if sock_path_len <= max_sock_len:
+                if max_sock_len - sock_path_len >= unique_prefix_len:
+                    # If we're lucky to have extra space in the path,
+                    # let's also make it more unique
+                    sock_path = str(
+                        tmpd / ''.join((unique_prefix, sock_file_name))
+                    )
+                    # Double-checking it:
+                    assert_sock_fits(sock_path)
+                yield sock_path
+                return
