@@ -74,7 +74,6 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
 
 
 @pytest.fixture
-@needs_unix
 def unix_sockname(tmp_path, tmp_path_factory):
     """Generate an fs path to the UNIX domain socket for testing.
 
@@ -85,6 +84,9 @@ def unix_sockname(tmp_path, tmp_path_factory):
 
     Ref: https://github.com/aio-libs/aiohttp/issues/3572
     """
+    if not IS_UNIX:
+        pytest.skip(reason='requires UNIX sockets')
+
     max_sock_len = 92 if IS_HPUX else 108 if IS_LINUX else 100
     """Amount of bytes allocated for the UNIX socket path by OS kernel.
 
