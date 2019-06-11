@@ -2871,7 +2871,7 @@ Normalize path middleware
                                         append_slash=True, \
                                         remove_slash=False, \
                                         merge_slashes=True, \
-                                        redirect_class=HTTPMovedPermanently)
+                                        redirect_class=HTTPPermanentRedirect)
 
    Middleware factory which produces a middleware that normalizes
    the path of a request. By normalizing it means:
