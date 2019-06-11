@@ -52,15 +52,7 @@ def unix_server(loop, unix_sockname):
         runners.append(runner)
         await runner.setup()
         site = web.UnixSite(runner, unix_sockname)
-        try:
-            await site.start()
-        except OSError as exc:
-            if str(exc) == "AF_UNIX path too long":
-                if sys.platform == "linux":
-                    raise
-                pytest.skip("Some UNIXes has too strict limitation "
-                            "for sockname length")
-            raise
+        await site.start()
 
     yield go
 
