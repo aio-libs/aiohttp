@@ -109,9 +109,9 @@ def unix_sockname(tmp_path, tmp_path_factory):
 
     def make_tmp_dir(base_tmp_dir):
         return TemporaryDirectory(
-            dir=base_tmp_dir,
+            dir=str(base_tmp_dir),
             prefix='pt-',
-            suffix='-{}'.format(original_base_tmp_path_hash),
+            suffix='-{!s}'.format(original_base_tmp_path_hash),
         )
 
     def assert_sock_fits(sock_path):
