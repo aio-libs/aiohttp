@@ -22,7 +22,6 @@ from aiohttp.connector import Connection, _DNSCacheTable
 from aiohttp.helpers import PY_37
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
-
 from conftest import needs_unix
 
 
