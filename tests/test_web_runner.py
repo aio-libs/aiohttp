@@ -101,25 +101,14 @@ def test_non_app() -> None:
         web.AppRunner(object())
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="Unix socket support is required")
-async def test_addresses(make_runner, tmpdir) -> None:
+async def test_addresses(make_runner, unix_sockname) -> None:
     _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
     await runner.setup()
     tcp = web.SockSite(runner, _sock)
     await tcp.start()
-    path = str(tmpdir / 'tmp.sock')
-    unix = web.UnixSite(runner, path)
-    try:
-        await unix.start()
-    except OSError as exc:
-        if str(exc) == "AF_UNIX path too long":
-            if sys.platform == "linux":
-                raise
-            pytest.skip("Some UNIXes has too strict limitation "
-                        "for sockname length")
-        raise
+    unix = web.UnixSite(runner, unix_sockname)
+    await unix.start()
     actual_addrs = runner.addresses
     expected_host, expected_post = _sock.getsockname()[:2]
-    assert actual_addrs == [(expected_host, expected_post), path]
+    assert actual_addrs == [(expected_host, expected_post), unix_sockname]
