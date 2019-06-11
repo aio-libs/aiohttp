@@ -170,8 +170,8 @@ class StreamResponse(BaseClass, HeadersMixin):
                    max_age: Optional[Union[int, str]]=None,
                    path: str='/',
                    secure: Optional[str]=None,
-                   httponly: Optional[str]=None,
-                   version: Optional[str]=None) -> None:
+                   httponly: Optional[bool]=None,
+                   version: Optional[bool]=None) -> None:
         """Set or update response cookie.
 
         Sets new cookie or updates existent with new value.
