@@ -1,0 +1,4 @@
+Change normalize_path_middleware to use 308 redirect instead of 301.
+
+This behavior should prevent clients from being unable to use PUT/POST
+methods on endpoints that are redirected because of a trailing slash.
