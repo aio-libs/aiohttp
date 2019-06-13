@@ -540,7 +540,8 @@ class ClientRequest:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            connect_host = cast(str, self.url.raw_host)
+            connect_host = self.url.raw_host
+            assert connect_host is not None
             if helpers.is_ipv6_address(connect_host):
                 connect_host = '[{}]'.format(connect_host)
             path = '{}:{}'.format(connect_host, self.url.port)
