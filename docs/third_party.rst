@@ -243,3 +243,6 @@ period ask to raise the status.
 
 - `aiogmaps <https://github.com/hzlmn/aiogmaps>`_
   Asynchronous client for Google Maps API Web Services. Python 3.6+ required.
+
+- `DBGR <https://github.com/JakubTesarek/dbgr>`_
+  Terminal based tool to test and debug HTTP APIs with ``aiohttp``.
