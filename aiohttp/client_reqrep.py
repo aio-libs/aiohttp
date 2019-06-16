@@ -747,7 +747,7 @@ class ClientResponse(HeadersMixin):
 
     @reify
     def history(self) -> Tuple['ClientResponse', ...]:
-        """A sequence of of responses, if redirects occurred."""
+        """A sequence of responses, if redirects occurred."""
         return self._history
 
     @reify
