@@ -3,7 +3,7 @@ import functools
 import logging
 import os
 import re
-import time as _time
+from time import timezone
 from collections import namedtuple
 from typing import Callable, Dict, Iterable, List, Tuple  # noqa
 
