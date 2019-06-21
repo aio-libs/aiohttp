@@ -56,7 +56,7 @@ def test_access_logger_time(mocker) -> None:
     response = mock.Mock()
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
-    expected = ('[01/Jan/1843:00:29:56 +0000]')
+    expected = '[01/Jan/1843:00:29:56 +0000]'
     extra = {
         'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
     }
