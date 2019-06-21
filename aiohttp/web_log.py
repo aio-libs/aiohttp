@@ -1,9 +1,9 @@
 import datetime
-import time as _time
 import functools
 import logging
 import os
 import re
+import time as _time
 from collections import namedtuple
 from typing import Callable, Dict, Iterable, List, Tuple  # noqa
 
