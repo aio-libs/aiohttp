@@ -1,4 +1,5 @@
 import datetime
+import time as _time
 import functools
 import logging
 import os
@@ -149,9 +150,9 @@ class AccessLogger(AbstractAccessLogger):
     def _format_t(request: BaseRequest,
                   response: StreamResponse,
                   time: float) -> str:
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone(datetime.timedelta(seconds=-_time.timezone)))
         start_time = now - datetime.timedelta(seconds=time)
-        return start_time.strftime('[%d/%b/%Y:%H:%M:%S +0000]')
+        return start_time.strftime('[%d/%b/%Y:%H:%M:%S %z]')
 
     @staticmethod
     def _format_P(request: BaseRequest,
