@@ -44,7 +44,7 @@ def test_access_logger_format() -> None:
     """,  # noqa: E501
 )
 @pytest.fixture
-def mock(monkeypath, expected, extra):
+def mock(monkeypatch, expected, extra):
     now = datetime.datetime(1843, 1, 1, 0, 30)
     monkeypatch.setattr(datetime.datetime, 'now', now)
     monkeypatch.setattr(timezone, 28800)
