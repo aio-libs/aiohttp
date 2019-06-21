@@ -43,7 +43,7 @@ def test_access_logger_format() -> None:
     Ref: https://stackoverflow.com/a/46102240/595220
     """,  # noqa: E501
 )
-def test_access_logger_time(mocker) -> None:
+def test_access_logger_time(monkeypatch) -> None:
     now = datetime.datetime(1843, 1, 1, 0, 30)
     mock_datetime = mocker.patch("aiohttp.datetime.datetime")
     mock_timezone = mocker.patch("aiohttp.timezone")
