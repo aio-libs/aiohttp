@@ -44,14 +44,14 @@ def test_access_logger_format() -> None:
     """,  # noqa: E501
 )
 @pytest.fixture
-def mock(monkeypatch, expected, extra):
+def mocker(monkeypatch, expected, extra):
     now = datetime.datetime(1843, 1, 1, 0, 30)
-    monkeypatch.setattr(datetime.datetime, 'now', now)
-    monkeypatch.setattr(timezone, 28800)
+    monkeypatch.setattr('datetime.datetime', now)
+    monkeypatch.setattr('time.timezone', 28800)
     monkeypatch.setattr("os.getpid", 42)
 
 
-@pytest.mark.usefixtures('mock')
+@pytest.mark.usefixtures('mocker')
 @pytest.mark.parametrize(
     'expected,extra',
     [('[01/Jan/1843:00:29:56 +0800]',
@@ -82,7 +82,7 @@ def test_access_logger_atoms(expected, extra) -> None:
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
 
-    mock_logger.info.assert_called_with(expected, extra=extra)
+    mock_logger.info.assert_called_with(expected, extra)
 
 
 def test_access_logger_dicts() -> None:
