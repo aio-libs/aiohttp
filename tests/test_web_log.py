@@ -48,7 +48,7 @@ def test_access_logger_time(mocker) -> None:
     mock_datetime = mocker.patch("aiohttp.datetime.datetime")
     mock_timezone = mocker.patch("aiohttp.timezone")
     mock_datetime.now.return_value = now
-    mock_datetime.timezone.return_value = 28800
+    mock_timezone.return_value = 28800
     log_format = '%t'
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
@@ -65,10 +65,7 @@ def test_access_logger_time(mocker) -> None:
 
 
 def test_access_logger_atoms_without_time(mocker) -> None:
-    utcnow = datetime.datetime(1843, 1, 1, 0, 30)
-    mock_datetime = mocker.patch("aiohttp.datetime.datetime")
     mock_getpid = mocker.patch("os.getpid")
-    mock_datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
     log_format = '%a %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
     mock_logger = mock.Mock()
