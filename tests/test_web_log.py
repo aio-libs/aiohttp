@@ -44,12 +44,11 @@ def test_access_logger_format() -> None:
     """,  # noqa: E501
 )
 def test_access_logger_time(mocker) -> None:
-    tz = datetime.timezone(datetime.timedelta(seconds=28800))
-    now = datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
+    now = datetime.datetime(1843, 1, 1, 0, 30)
     mock_datetime = mocker.patch("aiohttp.datetime.datetime")
-    mock_getpid = mocker.patch("os.getpid")
-    mock_datetime.utcnow.return_value = now
-    mock_getpid.return_value = 42
+    mock_timezone = mocker.patch("aiohttp.timezone")
+    mock_datetime.now.return_value = now
+    mock_datetime.timezone.return_value = 28800
     log_format = '%t'
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
