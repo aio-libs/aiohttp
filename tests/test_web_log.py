@@ -45,8 +45,8 @@ def test_access_logger_format() -> None:
 )
 def test_access_logger_time(monkeypatch) -> None:
     now = datetime.datetime(1843, 1, 1, 0, 30)
-    mock_datetime = mocker.patch("aiohttp.datetime.datetime")
-    mock_timezone = mocker.patch("aiohttp.timezone")
+    mock_datetime = monkeypatch.patch("aiohttp.datetime.datetime")
+    mock_timezone = monkeypatch.patch("aiohttp.timezone")
     mock_datetime.now.return_value = now
     mock_timezone.return_value = 28800
     log_format = '%t'
