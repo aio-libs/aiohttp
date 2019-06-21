@@ -27,9 +27,7 @@ def test_access_logger_format() -> None:
     fails in :py:func:`isinstance` call in
     :py:meth:`datetime.datetime.__sub__` (called from
     :py:meth:`aiohttp.AccessLogger._format_t`):
-
     *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
-
     (Pdb) from datetime import datetime
     (Pdb) isinstance(now, datetime)
     *** TypeError: isinstance() arg 2 must be a class, type, or tuple of classes and types
@@ -37,37 +35,40 @@ def test_access_logger_format() -> None:
     <class 'unittest.mock.MagicMock'>
     (Pdb) isinstance(now, datetime.__class__)
     False
-
     Ref: https://bitbucket.org/pypy/pypy/issues/1187/call-to-isinstance-in-__sub__-self-other
     Ref: https://github.com/celery/celery/issues/811
     Ref: https://stackoverflow.com/a/46102240/595220
     """,  # noqa: E501
 )
-def test_access_logger_time(monkeypatch) -> None:
+@pytest.fixture
+def mock(monkeypath, expected, extra):
     now = datetime.datetime(1843, 1, 1, 0, 30)
-    mock_datetime = monkeypatch.patch("aiohttp.datetime.datetime")
-    mock_timezone = monkeypatch.patch("aiohttp.timezone")
-    mock_datetime.now.return_value = now
-    mock_timezone.return_value = 28800
-    log_format = '%t'
-    mock_logger = mock.Mock()
-    access_logger = AccessLogger(mock_logger, log_format)
-    request = mock.Mock()
-    response = mock.Mock()
-    access_logger.log(request, response, 3.1415926)
-    assert not mock_logger.exception.called
-    expected = '[01/Jan/1843:00:29:56 +0000]'
-    extra = {
-        'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
-    }
-
-    mock_logger.info.assert_called_with(expected, extra=extra)
+    monkeypatch.setattr(datetime.datetime, 'now', now)
+    monkeypatch.setattr(timezone, 28800)
+    monkeypatch.setattr("os.getpid", 42)
 
 
-def test_access_logger_atoms_without_time(mocker) -> None:
-    mock_getpid = mocker.patch("os.getpid")
-    mock_getpid.return_value = 42
-    log_format = '%a %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
+@pytest.mark.usefixtures('mock')
+@pytest.mark.parametrize(
+    'expected,extra',
+    [('[01/Jan/1843:00:29:56 +0800]',
+        {'request_start_time': '[01/Jan/1843:00:29:56 +0000]'}),
+     ('127.0.0.2 <42> GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"',
+        {
+            'first_request_line': 'GET /path HTTP/1.1',
+            'process_id': '<42>',
+            'remote_address': '127.0.0.2',
+            'request_time': 3,
+            'request_time_frac': '3.141593',
+            'request_time_micro': 3141593,
+            'response_size': 42,
+            'response_status': 200,
+            'request_header': {'H1': 'a', 'H2': 'b'},
+        }
+      )
+     ])
+def test_access_logger_atoms(expected, extra) -> None:
+    log_format = '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
@@ -77,19 +78,6 @@ def test_access_logger_atoms_without_time(mocker) -> None:
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
-    expected = ('127.0.0.2 <42> '
-                'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"')
-    extra = {
-        'first_request_line': 'GET /path HTTP/1.1',
-        'process_id': '<42>',
-        'remote_address': '127.0.0.2',
-        'request_time': 3,
-        'request_time_frac': '3.141593',
-        'request_time_micro': 3141593,
-        'response_size': 42,
-        'response_status': 200,
-        'request_header': {'H1': 'a', 'H2': 'b'},
-    }
 
     mock_logger.info.assert_called_with(expected, extra=extra)
 
