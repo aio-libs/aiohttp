@@ -43,13 +43,35 @@ def test_access_logger_format() -> None:
     Ref: https://stackoverflow.com/a/46102240/595220
     """,  # noqa: E501
 )
-def test_access_logger_atoms(mocker) -> None:
+def test_access_logger_time(mocker) -> None:
+    tz = datetime.timezone(datetime.timedelta(seconds=28800))
+    now = datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
+    mock_datetime = mocker.patch("aiohttp.datetime.datetime")
+    mock_getpid = mocker.patch("os.getpid")
+    mock_datetime.utcnow.return_value = now
+    mock_getpid.return_value = 42
+    log_format = '%t'
+    mock_logger = mock.Mock()
+    access_logger = AccessLogger(mock_logger, log_format)
+    request = mock.Mock()
+    response = mock.Mock()
+    access_logger.log(request, response, 3.1415926)
+    assert not mock_logger.exception.called
+    expected = ('[01/Jan/1843:00:29:56 +0000]')
+    extra = {
+        'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
+    }
+
+    mock_logger.info.assert_called_with(expected, extra=extra)
+
+
+def test_access_logger_atoms_without_time(mocker) -> None:
     utcnow = datetime.datetime(1843, 1, 1, 0, 30)
     mock_datetime = mocker.patch("aiohttp.datetime.datetime")
     mock_getpid = mocker.patch("os.getpid")
     mock_datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
-    log_format = '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
+    log_format = '%a %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
@@ -59,13 +81,12 @@ def test_access_logger_atoms(mocker) -> None:
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
-    expected = ('127.0.0.2 [01/Jan/1843:00:29:56 +0000] <42> '
+    expected = ('127.0.0.2 <42> '
                 'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"')
     extra = {
         'first_request_line': 'GET /path HTTP/1.1',
         'process_id': '<42>',
         'remote_address': '127.0.0.2',
-        'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
         'request_time': 3,
         'request_time_frac': '3.141593',
         'request_time_micro': 3141593,
