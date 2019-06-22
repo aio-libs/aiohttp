@@ -79,8 +79,7 @@ def mocker(monkeypatch, expected, extra):
       }
       )
      ])
-def test_access_logger_atoms(expected, extra) -> None:
-    log_format = '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
+def test_access_logger_atoms(log_format, expected, extra) -> None:
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
