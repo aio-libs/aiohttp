@@ -75,12 +75,9 @@ def test_access_logger_atoms(monkeypatch, log_format, expected, extra) -> None:
         @staticmethod
         def now(tz):
             return datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
-
-    def new_get_pid():
-        return 42
-    monkeypatch.setattr('datetime.datetime', PatchedDatetime)
-    monkeypatch.setattr('time.timezone', -28800)
-    monkeypatch.setattr("os.getpid", new_get_pid)
+    monkeypatch.setattr("datetime.datetime", PatchedDatetime)
+    monkeypatch.setattr("time.timezone", -28800)
+    monkeypatch.setattr("os.getpid", lambda: 42)
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
