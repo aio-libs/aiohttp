@@ -45,29 +45,38 @@ def test_access_logger_format() -> None:
 )
 @pytest.fixture
 def mocker(monkeypatch, expected, extra):
-    now = datetime.datetime(1843, 1, 1, 0, 30)
-    monkeypatch.setattr('datetime.datetime', now)
-    monkeypatch.setattr('time.timezone', 28800)
+    class PatchedDatetime(datetime.datetime):
+        @staticmethod
+        def now(tz):
+            return datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
+    print(datetime.__file__)
+    monkeypatch.setattr('datetime.datetime', PatchedDatetime)
+    monkeypatch.setattr('time.timezone', -28800)
     monkeypatch.setattr("os.getpid", 42)
 
 
 @pytest.mark.usefixtures('mocker')
 @pytest.mark.parametrize(
-    'expected,extra',
-    [('[01/Jan/1843:00:29:56 +0800]',
-        {'request_start_time': '[01/Jan/1843:00:29:56 +0000]'}),
-     ('127.0.0.2 <42> GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"',
-        {
-            'first_request_line': 'GET /path HTTP/1.1',
-            'process_id': '<42>',
-            'remote_address': '127.0.0.2',
-            'request_time': 3,
-            'request_time_frac': '3.141593',
-            'request_time_micro': 3141593,
-            'response_size': 42,
-            'response_status': 200,
-            'request_header': {'H1': 'a', 'H2': 'b'},
-        }
+    'log_format,expected,extra',
+    [('%t',
+      '[01/Jan/1843:00:29:56 +0800]',
+      {
+          'request_start_time': '[01/Jan/1843:00:29:56 +0800]'
+      }
+      ),
+     ('%a %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
+      '127.0.0.2 <42> GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"',
+      {
+          'first_request_line': 'GET /path HTTP/1.1',
+          'process_id': '<42>',
+          'remote_address': '127.0.0.2',
+          'request_time': 3,
+          'request_time_frac': '3.141593',
+          'request_time_micro': 3141593,
+          'response_size': 42,
+          'response_status': 200,
+          'request_header': {'H1': 'a', 'H2': 'b'},
+      }
       )
      ])
 def test_access_logger_atoms(expected, extra) -> None:
