@@ -90,7 +90,6 @@ def test_access_logger_atoms(monkeypatch, log_format, expected, extra) -> None:
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
-    print(mock_logger.exception.__dict__)
 
     mock_logger.info.assert_called_with(expected, extra=extra)
 
