@@ -722,8 +722,9 @@ def test_run_app_context_vars(patched_loop):
     web.run_app(init(), print=stopper(patched_loop))
     assert count == 3
 
+
 def test_run_app_with_debug_true(patched_loop):
     app = web.Application()
 
-     web._run_app(app, debug=True, print=stopper(patched_loop))
+    web._run_app(app, debug=True, print=stopper(patched_loop))
     assert True is asyncio.get_event_loop().get_debug()
