@@ -53,21 +53,21 @@ def test_access_logger_format() -> None:
          }
          ),
         ('%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
-         ('127.0.0.2 [01/Jan/1843:00:29:56 +0800] <42> '
-                'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'),
-        {
-                'first_request_line': 'GET /path HTTP/1.1',
-                'process_id': '<42>',
-                'remote_address': '127.0.0.2',
-                'request_start_time': '[01/Jan/1843:00:29:56 +0800]',
-                'request_time': 3,
-                'request_time_frac': '3.141593',
-                'request_time_micro': 3141593,
-                'response_size': 42,
-                'response_status': 200,
-                'request_header': {'H1': 'a', 'H2': 'b'},
-            }
-                 )
+         ('127.0.0.2 [01/Jan/1843:00:29:56 +0000] <42> '
+          'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'),
+         {
+             'first_request_line': 'GET /path HTTP/1.1',
+             'process_id': '<42>',
+             'remote_address': '127.0.0.2',
+             'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
+             'request_time': 3,
+             'request_time_frac': '3.141593',
+             'request_time_micro': 3141593,
+             'response_size': 42,
+             'response_status': 200,
+             'request_header': {'H1': 'a', 'H2': 'b'},
+         }
+         )
     ]
 )
 def test_access_logger_atoms(monkeypatch, log_format, expected, extra) -> None:
