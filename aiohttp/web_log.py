@@ -3,8 +3,8 @@ import functools
 import logging
 import os
 import re
-from time import timezone
 from collections import namedtuple
+from time import timezone
 from typing import Callable, Dict, Iterable, List, Tuple  # noqa
 
 from .abc import AbstractAccessLogger
