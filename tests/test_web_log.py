@@ -90,7 +90,7 @@ def test_access_logger_atoms(log_format, expected, extra) -> None:
     access_logger.log(request, response, 3.1415926)
     assert not mock_logger.exception.called
 
-    mock_logger.info.assert_called_with(expected, extra)
+    mock_logger.info.assert_called_with(expected, extra=extra)
 
 
 def test_access_logger_dicts() -> None:
