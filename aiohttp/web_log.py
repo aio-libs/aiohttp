@@ -4,6 +4,7 @@ import logging
 import os
 import re
 from collections import namedtuple
+import time as time_mod
 from typing import Any, Callable, Dict, Iterable, List, Tuple  # noqa
 
 from .abc import AbstractAccessLogger
@@ -142,9 +143,10 @@ class AccessLogger(AbstractAccessLogger):
 
     @staticmethod
     def _format_t(request: BaseRequest, response: StreamResponse, time: float) -> str:
-        now = datetime.datetime.utcnow()
+        tz = datetime.timezone(datetime.timedelta(seconds=-time_mod.timezone))
+        now = datetime.datetime.now(tz)
         start_time = now - datetime.timedelta(seconds=time)
-        return start_time.strftime("[%d/%b/%Y:%H:%M:%S +0000]")
+        return start_time.strftime("[%d/%b/%Y:%H:%M:%S %z]")
 
     @staticmethod
     def _format_P(request: BaseRequest, response: StreamResponse, time: float) -> str:
