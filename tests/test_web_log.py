@@ -49,7 +49,6 @@ def mocker(monkeypatch, expected, extra):
         @staticmethod
         def now(tz):
             return datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
-    print(datetime.__file__)
     monkeypatch.setattr('datetime.datetime', PatchedDatetime)
     monkeypatch.setattr('time.timezone', -28800)
     monkeypatch.setattr("os.getpid", 42)
