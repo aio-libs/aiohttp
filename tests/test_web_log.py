@@ -53,13 +53,13 @@ def test_access_logger_format() -> None:
          }
          ),
         ('%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
-         ('127.0.0.2 [01/Jan/1843:00:29:56 +0000] <42> '
+         ('127.0.0.2 [01/Jan/1843:00:29:56 +0800] <42> '
                 'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'),
         {
                 'first_request_line': 'GET /path HTTP/1.1',
                 'process_id': '<42>',
                 'remote_address': '127.0.0.2',
-                'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
+                'request_start_time': '[01/Jan/1843:00:29:56 +0800]',
                 'request_time': 3,
                 'request_time_frac': '3.141593',
                 'request_time_micro': 3141593,
