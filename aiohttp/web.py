@@ -373,7 +373,7 @@ def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def run_app(app: Union[Application, Awaitable[Application]], *,
-            debug: Optional[bool]=False,
+            debug: bool=False,
             host: Optional[str]=None,
             port: Optional[int]=None,
             path: Optional[str]=None,
