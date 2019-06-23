@@ -373,7 +373,7 @@ def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def run_app(app: Union[Application, Awaitable[Application]], *,
-            debug: bool=False,
+            debug: Optional[bool]=False,
             host: Optional[str]=None,
             port: Optional[int]=None,
             path: Optional[str]=None,
@@ -389,8 +389,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             reuse_address: Optional[bool]=None,
             reuse_port: Optional[bool]=None) -> None:
     """Run an app locally"""
-    # The function design follows asyncio.run() behavior
-    loop = asyncio.new_event_loop()
+    loop = asyncio.get_event_loop()
     loop.set_debug(debug)
 
     # Configure if and only if in debugging mode and using the default logger
