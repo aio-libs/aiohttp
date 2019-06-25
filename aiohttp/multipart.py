@@ -320,6 +320,9 @@ class BodyPartReader:
                 if len(over_chunk) != over_chunk_size:
                     over_chunk += await self._content.read(4 - len(over_chunk))
 
+                if not over_chunk:
+                    self._at_eof = True
+
                 stripped_chunk += b''.join(over_chunk.split())
                 chunk += over_chunk
                 reminder = len(stripped_chunk) % 4
