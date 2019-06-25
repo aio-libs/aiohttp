@@ -307,10 +307,10 @@ class BodyPartReader:
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING)
         if encoding and encoding.lower() == 'base64':
             stripped_chunk = b''.join(chunk.split())
-            reminder = len(stripped_chunk) % 4
+            remainder = len(stripped_chunk) % 4
 
-            while reminder != 0 and not self.at_eof():
-                over_chunk_size = 4 - reminder
+            while remainder != 0 and not self.at_eof():
+                over_chunk_size = 4 - remainder
                 over_chunk = b''
 
                 if self._prev_chunk:
@@ -325,7 +325,7 @@ class BodyPartReader:
 
                 stripped_chunk += b''.join(over_chunk.split())
                 chunk += over_chunk
-                reminder = len(stripped_chunk) % 4
+                remainder = len(stripped_chunk) % 4
 
         self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
