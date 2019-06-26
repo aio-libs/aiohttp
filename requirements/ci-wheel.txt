@@ -11,7 +11,7 @@ multidict==4.5.2
 pytest==4.6.3
 pytest-cov==2.7.1
 pytest-mock==1.10.4
-tox==3.12.1
+tox==3.13.1
 trustme==0.5.2
 cryptography==2.7
 twine==1.13.0
