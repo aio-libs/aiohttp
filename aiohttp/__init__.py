@@ -176,6 +176,7 @@ __all__ = (
     'ThreadedResolver',
     # signals
     'Signal',
+    # streams
     'DataQueue',
     'EMPTY_PAYLOAD',
     'EofStream',
