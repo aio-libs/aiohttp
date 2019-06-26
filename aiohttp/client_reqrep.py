@@ -936,14 +936,12 @@ class ClientResponse(HeadersMixin):
 
     def raise_for_status(self) -> None:
         if 400 <= self.status:
-            # reason should always be not None for a started response
-            assert self.reason is not None
             self.release()
             raise ClientResponseError(
                 self.request_info,
                 self.history,
                 status=self.status,
-                message=self.reason,
+                message=self.reason if self.reason is not None else '',
                 headers=self.headers)
 
     def _cleanup_writer(self) -> None:
