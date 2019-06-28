@@ -1,6 +1,9 @@
 """Tests of http client with custom Connector"""
 
 import asyncio
+from contextlib import contextmanager
+from typing import Type, Iterator, Optional
+
 import gc
 import hashlib
 import platform
@@ -225,7 +228,7 @@ async def test_create_conn(loop) -> None:
 async def test_base_connector_as_context_manager_not_allowed(loop) -> None:
     connector = aiohttp.BaseConnector(loop=loop)
 
-    with pytest.raises(AttributeError, match="__enter__"):
+    with pytest.raises(TypeError, match='use "async with Connector'):
         with connector:
             pass
 

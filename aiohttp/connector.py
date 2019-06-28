@@ -285,6 +285,13 @@ class BaseConnector:
             context['source_traceback'] = self._source_traceback
         self._loop.call_exception_handler(context)
 
+    def __enter__(self) -> 'BaseConnector':
+        raise TypeError('use "async with Connector():" instead')
+
+    def __exit__(self, *exc: Any) -> None:
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
+
     async def __aenter__(self) -> 'BaseConnector':
         return self
 
