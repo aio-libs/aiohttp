@@ -5,8 +5,8 @@ import sys
 from hashlib import md5, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from uuid import uuid4
 from unittest import mock
+from uuid import uuid4
 
 import pytest
 import trustme

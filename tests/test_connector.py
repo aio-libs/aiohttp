@@ -1,7 +1,6 @@
 """Tests of http client with custom Connector"""
 
 import asyncio
-
 import gc
 import hashlib
 import platform
