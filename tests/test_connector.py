@@ -1,8 +1,6 @@
 """Tests of http client with custom Connector"""
 
 import asyncio
-from contextlib import contextmanager
-from typing import Type, Iterator, Optional
 
 import gc
 import hashlib

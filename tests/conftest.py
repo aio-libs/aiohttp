@@ -84,6 +84,7 @@ def create_mocked_conn(loop):
 
     yield _proto_factory
 
+
 @pytest.fixture
 def unix_sockname(tmp_path, tmp_path_factory):
     """Generate an fs path to the UNIX domain socket for testing.
