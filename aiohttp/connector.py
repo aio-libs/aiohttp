@@ -391,7 +391,7 @@ class BaseConnector:
 
     async def close(self) -> None:
         """Close all opened transports."""
-        waiters: _ListOfFutures = self._close_immediately()
+        waiters = self._close_immediately()
         if waiters:
             await asyncio.gather(*waiters,
                                  loop=self._loop,
