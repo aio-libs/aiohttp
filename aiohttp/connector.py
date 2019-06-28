@@ -398,7 +398,7 @@ class BaseConnector:
                                  return_exceptions=True)
 
     def _close_immediately(self) -> _ListOfFutures:
-        waiters: _ListOfFutures = []
+        waiters = []  # type: _ListOfFutures
 
         if self._closed:
             return waiters
