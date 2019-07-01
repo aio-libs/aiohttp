@@ -27,6 +27,7 @@ from typing import (  # noqa
     Set,
     Sized,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -1112,7 +1113,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         """
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
-    def add_view(self, path: str, handler: AbstractView,
+    def add_view(self, path: str, handler: Type[AbstractView],
                  **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with ANY methods for a class-based view
