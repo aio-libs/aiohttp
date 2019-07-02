@@ -195,7 +195,7 @@ def test__get_valid_log_format_ok(worker, source, result) -> None:
 def test__get_valid_log_format_exc(worker) -> None:
     with pytest.raises(ValueError) as exc:
         worker._get_valid_log_format(WRONG_LOG_FORMAT)
-    assert '%(name)s' in str(exc)
+    assert '%(name)s' in str(exc.value)
 
 
 async def test__run_ok_parent_changed(worker, loop,
