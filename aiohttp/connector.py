@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import logging
 import random
 import sys
 import traceback
@@ -70,8 +71,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientTimeout  # noqa
     from .client_reqrep import ConnectionKey  # noqa
     from .tracing import Trace  # noqa
-
-_ListOfFutures = List['asyncio.Future[Optional[Exception]]']
 
 
 class _DeprecationWaiter:
@@ -393,12 +392,15 @@ class BaseConnector:
         """Close all opened transports."""
         waiters = self._close_immediately()
         if waiters:
-            await asyncio.gather(*waiters,
-                                 loop=self._loop,
-                                 return_exceptions=True)
+            results = await asyncio.gather(*waiters,
+                                           loop=self._loop,
+                                           return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    logging.error(f"Error while closing connector: {res}")
 
-    def _close_immediately(self) -> _ListOfFutures:
-        waiters = []  # type: _ListOfFutures
+    def _close_immediately(self) -> List['asyncio.Future[None]']:
+        waiters = []  # type: List['asyncio.Future[None]']
 
         if self._closed:
             return waiters
@@ -755,7 +757,7 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def _close_immediately(self) -> _ListOfFutures:
+    def _close_immediately(self) -> List['asyncio.Future[None]']:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
         return super()._close_immediately()

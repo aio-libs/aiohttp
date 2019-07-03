@@ -38,7 +38,7 @@ class ResponseHandler(BaseProtocol,
         self._read_timeout = None  # type: Optional[float]
         self._read_timeout_handle = None  # type: Optional[asyncio.TimerHandle]
 
-        self.closed = self._loop.create_future()  # type: asyncio.Future[Optional[Exception]]  # noqa
+        self.closed = self._loop.create_future()  # type: asyncio.Future[None]
 
     @property
     def upgraded(self) -> bool:
