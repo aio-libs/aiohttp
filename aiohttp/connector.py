@@ -397,7 +397,8 @@ class BaseConnector:
                                            return_exceptions=True)
             for res in results:
                 if isinstance(res, Exception):
-                    logging.error(f"Error while closing connector: {res}")
+                    err_msg = "Error while closing connector: " + repr(res)
+                    logging.error(err_msg)
 
     def _close_immediately(self) -> List['asyncio.Future[None]']:
         waiters = []  # type: List['asyncio.Future[None]']
