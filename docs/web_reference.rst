@@ -2494,7 +2494,7 @@ application on specific TCP or Unix socket, e.g.::
    .. attribute:: sites
 
       A read-only :class:`set` of served sites (:class:`TCPSite` /
-      :class:`UnixSite` / :class:`SockSite` instances).
+      :class:`UnixSite` / :class:`NamedPipeSite` / :class:`SockSite` instances).
 
    .. comethod:: setup()
 
@@ -2641,6 +2641,18 @@ application on specific TCP or Unix socket, e.g.::
                        connections, see :meth:`socket.listen` for details.
 
                        ``128`` by default.
+
+.. class:: NamedPipeSite(runner, path, *, shutdown_timeout=60.0)
+
+   Serve a runner on Named Pipe in Windows.
+
+   :param runner: a runner to serve.
+
+   :param str path: PATH of named pipe to listen.
+
+   :param float shutdown_timeout: a timeout for closing opened
+                                  connections on :meth:`BaseSite.stop`
+                                  call.
 
 .. class:: SockSite(runner, sock, *, \
                    shutdown_timeout=60.0, ssl_context=None, \

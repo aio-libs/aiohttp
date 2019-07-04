@@ -24,6 +24,7 @@ from .client import (
     ContentTypeError,
     Fingerprint,
     InvalidURL,
+    NamedPipeConnector,
     RequestInfo,
     ServerConnectionError,
     ServerDisconnectedError,
@@ -130,6 +131,7 @@ __all__ = (
     'TCPConnector',
     'TooManyRedirects',
     'UnixConnector',
+    'NamedPipeConnector',
     'WSServerHandshakeError',
     'request',
     # cookiejar
