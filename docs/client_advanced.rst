@@ -397,6 +397,17 @@ If your HTTP server uses UNIX domain sockets you can use
   session = aiohttp.ClientSession(connector=conn)
 
 
+Named pipes in Windows
+^^^^^^^^^^^^^^^^^^^^^^
+
+If your HTTP server uses Named pipes you can use
+:class:`~aiohttp.NamedPipeConnector`::
+
+  conn = aiohttp.NamedPipeConnector(path=r'\\.\pipe\<name-of-pipe>')
+  session = aiohttp.ClientSession(connector=conn)
+
+It will only work with the ProactorEventLoop
+
 SSL control for TCP sockets
 ---------------------------
 

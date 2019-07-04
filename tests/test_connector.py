@@ -65,6 +65,31 @@ def unix_server(loop, unix_sockname):
         loop.run_until_complete(runner.cleanup())
 
 
+@pytest.fixture
+def named_pipe_server(proactor_loop, pipe_name):
+    runners = []
+
+    async def go(app):
+        runner = web.AppRunner(app)
+        runners.append(runner)
+        await runner.setup()
+        site = web.NamedPipeSite(runner, pipe_name)
+        await site.start()
+
+    yield go
+
+    for runner in runners:
+        proactor_loop.run_until_complete(runner.cleanup())
+
+
+def create_mocked_conn(conn_closing_result=None, **kwargs):
+    loop = asyncio.get_event_loop()
+    proto = mock.Mock(**kwargs)
+    proto.closed = loop.create_future()
+    proto.closed.set_result(conn_closing_result)
+    return proto
+
+
 def test_connection_del(loop) -> None:
     connector = mock.Mock()
     key = mock.Mock()
@@ -1978,6 +2003,46 @@ async def test_unix_connector_permission(loop) -> None:
         await connector.connect(req, None, ClientTimeout())
 
 
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_connector_wrong_loop(loop, pipe_name) -> None:
+    with pytest.raises(RuntimeError):
+        aiohttp.NamedPipeConnector(pipe_name, loop=loop)
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_connector_not_found(
+    proactor_loop,
+    pipe_name
+) -> None:
+    connector = aiohttp.NamedPipeConnector(pipe_name, loop=proactor_loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=proactor_loop)
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await connector.connect(req, None, ClientTimeout())
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_connector_permission(
+    proactor_loop,
+    pipe_name
+) -> None:
+    proactor_loop.create_pipe_connection = make_mocked_coro(
+        raise_exception=PermissionError()
+    )
+    connector = aiohttp.NamedPipeConnector(pipe_name, loop=proactor_loop)
+
+    req = ClientRequest(
+        'GET', URL('http://www.python.org'),
+        loop=proactor_loop)
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await connector.connect(req, None, ClientTimeout())
+
+
 async def test_default_use_dns_cache() -> None:
     conn = aiohttp.TCPConnector()
     assert conn.use_dns_cache
@@ -2104,6 +2169,32 @@ async def test_unix_connector(unix_server, unix_sockname) -> None:
 
     connector = aiohttp.UnixConnector(unix_sockname)
     assert unix_sockname == connector.path
+
+    session = client.ClientSession(connector=connector)
+    r = await session.get(url)
+    assert r.status == 200
+    r.close()
+    await session.close()
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_connector(
+    proactor_loop,
+    named_pipe_server,
+    pipe_name
+) -> None:
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    await named_pipe_server(app)
+
+    url = "http://this-does-not-matter.com"
+
+    connector = aiohttp.NamedPipeConnector(pipe_name)
+    assert pipe_name == connector.path
 
     session = client.ClientSession(connector=connector)
     r = await session.get(url)
