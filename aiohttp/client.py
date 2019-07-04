@@ -62,9 +62,9 @@ from .client_reqrep import (
 from .client_ws import ClientWebSocketResponse
 from .connector import (
     BaseConnector,
+    NamedPipeConnector,
     TCPConnector,
     UnixConnector,
-    NamedPipeConnector
 )
 from .cookiejar import CookieJar
 from .helpers import (
