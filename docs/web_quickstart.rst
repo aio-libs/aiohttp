@@ -301,13 +301,17 @@ retrieved by :attr:`View.request` property.
 After implementing the view (``MyView`` from example above) should be
 registered in application's router::
 
-   web.view('/path/to', MyView)
+   app.add_routes([web.view('/path/to', MyView)]) 
 
 or::
 
    @routes.view('/path/to')
    class MyView(web.View):
        ...
+
+or::
+
+   app.router.add_route('*', '/path/to', MyView)
 
 Example will process GET and POST requests for */path/to* but raise
 *405 Method not allowed* exception for unimplemented HTTP methods.
