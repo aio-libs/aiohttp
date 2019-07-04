@@ -75,6 +75,12 @@ def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
 
 
 @pytest.fixture
+def pipe_name():
+    name = r'\\.\pipe\{}'.format(uuid4().hex)
+    return name
+
+
+@pytest.fixture
 def create_mocked_conn(loop):
     def _proto_factory(conn_closing_result=None, **kwargs):
         proto = mock.Mock(**kwargs)

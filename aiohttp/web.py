@@ -106,6 +106,7 @@ from .web_runner import (
     BaseRunner,
     BaseSite,
     GracefulExit,
+    NamedPipeSite,
     ServerRunner,
     SockSite,
     TCPSite,
@@ -230,6 +231,7 @@ __all__ = (
     'SockSite',
     'TCPSite',
     'UnixSite',
+    'NamedPipeSite',
     # web_server
     'Server',
     # web_urldispatcher
