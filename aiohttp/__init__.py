@@ -24,6 +24,7 @@ from .client import (
     ContentTypeError,
     Fingerprint,
     InvalidURL,
+    NamedPipeConnector,
     RequestInfo,
     ServerConnectionError,
     ServerDisconnectedError,
@@ -32,7 +33,6 @@ from .client import (
     TCPConnector,
     TooManyRedirects,
     UnixConnector,
-    NamedPipeConnector,
     WSServerHandshakeError,
     request,
 )
