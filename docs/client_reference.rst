@@ -789,7 +789,7 @@ BaseConnector
 
    .. comethod:: close()
 
-      Close all opened connections.
+      Close all open connections (and await them to close).
 
    .. comethod:: connect(request)
 

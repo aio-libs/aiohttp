@@ -20,11 +20,11 @@ from aiohttp.helpers import PY_36
 
 
 @pytest.fixture
-def connector(loop):
+def connector(loop, create_mocked_conn):
     async def make_conn():
         return BaseConnector(loop=loop)
     conn = loop.run_until_complete(make_conn())
-    proto = mock.Mock()
+    proto = create_mocked_conn()
     conn._conns['a'] = [(proto, 123)]
     yield conn
     conn.close()
@@ -327,10 +327,10 @@ async def test_request_closed_session(session) -> None:
         await session.request('get', '/')
 
 
-def test_close_flag_for_closed_connector(session) -> None:
+async def test_close_flag_for_closed_connector(session) -> None:
     conn = session.connector
     assert not session.closed
-    conn.close()
+    await conn.close()
     assert session.closed
 
 
@@ -395,7 +395,7 @@ async def test_borrow_connector_loop(connector, create_session, loop) -> None:
         await session.close()
 
 
-async def test_reraise_os_error(create_session) -> None:
+async def test_reraise_os_error(create_session, create_mocked_conn) -> None:
     err = OSError(1, "permission error")
     req = mock.Mock()
     req_factory = mock.Mock(return_value=req)
@@ -404,7 +404,7 @@ async def test_reraise_os_error(create_session) -> None:
 
     async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
-        return mock.Mock()
+        return create_mocked_conn()
     session._connector._create_connection = create_connection
     session._connector._release = mock.Mock()
 
@@ -415,7 +415,7 @@ async def test_reraise_os_error(create_session) -> None:
     assert e.strerror == err.strerror
 
 
-async def test_close_conn_on_error(create_session) -> None:
+async def test_close_conn_on_error(create_session, create_mocked_conn) -> None:
     class UnexpectedException(BaseException):
         pass
 
@@ -435,7 +435,7 @@ async def test_close_conn_on_error(create_session) -> None:
 
     async def create_connection(req, traces, timeout):
         # return self.transport, self.protocol
-        conn = mock.Mock()
+        conn = create_mocked_conn()
         return conn
 
     session._connector.connect = connect
