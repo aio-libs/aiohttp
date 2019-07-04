@@ -27,6 +27,7 @@ Alexey Stepanov
 Amin Etesamian
 Amit Tulshyan
 Amy Boyle
+Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
 Andrew Leech
@@ -37,6 +38,7 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
@@ -56,9 +58,11 @@ Chris Moore
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
+Cong Xu
 Damien Nadé
 Dan Xu
 Daniel García
+Daniel Grossmann-Kavanagh
 Daniel Nelson
 Danny Song
 David Bibb
@@ -67,6 +71,7 @@ Denilson Amorim
 Denis Matiychuk
 Dima Veselov
 Dimitar Dimitrov
+Diogo Dutra da Mata
 Dmitriy Safonov
 Dmitry Doroshev
 Dmitry Lukashin
@@ -78,6 +83,7 @@ Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
+Emil Melnikov
 Enrique Saez
 Eric Sheng
 Erich Healy
@@ -106,6 +112,7 @@ Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
 Ingmar Steen
+Ivan Larin
 Jacob Champion
 Jaesung Lee
 Jake Davis
@@ -150,6 +157,7 @@ Mariano Anaya
 Martin Melka
 Martin Richard
 Mathias Fröjdman
+Mathieu Dugré
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
@@ -162,6 +170,7 @@ Mitchell Ferree
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
+Navid Sheikhol
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik
@@ -200,6 +209,7 @@ Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
+Stepan Pletnev
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang

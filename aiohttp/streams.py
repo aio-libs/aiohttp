@@ -334,18 +334,6 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        # migration problem; with DataQueue you have to catch
-        # EofStream exception, so common way is to run payload.read() inside
-        # infinite loop. what can cause real infinite loop with StreamReader
-        # lets keep this code one major release.
-        if __debug__:
-            if self._eof and not self._buffer:
-                self._eof_counter = getattr(self, '_eof_counter', 0) + 1
-                if self._eof_counter > 5:
-                    internal_logger.warning(
-                        'Multiple access to StreamReader in eof state, '
-                        'might be infinite loop.', stack_info=True)
-
         if not n:
             return b''
 
@@ -459,6 +447,11 @@ class StreamReader(AsyncStreamReaderMixin):
 
         self._size -= len(data)
         self._cursor += len(data)
+
+        chunk_splits = self._http_chunk_splits
+        # Prevent memory leak: drop useless chunk splits
+        while chunk_splits and chunk_splits[0] < self._cursor:
+            chunk_splits.pop(0)
 
         if self._size < self._low_water and self._protocol._reading_paused:
             self._protocol.resume_reading()

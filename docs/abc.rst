@@ -1,11 +1,9 @@
+.. module:: aiohttp.abc
+
 .. _aiohttp-abc:
 
 Abstract Base Classes
 =====================
-
-.. module:: aiohttp
-
-.. currentmodule:: aiohttp
 
 Abstract routing
 ----------------

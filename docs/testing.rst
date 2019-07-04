@@ -1,9 +1,9 @@
+.. module:: aiohttp.test_utils
+
 .. _aiohttp-testing:
 
 Testing
 =======
-
-.. currentmodule:: aiohttp.test_utils
 
 Testing aiohttp web servers
 ---------------------------
@@ -52,7 +52,7 @@ The Test Client and Servers
 *aiohttp* test utils provides a scaffolding for testing aiohttp-based
 web servers.
 
-They are consist of two parts: running test server and making HTTP
+They consist of two parts: running test server and making HTTP
 requests to this server.
 
 :class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`

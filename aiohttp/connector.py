@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import logging
 import random
 import sys
 import traceback
@@ -49,7 +50,6 @@ from .helpers import (
     CeilTimeout,
     get_running_loop,
     is_ip_address,
-    noop2,
     sentinel,
 )
 from .http import RESPONSES
@@ -186,6 +186,10 @@ class Connection:
 
 class _TransportPlaceholder:
     """ placeholder for BaseConnector.connect function """
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        fut = loop.create_future()
+        fut.set_result(None)
+        self.closed = fut  # type: asyncio.Future[Optional[Exception]]  # noqa
 
     def close(self) -> None:
         pass
@@ -265,7 +269,7 @@ class BaseConnector:
 
         conns = [repr(c) for c in self._conns.values()]
 
-        self._close()
+        self._close_immediately()
 
         if PY_36:
             kwargs = {'source': self}
@@ -282,13 +286,11 @@ class BaseConnector:
         self._loop.call_exception_handler(context)
 
     def __enter__(self) -> 'BaseConnector':
-        warnings.warn('"witn Connector():" is deprecated, '
-                      'use "async with Connector():" instead',
-                      DeprecationWarning)
-        return self
+        raise TypeError('use "async with Connector():" instead')
 
     def __exit__(self, *exc: Any) -> None:
-        self.close()
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
 
     async def __aenter__(self) -> 'BaseConnector':
         return self
@@ -387,20 +389,29 @@ class BaseConnector:
                 self, '_cleanup_closed',
                 self._cleanup_closed_period, self._loop)
 
-    def close(self) -> Awaitable[None]:
+    async def close(self) -> None:
         """Close all opened transports."""
-        self._close()
-        return _DeprecationWaiter(noop2())
+        waiters = self._close_immediately()
+        if waiters:
+            results = await asyncio.gather(*waiters,
+                                           loop=self._loop,
+                                           return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    err_msg = "Error while closing connector: " + repr(res)
+                    logging.error(err_msg)
 
-    def _close(self) -> None:
+    def _close_immediately(self) -> List['asyncio.Future[None]']:
+        waiters = []  # type: List['asyncio.Future[None]']
+
         if self._closed:
-            return
+            return waiters
 
         self._closed = True
 
         try:
             if self._loop.is_closed():
-                return
+                return waiters
 
             # cancel cleanup task
             if self._cleanup_handle:
@@ -413,13 +424,18 @@ class BaseConnector:
             for data in self._conns.values():
                 for proto, t0 in data:
                     proto.close()
+                    waiters.append(proto.closed)
 
             for proto in self._acquired:
                 proto.close()
+                waiters.append(proto.closed)
 
+            # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
                     transport.abort()
+
+            return waiters
 
         finally:
             self._conns.clear()
@@ -511,7 +527,8 @@ class BaseConnector:
 
         proto = self._get(key)
         if proto is None:
-            placeholder = cast(ResponseHandler, _TransportPlaceholder())
+            placeholder = cast(ResponseHandler,
+                               _TransportPlaceholder(self._loop))
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
 
@@ -715,7 +732,7 @@ class TCPConnector(BaseConnector):
                  use_dns_cache: bool=True, ttl_dns_cache: int=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
-                 local_addr: Optional[str]=None,
+                 local_addr: Optional[Tuple[str, int]]=None,
                  resolver: Optional[AbstractResolver]=None,
                  keepalive_timeout: Union[None, float, object]=sentinel,
                  force_close: bool=False,
@@ -742,12 +759,10 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def close(self) -> Awaitable[None]:
-        """Close all ongoing DNS calls."""
+    def _close_immediately(self) -> List['asyncio.Future[None]']:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
-
-        return super().close()
+        return super()._close_immediately()
 
     @property
     def family(self) -> int:

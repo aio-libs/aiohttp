@@ -244,7 +244,7 @@ class BaseRunner(ABC):
 
         # The loop over sites is intentional, an exception on gather()
         # leaves self._sites in unpredictable state.
-        # The loop guaranties that a site is either deleted on success or
+        # The loop guarantees that a site is either deleted on success or
         # still present on failure
         for site in list(self._sites):
             await site.stop()

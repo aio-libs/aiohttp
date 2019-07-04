@@ -1,7 +1,12 @@
 """Tests for streams.py"""
 
+import abc
 import asyncio
+import gc
 import re
+import types
+from collections import defaultdict
+from itertools import groupby
 from unittest import mock
 
 import pytest
@@ -28,6 +33,38 @@ async def create_stream():
 @pytest.fixture
 def protocol():
     return mock.Mock(_reading_paused=False)
+
+
+MEMLEAK_SKIP_TYPES = (
+    *(getattr(types, name) for name in types.__all__ if name.endswith('Type')),
+    mock.Mock,
+    abc.ABCMeta,
+)
+
+
+def get_memory_usage(obj):
+    objs = [obj]
+    # Memory leak may be caused by leaked links to same objects.
+    # Without link counting, [1,2,3] is indistiguishable from [1,2,3,3,3,3,3,3]
+    known = defaultdict(int)
+    known[id(obj)] += 1
+
+    while objs:
+        refs = gc.get_referents(*objs)
+        objs = []
+        for obj in refs:
+            if isinstance(obj, MEMLEAK_SKIP_TYPES):
+                continue
+            i = id(obj)
+            known[i] += 1
+            if known[i] == 1:
+                objs.append(obj)
+
+        # Make list of unhashable objects uniq
+        objs.sort(key=id)
+        objs = [next(g) for (i, g) in groupby(objs, id)]
+
+    return sum(known.values())
 
 
 class TestStreamReader:
@@ -184,20 +221,6 @@ class TestStreamReader:
 
         data = await stream.read()
         assert data == b''
-
-    async def test_read_eof_infinite(self) -> None:
-        # Read bytes.
-        stream = self._make_one()
-        stream.feed_eof()
-
-        with mock.patch('aiohttp.streams.internal_logger') as internal_logger:
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-        assert internal_logger.warning.called
 
     async def test_read_eof_unread_data_no_warning(self) -> None:
         # Read bytes.
@@ -739,6 +762,9 @@ class TestStreamReader:
         stream.begin_http_chunk_receiving()
         stream.feed_data(b'part2')
         stream.end_http_chunk_receiving()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'part3')
+        stream.end_http_chunk_receiving()
 
         data = await stream.read(7)
         assert b'part1pa' == data
@@ -747,10 +773,43 @@ class TestStreamReader:
         assert b'rt2' == data
         assert end_of_chunk
 
+        # Corner case between read/readchunk
+        data = await stream.read(5)
+        assert b'part3' == data
+
+        data, end_of_chunk = await stream.readchunk()
+        assert b'' == data
+        assert end_of_chunk
+
         stream.feed_eof()
+
         data, end_of_chunk = await stream.readchunk()
         assert b'' == data
         assert not end_of_chunk
+
+    async def test_chunksplits_memory_leak(self) -> None:
+        """ Test for memory leak on chunksplits """
+        stream = self._make_one()
+
+        N = 500
+
+        # Warm-up variables
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b'Y' * N)
+        stream.end_http_chunk_receiving()
+        await stream.read(N)
+
+        N = 300
+
+        before = get_memory_usage(stream)
+        for _ in range(N):
+            stream.begin_http_chunk_receiving()
+            stream.feed_data(b'X')
+            stream.end_http_chunk_receiving()
+        await stream.read(N)
+        after = get_memory_usage(stream)
+
+        assert abs(after - before) == 0
 
     async def test_read_empty_chunks(self) -> None:
         """Test that feeding empty chunks does not break stream"""

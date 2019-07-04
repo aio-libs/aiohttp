@@ -267,7 +267,7 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
                    sock: Optional[socket.socket]=None,
                    shutdown_timeout: float=60.0,
                    ssl_context: Optional[SSLContext]=None,
-                   print: Callable[..., None]=print,
+                   print: Optional[Callable[..., None]]=print,
                    backlog: int=128,
                    access_log_class: Type[AbstractAccessLogger]=AccessLogger,
                    access_log_format: str=AccessLogger.LOG_FORMAT,
@@ -275,7 +275,7 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
                    handle_signals: bool=True,
                    reuse_address: Optional[bool]=None,
                    reuse_port: Optional[bool]=None) -> None:
-    # A internal functio to actually do all dirty job for application running
+    # A internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app  # type: ignore
 
@@ -381,7 +381,7 @@ def run_app(app: Union[Application, Awaitable[Application]], *,
             sock: Optional[socket.socket]=None,
             shutdown_timeout: float=60.0,
             ssl_context: Optional[SSLContext]=None,
-            print: Callable[..., None]=print,
+            print: Optional[Callable[..., None]]=print,
             backlog: int=128,
             access_log_class: Type[AbstractAccessLogger]=AccessLogger,
             access_log_format: str=AccessLogger.LOG_FORMAT,
