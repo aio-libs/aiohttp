@@ -10,6 +10,7 @@ from typing import (
     List,
     Optional,
     Sequence,
+    Type,
     Union,
     overload,
 )
@@ -40,7 +41,7 @@ class AbstractRouteDef(abc.ABC):
 
 
 _SimpleHandler = Callable[[Request], Awaitable[StreamResponse]]
-_HandlerType = Union[AbstractView, _SimpleHandler]
+_HandlerType = Union[Type[AbstractView], _SimpleHandler]
 
 
 @attr.s(frozen=True, repr=False, slots=True)
@@ -120,7 +121,7 @@ def delete(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
 
 
-def view(path: str, handler: AbstractView, **kwargs: Any) -> RouteDef:
+def view(path: str, handler: Type[AbstractView], **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_ANY, path, handler, **kwargs)
 
 
