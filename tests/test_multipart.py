@@ -378,6 +378,21 @@ class TestPartReader:
         )
         assert result == expected
 
+    async def test_decode_with_content_transfer_encoding_base64(
+        self, newline
+    ) -> None:
+
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'base64'},
+            Stream(b'VG\r\r\nltZSB0byBSZ\r\nWxheCE=%s--:--' % newline),
+            _newline=newline,
+        )
+        result = b''
+        while not obj.at_eof():
+            chunk = await obj.read_chunk(size=6)
+            result += obj.decode(chunk)
+        assert b'Time to Relax!' == result
+
     @pytest.mark.parametrize("encoding", ("binary", "8bit", "7bit"))
     async def test_read_with_content_transfer_encoding_binary(
         self, encoding: str
