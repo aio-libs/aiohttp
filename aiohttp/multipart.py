@@ -302,6 +302,31 @@ class BodyPartReader:
         else:
             chunk = await self._read_chunk_from_stream(size)
 
+        # For the case of base64 data, we must read a fragment of size with a
+        # remainder of 0 by dividing by 4 for string without symbols \n or \r
+        encoding = self.headers.get(CONTENT_TRANSFER_ENCODING)
+        if encoding and encoding.lower() == 'base64':
+            stripped_chunk = b''.join(chunk.split())
+            remainder = len(stripped_chunk) % 4
+
+            while remainder != 0 and not self.at_eof():
+                over_chunk_size = 4 - remainder
+                over_chunk = b''
+
+                if self._prev_chunk:
+                    over_chunk = self._prev_chunk[:over_chunk_size]
+                    self._prev_chunk = self._prev_chunk[len(over_chunk):]
+
+                if len(over_chunk) != over_chunk_size:
+                    over_chunk += await self._content.read(4 - len(over_chunk))
+
+                if not over_chunk:
+                    self._at_eof = True
+
+                stripped_chunk += b''.join(over_chunk.split())
+                chunk += over_chunk
+                remainder = len(stripped_chunk) % 4
+
         self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
             self._at_eof = True
