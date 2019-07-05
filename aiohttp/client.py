@@ -60,7 +60,12 @@ from .client_reqrep import (
     _merge_ssl_params,
 )
 from .client_ws import ClientWebSocketResponse
-from .connector import BaseConnector, TCPConnector, UnixConnector
+from .connector import (
+    BaseConnector,
+    NamedPipeConnector,
+    TCPConnector,
+    UnixConnector,
+)
 from .cookiejar import CookieJar
 from .helpers import (
     DEBUG,
@@ -114,6 +119,7 @@ __all__ = (
     'BaseConnector',
     'TCPConnector',
     'UnixConnector',
+    'NamedPipeConnector',
     # client_ws
     'ClientWebSocketResponse',
     # client

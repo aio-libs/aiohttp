@@ -4,6 +4,7 @@ import platform
 import shutil
 import ssl
 import tempfile
+import uuid
 
 import pytest
 import trustme
@@ -73,3 +74,9 @@ def tls_certificate_pem_bytes(tls_certificate):
 def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return hashlib.sha256(tls_cert_der).digest()
+
+
+@pytest.fixture
+def pipe_name():
+    name = r'\\.\pipe\{}'.format(uuid.uuid4().hex)
+    return name
