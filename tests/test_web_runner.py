@@ -114,3 +114,26 @@ async def test_addresses(make_runner, shorttmpdir) -> None:
     actual_addrs = runner.addresses
     expected_host, expected_post = _sock.getsockname()[:2]
     assert actual_addrs == [(expected_host, expected_post), path]
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_wrong_loop(app, pipe_name) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    with pytest.raises(RuntimeError):
+        web.NamedPipeSite(runner, pipe_name)
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_proactor_loop(
+    proactor_loop,
+    app,
+    pipe_name
+) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    pipe = web.NamedPipeSite(runner, pipe_name)
+    await pipe.start()
+    await runner.cleanup()
