@@ -163,24 +163,3 @@ async def test_raw_server_html_exception_debug(aiohttp_raw_server,
 
     logger.exception.assert_called_with(
         "Error handling request", exc_info=exc)
-
-
-async def test_json_invalid_content_type(aiohttp_client) -> None:
-    async def handler(request):
-        body_text = await request.text()
-        assert body_text == '{"some": "data"}'
-        assert request.headers['Content-Type'] == 'text/plain'
-        await request.json()  # raises HTTP 400
-        return None
-
-    app = web.Application()
-    app.router.add_post('/', handler)
-    client = await aiohttp_client(app)
-
-    json_data = {'some': 'data'}
-    headers = {'Content-Type': 'text/plain'}
-    async with client.post('/', json=json_data, headers=headers) as resp:
-        assert 400 == resp.status
-        resp_text = await resp.text()
-        assert resp_text == ('Attempt to decode JSON with '
-                             'unexpected mimetype: text/plain')

@@ -7,7 +7,7 @@ import pytest
 from multidict import CIMultiDict, MultiDict
 from yarl import URL
 
-from aiohttp import HttpVersion
+from aiohttp import HttpVersion, web
 from aiohttp.helpers import DEBUG
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
@@ -675,3 +675,42 @@ async def test_loop_prop() -> None:
     req = make_mocked_request('GET', '/path', loop=loop)
     with pytest.warns(DeprecationWarning):
         assert req.loop is loop
+
+
+async def test_json(aiohttp_client) -> None:
+    async def handler(request):
+        body_text = await request.text()
+        assert body_text == '{"some": "data"}'
+        assert request.headers['Content-Type'] == 'application/json'
+        body_json = await request.json()
+        assert body_json == {'some': 'data'}
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    json_data = {'some': 'data'}
+    async with client.post('/', json=json_data) as resp:
+        assert 200 == resp.status
+
+
+async def test_json_invalid_content_type(aiohttp_client) -> None:
+    async def handler(request):
+        body_text = await request.text()
+        assert body_text == '{"some": "data"}'
+        assert request.headers['Content-Type'] == 'text/plain'
+        await request.json()  # raises HTTP 400
+        return None
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    json_data = {'some': 'data'}
+    headers = {'Content-Type': 'text/plain'}
+    async with client.post('/', json=json_data, headers=headers) as resp:
+        assert 400 == resp.status
+        resp_text = await resp.text()
+        assert resp_text == ('Attempt to decode JSON with '
+                             'unexpected mimetype: text/plain')
