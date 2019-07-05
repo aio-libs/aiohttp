@@ -41,8 +41,7 @@ The client session supports the context manager protocol for self closing.
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
-                         cookie_jar=None, read_timeout=None, \
-                         conn_timeout=None, \
+                         cookie_jar=None,
                          timeout=sentinel, \
                          raise_for_status=False, \
                          connector_owner=True, \
@@ -131,22 +130,6 @@ The client session supports the context manager protocol for self closing.
         total timeout by default.
 
       .. versionadded:: 3.3
-
-   :param float read_timeout: Request operations timeout. ``read_timeout`` is
-      cumulative for all request operations (request, redirects, responses,
-      data consuming). By default, the read timeout is 5*60 seconds.
-      Use ``None`` or ``0`` to disable timeout checks.
-
-      .. deprecated:: 3.3
-
-         Use ``timeout`` parameter instead.
-
-   :param float conn_timeout: timeout for connection establishing
-      (optional). Values ``0`` or ``None`` mean no timeout.
-
-      .. deprecated:: 3.3
-
-         Use ``timeout`` parameter instead.
 
    :param bool connector_owner:
 
