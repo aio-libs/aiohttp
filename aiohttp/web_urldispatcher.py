@@ -27,6 +27,7 @@ from typing import (  # noqa
     Set,
     Sized,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -123,7 +124,7 @@ class AbstractResource(Sized, Iterable['AbstractRoute']):
 class AbstractRoute(abc.ABC):
 
     def __init__(self, method: str,
-                 handler: Union[_WebHandler, AbstractView], *,
+                 handler: Union[_WebHandler, Type[AbstractView]], *,
                  expect_handler: _ExpectHandler=None,
                  resource: AbstractResource=None) -> None:
 
@@ -296,7 +297,7 @@ class Resource(AbstractResource):
         self._routes = []  # type: List[ResourceRoute]
 
     def add_route(self, method: str,
-                  handler: Union[AbstractView, _WebHandler], *,
+                  handler: Union[Type[AbstractView], _WebHandler], *,
                   expect_handler: Optional[_ExpectHandler]=None
                   ) -> 'ResourceRoute':
 
@@ -825,7 +826,7 @@ class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
     def __init__(self, method: str,
-                 handler: Union[_WebHandler, AbstractView],
+                 handler: Union[_WebHandler, Type[AbstractView]],
                  resource: AbstractResource, *,
                  expect_handler: Optional[_ExpectHandler]=None) -> None:
         super().__init__(method, handler, expect_handler=expect_handler,
@@ -1025,7 +1026,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return resource
 
     def add_route(self, method: str, path: str,
-                  handler: Union[_WebHandler, AbstractView],
+                  handler: Union[_WebHandler, Type[AbstractView]],
                   *, name: Optional[str]=None,
                   expect_handler: Optional[_ExpectHandler]=None
                   ) -> AbstractRoute:
@@ -1112,7 +1113,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         """
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
-    def add_view(self, path: str, handler: AbstractView,
+    def add_view(self, path: str, handler: Type[AbstractView],
                  **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with ANY methods for a class-based view
