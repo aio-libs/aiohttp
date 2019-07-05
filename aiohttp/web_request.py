@@ -600,10 +600,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
             if not is_expected_content_type(ctype, content_type):
-                raise HTTPBadRequest(
-                    text=('Attempt to decode JSON with '
-                          'unexpected mimetype: %s' % ctype),
-                    headers=self.headers)
+                raise HTTPBadRequest(text=('Attempt to decode JSON with '
+                                           'unexpected mimetype: %s' % ctype))
 
         return loads(body)
 
