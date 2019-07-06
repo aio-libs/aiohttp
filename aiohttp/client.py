@@ -170,7 +170,7 @@ class ClientSession:
         '_connector_owner', '_default_auth',
         '_version', '_json_serialize',
         '_requote_redirect_url',
-        '_timeout', '_raise_for_status', '_response_check', '_auto_decompress',
+        '_timeout', '_raise_for_status', '_auto_decompress',
         '_trust_env', '_default_headers', '_skip_auto_headers',
         '_request_class', '_response_class',
         '_ws_response_class', '_trace_configs')
@@ -188,8 +188,7 @@ class ClientSession:
                  version: HttpVersion=http.HttpVersion11,
                  cookie_jar: Optional[AbstractCookieJar]=None,
                  connector_owner: bool=True,
-                 raise_for_status: bool=False,
-                 response_check: Optional[Callable[[ClientResponse, bool], None]] = None,  # noqa
+                 raise_for_status: Union[bool, Callable[[ClientResponse], None]]=False,  # noqa
                  read_timeout: Union[float, object]=sentinel,
                  conn_timeout: Optional[float]=None,
                  timeout: Union[object, ClientTimeout]=sentinel,
@@ -257,7 +256,6 @@ class ClientSession:
                                  "conflict, please setup "
                                  "timeout.connect")
         self._raise_for_status = raise_for_status
-        self._response_check = response_check
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
         self._requote_redirect_url = requote_redirect_url
@@ -326,7 +324,7 @@ class ClientSession:
             compress: Optional[str]=None,
             chunked: Optional[bool]=None,
             expect100: bool=False,
-            raise_for_status: Optional[bool]=None,
+            raise_for_status: Union[None, bool, Callable[[ClientResponse], None]]=None,  # noqa
             read_until_eof: bool=True,
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
@@ -574,10 +572,10 @@ class ClientSession:
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
 
-            if self._response_check is not None:
-                await self._response_check(resp, raise_for_status)
-            elif raise_for_status:
+            if raise_for_status is True:
                 resp.raise_for_status()
+            elif raise_for_status is not False:
+                await raise_for_status(resp)  # type: ignore
 
             # register connection
             if handle is not None:

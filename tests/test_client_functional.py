@@ -2167,7 +2167,7 @@ async def test_request_raise_for_status_enabled(aiohttp_server) -> None:
             assert False, "never executed"  # pragma: no cover
 
 
-async def test_custom_response_check(aiohttp_client) -> None:
+async def test_raise_for_status_coro(aiohttp_client) -> None:
 
     async def handle(request):
         return web.Response(text='ok')
@@ -2175,38 +2175,19 @@ async def test_custom_response_check(aiohttp_client) -> None:
     app = web.Application()
     app.router.add_route('GET', '/', handle)
 
-    response_check_called = False
+    raise_for_status_called = 0
 
-    async def custom_response_check(response, raise_for_status):
-        nonlocal response_check_called
-        response_check_called = True
-        assert raise_for_status is False
+    async def custom_r4s(response):
+        nonlocal raise_for_status_called
+        raise_for_status_called += 1
         assert response.status == 200
         assert response.request_info.method == 'GET'
 
-    client = await aiohttp_client(app, response_check=custom_response_check)
+    client = await aiohttp_client(app, raise_for_status=custom_r4s)
     await client.get('/')
-    assert response_check_called
-
-
-async def test_response_check_raise_for_status(aiohttp_client) -> None:
-
-    async def handle(request):
-        return web.Response(text='ok')
-
-    app = web.Application()
-    app.router.add_route('GET', '/', handle)
-
-    response_check_called = False
-
-    async def custom_response_check(response, raise_for_status):
-        nonlocal response_check_called
-        response_check_called = True
-        assert raise_for_status is True
-
-    client = await aiohttp_client(app, response_check=custom_response_check)
+    assert raise_for_status_called == 1
     await client.get('/', raise_for_status=True)
-    assert response_check_called
+    assert raise_for_status_called == 1  # custom_r4s not called again
 
 
 async def test_invalid_idna() -> None:
