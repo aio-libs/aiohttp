@@ -24,12 +24,14 @@ from .client import (
     ContentTypeError,
     Fingerprint,
     InvalidURL,
+    NamedPipeConnector,
     RequestInfo,
     ServerConnectionError,
     ServerDisconnectedError,
     ServerFingerprintMismatch,
     ServerTimeoutError,
     TCPConnector,
+    TooManyRedirects,
     UnixConnector,
     WSServerHandshakeError,
     request,
@@ -127,7 +129,9 @@ __all__ = (
     'ServerFingerprintMismatch',
     'ServerTimeoutError',
     'TCPConnector',
+    'TooManyRedirects',
     'UnixConnector',
+    'NamedPipeConnector',
     'WSServerHandshakeError',
     'request',
     # cookiejar
@@ -174,6 +178,7 @@ __all__ = (
     'ThreadedResolver',
     # signals
     'Signal',
+    # streams
     'DataQueue',
     'EMPTY_PAYLOAD',
     'EofStream',

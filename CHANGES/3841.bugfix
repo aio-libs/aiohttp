@@ -1,0 +1,1 @@
+Fix missing brackets for IPv6 in proxy CONNECT request

@@ -1,10 +1,10 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-quickstart:
 
 ===================
  Client Quickstart
 ===================
-
-.. currentmodule:: aiohttp
 
 Eager to get started? This page gives a good introduction in how to
 get started with aiohttp client API.
@@ -397,7 +397,7 @@ multiple writer tasks which can only send data asynchronously (by
 Timeouts
 ========
 
-Timeout settings a stored in :class:`ClientTimeout` data structure.
+Timeout settings are stored in :class:`ClientTimeout` data structure.
 
 By default *aiohttp* uses a *total* 5min timeout, it means that the
 whole operation should finish in 5 minutes.

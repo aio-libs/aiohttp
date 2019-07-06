@@ -5,7 +5,7 @@ from collections.abc import Callable
 
 import pytest
 
-from aiohttp.helpers import isasyncgenfunction
+from aiohttp.helpers import PY_37, isasyncgenfunction
 from aiohttp.web import Application
 
 from .test_utils import (
@@ -161,7 +161,8 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore
     """
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
-        existing_loop = pyfuncitem.funcargs.get('loop', None)
+        existing_loop = pyfuncitem.funcargs.get('proactor_loop')\
+            or pyfuncitem.funcargs.get('loop', None)
         with _runtime_warning_context():
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {arg: pyfuncitem.funcargs[arg]
@@ -212,6 +213,20 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore
     with loop_context(fast=fast) as _loop:
         if loop_debug:
             _loop.set_debug(True)  # pragma: no cover
+        asyncio.set_event_loop(_loop)
+        yield _loop
+
+
+@pytest.fixture
+def proactor_loop():  # type: ignore
+    if not PY_37:
+        policy = asyncio.get_event_loop_policy()
+        policy._loop_factory = asyncio.ProactorEventLoop  # type: ignore
+    else:
+        policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
+        asyncio.set_event_loop_policy(policy)
+
+    with loop_context(policy.new_event_loop) as _loop:
         asyncio.set_event_loop(_loop)
         yield _loop
 

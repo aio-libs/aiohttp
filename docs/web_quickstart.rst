@@ -1,10 +1,9 @@
+.. currentmodule:: aiohttp.web
+
 .. _aiohttp-web-quickstart:
 
 Web Server Quickstart
 =====================
-
-.. currentmodule:: aiohttp.web
-
 
 Run a Simple Web Server
 -----------------------
@@ -55,8 +54,8 @@ emphasize their equality, switching from one style to another is very
 trivial.
 
 .. note::
-   You can get a powerful aiohttp template by running one command. 
-   To do this, simply use our `boilerplate for quick start with aiohttp 
+   You can get a powerful aiohttp template by running one command.
+   To do this, simply use our `boilerplate for quick start with aiohttp
    <https://create-aio-app.readthedocs.io/pages/aiohttp_quick_start.html>`_.
 
 
@@ -302,13 +301,17 @@ retrieved by :attr:`View.request` property.
 After implementing the view (``MyView`` from example above) should be
 registered in application's router::
 
-   web.view('/path/to', MyView)
+   app.add_routes([web.view('/path/to', MyView)]) 
 
 or::
 
    @routes.view('/path/to')
    class MyView(web.View):
        ...
+
+or::
+
+   app.router.add_route('*', '/path/to', MyView)
 
 Example will process GET and POST requests for */path/to* but raise
 *405 Method not allowed* exception for unimplemented HTTP methods.

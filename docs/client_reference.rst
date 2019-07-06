@@ -1,11 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-reference:
 
 Client Reference
 ================
-
-.. module:: aiohttp
-.. currentmodule:: aiohttp
-
 
 Client Session
 --------------
@@ -800,7 +798,7 @@ BaseConnector
 
    .. comethod:: close()
 
-      Close all opened connections.
+      Close all open connections (and await them to close).
 
    .. comethod:: connect(request)
 
