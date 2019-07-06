@@ -11,6 +11,7 @@ import warnings
 from types import SimpleNamespace, TracebackType
 from typing import (  # noqa
     Any,
+    Callable,
     Coroutine,
     Generator,
     Generic,
@@ -23,7 +24,6 @@ from typing import (  # noqa
     Type,
     TypeVar,
     Union,
-    Callable,
 )
 
 import attr
