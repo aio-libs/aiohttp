@@ -2090,11 +2090,11 @@ async def test_chunked_deprecated(aiohttp_client) -> None:
 
 async def test_raise_for_status(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handle(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handle)
     client = await aiohttp_client(app, raise_for_status=True)
 
     with pytest.raises(aiohttp.ClientResponseError):
@@ -2103,11 +2103,11 @@ async def test_raise_for_status(aiohttp_client) -> None:
 
 async def test_raise_for_status_per_request(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handle(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handle)
     client = await aiohttp_client(app)
 
     with pytest.raises(aiohttp.ClientResponseError):
@@ -2116,11 +2116,11 @@ async def test_raise_for_status_per_request(aiohttp_client) -> None:
 
 async def test_raise_for_status_disable_per_request(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handle(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handle)
     client = await aiohttp_client(app, raise_for_status=True)
 
     resp = await client.get('/', raise_for_status=False)
@@ -2165,6 +2165,48 @@ async def test_request_raise_for_status_enabled(aiohttp_server) -> None:
     with pytest.raises(aiohttp.ClientResponseError):
         async with aiohttp.request('GET', url, raise_for_status=True):
             assert False, "never executed"  # pragma: no cover
+
+
+async def test_custom_response_check(aiohttp_client) -> None:
+
+    async def handle(request):
+        return web.Response(text='ok')
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handle)
+
+    response_check_called = False
+
+    async def custom_response_check(response, raise_for_status):
+        nonlocal response_check_called
+        response_check_called = True
+        assert raise_for_status is False
+        assert response.status == 200
+        assert response.request_info.method == 'GET'
+
+    client = await aiohttp_client(app, response_check=custom_response_check)
+    await client.get('/')
+    assert response_check_called
+
+
+async def test_response_check_raise_for_status(aiohttp_client) -> None:
+
+    async def handle(request):
+        return web.Response(text='ok')
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handle)
+
+    response_check_called = False
+
+    async def custom_response_check(response, raise_for_status):
+        nonlocal response_check_called
+        response_check_called = True
+        assert raise_for_status is True
+
+    client = await aiohttp_client(app, response_check=custom_response_check)
+    await client.get('/', raise_for_status=True)
+    assert response_check_called
 
 
 async def test_invalid_idna() -> None:
