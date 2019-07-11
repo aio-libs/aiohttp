@@ -1,0 +1,1 @@
+Drop deprecated `read_timeout` and `conn_timeout` in `ClientSession` constructor, please use `timeout` argument instead.
