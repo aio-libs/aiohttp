@@ -172,16 +172,6 @@ class BaseTestServer(ABC):
             self.port = None
             self._closed = True
 
-    def __enter__(self) -> None:
-        raise TypeError("Use async with instead")
-
-    def __exit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
-        # __exit__ should exist in pair with __enter__ but never executed
-        pass  # pragma: no cover
-
     async def __aenter__(self) -> 'BaseTestServer':
         await self.start_server(loop=self._loop)
         return self
@@ -384,16 +374,6 @@ class TestClient:
             await self._session.close()
             await self._server.close()
             self._closed = True
-
-    def __enter__(self) -> None:
-        raise TypeError("Use async with instead")
-
-    def __exit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc: Optional[BaseException],
-                 tb: Optional[TracebackType]) -> None:
-        # __exit__ should exist in pair with __enter__ but never executed
-        pass  # pragma: no cover
 
     async def __aenter__(self) -> 'TestClient':
         await self.start_server()
