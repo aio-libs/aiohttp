@@ -74,24 +74,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from .tracing import Trace  # noqa
 
 
-class _DeprecationWaiter:
-    __slots__ = ('_awaitable', '_awaited')
-
-    def __init__(self, awaitable: Awaitable[Any]) -> None:
-        self._awaitable = awaitable
-        self._awaited = False
-
-    def __await__(self) -> Any:
-        self._awaited = True
-        return self._awaitable.__await__()
-
-    def __del__(self) -> None:
-        if not self._awaited:
-            warnings.warn("Connector.close() is a coroutine, "
-                          "please use await connector.close()",
-                          DeprecationWarning)
-
-
 class Connection:
 
     _source_traceback = None
