@@ -1090,7 +1090,7 @@ def test_terminate_without_writer(loop) -> None:
     assert req._writer is None
 
 
-async def test_custom_req_rep(loop) -> None:
+async def test_custom_req_rep(loop, create_mocked_conn) -> None:
     conn = None
 
     class CustomResponse(ClientResponse):
@@ -1125,7 +1125,7 @@ async def test_custom_req_rep(loop) -> None:
 
     async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
-        return mock.Mock()
+        return create_mocked_conn()
     connector = BaseConnector()
     connector._create_connection = create_connection
 

@@ -60,7 +60,12 @@ from .client_reqrep import (
     RequestInfo,
 )
 from .client_ws import ClientWebSocketResponse
-from .connector import BaseConnector, TCPConnector, UnixConnector
+from .connector import (
+    BaseConnector,
+    NamedPipeConnector,
+    TCPConnector,
+    UnixConnector,
+)
 from .cookiejar import CookieJar
 from .helpers import (
     PY_36,
@@ -113,6 +118,7 @@ __all__ = (
     'BaseConnector',
     'TCPConnector',
     'UnixConnector',
+    'NamedPipeConnector',
     # client_ws
     'ClientWebSocketResponse',
     # client
@@ -181,8 +187,6 @@ class ClientSession:
                  cookie_jar: Optional[AbstractCookieJar]=None,
                  connector_owner: bool=True,
                  raise_for_status: bool=False,
-                 read_timeout: Union[float, object]=sentinel,
-                 conn_timeout: Optional[float]=None,
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
@@ -220,29 +224,8 @@ class ClientSession:
         self._json_serialize = json_serialize
         if timeout is sentinel:
             self._timeout = DEFAULT_TIMEOUT
-            if read_timeout is not sentinel:
-                warnings.warn("read_timeout is deprecated, "
-                              "use timeout argument instead",
-                              DeprecationWarning,
-                              stacklevel=2)
-                self._timeout = attr.evolve(self._timeout, total=read_timeout)
-            if conn_timeout is not None:
-                self._timeout = attr.evolve(self._timeout,
-                                            connect=conn_timeout)
-                warnings.warn("conn_timeout is deprecated, "
-                              "use timeout argument instead",
-                              DeprecationWarning,
-                              stacklevel=2)
         else:
             self._timeout = timeout  # type: ignore
-            if read_timeout is not sentinel:
-                raise ValueError("read_timeout and timeout parameters "
-                                 "conflict, please setup "
-                                 "timeout.read")
-            if conn_timeout is not None:
-                raise ValueError("conn_timeout and timeout parameters "
-                                 "conflict, please setup "
-                                 "timeout.connect")
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env

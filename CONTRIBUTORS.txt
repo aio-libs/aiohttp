@@ -25,6 +25,7 @@ Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
 Amin Etesamian
+Amit Tulshyan
 Amy Boyle
 Anders Melchiorsen
 Andrei Ursulenko
@@ -61,6 +62,7 @@ Cong Xu
 Damien Nadé
 Dan Xu
 Daniel García
+Daniel Grossmann-Kavanagh
 Daniel Nelson
 Danny Song
 David Bibb
@@ -109,6 +111,7 @@ Igor Alexandrov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
+Ilya Chichak
 Ingmar Steen
 Ivan Larin
 Jacob Champion
@@ -138,6 +141,7 @@ Kay Zheng
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Valetov
 Kyrylo Perevozchikov
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
@@ -168,6 +172,7 @@ Mitchell Ferree
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
+Navid Sheikhol
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik

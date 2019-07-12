@@ -204,3 +204,14 @@ class AbstractAccessLogger(ABC):
             response: StreamResponse,
             time: float) -> None:
         """Emit log to logger."""
+
+
+class AbstractAsyncAccessLogger(ABC):
+    """Abstract asynchronous writer to access log."""
+
+    @abstractmethod
+    async def log(self,
+                  request: BaseRequest,
+                  response: StreamResponse,
+                  request_start: float) -> None:
+        """Emit log to logger."""

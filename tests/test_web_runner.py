@@ -100,17 +100,37 @@ def test_non_app() -> None:
         web.AppRunner(object())
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="Unix socket support is required")
-async def test_addresses(make_runner, tmpdir) -> None:
+async def test_addresses(make_runner, unix_sockname) -> None:
     _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
     await runner.setup()
     tcp = web.SockSite(runner, _sock)
     await tcp.start()
-    path = str(tmpdir / 'tmp.sock')
-    unix = web.UnixSite(runner, path)
+    unix = web.UnixSite(runner, unix_sockname)
     await unix.start()
     actual_addrs = runner.addresses
     expected_host, expected_post = _sock.getsockname()[:2]
-    assert actual_addrs == [(expected_host, expected_post), path]
+    assert actual_addrs == [(expected_host, expected_post), unix_sockname]
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_wrong_loop(app, pipe_name) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    with pytest.raises(RuntimeError):
+        web.NamedPipeSite(runner, pipe_name)
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_proactor_loop(
+    proactor_loop,
+    app,
+    pipe_name
+) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    pipe = web.NamedPipeSite(runner, pipe_name)
+    await pipe.start()
+    await runner.cleanup()

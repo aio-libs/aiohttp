@@ -1,4 +1,5 @@
 import codecs
+import os
 import pathlib
 import re
 import sys
@@ -11,6 +12,13 @@ from setuptools import Extension, setup
 
 if sys.version_info < (3, 5, 3):
     raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
+
+
+NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))  # type: bool
+
+if sys.implementation.name != "cpython":
+    NO_EXTENSIONS = True
+
 
 here = pathlib.Path(__file__).parent
 
@@ -132,16 +140,17 @@ args = dict(
         ],
     },
     include_package_data=True,
-    ext_modules=extensions,
-    cmdclass=dict(build_ext=ve_build_ext),
 )
 
-try:
-    setup(**args)
-except BuildFailed:
-    print("************************************************************")
-    print("Cannot compile C accelerator module, use pure python version")
-    print("************************************************************")
-    del args['ext_modules']
-    del args['cmdclass']
+if not NO_EXTENSIONS:
+    print("**********************")
+    print("* Accellerated build *")
+    print("**********************")
+    setup(ext_modules=extensions,
+          cmdclass=dict(build_ext=ve_build_ext),
+          **args)
+else:
+    print("*********************")
+    print("* Pure Python build *")
+    print("*********************")
     setup(**args)

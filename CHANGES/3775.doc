@@ -1,0 +1,1 @@
+use ``if __name__ == '__main__':`` in server examples.

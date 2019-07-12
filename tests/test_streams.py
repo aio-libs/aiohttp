@@ -222,20 +222,6 @@ class TestStreamReader:
         data = await stream.read()
         assert data == b''
 
-    async def test_read_eof_infinite(self) -> None:
-        # Read bytes.
-        stream = self._make_one()
-        stream.feed_eof()
-
-        with mock.patch('aiohttp.streams.internal_logger') as internal_logger:
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-        assert internal_logger.warning.called
-
     async def test_read_eof_unread_data_no_warning(self) -> None:
         # Read bytes.
         stream = self._make_one()
