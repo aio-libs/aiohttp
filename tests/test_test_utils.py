@@ -75,20 +75,6 @@ def test_client(loop, app) -> None:
     loop.run_until_complete(client.close())
 
 
-def test_with_test_server_fails(loop) -> None:
-    app = _create_example_app()
-    with pytest.raises(TypeError):
-        with _TestServer(app, loop=loop):
-            pass
-
-
-async def test_with_client_fails(loop) -> None:
-    app = _create_example_app()
-    with pytest.raises(TypeError):
-        with _TestClient(_TestServer(app, loop=loop), loop=loop):
-            pass
-
-
 async def test_aiohttp_client_close_is_idempotent() -> None:
     """
     a test client, called multiple times, should
