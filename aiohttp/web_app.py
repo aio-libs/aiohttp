@@ -25,6 +25,7 @@ from typing import (  # noqa
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractStreamWriter
 from .frozenlist import FrozenList
+from .helpers import get_running_loop
 from .http_parser import RawRequestMessage
 from .log import web_logger
 from .signals import Signal
@@ -81,12 +82,8 @@ class Application(MutableMapping[str, Any]):
                  middlewares: Sequence[_Middleware]=(),
                  handler_args: Mapping[str, Any]=None,
                  client_max_size: int=1024**2,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  debug: Any=...  # mypy doesn't support ellipsis
                  ) -> None:
-        if loop is not None:
-            warnings.warn("loop argument is deprecated", DeprecationWarning,
-                          stacklevel=2)
 
         if debug is not ...:
             warnings.warn("debug argument is deprecated",
@@ -94,7 +91,6 @@ class Application(MutableMapping[str, Any]):
                           stacklevel=2)
         self._debug = debug
         self._router = UrlDispatcher()
-        self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
 
@@ -156,21 +152,10 @@ class Application(MutableMapping[str, Any]):
 
     ########
     def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        if self._loop is not None and self._loop is not loop:
-            raise RuntimeError(
-                "web.Application instance initialized with different loop")
-
-        self._loop = loop
-
-        # set loop debug
-        if self._debug is ...:
-            self._debug = loop.get_debug()
-
-        # set loop to sub applications
-        for subapp in self._subapps:
-            subapp._set_loop(loop)
+        warnings.warn("_set_loop() is no-op since 4.0 "
+                      "and scheduled for removal in 5.0",
+                      DeprecationWarning,
+                      stacklevel=2)
 
     @property
     def pre_frozen(self) -> bool:
@@ -259,8 +244,6 @@ class Application(MutableMapping[str, Any]):
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
         subapp.pre_freeze()
-        if self._loop is not None:
-            subapp._set_loop(self._loop)
         return resource
 
     def add_domain(self, domain: str,
@@ -317,7 +300,6 @@ class Application(MutableMapping[str, Any]):
                 'aiohttp.abc.AbstractAccessLogger, got {}'.format(
                     access_log_class))
 
-        self._set_loop(loop)
         self.freeze()
 
         kwargs['debug'] = self._debug
@@ -372,9 +354,10 @@ class Application(MutableMapping[str, Any]):
                       writer: AbstractStreamWriter,
                       task: 'asyncio.Task[None]',
                       _cls: Type[Request]=Request) -> Request:
+        loop = get_running_loop()
         return _cls(
             message, payload, protocol, writer, task,
-            self._loop,
+            loop,
             client_max_size=self._client_max_size)
 
     def _prepare_middleware(self) -> Iterator[_Middleware]:

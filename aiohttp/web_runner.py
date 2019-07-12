@@ -326,7 +326,6 @@ class AppRunner(BaseRunner):
 
     async def _make_server(self) -> Server:
         loop = asyncio.get_event_loop()
-        self._app._set_loop(loop)
         self._app.on_startup.freeze()
         await self._app.startup()
         self._app.freeze()
