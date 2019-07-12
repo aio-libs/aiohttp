@@ -78,6 +78,7 @@ def named_pipe_server(proactor_loop, pipe_name):
 
 
 def create_mocked_conn(conn_closing_result=None, **kwargs):
+    assert 'loop' not in kwargs
     loop = asyncio.get_event_loop()
     proto = mock.Mock(**kwargs)
     proto.closed = loop.create_future()
