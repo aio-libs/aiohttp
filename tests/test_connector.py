@@ -2034,7 +2034,8 @@ async def test_named_pipe_connector_permission(
     asyncio.set_event_loop(proactor_loop)
     connector = aiohttp.NamedPipeConnector(pipe_name)
 
-    req = ClientRequest('GET', URL('http://www.python.org'))
+    req = ClientRequest('GET', URL('http://www.python.org'),
+                        loop=proactor_loop)
     with pytest.raises(aiohttp.ClientConnectorError):
         await connector.connect(req, None, ClientTimeout())
 
