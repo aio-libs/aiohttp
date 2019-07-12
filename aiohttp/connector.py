@@ -1157,8 +1157,7 @@ class NamedPipeConnector(BaseConnector):
 
     def __init__(self, path: str, force_close: bool=False,
                  keepalive_timeout: Union[object, float, None]=sentinel,
-                 limit: int=100, limit_per_host: int=0,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 limit: int=100, limit_per_host: int=0) -> None:
         super().__init__(force_close=force_close,
                          keepalive_timeout=keepalive_timeout,
                          limit=limit, limit_per_host=limit_per_host)
