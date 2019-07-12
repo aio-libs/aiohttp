@@ -18,7 +18,6 @@ from typing import (
 from multidict import CIMultiDict  # noqa
 from yarl import URL
 
-from .helpers import get_running_loop
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -139,9 +138,6 @@ else:
 
 class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
-
-    def __init__(self) -> None:
-        self._loop = get_running_loop()
 
     @abstractmethod
     def clear(self) -> None:

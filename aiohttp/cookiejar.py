@@ -23,7 +23,7 @@ from typing import (  # noqa
 from yarl import URL
 
 from .abc import AbstractCookieJar
-from .helpers import is_ip_address
+from .helpers import get_running_loop, is_ip_address
 from .typedefs import LooseCookies, PathLike
 
 __all__ = ('CookieJar', 'DummyCookieJar')
@@ -51,7 +51,7 @@ class CookieJar(AbstractCookieJar):
     MAX_TIME = 2051215261.0  # so far in future (2035-01-01)
 
     def __init__(self, *, unsafe: bool=False) -> None:
-        super().__init__()
+        self._loop = get_running_loop()
         self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
@@ -336,9 +336,6 @@ class DummyCookieJar(AbstractCookieJar):
     It can be used with the ClientSession when no cookie processing is needed.
 
     """
-
-    def __init__(self) -> None:
-        super().__init__()
 
     def __iter__(self) -> 'Iterator[Morsel[str]]':
         while False:
