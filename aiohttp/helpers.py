@@ -258,7 +258,7 @@ def current_task(
 
 
 if sys.version_info >= (3, 7):
-    from asyncio import create_task
+    create_task = asyncio.create_task
 else:
     def create_task(coro: Awaitable[_T]) -> 'asyncio.Task[_T]':
         loop = asyncio.get_event_loop()
