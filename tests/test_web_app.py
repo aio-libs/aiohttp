@@ -22,6 +22,8 @@ def test_app_call() -> None:
 
 @pytest.mark.parametrize('debug', [True, False])
 async def test_app_make_handler_debug_exc(mocker, debug) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(debug)
     with pytest.warns(DeprecationWarning):
         app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web_app.Server')
@@ -32,8 +34,7 @@ async def test_app_make_handler_debug_exc(mocker, debug) -> None:
     app._make_handler()
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
-                           access_log_class=mock.ANY,
-                           debug=debug)
+                           access_log_class=mock.ANY)
 
 
 async def test_app_make_handler_args(mocker) -> None:
@@ -44,7 +45,7 @@ async def test_app_make_handler_args(mocker) -> None:
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
                            access_log_class=mock.ANY,
-                           debug=mock.ANY, test=True)
+                           test=True)
 
 
 async def test_app_make_handler_access_log_class(mocker) -> None:
@@ -66,15 +67,13 @@ async def test_app_make_handler_access_log_class(mocker) -> None:
     app._make_handler(access_log_class=Logger)
     srv.assert_called_with(app._handle,
                            access_log_class=Logger,
-                           request_factory=app._make_request,
-                           debug=mock.ANY)
+                           request_factory=app._make_request)
 
     app = web.Application(handler_args={'access_log_class': Logger})
     app._make_handler(access_log_class=Logger)
     srv.assert_called_with(app._handle,
                            access_log_class=Logger,
-                           request_factory=app._make_request,
-                           debug=mock.ANY)
+                           request_factory=app._make_request)
 
 
 async def test_app_make_handler_raises_deprecation_warning() -> None:

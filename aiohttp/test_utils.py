@@ -214,11 +214,10 @@ class RawTestServer(BaseTestServer):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self,
-                           debug: bool=True,
                            **kwargs: Any) -> ServerRunner:
         srv = Server(
-            self._handler, debug=debug, **kwargs)
-        return ServerRunner(srv, debug=debug, **kwargs)
+            self._handler, **kwargs)
+        return ServerRunner(srv, **kwargs)
 
 
 class TestClient:
@@ -551,7 +550,6 @@ def _create_app_mock() -> mock.MagicMock:
     app.__getitem__ = get_dict
     app.__setitem__ = set_dict
 
-    app._debug = False
     app.on_response_prepare = Signal(app)
     app.on_response_prepare.freeze()
     return app

@@ -23,7 +23,7 @@ from typing import (  # noqa
 )
 
 from . import hdrs
-from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractStreamWriter
+from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .frozenlist import FrozenList
 from .helpers import get_running_loop
 from .http_parser import RawRequestMessage
@@ -86,10 +86,10 @@ class Application(MutableMapping[str, Any]):
                  ) -> None:
 
         if debug is not ...:
-            warnings.warn("debug argument is deprecated",
+            warnings.warn("debug argument is no-op since 4.0 "
+                          "and scheduled for removal in 5.0",
                           DeprecationWarning,
                           stacklevel=2)
-        self._debug = debug
         self._router = UrlDispatcher()
         self._handler_args = handler_args
         self.logger = logger
@@ -202,10 +202,11 @@ class Application(MutableMapping[str, Any]):
 
     @property
     def debug(self) -> bool:
-        warnings.warn("debug property is deprecated",
+        warnings.warn("debug property is deprecated "
+                      "and scheduled for removal in 5.0",
                       DeprecationWarning,
                       stacklevel=2)
-        return self._debug
+        return asyncio.get_event_loop().get_debug()
 
     def _reg_subapp_signals(self, subapp: 'Application') -> None:
 
@@ -302,7 +303,6 @@ class Application(MutableMapping[str, Any]):
 
         self.freeze()
 
-        kwargs['debug'] = self._debug
         kwargs['access_log_class'] = access_log_class
         if self._handler_args:
             for k, v in self._handler_args.items():
@@ -365,15 +365,8 @@ class Application(MutableMapping[str, Any]):
         yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
-        loop = asyncio.get_event_loop()
-        debug = loop.get_debug()
         match_info = await self._router.resolve(request)
-        if debug:  # pragma: no cover
-            if not isinstance(match_info, AbstractMatchInfo):
-                raise TypeError("match_info should be AbstractMatchInfo "
-                                "instance, not {!r}".format(match_info))
         match_info.add_app(self)
-
         match_info.freeze()
 
         resp = None

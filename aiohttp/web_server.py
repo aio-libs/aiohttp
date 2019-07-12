@@ -1,5 +1,6 @@
 """Low level HTTP server."""
 import asyncio
+import warnings
 from typing import Any, Awaitable, Callable, Dict, List, Optional  # noqa
 
 from .abc import AbstractStreamWriter
@@ -18,7 +19,13 @@ class Server:
                  handler: _RequestHandler,
                  *,
                  request_factory: Optional[_RequestFactory]=None,
+                 debug: Optional[bool]=None,
                  **kwargs: Any) -> None:
+        if debug is not None:
+            warnings.warn("debug argument is no-op since 4.0 "
+                          "and scheduled for removal in 5.0",
+                          DeprecationWarning,
+                          stacklevel=2)
         self._loop = get_running_loop()
         self._connections = {}  # type: Dict[RequestHandler, asyncio.Transport]
         self._kwargs = kwargs
