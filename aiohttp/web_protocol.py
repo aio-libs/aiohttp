@@ -12,6 +12,7 @@ from typing import (
     Awaitable,
     Callable,
     Optional,
+    Tuple,
     Type,
     Union,
     cast,
@@ -399,6 +400,33 @@ class RequestHandler(BaseProtocol):
         self._keepalive_handle = self._loop.call_later(
             self.KEEPALIVE_RESCHEDULE_DELAY, self._process_keepalive)
 
+    async def _handle_request(self,
+                              request: BaseRequest,
+                              start_time: float,
+                              ) -> Tuple[StreamResponse, bool]:
+        assert self._request_handler is not None
+        try:
+            resp = await self._request_handler(request)
+        except HTTPException as exc:
+            resp = Response(status=exc.status,
+                            reason=exc.reason,
+                            text=exc.text,
+                            headers=exc.headers)
+            reset = await self.finish_response(request, resp, start_time)
+        except asyncio.CancelledError:
+            raise
+        except asyncio.TimeoutError as exc:
+            self.log_debug('Request handler timed out.', exc_info=exc)
+            resp = self.handle_error(request, 504)
+            reset = await self.finish_response(request, resp, start_time)
+        except Exception as exc:
+            resp = self.handle_error(request, 500, exc)
+            reset = await self.finish_response(request, resp, start_time)
+        else:
+            reset = await self.finish_response(request, resp, start_time)
+
+        return resp, reset
+
     async def start(self) -> None:
         """Process incoming request.
 
@@ -440,27 +468,12 @@ class RequestHandler(BaseProtocol):
             try:
                 # a new task is used for copy context vars (#3406)
                 task = self._loop.create_task(
-                    self._request_handler(request))
+                    self._handle_request(request, start))
                 try:
-                    resp = await task
-                except HTTPException as exc:
-                    resp = Response(status=exc.status,
-                                    reason=exc.reason,
-                                    text=exc.text,
-                                    headers=exc.headers)
-                    reset = await self.finish_response(request, resp, start)
+                    resp, reset = await task
                 except asyncio.CancelledError:
                     self.log_debug('Ignored premature client disconnection')
                     break
-                except asyncio.TimeoutError as exc:
-                    self.log_debug('Request handler timed out.', exc_info=exc)
-                    resp = self.handle_error(request, 504)
-                    reset = await self.finish_response(request, resp, start)
-                except Exception as exc:
-                    resp = self.handle_error(request, 500, exc)
-                    reset = await self.finish_response(request, resp, start)
-                else:
-                    reset = await self.finish_response(request, resp, start)
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task

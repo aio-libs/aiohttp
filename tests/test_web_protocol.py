@@ -362,7 +362,7 @@ async def test_handle_uncompleted_pipe(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     # with exception
     request_handler.side_effect = handle_with_error()
@@ -373,7 +373,7 @@ async def test_handle_uncompleted_pipe(
 
     assert srv._task_handler
 
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     await srv._task_handler
     assert normal_completed
@@ -585,7 +585,7 @@ async def test_content_length_0(srv, request_handler) -> None:
         b'GET / HTTP/1.1\r\n'
         b'Host: example.org\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     assert request_handler.called
     assert request_handler.call_args[0][0].content == streams.EMPTY_PAYLOAD
@@ -702,7 +702,7 @@ async def test_pipeline_response_order(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     # second
 
@@ -720,7 +720,7 @@ async def test_pipeline_response_order(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     assert srv._task_handler is not None
 
@@ -835,4 +835,4 @@ Host: localhost:{port}\r
     writer.write(b"x")
     writer.close()
     await asyncio.sleep(0.1)
-    logger.debug.assert_called_with('Ignored premature client disconnection 2')
+    logger.debug.assert_called_with('Ignored premature client disconnection.')
