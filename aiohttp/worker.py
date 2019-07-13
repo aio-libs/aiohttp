@@ -82,7 +82,6 @@ class GunicornWebWorker(base.Worker):
 
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
 
-        runner = runner
         assert runner is not None
         server = runner.server
         assert server is not None
