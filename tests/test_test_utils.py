@@ -66,7 +66,7 @@ def app():
 @pytest.fixture
 def test_client(loop, app) -> None:
     async def make_client():
-        return _TestClient(_TestServer(app, loop=loop), loop=loop)
+        return _TestClient(_TestServer(app))
 
     client = loop.run_until_complete(make_client())
 
@@ -201,10 +201,10 @@ def test_make_mocked_request_transport() -> None:
     assert req.transport is transport
 
 
-async def test_test_client_props(loop) -> None:
+async def test_test_client_props() -> None:
     app = _create_example_app()
-    server = _TestServer(app, scheme='http', host='127.0.0.1', loop=loop)
-    client = _TestClient(server, loop=loop)
+    server = _TestServer(app, scheme='http', host='127.0.0.1')
+    client = _TestClient(server)
     assert client.scheme == 'http'
     assert client.host == '127.0.0.1'
     assert client.port is None
@@ -215,13 +215,13 @@ async def test_test_client_props(loop) -> None:
     assert client.port is None
 
 
-async def test_test_client_raw_server_props(loop) -> None:
+async def test_test_client_raw_server_props() -> None:
 
     async def hello(request):
         return web.Response(body=_hello_world_bytes)
 
-    server = _RawTestServer(hello, scheme='http', host='127.0.0.1', loop=loop)
-    client = _TestClient(server, loop=loop)
+    server = _RawTestServer(hello, scheme='http', host='127.0.0.1')
+    client = _TestClient(server)
     assert client.scheme == 'http'
     assert client.host == '127.0.0.1'
     assert client.port is None
@@ -234,8 +234,8 @@ async def test_test_client_raw_server_props(loop) -> None:
 
 async def test_test_server_context_manager(loop) -> None:
     app = _create_example_app()
-    async with _TestServer(app, loop=loop) as server:
-        client = aiohttp.ClientSession(loop=loop)
+    async with _TestServer(app) as server:
+        client = aiohttp.ClientSession()
         resp = await client.head(server.make_url('/'))
         assert resp.status == 200
         resp.close()
@@ -252,7 +252,7 @@ def test_client_unsupported_arg() -> None:
 
 async def test_server_make_url_yarl_compatibility(loop) -> None:
     app = _create_example_app()
-    async with _TestServer(app, loop=loop) as server:
+    async with _TestServer(app) as server:
         make_url = server.make_url
         assert make_url(URL('/foo')) == make_url('/foo')
         with pytest.raises(AssertionError):
@@ -276,8 +276,8 @@ def test_testcase_no_app(testdir, loop) -> None:
 
 
 async def test_server_context_manager(app, loop) -> None:
-    async with _TestServer(app, loop=loop) as server:
-        async with aiohttp.ClientSession(loop=loop) as client:
+    async with _TestServer(app) as server:
+        async with aiohttp.ClientSession() as client:
             async with client.head(server.make_url('/')) as resp:
                 assert resp.status == 200
 
@@ -286,7 +286,7 @@ async def test_server_context_manager(app, loop) -> None:
     "head", "get", "post", "options", "post", "put", "patch", "delete"
 ])
 async def test_client_context_manager_response(method, app, loop) -> None:
-    async with _TestClient(_TestServer(app), loop=loop) as client:
+    async with _TestClient(_TestServer(app)) as client:
         async with getattr(client, method)('/') as resp:
             assert resp.status == 200
             if method != 'head':
@@ -296,7 +296,7 @@ async def test_client_context_manager_response(method, app, loop) -> None:
 
 async def test_custom_port(loop, app, aiohttp_unused_port) -> None:
     port = aiohttp_unused_port()
-    client = _TestClient(_TestServer(app, loop=loop, port=port), loop=loop)
+    client = _TestClient(_TestServer(app, port=port))
     await client.start_server()
 
     assert client.server.port == port

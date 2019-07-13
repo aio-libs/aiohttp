@@ -200,8 +200,7 @@ class BaseConnector:
                  keepalive_timeout: Union[object, None, float]=sentinel,
                  force_close: bool=False,
                  limit: int=100, limit_per_host: int=0,
-                 enable_cleanup_closed: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 enable_cleanup_closed: bool=False) -> None:
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -212,7 +211,7 @@ class BaseConnector:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
 
-        loop = get_running_loop(loop)
+        loop = get_running_loop()
 
         self._closed = False
         if loop.get_debug():
@@ -712,20 +711,18 @@ class TCPConnector(BaseConnector):
                  keepalive_timeout: Union[None, float, object]=sentinel,
                  force_close: bool=False,
                  limit: int=100, limit_per_host: int=0,
-                 enable_cleanup_closed: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None):
+                 enable_cleanup_closed: bool=False) -> None:
         super().__init__(keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
                          limit=limit, limit_per_host=limit_per_host,
-                         enable_cleanup_closed=enable_cleanup_closed,
-                         loop=loop)
+                         enable_cleanup_closed=enable_cleanup_closed)
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError("ssl should be SSLContext, bool, Fingerprint, "
                             "or None, got {!r} instead.".format(ssl))
         self._ssl = ssl
         if resolver is None:
-            resolver = DefaultResolver(loop=self._loop)
+            resolver = DefaultResolver()
         self._resolver = resolver
 
         self._use_dns_cache = use_dns_cache
@@ -1094,11 +1091,10 @@ class UnixConnector(BaseConnector):
 
     def __init__(self, path: str, force_close: bool=False,
                  keepalive_timeout: Union[object, float, None]=sentinel,
-                 limit: int=100, limit_per_host: int=0,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 limit: int=100, limit_per_host: int=0) -> None:
         super().__init__(force_close=force_close,
                          keepalive_timeout=keepalive_timeout,
-                         limit=limit, limit_per_host=limit_per_host, loop=loop)
+                         limit=limit, limit_per_host=limit_per_host)
         self._path = path
 
     @property
@@ -1136,11 +1132,10 @@ class NamedPipeConnector(BaseConnector):
 
     def __init__(self, path: str, force_close: bool=False,
                  keepalive_timeout: Union[object, float, None]=sentinel,
-                 limit: int=100, limit_per_host: int=0,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 limit: int=100, limit_per_host: int=0) -> None:
         super().__init__(force_close=force_close,
                          keepalive_timeout=keepalive_timeout,
-                         limit=limit, limit_per_host=limit_per_host, loop=loop)
+                         limit=limit, limit_per_host=limit_per_host)
         if not isinstance(self._loop, asyncio.ProactorEventLoop):  # type: ignore # noqa
             raise RuntimeError("Named Pipes only available in proactor "
                                "loop under windows")

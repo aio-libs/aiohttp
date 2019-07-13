@@ -69,7 +69,6 @@ def test_init_process(worker) -> None:
         except TypeError:
             pass
 
-        assert m_asyncio.get_event_loop.return_value.close.called
         assert m_asyncio.new_event_loop.called
         assert m_asyncio.set_event_loop.called
 

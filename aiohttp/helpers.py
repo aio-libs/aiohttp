@@ -20,6 +20,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import (  # noqa
     Any,
+    Awaitable,
     Callable,
     Dict,
     Iterable,
@@ -256,11 +257,16 @@ def current_task(
         return asyncio.Task.current_task(loop=loop)
 
 
-def get_running_loop(
-    loop: Optional[asyncio.AbstractEventLoop]=None
-) -> asyncio.AbstractEventLoop:
-    if loop is None:
+if sys.version_info >= (3, 7):
+    create_task = asyncio.create_task
+else:
+    def create_task(coro: Awaitable[_T]) -> 'asyncio.Task[_T]':
         loop = asyncio.get_event_loop()
+        return loop.create_task(coro)
+
+
+def get_running_loop() -> asyncio.AbstractEventLoop:
+    loop = asyncio.get_event_loop()
     if not loop.is_running():
         raise RuntimeError("The object should be created from async function")
     return loop

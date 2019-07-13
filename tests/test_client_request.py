@@ -271,12 +271,6 @@ def test_host_header_ipv6_with_port(make_request) -> None:
     assert req.headers['HOST'] == '[::2]:99'
 
 
-def test_default_loop(loop) -> None:
-    asyncio.set_event_loop(loop)
-    req = ClientRequest('get', URL('http://python.org/'))
-    assert req.loop is loop
-
-
 def test_default_headers_useragent(make_request) -> None:
     req = make_request('get', 'http://python.org/')
 
@@ -1066,7 +1060,7 @@ def test_terminate_with_closed_loop(loop, conn) -> None:
 
     async def go():
         nonlocal req, resp, writer
-        req = ClientRequest('get', URL('http://python.org'))
+        req = ClientRequest('get', URL('http://python.org'), loop=loop)
         resp = await req.send(conn)
         assert req._writer is not None
         writer = req._writer = mock.Mock()
@@ -1126,14 +1120,13 @@ async def test_custom_req_rep(loop, create_mocked_conn) -> None:
     async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
         return create_mocked_conn()
-    connector = BaseConnector(loop=loop)
+    connector = BaseConnector()
     connector._create_connection = create_connection
 
     session = aiohttp.ClientSession(
         request_class=CustomRequest,
         response_class=CustomResponse,
-        connector=connector,
-        loop=loop)
+        connector=connector)
 
     resp = await session.request(
         'get', URL('http://example.com/path/to'))

@@ -217,14 +217,6 @@ and :ref:`aiohttp-web-signals` handlers.
          if peername is not None:
              host, port = peername
 
-   .. attribute:: loop
-
-      An event loop instance used by HTTP request handling.
-
-      Read-only :class:`asyncio.AbstractEventLoop` property.
-
-      .. deprecated:: 3.5
-
    .. attribute:: cookies
 
       A multidict of all request's cookies.
@@ -1252,7 +1244,7 @@ duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       loop=None, debug=...)
+                       debug=...)
 
    The class inherits :class:`dict`.
 
@@ -1271,18 +1263,12 @@ duplicated like one using :meth:`Application.copy`.
                            value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
 
-   :param loop: event loop
-
-      .. deprecated:: 2.0
-
-         The parameter is deprecated. Loop is get set during freeze
-         stage.
-
    :param debug: Switches debug mode.
 
       .. deprecated:: 3.5
 
-         Use asyncio :ref:`asyncio-debug-mode` instead.
+         The argument does nothing starting from 4.0,
+         use asyncio :ref:`asyncio-debug-mode` instead.
 
    .. attribute:: router
 
@@ -1291,12 +1277,6 @@ duplicated like one using :meth:`Application.copy`.
    .. attribute:: logger
 
       :class:`logging.Logger` instance for storing application logs.
-
-   .. attribute:: loop
-
-      :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
-
-      .. deprecated:: 3.5
 
    .. attribute:: debug
 

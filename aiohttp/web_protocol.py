@@ -108,8 +108,6 @@ class RequestHandler(BaseProtocol):
 
     :param bool tcp_keepalive: TCP keep-alive is on, default is on
 
-    :param bool debug: enable debug mode
-
     :param logger: custom logger object
     :type logger: aiohttp.log.server_logger
 
@@ -138,7 +136,7 @@ class RequestHandler(BaseProtocol):
                  '_lingering_time', '_messages', '_message_tail',
                  '_waiter', '_error_handler', '_task_handler',
                  '_upgrade', '_payload_parser', '_request_parser',
-                 '_reading_paused', 'logger', 'debug', 'access_log',
+                 '_reading_paused', 'logger', 'access_log',
                  'access_logger', '_close', '_force_close')
 
     def __init__(self, manager: 'Server', *,
@@ -149,7 +147,6 @@ class RequestHandler(BaseProtocol):
                  access_log_class: _AnyAbstractAccessLogger=AccessLogger,
                  access_log: Logger=access_logger,
                  access_log_format: str=AccessLogger.LOG_FORMAT,
-                 debug: bool=False,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
@@ -187,7 +184,6 @@ class RequestHandler(BaseProtocol):
             payload_exception=RequestPayloadError)   # type: Optional[HttpRequestParser]  # noqa
 
         self.logger = logger
-        self.debug = debug
         self.access_log = access_log
         if access_log:
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
@@ -377,7 +373,7 @@ class RequestHandler(BaseProtocol):
                                          self._loop.time() - request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
-        if self.debug:
+        if self._loop.get_debug():
             self.logger.debug(*args, **kw)
 
     def log_exception(self, *args: Any, **kw: Any) -> None:
@@ -514,7 +510,7 @@ class RequestHandler(BaseProtocol):
                 self.log_debug('Ignored premature client disconnection ')
                 break
             except RuntimeError as exc:
-                if self.debug:
+                if self._loop.get_debug():
                     self.log_exception(
                         'Unhandled runtime exception', exc_info=exc)
                 self.force_close()
@@ -591,7 +587,7 @@ class RequestHandler(BaseProtocol):
             )
             msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
             tb = None
-            if self.debug:
+            if self._loop.get_debug():
                 with suppress(Exception):
                     tb = traceback.format_exc()
 
