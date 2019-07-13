@@ -377,21 +377,19 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. comethod:: json(*, loads=json.loads)
+   .. comethod:: json(*, loads=json.loads, \
+                    content_type='application/json')
 
-      Read request body decoded as *json*.
-
-      The method is just a boilerplate :ref:`coroutine <coroutine>`
-      implemented as::
-
-         async def json(self, *, loads=json.loads):
-             body = await self.text()
-             return loads(body)
+      Read request body decoded as *json*. If request's content-type does not
+      match `content_type` parameter, :class:`web.HTTPBadRequest` get raised.
+      To disable content type check pass ``None`` value.
 
       :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
                               with parsed JSON (:func:`json.loads` by
                               default).
+      :param str content_type: expected value of Content-Type header or ``None``
+                              ('application/json' by default)
 
       .. note::
 

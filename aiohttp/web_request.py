@@ -30,7 +30,14 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
+from .helpers import (
+    DEBUG,
+    ChainMapProxy,
+    HeadersMixin,
+    is_expected_content_type,
+    reify,
+    sentinel,
+)
 from .http_parser import RawRequestMessage
 from .multipart import MultipartReader
 from .streams import EmptyStreamReader, StreamReader
@@ -41,7 +48,11 @@ from .typedefs import (
     RawHeaders,
     StrOrURL,
 )
-from .web_exceptions import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
+from .web_exceptions import (
+    HTTPBadRequest,
+    HTTPRequestEntityTooLarge,
+    HTTPUnsupportedMediaType,
+)
 from .web_response import StreamResponse
 
 __all__ = ('BaseRequest', 'FileField', 'Request')
@@ -581,9 +592,17 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         except LookupError:
             raise HTTPUnsupportedMediaType()
 
-    async def json(self, *, loads: JSONDecoder=DEFAULT_JSON_DECODER) -> Any:
+    async def json(self, *,
+                   loads: JSONDecoder=DEFAULT_JSON_DECODER,
+                   content_type: Optional[str]='application/json') -> Any:
         """Return BODY as JSON."""
         body = await self.text()
+        if content_type:
+            ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
+            if not is_expected_content_type(ctype, content_type):
+                raise HTTPBadRequest(text=('Attempt to decode JSON with '
+                                           'unexpected mimetype: %s' % ctype))
+
         return loads(body)
 
     async def multipart(self) -> MultipartReader:
