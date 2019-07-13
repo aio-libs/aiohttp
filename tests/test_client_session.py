@@ -379,16 +379,6 @@ async def test_del_debug(connector, loop) -> None:
     assert logs[0] == expected
 
 
-async def test_context_manager(connector) -> None:
-    with pytest.raises(TypeError):
-        with ClientSession(connector=connector) as session:
-            pass
-
-        assert session.closed
-    assert not connector.closed
-    await connector.close()
-
-
 async def test_borrow_connector_loop(connector, create_session, loop) -> None:
     session = ClientSession(connector=connector)
     try:

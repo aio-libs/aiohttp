@@ -240,17 +240,7 @@ async def test_create_conn() -> None:
         await conn._create_connection(object(), [], object())
 
 
-async def test_base_connector_as_context_manager_not_allowed() -> None:
-    connector = aiohttp.BaseConnector()
-
-    with pytest.raises(TypeError, match='use "async with Connector'):
-        with connector:
-            pass
-
-    assert not connector.closed
-
-
-async def test_async_context_manager() -> None:
+async def test_async_context_manager(loop) -> None:
     conn = aiohttp.BaseConnector()
 
     async with conn as c:
