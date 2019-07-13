@@ -98,8 +98,7 @@ async def main(loop):
     fake_facebook = FakeFacebook()
     info = await fake_facebook.start()
     resolver = FakeResolver(info)
-    connector = aiohttp.TCPConnector(resolver=resolver,
-                                     verify_ssl=False)
+    connector = aiohttp.TCPConnector(resolver=resolver, ssl=False)
 
     async with aiohttp.ClientSession(connector=connector) as session:
         async with session.get('https://graph.facebook.com/v2.7/me',
