@@ -1,0 +1,1 @@
+Raise 400 Bad Request on server-side `await request.json()` if incorrect content-type received.

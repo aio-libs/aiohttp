@@ -43,6 +43,7 @@ from .helpers import (  # noqa
     BasicAuth,
     HeadersMixin,
     TimerNoop,
+    is_expected_content_type,
     noop,
     reify,
     set_result,
@@ -78,9 +79,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
     from .connector import Connection  # noqa
     from .tracing import Trace  # noqa
-
-
-json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 
 @attr.s(frozen=True, slots=True)
@@ -153,13 +151,6 @@ class ConnectionKey:
     proxy = attr.ib()  # type: Optional[URL]
     proxy_auth = attr.ib()  # type: Optional[BasicAuth]
     proxy_headers_hash = attr.ib(type=int)  # type: Optional[int] # noqa # hash(CIMultiDict)
-
-
-def _is_expected_content_type(response_content_type: str,
-                              expected_content_type: str) -> bool:
-    if expected_content_type == 'application/json':
-        return json_re.match(response_content_type) is not None
-    return expected_content_type in response_content_type
 
 
 class ClientRequest:
@@ -974,7 +965,7 @@ class ClientResponse(HeadersMixin):
 
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-            if not _is_expected_content_type(ctype, content_type):
+            if not is_expected_content_type(ctype, content_type):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
