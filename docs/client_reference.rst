@@ -37,7 +37,7 @@ Usage example::
 
 The client session supports the context manager protocol for self closing.
 
-.. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
+.. class:: ClientSession(*, connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
@@ -55,17 +55,6 @@ The client session supports the context manager protocol for self closing.
 
    :param aiohttp.connector.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
-
-   :param loop: :ref:`event loop<asyncio-event-loop>` used for
-      processing HTTP requests.
-
-      If *loop* is ``None`` the constructor
-      borrows it from *connector* if specified.
-
-      :func:`asyncio.get_event_loop` is used for getting default event
-      loop otherwise.
-
-      .. deprecated:: 2.0
 
    :param dict cookies: Cookies to send with the request (optional)
 
@@ -206,13 +195,6 @@ The client session supports the context manager protocol for self closing.
 
          The attribute modification is deprecated.
 
-   .. attribute:: loop
-
-      A loop instance used for session creation.
-
-      A read-only property.
-
-      .. deprecated:: 3.5
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
@@ -600,7 +582,7 @@ certification chaining.
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
                         compress=None, chunked=None, expect100=False, raise_for_status=False, \
-                        connector=None, loop=None,\
+                        connector=None, \
                         read_until_eof=True, timeout=sentinel)
 
    :async-with:
@@ -665,14 +647,6 @@ certification chaining.
    :param timeout: a :class:`ClientTimeout` settings structure, 5min
         total timeout by default.
 
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-                used for processing HTTP requests.
-                If param is ``None``, :func:`asyncio.get_event_loop`
-                is used for getting default event loop.
-
-      .. deprecated:: 2.0
-
-   :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
    Usage::
 
@@ -710,7 +684,7 @@ BaseConnector
 
 .. class:: BaseConnector(*, keepalive_timeout=15, \
                          force_close=False, limit=100, limit_per_host=0, \
-                         enable_cleanup_closed=False, loop=None)
+                         enable_cleanup_closed=False)
 
    Base class for all connectors.
 
@@ -735,14 +709,6 @@ BaseConnector
       SSL shutdown process, in that case asyncio leaks ssl connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
-
-
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-      used for handling connections.
-      If param is ``None``, :func:`asyncio.get_event_loop`
-      is used for getting default event loop.
-
-      .. deprecated:: 2.0
 
    .. attribute:: closed
 
@@ -804,7 +770,7 @@ TCPConnector
                  family=0, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
-                 enable_cleanup_closed=False, loop=None)
+                 enable_cleanup_closed=False)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -911,7 +877,7 @@ UnixConnector
 
 .. class:: UnixConnector(path, *, conn_timeout=None, \
                          keepalive_timeout=30, limit=100, \
-                         force_close=False, loop=None)
+                         force_close=False)
 
    Unix socket connector.
 
@@ -955,12 +921,6 @@ Connection
 
       :class:`bool` read-only property, ``True`` if connection was
       closed, released or detached.
-
-   .. attribute:: loop
-
-      Event loop used for connection
-
-      .. deprecated:: 3.5
 
    .. attribute:: transport
 
@@ -1524,7 +1484,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False, loop=None)
+.. class:: CookieJar(*, unsafe=False)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1548,11 +1508,6 @@ CookieJar
    Implements cookie storage adhering to RFC 6265.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
-
-   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
-      See :class:`aiohttp.abc.AbstractCookieJar`
-
-      .. deprecated:: 2.0
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -1596,7 +1551,7 @@ CookieJar
 
 
 
-.. class:: DummyCookieJar(*, loop=None)
+.. class:: DummyCookieJar()
 
    Dummy cookie jar which does not store cookies but ignores them.
 

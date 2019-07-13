@@ -81,7 +81,7 @@ A simple would be::
     async def hello(request):
         return web.Response(text='Hello, world')
 
-    async def test_hello(aiohttp_client, loop):
+    async def test_hello(aiohttp_client):
         app = web.Application()
         app.router.add_get('/', hello)
         client = await aiohttp_client(app)
@@ -577,10 +577,7 @@ for accessing to the server.
 
       :class:`asyncio.AbstractServer` used for managing accepted connections.
 
-   .. comethod:: start_server(loop=None, **kwargs)
-
-      :param loop: the event_loop to use
-      :type loop: asyncio.AbstractEventLoop
+   .. comethod:: start_server(**kwargs)
 
       Start a test server.
 
@@ -644,7 +641,7 @@ for accessing to the server.
 Test Client
 ~~~~~~~~~~~
 
-.. class:: TestClient(app_or_server, *, loop=None, \
+.. class:: TestClient(app_or_server, *, \
                       scheme='http', host='127.0.0.1', \
                       cookie_jar=None, **kwargs)
 
@@ -662,8 +659,6 @@ Test Client
                       option.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
-
-   :param asyncio.AbstractEventLoop loop: the event_loop to use
 
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.

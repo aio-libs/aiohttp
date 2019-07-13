@@ -23,8 +23,9 @@ from typing import (  # noqa
 )
 
 from . import hdrs
-from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractStreamWriter
+from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .frozenlist import FrozenList
+from .helpers import get_running_loop
 from .http_parser import RawRequestMessage
 from .log import web_logger
 from .signals import Signal
@@ -81,20 +82,15 @@ class Application(MutableMapping[str, Any]):
                  middlewares: Sequence[_Middleware]=(),
                  handler_args: Mapping[str, Any]=None,
                  client_max_size: int=1024**2,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  debug: Any=...  # mypy doesn't support ellipsis
                  ) -> None:
-        if loop is not None:
-            warnings.warn("loop argument is deprecated", DeprecationWarning,
-                          stacklevel=2)
 
         if debug is not ...:
-            warnings.warn("debug argument is deprecated",
+            warnings.warn("debug argument is no-op since 4.0 "
+                          "and scheduled for removal in 5.0",
                           DeprecationWarning,
                           stacklevel=2)
-        self._debug = debug
         self._router = UrlDispatcher()
-        self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
 
@@ -155,32 +151,11 @@ class Application(MutableMapping[str, Any]):
         return iter(self._state)
 
     ########
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        # Technically the loop can be None,
-        # but we mask it by explicit type cast
-        # to provide more convenient type annotation.
-        warnings.warn("loop property is deprecated",
+    def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
+        warnings.warn("_set_loop() is no-op since 4.0 "
+                      "and scheduled for removal in 5.0",
                       DeprecationWarning,
                       stacklevel=2)
-        return cast(asyncio.AbstractEventLoop, self._loop)
-
-    def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        if self._loop is not None and self._loop is not loop:
-            raise RuntimeError(
-                "web.Application instance initialized with different loop")
-
-        self._loop = loop
-
-        # set loop debug
-        if self._debug is ...:
-            self._debug = loop.get_debug()
-
-        # set loop to sub applications
-        for subapp in self._subapps:
-            subapp._set_loop(loop)
 
     @property
     def pre_frozen(self) -> bool:
@@ -227,10 +202,11 @@ class Application(MutableMapping[str, Any]):
 
     @property
     def debug(self) -> bool:
-        warnings.warn("debug property is deprecated",
+        warnings.warn("debug property is deprecated "
+                      "and scheduled for removal in 5.0",
                       DeprecationWarning,
                       stacklevel=2)
-        return self._debug
+        return asyncio.get_event_loop().get_debug()
 
     def _reg_subapp_signals(self, subapp: 'Application') -> None:
 
@@ -269,8 +245,6 @@ class Application(MutableMapping[str, Any]):
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
         subapp.pre_freeze()
-        if self._loop is not None:
-            subapp._set_loop(self._loop)
         return resource
 
     def add_domain(self, domain: str,
@@ -327,10 +301,8 @@ class Application(MutableMapping[str, Any]):
                 'aiohttp.abc.AbstractAccessLogger, got {}'.format(
                     access_log_class))
 
-        self._set_loop(loop)
         self.freeze()
 
-        kwargs['debug'] = self._debug
         kwargs['access_log_class'] = access_log_class
         if self._handler_args:
             for k, v in self._handler_args.items():
@@ -338,7 +310,7 @@ class Application(MutableMapping[str, Any]):
 
         return Server(self._handle,  # type: ignore
                       request_factory=self._make_request,
-                      loop=self._loop, **kwargs)
+                      **kwargs)
 
     def make_handler(self, *,
                      loop: Optional[asyncio.AbstractEventLoop]=None,
@@ -382,9 +354,10 @@ class Application(MutableMapping[str, Any]):
                       writer: AbstractStreamWriter,
                       task: 'asyncio.Task[None]',
                       _cls: Type[Request]=Request) -> Request:
+        loop = get_running_loop()
         return _cls(
             message, payload, protocol, writer, task,
-            self._loop,
+            loop,
             client_max_size=self._client_max_size)
 
     def _prepare_middleware(self) -> Iterator[_Middleware]:
@@ -392,15 +365,8 @@ class Application(MutableMapping[str, Any]):
         yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
-        loop = asyncio.get_event_loop()
-        debug = loop.get_debug()
         match_info = await self._router.resolve(request)
-        if debug:  # pragma: no cover
-            if not isinstance(match_info, AbstractMatchInfo):
-                raise TypeError("match_info should be AbstractMatchInfo "
-                                "instance, not {!r}".format(match_info))
         match_info.add_app(self)
-
         match_info.freeze()
 
         resp = None

@@ -1,0 +1,3 @@
+Drop explicit loop. Use ``asyncio.get_event_loop()`` instead if the loop instance is needed.
+All aiohttp objects work with the currently running loop, a creation of aiohttp instances, e.g. ClientSession when the loop is not running is forbidden.
+As a side effect of PR passing callables to ``aiohttp_server()`` and ``aiohttp_client()`` pytest fixtures are forbidden, please call these callables explicitly.

@@ -11,11 +11,7 @@ from aiohttp.test_utils import make_mocked_coro
 
 
 async def test_app_ctor() -> None:
-    loop = asyncio.get_event_loop()
-    with pytest.warns(DeprecationWarning):
-        app = web.Application(loop=loop)
-    with pytest.warns(DeprecationWarning):
-        assert loop is app.loop
+    app = web.Application()
     assert app.logger is log.web_logger
 
 
@@ -24,43 +20,10 @@ def test_app_call() -> None:
     assert app is app()
 
 
-def test_app_default_loop() -> None:
-    app = web.Application()
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is None
-
-
-async def test_set_loop() -> None:
-    loop = asyncio.get_event_loop()
-    app = web.Application()
-    app._set_loop(loop)
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is loop
-
-
-def test_set_loop_default_loop() -> None:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    app = web.Application()
-    app._set_loop(None)
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is loop
-    asyncio.set_event_loop(None)
-
-
-def test_set_loop_with_different_loops() -> None:
-    loop = asyncio.new_event_loop()
-    app = web.Application()
-    app._set_loop(loop)
-    with pytest.warns(DeprecationWarning):
-        assert app.loop is loop
-
-    with pytest.raises(RuntimeError):
-        app._set_loop(loop=object())
-
-
 @pytest.mark.parametrize('debug', [True, False])
 async def test_app_make_handler_debug_exc(mocker, debug) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(debug)
     with pytest.warns(DeprecationWarning):
         app = web.Application(debug=debug)
     srv = mocker.patch('aiohttp.web_app.Server')
@@ -71,9 +34,7 @@ async def test_app_make_handler_debug_exc(mocker, debug) -> None:
     app._make_handler()
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
-                           access_log_class=mock.ANY,
-                           loop=asyncio.get_event_loop(),
-                           debug=debug)
+                           access_log_class=mock.ANY)
 
 
 async def test_app_make_handler_args(mocker) -> None:
@@ -84,8 +45,7 @@ async def test_app_make_handler_args(mocker) -> None:
     srv.assert_called_with(app._handle,
                            request_factory=app._make_request,
                            access_log_class=mock.ANY,
-                           loop=asyncio.get_event_loop(),
-                           debug=mock.ANY, test=True)
+                           test=True)
 
 
 async def test_app_make_handler_access_log_class(mocker) -> None:
@@ -107,17 +67,13 @@ async def test_app_make_handler_access_log_class(mocker) -> None:
     app._make_handler(access_log_class=Logger)
     srv.assert_called_with(app._handle,
                            access_log_class=Logger,
-                           request_factory=app._make_request,
-                           loop=asyncio.get_event_loop(),
-                           debug=mock.ANY)
+                           request_factory=app._make_request)
 
     app = web.Application(handler_args={'access_log_class': Logger})
     app._make_handler(access_log_class=Logger)
     srv.assert_called_with(app._handle,
                            access_log_class=Logger,
-                           request_factory=app._make_request,
-                           loop=asyncio.get_event_loop(),
-                           debug=mock.ANY)
+                           request_factory=app._make_request)
 
 
 async def test_app_make_handler_raises_deprecation_warning() -> None:

@@ -134,7 +134,7 @@ def test_path_matching() -> None:
 
 
 async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
-    jar = CookieJar(loop=loop)
+    jar = CookieJar()
     jar.update_cookies(cookies_to_send)
     jar_cookies = SimpleCookie()
     for cookie in jar:
@@ -148,11 +148,11 @@ async def test_save_load(loop, cookies_to_send, cookies_to_receive) -> None:
     file_path = tempfile.mkdtemp() + '/aiohttp.test.cookie'
 
     # export cookie jar
-    jar_save = CookieJar(loop=loop)
+    jar_save = CookieJar()
     jar_save.update_cookies(cookies_to_receive)
     jar_save.save(file_path=file_path)
 
-    jar_load = CookieJar(loop=loop)
+    jar_load = CookieJar()
     jar_load.load(file_path=file_path)
 
     jar_test = SimpleCookie()
@@ -169,7 +169,7 @@ async def test_update_cookie_with_unicode_domain(loop) -> None:
         "idna-domain-second=second; Domain=xn--9caa.com; Path=/;",
     )
 
-    jar = CookieJar(loop=loop)
+    jar = CookieJar()
     jar.update_cookies(SimpleCookie(cookies[0]), URL("http://éé.com/"))
     jar.update_cookies(SimpleCookie(cookies[1]), URL("http://xn--9caa.com/"))
 
@@ -196,7 +196,7 @@ async def test_filter_cookies_str_deprecated(loop) -> None:
 
 
 async def test_domain_filter_ip_cookie_send(loop) -> None:
-    jar = CookieJar(loop=loop)
+    jar = CookieJar()
     cookies = SimpleCookie(
         "shared-cookie=first; "
         "domain-cookie=second; Domain=example.com; "
@@ -234,7 +234,7 @@ async def test_domain_filter_ip_cookie_receive(cookies_to_receive) -> None:
 
 
 async def test_preserving_ip_domain_cookies(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
+    jar = CookieJar(unsafe=True)
     jar.update_cookies(SimpleCookie(
         "shared-cookie=first; "
         "ip-cookie=second; Domain=127.0.0.1;"
@@ -246,7 +246,7 @@ async def test_preserving_ip_domain_cookies(loop) -> None:
 
 
 async def test_preserving_quoted_cookies(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
+    jar = CookieJar(unsafe=True)
     jar.update_cookies(SimpleCookie(
         "ip-cookie=\"second\"; Domain=127.0.0.1;"
     ))
@@ -256,7 +256,7 @@ async def test_preserving_quoted_cookies(loop) -> None:
 
 
 async def test_ignore_domain_ending_with_dot(loop) -> None:
-    jar = CookieJar(loop=loop, unsafe=True)
+    jar = CookieJar(unsafe=True)
     jar.update_cookies(SimpleCookie("cookie=val; Domain=example.com.;"),
                        URL("http://www.example.com"))
     cookies_sent = jar.filter_cookies(URL("http://www.example.com/"))

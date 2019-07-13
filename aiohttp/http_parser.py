@@ -166,8 +166,8 @@ class HeadersParser:
 
 class HttpParser(abc.ABC):
 
-    def __init__(self, protocol: Optional[BaseProtocol]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
+    def __init__(self, protocol: BaseProtocol,
+                 loop: asyncio.AbstractEventLoop,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,

@@ -12,11 +12,11 @@ async def fetch(session):
         print(data)
 
 
-async def go(loop):
-    async with aiohttp.ClientSession(loop=loop) as session:
+async def go():
+    async with aiohttp.ClientSession() as session:
         await fetch(session)
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(go(loop))
+loop.run_until_complete(go())
 loop.close()

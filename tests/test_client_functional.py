@@ -13,7 +13,7 @@ from async_generator import async_generator, yield_
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, helpers, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import TooManyRedirects
 from aiohttp.test_utils import unused_port
@@ -328,8 +328,6 @@ async def test_tcp_connector_fingerprint_fail(
 
 
 async def test_format_task_get(aiohttp_server) -> None:
-    loop = asyncio.get_event_loop()
-
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -337,7 +335,7 @@ async def test_format_task_get(aiohttp_server) -> None:
     app.router.add_route('GET', '/', handler)
     server = await aiohttp_server(app)
     client = aiohttp.ClientSession()
-    task = loop.create_task(client.get(server.make_url('/')))
+    task = helpers.create_task(client.get(server.make_url('/')))
     assert "{}".format(task).startswith("<Task pending")
     resp = await task
     resp.close()

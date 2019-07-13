@@ -109,7 +109,7 @@ class StreamReader(AsyncStreamReaderMixin):
     def __init__(self, protocol: BaseProtocol,
                  *, limit: int=DEFAULT_LIMIT,
                  timer: Optional[BaseTimerContext]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 loop: asyncio.AbstractEventLoop) -> None:
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2

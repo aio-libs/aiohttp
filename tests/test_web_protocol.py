@@ -291,8 +291,9 @@ async def test_unhandled_runtime_error(
         resp.write_eof.side_effect = RuntimeError
         return resp
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     srv = make_srv(lingering_time=0)
-    srv.debug = True
     srv.connection_made(transport)
     srv.logger.exception = mock.Mock()
     request_handler.side_effect = handle
@@ -470,9 +471,11 @@ async def test_handle_payload_access_error(
 
 
 async def test_handle_cancel(make_srv, transport) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     log = mock.Mock()
 
-    srv = make_srv(logger=log, debug=True)
+    srv = make_srv(logger=log)
     srv.connection_made(transport)
 
     async def handle_request(message, payload, writer):
@@ -493,9 +496,11 @@ async def test_handle_cancel(make_srv, transport) -> None:
 
 
 async def test_handle_cancelled(make_srv, transport) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     log = mock.Mock()
 
-    srv = make_srv(logger=log, debug=True)
+    srv = make_srv(logger=log)
     srv.connection_made(transport)
 
     srv.handle_request = mock.Mock()
@@ -817,9 +822,10 @@ async def test_client_disconnect(aiohttp_server) -> None:
         await request.content.read(10)
         return web.Response()
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     logger = mock.Mock()
     app = web.Application()
-    app._debug = True
     app.router.add_route('POST', '/', handler)
     server = await aiohttp_server(app, logger=logger)
 

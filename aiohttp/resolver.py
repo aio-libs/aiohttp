@@ -1,6 +1,5 @@
-import asyncio
 import socket
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .abc import AbstractResolver
 from .helpers import get_running_loop
@@ -21,8 +20,8 @@ class ThreadedResolver(AbstractResolver):
     concurrent.futures.ThreadPoolExecutor.
     """
 
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        self._loop = get_running_loop(loop)
+    def __init__(self) -> None:
+        self._loop = get_running_loop()
 
     async def resolve(self, host: str, port: int=0,
                       family: int=socket.AF_INET) -> List[Dict[str, Any]]:
@@ -46,13 +45,12 @@ class ThreadedResolver(AbstractResolver):
 class AsyncResolver(AbstractResolver):
     """Use the `aiodns` package to make asynchronous DNS lookups"""
 
-    def __init__(self, loop: Optional[asyncio.AbstractEventLoop]=None,
-                 *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = get_running_loop(loop)
-        self._resolver = aiodns.DNSResolver(*args, loop=loop, **kwargs)
+        self._loop = get_running_loop()
+        self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
 
         if not hasattr(self._resolver, 'gethostbyname'):
             # aiodns 1.1 is not available, fallback to DNSResolver.query

@@ -63,7 +63,7 @@ def proxy_test_server(aiohttp_raw_server, loop, monkeypatch):
 @pytest.fixture()
 def get_request(loop):
     async def _request(method='GET', *, url, trust_env=False, **kwargs):
-        connector = aiohttp.TCPConnector(ssl=False, loop=loop)
+        connector = aiohttp.TCPConnector(ssl=False)
         client = aiohttp.ClientSession(connector=connector,
                                        trust_env=trust_env)
         try:
@@ -190,8 +190,8 @@ async def test_proxy_http_auth_from_url(proxy_test_server,
 async def test_proxy_http_acquired_cleanup(proxy_test_server, loop) -> None:
     url = 'http://aiohttp.io/path'
 
-    conn = aiohttp.TCPConnector(loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
     proxy = await proxy_test_server()
 
     assert 0 == len(conn._acquired)
@@ -209,8 +209,8 @@ async def test_proxy_http_acquired_cleanup_force(proxy_test_server,
                                                  loop) -> None:
     url = 'http://aiohttp.io/path'
 
-    conn = aiohttp.TCPConnector(force_close=True, loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
+    conn = aiohttp.TCPConnector(force_close=True)
+    sess = aiohttp.ClientSession(connector=conn)
     proxy = await proxy_test_server()
 
     assert 0 == len(conn._acquired)
@@ -234,8 +234,8 @@ async def test_proxy_http_multi_conn_limit(proxy_test_server, loop) -> None:
     url = 'http://aiohttp.io/path'
     limit, multi_conn_num = 1, 5
 
-    conn = aiohttp.TCPConnector(limit=limit, loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
+    conn = aiohttp.TCPConnector(limit=limit)
+    sess = aiohttp.ClientSession(connector=conn)
     proxy = await proxy_test_server()
 
     current_pid = None
@@ -247,14 +247,14 @@ async def test_proxy_http_multi_conn_limit(proxy_test_server, loop) -> None:
         resp = await sess.get(url, proxy=proxy.url)
 
         current_pid = pid
-        await asyncio.sleep(0.2, loop=loop)
+        await asyncio.sleep(0.2)
         assert current_pid == pid
 
         await resp.release()
         return resp
 
     requests = [request(pid) for pid in range(multi_conn_num)]
-    responses = await asyncio.gather(*requests, loop=loop)
+    responses = await asyncio.gather(*requests)
 
     assert len(responses) == multi_conn_num
     assert set(resp.status for resp in responses) == {200}
@@ -296,7 +296,7 @@ async def xtest_proxy_https_connect_with_port(proxy_test_server, get_request):
 
 @pytest.mark.xfail
 async def xtest_proxy_https_send_body(proxy_test_server, loop):
-    sess = aiohttp.ClientSession(loop=loop)
+    sess = aiohttp.ClientSession()
     proxy = await proxy_test_server()
     proxy.return_value = {'status': 200, 'body': b'1'*(2**20)}
     url = 'https://www.google.com.ua/search?q=aiohttp proxy'
@@ -393,8 +393,8 @@ async def xtest_proxy_https_auth(proxy_test_server, get_request):
 async def xtest_proxy_https_acquired_cleanup(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
 
-    conn = aiohttp.TCPConnector(loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
+    conn = aiohttp.TCPConnector()
+    sess = aiohttp.ClientSession(connector=conn)
     proxy = await proxy_test_server()
 
     assert 0 == len(conn._acquired)
@@ -417,8 +417,8 @@ async def xtest_proxy_https_acquired_cleanup(proxy_test_server, loop):
 async def xtest_proxy_https_acquired_cleanup_force(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
 
-    conn = aiohttp.TCPConnector(force_close=True, loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
+    conn = aiohttp.TCPConnector(force_close=True)
+    sess = aiohttp.ClientSession(connector=conn)
     proxy = await proxy_test_server()
 
     assert 0 == len(conn._acquired)
@@ -442,8 +442,8 @@ async def xtest_proxy_https_multi_conn_limit(proxy_test_server, loop):
     url = 'https://secure.aiohttp.io/path'
     limit, multi_conn_num = 1, 5
 
-    conn = aiohttp.TCPConnector(limit=limit, loop=loop)
-    sess = aiohttp.ClientSession(connector=conn, loop=loop)
+    conn = aiohttp.TCPConnector(limit=limit)
+    sess = aiohttp.ClientSession(connector=conn)
     proxy = await proxy_test_server()
 
     current_pid = None
@@ -455,14 +455,14 @@ async def xtest_proxy_https_multi_conn_limit(proxy_test_server, loop):
         resp = await sess.get(url, proxy=proxy.url)
 
         current_pid = pid
-        await asyncio.sleep(0.2, loop=loop)
+        await asyncio.sleep(0.2)
         assert current_pid == pid
 
         await resp.release()
         return resp
 
     requests = [request(pid) for pid in range(multi_conn_num)]
-    responses = await asyncio.gather(*requests, loop=loop)
+    responses = await asyncio.gather(*requests)
 
     assert len(responses) == multi_conn_num
     assert set(resp.status for resp in responses) == {200}

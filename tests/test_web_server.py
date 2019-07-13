@@ -26,7 +26,7 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server,
         raise exc
 
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
+    server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 500
@@ -43,6 +43,8 @@ async def test_raw_server_not_http_exception(aiohttp_raw_server,
 
 async def test_raw_server_handler_timeout(aiohttp_raw_server,
                                           aiohttp_client) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     exc = asyncio.TimeoutError("error")
 
     async def handler(request):
@@ -63,6 +65,8 @@ async def test_raw_server_do_not_swallow_exceptions(aiohttp_raw_server,
     async def handler(request):
         raise asyncio.CancelledError()
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
@@ -81,6 +85,8 @@ async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server,
         resp.write_eof = mock.Mock(side_effect=asyncio.CancelledError("error"))
         return resp
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
@@ -99,8 +105,10 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server,
     async def handler(request):
         raise exc
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler, logger=logger, debug=True)
+    server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
     resp = await cli.get('/path/to')
     assert resp.status == 500
@@ -121,7 +129,7 @@ async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
         raise exc
 
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler, logger=logger, debug=False)
+    server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
     resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
     assert resp.status == 500
@@ -146,8 +154,10 @@ async def test_raw_server_html_exception_debug(aiohttp_raw_server,
     async def handler(request):
         raise exc
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     logger = mock.Mock()
-    server = await aiohttp_raw_server(handler, logger=logger, debug=True)
+    server = await aiohttp_raw_server(handler, logger=logger)
     cli = await aiohttp_client(server)
     resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
     assert resp.status == 500

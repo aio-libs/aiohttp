@@ -513,7 +513,7 @@ def test_clone_headers_dict() -> None:
 
 
 async def test_cannot_clone_after_read(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     payload.feed_data(b'data')
     payload.feed_eof()
     req = make_mocked_request('GET', '/path', payload=payload)
@@ -523,7 +523,7 @@ async def test_cannot_clone_after_read(protocol) -> None:
 
 
 async def test_make_too_big_request(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -536,7 +536,7 @@ async def test_make_too_big_request(protocol) -> None:
 
 
 async def test_request_with_wrong_content_type_encoding(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     payload.feed_data(b'{}')
     payload.feed_eof()
     headers = {'Content-Type': 'text/html; charset=test'}
@@ -548,7 +548,7 @@ async def test_request_with_wrong_content_type_encoding(protocol) -> None:
 
 
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -561,7 +561,7 @@ async def test_make_too_big_request_adjust_limit(protocol) -> None:
 
 
 async def test_multipart_formdata(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     payload.feed_data(b"""-----------------------------326931944431359\r
 Content-Disposition: form-data; name="a"\r
 \r
@@ -582,7 +582,7 @@ d\r
 
 
 async def test_make_too_big_request_limit_None(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)

@@ -648,7 +648,7 @@ class TestPartReader:
     async def test_reading_long_part(self, newline) -> None:
         size = 2 * stream_reader_default_limit
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol)
+        stream = StreamReader(protocol, loop=asyncio.get_event_loop())
         stream.feed_data(b'0' * size + b'%s--:--' % newline)
         stream.feed_eof()
         obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)

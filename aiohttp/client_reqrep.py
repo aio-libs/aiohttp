@@ -201,7 +201,7 @@ class ClientRequest:
                  compress: Optional[str]=None,
                  chunked: Optional[bool]=None,
                  expect100: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
+                 loop: asyncio.AbstractEventLoop,
                  response_class: Optional[Type['ClientResponse']]=None,
                  proxy: Optional[URL]=None,
                  proxy_auth: Optional[BasicAuth]=None,
@@ -210,9 +210,6 @@ class ClientRequest:
                  ssl: Union[SSLContext, bool, Fingerprint, None]=None,
                  proxy_headers: Optional[LooseHeaders]=None,
                  traces: Optional[List['Trace']]=None):
-
-        if loop is None:
-            loop = asyncio.get_event_loop()
 
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
