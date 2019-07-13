@@ -2,13 +2,15 @@
 
 import aiohttp
 import pathlib
-from aiohttp import hdrs
+import aiohttp.hdrs
+import multidict
 from collections import defaultdict
 import io
 
-headers = [getattr(hdrs, name)
-           for name in dir(hdrs)
-           if isinstance(getattr(hdrs, name), hdrs.istr)]
+headers = [getattr(aiohttp.hdrs, name)
+           for name in dir(aiohttp.hdrs)
+           if isinstance(getattr(aiohttp.hdrs, name), multidict.istr)]
+
 
 def factory():
     return defaultdict(factory)
@@ -25,6 +27,7 @@ def build(headers):
             d = d[ch]
         d[TERMINAL] = hdr
     return dct
+
 
 dct = build(headers)
 
@@ -81,6 +84,7 @@ missing:
     return -1;
 }}
 """
+
 
 def gen_prefix(prefix, k):
     if k == '-':
@@ -147,6 +151,7 @@ def gen_headers(headers):
 
 # print(gen(dct).getvalue())
 # print(gen_headers(headers).getvalue())
+
 
 folder = pathlib.Path(aiohttp.__file__).parent
 

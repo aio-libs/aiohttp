@@ -975,9 +975,8 @@ class TCPConnector(BaseConnector):
                     continue
 
             return transp, proto
-        else:
-            assert last_exc is not None
-            raise last_exc
+        assert last_exc is not None
+        raise last_exc
 
     async def _create_proxy_connection(
             self,
