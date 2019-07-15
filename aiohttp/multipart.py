@@ -435,11 +435,9 @@ class BodyPartReader:
         encoding = encoding or self.get_charset(default='utf-8')
         return data.decode(encoding)
 
-    async def json(
-        self,
-        *,
-        encoding: Optional[str]=None,
-    ) -> Optional[Dict[str, Any]]:
+    async def json(self,
+                   *,
+                   encoding: Optional[str]=None) -> Optional[Dict[str, Any]]:
         """Like read(), but assumes that body parts contains JSON data."""
         data = await self.read(decode=True)
         if not data:
