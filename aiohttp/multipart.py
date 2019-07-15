@@ -211,7 +211,9 @@ class MultipartResponseWrapper:
     def __aiter__(self) -> 'MultipartResponseWrapper':
         return self
 
-    async def __anext__(self) -> Any:
+    async def __anext__(
+        self,
+    ) -> Union['MultipartReader', 'BodyPartReader']:
         part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
@@ -221,7 +223,9 @@ class MultipartResponseWrapper:
         """Returns True when all response data had been read."""
         return self.resp.content.at_eof()
 
-    async def next(self) -> Any:
+    async def next(
+        self,
+    ) -> Optional[Union['MultipartReader', 'BodyPartReader']]:
         """Emits next multipart reader object."""
         item = await self.stream.next()
         if self.stream.at_eof():
