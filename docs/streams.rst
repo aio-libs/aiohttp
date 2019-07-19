@@ -3,7 +3,6 @@
 Streaming API
 =============
 
-.. module:: aiohttp
 .. currentmodule:: aiohttp
 
 

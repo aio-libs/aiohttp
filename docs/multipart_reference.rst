@@ -1,4 +1,4 @@
-.. module:: aiohttp
+.. currentmodule:: aiohttp
 
 .. _aiohttp-multipart-reference:
 
@@ -200,5 +200,5 @@ Multipart reference
                                   when streaming (``multipart/x-mixed-replace``)
 
       .. versionadded:: 3.4
-         
+
          Support ``close_boundary`` argument.

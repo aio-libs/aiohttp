@@ -66,7 +66,7 @@ except ImportError:
 def all_tasks(
         loop: Optional[asyncio.AbstractEventLoop] = None
 ) -> Set['asyncio.Task[Any]']:
-    tasks = list(asyncio.Task.all_tasks(loop))  # type: ignore
+    tasks = list(asyncio.Task.all_tasks(loop))
     return {t for t in tasks if not t.done()}
 
 
@@ -257,7 +257,7 @@ def current_task(loop: Optional[asyncio.AbstractEventLoop]=None) -> asyncio.Task
     if PY_37:
         return asyncio.current_task(loop=loop)  # type: ignore
     else:
-        return asyncio.Task.current_task(loop=loop)  # type: ignore
+        return asyncio.Task.current_task(loop=loop)
 
 
 def get_running_loop(
@@ -428,7 +428,7 @@ _ipv6_regexb = re.compile(_ipv6_pattern.encode('ascii'), flags=re.IGNORECASE)
 
 def _is_ip_address(
         regex: Pattern[str], regexb: Pattern[bytes],
-        host: Optional[Union[str, bytes]])-> bool:
+        host: Optional[Union[str, bytes]]) -> bool:
     if host is None:
         return False
     if isinstance(host, str):

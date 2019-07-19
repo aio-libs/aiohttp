@@ -3,7 +3,6 @@
 Client Reference
 ================
 
-.. module:: aiohttp
 .. currentmodule:: aiohttp
 
 
