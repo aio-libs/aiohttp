@@ -62,7 +62,7 @@ def test_register_uncommon_http_methods(router) -> None:
         'PROPPATCH',
         'COPY',
         'LOCK',
-        'UNLOCK'
+        'UNLOCK',
         'MOVE',
         'SUBSCRIBE',
         'UNSUBSCRIBE',
