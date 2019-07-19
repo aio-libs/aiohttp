@@ -83,7 +83,6 @@ for PYTHON in ${PYTHON_VERSIONS}; do
     echo
     echo -n "Test $PYTHON: "
     /opt/python/${PYTHON}/bin/python -c "import platform; print('Building wheel for {platform} platform.'.format(platform=platform.platform()))"
-    /opt/python/${PYTHON}/bin/pip install -r ${WORKDIR_PATH}/requirements/cython.txt
     /opt/python/${PYTHON}/bin/pip install -r ${WORKDIR_PATH}/requirements/ci-wheel.txt
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f "file://${WHEELHOUSE_DIR}"
     /opt/python/${PYTHON}/bin/py.test ${WORKDIR_PATH}/tests
