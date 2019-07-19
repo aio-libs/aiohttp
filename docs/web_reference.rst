@@ -3,8 +3,6 @@
 Server Reference
 ================
 
-.. module:: aiohttp.web
-
 .. currentmodule:: aiohttp.web
 
 .. _aiohttp-web-request:
