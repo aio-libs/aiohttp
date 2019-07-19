@@ -2383,6 +2383,24 @@ async def test_aiohttp_request_context_manager(aiohttp_server) -> None:
         assert resp.status == 200
 
 
+async def test_aiohttp_request_ctx_manager_close_sess_on_error(
+        ssl_ctx, aiohttp_server) -> None:
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    cm = aiohttp.request('GET', server.make_url('/'))
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        async with cm:
+            pass
+
+    assert cm._session.closed
+
+
 async def test_aiohttp_request_ctx_manager_not_found() -> None:
 
     with pytest.raises(aiohttp.ClientConnectionError):
