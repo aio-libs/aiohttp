@@ -19,7 +19,6 @@ from typing import (  # noqa
     Tuple,
     Type,
     Union,
-    cast,
 )
 from urllib.parse import parse_qsl, unquote, urlencode
 
@@ -195,21 +194,26 @@ def content_disposition_filename(params: Mapping[str, str],
 
 
 class MultipartResponseWrapper:
-    """Wrapper around the MultipartBodyReader.
+    """Wrapper around the MultipartReader.
 
     It takes care about
     underlying connection and close it when it needs in.
     """
 
-    def __init__(self, resp: 'ClientResponse', stream: Any) -> None:
-        # TODO: add strong annotation to stream
+    def __init__(
+        self,
+        resp: 'ClientResponse',
+        stream: 'MultipartReader',
+    ) -> None:
         self.resp = resp
         self.stream = stream
 
     def __aiter__(self) -> 'MultipartResponseWrapper':
         return self
 
-    async def __anext__(self) -> Any:
+    async def __anext__(
+        self,
+    ) -> Union['MultipartReader', 'BodyPartReader']:
         part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
@@ -219,7 +223,9 @@ class MultipartResponseWrapper:
         """Returns True when all response data had been read."""
         return self.resp.content.at_eof()
 
-    async def next(self) -> Any:
+    async def next(
+        self,
+    ) -> Optional[Union['MultipartReader', 'BodyPartReader']]:
         """Emits next multipart reader object."""
         item = await self.stream.next()
         if self.stream.at_eof():
@@ -238,7 +244,7 @@ class BodyPartReader:
     chunk_size = 8192
 
     def __init__(self, boundary: bytes,
-                 headers: Mapping[str, Optional[str]],
+                 headers: 'CIMultiDictProxy[str]',
                  content: StreamReader) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -256,19 +262,19 @@ class BodyPartReader:
     def __aiter__(self) -> 'BodyPartReader':
         return self
 
-    async def __anext__(self) -> Any:
+    async def __anext__(self) -> bytes:
         part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
         return part
 
-    async def next(self) -> Any:
+    async def next(self) -> Optional[bytes]:
         item = await self.read()
         if not item:
             return None
         return item
 
-    async def read(self, *, decode: bool=False) -> Any:
+    async def read(self, *, decode: bool=False) -> bytes:
         """Reads body part data.
 
         decode: Decodes data following by encoding
@@ -392,7 +398,9 @@ class BodyPartReader:
         encoding = encoding or self.get_charset(default='utf-8')
         return data.decode(encoding)
 
-    async def json(self, *, encoding: Optional[str]=None) -> Any:
+    async def json(self,
+                   *,
+                   encoding: Optional[str]=None) -> Optional[Dict[str, Any]]:
         """Like read(), but assumes that body parts contains JSON data."""
         data = await self.read(decode=True)
         if not data:
@@ -431,7 +439,7 @@ class BodyPartReader:
         return data
 
     def _decode_content(self, data: bytes) -> bytes:
-        encoding = cast(str, self.headers[CONTENT_ENCODING]).lower()
+        encoding = self.headers.get(CONTENT_ENCODING, '').lower()
 
         if encoding == 'deflate':
             return zlib.decompress(data, -zlib.MAX_WBITS)
@@ -443,7 +451,7 @@ class BodyPartReader:
             raise RuntimeError('unknown content encoding: {}'.format(encoding))
 
     def _decode_content_transfer(self, data: bytes) -> bytes:
-        encoding = cast(str, self.headers[CONTENT_TRANSFER_ENCODING]).lower()
+        encoding = self.headers.get(CONTENT_TRANSFER_ENCODING, '').lower()
 
         if encoding == 'base64':
             return base64.b64decode(data)
@@ -521,7 +529,7 @@ class MultipartReader:
         self.headers = headers
         self._boundary = ('--' + self._get_boundary()).encode()
         self._content = content
-        self._last_part = None
+        self._last_part = None  # type: Optional[Union['MultipartReader', BodyPartReader]]  # noqa
         self._at_eof = False
         self._at_bof = True
         self._unread = []  # type: List[bytes]
@@ -529,14 +537,19 @@ class MultipartReader:
     def __aiter__(self) -> 'MultipartReader':
         return self
 
-    async def __anext__(self) -> Any:
+    async def __anext__(
+        self,
+    ) -> Union['MultipartReader', BodyPartReader]:
         part = await self.next()
         if part is None:
             raise StopAsyncIteration  # NOQA
         return part
 
     @classmethod
-    def from_response(cls, response: 'ClientResponse') -> Any:
+    def from_response(
+        cls,
+        response: 'ClientResponse',
+    ) -> MultipartResponseWrapper:
         """Constructs reader instance from HTTP response.
 
         :param response: :class:`~aiohttp.client.ClientResponse` instance
@@ -551,11 +564,13 @@ class MultipartReader:
         """
         return self._at_eof
 
-    async def next(self) -> Any:
+    async def next(
+        self,
+    ) -> Optional[Union['MultipartReader', BodyPartReader]]:
         """Emits the next multipart body part."""
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
-            return
+            return None
         await self._maybe_release_last_part()
         if self._at_bof:
             await self._read_until_first_boundary()
@@ -563,7 +578,7 @@ class MultipartReader:
         else:
             await self._read_boundary()
         if self._at_eof:  # we just read the last boundary, nothing to do there
-            return
+            return None
         self._last_part = await self.fetch_next_part()
         return self._last_part
 
@@ -575,12 +590,17 @@ class MultipartReader:
                 break
             await item.release()
 
-    async def fetch_next_part(self) -> Any:
+    async def fetch_next_part(
+        self,
+    ) -> Union['MultipartReader', BodyPartReader]:
         """Returns the next body part reader."""
         headers = await self._read_headers()
         return self._get_part_reader(headers)
 
-    def _get_part_reader(self, headers: 'CIMultiDictProxy[str]') -> Any:
+    def _get_part_reader(
+        self,
+        headers: 'CIMultiDictProxy[str]',
+    ) -> Union['MultipartReader', BodyPartReader]:
         """Dispatches the response by the `Content-Type` header, returning
         suitable reader instance.
 
@@ -763,7 +783,7 @@ class MultipartWriter(Payload):
     def append(
             self,
             obj: Any,
-            headers: Optional['MultiMapping[str]']=None
+            headers: Optional[MultiMapping[str]]=None
     ) -> Payload:
         if headers is None:
             headers = CIMultiDict()
@@ -782,7 +802,10 @@ class MultipartWriter(Payload):
     def append_payload(self, payload: Payload) -> Payload:
         """Adds a new body part to multipart writer."""
         # compression
-        encoding = payload.headers.get(CONTENT_ENCODING, '').lower()  # type: Optional[str]  # noqa
+        encoding = payload.headers.get(
+            CONTENT_ENCODING,
+            '',
+        ).lower()  # type: Optional[str]
         if encoding and encoding not in ('deflate', 'gzip', 'identity'):
             raise RuntimeError('unknown content encoding: {}'.format(encoding))
         if encoding == 'identity':
@@ -790,7 +813,9 @@ class MultipartWriter(Payload):
 
         # te encoding
         te_encoding = payload.headers.get(
-            CONTENT_TRANSFER_ENCODING, '').lower()  # type: Optional[str]  # noqa
+            CONTENT_TRANSFER_ENCODING,
+            '',
+        ).lower()  # type: Optional[str]
         if te_encoding not in ('', 'base64', 'quoted-printable', 'binary'):
             raise RuntimeError('unknown content transfer encoding: {}'
                                ''.format(te_encoding))
@@ -808,7 +833,7 @@ class MultipartWriter(Payload):
     def append_json(
             self,
             obj: Any,
-            headers: Optional['MultiMapping[str]']=None
+            headers: Optional[MultiMapping[str]]=None
     ) -> Payload:
         """Helper to append JSON part."""
         if headers is None:
@@ -820,7 +845,7 @@ class MultipartWriter(Payload):
             self,
             obj: Union[Sequence[Tuple[str, str]],
                        Mapping[str, str]],
-            headers: Optional['MultiMapping[str]']=None
+            headers: Optional[MultiMapping[str]]=None
     ) -> Payload:
         """Helper to append form urlencoded part."""
         assert isinstance(obj, (Sequence, Mapping))
