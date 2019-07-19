@@ -1,0 +1,2 @@
+Improve typing annotations for multipart.py along with changes required
+by mypy in files that references multipart.py.

@@ -32,7 +32,7 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import DEBUG, ChainMapProxy, HeadersMixin, reify, sentinel
 from .http_parser import RawRequestMessage
-from .multipart import MultipartReader
+from .multipart import BodyPartReader, MultipartReader
 from .streams import EmptyStreamReader, StreamReader
 from .typedefs import (
     DEFAULT_JSON_DECODER,
@@ -611,41 +611,49 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
             field = await multipart.next()
             while field is not None:
                 size = 0
-                content_type = field.headers.get(hdrs.CONTENT_TYPE)
+                field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
-                if field.filename:
-                    # store file in temp file
-                    tmp = tempfile.TemporaryFile()
-                    chunk = await field.read_chunk(size=2**16)
-                    while chunk:
-                        chunk = field.decode(chunk)
-                        tmp.write(chunk)
-                        size += len(chunk)
+                if isinstance(field, BodyPartReader):
+                    if field.filename and field_ct:
+                        # store file in temp file
+                        tmp = tempfile.TemporaryFile()
+                        chunk = await field.read_chunk(size=2**16)
+                        while chunk:
+                            chunk = field.decode(chunk)
+                            tmp.write(chunk)
+                            size += len(chunk)
+                            if 0 < max_size < size:
+                                raise HTTPRequestEntityTooLarge(
+                                    max_size=max_size,
+                                    actual_size=size
+                                )
+                            chunk = await field.read_chunk(size=2**16)
+                        tmp.seek(0)
+
+                        ff = FileField(field.name, field.filename,
+                                       cast(io.BufferedReader, tmp),
+                                       field_ct, field.headers)
+                        out.add(field.name, ff)
+                    else:
+                        # deal with ordinary data
+                        value = await field.read(decode=True)
+                        if field_ct is None or \
+                                field_ct.startswith('text/'):
+                            charset = field.get_charset(default='utf-8')
+                            out.add(field.name, value.decode(charset))
+                        else:
+                            out.add(field.name, value)
+                        size += len(value)
                         if 0 < max_size < size:
                             raise HTTPRequestEntityTooLarge(
                                 max_size=max_size,
                                 actual_size=size
                             )
-                        chunk = await field.read_chunk(size=2**16)
-                    tmp.seek(0)
-
-                    ff = FileField(field.name, field.filename,
-                                   cast(io.BufferedReader, tmp),
-                                   content_type, field.headers)
-                    out.add(field.name, ff)
                 else:
-                    value = await field.read(decode=True)
-                    if content_type is None or \
-                            content_type.startswith('text/'):
-                        charset = field.get_charset(default='utf-8')
-                        value = value.decode(charset)
-                    out.add(field.name, value)
-                    size += len(value)
-                    if 0 < max_size < size:
-                        raise HTTPRequestEntityTooLarge(
-                            max_size=max_size,
-                            actual_size=size
-                        )
+                    raise ValueError(
+                        'To decode nested multipart you need '
+                        'to use custom reader',
+                    )
 
                 field = await multipart.next()
         else:
