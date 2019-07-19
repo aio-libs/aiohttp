@@ -196,7 +196,7 @@ content. Providing `close_boundary = False` prevents this.::
         status=200,
         reason='OK',
         headers={
-            'Content-Type': 'multipart/x-mixed-replace;boundary=--%s' % my_boundary
+            'Content-Type': 'multipart/x-mixed-replace;boundary={}'.format(my_boundary)
         }
     )
     while True:
