@@ -261,3 +261,13 @@ def test_handshake_compress_multi_ext_wbits() -> None:
     assert 'Sec-Websocket-Extensions' in headers
     assert headers['Sec-Websocket-Extensions'] == 'permessage-deflate'
     assert compress == 15
+
+
+def test_handshake_no_transfer_encoding() -> None:
+    hdrs, sec_key = gen_ws_headers()
+    req = make_mocked_request('GET', '/', headers=hdrs)
+
+    ws = web.WebSocketResponse()
+    headers, _, compress, notakeover = ws._handshake(req)
+
+    assert 'Transfer-Encoding' not in headers
