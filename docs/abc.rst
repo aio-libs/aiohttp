@@ -3,9 +3,7 @@
 Abstract Base Classes
 =====================
 
-.. module:: aiohttp
-
-.. currentmodule:: aiohttp
+.. module:: aiohttp.abc
 
 Abstract routing
 ----------------

@@ -124,7 +124,7 @@ async def test_init_cookies_with_list_of_tuples(create_session) -> None:
 
 
 async def test_merge_headers(create_session) -> None:
-        # Check incoming simple dict
+    # Check incoming simple dict
     session = await create_session(headers={"h1": "header1",
                                             "h2": "header2"})
     headers = session._prepare_headers({"h1": "h1"})
