@@ -698,8 +698,26 @@ class DeflateBuffer:
             if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
                     'Can not decode content-encoding: brotli (br). '
-                    'Please install `brotlipy`')
-            self.decompressor = brotli.Decompressor()
+                    'Please install `Brotli`')
+
+            class BrotliDecoder:
+                # Supports both 'brotlipy' and 'Brotli' packages
+                # since they share an import name. The top branches
+                # are for 'brotlipy' and bottom branches for 'Brotli'
+                def __init__(self) -> None:
+                    self._obj = brotli.Decompressor()
+
+                def decompress(self, data: bytes) -> bytes:
+                    if hasattr(self._obj, "decompress"):
+                        return self._obj.decompress(data)
+                    return self._obj.process(data)
+
+                def flush(self) -> bytes:
+                    if hasattr(self._obj, "flush"):
+                        return self._obj.flush()
+                    return b""
+
+            self.decompressor = BrotliDecoder()  # type: Any
         else:
             zlib_mode = (16 + zlib.MAX_WBITS
                          if encoding == 'gzip' else -zlib.MAX_WBITS)
