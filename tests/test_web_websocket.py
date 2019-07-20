@@ -502,3 +502,11 @@ async def test_send_with_per_message_deflate(make_request, mocker) -> None:
 
     await ws.send_json('[{}]', compress=9)
     writer_send.assert_called_with('"[{}]"', binary=False, compress=9)
+
+
+async def test_no_transfer_encoding_header(make_request, mocker) -> None:
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    await ws._start(req)
+
+    assert 'Transfer-Encoding' not in ws.headers
