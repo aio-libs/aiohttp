@@ -46,6 +46,8 @@ class WebSocketReady:
 
 class WebSocketResponse(StreamResponse):
 
+    _length_check = False
+
     def __init__(self, *,
                  timeout: float=10.0, receive_timeout: Optional[float]=None,
                  autoclose: bool=True, autoping: bool=True,
@@ -178,7 +180,6 @@ class WebSocketResponse(StreamResponse):
         response_headers = CIMultiDict(  # type: ignore
             {hdrs.UPGRADE: 'websocket',
              hdrs.CONNECTION: 'upgrade',
-             hdrs.TRANSFER_ENCODING: 'chunked',
              hdrs.SEC_WEBSOCKET_ACCEPT: accept_val})
 
         notakeover = False
