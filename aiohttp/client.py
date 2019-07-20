@@ -1048,8 +1048,13 @@ class _SessionRequestContextManager:
         self._session = session
 
     async def __aenter__(self) -> ClientResponse:
-        self._resp = await self._coro
-        return self._resp
+        try:
+            self._resp = await self._coro
+        except BaseException:
+            await self._session.close()
+            raise
+        else:
+            return self._resp
 
     async def __aexit__(self,
                         exc_type: Optional[Type[BaseException]],
