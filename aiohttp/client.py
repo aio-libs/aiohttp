@@ -180,6 +180,8 @@ class ClientSession:
         '_request_class', '_response_class',
         '_ws_response_class', '_trace_configs')
 
+    _default_headers: 'CIMultiDict[str]'
+
     def __init__(self, *, connector: Optional[BaseConnector]=None,
                  cookies: Optional[LooseCookies]=None,
                  headers: Optional[LooseHeaders]=None,
@@ -239,10 +241,9 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            headers = CIMultiDict(headers)
+            self._default_headers = CIMultiDict(headers)
         else:
-            headers = CIMultiDict()
-        self._default_headers = headers
+            self._default_headers = CIMultiDict()
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
