@@ -1,0 +1,12 @@
+version: 1
+update_configs:
+  # Keep master up to date
+  - package_manager: "python"
+    directory: "/"
+    update_schedule: "live"
+    target_branch: "master"
+  # Keep 3.5 branch up to date
+  - package_manager: "python"
+    directory: "/"
+    update_schedule: "weekly"
+    target_branch: "3.5"
