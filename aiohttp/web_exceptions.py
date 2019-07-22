@@ -471,7 +471,7 @@ class HTTPNetworkAuthenticationRequired(HTTPServerError):
 def _initialize_default_reason() -> None:
     for obj in globals().values():
         if isinstance(obj, type) and issubclass(obj, HTTPException):
-            exc = cast(Type[HTTPException], obj)
+            exc = obj
             if exc.status_code >= 0:
                 try:
                     status = HTTPStatus(exc.status_code)
