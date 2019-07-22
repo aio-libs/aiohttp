@@ -228,7 +228,7 @@ class AccessLogger(AbstractAccessLogger):
                     extra[key] = value
                 else:
                     k1, k2 = key
-                    dct = extra.get(k1, {})
+                    dct = extra.get(k1, {})  # type: ignore
                     dct[k2] = value  # type: ignore
                     extra[k1] = dct  # type: ignore
 
