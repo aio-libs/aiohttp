@@ -171,7 +171,7 @@ class ClientRequest:
     body = b''
     auth = None
     response = None
-    response_class = None
+    response_class: Type['ClientResponse']
 
     _writer = None  # async task for streaming data
     _continue = None  # waiter future for '100 Continue' response
@@ -223,7 +223,7 @@ class ClientRequest:
             real_response_class = ClientResponse
         else:
             real_response_class = response_class
-        self.response_class = real_response_class  # type: Type[ClientResponse]
+        self.response_class = real_response_class
         self._timer = timer if timer is not None else TimerNoop()
         self._ssl = ssl
 
