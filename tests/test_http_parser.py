@@ -626,7 +626,7 @@ def test_http_response_parser_no_reason(response) -> None:
 
     assert msg.version == (1, 1)
     assert msg.code == 200
-    assert not msg.reason
+    assert msg.reason == ''
 
 
 def test_http_response_parser_bad(response) -> None:
