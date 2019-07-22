@@ -64,6 +64,8 @@ class StreamResponse(BaseClass, HeadersMixin):
                  '_payload_writer', '_eof_sent', '_body_length', '_state',
                  '_headers', '_status', '_reason')
 
+    _headers: 'CIMultiDict[str]'
+
     def __init__(self, *,
                  status: int=200,
                  reason: Optional[str]=None,
@@ -84,9 +86,9 @@ class StreamResponse(BaseClass, HeadersMixin):
         self._state = {}  # type: Dict[str, Any]
 
         if headers is not None:
-            self._headers = CIMultiDict(headers)  # type: CIMultiDict[str]
+            self._headers = CIMultiDict(headers)
         else:
-            self._headers = CIMultiDict()  # type: CIMultiDict[str]
+            self._headers = CIMultiDict()
 
         self.set_status(status, reason)
 
