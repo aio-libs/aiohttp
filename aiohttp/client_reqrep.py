@@ -361,7 +361,7 @@ class ClientRequest:
             if isinstance(value, Morsel):
                 # Preserve coded_value
                 mrsl_val = value.get(value.key, Morsel())
-                mrsl_val.set(value.key, value.value, value.coded_value)  # type: ignore  # noqa
+                mrsl_val.set(value.key, value.value, value.coded_value)  # noqa
                 c[name] = mrsl_val
             else:
                 c[name] = value  # type: ignore

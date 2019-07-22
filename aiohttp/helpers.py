@@ -479,7 +479,7 @@ def rfc822_formatted_time() -> str:
             _weekdayname[wd], day, _monthname[month], year, hh, mm, ss
         )
         _cached_current_datetime = now
-    return _cached_formatted_datetime  # type: ignore
+    return _cached_formatted_datetime
 
 
 def _weakref_handle(info):  # type: ignore
