@@ -130,3 +130,33 @@ async def test_eof_received(loop) -> None:
     assert proto._read_timeout_handle is not None
     proto.eof_received()
     assert proto._read_timeout_handle is None
+
+
+async def test_parse_only_one_payload_per_client_response(loop) -> None:
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
+    conn = mock.Mock()
+    conn.protocol = proto
+
+    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 20\r\n\r\nbody with content...')
+    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n11111')
+    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n22222')
+    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n33333')
+
+    response = ClientResponse('get', URL('http://example.com/'),
+                              writer=mock.Mock(),
+                              continue100=None,
+                              timer=TimerNoop(),
+                              request_info=mock.Mock(),
+                              traces=[],
+                              loop=loop,
+                              session=mock.Mock())
+    proto.set_response_params(read_until_eof=True)
+    await response.start(conn)
+    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n44444')
+
+    data = await response.content.readany()
+
+    assert data == b'body with content...'
+    assert len(proto._buffer) == 0

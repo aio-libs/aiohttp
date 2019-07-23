@@ -37,6 +37,7 @@ class ResponseHandler(BaseProtocol,
 
         self._read_timeout = None  # type: Optional[float]
         self._read_timeout_handle = None  # type: Optional[asyncio.TimerHandle]
+        self._last_message_status_code = None
 
     @property
     def upgraded(self) -> bool:
@@ -179,6 +180,9 @@ class ResponseHandler(BaseProtocol,
         if not data:
             return
 
+        if not self.is_connected():
+            return
+
         # custom payload parser
         if self._payload_parser is not None:
             eof, tail = self._payload_parser.feed_data(data)
@@ -214,7 +218,11 @@ class ResponseHandler(BaseProtocol,
                     if message.should_close:
                         self._should_close = True
 
+                    if self._complete_payload_received() and not self._redirected() and self._has_pending_response():
+                        self.close()
+                        return
                     self._payload = payload
+                    self._last_message_status_code = message.code
 
                     if self._skip_payload or message.code in (204, 304):
                         self.feed_data((message, EMPTY_PAYLOAD), 0)  # type: ignore  # noqa
@@ -235,3 +243,12 @@ class ResponseHandler(BaseProtocol,
                         self.data_received(tail)
                     else:
                         self._tail = tail
+
+    def _complete_payload_received(self):
+        return self._payload and self._payload.is_eof()
+
+    def _redirected(self):
+        return self._last_message_status_code in range(300, 400)
+
+    def _has_pending_response(self):
+        return self._buffer is not None and len(self._buffer) > 0
