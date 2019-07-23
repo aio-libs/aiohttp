@@ -139,7 +139,8 @@ async def test_parse_only_one_payload_per_client_response(loop) -> None:
     conn = mock.Mock()
     conn.protocol = proto
 
-    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 20\r\n\r\nbody with content...')
+    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 20\r\n\r\n'
+                        b'body with content...')
     proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n11111')
     proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n22222')
     proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n33333')

@@ -246,14 +246,14 @@ class ResponseHandler(BaseProtocol,
                     else:
                         self._tail = tail
 
-    def _expect_more_payload(self):
+    def _expect_more_payload(self) -> bool:
         return self._redirected() or self._last_message_status_code == 100
 
-    def _complete_payload_received(self):
-        return self._payload and self._payload.is_eof()
+    def _complete_payload_received(self) -> bool:
+        return self._payload is not None and self._payload.is_eof()
 
-    def _redirected(self):
+    def _redirected(self) -> bool:
         return self._last_message_status_code in range(300, 400)
 
-    def _has_pending_response(self):
+    def _has_pending_response(self) -> bool:
         return self._buffer is not None and len(self._buffer) > 0
