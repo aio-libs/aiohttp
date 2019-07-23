@@ -218,7 +218,9 @@ class ResponseHandler(BaseProtocol,
                     if message.should_close:
                         self._should_close = True
 
-                    if self._complete_payload_received() and not self._redirected() and self._has_pending_response():
+                    if self._complete_payload_received() \
+                            and not self._expect_more_payload() \
+                            and self._has_pending_response():
                         self.close()
                         return
                     self._payload = payload
@@ -243,6 +245,9 @@ class ResponseHandler(BaseProtocol,
                         self.data_received(tail)
                     else:
                         self._tail = tail
+
+    def _expect_more_payload(self):
+        return self._redirected() or self._last_message_status_code == 100
 
     def _complete_payload_received(self):
         return self._payload and self._payload.is_eof()

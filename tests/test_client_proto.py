@@ -160,3 +160,30 @@ async def test_parse_only_one_payload_per_client_response(loop) -> None:
 
     assert data == b'body with content...'
     assert len(proto._buffer) == 0
+
+
+async def test_allow_two_payloads_when_first_is_100_continue(loop) -> None:
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    proto.connection_made(transport)
+    conn = mock.Mock()
+    conn.protocol = proto
+
+    proto.data_received(b'HTTP/1.1 100 Continue\r\n\r\n')
+    proto.data_received(b'HTTP/1.1 200 Ok\r\nContent-Length: 5\r\n\r\n12345')
+
+    response = ClientResponse('get', URL('http://example.com/'),
+                              writer=mock.Mock(),
+                              continue100=loop.create_future(),
+                              timer=TimerNoop(),
+                              request_info=mock.Mock(),
+                              traces=[],
+                              loop=loop,
+                              session=mock.Mock())
+    proto.set_response_params(read_until_eof=True)
+    await response.start(conn)
+
+    data = await response.content.readany()
+
+    assert data == b'12345'
+    assert response.status == 200
