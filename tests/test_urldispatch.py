@@ -73,6 +73,13 @@ def test_register_uncommon_http_methods(router) -> None:
         router.add_route(method, '/handler/to/path', make_handler())
 
 
+async def test_add_sync_handler(router) -> None:
+    def handler(request):
+        pass
+    with pytest.raises(TypeError):
+        router.add_get('/handler/to/path', handler)
+
+
 async def test_add_route_root(router) -> None:
     handler = make_handler()
     router.add_route('GET', '/', handler)
@@ -812,20 +819,10 @@ def test_resource_iter(router) -> None:
     assert [r1, r2] == list(resource)
 
 
-def test_deprecate_bare_generators(router) -> None:
-    resource = router.add_resource('/path')
-
-    def gen(request):
-        yield
-
-    with pytest.warns(DeprecationWarning):
-        resource.add_route('GET', gen)
-
-
 def test_view_route(router) -> None:
     resource = router.add_resource('/path')
 
-    route = resource.add_route('GET', View)
+    route = resource.add_route('*', View)
     assert View is route.handler
 
 
@@ -1205,14 +1202,6 @@ async def test_convert_empty_path_to_slash_on_freezing(router) -> None:
     assert resource.get_info() == {'path': ''}
     router.freeze()
     assert resource.get_info() == {'path': '/'}
-
-
-def test_deprecate_non_coroutine(router) -> None:
-    def handler(request):
-        pass
-
-    with pytest.warns(DeprecationWarning):
-        router.add_route('GET', '/handler', handler)
 
 
 def test_plain_resource_canonical() -> None:

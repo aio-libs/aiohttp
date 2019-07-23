@@ -2,13 +2,10 @@ import abc
 import asyncio
 import base64
 import hashlib
-import inspect
 import keyword
 import os
 import re
-import warnings
 from contextlib import contextmanager
-from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 from typing import (  # noqa
@@ -138,27 +135,13 @@ class AbstractRoute(abc.ABC):
         if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
-        assert callable(handler), handler
         if asyncio.iscoroutinefunction(handler):
             pass
-        elif inspect.isgeneratorfunction(handler):
-            warnings.warn("Bare generators are deprecated, "
-                          "use @coroutine wrapper", DeprecationWarning)
-        elif (isinstance(handler, type) and
-              issubclass(handler, AbstractView)):
+        elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
         else:
-            warnings.warn("Bare functions are deprecated, "
-                          "use async ones", DeprecationWarning)
-
-            @wraps(handler)
-            async def handler_wrapper(request: Request) -> StreamResponse:
-                result = old_handler(request)
-                if asyncio.iscoroutine(result):
-                    result = await result
-                return result
-            old_handler = handler
-            handler = handler_wrapper
+            raise TypeError("Only async functions are allowed as web-handlers "
+                            ", got {!r}".format(handler))
 
         self._method = method
         self._handler = handler

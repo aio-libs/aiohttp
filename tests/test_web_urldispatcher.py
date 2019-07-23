@@ -1,4 +1,3 @@
-import functools
 import os
 import pathlib
 import shutil
@@ -187,23 +186,15 @@ async def test_url_escaping(aiohttp_client,
 
 
 async def test_handler_metadata_persistence() -> None:
-    """
-    Tests accessing metadata of a handler after registering it on the app
-    router.
-    """
+    # Tests accessing metadata of a handler after registering it on the app
+    # router.
     app = web.Application()
 
     async def async_handler(request):
         """Doc"""
         return web.Response()
 
-    def sync_handler(request):
-        """Doc"""
-        return web.Response()
-
     app.router.add_get('/async', async_handler)
-    with pytest.warns(DeprecationWarning):
-        app.router.add_get('/sync', sync_handler)
 
     for resource in app.router.resources():
         for route in resource:
@@ -284,21 +275,6 @@ async def test_access_special_resource(tmp_dir_path, aiohttp_client) -> None:
         # Request the root of the static directory.
         r = await client.get('/special')
         assert r.status == 403
-
-
-async def test_partially_applied_handler(aiohttp_client) -> None:
-    app = web.Application()
-
-    async def handler(data, request):
-        return web.Response(body=data)
-
-    with pytest.warns(DeprecationWarning):
-        app.router.add_route('GET', '/', functools.partial(handler, b'hello'))
-    client = await aiohttp_client(app)
-
-    r = await client.get('/')
-    data = (await r.read())
-    assert data == b'hello'
 
 
 def test_system_route() -> None:
