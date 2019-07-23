@@ -1,0 +1,1 @@
+Drop deprecated ``unused_port``, ``test_server``, ``raw_test_server`` and ``test_client`` pytest fixtures.
