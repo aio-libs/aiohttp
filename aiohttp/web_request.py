@@ -225,22 +225,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
         return self._payload_writer
 
     @reify
-    def message(self) -> RawRequestMessage:
-        warnings.warn("Request.message is deprecated",
-                      DeprecationWarning,
-                      stacklevel=3)
-        return self._message
-
-    @reify
     def rel_url(self) -> URL:
         return self._rel_url
-
-    @reify
-    def loop(self) -> asyncio.AbstractEventLoop:
-        warnings.warn("request.loop property is deprecated",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._loop
 
     # MutableMapping API
 
@@ -534,14 +520,6 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     def content(self) -> StreamReader:
         """Return raw payload stream."""
         return self._payload
-
-    @property
-    def has_body(self) -> bool:
-        """Return True if request's HTTP BODY can be read, False otherwise."""
-        warnings.warn(
-            "Deprecated, use .can_read_body #2005",
-            DeprecationWarning, stacklevel=2)
-        return not self._payload.at_eof()
 
     @property
     def can_read_body(self) -> bool:

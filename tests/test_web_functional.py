@@ -692,8 +692,6 @@ async def test_empty_content_for_query_without_body(aiohttp_client) -> None:
     async def handler(request):
         assert not request.body_exists
         assert not request.can_read_body
-        with pytest.warns(DeprecationWarning):
-            assert not request.has_body
         return web.Response()
 
     app = web.Application()
@@ -709,8 +707,6 @@ async def test_empty_content_for_query_with_body(aiohttp_client) -> None:
     async def handler(request):
         assert request.body_exists
         assert request.can_read_body
-        with pytest.warns(DeprecationWarning):
-            assert request.has_body
         body = await request.read()
         return web.Response(body=body)
 
