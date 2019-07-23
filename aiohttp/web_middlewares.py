@@ -33,8 +33,11 @@ async def _check_request_resolves(request: Request,
 
 def middleware(f: _Func) -> _Func:
     warnings.warn(
-        'Middleware decorator is deprecated and its behaviour is default, '
-        'you can simply remove this decorator.', DeprecationWarning)
+        'Middleware decorator is deprecated since 4.0 '
+        'and its behaviour is default, '
+        'you can simply remove this decorator.',
+        DeprecationWarning,
+        stacklevel=2)
     return f
 
 
