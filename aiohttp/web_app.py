@@ -22,6 +22,8 @@ from typing import (  # noqa
     cast,
 )
 
+from typing_extensions import final
+
 from . import hdrs
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .frozenlist import FrozenList
@@ -69,6 +71,7 @@ else:
     _Subapps = List
 
 
+@final
 class Application(MutableMapping[str, Any]):
     __slots__ = (
         'logger', '_debug', '_router', '_loop', '_handler_args',
@@ -116,10 +119,8 @@ class Application(MutableMapping[str, Any]):
         self._client_max_size = client_max_size
 
     def __init_subclass__(cls: Type['Application']) -> None:
-        warnings.warn("Inheritance class {} from web.Application "
-                      "is discouraged".format(cls.__name__),
-                      DeprecationWarning,
-                      stacklevel=2)
+        raise TypeError("Inheritance class {} from web.Application "
+                        "is forbidden".format(cls.__name__))
 
     # MutableMapping API
 
