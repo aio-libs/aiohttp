@@ -54,12 +54,6 @@ def test_ctor() -> None:
     assert req.task is req._task
 
 
-def test_deprecated_message() -> None:
-    req = make_mocked_request('GET', '/path/to?a=1&b=2')
-    with pytest.warns(DeprecationWarning):
-        assert req.message == req._message
-
-
 def test_doubleslashes() -> None:
     # NB: //foo/bar is an absolute URL with foo netloc and /bar path
     req = make_mocked_request('GET', '/bar//foo/')
@@ -668,13 +662,6 @@ def test_eq() -> None:
     req2 = make_mocked_request('GET', '/path/to?a=1&b=2')
     assert req1 != req2
     assert req1 == req1
-
-
-async def test_loop_prop() -> None:
-    loop = asyncio.get_event_loop()
-    req = make_mocked_request('GET', '/path', loop=loop)
-    with pytest.warns(DeprecationWarning):
-        assert req.loop is loop
 
 
 async def test_json(aiohttp_client) -> None:
