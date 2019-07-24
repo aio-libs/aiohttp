@@ -1,6 +1,5 @@
 """Tests for client_exceptions.py"""
 
-import pytest
 from yarl import URL
 
 from aiohttp import client
@@ -32,24 +31,3 @@ def test_response_status() -> None:
                                      history=None,
                                      request_info=None)
     assert err.status == 400
-
-
-def test_response_deprecated_code_property() -> None:
-    with pytest.warns(DeprecationWarning):
-        err = client.ClientResponseError(code=400,
-                                         history=None,
-                                         request_info=None)
-    with pytest.warns(DeprecationWarning):
-        assert err.code == err.status
-    with pytest.warns(DeprecationWarning):
-        err.code = '404'
-    with pytest.warns(DeprecationWarning):
-        assert err.code == err.status
-
-
-def test_response_both_code_and_status() -> None:
-    with pytest.raises(ValueError):
-        client.ClientResponseError(code=400,
-                                   status=400,
-                                   history=None,
-                                   request_info=None)
