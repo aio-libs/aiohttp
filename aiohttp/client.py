@@ -890,23 +890,6 @@ class ClientSession:
         """Do URL requoting on redirection handling."""
         return self._requote_redirect_url
 
-    @requote_redirect_url.setter
-    def requote_redirect_url(self, val: bool) -> None:
-        """Do URL requoting on redirection handling."""
-        warnings.warn("session.requote_redirect_url modification "
-                      "is deprecated #2778",
-                      DeprecationWarning,
-                      stacklevel=2)
-        self._requote_redirect_url = val
-
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        """Session's loop."""
-        warnings.warn("client.loop property is deprecated",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._loop
-
     def detach(self) -> None:
         """Detach connector from session without closing the former.
 

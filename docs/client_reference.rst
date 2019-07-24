@@ -185,15 +185,7 @@ The client session supports the context manager protocol for self closing.
 
       aiohttp re quote's redirect urls by default, but some servers
       require exact url from location header. To disable *re-quote* system
-      set :attr:`requote_redirect_url` attribute to ``False``.
-
-      .. versionadded:: 2.1
-
-      .. note:: This parameter affects all subsequent requests.
-
-      .. deprecated:: 3.5
-
-         The attribute modification is deprecated.
+      create ``ClientSession`` with ``requote_redirect_url=False``.
 
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
