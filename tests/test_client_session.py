@@ -649,7 +649,7 @@ async def test_request_tracing_interpose_headers(loop, aiohttp_client) -> None:
 @pytest.mark.skipif(not PY_36,
                     reason="Python 3.6+ required")
 def test_client_session_inheritance() -> None:
-    with pytest.warns(DeprecationWarning):
+    with pytest.raises(TypeError):
         class A(ClientSession):
             pass
 

@@ -230,7 +230,7 @@ def test_subapp_pre_frozen_after_adding() -> None:
 @pytest.mark.skipif(not PY_36,
                     reason="Python 3.6+ required")
 def test_app_inheritance() -> None:
-    with pytest.warns(DeprecationWarning):
+    with pytest.raises(TypeError):
         class A(web.Application):
             pass
 
