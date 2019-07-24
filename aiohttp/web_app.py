@@ -313,21 +313,6 @@ class Application(MutableMapping[str, Any]):
                       request_factory=self._make_request,
                       **kwargs)
 
-    def make_handler(self, *,
-                     loop: Optional[asyncio.AbstractEventLoop]=None,
-                     access_log_class: Type[
-                         AbstractAccessLogger]=AccessLogger,
-                     **kwargs: Any) -> Server:
-
-        warnings.warn("Application.make_handler(...) is deprecated, "
-                      "use AppRunner API instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-
-        return self._make_handler(loop=loop,
-                                  access_log_class=access_log_class,
-                                  **kwargs)
-
     async def startup(self) -> None:
         """Causes on_startup signal
 

@@ -76,13 +76,6 @@ async def test_app_make_handler_access_log_class(mocker) -> None:
                            request_factory=app._make_request)
 
 
-async def test_app_make_handler_raises_deprecation_warning() -> None:
-    app = web.Application()
-
-    with pytest.warns(DeprecationWarning):
-        app.make_handler()
-
-
 async def test_app_register_on_finish() -> None:
     app = web.Application()
     cb1 = make_mocked_coro(None)
