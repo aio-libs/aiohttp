@@ -490,13 +490,6 @@ async def test_session_default_version(loop) -> None:
     assert session.version == aiohttp.HttpVersion11
 
 
-async def test_session_loop(loop) -> None:
-    session = aiohttp.ClientSession()
-    with pytest.warns(DeprecationWarning):
-        assert session.loop is loop
-    await session.close()
-
-
 def test_proxy_str(session, params) -> None:
     with mock.patch("aiohttp.client.ClientSession._request") as patched:
         session.get("http://test.example.com",
@@ -672,12 +665,4 @@ async def test_requote_redirect_url_default() -> None:
 
 async def test_requote_redirect_url_default_disable() -> None:
     session = ClientSession(requote_redirect_url=False)
-    assert not session.requote_redirect_url
-
-
-async def test_requote_redirect_setter() -> None:
-    session = ClientSession()
-    assert session.requote_redirect_url
-    with pytest.warns(DeprecationWarning):
-        session.requote_redirect_url = False
     assert not session.requote_redirect_url

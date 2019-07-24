@@ -1,0 +1,1 @@
+Drop deprecated ``ClientSession.loop`` and ``Connection.loop``. Forbid changing ``ClientSession.requote_redirect_url``.
