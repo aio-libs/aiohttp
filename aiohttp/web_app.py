@@ -203,7 +203,7 @@ class Application(MutableMapping[str, Any]):
 
     @property
     def debug(self) -> bool:
-        warnings.warn("debug property is deprecated "
+        warnings.warn("debug property is deprecated since 4.0"
                       "and scheduled for removal in 5.0",
                       DeprecationWarning,
                       stacklevel=2)
