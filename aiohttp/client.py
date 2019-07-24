@@ -27,6 +27,7 @@ from typing import (  # noqa
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
+from typing_extensions import final
 from yarl import URL
 
 from . import hdrs, http, payload
@@ -164,6 +165,7 @@ DEFAULT_TIMEOUT = ClientTimeout(total=5*60)
 _RetType = TypeVar('_RetType')
 
 
+@final
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
@@ -256,10 +258,8 @@ class ClientSession:
             trace_config.freeze()
 
     def __init_subclass__(cls: Type['ClientSession']) -> None:
-        warnings.warn("Inheritance class {} from ClientSession "
-                      "is discouraged".format(cls.__name__),
-                      DeprecationWarning,
-                      stacklevel=2)
+        raise TypeError("Inheritance class {} from ClientSession "
+                        "is forbidden".format(cls.__name__))
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if not self.closed:

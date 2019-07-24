@@ -42,6 +42,7 @@ from urllib.request import getproxies
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
+from typing_extensions import final
 from yarl import URL
 
 from . import hdrs
@@ -667,6 +668,7 @@ def set_exception(fut: 'asyncio.Future[_T]', exc: BaseException) -> None:
         fut.set_exception(exc)
 
 
+@final
 class ChainMapProxy(Mapping[str, Any]):
     __slots__ = ('_maps',)
 
