@@ -117,13 +117,6 @@ class Connection:
             self._loop.call_exception_handler(context)
 
     @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        warnings.warn("connector.loop property is deprecated",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._loop
-
-    @property
     def transport(self) -> Optional[asyncio.Transport]:
         if self._protocol is None:
             return None
