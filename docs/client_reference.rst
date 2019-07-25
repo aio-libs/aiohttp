@@ -1086,7 +1086,7 @@ Response object
 
       Do nothing for success responses (less than 400).
 
-   .. comethod:: text(encoding=None)
+   .. comethod:: text(encoding=None, errors='strict')
 
       Read response's body and return decoded :class:`str` using
       specified *encoding* parameter.
@@ -1104,6 +1104,9 @@ Response object
       :param str encoding: text encoding used for *BODY* decoding, or
                            ``None`` for encoding autodetection
                            (default).
+
+      :param str errors: error handling scheme, see :ref:`error-handlers` for
+                         more details.  ``'strict'`` by default.
 
       :return str: decoded *BODY*
 
