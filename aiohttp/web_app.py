@@ -25,20 +25,13 @@ from typing import (  # noqa
 from typing_extensions import final
 
 from . import hdrs
-from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .frozenlist import FrozenList
-from .helpers import get_running_loop
-from .http_parser import RawRequestMessage
 from .log import web_logger
 from .signals import Signal
-from .streams import StreamReader
-from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
-from .web_protocol import RequestHandler
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_routedef import AbstractRouteDef
-from .web_server import Server
 from .web_urldispatcher import (
     AbstractResource,
     Domain,
@@ -290,44 +283,6 @@ class Application(MutableMapping[str, Any]):
     def middlewares(self) -> _Middlewares:
         return self._middlewares
 
-    def _make_handler(self, *,
-                      loop: Optional[asyncio.AbstractEventLoop]=None,
-                      access_log_class: Type[
-                          AbstractAccessLogger]=AccessLogger,
-                      **kwargs: Any) -> Server:
-
-        if not issubclass(access_log_class, AbstractAccessLogger):
-            raise TypeError(
-                'access_log_class must be subclass of '
-                'aiohttp.abc.AbstractAccessLogger, got {}'.format(
-                    access_log_class))
-
-        self.freeze()
-
-        kwargs['access_log_class'] = access_log_class
-        if self._handler_args:
-            for k, v in self._handler_args.items():
-                kwargs[k] = v
-
-        return Server(self._handle,  # type: ignore
-                      request_factory=self._make_request,
-                      **kwargs)
-
-    def make_handler(self, *,
-                     loop: Optional[asyncio.AbstractEventLoop]=None,
-                     access_log_class: Type[
-                         AbstractAccessLogger]=AccessLogger,
-                     **kwargs: Any) -> Server:
-
-        warnings.warn("Application.make_handler(...) is deprecated, "
-                      "use AppRunner API instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-
-        return self._make_handler(loop=loop,
-                                  access_log_class=access_log_class,
-                                  **kwargs)
-
     async def startup(self) -> None:
         """Causes on_startup signal
 
@@ -348,18 +303,6 @@ class Application(MutableMapping[str, Any]):
         Should be called after shutdown()
         """
         await self.on_cleanup.send(self)
-
-    def _make_request(self, message: RawRequestMessage,
-                      payload: StreamReader,
-                      protocol: RequestHandler,
-                      writer: AbstractStreamWriter,
-                      task: 'asyncio.Task[None]',
-                      _cls: Type[Request]=Request) -> Request:
-        loop = get_running_loop()
-        return _cls(
-            message, payload, protocol, writer, task,
-            loop,
-            client_max_size=self._client_max_size)
 
     def _prepare_middleware(self) -> Iterator[_Middleware]:
         yield from reversed(self._middlewares)

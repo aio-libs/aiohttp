@@ -150,7 +150,7 @@ Pytest tooling has the following fixtures:
    .. versionadded:: 3.0
 
    *kwargs* are parameters passed to
-                  :meth:`aiohttp.web.Application.make_handler`
+                  :meth:`aiohttp.web.AppRunner`
 
    .. versionchanged:: 3.0
    .. deprecated:: 3.2
