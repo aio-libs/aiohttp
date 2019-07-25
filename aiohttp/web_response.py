@@ -135,36 +135,19 @@ class StreamResponse(BaseClass, HeadersMixin):
     def body_length(self) -> int:
         return self._body_length
 
-    @property
-    def output_length(self) -> int:
-        warnings.warn('output_length is deprecated', DeprecationWarning)
-        assert self._payload_writer
-        return self._payload_writer.buffer_size
-
-    def enable_chunked_encoding(self, chunk_size: Optional[int]=None) -> None:
+    def enable_chunked_encoding(self) -> None:
         """Enables automatic chunked transfer encoding."""
         self._chunked = True
 
         if hdrs.CONTENT_LENGTH in self._headers:
             raise RuntimeError("You can't enable chunked encoding when "
                                "a content length is set")
-        if chunk_size is not None:
-            warnings.warn('Chunk size is deprecated #1615', DeprecationWarning)
 
     def enable_compression(self,
-                           force: Optional[Union[bool, ContentCoding]]=None
+                           force: Optional[ContentCoding]=None
                            ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
-        if type(force) == bool:
-            force = ContentCoding.deflate if force else ContentCoding.identity
-            warnings.warn("Using boolean for force is deprecated #3318",
-                          DeprecationWarning)
-        elif force is not None:
-            assert isinstance(force, ContentCoding), ("force should one of "
-                                                      "None, bool or "
-                                                      "ContentEncoding")
-
         self._compression = True
         self._compression_force = force
 

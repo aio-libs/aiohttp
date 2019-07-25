@@ -265,7 +265,7 @@ The client session supports the context manager protocol for self closing.
          with a *Content-Encoding* and *Content-Length* headers.
          ``None`` by default (optional).
 
-      :param int chunked: Enable chunked transfer encoding.
+      :param bool chunked: Enable chunked transfer encoding.
          It is up to the developer
          to decide how to chunk data streams. If chunking is enabled, aiohttp
          encodes the provided chunks in the "Transfer-encoding: chunked" format.

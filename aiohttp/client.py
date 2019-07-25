@@ -326,10 +326,6 @@ class ClientSession:
         elif json is not None:
             data = payload.JsonPayload(json, dumps=self._json_serialize)
 
-        if not isinstance(chunked, bool) and chunked is not None:
-            warnings.warn(
-                'Chunk size is deprecated #1615', DeprecationWarning)
-
         redirects = 0
         history = []
         version = self._version

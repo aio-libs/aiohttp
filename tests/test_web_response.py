@@ -283,21 +283,6 @@ def test_enable_chunked_encoding_with_content_length() -> None:
         resp.enable_chunked_encoding()
 
 
-async def test_chunk_size() -> None:
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-    assert not resp.chunked
-
-    with pytest.warns(DeprecationWarning):
-        resp.enable_chunked_encoding(chunk_size=8192)
-    assert resp.chunked
-
-    msg = await resp.prepare(req)
-    assert msg.chunked
-    assert msg.enable_chunking.called
-    assert msg.filter is not None
-
-
 async def test_chunked_encoding_forbidden_for_http_10() -> None:
     req = make_request('GET', '/', version=HttpVersion10)
     resp = StreamResponse()
@@ -316,34 +301,6 @@ async def test_compression_no_accept() -> None:
 
     assert not resp.compression
     resp.enable_compression()
-    assert resp.compression
-
-    msg = await resp.prepare(req)
-    assert not msg.enable_compression.called
-
-
-async def test_force_compression_no_accept_backwards_compat() -> None:
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-    assert not resp.chunked
-
-    assert not resp.compression
-    with pytest.warns(DeprecationWarning):
-        resp.enable_compression(force=True)
-    assert resp.compression
-
-    msg = await resp.prepare(req)
-    assert msg.enable_compression.called
-    assert msg.filter is not None
-
-
-async def test_force_compression_false_backwards_compat() -> None:
-    req = make_request('GET', '/')
-    resp = StreamResponse()
-
-    assert not resp.compression
-    with pytest.warns(DeprecationWarning):
-        resp.enable_compression(force=False)
     assert resp.compression
 
     msg = await resp.prepare(req)
@@ -656,13 +613,6 @@ def test_force_close() -> None:
     assert resp.keep_alive is None
     resp.force_close()
     assert resp.keep_alive is False
-
-
-async def test_response_output_length() -> None:
-    resp = StreamResponse()
-    await resp.prepare(make_request('GET', '/'))
-    with pytest.warns(DeprecationWarning):
-        assert resp.output_length
 
 
 def test_response_cookies() -> None:

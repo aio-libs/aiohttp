@@ -1,0 +1,1 @@
+Drop HTTP chunk size from client and server, remove deprecated `response.output_length`.

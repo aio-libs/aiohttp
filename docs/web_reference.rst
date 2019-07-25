@@ -624,7 +624,7 @@ StreamResponse
 
       .. seealso:: :attr:`enable_chunked_encoding`
 
-   .. method:: enable_chunked_encoding
+   .. method:: enable_chunked_encoding()
 
       Enables :attr:`chunked` encoding for response. There are no ways to
       disable it back. With enabled :attr:`chunked` encoding each :meth:`write`

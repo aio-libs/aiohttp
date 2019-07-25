@@ -2073,19 +2073,6 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
     assert data == body
 
 
-async def test_chunked_deprecated(aiohttp_client) -> None:
-
-    async def handler_redirect(request):
-        return web.Response(status=301)
-
-    app = web.Application()
-    app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await aiohttp_client(app)
-
-    with pytest.warns(DeprecationWarning):
-        await client.post('/', chunked=1024)
-
-
 async def test_raise_for_status(aiohttp_client) -> None:
 
     async def handler_redirect(request):
