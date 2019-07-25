@@ -5,6 +5,7 @@ import signal
 import pytest
 
 from aiohttp import web
+from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import get_unused_port_socket
 
 
@@ -98,6 +99,57 @@ async def test_app_property(make_runner, app) -> None:
 def test_non_app() -> None:
     with pytest.raises(TypeError):
         web.AppRunner(object())
+
+
+def test_app_handler_args() -> None:
+    app = web.Application(handler_args={'test': True})
+    runner = web.AppRunner(app)
+    assert runner._kwargs == {'access_log_class': web.AccessLogger,
+                              'test': True}
+
+
+async def test_app_make_handler_access_log_class_bad_type1() -> None:
+    class Logger:
+        pass
+
+    app = web.Application()
+
+    with pytest.raises(TypeError):
+        web.AppRunner(app, access_log_class=Logger)
+
+
+async def test_app_make_handler_access_log_class_bad_type2() -> None:
+    class Logger:
+        pass
+
+    app = web.Application(handler_args={'access_log_class': Logger})
+
+    with pytest.raises(TypeError):
+        web.AppRunner(app)
+
+
+async def test_app_make_handler_access_log_class1() -> None:
+
+    class Logger(AbstractAccessLogger):
+
+        def log(self, request, response, time):
+            pass
+
+    app = web.Application()
+    runner = web.AppRunner(app, access_log_class=Logger)
+    assert runner._kwargs['access_log_class'] is Logger
+
+
+async def test_app_make_handler_access_log_class2() -> None:
+
+    class Logger(AbstractAccessLogger):
+
+        def log(self, request, response, time):
+            pass
+
+    app = web.Application(handler_args={'access_log_class': Logger})
+    runner = web.AppRunner(app)
+    assert runner._kwargs['access_log_class'] is Logger
 
 
 async def test_addresses(make_runner, unix_sockname) -> None:
