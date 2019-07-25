@@ -5,7 +5,6 @@ import pytest
 from async_generator import async_generator, yield_
 
 from aiohttp import log, web
-from aiohttp.abc import AbstractAccessLogger
 from aiohttp.helpers import PY_36
 from aiohttp.test_utils import make_mocked_coro
 
@@ -18,62 +17,6 @@ async def test_app_ctor() -> None:
 def test_app_call() -> None:
     app = web.Application()
     assert app is app()
-
-
-@pytest.mark.parametrize('debug', [True, False])
-async def test_app_make_handler_debug_exc(mocker, debug) -> None:
-    loop = asyncio.get_event_loop()
-    loop.set_debug(debug)
-    with pytest.warns(DeprecationWarning):
-        app = web.Application(debug=debug)
-    srv = mocker.patch('aiohttp.web_app.Server')
-
-    with pytest.warns(DeprecationWarning):
-        assert app.debug == debug
-
-    app._make_handler()
-    srv.assert_called_with(app._handle,
-                           request_factory=app._make_request,
-                           access_log_class=mock.ANY)
-
-
-async def test_app_make_handler_args(mocker) -> None:
-    app = web.Application(handler_args={'test': True})
-    srv = mocker.patch('aiohttp.web_app.Server')
-
-    app._make_handler()
-    srv.assert_called_with(app._handle,
-                           request_factory=app._make_request,
-                           access_log_class=mock.ANY,
-                           test=True)
-
-
-async def test_app_make_handler_access_log_class(mocker) -> None:
-    class Logger:
-        pass
-
-    app = web.Application()
-
-    with pytest.raises(TypeError):
-        app._make_handler(access_log_class=Logger)
-
-    class Logger(AbstractAccessLogger):
-
-        def log(self, request, response, time):
-            self.logger.info('msg')
-
-    srv = mocker.patch('aiohttp.web_app.Server')
-
-    app._make_handler(access_log_class=Logger)
-    srv.assert_called_with(app._handle,
-                           access_log_class=Logger,
-                           request_factory=app._make_request)
-
-    app = web.Application(handler_args={'access_log_class': Logger})
-    app._make_handler(access_log_class=Logger)
-    srv.assert_called_with(app._handle,
-                           access_log_class=Logger,
-                           request_factory=app._make_request)
 
 
 async def test_app_register_on_finish() -> None:
