@@ -4,19 +4,52 @@ from collections.abc import MutableMapping
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, MultiDict
+from multidict import CIMultiDict, MultiDict, CIMultiDictProxy
 from yarl import URL
 
 from aiohttp import HttpVersion, web
 from aiohttp.helpers import DEBUG
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.http_parser import RawRequestMessage
 from aiohttp.web import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
 
 
 @pytest.fixture
 def protocol():
     return mock.Mock(_reading_paused=False)
+
+
+def test_base_ctor() -> None:
+    message = RawRequestMessage(
+        'GET', '/path/to?a=1&b=2', HttpVersion(1, 1),
+        CIMultiDictProxy(CIMultiDict()), (),
+        False, False, False, False, URL('/path/to?a=1&b=2'))
+
+    req = web.BaseRequest(message,
+                          mock.Mock(),
+                          mock.Mock(),
+                          mock.Mock(),
+                          mock.Mock(),
+                          mock.Mock())
+
+    assert 'GET' == req.method
+    assert HttpVersion(1, 1) == req.version
+    assert req.host == socket.getfqdn()
+    assert '/path/to?a=1&b=2' == req.path_qs
+    assert '/path/to' == req.path
+    assert 'a=1&b=2' == req.query_string
+    assert CIMultiDict() == req.headers
+    assert () == req.raw_headers
+
+    get = req.query
+    assert MultiDict([('a', '1'), ('b', '2')]) == get
+    # second call should return the same object
+    assert get is req.query
+
+    assert req.keep_alive
+
+    assert '__dict__' not in dir(req)
 
 
 def test_ctor() -> None:
@@ -52,6 +85,8 @@ def test_ctor() -> None:
     assert req.headers == headers
     assert req.raw_headers == ((b'FOO', b'bar'),)
     assert req.task is req._task
+
+    assert '__dict__' not in dir(req)
 
 
 def test_doubleslashes() -> None:

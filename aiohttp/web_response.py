@@ -65,6 +65,7 @@ class StreamResponse(BaseClass, HeadersMixin):
                  status: int=200,
                  reason: Optional[str]=None,
                  headers: Optional[LooseHeaders]=None) -> None:
+        super().__init__()
         self._body = None
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
