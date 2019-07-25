@@ -1,0 +1,1 @@
+Make `web.BaseRequest` and `web.Request` slot-based, prevent cunstom request attributes.
