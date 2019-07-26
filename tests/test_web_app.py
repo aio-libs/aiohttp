@@ -450,3 +450,10 @@ def test_app_forbid_nonslot_attr():
         app.unknow_attr
     with pytest.raises(AttributeError):
         app.unknow_attr = 1
+
+
+def test_forbid_changing_frozen_app() -> None:
+    app = web.Application()
+    app.freeze()
+    with pytest.raises(RuntimeError):
+        app['key'] = 'value'

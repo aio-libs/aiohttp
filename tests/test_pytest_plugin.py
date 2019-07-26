@@ -83,27 +83,6 @@ def cli(loop, aiohttp_client):
     return loop.run_until_complete(aiohttp_client(create_stateful_app()))
 
 
-async def test_set_value(cli) -> None:
-    resp = await cli.post('/', data={'value': 'foo'})
-    assert resp.status == 200
-    text = await resp.text()
-    assert text == 'thanks for the data'
-    assert cli.server.app['value'] == 'foo'
-
-
-async def test_get_value(cli) -> None:
-    resp = await cli.get('/')
-    assert resp.status == 200
-    text = await resp.text()
-    assert text == 'value: unknown'
-    with pytest.warns(DeprecationWarning):
-        cli.server.app['value'] = 'bar'
-    resp = await cli.get('/')
-    assert resp.status == 200
-    text = await resp.text()
-    assert text == 'value: bar'
-
-
 def test_noncoro() -> None:
     assert True
 
@@ -137,7 +116,7 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
 """)
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
-    result.assert_outcomes(passed=10)
+    result.assert_outcomes(passed=8)
 
 
 def test_warning_checks(testdir) -> None:
