@@ -59,13 +59,17 @@ class ContentCoding(enum.Enum):
 
 class StreamResponse(BaseClass, HeadersMixin):
 
-    _length_check = True
+    __slots__ = ('_length_check', '_body', '_keep_alive', '_chunked',
+                 '_compression', '_compression_force', '_cookies', '_req',
+                 '_payload_writer', '_eof_sent', '_body_length', '_state',
+                 '_headers', '_status', '_reason')
 
     def __init__(self, *,
                  status: int=200,
                  reason: Optional[str]=None,
                  headers: Optional[LooseHeaders]=None) -> None:
         super().__init__()
+        self._length_check = True
         self._body = None
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
@@ -465,6 +469,11 @@ class StreamResponse(BaseClass, HeadersMixin):
 
 
 class Response(StreamResponse):
+
+    __slots__ = ('_body_payload',
+                 '_compressed_body',
+                 '_zlib_executor_size',
+                 '_zlib_executor')
 
     def __init__(self, *,
                  body: Any=None,

@@ -80,9 +80,12 @@ async def test_raw_server_do_not_swallow_exceptions(aiohttp_raw_server,
 async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server,
                                                  aiohttp_client):
 
+    class MyResponse(web.Response):
+        async def write_eof(self, data=b''):
+            raise asyncio.CancelledError("error")
+
     async def handler(request):
-        resp = web.Response(text=str(request.rel_url))
-        resp.write_eof = mock.Mock(side_effect=asyncio.CancelledError("error"))
+        resp = MyResponse(text=str(request.rel_url))
         return resp
 
     loop = asyncio.get_event_loop()

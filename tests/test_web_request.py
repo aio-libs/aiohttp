@@ -4,14 +4,14 @@ from collections.abc import MutableMapping
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, MultiDict, CIMultiDictProxy
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion, web
 from aiohttp.helpers import DEBUG
+from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.http_parser import RawRequestMessage
 from aiohttp.web import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
 
 

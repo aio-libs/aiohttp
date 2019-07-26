@@ -45,8 +45,11 @@ class WebSocketReady:
 
 
 class WebSocketResponse(StreamResponse):
-
-    _length_check = False
+    __slots__ = ('_protocols', '_ws_protocol', '_writer', '_reader', '_closed',
+                 '_closing', '_conn_lost', '_close_code', '_loop', '_waiting',
+                 '_exception', '_timeout', '_receive_timeout', '_autoclose',
+                 '_autoping', '_heartbeat', '_heartbeat_cb', '_pong_heartbeat',
+                 '_pong_response_cb', '_compress', '_max_msg_size')
 
     def __init__(self, *,
                  timeout: float=10.0, receive_timeout: Optional[float]=None,
@@ -55,6 +58,7 @@ class WebSocketResponse(StreamResponse):
                  protocols: Iterable[str]=(),
                  compress: bool=True, max_msg_size: int=4*1024*1024) -> None:
         super().__init__(status=101)
+        self._length_check = False
         self._protocols = protocols
         self._ws_protocol = None  # type: Optional[str]
         self._writer = None  # type: Optional[WebSocketWriter]

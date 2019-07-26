@@ -1,5 +1,6 @@
 import asyncio
 from unittest import mock
+from typing import Optional
 
 import pytest
 from multidict import CIMultiDict
@@ -106,14 +107,13 @@ async def test_nonstarted_receive_json() -> None:
 
 
 async def test_receive_str_nonstring(make_request) -> None:
+    class MyWebSocker(WebSocketResponse):
+        async def receive(self, timeout: Optional[float]=None) -> WSMessage:
+            return WSMessage(WSMsgType.BINARY, b'data', b'')
+
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     await ws.prepare(req)
-
-    async def receive():
-        return WSMessage(WSMsgType.BINARY, b'data', b'')
-
-    ws.receive = receive
 
     with pytest.raises(TypeError):
         await ws.receive_str()
