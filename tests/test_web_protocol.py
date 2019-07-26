@@ -285,10 +285,12 @@ async def test_unhandled_runtime_error(
     make_srv, transport, request_handler
 ):
 
+    class MyResponse(web.Response):
+        async def write_eof(self, data=b''):
+            raise RuntimeError()
+
     async def handle(request):
-        resp = web.Response()
-        resp.write_eof = mock.Mock()
-        resp.write_eof.side_effect = RuntimeError
+        resp = MyResponse()
         return resp
 
     loop = asyncio.get_event_loop()

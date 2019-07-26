@@ -636,6 +636,7 @@ class ClientResponse(HeadersMixin):
                  loop: asyncio.AbstractEventLoop,
                  session: 'ClientSession') -> None:
         assert isinstance(url, URL)
+        super().__init__()
 
         self.method = method
         self.cookies = SimpleCookie()
