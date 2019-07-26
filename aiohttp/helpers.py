@@ -615,12 +615,12 @@ class CeilTimeout(async_timeout.timeout):
 
 class HeadersMixin:
 
-    ATTRS = frozenset([
-        '_content_type', '_content_dict', '_stored_content_type'])
+    __slots__ = ('_content_type', '_content_dict', '_stored_content_type')
 
-    _content_type = None  # type: Optional[str]
-    _content_dict = None  # type: Optional[Dict[str, str]]
-    _stored_content_type = sentinel
+    def __init__(self) -> None:
+        self._content_type = None  # type: Optional[str]
+        self._content_dict = None  # type: Optional[Dict[str, str]]
+        self._stored_content_type = sentinel
 
     def _parse_content_type(self, raw: str) -> None:
         self._stored_content_type = raw

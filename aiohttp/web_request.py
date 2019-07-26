@@ -6,7 +6,6 @@ import socket
 import string
 import tempfile
 import types
-import warnings
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from types import MappingProxyType
@@ -31,7 +30,6 @@ from yarl import URL
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
-    DEBUG,
     ChainMapProxy,
     HeadersMixin,
     is_expected_content_type,
@@ -108,11 +106,11 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT,
                     hdrs.METH_TRACE, hdrs.METH_DELETE}
 
-    ATTRS = HeadersMixin.ATTRS | frozenset([
+    __slots__ = (
         '_message', '_protocol', '_payload_writer', '_payload', '_headers',
         '_method', '_version', '_rel_url', '_post', '_read_bytes',
         '_state', '_cache', '_task', '_client_max_size', '_loop',
-        '_transport_sslcontext', '_transport_peername'])
+        '_transport_sslcontext', '_transport_peername')
 
     def __init__(self, message: RawRequestMessage,
                  payload: StreamReader, protocol: 'RequestHandler',
@@ -124,6 +122,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                  scheme: Optional[str]=None,
                  host: Optional[str]=None,
                  remote: Optional[str]=None) -> None:
+        super().__init__()
         if state is None:
             state = {}
         self._message = message
@@ -689,7 +688,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
 class Request(BaseRequest):
 
-    ATTRS = BaseRequest.ATTRS | frozenset(['_match_info'])
+    __slots__ = ('_match_info',)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -699,16 +698,6 @@ class Request(BaseRequest):
 
         # initialized after route resolving
         self._match_info = None  # type: Optional[UrlMappingMatchInfo]
-
-    if DEBUG:
-        def __setattr__(self, name: str, val: Any) -> None:
-            if name not in self.ATTRS:
-                warnings.warn("Setting custom {}.{} attribute "
-                              "is discouraged".format(self.__class__.__name__,
-                                                      name),
-                              DeprecationWarning,
-                              stacklevel=2)
-            super().__setattr__(name, val)
 
     def clone(self, *, method: str=sentinel, rel_url:
               StrOrURL=sentinel, headers: LooseHeaders=sentinel,

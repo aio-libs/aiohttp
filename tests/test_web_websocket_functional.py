@@ -785,3 +785,45 @@ async def test_websocket_disable_keepalive(loop, aiohttp_client) -> None:
     ws = await client.ws_connect('/')
     data = await ws.receive_str()
     assert data == 'OK'
+
+
+async def test_receive_str_nonstring(loop, aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        if not ws.can_prepare(request):
+            return web.HTTPUpgradeRequired()
+
+        await ws.prepare(request)
+        await ws.send_bytes(b'answer')
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect('/')
+    with pytest.raises(TypeError):
+        await ws.receive_str()
+
+
+async def test_receive_bytes_nonbytes(loop, aiohttp_client) -> None:
+
+    async def handler(request):
+        ws = web.WebSocketResponse()
+        if not ws.can_prepare(request):
+            return web.HTTPUpgradeRequired()
+
+        await ws.prepare(request)
+        await ws.send_bytes('answer')
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect('/')
+    with pytest.raises(TypeError):
+        await ws.receive_bytes()
