@@ -455,8 +455,8 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. comethod:: ws_connect(url, *, method='GET', \
-                            protocols=(), timeout=10.0,\
-                            receive_timeout=None,\
+                            protocols=(), \
+                            timeout=10.0,\
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
@@ -476,12 +476,14 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param float timeout: Timeout for websocket to close. ``10`` seconds
-                            by default
-
-      :param float receive_timeout: Timeout for websocket to receive
-                                    complete message.  ``None`` (unlimited)
-                                    seconds by default
+      :param timeout: a :class:`ClientTimeout` timeout for websocket.
+                      By default, the value
+                      `ClientTimeout(sock_read=10.0, sock_close=10.0)` is used
+                      (``10.0`` seconds for websocket to receive a complete
+                      message, and ``10.0`` seconds for the websocket to close).
+                      ``None`` means no timeout will be used; only the values
+                      `ClientTimeout.sock_read` and `ClientTimeout.sock_close`
+                      are used by websocket.
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
@@ -1367,7 +1369,8 @@ ClientTimeout
 ^^^^^^^^^^^^^
 
 .. class:: ClientTimeout(*, total=None, connect=None, \
-                         sock_connect, sock_read=None)
+                         sock_connect, sock_read=None, \
+                         sock_close=None)
 
    A data class for client timeout settings.
 
@@ -1401,6 +1404,12 @@ ClientTimeout
    .. attribute:: sock_read
 
       A timeout for reading a portion of data from a peer.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: sock_close
+
+      A timeout for the socket to close (for now, used only by websockets).
 
       :class:`float`, ``None`` by default.
 

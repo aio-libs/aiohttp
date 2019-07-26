@@ -1,0 +1,1 @@
+Deprecate obsolete `timeout: float` and `receive_timeout: Optional[float]` in `ClientSession.ws_connect()`.

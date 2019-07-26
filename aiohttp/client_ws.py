@@ -7,6 +7,7 @@ import async_timeout
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
+from .client_utils import ClientTimeout
 from .helpers import call_later, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
@@ -32,12 +33,11 @@ class ClientWebSocketResponse:
                  writer: WebSocketWriter,
                  protocol: Optional[str],
                  response: ClientResponse,
-                 timeout: float,
+                 timeout: ClientTimeout,
                  autoclose: bool,
                  autoping: bool,
                  loop: asyncio.AbstractEventLoop,
                  *,
-                 receive_timeout: Optional[float]=None,
                  heartbeat: Optional[float]=None,
                  compress: int=0,
                  client_notakeover: bool=False) -> None:
@@ -50,8 +50,7 @@ class ClientWebSocketResponse:
         self._closed = False
         self._closing = False
         self._close_code = None  # type: Optional[int]
-        self._timeout = timeout
-        self._receive_timeout = receive_timeout
+        self._timeout = timeout  # type: ClientTimeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
@@ -187,7 +186,8 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    with async_timeout.timeout(self._timeout, loop=self._loop):
+                    with async_timeout.timeout(self._timeout.sock_close,
+                                               loop=self._loop):
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = 1006
@@ -222,7 +222,7 @@ class ClientWebSocketResponse:
                 self._waiting = self._loop.create_future()
                 try:
                     with async_timeout.timeout(
-                            timeout or self._receive_timeout,
+                            timeout or self._timeout.sock_read,
                             loop=self._loop):
                         msg = await self._reader.read()
                     self._reset_heartbeat()
