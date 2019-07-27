@@ -125,10 +125,8 @@ class Application(MutableMapping[str, Any]):
 
     def _check_frozen(self) -> None:
         if self._frozen:
-            warnings.warn("Changing state of started or joined "
-                          "application is deprecated",
-                          DeprecationWarning,
-                          stacklevel=3)
+            raise RuntimeError("Changing state of started or joined "
+                               "application is forbidden")
 
     def __setitem__(self, key: str, value: Any) -> None:
         self._check_frozen()
