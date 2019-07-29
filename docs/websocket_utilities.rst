@@ -1,7 +1,8 @@
+.. currentmodule:: aiohttp
+
+
 WebSocket utilities
 ===================
-
-.. currentmodule:: aiohttp
 
 .. class:: WSCloseCode
 
@@ -154,5 +155,3 @@ WebSocket utilities
       Returns parsed JSON data.
 
       :param loads: optional JSON decoder function.
-
-

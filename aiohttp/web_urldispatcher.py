@@ -2,13 +2,10 @@ import abc
 import asyncio
 import base64
 import hashlib
-import inspect
 import keyword
 import os
 import re
-import warnings
 from contextlib import contextmanager
-from functools import wraps
 from pathlib import Path
 from types import MappingProxyType
 from typing import (  # noqa
@@ -27,6 +24,7 @@ from typing import (  # noqa
     Set,
     Sized,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -123,7 +121,7 @@ class AbstractResource(Sized, Iterable['AbstractRoute']):
 class AbstractRoute(abc.ABC):
 
     def __init__(self, method: str,
-                 handler: Union[_WebHandler, AbstractView], *,
+                 handler: Union[_WebHandler, Type[AbstractView]], *,
                  expect_handler: _ExpectHandler=None,
                  resource: AbstractResource=None) -> None:
 
@@ -137,27 +135,13 @@ class AbstractRoute(abc.ABC):
         if not HTTP_METHOD_RE.match(method):
             raise ValueError("{} is not allowed HTTP method".format(method))
 
-        assert callable(handler), handler
         if asyncio.iscoroutinefunction(handler):
             pass
-        elif inspect.isgeneratorfunction(handler):
-            warnings.warn("Bare generators are deprecated, "
-                          "use @coroutine wrapper", DeprecationWarning)
-        elif (isinstance(handler, type) and
-              issubclass(handler, AbstractView)):
+        elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
         else:
-            warnings.warn("Bare functions are deprecated, "
-                          "use async ones", DeprecationWarning)
-
-            @wraps(handler)
-            async def handler_wrapper(request: Request) -> StreamResponse:
-                result = old_handler(request)
-                if asyncio.iscoroutine(result):
-                    result = await result
-                return result
-            old_handler = handler
-            handler = handler_wrapper
+            raise TypeError("Only async functions are allowed as web-handlers "
+                            ", got {!r}".format(handler))
 
         self._method = method
         self._handler = handler
@@ -296,7 +280,7 @@ class Resource(AbstractResource):
         self._routes = []  # type: List[ResourceRoute]
 
     def add_route(self, method: str,
-                  handler: Union[AbstractView, _WebHandler], *,
+                  handler: Union[Type[AbstractView], _WebHandler], *,
                   expect_handler: Optional[_ExpectHandler]=None
                   ) -> 'ResourceRoute':
 
@@ -825,7 +809,7 @@ class ResourceRoute(AbstractRoute):
     """A route with resource"""
 
     def __init__(self, method: str,
-                 handler: Union[_WebHandler, AbstractView],
+                 handler: Union[_WebHandler, Type[AbstractView]],
                  resource: AbstractResource, *,
                  expect_handler: Optional[_ExpectHandler]=None) -> None:
         super().__init__(method, handler, expect_handler=expect_handler,
@@ -1025,7 +1009,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         return resource
 
     def add_route(self, method: str, path: str,
-                  handler: Union[_WebHandler, AbstractView],
+                  handler: Union[_WebHandler, Type[AbstractView]],
                   *, name: Optional[str]=None,
                   expect_handler: Optional[_ExpectHandler]=None
                   ) -> AbstractRoute:
@@ -1112,7 +1096,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         """
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
-    def add_view(self, path: str, handler: AbstractView,
+    def add_view(self, path: str, handler: Type[AbstractView],
                  **kwargs: Any) -> AbstractRoute:
         """
         Shortcut for add_route with ANY methods for a class-based view

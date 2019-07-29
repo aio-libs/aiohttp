@@ -12,28 +12,25 @@ import aiohttp
 
 class Crawler:
 
-    def __init__(self, rooturl, loop, maxtasks=100):
+    def __init__(self, rooturl, maxtasks=100):
         self.rooturl = rooturl
-        self.loop = loop
         self.todo = set()
         self.busy = set()
         self.done = {}
         self.tasks = set()
-        self.sem = asyncio.Semaphore(maxtasks, loop=loop)
+        self.sem = asyncio.Semaphore(maxtasks)
 
         # connector stores cookies between requests and uses connection pool
-        self.session = aiohttp.ClientSession(loop=loop)
+        self.session = aiohttp.ClientSession()
 
     async def run(self):
-        t = asyncio.ensure_future(self.addurls([(self.rooturl, '')]),
-                                  loop=self.loop)
-        await asyncio.sleep(1, loop=self.loop)
+        t = asyncio.ensure_future(self.addurls([(self.rooturl, '')]))
+        await asyncio.sleep(1)
         while self.busy:
-            await asyncio.sleep(1, loop=self.loop)
+            await asyncio.sleep(1)
 
         await t
         await self.session.close()
-        self.loop.stop()
 
     async def addurls(self, urls):
         for url, parenturl in urls:
@@ -45,7 +42,7 @@ class Crawler:
                     url not in self.todo):
                 self.todo.add(url)
                 await self.sem.acquire()
-                task = asyncio.ensure_future(self.process(url), loop=self.loop)
+                task = asyncio.ensure_future(self.process(url))
                 task.add_done_callback(lambda t: self.sem.release())
                 task.add_done_callback(self.tasks.remove)
                 self.tasks.add(task)
@@ -78,8 +75,8 @@ class Crawler:
 def main():
     loop = asyncio.get_event_loop()
 
-    c = Crawler(sys.argv[1], loop)
-    asyncio.ensure_future(c.run(), loop=loop)
+    c = Crawler(sys.argv[1])
+    asyncio.ensure_future(c.run())
 
     try:
         loop.add_signal_handler(signal.SIGINT, loop.stop)

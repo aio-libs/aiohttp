@@ -369,6 +369,21 @@ class TestPartReader:
         result = await obj.read(decode=True)
         assert b'Time to Relax!' == result
 
+    async def test_decode_with_content_transfer_encoding_base64(
+        self, newline
+    ) -> None:
+
+        obj = aiohttp.BodyPartReader(
+            BOUNDARY, {CONTENT_TRANSFER_ENCODING: 'base64'},
+            Stream(b'VG\r\r\nltZSB0byBSZ\r\nWxheCE=%s--:--' % newline),
+            _newline=newline,
+        )
+        result = b''
+        while not obj.at_eof():
+            chunk = await obj.read_chunk(size=6)
+            result += obj.decode(chunk)
+        assert b'Time to Relax!' == result
+
     async def test_read_with_content_transfer_encoding_quoted_printable(
         self, newline
     ) -> None:
@@ -633,7 +648,7 @@ class TestPartReader:
     async def test_reading_long_part(self, newline) -> None:
         size = 2 * stream_reader_default_limit
         protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(protocol)
+        stream = StreamReader(protocol, loop=asyncio.get_event_loop())
         stream.feed_data(b'0' * size + b'%s--:--' % newline)
         stream.feed_eof()
         obj = aiohttp.BodyPartReader(BOUNDARY, {}, stream, _newline=newline)

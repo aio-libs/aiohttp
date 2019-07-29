@@ -20,6 +20,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import (  # noqa
     Any,
+    Awaitable,
     Callable,
     Dict,
     Iterable,
@@ -41,6 +42,7 @@ from urllib.request import getproxies
 import async_timeout
 import attr
 from multidict import MultiDict, MultiDictProxy
+from typing_extensions import final
 from yarl import URL
 
 from . import hdrs
@@ -100,16 +102,13 @@ old_debug = coroutines._DEBUG  # type: ignore
 coroutines._DEBUG = False  # type: ignore
 
 
-@asyncio.coroutine
-def noop(*args, **kwargs):  # type: ignore
-    return  # type: ignore
-
-
-async def noop2(*args: Any, **kwargs: Any) -> None:
+async def noop(*args: Any, **kwargs: Any) -> None:
     return
 
 
 coroutines._DEBUG = old_debug  # type: ignore
+
+json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 
 class BasicAuth(namedtuple('BasicAuth', ['login', 'password', 'encoding'])):
@@ -261,11 +260,16 @@ def current_task(
         return asyncio.Task.current_task(loop=loop)
 
 
-def get_running_loop(
-    loop: Optional[asyncio.AbstractEventLoop]=None
-) -> asyncio.AbstractEventLoop:
-    if loop is None:
+if sys.version_info >= (3, 7):
+    create_task = asyncio.create_task
+else:
+    def create_task(coro: Awaitable[_T]) -> 'asyncio.Task[_T]':
         loop = asyncio.get_event_loop()
+        return loop.create_task(coro)
+
+
+def get_running_loop() -> asyncio.AbstractEventLoop:
+    loop = asyncio.get_event_loop()
     if not loop.is_running():
         raise RuntimeError("The object should be created from async function")
     return loop
@@ -363,6 +367,13 @@ def content_disposition_header(disptype: str,
         sparams = '; '.join('='.join(pair) for pair in lparams)
         value = '; '.join((value, sparams))
     return value
+
+
+def is_expected_content_type(response_content_type: str,
+                             expected_content_type: str) -> bool:
+    if expected_content_type == 'application/json':
+        return json_re.match(response_content_type) is not None
+    return expected_content_type in response_content_type
 
 
 class reify:
@@ -604,12 +615,12 @@ class CeilTimeout(async_timeout.timeout):
 
 class HeadersMixin:
 
-    ATTRS = frozenset([
-        '_content_type', '_content_dict', '_stored_content_type'])
+    __slots__ = ('_content_type', '_content_dict', '_stored_content_type')
 
-    _content_type = None  # type: Optional[str]
-    _content_dict = None  # type: Optional[Dict[str, str]]
-    _stored_content_type = sentinel
+    def __init__(self) -> None:
+        self._content_type = None  # type: Optional[str]
+        self._content_dict = None  # type: Optional[Dict[str, str]]
+        self._stored_content_type = sentinel
 
     def _parse_content_type(self, raw: str) -> None:
         self._stored_content_type = raw
@@ -657,6 +668,7 @@ def set_exception(fut: 'asyncio.Future[_T]', exc: BaseException) -> None:
         fut.set_exception(exc)
 
 
+@final
 class ChainMapProxy(Mapping[str, Any]):
     __slots__ = ('_maps',)
 

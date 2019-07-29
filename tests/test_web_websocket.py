@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, signals
+from aiohttp import WSMsgType, signals
 from aiohttp.log import ws_logger
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
@@ -103,34 +103,6 @@ async def test_nonstarted_receive_json() -> None:
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
         await ws.receive_json()
-
-
-async def test_receive_str_nonstring(make_request) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    async def receive():
-        return WSMessage(WSMsgType.BINARY, b'data', b'')
-
-    ws.receive = receive
-
-    with pytest.raises(TypeError):
-        await ws.receive_str()
-
-
-async def test_receive_bytes_nonsbytes(make_request) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    async def receive():
-        return WSMessage(WSMsgType.TEXT, 'data', b'')
-
-    ws.receive = receive
-
-    with pytest.raises(TypeError):
-        await ws.receive_bytes()
 
 
 async def test_send_str_nonstring(make_request) -> None:
@@ -502,3 +474,11 @@ async def test_send_with_per_message_deflate(make_request, mocker) -> None:
 
     await ws.send_json('[{}]', compress=9)
     writer_send.assert_called_with('"[{}]"', binary=False, compress=9)
+
+
+async def test_no_transfer_encoding_header(make_request, mocker) -> None:
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    await ws._start(req)
+
+    assert 'Transfer-Encoding' not in ws.headers

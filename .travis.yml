@@ -156,7 +156,7 @@ jobs:
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt
+    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt
     - pip install -r requirements/towncrier.txt
     script:
     - towncrier --yes
@@ -174,7 +174,7 @@ jobs:
     install:
     - *upgrade_python_toolset
     - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt
+    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt
     script:
     - mypy aiohttp
 
@@ -182,10 +182,9 @@ jobs:
     name: Verifying distribution package metadata
     install:
     - *upgrade_python_toolset
-    - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt -r requirements/doc.txt
+    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
-    - python setup.py check --metadata --restructuredtext --strict --verbose sdist bdist_wheel
+    - AIOHTTP_NO_EXTENSIONS=1 python setup.py --verbose sdist bdist_wheel
     - twine check dist/*
 
   - <<: *_lint_base
@@ -229,9 +228,10 @@ jobs:
     services:
     - docker
     script:
-    - ./tools/run_docker.sh "aiohttp"
     - pip install -r requirements/cython.txt
     - pip install -r requirements/ci.txt  # to compile *.c files by Cython
+    - make cythonize
+    - ./tools/run_docker.sh "aiohttp"
     deploy:
       <<: *deploy_step
 

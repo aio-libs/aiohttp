@@ -206,6 +206,9 @@ period ask to raise the status.
 
 - `discord.py <https://github.com/Rapptz/discord.py>`_ Discord client library.
 
+- `aiogram <https://github.com/aiogram/aiogram>`_
+  A fully asynchronous library for Telegram Bot API written with asyncio and aiohttp.
+
 - `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
   GraphQL and GraphIQL interface for aiohttp.
 
@@ -240,3 +243,6 @@ period ask to raise the status.
 
 - `aiogmaps <https://github.com/hzlmn/aiogmaps>`_
   Asynchronous client for Google Maps API Web Services. Python 3.6+ required.
+
+- `DBGR <https://github.com/JakubTesarek/dbgr>`_
+  Terminal based tool to test and debug HTTP APIs with ``aiohttp``.

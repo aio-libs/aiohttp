@@ -27,40 +27,50 @@ from typing import (  # noqa
 
 import attr
 from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
+from typing_extensions import final
 from yarl import URL
 
 from . import hdrs, http, payload
 from .abc import AbstractCookieJar
+from .client_exceptions import ClientConnectionError as ClientConnectionError
 from .client_exceptions import (
-    ClientConnectionError,
-    ClientConnectorCertificateError,
-    ClientConnectorError,
-    ClientConnectorSSLError,
-    ClientError,
-    ClientHttpProxyError,
-    ClientOSError,
-    ClientPayloadError,
-    ClientProxyConnectionError,
-    ClientResponseError,
-    ClientSSLError,
-    ContentTypeError,
-    InvalidURL,
-    ServerConnectionError,
-    ServerDisconnectedError,
-    ServerFingerprintMismatch,
-    ServerTimeoutError,
-    TooManyRedirects,
-    WSServerHandshakeError,
+    ClientConnectorCertificateError as ClientConnectorCertificateError,
 )
-from .client_reqrep import (
-    SSL_ALLOWED_TYPES,
-    ClientRequest,
-    ClientResponse,
-    Fingerprint,
-    RequestInfo,
+from .client_exceptions import ClientConnectorError as ClientConnectorError
+from .client_exceptions import (
+    ClientConnectorSSLError as ClientConnectorSSLError,
 )
-from .client_ws import ClientWebSocketResponse
-from .connector import BaseConnector, TCPConnector, UnixConnector
+from .client_exceptions import ClientError as ClientError
+from .client_exceptions import ClientHttpProxyError as ClientHttpProxyError
+from .client_exceptions import ClientOSError as ClientOSError
+from .client_exceptions import ClientPayloadError as ClientPayloadError
+from .client_exceptions import (
+    ClientProxyConnectionError as ClientProxyConnectionError,
+)
+from .client_exceptions import ClientResponseError as ClientResponseError
+from .client_exceptions import ClientSSLError as ClientSSLError
+from .client_exceptions import ContentTypeError as ContentTypeError
+from .client_exceptions import InvalidURL as InvalidURL
+from .client_exceptions import ServerConnectionError as ServerConnectionError
+from .client_exceptions import (
+    ServerDisconnectedError as ServerDisconnectedError,
+)
+from .client_exceptions import (
+    ServerFingerprintMismatch as ServerFingerprintMismatch,
+)
+from .client_exceptions import ServerTimeoutError as ServerTimeoutError
+from .client_exceptions import TooManyRedirects as TooManyRedirects
+from .client_exceptions import WSServerHandshakeError as WSServerHandshakeError
+from .client_reqrep import SSL_ALLOWED_TYPES as SSL_ALLOWED_TYPES
+from .client_reqrep import ClientRequest as ClientRequest
+from .client_reqrep import ClientResponse as ClientResponse
+from .client_reqrep import Fingerprint as Fingerprint
+from .client_reqrep import RequestInfo as RequestInfo
+from .client_ws import ClientWebSocketResponse as ClientWebSocketResponse
+from .connector import BaseConnector as BaseConnector
+from .connector import NamedPipeConnector as NamedPipeConnector
+from .connector import TCPConnector as TCPConnector
+from .connector import UnixConnector as UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     PY_36,
@@ -113,6 +123,7 @@ __all__ = (
     'BaseConnector',
     'TCPConnector',
     'UnixConnector',
+    'NamedPipeConnector',
     # client_ws
     'ClientWebSocketResponse',
     # client
@@ -154,6 +165,7 @@ DEFAULT_TIMEOUT = ClientTimeout(total=5*60)
 _RetType = TypeVar('_RetType')
 
 
+@final
 class ClientSession:
     """First-class interface for making HTTP requests."""
 
@@ -170,7 +182,6 @@ class ClientSession:
         '_session_proxy_auth', '_session_proxy_headers')
 
     def __init__(self, *, connector: Optional[BaseConnector]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  cookies: Optional[LooseCookies]=None,
                  headers: Optional[LooseHeaders]=None,
                  skip_auto_headers: Optional[Iterable[str]]=None,
@@ -183,8 +194,6 @@ class ClientSession:
                  cookie_jar: Optional[AbstractCookieJar]=None,
                  connector_owner: bool=True,
                  raise_for_status: bool=False,
-                 read_timeout: Union[float, object]=sentinel,
-                 conn_timeout: Optional[float]=None,
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
@@ -194,14 +203,10 @@ class ClientSession:
                  proxy_auth: Optional[BasicAuth]=None,
                  proxy_headers: Optional[LooseHeaders]=None) -> None:
 
-        if loop is None:
-            if connector is not None:
-                loop = connector._loop
-
-        loop = get_running_loop(loop)
+        loop = get_running_loop()
 
         if connector is None:
-            connector = TCPConnector(loop=loop)
+            connector = TCPConnector()
 
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
@@ -217,7 +222,7 @@ class ClientSession:
                 "Session and connector have to use same event loop")
 
         if cookie_jar is None:
-            cookie_jar = CookieJar(loop=loop)
+            cookie_jar = CookieJar()
         self._cookie_jar = cookie_jar
 
         if cookies is not None:
@@ -229,29 +234,8 @@ class ClientSession:
         self._json_serialize = json_serialize
         if timeout is sentinel:
             self._timeout = DEFAULT_TIMEOUT
-            if read_timeout is not sentinel:
-                warnings.warn("read_timeout is deprecated, "
-                              "use timeout argument instead",
-                              DeprecationWarning,
-                              stacklevel=2)
-                self._timeout = attr.evolve(self._timeout, total=read_timeout)
-            if conn_timeout is not None:
-                self._timeout = attr.evolve(self._timeout,
-                                            connect=conn_timeout)
-                warnings.warn("conn_timeout is deprecated, "
-                              "use timeout argument instead",
-                              DeprecationWarning,
-                              stacklevel=2)
         else:
             self._timeout = timeout  # type: ignore
-            if read_timeout is not sentinel:
-                raise ValueError("read_timeout and timeout parameters "
-                                 "conflict, please setup "
-                                 "timeout.read")
-            if conn_timeout is not None:
-                raise ValueError("conn_timeout and timeout parameters "
-                                 "conflict, please setup "
-                                 "timeout.connect")
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
@@ -282,10 +266,8 @@ class ClientSession:
             trace_config.freeze()
 
     def __init_subclass__(cls: Type['ClientSession']) -> None:
-        warnings.warn("Inheritance class {} from ClientSession "
-                      "is discouraged".format(cls.__name__),
-                      DeprecationWarning,
-                      stacklevel=2)
+        raise TypeError("Inheritance class {} from ClientSession "
+                        "is forbidden".format(cls.__name__))
 
     def __del__(self, _warnings: Any=warnings) -> None:
         if not self.closed:
@@ -351,10 +333,6 @@ class ClientSession:
                 'data and json parameters can not be used at the same time')
         elif json is not None:
             data = payload.JsonPayload(json, dumps=self._json_serialize)
-
-        if not isinstance(chunked, bool) and chunked is not None:
-            warnings.warn(
-                'Chunk size is deprecated #1615', DeprecationWarning)
 
         redirects = 0
         history = []
@@ -926,39 +904,12 @@ class ClientSession:
         """Do URL requoting on redirection handling."""
         return self._requote_redirect_url
 
-    @requote_redirect_url.setter
-    def requote_redirect_url(self, val: bool) -> None:
-        """Do URL requoting on redirection handling."""
-        warnings.warn("session.requote_redirect_url modification "
-                      "is deprecated #2778",
-                      DeprecationWarning,
-                      stacklevel=2)
-        self._requote_redirect_url = val
-
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        """Session's loop."""
-        warnings.warn("client.loop property is deprecated",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._loop
-
     def detach(self) -> None:
         """Detach connector from session without closing the former.
 
         Session is switched to closed state anyway.
         """
         self._connector = None
-
-    def __enter__(self) -> None:
-        raise TypeError("Use async with instead")
-
-    def __exit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc_val: Optional[BaseException],
-                 exc_tb: Optional[TracebackType]) -> None:
-        # __exit__ should exist in pair with __enter__ but never executed
-        pass  # pragma: no cover
 
     async def __aenter__(self) -> 'ClientSession':
         return self
@@ -1038,8 +989,13 @@ class _SessionRequestContextManager:
         self._session = session
 
     async def __aenter__(self) -> ClientResponse:
-        self._resp = await self._coro
-        return self._resp
+        try:
+            self._resp = await self._coro
+        except BaseException:
+            await self._session.close()
+            raise
+        else:
+            return self._resp
 
     async def __aexit__(self,
                         exc_type: Optional[Type[BaseException]],
@@ -1071,8 +1027,7 @@ def request(
         timeout: Union[ClientTimeout, object]=sentinel,
         cookies: Optional[LooseCookies]=None,
         version: HttpVersion=http.HttpVersion11,
-        connector: Optional[BaseConnector]=None,
-        loop: Optional[asyncio.AbstractEventLoop]=None
+        connector: Optional[BaseConnector]=None
 ) -> _SessionRequestContextManager:
     """Constructs and sends a request. Returns response object.
     method - HTTP method
@@ -1111,10 +1066,10 @@ def request(
     connector_owner = False
     if connector is None:
         connector_owner = True
-        connector = TCPConnector(loop=loop, force_close=True)
+        connector = TCPConnector(force_close=True)
 
     session = ClientSession(
-        loop=loop, cookies=cookies, version=version, timeout=timeout,
+        cookies=cookies, version=version, timeout=timeout,
         connector=connector, connector_owner=connector_owner)
 
     return _SessionRequestContextManager(

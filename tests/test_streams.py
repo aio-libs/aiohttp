@@ -72,22 +72,16 @@ class TestStreamReader:
     DATA = b'line1\nline2\nline3\n'
 
     def _make_one(self, *args, **kwargs):
+        loop = asyncio.get_event_loop()
         return streams.StreamReader(mock.Mock(_reading_paused=False),
-                                    *args, **kwargs)
+                                    *args, **kwargs, loop=loop)
 
     async def test_create_waiter(self) -> None:
         loop = asyncio.get_event_loop()
-        stream = self._make_one(loop=loop)
+        stream = self._make_one()
         stream._waiter = loop.create_future
         with pytest.raises(RuntimeError):
             await stream._wait('test')
-
-    def test_ctor_global_loop(self) -> None:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        stream = streams.StreamReader(mock.Mock(_reading_paused=False))
-
-        assert stream._loop is loop
 
     async def test_at_eof(self) -> None:
         stream = self._make_one()
@@ -221,20 +215,6 @@ class TestStreamReader:
 
         data = await stream.read()
         assert data == b''
-
-    async def test_read_eof_infinite(self) -> None:
-        # Read bytes.
-        stream = self._make_one()
-        stream.feed_eof()
-
-        with mock.patch('aiohttp.streams.internal_logger') as internal_logger:
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-            await stream.read()
-        assert internal_logger.warning.called
 
     async def test_read_eof_unread_data_no_warning(self) -> None:
         # Read bytes.
@@ -433,7 +413,7 @@ class TestStreamReader:
     async def test_readexactly_eof(self) -> None:
         loop = asyncio.get_event_loop()
         # Read exact number of bytes (eof).
-        stream = self._make_one(loop=loop)
+        stream = self._make_one()
         n = 2 * len(self.DATA)
         read_task = loop.create_task(stream.readexactly(n))
 
@@ -935,8 +915,7 @@ class TestStreamReader:
         assert "<StreamReader 4 bytes>" == repr(stream)
 
     async def test___repr__exception(self) -> None:
-        loop = asyncio.get_event_loop()
-        stream = self._make_one(loop=loop)
+        stream = self._make_one()
         exc = RuntimeError()
         stream.set_exception(exc)
         assert "<StreamReader e=RuntimeError()>" == repr(stream)
