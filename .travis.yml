@@ -209,12 +209,6 @@ jobs:
     - *env_pyenv
     - *env_path
   - <<: *osx_python_base
-    python: *mainstream_python
-    env:
-    - PYTHON_VERSION=3.6-dev
-    - *env_pyenv
-    - *env_path
-  - <<: *osx_python_base
     python: 3.7
     env:
     - &env_py37 PYTHON_VERSION=3.7.0
