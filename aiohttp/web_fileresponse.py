@@ -337,8 +337,11 @@ class FileResponse(StreamResponse):
             self.headers[hdrs.CONTENT_RANGE] = 'bytes {0}-{1}/{2}'.format(
                 real_start, real_start + count - 1, file_size)
 
-        with (await loop.run_in_executor(None, filepath.open, 'rb')) as fobj:
-            if start:  # be aware that start could be None or int=0 here.
-                await loop.run_in_executor(None, fobj.seek, start)
+        fobj = await loop.run_in_executor(None, filepath.open, 'rb')
+        if start:  # be aware that start could be None or int=0 here.
+            await loop.run_in_executor(None, fobj.seek, start)
 
+        try:
             return await self._sendfile(request, fobj, count)
+        finally:
+            await loop.run_in_executor(None, fobj.close)
