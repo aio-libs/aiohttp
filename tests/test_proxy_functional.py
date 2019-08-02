@@ -530,11 +530,11 @@ async def test_proxy_from_env_http_with_auth(proxy_test_server,
 
 
 async def test_proxy_from_env_http_with_auth_from_netrc(
-        proxy_test_server, get_request, tmpdir, mocker):
+        proxy_test_server, get_request, tmp_path, mocker):
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth('user', 'pass')
-    netrc_file = tmpdir.join('test_netrc')
+    netrc_file = tmp_path / 'test_netrc'
     netrc_file_data = 'machine 127.0.0.1 login %s password %s' % (
         auth.login, auth.password)
     with open(str(netrc_file), 'w') as f:
@@ -552,11 +552,11 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
 
 
 async def test_proxy_from_env_http_without_auth_from_netrc(
-        proxy_test_server, get_request, tmpdir, mocker):
+        proxy_test_server, get_request, tmp_path, mocker):
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth('user', 'pass')
-    netrc_file = tmpdir.join('test_netrc')
+    netrc_file = tmp_path / 'test_netrc'
     netrc_file_data = 'machine 127.0.0.2 login %s password %s' % (
         auth.login, auth.password)
     with open(str(netrc_file), 'w') as f:
@@ -574,11 +574,11 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
 
 
 async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
-        proxy_test_server, get_request, tmpdir, mocker):
+        proxy_test_server, get_request, tmp_path, mocker):
     url = 'http://aiohttp.io/path'
     proxy = await proxy_test_server()
     auth = aiohttp.BasicAuth('user', 'pass')
-    netrc_file = tmpdir.join('test_netrc')
+    netrc_file = tmp_path / 'test_netrc'
     invalid_data = 'machine 127.0.0.1 %s pass %s' % (
         auth.login, auth.password)
     with open(str(netrc_file), 'w') as f:

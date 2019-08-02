@@ -163,6 +163,7 @@ Martin Melka
 Martin Richard
 Mathias Fröjdman
 Mathieu Dugré
+Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
