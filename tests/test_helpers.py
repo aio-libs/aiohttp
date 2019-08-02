@@ -3,7 +3,6 @@ import base64
 import gc
 import os
 import platform
-import tempfile
 from unittest import mock
 
 import pytest
@@ -46,9 +45,9 @@ def test_parse_mimetype(mimetype, expected) -> None:
 
 # ------------------- guess_filename ----------------------------------
 
-def test_guess_filename_with_tempfile() -> None:
-    with tempfile.TemporaryFile() as fp:
-        assert (helpers.guess_filename(fp, 'no-throw') is not None)
+def test_guess_filename_with_tempfile(tmp_path) -> None:
+    file_path = tmp_path / 'test_guess_filename'
+    assert (helpers.guess_filename(file_path, 'no-throw') is not None)
 
 
 # ------------------- BasicAuth -----------------------------------

@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 import io
-import os.path
+import pathlib
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
@@ -789,15 +789,14 @@ async def test_chunked_transfer_encoding(loop, conn) -> None:
 
 
 async def test_file_upload_not_chunked(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
             loop=loop)
         assert not req.chunked
-        assert req.headers['CONTENT-LENGTH'] == str(os.path.getsize(fname))
+        assert req.headers['CONTENT-LENGTH'] == str(file_path.stat().st_size)
         await req.close()
 
 
@@ -816,23 +815,21 @@ async def test_precompressed_data_stays_intact(loop) -> None:
 
 
 async def test_file_upload_not_chunked_seek(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         f.seek(100)
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
             loop=loop)
         assert req.headers['CONTENT-LENGTH'] == \
-            str(os.path.getsize(fname) - 100)
+            str(file_path.stat().st_size - 100)
         await req.close()
 
 
 async def test_file_upload_force_chunked(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,

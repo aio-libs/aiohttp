@@ -1573,7 +1573,7 @@ async def test_response_with_bodypart_named(aiohttp_client, tmp_path) -> None:
 
     f = tmp_path / 'foobar.txt'
     f.write_text('test', encoding='utf8')
-    data = {'file': open(str(f), 'rb')}
+    data = {'file': f.open('rb')}
     resp = await client.post('/', data=data)
 
     assert 200 == resp.status
