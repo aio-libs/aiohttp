@@ -438,12 +438,12 @@ async def test_web_view(aiohttp_client) -> None:
     await r.release()
 
 
-async def test_static_absolute_url(aiohttp_client, tmpdir) -> None:
+async def test_static_absolute_url(aiohttp_client, tmp_path) -> None:
     # requested url is an absolute name like
     # /static/\\machine_name\c$ or /static/D:\path
     # where the static dir is totally different
     app = web.Application()
-    fname = tmpdir / 'file.txt'
+    fname = tmp_path / 'file.txt'
     fname.write_text('sample text', 'ascii')
     here = pathlib.Path(__file__).parent
     app.router.add_static('/static', here)

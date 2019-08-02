@@ -655,8 +655,8 @@ async def test_pass_falsy_data(loop) -> None:
     await req.close()
 
 
-async def test_pass_falsy_data_file(loop, tmpdir) -> None:
-    testfile = tmpdir.join('tmpfile').open('w+b')
+async def test_pass_falsy_data_file(loop, tmp_path) -> None:
+    testfile = (tmp_path / 'tmpfile').open('w+b')
     testfile.write(b'data')
     testfile.seek(0)
     skip = frozenset([hdrs.CONTENT_TYPE])
