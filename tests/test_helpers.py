@@ -47,7 +47,8 @@ def test_parse_mimetype(mimetype, expected) -> None:
 
 def test_guess_filename_with_tempfile(tmp_path) -> None:
     file_path = tmp_path / 'test_guess_filename'
-    assert (helpers.guess_filename(file_path, 'no-throw') is not None)
+    with file_path.open('w+b') as fp:
+        assert (helpers.guess_filename(fp, 'no-throw') is not None)
 
 
 # ------------------- BasicAuth -----------------------------------
