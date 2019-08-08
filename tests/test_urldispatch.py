@@ -1,4 +1,3 @@
-import os
 import pathlib
 import re
 from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
@@ -427,7 +426,7 @@ def test_add_static_append_version_follow_symlink(router, tmp_path) -> None:
     """
     symlink_path = tmp_path / 'append_version_symlink'
     symlink_target_path = pathlib.Path(__file__).parent
-    os.symlink(str(symlink_target_path), str(symlink_path), True)
+    pathlib.Path(str(symlink_path)).symlink_to(str(symlink_target_path), True)
 
     # Register global static route:
     resource = router.add_static('/st', str(tmp_path), follow_symlinks=True,
@@ -450,7 +449,7 @@ def test_add_static_append_version_not_follow_symlink(router,
     symlink_path = tmp_path / 'append_version_symlink'
     symlink_target_path = pathlib.Path(__file__).parent
 
-    os.symlink(str(symlink_target_path), str(symlink_path), True)
+    pathlib.Path(str(symlink_path)).symlink_to(str(symlink_target_path), True)
 
     # Register global static route:
     resource = router.add_static('/st', str(tmp_path), follow_symlinks=False,

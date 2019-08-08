@@ -1,4 +1,3 @@
-import os
 import pathlib
 from unittest import mock
 from unittest.mock import MagicMock
@@ -79,7 +78,7 @@ async def test_follow_symlink(tmp_path, aiohttp_client) -> None:
         fw.write(data)
 
     my_symlink_path = tmp_path / 'my_symlink'
-    os.symlink(str(my_dir_path), str(my_symlink_path))
+    pathlib.Path(str(my_symlink_path)).symlink_to(str(my_dir_path), True)
 
     app = web.Application()
 
@@ -212,7 +211,7 @@ async def test_access_symlink_loop(tmp_path, aiohttp_client) -> None:
     Tests the access to a looped symlink, which could not be resolved.
     """
     my_dir_path = tmp_path / 'my_symlink'
-    os.symlink(str(my_dir_path), str(my_dir_path))
+    pathlib.Path(str(my_dir_path)).symlink_to(str(my_dir_path), True)
 
     app = web.Application()
 
