@@ -133,6 +133,7 @@ __all__ = (
     'ClientTimeout',
     'request')
 
+
 try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
@@ -162,7 +163,6 @@ class ClientTimeout:
 
 # 5 Minute default read timeout
 DEFAULT_TIMEOUT = ClientTimeout(total=5*60)
-
 
 _RetType = TypeVar('_RetType')
 
