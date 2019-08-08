@@ -476,13 +476,13 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param timeout: a :class:`ClientTimeout` timeout for websocket.
+      :param timeout: a :class:`ClientWSTimeout` timeout for websocket.
                       By default, the value
-                      `ClientTimeout(sock_read=10.0, sock_close=10.0)` is used
+                      `ClientWSTimeout(ws_receive=10.0, ws_close=10.0)` is used
                       (``10.0`` seconds for websocket to receive a complete
                       message, and ``10.0`` seconds for the websocket to close).
                       ``None`` means no timeout will be used; only the values
-                      `ClientTimeout.sock_read` and `ClientTimeout.sock_close`
+                      `ClientWSTimeout.ws_receive` and `ClientWSTimeout.ws_close`
                       are used by websocket.
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
@@ -1369,8 +1369,7 @@ ClientTimeout
 ^^^^^^^^^^^^^
 
 .. class:: ClientTimeout(*, total=None, connect=None, \
-                         sock_connect, sock_read=None, \
-                         sock_close=None)
+                         sock_connect, sock_read=None)
 
    A data class for client timeout settings.
 
@@ -1407,13 +1406,24 @@ ClientTimeout
 
       :class:`float`, ``None`` by default.
 
-   .. attribute:: sock_close
 
-      A timeout for the socket to close (for now, used only by websockets).
+.. class:: ClientWSTimeout(*, ws_receive=None, ws_close=None)
+
+   A data class for websocket client timeout settings.
+
+   .. attribute:: ws_receive
+
+      A timeout for websocket to receive a complete message.
 
       :class:`float`, ``None`` by default.
 
-   .. versionadded:: 3.3
+   .. attribute:: ws_close
+
+      A timeout for the websocket to close.
+
+      :class:`float`, ``None`` by default.
+
+   .. versionadded:: 3.5.5
 
 RequestInfo
 ^^^^^^^^^^^

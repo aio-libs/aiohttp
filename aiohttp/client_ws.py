@@ -4,10 +4,10 @@ import asyncio
 from typing import Any, Optional
 
 import async_timeout
+import attr
 
 from .client_exceptions import ClientError
 from .client_reqrep import ClientResponse
-from .client_utils import ClientTimeout
 from .helpers import call_later, set_result
 from .http import (
     WS_CLOSED_MESSAGE,
@@ -26,6 +26,16 @@ from .typedefs import (
 )
 
 
+@attr.s(frozen=True, slots=True)
+class ClientWSTimeout:
+    ws_receive = attr.ib(type=Optional[float], default=None)
+    ws_close = attr.ib(type=Optional[float], default=None)
+
+
+# for web socket the default timeouts are 10 sec
+DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=10.0, ws_close=10.0)
+
+
 class ClientWebSocketResponse:
 
     def __init__(self,
@@ -33,7 +43,7 @@ class ClientWebSocketResponse:
                  writer: WebSocketWriter,
                  protocol: Optional[str],
                  response: ClientResponse,
-                 timeout: ClientTimeout,
+                 timeout: ClientWSTimeout,
                  autoclose: bool,
                  autoping: bool,
                  loop: asyncio.AbstractEventLoop,
@@ -50,7 +60,7 @@ class ClientWebSocketResponse:
         self._closed = False
         self._closing = False
         self._close_code = None  # type: Optional[int]
-        self._timeout = timeout  # type: ClientTimeout
+        self._timeout = timeout  # type: ClientWSTimeout
         self._autoclose = autoclose
         self._autoping = autoping
         self._heartbeat = heartbeat
@@ -186,7 +196,7 @@ class ClientWebSocketResponse:
 
             while True:
                 try:
-                    with async_timeout.timeout(self._timeout.sock_close,
+                    with async_timeout.timeout(self._timeout.ws_close,
                                                loop=self._loop):
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
@@ -222,7 +232,7 @@ class ClientWebSocketResponse:
                 self._waiting = self._loop.create_future()
                 try:
                     with async_timeout.timeout(
-                            timeout or self._timeout.sock_read,
+                            timeout or self._timeout.ws_receive,
                             loop=self._loop):
                         msg = await self._reader.read()
                     self._reset_heartbeat()

@@ -4,7 +4,8 @@ import async_timeout
 import pytest
 
 import aiohttp
-from aiohttp import ClientTimeout, hdrs, web
+from aiohttp import hdrs, web
+from aiohttp.client_ws import ClientWSTimeout
 
 
 @pytest.fixture
@@ -353,7 +354,7 @@ async def test_close_timeout_sock_close_read(aiohttp_client) -> None:
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
-    timeout = ClientTimeout(sock_close=0.2)
+    timeout = ClientWSTimeout(ws_close=0.2)
     resp = await client.ws_connect('/', timeout=timeout, autoclose=False)
 
     await resp.send_bytes(b'ask')
@@ -383,7 +384,7 @@ async def test_close_timeout_deprecated(aiohttp_client) -> None:
     with pytest.warns(DeprecationWarning,
                       match="parameter 'timeout' of type 'float' "
                             "is deprecated, please use "
-                            r"'timeout=ClientTimeout\(sock_close=...\)'"
+                            r"'timeout=ClientWSTimeout\(ws_close=...\)'"
                       ):
         resp = await client.ws_connect('/', timeout=0.2, autoclose=False)
 
@@ -530,7 +531,7 @@ async def test_receive_timeout_sock_read(aiohttp_client) -> None:
     app.router.add_route('GET', '/', handler)
 
     client = await aiohttp_client(app)
-    receive_timeout = ClientTimeout(sock_close=0.1)
+    receive_timeout = ClientWSTimeout(ws_receive=0.1)
     resp = await client.ws_connect('/', timeout=receive_timeout)
 
     with pytest.raises(asyncio.TimeoutError):
@@ -556,7 +557,7 @@ async def test_receive_timeout_deprecation(aiohttp_client) -> None:
         DeprecationWarning,
         match="float parameter 'receive_timeout' "
               "is deprecated, please use parameter "
-              r"'timeout=ClientTimeout\(sock_read=...\)'"
+              r"'timeout=ClientWSTimeout\(ws_receive=...\)'"
     ):
         resp = await client.ws_connect('/', receive_timeout=0.1)
 
