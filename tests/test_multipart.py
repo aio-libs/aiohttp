@@ -1,6 +1,7 @@
 import asyncio
 import io
 import json
+import pathlib
 import zlib
 from unittest import mock
 
@@ -1266,7 +1267,7 @@ class TestMultipartWriter:
         """
         https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         """
-        with open(__file__, 'rb') as fobj:
+        with pathlib.Path(__file__).open('rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(
                     fobj,
@@ -1297,7 +1298,7 @@ class TestMultipartWriter:
         """
         https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         """
-        with open(__file__, 'rb') as fobj:
+        with pathlib.Path(__file__).open('rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(
                     fobj,
@@ -1328,7 +1329,7 @@ class TestMultipartWriter:
         """
         https://github.com/aio-libs/aiohttp/pull/3475#issuecomment-451072381
         """
-        with open(__file__, 'rb') as fobj:
+        with pathlib.Path(__file__).open('rb') as fobj:
             with aiohttp.MultipartWriter('form-data', boundary=':') as writer:
                 part = writer.append(
                     fobj,
