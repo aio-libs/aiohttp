@@ -481,9 +481,7 @@ The client session supports the context manager protocol for self closing.
                       `ClientWSTimeout(ws_receive=10.0, ws_close=10.0)` is used
                       (``10.0`` seconds for websocket to receive a complete
                       message, and ``10.0`` seconds for the websocket to close).
-                      ``None`` means no timeout will be used; only the values
-                      `ClientWSTimeout.ws_receive` and `ClientWSTimeout.ws_close`
-                      are used by websocket.
+                      ``None`` means no timeout will be used.
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
@@ -1415,13 +1413,13 @@ ClientTimeout
 
       A timeout for websocket to receive a complete message.
 
-      :class:`float`, ``None`` by default.
+      :class:`float`, ``10.0`` by default.
 
    .. attribute:: ws_close
 
       A timeout for the websocket to close.
 
-      :class:`float`, ``None`` by default.
+      :class:`float`, ``10.0`` by default.
 
    .. versionadded:: 3.5.5
 
