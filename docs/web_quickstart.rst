@@ -164,7 +164,7 @@ Resource in turn has at least one *route*.
 
 Route corresponds to handling *HTTP method* by calling *web handler*.
 
-Thus when you add a *route* the *resouce* object is created under the hood.
+Thus when you add a *route* the *resource* object is created under the hood.
 
 The library implementation **merges** all subsequent route additions
 for the same path adding the only resource for all HTTP methods.
