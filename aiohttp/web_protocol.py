@@ -549,6 +549,12 @@ class RequestHandler(BaseProtocol):
         can get exception information. Returns True if the client disconnects
         prematurely.
         """
+        if self._request_parser is not None:
+            self._request_parser.set_upgraded(False)
+            self._upgrade = False
+            if self._message_tail:
+                self._request_parser.feed_data(self._message_tail)
+                self._message_tail = b''
         try:
             prepare_meth = resp.prepare
         except AttributeError:
