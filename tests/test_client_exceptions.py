@@ -1,5 +1,7 @@
 """Tests for client_exceptions.py"""
 
+from unittest import mock
+
 import pytest
 from yarl import URL
 
@@ -22,23 +24,26 @@ def test_invalid_url() -> None:
 
 
 def test_response_default_status() -> None:
+    request_info = mock.Mock(real_url='http://example.com')
     err = client.ClientResponseError(history=None,
-                                     request_info=None)
+                                     request_info=request_info)
     assert err.status == 0
 
 
 def test_response_status() -> None:
+    request_info = mock.Mock(real_url='http://example.com')
     err = client.ClientResponseError(status=400,
                                      history=None,
-                                     request_info=None)
+                                     request_info=request_info)
     assert err.status == 400
 
 
 def test_response_deprecated_code_property() -> None:
+    request_info = mock.Mock(real_url='http://example.com')
     with pytest.warns(DeprecationWarning):
         err = client.ClientResponseError(code=400,
                                          history=None,
-                                         request_info=None)
+                                         request_info=request_info)
     with pytest.warns(DeprecationWarning):
         assert err.code == err.status
     with pytest.warns(DeprecationWarning):
