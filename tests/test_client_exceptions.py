@@ -39,10 +39,11 @@ def test_response_status() -> None:
 
 
 def test_response_deprecated_code_property() -> None:
+    request_info = mock.Mock(real_url='http://example.com')
     with pytest.warns(DeprecationWarning):
         err = client.ClientResponseError(code=400,
                                          history=None,
-                                         request_info=None)
+                                         request_info=request_info)
     with pytest.warns(DeprecationWarning):
         assert err.code == err.status
     with pytest.warns(DeprecationWarning):
