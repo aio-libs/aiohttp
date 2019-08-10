@@ -61,7 +61,8 @@ class ClientResponseError(ClientError):
         self.headers = headers
         self.history = history
 
-        super().__init__("%s, message='%s'" % (self.status, message))
+        super().__init__("%s, message='%s', url='%s" %
+                         (self.status, message, request_info.real_url))
 
 
 class ContentTypeError(ClientResponseError):
