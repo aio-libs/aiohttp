@@ -650,7 +650,7 @@ Test Client
    :param app_or_server: :class:`BaseTestServer` instance for making
                          client requests to it.
 
-                         In order to pass a :class:`aiohttp.web.Application`
+                         In order to pass an :class:`aiohttp.web.Application`
                          you need to convert it first to :class:`TestServer`
                          first with ``TestServer(app)``.
 
