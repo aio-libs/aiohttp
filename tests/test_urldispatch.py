@@ -905,7 +905,7 @@ async def test_match_info_get_info_dynamic2(router) -> None:
 
 
 def test_static_resource_get_info(router) -> None:
-    directory = pathlib.Path(aiohttp.__file__).parent
+    directory = pathlib.Path(aiohttp.__file__).parent.resolve()
     resource = router.add_static('/st', directory)
     assert resource.get_info() == {'directory': directory,
                                    'prefix': '/st'}
