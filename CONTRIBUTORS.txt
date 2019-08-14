@@ -159,6 +159,7 @@ Mitchell Ferree
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
+Nicolas Aubry
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik
