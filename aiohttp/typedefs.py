@@ -13,7 +13,12 @@ from typing import (
 )
 
 from multidict import (
-    CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr)
+    CIMultiDict,
+    CIMultiDictProxy,
+    MultiDict,
+    MultiDictProxy,
+    istr,
+)
 from yarl import URL
 
 DEFAULT_JSON_ENCODER = json.dumps
