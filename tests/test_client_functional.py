@@ -13,7 +13,7 @@ from async_generator import async_generator, yield_
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, helpers, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import TooManyRedirects
 from aiohttp.test_utils import unused_port
@@ -328,8 +328,6 @@ async def test_tcp_connector_fingerprint_fail(
 
 
 async def test_format_task_get(aiohttp_server) -> None:
-    loop = asyncio.get_event_loop()
-
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -337,7 +335,7 @@ async def test_format_task_get(aiohttp_server) -> None:
     app.router.add_route('GET', '/', handler)
     server = await aiohttp_server(app)
     client = aiohttp.ClientSession()
-    task = loop.create_task(client.get(server.make_url('/')))
+    task = helpers.create_task(client.get(server.make_url('/')))
     assert "{}".format(task).startswith("<Task pending")
     resp = await task
     resp.close()
@@ -1519,51 +1517,16 @@ async def test_POST_STREAM_DATA(aiohttp_client, fname) -> None:
     with fname.open('rb') as f:
         data_size = len(f.read())
 
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer, fname):
-            with fname.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    resp = await client.post(
-        '/', data=stream(fname), headers={'Content-Length': str(data_size)})
-    assert 200 == resp.status
-    resp.close()
-
-
-async def test_POST_STREAM_DATA_no_params(aiohttp_client, fname) -> None:
-
-    async def handler(request):
-        assert request.content_type == 'application/octet-stream'
-        content = await request.read()
+    @async_generator
+    async def gen(fname):
         with fname.open('rb') as f:
-            expected = f.read()
-            assert request.content_length == len(expected)
-            assert content == expected
-
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_post('/', handler)
-    client = await aiohttp_client(app)
-
-    with fname.open('rb') as f:
-        data_size = len(f.read())
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer):
-            with fname.open('rb') as f:
+            data = f.read(100)
+            while data:
+                await yield_(data)
                 data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
 
     resp = await client.post(
-        '/', data=stream, headers={'Content-Length': str(data_size)})
+        '/', data=gen(fname), headers={'Content-Length': str(data_size)})
     assert 200 == resp.status
     resp.close()
 
@@ -1919,6 +1882,50 @@ async def test_cookies_per_request(aiohttp_client) -> None:
     resp.close()
 
 
+async def test_cookies_redirect(aiohttp_client) -> None:
+
+    async def redirect1(request):
+        ret = web.Response(status=301, headers={'Location': '/redirect2'})
+        ret.set_cookie('c', '1')
+        return ret
+
+    async def redirect2(request):
+        ret = web.Response(status=301, headers={'Location': '/'})
+        ret.set_cookie('c', '2')
+        return ret
+
+    async def handler(request):
+        assert request.cookies.keys() == {'c'}
+        assert request.cookies['c'] == '2'
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/redirect1', redirect1)
+    app.router.add_get('/redirect2', redirect2)
+    app.router.add_get('/', handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.get('/redirect1')
+    assert 200 == resp.status
+    resp.close()
+
+
+async def test_cookies_on_empty_session_jar(aiohttp_client) -> None:
+    async def handler(request):
+        assert 'custom-cookie' in request.cookies
+        assert request.cookies['custom-cookie'] == 'abc'
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(
+        app, cookies=None)
+
+    resp = await client.get('/', cookies={'custom-cookie': 'abc'})
+    assert 200 == resp.status
+    resp.close()
+
+
 async def test_morsel_with_attributes(aiohttp_client) -> None:
     # A comment from original test:
     #
@@ -2064,19 +2071,6 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
     resp = await client.get('/redirect')
     data = await resp.read()
     assert data == body
-
-
-async def test_chunked_deprecated(aiohttp_client) -> None:
-
-    async def handler_redirect(request):
-        return web.Response(status=301)
-
-    app = web.Application()
-    app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await aiohttp_client(app)
-
-    with pytest.warns(DeprecationWarning):
-        await client.post('/', chunked=1024)
 
 
 async def test_raise_for_status(aiohttp_client) -> None:
@@ -2337,6 +2331,24 @@ async def test_aiohttp_request_context_manager(aiohttp_server) -> None:
     async with aiohttp.request('GET', server.make_url('/')) as resp:
         await resp.read()
         assert resp.status == 200
+
+
+async def test_aiohttp_request_ctx_manager_close_sess_on_error(
+        ssl_ctx, aiohttp_server) -> None:
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    cm = aiohttp.request('GET', server.make_url('/'))
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        async with cm:
+            pass
+
+    assert cm._session.closed
 
 
 async def test_aiohttp_request_ctx_manager_not_found() -> None:

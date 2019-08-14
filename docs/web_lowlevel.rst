@@ -1,9 +1,9 @@
+.. currentmodule:: aiohttp.web
+
 .. _aiohttp-web-lowlevel:
 
 Low Level Server
 ================
-
-.. currentmodule:: aiohttp.web
 
 
 This topic describes :mod:`aiohttp.web` based *low level* API.

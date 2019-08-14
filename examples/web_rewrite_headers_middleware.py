@@ -10,7 +10,6 @@ async def handler(request):
     return web.Response(text="Everything is fine")
 
 
-@web.middleware
 async def middleware(request, handler):
     try:
         response = await handler(request)

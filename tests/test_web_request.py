@@ -4,19 +4,52 @@ from collections.abc import MutableMapping
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, MultiDict
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
-from aiohttp import HttpVersion
+from aiohttp import HttpVersion, web
 from aiohttp.helpers import DEBUG
+from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import HTTPRequestEntityTooLarge
+from aiohttp.web import HTTPRequestEntityTooLarge, HTTPUnsupportedMediaType
 
 
 @pytest.fixture
 def protocol():
     return mock.Mock(_reading_paused=False)
+
+
+def test_base_ctor() -> None:
+    message = RawRequestMessage(
+        'GET', '/path/to?a=1&b=2', HttpVersion(1, 1),
+        CIMultiDictProxy(CIMultiDict()), (),
+        False, False, False, False, URL('/path/to?a=1&b=2'))
+
+    req = web.BaseRequest(message,
+                          mock.Mock(),
+                          mock.Mock(),
+                          mock.Mock(),
+                          mock.Mock(),
+                          mock.Mock())
+
+    assert 'GET' == req.method
+    assert HttpVersion(1, 1) == req.version
+    assert req.host == socket.getfqdn()
+    assert '/path/to?a=1&b=2' == req.path_qs
+    assert '/path/to' == req.path
+    assert 'a=1&b=2' == req.query_string
+    assert CIMultiDict() == req.headers
+    assert () == req.raw_headers
+
+    get = req.query
+    assert MultiDict([('a', '1'), ('b', '2')]) == get
+    # second call should return the same object
+    assert get is req.query
+
+    assert req.keep_alive
+
+    assert '__dict__' not in dir(req)
 
 
 def test_ctor() -> None:
@@ -53,11 +86,7 @@ def test_ctor() -> None:
     assert req.raw_headers == ((b'FOO', b'bar'),)
     assert req.task is req._task
 
-
-def test_deprecated_message() -> None:
-    req = make_mocked_request('GET', '/path/to?a=1&b=2')
-    with pytest.warns(DeprecationWarning):
-        assert req.message == req._message
+    assert '__dict__' not in dir(req)
 
 
 def test_doubleslashes() -> None:
@@ -513,7 +542,7 @@ def test_clone_headers_dict() -> None:
 
 
 async def test_cannot_clone_after_read(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     payload.feed_data(b'data')
     payload.feed_eof()
     req = make_mocked_request('GET', '/path', payload=payload)
@@ -523,7 +552,7 @@ async def test_cannot_clone_after_read(protocol) -> None:
 
 
 async def test_make_too_big_request(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -535,8 +564,20 @@ async def test_make_too_big_request(protocol) -> None:
     assert err.value.status_code == 413
 
 
+async def test_request_with_wrong_content_type_encoding(protocol) -> None:
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload.feed_data(b'{}')
+    payload.feed_eof()
+    headers = {'Content-Type': 'text/html; charset=test'}
+    req = make_mocked_request('POST', '/', payload=payload, headers=headers)
+
+    with pytest.raises(HTTPUnsupportedMediaType) as err:
+        await req.text()
+    assert err.value.status_code == 415
+
+
 async def test_make_too_big_request_adjust_limit(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -549,7 +590,7 @@ async def test_make_too_big_request_adjust_limit(protocol) -> None:
 
 
 async def test_multipart_formdata(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     payload.feed_data(b"""-----------------------------326931944431359\r
 Content-Disposition: form-data; name="a"\r
 \r
@@ -570,7 +611,7 @@ d\r
 
 
 async def test_make_too_big_request_limit_None(protocol) -> None:
-    payload = StreamReader(protocol)
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'
     too_large_file = large_file + b'x'
     payload.feed_data(too_large_file)
@@ -658,8 +699,40 @@ def test_eq() -> None:
     assert req1 == req1
 
 
-async def test_loop_prop() -> None:
-    loop = asyncio.get_event_loop()
-    req = make_mocked_request('GET', '/path', loop=loop)
-    with pytest.warns(DeprecationWarning):
-        assert req.loop is loop
+async def test_json(aiohttp_client) -> None:
+    async def handler(request):
+        body_text = await request.text()
+        assert body_text == '{"some": "data"}'
+        assert request.headers['Content-Type'] == 'application/json'
+        body_json = await request.json()
+        assert body_json == {'some': 'data'}
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    json_data = {'some': 'data'}
+    async with client.post('/', json=json_data) as resp:
+        assert 200 == resp.status
+
+
+async def test_json_invalid_content_type(aiohttp_client) -> None:
+    async def handler(request):
+        body_text = await request.text()
+        assert body_text == '{"some": "data"}'
+        assert request.headers['Content-Type'] == 'text/plain'
+        await request.json()  # raises HTTP 400
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    json_data = {'some': 'data'}
+    headers = {'Content-Type': 'text/plain'}
+    async with client.post('/', json=json_data, headers=headers) as resp:
+        assert 400 == resp.status
+        resp_text = await resp.text()
+        assert resp_text == ('Attempt to decode JSON with '
+                             'unexpected mimetype: text/plain')

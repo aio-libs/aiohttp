@@ -1,9 +1,9 @@
-import asyncio
 import datetime
 import os  # noqa
 import pathlib
 import pickle
 import re
+import warnings
 from collections import defaultdict
 from http.cookies import BaseCookie, Morsel, SimpleCookie  # noqa
 from math import ceil
@@ -23,7 +23,7 @@ from typing import (  # noqa
 from yarl import URL
 
 from .abc import AbstractCookieJar
-from .helpers import is_ip_address
+from .helpers import get_running_loop, is_ip_address
 from .typedefs import LooseCookies, PathLike
 
 __all__ = ('CookieJar', 'DummyCookieJar')
@@ -50,9 +50,8 @@ class CookieJar(AbstractCookieJar):
 
     MAX_TIME = 2051215261.0  # so far in future (2035-01-01)
 
-    def __init__(self, *, unsafe: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        super().__init__(loop=loop)
+    def __init__(self, *, unsafe: bool=False) -> None:
+        self._loop = get_running_loop()
         self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
@@ -188,7 +187,11 @@ class CookieJar(AbstractCookieJar):
     def filter_cookies(self, request_url: URL=URL()) -> 'BaseCookie[str]':
         """Returns this jar's cookies filtered by their attributes."""
         self._do_expiration()
-        request_url = URL(request_url)
+        if not isinstance(request_url, URL):
+            warnings.warn("The method accepts yarl.URL instances only, got {}"
+                          .format(type(request_url)),
+                          DeprecationWarning)
+            request_url = URL(request_url)
         filtered = SimpleCookie()
         hostname = request_url.raw_host or ""
         is_not_secure = request_url.scheme not in ("https", "wss")
@@ -333,10 +336,6 @@ class DummyCookieJar(AbstractCookieJar):
     It can be used with the ClientSession when no cookie processing is needed.
 
     """
-
-    def __init__(self, *,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        super().__init__(loop=loop)
 
     def __iter__(self) -> 'Iterator[Morsel[str]]':
         while False:

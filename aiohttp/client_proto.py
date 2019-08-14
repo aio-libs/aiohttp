@@ -9,7 +9,7 @@ from .client_exceptions import (
     ServerDisconnectedError,
     ServerTimeoutError,
 )
-from .helpers import BaseTimerContext
+from .helpers import BaseTimerContext, set_exception, set_result
 from .http import HttpResponseParser, RawResponseMessage
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
@@ -38,6 +38,8 @@ class ResponseHandler(BaseProtocol,
         self._read_timeout = None  # type: Optional[float]
         self._read_timeout_handle = None  # type: Optional[asyncio.TimerHandle]
         self._last_message_status_code = None
+
+        self.closed = self._loop.create_future()  # type: asyncio.Future[None]
 
     @property
     def upgraded(self) -> bool:
@@ -70,6 +72,11 @@ class ResponseHandler(BaseProtocol,
 
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         self._drop_timeout()
+
+        if exc is not None:
+            set_exception(self.closed, exc)
+        else:
+            set_result(self.closed, None)
 
         if self._payload_parser is not None:
             with suppress(Exception):

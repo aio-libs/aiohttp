@@ -1,0 +1,1 @@
+Replace ``collections.MutableMapping`` with ``collections.abc.MutableMapping`` to avoid a deprecation warning.

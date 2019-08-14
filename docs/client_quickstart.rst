@@ -1,10 +1,10 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-quickstart:
 
 ===================
  Client Quickstart
 ===================
-
-.. currentmodule:: aiohttp
 
 Eager to get started? This page gives a good introduction in how to
 get started with aiohttp client API.
@@ -60,6 +60,9 @@ Other HTTP methods are available as well::
 
    A session contains a connection pool inside. Connection reusage and
    keep-alives (both are on by default) may speed up total performance.
+
+   You may find more information about creating persistent sessions
+   in :ref:`aiohttp-persistent-session`.
 
 A session context manager usage is not mandatory
 but ``await session.close()`` method
@@ -168,7 +171,7 @@ The ``gzip`` and ``deflate`` transfer-encodings are automatically
 decoded for you.
 
 You can enable ``brotli`` transfer-encodings support,
-just install  `brotlipy <https://github.com/python-hyper/brotlipy>`_.
+just install  `Brotli <https://pypi.org/project/Brotli>`_.
 
 JSON Request
 ============
@@ -178,7 +181,7 @@ Any of session's request methods like :func:`request`,
 `json` parameter::
 
   async with aiohttp.ClientSession() as session:
-      async with session.post(url, json={'test': 'object'})
+      await session.post(url, json={'test': 'object'})
 
 
 By default session uses python's standard :mod:`json` module for
@@ -356,12 +359,6 @@ can chain get and post requests together::
    Python 3.5 has no native support for asynchronous generators, use
    ``async_generator`` library as workaround.
 
-.. deprecated:: 3.1
-
-   ``aiohttp`` still supports ``aiohttp.streamer`` decorator but this
-   approach is deprecated in favor of *asynchronous generators* as
-   shown above.
-
 
 .. _aiohttp-client-websockets:
 
@@ -400,7 +397,7 @@ multiple writer tasks which can only send data asynchronously (by
 Timeouts
 ========
 
-Timeout settings a stored in :class:`ClientTimeout` data structure.
+Timeout settings are stored in :class:`ClientTimeout` data structure.
 
 By default *aiohttp* uses a *total* 5min timeout, it means that the
 whole operation should finish in 5 minutes.

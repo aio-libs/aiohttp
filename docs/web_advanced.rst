@@ -1,10 +1,9 @@
+.. currentmodule:: aiohttp.web
+
 .. _aiohttp-web-advanced:
 
 Web Server Advanced
 ===================
-
-.. currentmodule:: aiohttp.web
-
 
 Unicode support
 ---------------
@@ -483,11 +482,17 @@ response. For example, here's a simple *middleware* which appends
 
     from aiohttp.web import middleware
 
-    @middleware
     async def middleware(request, handler):
         resp = await handler(request)
         resp.text = resp.text + ' wink'
         return resp
+
+.. warning::
+
+   As of version ``4.0.0`` "new-style" middleware is default and the
+   ``@middleware`` decorator is not required (and is deprecated), you can
+   simply remove the decorator. "Old-style" middleware (a coroutine which
+   returned a coroutine) is no longer supported.
 
 .. note::
 
@@ -531,14 +536,12 @@ The following code demonstrates middlewares execution order::
        print('Handler function called')
        return web.Response(text="Hello")
 
-   @web.middleware
    async def middleware1(request, handler):
        print('Middleware 1 called')
        response = await handler(request)
        print('Middleware 1 finished')
        return response
 
-   @web.middleware
    async def middleware2(request, handler):
        print('Middleware 2 called')
        response = await handler(request)
@@ -567,7 +570,6 @@ a JSON REST service::
 
     from aiohttp import web
 
-    @web.middleware
     async def error_middleware(request, handler):
         try:
             response = await handler(request)
@@ -586,17 +588,19 @@ a JSON REST service::
 Middleware Factory
 ^^^^^^^^^^^^^^^^^^
 
-A *middleware factory* is a function that creates a middleware with passed arguments. For example, here's a trivial *middleware factory*::
+A *middleware factory* is a function that creates a middleware with passed
+arguments. For example, here's a trivial *middleware factory*::
 
     def middleware_factory(text):
-        @middleware
         async def sample_middleware(request, handler):
             resp = await handler(request)
             resp.text = resp.text + text
             return resp
         return sample_middleware
 
-Remember that contrary to regular middlewares you need the result of a middleware factory not the function itself. So when passing a middleware factory to an app you actually need to call it::
+Note that in contrast to regular middlewares, a middleware factory should
+return the function, not the value. So when passing a middleware factory
+to the app you actually need to call it::
 
     app = web.Application(middlewares=[middleware_factory(' wink')])
 
@@ -942,7 +946,7 @@ signal handlers as shown in the example below::
 
   async def listen_to_redis(app):
       try:
-          sub = await aioredis.create_redis(('localhost', 6379), loop=app.loop)
+          sub = await aioredis.create_redis(('localhost', 6379))
           ch, *_ = await sub.subscribe('news')
           async for msg in ch.iter(encoding='utf-8'):
               # Forward message to all connected websockets:
@@ -956,7 +960,7 @@ signal handlers as shown in the example below::
 
 
   async def start_background_tasks(app):
-      app['redis_listener'] = app.loop.create_task(listen_to_redis(app))
+      app['redis_listener'] = asyncio.create_task(listen_to_redis(app))
 
 
   async def cleanup_background_tasks(app):

@@ -234,7 +234,27 @@ async def test_multipart(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=writer, headers=writer.headers)
+    resp = await client.post('/', data=writer)
+    assert 200 == resp.status
+    await resp.release()
+
+
+async def test_multipart_empty(aiohttp_client) -> None:
+    with multipart.MultipartWriter() as writer:
+        pass
+
+    async def handler(request):
+        reader = await request.multipart()
+        assert isinstance(reader, multipart.MultipartReader)
+        async for part in reader:
+            assert False, 'Unexpected part found in reader: {!r}'.format(part)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.post('/', data=writer)
     assert 200 == resp.status
     await resp.release()
 
@@ -264,7 +284,7 @@ async def test_multipart_content_transfer_encoding(aiohttp_client) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    resp = await client.post('/', data=writer, headers=writer.headers)
+    resp = await client.post('/', data=writer)
     assert 200 == resp.status
     await resp.release()
 
@@ -672,8 +692,6 @@ async def test_empty_content_for_query_without_body(aiohttp_client) -> None:
     async def handler(request):
         assert not request.body_exists
         assert not request.can_read_body
-        with pytest.warns(DeprecationWarning):
-            assert not request.has_body
         return web.Response()
 
     app = web.Application()
@@ -689,8 +707,6 @@ async def test_empty_content_for_query_with_body(aiohttp_client) -> None:
     async def handler(request):
         assert request.body_exists
         assert request.can_read_body
-        with pytest.warns(DeprecationWarning):
-            assert request.has_body
         body = await request.read()
         return web.Response(body=body)
 
@@ -791,37 +807,6 @@ async def test_response_with_async_gen(aiohttp_client, fname) -> None:
     assert resp.headers.get('Content-Length') == str(len(resp_data))
 
 
-async def test_response_with_streamer(aiohttp_client, fname) -> None:
-
-    with fname.open('rb') as f:
-        data = f.read()
-
-    data_size = len(data)
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer, f_name):
-            with f_name.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    async def handler(request):
-        headers = {'Content-Length': str(data_size)}
-        return web.Response(body=stream(fname), headers=headers)
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    resp_data = await resp.read()
-    assert resp_data == data
-    assert resp.headers.get('Content-Length') == str(len(resp_data))
-
-
 async def test_response_with_async_gen_no_params(aiohttp_client,
                                                  fname) -> None:
 
@@ -841,37 +826,6 @@ async def test_response_with_async_gen_no_params(aiohttp_client,
     async def handler(request):
         headers = {'Content-Length': str(data_size)}
         return web.Response(body=stream(), headers=headers)
-
-    app = web.Application()
-    app.router.add_get('/', handler)
-    client = await aiohttp_client(app)
-
-    resp = await client.get('/')
-    assert 200 == resp.status
-    resp_data = await resp.read()
-    assert resp_data == data
-    assert resp.headers.get('Content-Length') == str(len(resp_data))
-
-
-async def test_response_with_streamer_no_params(aiohttp_client, fname) -> None:
-
-    with fname.open('rb') as f:
-        data = f.read()
-
-    data_size = len(data)
-
-    with pytest.warns(DeprecationWarning):
-        @aiohttp.streamer
-        async def stream(writer):
-            with fname.open('rb') as f:
-                data = f.read(100)
-                while data:
-                    await writer.write(data)
-                    data = f.read(100)
-
-    async def handler(request):
-        headers = {'Content-Length': str(data_size)}
-        return web.Response(body=stream, headers=headers)
 
     app = web.Application()
     app.router.add_get('/', handler)
@@ -1273,35 +1227,39 @@ async def test_subapp_cannot_add_app_in_handler(aiohttp_client) -> None:
     assert resp.status == 500
 
 
-async def test_subapp_middlewares(aiohttp_client) -> None:
+async def test_old_style_subapp_middlewares(aiohttp_client) -> None:
     order = []
 
     async def handler(request):
         return web.Response(text='OK')
 
-    async def middleware_factory(app, handler):
-
-        async def middleware(request):
-            order.append((1, app))
+    with pytest.warns(
+        DeprecationWarning, match='Middleware decorator is deprecated'
+    ):
+        @web.middleware
+        async def middleware(request, handler):
+            order.append((1, request.app['name']))
             resp = await handler(request)
             assert 200 == resp.status
-            order.append((2, app))
+            order.append((2, request.app['name']))
             return resp
-        return middleware
 
-    app = web.Application(middlewares=[middleware_factory])
-    subapp1 = web.Application(middlewares=[middleware_factory])
-    subapp2 = web.Application(middlewares=[middleware_factory])
+    app = web.Application(middlewares=[middleware])
+    subapp1 = web.Application(middlewares=[middleware])
+    subapp2 = web.Application(middlewares=[middleware])
+    app['name'] = 'app'
+    subapp1['name'] = 'subapp1'
+    subapp2['name'] = 'subapp2'
+
     subapp2.router.add_get('/to', handler)
-    with pytest.warns(DeprecationWarning):
-        subapp1.add_subapp('/b/', subapp2)
-        app.add_subapp('/a/', subapp1)
-        client = await aiohttp_client(app)
+    subapp1.add_subapp('/b/', subapp2)
+    app.add_subapp('/a/', subapp1)
+    client = await aiohttp_client(app)
 
     resp = await client.get('/a/b/to')
     assert resp.status == 200
-    assert [(1, app), (1, subapp1), (1, subapp2),
-            (2, subapp2), (2, subapp1), (2, app)] == order
+    assert [(1, 'app'), (1, 'subapp1'), (1, 'subapp2'),
+            (2, 'subapp2'), (2, 'subapp1'), (2, 'app')] == order
 
 
 async def test_subapp_on_response_prepare(aiohttp_client) -> None:
@@ -1410,7 +1368,6 @@ async def test_subapp_middleware_context(aiohttp_client,
     values = []
 
     def show_app_context(appname):
-        @web.middleware
         async def middleware(request, handler):
             values.append('{}: {}'.format(
                 appname, request.app['my_value']))
@@ -1603,7 +1560,7 @@ async def test_response_with_bodypart(aiohttp_client) -> None:
                     {'name': 'file', 'filename': 'file', 'filename*': 'file'})
 
 
-async def test_response_with_bodypart_named(aiohttp_client, tmpdir) -> None:
+async def test_response_with_bodypart_named(aiohttp_client, tmp_path) -> None:
 
     async def handler(request):
         reader = await request.multipart()
@@ -1614,9 +1571,9 @@ async def test_response_with_bodypart_named(aiohttp_client, tmpdir) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    f = tmpdir.join('foobar.txt')
+    f = tmp_path / 'foobar.txt'
     f.write_text('test', encoding='utf8')
-    data = {'file': open(str(f), 'rb')}
+    data = {'file': f.open('rb')}
     resp = await client.post('/', data=data)
 
     assert 200 == resp.status
@@ -1868,17 +1825,17 @@ async def test_request_tracing(aiohttp_server) -> None:
     await client.close()
 
 
-async def test_return_http_exception_deprecated(aiohttp_client) -> None:
+async def test_raise_http_exception(aiohttp_client) -> None:
 
     async def handler(request):
-        return web.HTTPForbidden()
+        raise web.HTTPForbidden()
 
     app = web.Application()
     app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
 
-    with pytest.warns(DeprecationWarning):
-        await client.get('/')
+    resp = await client.get('/')
+    assert resp.status == 403
 
 
 async def test_request_path(aiohttp_client) -> None:

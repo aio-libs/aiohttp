@@ -69,8 +69,8 @@ other resource you want to share between handlers.
         return web.Response(status=200, text='ok')
 
 
-    async def init_app(loop):
-        app = Application(loop=loop)
+    async def init_app():
+        app = Application()
         db = await create_connection(user='user', password='123')
         app['db'] = db
         app.router.add_get('/', go)
@@ -146,7 +146,7 @@ peers. ::
 
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        task = request.app.loop.create_task(
+        task = asyncio.create_task(
             read_subscription(ws,
                               request.app['redis']))
         try:
@@ -218,7 +218,7 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
 
     def main():
         loop = asyncio.get_event_loop()
-        app = web.Application(loop=loop)
+        app = web.Application()
         app.router.add_route('GET', '/echo', echo_handler)
         app.router.add_route('POST', '/logout', logout_handler)
         app['websockets'] = defaultdict(set)
@@ -231,7 +231,7 @@ How do I make a request from a specific IP address?
 If your system has several IP interfaces, you may choose one which will
 be used used to bind a socket locally::
 
-    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0), loop=loop)
+    conn = aiohttp.TCPConnector(local_addr=('127.0.0.1', 0))
     async with aiohttp.ClientSession(connector=conn) as session:
         ...
 
@@ -273,7 +273,7 @@ All backward incompatible changes are explicitly marked in
 How do I enable gzip compression globally for my entire application?
 --------------------------------------------------------------------
 
-It's impossible. Choosing what to compress and what not to compress is
+It's impossible. Choosing what to compress and what not to compress
 is a tricky matter.
 
 If you need global compression, write a custom middleware. Or
@@ -353,7 +353,6 @@ response::
         # don't do this!
         cached = web.Response(status=200, text='Hi, I am cached!')
 
-        @web.middleware
         async def middleware(request, handler):
             # ignoring response for the sake of this example
             _res = handler(request)

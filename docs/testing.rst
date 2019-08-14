@@ -1,9 +1,9 @@
+.. module:: aiohttp.test_utils
+
 .. _aiohttp-testing:
 
 Testing
 =======
-
-.. currentmodule:: aiohttp.test_utils
 
 Testing aiohttp web servers
 ---------------------------
@@ -52,7 +52,7 @@ The Test Client and Servers
 *aiohttp* test utils provides a scaffolding for testing aiohttp-based
 web servers.
 
-They are consist of two parts: running test server and making HTTP
+They consist of two parts: running test server and making HTTP
 requests to this server.
 
 :class:`~aiohttp.test_utils.TestServer` runs :class:`aiohttp.web.Application`
@@ -81,7 +81,7 @@ A simple would be::
     async def hello(request):
         return web.Response(text='Hello, world')
 
-    async def test_hello(aiohttp_client, loop):
+    async def test_hello(aiohttp_client):
         app = web.Application()
         app.router.add_get('/', hello)
         client = await aiohttp_client(app)
@@ -150,7 +150,7 @@ Pytest tooling has the following fixtures:
    .. versionadded:: 3.0
 
    *kwargs* are parameters passed to
-                  :meth:`aiohttp.web.Application.make_handler`
+                  :meth:`aiohttp.web.AppRunner`
 
    .. versionchanged:: 3.0
    .. deprecated:: 3.2
@@ -577,10 +577,7 @@ for accessing to the server.
 
       :class:`asyncio.AbstractServer` used for managing accepted connections.
 
-   .. comethod:: start_server(loop=None, **kwargs)
-
-      :param loop: the event_loop to use
-      :type loop: asyncio.AbstractEventLoop
+   .. comethod:: start_server(**kwargs)
 
       Start a test server.
 
@@ -644,7 +641,7 @@ for accessing to the server.
 Test Client
 ~~~~~~~~~~~
 
-.. class:: TestClient(app_or_server, *, loop=None, \
+.. class:: TestClient(app_or_server, *, \
                       scheme='http', host='127.0.0.1', \
                       cookie_jar=None, **kwargs)
 
@@ -653,7 +650,7 @@ Test Client
    :param app_or_server: :class:`BaseTestServer` instance for making
                          client requests to it.
 
-                         In order to pass a :class:`aiohttp.web.Application`
+                         In order to pass an :class:`aiohttp.web.Application`
                          you need to convert it first to :class:`TestServer`
                          first with ``TestServer(app)``.
 
@@ -662,8 +659,6 @@ Test Client
                       option.
 
    :param str scheme: HTTP scheme, non-protected ``"http"`` by default.
-
-   :param asyncio.AbstractEventLoop loop: the event_loop to use
 
    :param str host: a host for TCP socket, IPv4 *local host*
       (``'127.0.0.1'``) by default.

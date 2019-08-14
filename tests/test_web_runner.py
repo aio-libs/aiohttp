@@ -5,6 +5,7 @@ import signal
 import pytest
 
 from aiohttp import web
+from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import get_unused_port_socket
 
 
@@ -100,17 +101,88 @@ def test_non_app() -> None:
         web.AppRunner(object())
 
 
-@pytest.mark.skipif(platform.system() == "Windows",
-                    reason="Unix socket support is required")
-async def test_addresses(make_runner, shorttmpdir) -> None:
+def test_app_handler_args() -> None:
+    app = web.Application(handler_args={'test': True})
+    runner = web.AppRunner(app)
+    assert runner._kwargs == {'access_log_class': web.AccessLogger,
+                              'test': True}
+
+
+async def test_app_make_handler_access_log_class_bad_type1() -> None:
+    class Logger:
+        pass
+
+    app = web.Application()
+
+    with pytest.raises(TypeError):
+        web.AppRunner(app, access_log_class=Logger)
+
+
+async def test_app_make_handler_access_log_class_bad_type2() -> None:
+    class Logger:
+        pass
+
+    app = web.Application(handler_args={'access_log_class': Logger})
+
+    with pytest.raises(TypeError):
+        web.AppRunner(app)
+
+
+async def test_app_make_handler_access_log_class1() -> None:
+
+    class Logger(AbstractAccessLogger):
+
+        def log(self, request, response, time):
+            pass
+
+    app = web.Application()
+    runner = web.AppRunner(app, access_log_class=Logger)
+    assert runner._kwargs['access_log_class'] is Logger
+
+
+async def test_app_make_handler_access_log_class2() -> None:
+
+    class Logger(AbstractAccessLogger):
+
+        def log(self, request, response, time):
+            pass
+
+    app = web.Application(handler_args={'access_log_class': Logger})
+    runner = web.AppRunner(app)
+    assert runner._kwargs['access_log_class'] is Logger
+
+
+async def test_addresses(make_runner, unix_sockname) -> None:
     _sock = get_unused_port_socket('127.0.0.1')
     runner = make_runner()
     await runner.setup()
     tcp = web.SockSite(runner, _sock)
     await tcp.start()
-    path = str(shorttmpdir / 'tmp.sock')
-    unix = web.UnixSite(runner, path)
+    unix = web.UnixSite(runner, unix_sockname)
     await unix.start()
     actual_addrs = runner.addresses
     expected_host, expected_post = _sock.getsockname()[:2]
-    assert actual_addrs == [(expected_host, expected_post), path]
+    assert actual_addrs == [(expected_host, expected_post), unix_sockname]
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_wrong_loop(app, pipe_name) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    with pytest.raises(RuntimeError):
+        web.NamedPipeSite(runner, pipe_name)
+
+
+@pytest.mark.skipif(platform.system() != "Windows",
+                    reason="Proactor Event loop present only in Windows")
+async def test_named_pipe_runner_proactor_loop(
+    proactor_loop,
+    app,
+    pipe_name
+) -> None:
+    runner = web.AppRunner(app)
+    await runner.setup()
+    pipe = web.NamedPipeSite(runner, pipe_name)
+    await pipe.start()
+    await runner.cleanup()
