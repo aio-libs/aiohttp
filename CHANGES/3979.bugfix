@@ -1,0 +1,1 @@
+Prevent ResponseHandler to parse unexpected payloads.
