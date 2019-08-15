@@ -8,7 +8,7 @@ from aiohttp import WSMsgType, signals
 from aiohttp.log import ws_logger
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
+from aiohttp.web import HTTPBadRequest, WebSocketResponse
 from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
 
 
@@ -175,12 +175,6 @@ def test_can_prepare_unknown_protocol(make_request) -> None:
     assert WebSocketReady(True, None) == ws.can_prepare(req)
 
 
-def test_can_prepare_invalid_method(make_request) -> None:
-    req = make_request('POST', '/')
-    ws = WebSocketResponse()
-    assert WebSocketReady(False, None) == ws.can_prepare(req)
-
-
 def test_can_prepare_without_upgrade(make_request) -> None:
     req = make_request('GET', '/',
                        headers=CIMultiDict({}))
@@ -274,11 +268,11 @@ async def test_close_idempotent(make_request) -> None:
     assert not (await ws.close(code=2, message='message2'))
 
 
-async def test_prepare_invalid_method(make_request) -> None:
+async def test_prepare_post_method_ok(make_request) -> None:
     req = make_request('POST', '/')
     ws = WebSocketResponse()
-    with pytest.raises(HTTPMethodNotAllowed):
-        await ws.prepare(req)
+    await ws.prepare(req)
+    assert ws.prepared
 
 
 async def test_prepare_without_upgrade(make_request) -> None:
