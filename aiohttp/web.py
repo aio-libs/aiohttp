@@ -291,7 +291,7 @@ async def _run_app(app: Union[Application, Awaitable[Application]], *,
                    handle_signals: bool=True,
                    reuse_address: Optional[bool]=None,
                    reuse_port: Optional[bool]=None) -> None:
-    # A internal function to actually do all dirty job for application running
+    # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):
         app = await app  # type: ignore
 
