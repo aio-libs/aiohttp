@@ -5,8 +5,8 @@ update_configs:
     directory: "/"
     update_schedule: "live"
     target_branch: "master"
-  # Keep 3.5 branch up to date
+  # Keep 3.6 branch up to date
   - package_manager: "python"
     directory: "/"
-    update_schedule: "weekly"
-    target_branch: "3.5"
+    update_schedule: "live"
+    target_branch: "3.6"
