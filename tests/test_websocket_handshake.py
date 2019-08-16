@@ -32,13 +32,6 @@ def gen_ws_headers(protocols='', compress=0, extension_text='',
     return hdrs, key
 
 
-async def test_not_get() -> None:
-    ws = web.WebSocketResponse()
-    req = make_mocked_request('POST', '/')
-    with pytest.raises(web.HTTPMethodNotAllowed):
-        await ws.prepare(req)
-
-
 async def test_no_upgrade() -> None:
     ws = web.WebSocketResponse()
     req = make_mocked_request('GET', '/')
