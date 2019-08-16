@@ -19,7 +19,11 @@ async def test_simple_server(aiohttp_raw_server, aiohttp_client) -> None:
 
 
 async def test_raw_server_not_http_exception(aiohttp_raw_server,
-                                             aiohttp_client):
+                                             aiohttp_client,
+                                             loop):
+    # disable debug mode not to print traceback
+    loop.set_debug(False)
+
     exc = RuntimeError("custom runtime error")
 
     async def handler(request):
@@ -125,7 +129,12 @@ async def test_raw_server_not_http_exception_debug(aiohttp_raw_server,
         exc_info=exc)
 
 
-async def test_raw_server_html_exception(aiohttp_raw_server, aiohttp_client):
+async def test_raw_server_html_exception(aiohttp_raw_server,
+                                         aiohttp_client,
+                                         loop):
+    # disable debug mode not to print traceback
+    loop.set_debug(False)
+
     exc = RuntimeError("custom runtime error")
 
     async def handler(request):
