@@ -456,7 +456,7 @@ The client session supports the context manager protocol for self closing.
 
    .. comethod:: ws_connect(url, *, method='GET', \
                             protocols=(), \
-                            timeout=10.0,\
+                            timeout=sentinel,\
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
@@ -478,9 +478,8 @@ The client session supports the context manager protocol for self closing.
 
       :param timeout: a :class:`ClientWSTimeout` timeout for websocket.
                       By default, the value
-                      `ClientWSTimeout(ws_receive=10.0, ws_close=10.0)` is used
-                      (``10.0`` seconds for websocket to receive a complete
-                      message, and ``10.0`` seconds for the websocket to close).
+                      `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
+                      (``10.0`` seconds for the websocket to close).
                       ``None`` means no timeout will be used.
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
@@ -1413,7 +1412,7 @@ ClientTimeout
 
       A timeout for websocket to receive a complete message.
 
-      :class:`float`, ``10.0`` by default.
+      :class:`float`, ``None`` by default.
 
    .. attribute:: ws_close
 
@@ -1421,7 +1420,7 @@ ClientTimeout
 
       :class:`float`, ``10.0`` by default.
 
-   .. versionadded:: 3.5.5
+   .. versionadded:: 4.0
 
 RequestInfo
 ^^^^^^^^^^^

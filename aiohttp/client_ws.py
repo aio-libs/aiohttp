@@ -32,8 +32,7 @@ class ClientWSTimeout:
     ws_close = attr.ib(type=Optional[float], default=None)
 
 
-# for web socket the default timeouts are 10 sec
-DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=10.0, ws_close=10.0)
+DEFAULT_WS_CLIENT_TIMEOUT = ClientWSTimeout(ws_receive=None, ws_close=10.0)
 
 
 class ClientWebSocketResponse:
