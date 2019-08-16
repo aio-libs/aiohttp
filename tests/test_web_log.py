@@ -4,6 +4,7 @@ from unittest import mock
 
 import pytest
 
+import aiohttp
 from aiohttp.abc import AbstractAccessLogger
 from aiohttp.web_log import AccessLogger
 
@@ -18,9 +19,9 @@ def test_access_logger_format() -> None:
     assert expected == access_logger._log_format
 
 
-@pytest.mark.skip(
+@pytest.mark.skipif(
     IS_PYPY,
-    """
+    reason="""
     Because of patching :py:class:`datetime.datetime`, under PyPy it
     fails in :py:func:`isinstance` call in
     :py:meth:`datetime.datetime.__sub__` (called from
@@ -43,7 +44,7 @@ def test_access_logger_format() -> None:
 )
 def test_access_logger_atoms(mocker) -> None:
     utcnow = datetime.datetime(1843, 1, 1, 0, 30)
-    mock_datetime = mocker.patch("aiohttp.datetime.datetime")
+    mock_datetime = mocker.patch("datetime.datetime")
     mock_getpid = mocker.patch("os.getpid")
     mock_datetime.utcnow.return_value = utcnow
     mock_getpid.return_value = 42
@@ -52,7 +53,7 @@ def test_access_logger_atoms(mocker) -> None:
     access_logger = AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
                         method="GET", path_qs="/path",
-                        version=(1, 1),
+                        version=aiohttp.HttpVersion(1, 1),
                         remote="127.0.0.2")
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
@@ -64,9 +65,9 @@ def test_access_logger_atoms(mocker) -> None:
         'process_id': '<42>',
         'remote_address': '127.0.0.2',
         'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
-        'request_time': 3,
+        'request_time': '3',
         'request_time_frac': '3.141593',
-        'request_time_micro': 3141593,
+        'request_time_micro': '3141593',
         'response_size': 42,
         'response_status': 200,
         'request_header': {'H1': 'a', 'H2': 'b'},
