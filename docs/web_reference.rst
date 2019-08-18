@@ -850,6 +850,33 @@ Response
       *Content-Length* HTTP header.
 
 
+FileResponse
+^^^^^^^^^^^^^^
+
+.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None)
+
+   The response class used to send files, inherited from :class:`StreamResponse`.
+
+   Supports the ``Content-Range`` and ``If-Range`` HTTP Headers in requests.
+
+   The actual :attr:`body` sending happens in overridden :meth:`~StreamResponse.prepare`.
+
+   :param path: Path to file. Accepts both :class:`str` and :class:`pathlib.Path`.
+   :param int chunk_size: Chunk size in bytes which will be passed into
+                          :meth:`io.RawIOBase.read` in the event that the
+                          ``sendfile`` system call is not supported.
+
+   :param int status: HTTP status code, ``200`` by default.
+
+   :param str reason: HTTP reason. If param is ``None`` reason will be
+                      calculated basing on *status*
+                      parameter. Otherwise pass :class:`str` with
+                      arbitrary *status* explanation..
+
+   :param collections.abc.Mapping headers: HTTP headers that should be added to
+                           response's ones. The ``Content-Type`` response header
+                           will be overridden if provided.
+
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
 
