@@ -2061,11 +2061,11 @@ async def test_redirect_to_absolute_url(aiohttp_client) -> None:
 async def test_redirect_without_location_header(aiohttp_client) -> None:
     body = b'redirect'
 
-    async def handler(request):
+    async def handler_redirect(request):
         return web.Response(status=301, body=body)
 
     app = web.Application()
-    app.router.add_route('GET', '/redirect', handler)
+    app.router.add_route('GET', '/redirect', handler_redirect)
     client = await aiohttp_client(app)
 
     resp = await client.get('/redirect')
