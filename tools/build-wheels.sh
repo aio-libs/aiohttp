@@ -82,6 +82,7 @@ for PYTHON in ${PYTHON_VERSIONS}; do
 
     echo
     echo -n "Test $PYTHON: "
+    yum install -y libssh-devel
     /opt/python/${PYTHON}/bin/python -c "import platform; print('Building wheel for {platform} platform.'.format(platform=platform.platform()))"
     /opt/python/${PYTHON}/bin/pip install -r ${WORKDIR_PATH}/requirements/ci-wheel.txt
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f "file://${WHEELHOUSE_DIR}"
