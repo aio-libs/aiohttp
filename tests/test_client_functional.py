@@ -2152,7 +2152,7 @@ async def test_request_raise_for_status_enabled(aiohttp_server) -> None:
             assert False, "never executed"  # pragma: no cover
 
 
-async def test_raise_for_status_coro(aiohttp_client) -> None:
+async def test_session_raise_for_status_coro(aiohttp_client) -> None:
 
     async def handle(request):
         return web.Response(text='ok')
@@ -2172,6 +2172,33 @@ async def test_raise_for_status_coro(aiohttp_client) -> None:
     await client.get('/')
     assert raise_for_status_called == 1
     await client.get('/', raise_for_status=True)
+    assert raise_for_status_called == 1  # custom_r4s not called again
+    await client.get('/', raise_for_status=False)
+    assert raise_for_status_called == 1  # custom_r4s not called again
+
+
+async def test_request_raise_for_status_coro(aiohttp_client) -> None:
+
+    async def handle(request):
+        return web.Response(text='ok')
+
+    app = web.Application()
+    app.router.add_route('GET', '/', handle)
+
+    raise_for_status_called = 0
+
+    async def custom_r4s(response):
+        nonlocal raise_for_status_called
+        raise_for_status_called += 1
+        assert response.status == 200
+        assert response.request_info.method == 'GET'
+
+    client = await aiohttp_client(app)
+    await client.get('/', raise_for_status=custom_r4s)
+    assert raise_for_status_called == 1
+    await client.get('/', raise_for_status=True)
+    assert raise_for_status_called == 1  # custom_r4s not called again
+    await client.get('/', raise_for_status=False)
     assert raise_for_status_called == 1  # custom_r4s not called again
 
 

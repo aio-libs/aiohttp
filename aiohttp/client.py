@@ -11,6 +11,7 @@ import warnings
 from types import SimpleNamespace, TracebackType
 from typing import (  # noqa
     Any,
+    Awaitable,
     Callable,
     Coroutine,
     Generator,
@@ -193,7 +194,7 @@ class ClientSession:
                  version: HttpVersion=http.HttpVersion11,
                  cookie_jar: Optional[AbstractCookieJar]=None,
                  connector_owner: bool=True,
-                 raise_for_status: Union[bool, Callable[[ClientResponse], None]]=False,  # noqa
+                 raise_for_status: Union[bool, Callable[[ClientResponse], Awaitable[None]]]=False,  # noqa
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
@@ -300,7 +301,7 @@ class ClientSession:
             compress: Optional[str]=None,
             chunked: Optional[bool]=None,
             expect100: bool=False,
-            raise_for_status: Union[None, bool, Callable[[ClientResponse], None]]=None,  # noqa
+            raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]=None,  # noqa
             read_until_eof: bool=True,
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
@@ -547,6 +548,8 @@ class ClientSession:
             if raise_for_status is True:
                 resp.raise_for_status()
             elif raise_for_status is not False:
+                # raise_for_status is not a bool so it must be a coroutine,
+                # however mypy is unable to infer that
                 await raise_for_status(resp)  # type: ignore
 
             # register connection
