@@ -280,10 +280,10 @@ same request and to the same :class:`TraceConfig` class, perhaps::
 
     async def on_request_start(
             session, trace_config_ctx, params):
-        trace_config_ctx.start = session.loop.time()
+        trace_config_ctx.start = asyncio.get_event_loop().time()
 
     async def on_request_end(session, trace_config_ctx, params):
-        elapsed = session.loop.time() - trace_config_ctx.start
+        elapsed = asyncio.get_event_loop().time() - trace_config_ctx.start
         print("Request took {}".format(elapsed))
 
 

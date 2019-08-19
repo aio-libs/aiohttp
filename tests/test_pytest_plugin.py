@@ -26,21 +26,21 @@ async def hello(request):
     return web.Response(body=b'Hello, world')
 
 
-def create_app(loop=None):
+async def create_app():
     app = web.Application()
     app.router.add_route('GET', '/', hello)
     return app
 
 
 async def test_hello(aiohttp_client) -> None:
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(await create_app())
     resp = await client.get('/')
     assert resp.status == 200
     text = await resp.text()
     assert 'Hello, world' in text
 
 
-async def test_hello_from_app(aiohttp_client, loop) -> None:
+async def test_hello_from_app(aiohttp_client) -> None:
     app = web.Application()
     app.router.add_get('/', hello)
     client = await aiohttp_client(app)
@@ -50,24 +50,12 @@ async def test_hello_from_app(aiohttp_client, loop) -> None:
     assert 'Hello, world' in text
 
 
-async def test_hello_with_loop(aiohttp_client, loop) -> None:
-    client = await aiohttp_client(create_app)
+async def test_hello_with_loop(aiohttp_client) -> None:
+    client = await aiohttp_client(await create_app())
     resp = await client.get('/')
     assert resp.status == 200
     text = await resp.text()
     assert 'Hello, world' in text
-
-
-async def test_set_args(aiohttp_client, loop) -> None:
-    with pytest.raises(AssertionError):
-        app = web.Application()
-        await aiohttp_client(app, 1, 2, 3)
-
-
-async def test_set_keyword_args(aiohttp_client, loop) -> None:
-    app = web.Application()
-    with pytest.raises(TypeError):
-        await aiohttp_client(app, param=1)
 
 
 async def test_noop() -> None:
@@ -84,7 +72,7 @@ async def previous(request):
         return web.Response(body='value: {}'.format(v).encode())
 
 
-def create_stateful_app(loop):
+def create_stateful_app():
     app = web.Application()
     app.router.add_route('*', '/', previous)
     return app
@@ -92,28 +80,7 @@ def create_stateful_app(loop):
 
 @pytest.fixture
 def cli(loop, aiohttp_client):
-    return loop.run_until_complete(aiohttp_client(create_stateful_app))
-
-
-async def test_set_value(cli) -> None:
-    resp = await cli.post('/', data={'value': 'foo'})
-    assert resp.status == 200
-    text = await resp.text()
-    assert text == 'thanks for the data'
-    assert cli.server.app['value'] == 'foo'
-
-
-async def test_get_value(cli) -> None:
-    resp = await cli.get('/')
-    assert resp.status == 200
-    text = await resp.text()
-    assert text == 'value: unknown'
-    with pytest.warns(DeprecationWarning):
-        cli.server.app['value'] = 'bar'
-    resp = await cli.get('/')
-    assert resp.status == 200
-    text = await resp.text()
-    assert text == 'value: bar'
+    return loop.run_until_complete(aiohttp_client(create_stateful_app()))
 
 
 def test_noncoro() -> None:
@@ -122,16 +89,17 @@ def test_noncoro() -> None:
 
 async def test_failed_to_create_client(aiohttp_client) -> None:
 
-    def make_app(loop):
+    def make_app():
         raise RuntimeError()
 
     with pytest.raises(RuntimeError):
-        await aiohttp_client(make_app)
+        await aiohttp_client(make_app())
 
 
 async def test_custom_port_aiohttp_client(aiohttp_client, aiohttp_unused_port):
     port = aiohttp_unused_port()
-    client = await aiohttp_client(create_app, server_kwargs={'port': port})
+    client = await aiohttp_client(await create_app(),
+                                  server_kwargs={'port': port})
     assert client.port == port
     resp = await client.get('/')
     assert resp.status == 200
@@ -140,7 +108,7 @@ async def test_custom_port_aiohttp_client(aiohttp_client, aiohttp_unused_port):
 
 
 async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
-    app = create_app()
+    app = await create_app()
     port = aiohttp_unused_port()
     server = await aiohttp_server(app, port=port)
     assert server.port == port
@@ -148,7 +116,7 @@ async def test_custom_port_test_server(aiohttp_server, aiohttp_unused_port):
 """)
     testdir.makeconftest(CONFTEST)
     result = testdir.runpytest('-p', 'no:sugar', '--aiohttp-loop=pyloop')
-    result.assert_outcomes(passed=12)
+    result.assert_outcomes(passed=8)
 
 
 def test_warning_checks(testdir) -> None:
@@ -187,7 +155,7 @@ async def hello(request):
     return web.Response(body=b'Hello, world')
 
 
-def create_app(loop):
+def create_app():
     app = web.Application()
     app.router.add_route('GET', '/', hello)
     return app
@@ -195,7 +163,7 @@ def create_app(loop):
 
 @pytest.fixture
 async def cli(aiohttp_client):
-    client = await aiohttp_client(create_app)
+    client = await aiohttp_client(create_app())
     return client
 
 
@@ -252,15 +220,15 @@ async def hello(request):
     return web.Response(body=b'Hello, world')
 
 
-def create_app(loop):
+def create_app():
     app = web.Application()
     app.router.add_route('GET', '/', hello)
     return app
 
 
 @pytest.fixture
-async def cli(aiohttp_client):
-    yield await aiohttp_client(create_app)
+async def cli(aiohttp_client, loop):
+    yield await aiohttp_client(create_app())
     canary()
 
 

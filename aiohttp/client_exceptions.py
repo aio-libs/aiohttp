@@ -1,7 +1,6 @@
 """HTTP related errors."""
 
 import asyncio
-import warnings
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from .typedefs import _CIMultiDict
@@ -50,44 +49,20 @@ class ClientResponseError(ClientError):
 
     def __init__(self, request_info: RequestInfo,
                  history: Tuple[ClientResponse, ...], *,
-                 code: Optional[int]=None,
                  status: Optional[int]=None,
                  message: str='',
                  headers: Optional[_CIMultiDict]=None) -> None:
         self.request_info = request_info
-        if code is not None:
-            if status is not None:
-                raise ValueError(
-                    "Both code and status arguments are provided; "
-                    "code is deprecated, use status instead")
-            warnings.warn("code argument is deprecated, use status instead",
-                          DeprecationWarning,
-                          stacklevel=2)
         if status is not None:
             self.status = status
-        elif code is not None:
-            self.status = code
         else:
             self.status = 0
         self.message = message
         self.headers = headers
         self.history = history
 
-        super().__init__("%s, message='%s'" % (self.status, message))
-
-    @property
-    def code(self) -> int:
-        warnings.warn("code property is deprecated, use status instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self.status
-
-    @code.setter
-    def code(self, value: int) -> None:
-        warnings.warn("code property is deprecated, use status instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-        self.status = value
+        super().__init__("%s, message='%s', url='%s" %
+                         (self.status, message, request_info.real_url))
 
 
 class ContentTypeError(ClientResponseError):

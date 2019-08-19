@@ -3,8 +3,8 @@ import functools
 import logging
 import os
 import re
+import time as time_mod
 from collections import namedtuple
-from time import timezone
 from typing import Callable, Dict, Iterable, List, Tuple  # noqa
 
 from .abc import AbstractAccessLogger
@@ -150,7 +150,7 @@ class AccessLogger(AbstractAccessLogger):
     def _format_t(request: BaseRequest,
                   response: StreamResponse,
                   time: float) -> str:
-        tz = datetime.timezone(datetime.timedelta(seconds=-timezone))
+        tz = datetime.timezone(datetime.timedelta(seconds=-time_mod.timezone))
         now = datetime.datetime.now(tz)
         start_time = now - datetime.timedelta(seconds=time)
         return start_time.strftime('[%d/%b/%Y:%H:%M:%S %z]')

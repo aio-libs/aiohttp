@@ -576,7 +576,8 @@ cdef class HttpResponseParser(HttpParser):
         if self._buf:
             self._reason = self._buf.decode('utf-8', 'surrogateescape')
             PyByteArray_Resize(self._buf, 0)
-
+        else:
+            self._reason = self._reason or ''
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data

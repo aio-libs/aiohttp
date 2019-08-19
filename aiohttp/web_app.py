@@ -22,20 +22,16 @@ from typing import (  # noqa
     cast,
 )
 
+from typing_extensions import final
+
 from . import hdrs
-from .abc import AbstractAccessLogger, AbstractMatchInfo, AbstractStreamWriter
 from .frozenlist import FrozenList
-from .http_parser import RawRequestMessage
 from .log import web_logger
 from .signals import Signal
-from .streams import StreamReader
-from .web_log import AccessLogger
 from .web_middlewares import _fix_request_current_app
-from .web_protocol import RequestHandler
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_routedef import AbstractRouteDef
-from .web_server import Server
 from .web_urldispatcher import (
     AbstractResource,
     Domain,
@@ -68,6 +64,7 @@ else:
     _Subapps = List
 
 
+@final
 class Application(MutableMapping[str, Any]):
     __slots__ = (
         'logger', '_debug', '_router', '_loop', '_handler_args',
@@ -81,20 +78,15 @@ class Application(MutableMapping[str, Any]):
                  middlewares: Sequence[_Middleware]=(),
                  handler_args: Mapping[str, Any]=None,
                  client_max_size: int=1024**2,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  debug: Any=...  # mypy doesn't support ellipsis
                  ) -> None:
-        if loop is not None:
-            warnings.warn("loop argument is deprecated", DeprecationWarning,
-                          stacklevel=2)
 
         if debug is not ...:
-            warnings.warn("debug argument is deprecated",
+            warnings.warn("debug argument is no-op since 4.0 "
+                          "and scheduled for removal in 5.0",
                           DeprecationWarning,
                           stacklevel=2)
-        self._debug = debug
         self._router = UrlDispatcher()
-        self._loop = loop
         self._handler_args = handler_args
         self.logger = logger
 
@@ -120,10 +112,8 @@ class Application(MutableMapping[str, Any]):
         self._client_max_size = client_max_size
 
     def __init_subclass__(cls: Type['Application']) -> None:
-        warnings.warn("Inheritance class {} from web.Application "
-                      "is discouraged".format(cls.__name__),
-                      DeprecationWarning,
-                      stacklevel=2)
+        raise TypeError("Inheritance class {} from web.Application "
+                        "is forbidden".format(cls.__name__))
 
     # MutableMapping API
 
@@ -135,10 +125,8 @@ class Application(MutableMapping[str, Any]):
 
     def _check_frozen(self) -> None:
         if self._frozen:
-            warnings.warn("Changing state of started or joined "
-                          "application is deprecated",
-                          DeprecationWarning,
-                          stacklevel=3)
+            raise RuntimeError("Changing state of started or joined "
+                               "application is forbidden")
 
     def __setitem__(self, key: str, value: Any) -> None:
         self._check_frozen()
@@ -155,32 +143,11 @@ class Application(MutableMapping[str, Any]):
         return iter(self._state)
 
     ########
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        # Technically the loop can be None,
-        # but we mask it by explicit type cast
-        # to provide more convenient type annotation.
-        warnings.warn("loop property is deprecated",
+    def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
+        warnings.warn("_set_loop() is no-op since 4.0 "
+                      "and scheduled for removal in 5.0",
                       DeprecationWarning,
                       stacklevel=2)
-        return cast(asyncio.AbstractEventLoop, self._loop)
-
-    def _set_loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        if self._loop is not None and self._loop is not loop:
-            raise RuntimeError(
-                "web.Application instance initialized with different loop")
-
-        self._loop = loop
-
-        # set loop debug
-        if self._debug is ...:
-            self._debug = loop.get_debug()
-
-        # set loop to sub applications
-        for subapp in self._subapps:
-            subapp._set_loop(loop)
 
     @property
     def pre_frozen(self) -> bool:
@@ -227,10 +194,11 @@ class Application(MutableMapping[str, Any]):
 
     @property
     def debug(self) -> bool:
-        warnings.warn("debug property is deprecated",
+        warnings.warn("debug property is deprecated since 4.0"
+                      "and scheduled for removal in 5.0",
                       DeprecationWarning,
                       stacklevel=2)
-        return self._debug
+        return asyncio.get_event_loop().get_debug()
 
     def _reg_subapp_signals(self, subapp: 'Application') -> None:
 
@@ -269,8 +237,6 @@ class Application(MutableMapping[str, Any]):
         self._reg_subapp_signals(subapp)
         self._subapps.append(subapp)
         subapp.pre_freeze()
-        if self._loop is not None:
-            subapp._set_loop(self._loop)
         return resource
 
     def add_domain(self, domain: str,
@@ -315,46 +281,6 @@ class Application(MutableMapping[str, Any]):
     def middlewares(self) -> _Middlewares:
         return self._middlewares
 
-    def _make_handler(self, *,
-                      loop: Optional[asyncio.AbstractEventLoop]=None,
-                      access_log_class: Type[
-                          AbstractAccessLogger]=AccessLogger,
-                      **kwargs: Any) -> Server:
-
-        if not issubclass(access_log_class, AbstractAccessLogger):
-            raise TypeError(
-                'access_log_class must be subclass of '
-                'aiohttp.abc.AbstractAccessLogger, got {}'.format(
-                    access_log_class))
-
-        self._set_loop(loop)
-        self.freeze()
-
-        kwargs['debug'] = self._debug
-        kwargs['access_log_class'] = access_log_class
-        if self._handler_args:
-            for k, v in self._handler_args.items():
-                kwargs[k] = v
-
-        return Server(self._handle,  # type: ignore
-                      request_factory=self._make_request,
-                      loop=self._loop, **kwargs)
-
-    def make_handler(self, *,
-                     loop: Optional[asyncio.AbstractEventLoop]=None,
-                     access_log_class: Type[
-                         AbstractAccessLogger]=AccessLogger,
-                     **kwargs: Any) -> Server:
-
-        warnings.warn("Application.make_handler(...) is deprecated, "
-                      "use AppRunner API instead",
-                      DeprecationWarning,
-                      stacklevel=2)
-
-        return self._make_handler(loop=loop,
-                                  access_log_class=access_log_class,
-                                  **kwargs)
-
     async def startup(self) -> None:
         """Causes on_startup signal
 
@@ -376,31 +302,13 @@ class Application(MutableMapping[str, Any]):
         """
         await self.on_cleanup.send(self)
 
-    def _make_request(self, message: RawRequestMessage,
-                      payload: StreamReader,
-                      protocol: RequestHandler,
-                      writer: AbstractStreamWriter,
-                      task: 'asyncio.Task[None]',
-                      _cls: Type[Request]=Request) -> Request:
-        return _cls(
-            message, payload, protocol, writer, task,
-            self._loop,
-            client_max_size=self._client_max_size)
-
     def _prepare_middleware(self) -> Iterator[_Middleware]:
         yield from reversed(self._middlewares)
         yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
-        loop = asyncio.get_event_loop()
-        debug = loop.get_debug()
         match_info = await self._router.resolve(request)
-        if debug:  # pragma: no cover
-            if not isinstance(match_info, AbstractMatchInfo):
-                raise TypeError("match_info should be AbstractMatchInfo "
-                                "instance, not {!r}".format(match_info))
         match_info.add_app(self)
-
         match_info.freeze()
 
         resp = None

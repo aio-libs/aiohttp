@@ -44,8 +44,6 @@ class GunicornWebWorker(base.Worker):
 
     def init_process(self) -> None:
         # create new event_loop after fork
-        asyncio.get_event_loop().close()
-
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
@@ -84,7 +82,6 @@ class GunicornWebWorker(base.Worker):
 
         ctx = self._create_ssl_context(self.cfg) if self.cfg.is_ssl else None
 
-        runner = runner
         assert runner is not None
         server = runner.server
         assert server is not None
@@ -213,10 +210,6 @@ class GunicornUVLoopWebWorker(GunicornWebWorker):
     def init_process(self) -> None:
         import uvloop
 
-        # Close any existing event loop before setting a
-        # new policy.
-        asyncio.get_event_loop().close()
-
         # Setup uvloop policy, so that every
         # asyncio.get_event_loop() will create an instance
         # of uvloop event loop.
@@ -229,10 +222,6 @@ class GunicornTokioWebWorker(GunicornWebWorker):
 
     def init_process(self) -> None:  # pragma: no cover
         import tokio
-
-        # Close any existing event loop before setting a
-        # new policy.
-        asyncio.get_event_loop().close()
 
         # Setup tokio policy, so that every
         # asyncio.get_event_loop() will create an instance

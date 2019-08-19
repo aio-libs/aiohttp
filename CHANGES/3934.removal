@@ -1,0 +1,1 @@
+Drop deprecated ``ClientResponseError.code`` attribute

@@ -69,12 +69,14 @@ David Bibb
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
+Dennis Kliban
 Dima Veselov
 Dimitar Dimitrov
 Diogo Dutra da Mata
 Dmitriy Safonov
 Dmitry Doroshev
 Dmitry Lukashin
+Dmitry Marakasov
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Bohomiakov
@@ -91,7 +93,9 @@ Eugene Chernyshov
 Eugene Naydenov
 Eugene Tolmachev
 Evert Lammerts
+Felix Yan
 FichteFoll
+Florian Scheffler
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
@@ -105,6 +109,7 @@ Günther Jena
 Hans Adema
 Harmon Y.
 Hu Bo
+Hugh Young
 Hugo Herter
 Hynek Schlawack
 Igor Alexandrov
@@ -141,6 +146,7 @@ Kay Zheng
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Valetov
 Kyrylo Perevozchikov
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
@@ -159,6 +165,7 @@ Martin Melka
 Martin Richard
 Mathias Fröjdman
 Mathieu Dugré
+Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
@@ -195,6 +202,7 @@ Rafael Viotti
 Raúl Cumplido
 Required Field
 Robert Lu
+Robert Nikolich
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt

@@ -285,14 +285,17 @@ async def test_unhandled_runtime_error(
     make_srv, transport, request_handler
 ):
 
+    class MyResponse(web.Response):
+        async def write_eof(self, data=b''):
+            raise RuntimeError()
+
     async def handle(request):
-        resp = web.Response()
-        resp.write_eof = mock.Mock()
-        resp.write_eof.side_effect = RuntimeError
+        resp = MyResponse()
         return resp
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     srv = make_srv(lingering_time=0)
-    srv.debug = True
     srv.connection_made(transport)
     srv.logger.exception = mock.Mock()
     request_handler.side_effect = handle
@@ -362,7 +365,7 @@ async def test_handle_uncompleted_pipe(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     # with exception
     request_handler.side_effect = handle_with_error()
@@ -373,7 +376,7 @@ async def test_handle_uncompleted_pipe(
 
     assert srv._task_handler
 
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     await srv._task_handler
     assert normal_completed
@@ -470,9 +473,11 @@ async def test_handle_payload_access_error(
 
 
 async def test_handle_cancel(make_srv, transport) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     log = mock.Mock()
 
-    srv = make_srv(logger=log, debug=True)
+    srv = make_srv(logger=log)
     srv.connection_made(transport)
 
     async def handle_request(message, payload, writer):
@@ -493,9 +498,11 @@ async def test_handle_cancel(make_srv, transport) -> None:
 
 
 async def test_handle_cancelled(make_srv, transport) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     log = mock.Mock()
 
-    srv = make_srv(logger=log, debug=True)
+    srv = make_srv(logger=log)
     srv.connection_made(transport)
 
     srv.handle_request = mock.Mock()
@@ -585,7 +592,7 @@ async def test_content_length_0(srv, request_handler) -> None:
         b'GET / HTTP/1.1\r\n'
         b'Host: example.org\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     assert request_handler.called
     assert request_handler.call_args[0][0].content == streams.EMPTY_PAYLOAD
@@ -702,7 +709,7 @@ async def test_pipeline_response_order(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     # second
 
@@ -720,7 +727,7 @@ async def test_pipeline_response_order(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     assert srv._task_handler is not None
 
@@ -817,9 +824,10 @@ async def test_client_disconnect(aiohttp_server) -> None:
         await request.content.read(10)
         return web.Response()
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     logger = mock.Mock()
     app = web.Application()
-    app._debug = True
     app.router.add_route('POST', '/', handler)
     server = await aiohttp_server(app, logger=logger)
 
@@ -835,4 +843,4 @@ Host: localhost:{port}\r
     writer.write(b"x")
     writer.close()
     await asyncio.sleep(0.1)
-    logger.debug.assert_called_with('Ignored premature client disconnection 2')
+    logger.debug.assert_called_with('Ignored premature client disconnection.')

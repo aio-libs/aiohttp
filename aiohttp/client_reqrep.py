@@ -43,6 +43,7 @@ from .helpers import (  # noqa
     BasicAuth,
     HeadersMixin,
     TimerNoop,
+    is_expected_content_type,
     noop,
     reify,
     set_result,
@@ -78,9 +79,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientSession  # noqa
     from .connector import Connection  # noqa
     from .tracing import Trace  # noqa
-
-
-json_re = re.compile(r'^application/(?:[\w.+-]+?\+)?json')
 
 
 @attr.s(frozen=True, slots=True)
@@ -155,13 +153,6 @@ class ConnectionKey:
     proxy_headers_hash = attr.ib(type=int)  # type: Optional[int] # noqa # hash(CIMultiDict)
 
 
-def _is_expected_content_type(response_content_type: str,
-                              expected_content_type: str) -> bool:
-    if expected_content_type == 'application/json':
-        return json_re.match(response_content_type) is not None
-    return expected_content_type in response_content_type
-
-
 class ClientRequest:
     GET_METHODS = {
         hdrs.METH_GET,
@@ -201,7 +192,7 @@ class ClientRequest:
                  compress: Optional[str]=None,
                  chunked: Optional[bool]=None,
                  expect100: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
+                 loop: asyncio.AbstractEventLoop,
                  response_class: Optional[Type['ClientResponse']]=None,
                  proxy: Optional[URL]=None,
                  proxy_auth: Optional[BasicAuth]=None,
@@ -210,9 +201,6 @@ class ClientRequest:
                  ssl: Union[SSLContext, bool, Fingerprint, None]=None,
                  proxy_headers: Optional[LooseHeaders]=None,
                  traces: Optional[List['Trace']]=None):
-
-        if loop is None:
-            loop = asyncio.get_event_loop()
 
         assert isinstance(url, URL), url
         assert isinstance(proxy, (URL, type(None))), proxy
@@ -648,6 +636,7 @@ class ClientResponse(HeadersMixin):
                  loop: asyncio.AbstractEventLoop,
                  session: 'ClientSession') -> None:
         assert isinstance(url, URL)
+        super().__init__()
 
         self.method = method
         self.cookies = SimpleCookie()
@@ -977,7 +966,7 @@ class ClientResponse(HeadersMixin):
 
         if content_type:
             ctype = self.headers.get(hdrs.CONTENT_TYPE, '').lower()
-            if not _is_expected_content_type(ctype, content_type):
+            if not is_expected_content_type(ctype, content_type):
                 raise ContentTypeError(
                     self.request_info,
                     self.history,
