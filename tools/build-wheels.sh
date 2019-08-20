@@ -18,7 +18,7 @@ ORIG_WHEEL_DIR="${BUILD_DIR}/original-wheelhouse"
 SRC_DIR="${BUILD_DIR}/src"
 WHEELHOUSE_DIR="${WORKDIR_PATH}/dist"
 
-set -euo pipefail
+set -xeuo pipefail
 # ref: https://coderwall.com/p/fkfaqq/safer-bash-scripts-with-set-euxo-pipefail
 
 PYTHON_VERSIONS="cp35-cp35m cp36-cp36m cp37-cp37m"
@@ -49,7 +49,7 @@ for PYTHON in ${PYTHON_VERSIONS}; do
     /opt/python/${PYTHON}/bin/python -m pip install -U pip
     /opt/python/${PYTHON}/bin/python -m pip install -r "${WORKDIR_PATH}/requirements/cython.txt"
     /opt/python/${PYTHON}/bin/python -m pip install -r "${WORKDIR_PATH}/requirements/wheel.txt"
-    /opt/python/${PYTHON}/bin/python -m pip wheel "${SRC_DIR}/" --no-deps -w "${ORIG_WHEEL_DIR}/${PYTHON}"
+    /opt/python/${PYTHON}/bin/python -m pip wheel "${SRC_DIR}/" --no-deps -w "${ORIG_WHEEL_DIR}/${PYTHON}" -v
 done
 
 echo
