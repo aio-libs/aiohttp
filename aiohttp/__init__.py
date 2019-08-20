@@ -1,4 +1,4 @@
-__version__ = '3.6.0a3'
+__version__ = '3.6.0a4'
 
 from typing import Tuple  # noqa
 

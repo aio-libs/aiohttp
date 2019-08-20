@@ -224,9 +224,12 @@ jobs:
     - docker
     script:
     - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt  # to compile *.c files by Cython
     - make cythonize
     - ./tools/run_docker.sh "aiohttp"
+    - pip install --no-index --find-links=dist aiohttp
+    - pip install -r requirements/ci-wheel.txt
+    # switch current dir to don't import ./aiohttp but installed wheel
+    - cd test && pytest
     deploy:
       <<: *deploy_step
 
