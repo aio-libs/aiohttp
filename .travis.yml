@@ -226,10 +226,6 @@ jobs:
     - pip install -r requirements/cython.txt
     - make cythonize
     - ./tools/run_docker.sh "aiohttp"
-    - pip install --no-index --find-links=dist aiohttp
-    - pip install -r requirements/ci-wheel.txt
-    # switch current dir to don't import ./aiohttp but installed wheel
-    - cd tests && pytest .
     deploy:
       <<: *deploy_step
 
