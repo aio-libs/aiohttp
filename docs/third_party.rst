@@ -208,6 +208,9 @@ period ask to raise the status.
 
 - `aiogram <https://github.com/aiogram/aiogram>`_
   A fully asynchronous library for Telegram Bot API written with asyncio and aiohttp.
+  
+- `vk.py <https://github.com/prostomarkeloff/vk.py>`_
+  Extremely-fast Python 3.6+ toolkit for create applications work`s with VKAPI.
 
 - `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
   GraphQL and GraphIQL interface for aiohttp.
