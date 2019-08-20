@@ -229,7 +229,7 @@ jobs:
     - pip install --no-index --find-links=dist aiohttp
     - pip install -r requirements/ci-wheel.txt
     # switch current dir to don't import ./aiohttp but installed wheel
-    - cd test && pytest
+    - cd tests && pytest .
     deploy:
       <<: *deploy_step
 
