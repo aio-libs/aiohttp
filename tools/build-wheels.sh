@@ -49,7 +49,7 @@ for PYTHON in ${PYTHON_VERSIONS}; do
     /opt/python/${PYTHON}/bin/python -m pip install -U pip
     /opt/python/${PYTHON}/bin/python -m pip install -r "${WORKDIR_PATH}/requirements/cython.txt"
     /opt/python/${PYTHON}/bin/python -m pip install -r "${WORKDIR_PATH}/requirements/wheel.txt"
-    /opt/python/${PYTHON}/bin/python -m pip wheel "${SRC_DIR}/" --no-deps -w "${ORIG_WHEEL_DIR}/${PYTHON}" -v
+    /opt/python/${PYTHON}/bin/python -m pip wheel "${SRC_DIR}/" --no-deps -w "${ORIG_WHEEL_DIR}/${PYTHON}"
 done
 
 echo
