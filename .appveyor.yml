@@ -41,6 +41,11 @@ test_script:
 after_test:
   - "tools/build.cmd %PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
 
+on_finish:
+- ps: |
+    $wc = New-Object 'System.Net.WebClient'
+    $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\.test-results\pytest\results.xml))
+
 artifacts:
   - path: dist\*
 
