@@ -138,7 +138,7 @@ class UnixSite(BaseSite):
             ssl=self._ssl_context, backlog=self._backlog)
         # create_unix_server sets file permission as rwxr-xr-x, which is not
         # helpful in practice, so we fix it.
-        os.chmod(self._path, 0o666)
+        os.chmod(self._path, 0o664)
 
 
 class NamedPipeSite(BaseSite):
