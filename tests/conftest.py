@@ -6,6 +6,7 @@ import tempfile
 import uuid
 
 import pytest
+
 try:
     import trustme
     TRUSTME = True
