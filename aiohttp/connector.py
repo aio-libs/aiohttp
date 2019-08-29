@@ -778,24 +778,25 @@ class TCPConnector(BaseConnector):
 
         if (key in self._cached_hosts) and \
                 (not self._cached_hosts.expired(key)):
+            result = self._cached_hosts.next_addrs(key)
 
             if traces:
                 for trace in traces:
                     await trace.send_dns_cache_hit(host)
-
-            return self._cached_hosts.next_addrs(key)
+            return result
 
         if key in self._throttle_dns_events:
+            event = self._throttle_dns_events[key]
             if traces:
                 for trace in traces:
                     await trace.send_dns_cache_hit(host)
-            await self._throttle_dns_events[key].wait()
+            await event.wait()
         else:
+            self._throttle_dns_events[key] = \
+                EventResultOrError(self._loop)
             if traces:
                 for trace in traces:
                     await trace.send_dns_cache_miss(host)
-            self._throttle_dns_events[key] = \
-                EventResultOrError(self._loop)
             try:
 
                 if traces:

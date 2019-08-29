@@ -18,8 +18,9 @@ import aiohttp
 from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
-from aiohttp.connector import Connection, _DNSCacheTable
+from aiohttp.connector import Connection, _DNSCacheTable, TCPConnector
 from aiohttp.helpers import PY_37
+from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
 from aiohttp.tracing import Trace
 from conftest import needs_unix
@@ -2257,3 +2258,32 @@ class TestDNSCacheTable:
 
         addrs = dns_cache_table.next_addrs('foo')
         assert addrs == ['127.0.0.1']
+
+
+async def test_connector_cache_trace_race():
+    class DummyTracer:
+        async def send_dns_cache_hit(self, *args, **kwargs):
+            connector._cached_hosts.remove(("", 0))
+
+    token = object()
+    connector = TCPConnector()
+    connector._cached_hosts.add(("", 0), [token])
+
+    traces = [DummyTracer()]
+    assert await connector._resolve_host("", 0, traces) == [token]
+
+
+async def test_connector_throttle_trace_race(loop):
+    key = ("", 0)
+    token = object()
+
+    class DummyTracer:
+        async def send_dns_cache_hit(self, *args, **kwargs):
+            event = connector._throttle_dns_events.pop(key)
+            event.set()
+            connector._cached_hosts.add(key, [token])
+
+    connector = TCPConnector()
+    connector._throttle_dns_events[key] = EventResultOrError(loop)
+    traces = [DummyTracer()]
+    assert await connector._resolve_host("", 0, traces) == [token]
