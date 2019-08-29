@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 import io
-import os.path
+import pathlib
 import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
@@ -269,12 +269,6 @@ def test_host_header_ipv4_with_port(make_request) -> None:
 def test_host_header_ipv6_with_port(make_request) -> None:
     req = make_request('get', 'http://[::2]:99')
     assert req.headers['HOST'] == '[::2]:99'
-
-
-def test_default_loop(loop) -> None:
-    asyncio.set_event_loop(loop)
-    req = ClientRequest('get', URL('http://python.org/'))
-    assert req.loop is loop
 
 
 def test_default_headers_useragent(make_request) -> None:
@@ -661,8 +655,8 @@ async def test_pass_falsy_data(loop) -> None:
     await req.close()
 
 
-async def test_pass_falsy_data_file(loop, tmpdir) -> None:
-    testfile = tmpdir.join('tmpfile').open('w+b')
+async def test_pass_falsy_data_file(loop, tmp_path) -> None:
+    testfile = (tmp_path / 'tmpfile').open('w+b')
     testfile.write(b'data')
     testfile.seek(0)
     skip = frozenset([hdrs.CONTENT_TYPE])
@@ -795,15 +789,14 @@ async def test_chunked_transfer_encoding(loop, conn) -> None:
 
 
 async def test_file_upload_not_chunked(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
             loop=loop)
         assert not req.chunked
-        assert req.headers['CONTENT-LENGTH'] == str(os.path.getsize(fname))
+        assert req.headers['CONTENT-LENGTH'] == str(file_path.stat().st_size)
         await req.close()
 
 
@@ -822,23 +815,21 @@ async def test_precompressed_data_stays_intact(loop) -> None:
 
 
 async def test_file_upload_not_chunked_seek(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         f.seek(100)
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
             loop=loop)
         assert req.headers['CONTENT-LENGTH'] == \
-            str(os.path.getsize(fname) - 100)
+            str(file_path.stat().st_size - 100)
         await req.close()
 
 
 async def test_file_upload_force_chunked(loop) -> None:
-    here = os.path.dirname(__file__)
-    fname = os.path.join(here, 'aiohttp.png')
-    with open(fname, 'rb') as f:
+    file_path = pathlib.Path(__file__).parent / 'aiohttp.png'
+    with file_path.open('rb') as f:
         req = ClientRequest(
             'post', URL('http://python.org/'),
             data=f,
@@ -1066,7 +1057,7 @@ def test_terminate_with_closed_loop(loop, conn) -> None:
 
     async def go():
         nonlocal req, resp, writer
-        req = ClientRequest('get', URL('http://python.org'))
+        req = ClientRequest('get', URL('http://python.org'), loop=loop)
         resp = await req.send(conn)
         assert req._writer is not None
         writer = req._writer = mock.Mock()
@@ -1090,7 +1081,7 @@ def test_terminate_without_writer(loop) -> None:
     assert req._writer is None
 
 
-async def test_custom_req_rep(loop) -> None:
+async def test_custom_req_rep(loop, create_mocked_conn) -> None:
     conn = None
 
     class CustomResponse(ClientResponse):
@@ -1125,15 +1116,14 @@ async def test_custom_req_rep(loop) -> None:
 
     async def create_connection(req, traces, timeout):
         assert isinstance(req, CustomRequest)
-        return mock.Mock()
-    connector = BaseConnector(loop=loop)
+        return create_mocked_conn()
+    connector = BaseConnector()
     connector._create_connection = create_connection
 
     session = aiohttp.ClientSession(
         request_class=CustomRequest,
         response_class=CustomResponse,
-        connector=connector,
-        loop=loop)
+        connector=connector)
 
     resp = await session.request(
         'get', URL('http://example.com/path/to'))

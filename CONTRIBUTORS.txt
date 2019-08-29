@@ -25,7 +25,9 @@ Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
 Amin Etesamian
+Amit Tulshyan
 Amy Boyle
+Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
 Andrew Leech
@@ -36,6 +38,7 @@ Andrii Soldatenko
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
@@ -55,20 +58,25 @@ Chris Moore
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
+Cong Xu
 Damien Nadé
 Dan Xu
 Daniel García
+Daniel Grossmann-Kavanagh
 Daniel Nelson
 Danny Song
 David Bibb
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
+Dennis Kliban
 Dima Veselov
 Dimitar Dimitrov
+Diogo Dutra da Mata
 Dmitriy Safonov
 Dmitry Doroshev
 Dmitry Lukashin
+Dmitry Marakasov
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Bohomiakov
@@ -77,6 +85,7 @@ Dustin J. Mitchell
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
+Emil Melnikov
 Enrique Saez
 Eric Sheng
 Erich Healy
@@ -84,7 +93,9 @@ Eugene Chernyshov
 Eugene Naydenov
 Eugene Tolmachev
 Evert Lammerts
+Felix Yan
 FichteFoll
+Florian Scheffler
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
@@ -98,13 +109,16 @@ Günther Jena
 Hans Adema
 Harmon Y.
 Hu Bo
+Hugh Young
 Hugo Herter
 Hynek Schlawack
 Igor Alexandrov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
+Ilya Chichak
 Ingmar Steen
+Ivan Larin
 Jacob Champion
 Jaesung Lee
 Jake Davis
@@ -132,6 +146,7 @@ Kay Zheng
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Valetov
 Kyrylo Perevozchikov
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
@@ -149,9 +164,12 @@ Mariano Anaya
 Martin Melka
 Martin Richard
 Mathias Fröjdman
+Mathieu Dugré
+Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
+Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
@@ -160,6 +178,7 @@ Mitchell Ferree
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
+Navid Sheikhol
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik
@@ -183,6 +202,7 @@ Rafael Viotti
 Raúl Cumplido
 Required Field
 Robert Lu
+Robert Nikolich
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt
@@ -198,6 +218,7 @@ Simon Kennedy
 Sin-Woo Bang
 Stanislas Plum
 Stanislav Prokop
+Stepan Pletnev
 Stephen Granade
 Steven Seguin
 Sunghyun Hwang

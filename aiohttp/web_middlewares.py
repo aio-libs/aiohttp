@@ -1,7 +1,8 @@
 import re
+import warnings
 from typing import TYPE_CHECKING, Awaitable, Callable, Tuple, Type, TypeVar
 
-from .web_exceptions import HTTPMove, HTTPMovedPermanently
+from .web_exceptions import HTTPMove, HTTPPermanentRedirect
 from .web_request import Request
 from .web_response import StreamResponse
 from .web_urldispatcher import SystemRoute
@@ -31,7 +32,12 @@ async def _check_request_resolves(request: Request,
 
 
 def middleware(f: _Func) -> _Func:
-    f.__middleware_version__ = 1  # type: ignore
+    warnings.warn(
+        'Middleware decorator is deprecated since 4.0 '
+        'and its behaviour is default, '
+        'you can simply remove this decorator.',
+        DeprecationWarning,
+        stacklevel=2)
     return f
 
 
@@ -42,7 +48,7 @@ _Middleware = Callable[[Request, _Handler], Awaitable[StreamResponse]]
 def normalize_path_middleware(
         *, append_slash: bool=True, remove_slash: bool=False,
         merge_slashes: bool=True,
-        redirect_class: Type[HTTPMove]=HTTPMovedPermanently) -> _Middleware:
+        redirect_class: Type[HTTPMove]=HTTPPermanentRedirect) -> _Middleware:
     """
     Middleware factory which produces a middleware that normalizes
     the path of a request. By normalizing it means:
@@ -76,7 +82,6 @@ def normalize_path_middleware(
     correct_configuration = not (append_slash and remove_slash)
     assert correct_configuration, "Cannot both remove and append slash"
 
-    @middleware
     async def impl(request: Request, handler: _Handler) -> StreamResponse:
         if isinstance(request.match_info.route, SystemRoute):
             paths_to_check = []
@@ -96,7 +101,7 @@ def normalize_path_middleware(
             if merge_slashes and append_slash:
                 paths_to_check.append(
                     re.sub('//+', '/', path + '/'))
-            if merge_slashes and remove_slash:
+            if merge_slashes and remove_slash and path.endswith('/'):
                 merged_slashes = re.sub('//+', '/', path)
                 paths_to_check.append(merged_slashes[:-1])
 
@@ -113,7 +118,6 @@ def normalize_path_middleware(
 
 def _fix_request_current_app(app: 'Application') -> _Middleware:
 
-    @middleware
     async def impl(request: Request, handler: _Handler) -> StreamResponse:
         with request.match_info.set_current_app(app):
             return await handler(request)

@@ -1,11 +1,10 @@
 import asyncio
 import contextlib
 import warnings
-from collections.abc import Callable
 
 import pytest
 
-from aiohttp.helpers import isasyncgenfunction
+from aiohttp.helpers import PY_37, isasyncgenfunction
 from aiohttp.web import Application
 
 from .test_utils import (
@@ -161,7 +160,8 @@ def pytest_pyfunc_call(pyfuncitem):  # type: ignore
     """
     fast = pyfuncitem.config.getoption("--aiohttp-fast")
     if asyncio.iscoroutinefunction(pyfuncitem.function):
-        existing_loop = pyfuncitem.funcargs.get('loop', None)
+        existing_loop = pyfuncitem.funcargs.get('proactor_loop')\
+            or pyfuncitem.funcargs.get('loop', None)
         with _runtime_warning_context():
             with _passthrough_loop_context(existing_loop, fast=fast) as _loop:
                 testargs = {arg: pyfuncitem.funcargs[arg]
@@ -217,10 +217,17 @@ def loop(loop_factory, fast, loop_debug):  # type: ignore
 
 
 @pytest.fixture
-def unused_port(aiohttp_unused_port):  # type: ignore # pragma: no cover
-    warnings.warn("Deprecated, use aiohttp_unused_port fixture instead",
-                  DeprecationWarning)
-    return aiohttp_unused_port
+def proactor_loop():  # type: ignore
+    if not PY_37:
+        policy = asyncio.get_event_loop_policy()
+        policy._loop_factory = asyncio.ProactorEventLoop  # type: ignore
+    else:
+        policy = asyncio.WindowsProactorEventLoopPolicy()  # type: ignore
+        asyncio.set_event_loop_policy(policy)
+
+    with loop_context(policy.new_event_loop) as _loop:
+        asyncio.set_event_loop(_loop)
+        yield _loop
 
 
 @pytest.fixture
@@ -239,7 +246,7 @@ def aiohttp_server(loop):  # type: ignore
 
     async def go(app, *, port=None, **kwargs):  # type: ignore
         server = TestServer(app, port=port)
-        await server.start_server(loop=loop, **kwargs)
+        await server.start_server(**kwargs)
         servers.append(server)
         return server
 
@@ -250,13 +257,6 @@ def aiohttp_server(loop):  # type: ignore
             await servers.pop().close()
 
     loop.run_until_complete(finalize())
-
-
-@pytest.fixture
-def test_server(aiohttp_server):  # type: ignore  # pragma: no cover
-    warnings.warn("Deprecated, use aiohttp_server fixture instead",
-                  DeprecationWarning)
-    return aiohttp_server
 
 
 @pytest.fixture
@@ -269,7 +269,7 @@ def aiohttp_raw_server(loop):  # type: ignore
 
     async def go(handler, *, port=None, **kwargs):  # type: ignore
         server = RawTestServer(handler, port=port)
-        await server.start_server(loop=loop, **kwargs)
+        await server.start_server(**kwargs)
         servers.append(server)
         return server
 
@@ -283,13 +283,6 @@ def aiohttp_raw_server(loop):  # type: ignore
 
 
 @pytest.fixture
-def raw_test_server(aiohttp_raw_server):  # type: ignore  # pragma: no cover
-    warnings.warn("Deprecated, use aiohttp_raw_server fixture instead",
-                  DeprecationWarning)
-    return aiohttp_raw_server
-
-
-@pytest.fixture
 def aiohttp_client(loop):  # type: ignore
     """Factory to create a TestClient instance.
 
@@ -299,21 +292,13 @@ def aiohttp_client(loop):  # type: ignore
     """
     clients = []
 
-    async def go(__param, *args, server_kwargs=None, **kwargs):  # type: ignore
-
-        if (isinstance(__param, Callable) and  # type: ignore
-                not isinstance(__param, (Application, BaseTestServer))):
-            __param = __param(loop, *args, **kwargs)
-            kwargs = {}
-        else:
-            assert not args, "args should be empty"
-
+    async def go(__param, *, server_kwargs=None, **kwargs):  # type: ignore
         if isinstance(__param, Application):
             server_kwargs = server_kwargs or {}
-            server = TestServer(__param, loop=loop, **server_kwargs)
-            client = TestClient(server, loop=loop, **kwargs)
+            server = TestServer(__param, **server_kwargs)
+            client = TestClient(server, **kwargs)
         elif isinstance(__param, BaseTestServer):
-            client = TestClient(__param, loop=loop, **kwargs)
+            client = TestClient(__param, **kwargs)
         else:
             raise ValueError("Unknown argument type: %r" % type(__param))
 
@@ -328,10 +313,3 @@ def aiohttp_client(loop):  # type: ignore
             await clients.pop().close()
 
     loop.run_until_complete(finalize())
-
-
-@pytest.fixture
-def test_client(aiohttp_client):  # type: ignore  # pragma: no cover
-    warnings.warn("Deprecated, use aiohttp_client fixture instead",
-                  DeprecationWarning)
-    return aiohttp_client

@@ -97,7 +97,7 @@ class HTTPException(Exception):
             if self.empty_body:
                 warnings.warn(
                     "text argument is deprecated for HTTP status {} "
-                    "in aiohttp 4.0 (#3462),"
+                    "since 4.0 and scheduled for removal in 5.0 (#3462),"
                     "the response should be provided without a body".format(
                         self.status_code),
                     DeprecationWarning,
@@ -111,7 +111,8 @@ class HTTPException(Exception):
         if content_type is not None:
             if not text:
                 warnings.warn("content_type without text is deprecated "
-                              "in aiohttp 4.0 (#3462)",
+                              "since 4.0 and scheduled for removal in 5.0 "
+                              "(#3462)",
                               DeprecationWarning,
                               stacklevel=2)
             real_headers[hdrs.CONTENT_TYPE] = content_type
@@ -203,8 +204,8 @@ class HTTPMove(HTTPRedirection):
             raise ValueError("HTTP redirects need a location to redirect to.")
         super().__init__(headers=headers, reason=reason,
                          text=text, content_type=content_type)
-        self.headers['Location'] = str(location)
         self._location = URL(location)
+        self.headers['Location'] = str(self.location)
 
     @property
     def location(self) -> URL:

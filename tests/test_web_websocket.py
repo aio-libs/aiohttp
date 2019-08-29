@@ -4,11 +4,11 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 
-from aiohttp import WSMessage, WSMsgType, signals
+from aiohttp import WSMsgType, signals
 from aiohttp.log import ws_logger
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro, make_mocked_request
-from aiohttp.web import HTTPBadRequest, HTTPMethodNotAllowed, WebSocketResponse
+from aiohttp.web import HTTPBadRequest, WebSocketResponse
 from aiohttp.web_ws import WS_CLOSED_MESSAGE, WebSocketReady
 
 
@@ -105,34 +105,6 @@ async def test_nonstarted_receive_json() -> None:
         await ws.receive_json()
 
 
-async def test_receive_str_nonstring(make_request) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    async def receive():
-        return WSMessage(WSMsgType.BINARY, b'data', b'')
-
-    ws.receive = receive
-
-    with pytest.raises(TypeError):
-        await ws.receive_str()
-
-
-async def test_receive_bytes_nonsbytes(make_request) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    async def receive():
-        return WSMessage(WSMsgType.TEXT, 'data', b'')
-
-    ws.receive = receive
-
-    with pytest.raises(TypeError):
-        await ws.receive_bytes()
-
-
 async def test_send_str_nonstring(make_request) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
@@ -201,12 +173,6 @@ def test_can_prepare_unknown_protocol(make_request) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
     assert WebSocketReady(True, None) == ws.can_prepare(req)
-
-
-def test_can_prepare_invalid_method(make_request) -> None:
-    req = make_request('POST', '/')
-    ws = WebSocketResponse()
-    assert WebSocketReady(False, None) == ws.can_prepare(req)
 
 
 def test_can_prepare_without_upgrade(make_request) -> None:
@@ -302,11 +268,11 @@ async def test_close_idempotent(make_request) -> None:
     assert not (await ws.close(code=2, message='message2'))
 
 
-async def test_prepare_invalid_method(make_request) -> None:
+async def test_prepare_post_method_ok(make_request) -> None:
     req = make_request('POST', '/')
     ws = WebSocketResponse()
-    with pytest.raises(HTTPMethodNotAllowed):
-        await ws.prepare(req)
+    await ws.prepare(req)
+    assert ws.prepared
 
 
 async def test_prepare_without_upgrade(make_request) -> None:
@@ -502,3 +468,11 @@ async def test_send_with_per_message_deflate(make_request, mocker) -> None:
 
     await ws.send_json('[{}]', compress=9)
     writer_send.assert_called_with('"[{}]"', binary=False, compress=9)
+
+
+async def test_no_transfer_encoding_header(make_request, mocker) -> None:
+    req = make_request('GET', '/')
+    ws = WebSocketResponse()
+    await ws._start(req)
+
+    assert 'Transfer-Encoding' not in ws.headers

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Sized
@@ -19,7 +18,6 @@ from typing import (
 from multidict import CIMultiDict  # noqa
 from yarl import URL
 
-from .helpers import get_running_loop
 from .typedefs import LooseCookies
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -141,10 +139,6 @@ else:
 class AbstractCookieJar(Sized, IterableBase):
     """Abstract Cookie Jar."""
 
-    def __init__(self, *,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
-        self._loop = get_running_loop(loop)
-
     @abstractmethod
     def clear(self) -> None:
         """Clear all cookies."""
@@ -205,4 +199,15 @@ class AbstractAccessLogger(ABC):
             request: BaseRequest,
             response: StreamResponse,
             time: float) -> None:
+        """Emit log to logger."""
+
+
+class AbstractAsyncAccessLogger(ABC):
+    """Abstract asynchronous writer to access log."""
+
+    @abstractmethod
+    async def log(self,
+                  request: BaseRequest,
+                  response: StreamResponse,
+                  request_start: float) -> None:
         """Emit log to logger."""

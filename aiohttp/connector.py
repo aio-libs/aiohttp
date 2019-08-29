@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import logging
 import random
 import sys
 import traceback
@@ -49,7 +50,6 @@ from .helpers import (
     CeilTimeout,
     get_running_loop,
     is_ip_address,
-    noop2,
     sentinel,
 )
 from .http import RESPONSES
@@ -64,31 +64,14 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore
 
 
-__all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector')
+__all__ = ('BaseConnector', 'TCPConnector', 'UnixConnector',
+           'NamedPipeConnector')
 
 
 if TYPE_CHECKING:  # pragma: no cover
     from .client import ClientTimeout  # noqa
     from .client_reqrep import ConnectionKey  # noqa
     from .tracing import Trace  # noqa
-
-
-class _DeprecationWaiter:
-    __slots__ = ('_awaitable', '_awaited')
-
-    def __init__(self, awaitable: Awaitable[Any]) -> None:
-        self._awaitable = awaitable
-        self._awaited = False
-
-    def __await__(self) -> Any:
-        self._awaited = True
-        return self._awaitable.__await__()
-
-    def __del__(self) -> None:
-        if not self._awaited:
-            warnings.warn("Connector.close() is a coroutine, "
-                          "please use await connector.close()",
-                          DeprecationWarning)
 
 
 class Connection:
@@ -132,13 +115,6 @@ class Connection:
             if self._source_traceback is not None:
                 context['source_traceback'] = self._source_traceback
             self._loop.call_exception_handler(context)
-
-    @property
-    def loop(self) -> asyncio.AbstractEventLoop:
-        warnings.warn("connector.loop property is deprecated",
-                      DeprecationWarning,
-                      stacklevel=2)
-        return self._loop
 
     @property
     def transport(self) -> Optional[asyncio.Transport]:
@@ -185,6 +161,10 @@ class Connection:
 
 class _TransportPlaceholder:
     """ placeholder for BaseConnector.connect function """
+    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+        fut = loop.create_future()
+        fut.set_result(None)
+        self.closed = fut  # type: asyncio.Future[Optional[Exception]]  # noqa
 
     def close(self) -> None:
         pass
@@ -213,8 +193,7 @@ class BaseConnector:
                  keepalive_timeout: Union[object, None, float]=sentinel,
                  force_close: bool=False,
                  limit: int=100, limit_per_host: int=0,
-                 enable_cleanup_closed: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 enable_cleanup_closed: bool=False) -> None:
 
         if force_close:
             if keepalive_timeout is not None and \
@@ -225,7 +204,7 @@ class BaseConnector:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
 
-        loop = get_running_loop(loop)
+        loop = get_running_loop()
 
         self._closed = False
         if loop.get_debug():
@@ -264,7 +243,7 @@ class BaseConnector:
 
         conns = [repr(c) for c in self._conns.values()]
 
-        self._close()
+        self._close_immediately()
 
         if PY_36:
             kwargs = {'source': self}
@@ -279,15 +258,6 @@ class BaseConnector:
         if self._source_traceback is not None:
             context['source_traceback'] = self._source_traceback
         self._loop.call_exception_handler(context)
-
-    def __enter__(self) -> 'BaseConnector':
-        warnings.warn('"witn Connector():" is deprecated, '
-                      'use "async with Connector():" instead',
-                      DeprecationWarning)
-        return self
-
-    def __exit__(self, *exc: Any) -> None:
-        self.close()
 
     async def __aenter__(self) -> 'BaseConnector':
         return self
@@ -386,20 +356,29 @@ class BaseConnector:
                 self, '_cleanup_closed',
                 self._cleanup_closed_period, self._loop)
 
-    def close(self) -> Awaitable[None]:
+    async def close(self) -> None:
         """Close all opened transports."""
-        self._close()
-        return _DeprecationWaiter(noop2())
+        waiters = self._close_immediately()
+        if waiters:
+            results = await asyncio.gather(*waiters,
+                                           loop=self._loop,
+                                           return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    err_msg = "Error while closing connector: " + repr(res)
+                    logging.error(err_msg)
 
-    def _close(self) -> None:
+    def _close_immediately(self) -> List['asyncio.Future[None]']:
+        waiters = []  # type: List['asyncio.Future[None]']
+
         if self._closed:
-            return
+            return waiters
 
         self._closed = True
 
         try:
             if self._loop.is_closed():
-                return
+                return waiters
 
             # cancel cleanup task
             if self._cleanup_handle:
@@ -412,13 +391,18 @@ class BaseConnector:
             for data in self._conns.values():
                 for proto, t0 in data:
                     proto.close()
+                    waiters.append(proto.closed)
 
             for proto in self._acquired:
                 proto.close()
+                waiters.append(proto.closed)
 
+            # TODO (A.Yushovskiy, 24-May-2019) collect transp. closing futures
             for transport in self._cleanup_closed_transports:
                 if transport is not None:
                     transport.abort()
+
+            return waiters
 
         finally:
             self._conns.clear()
@@ -510,7 +494,8 @@ class BaseConnector:
 
         proto = self._get(key)
         if proto is None:
-            placeholder = cast(ResponseHandler, _TransportPlaceholder())
+            placeholder = cast(ResponseHandler,
+                               _TransportPlaceholder(self._loop))
             self._acquired.add(placeholder)
             self._acquired_per_host[key].add(placeholder)
 
@@ -714,25 +699,23 @@ class TCPConnector(BaseConnector):
                  use_dns_cache: bool=True, ttl_dns_cache: int=10,
                  family: int=0,
                  ssl: Union[None, bool, Fingerprint, SSLContext]=None,
-                 local_addr: Optional[str]=None,
+                 local_addr: Optional[Tuple[str, int]]=None,
                  resolver: Optional[AbstractResolver]=None,
                  keepalive_timeout: Union[None, float, object]=sentinel,
                  force_close: bool=False,
                  limit: int=100, limit_per_host: int=0,
-                 enable_cleanup_closed: bool=False,
-                 loop: Optional[asyncio.AbstractEventLoop]=None):
+                 enable_cleanup_closed: bool=False) -> None:
         super().__init__(keepalive_timeout=keepalive_timeout,
                          force_close=force_close,
                          limit=limit, limit_per_host=limit_per_host,
-                         enable_cleanup_closed=enable_cleanup_closed,
-                         loop=loop)
+                         enable_cleanup_closed=enable_cleanup_closed)
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError("ssl should be SSLContext, bool, Fingerprint, "
                             "or None, got {!r} instead.".format(ssl))
         self._ssl = ssl
         if resolver is None:
-            resolver = DefaultResolver(loop=self._loop)
+            resolver = DefaultResolver()
         self._resolver = resolver
 
         self._use_dns_cache = use_dns_cache
@@ -741,12 +724,10 @@ class TCPConnector(BaseConnector):
         self._family = family
         self._local_addr = local_addr
 
-    def close(self) -> Awaitable[None]:
-        """Close all ongoing DNS calls."""
+    def _close_immediately(self) -> List['asyncio.Future[None]']:
         for ev in self._throttle_dns_events.values():
             ev.cancel()
-
-        return super().close()
+        return super()._close_immediately()
 
     @property
     def family(self) -> int:
@@ -987,9 +968,8 @@ class TCPConnector(BaseConnector):
                     continue
 
             return transp, proto
-        else:
-            assert last_exc is not None
-            raise last_exc
+        assert last_exc is not None
+        raise last_exc
 
     async def _create_proxy_connection(
             self,
@@ -1103,11 +1083,10 @@ class UnixConnector(BaseConnector):
 
     def __init__(self, path: str, force_close: bool=False,
                  keepalive_timeout: Union[object, float, None]=sentinel,
-                 limit: int=100, limit_per_host: int=0,
-                 loop: Optional[asyncio.AbstractEventLoop]=None) -> None:
+                 limit: int=100, limit_per_host: int=0) -> None:
         super().__init__(force_close=force_close,
                          keepalive_timeout=keepalive_timeout,
-                         limit=limit, limit_per_host=limit_per_host, loop=loop)
+                         limit=limit, limit_per_host=limit_per_host)
         self._path = path
 
     @property
@@ -1122,6 +1101,58 @@ class UnixConnector(BaseConnector):
             with CeilTimeout(timeout.sock_connect):
                 _, proto = await self._loop.create_unix_connection(
                     self._factory, self._path)
+        except OSError as exc:
+            raise ClientConnectorError(req.connection_key, exc) from exc
+
+        return cast(ResponseHandler, proto)
+
+
+class NamedPipeConnector(BaseConnector):
+    """Named pipe connector.
+
+    Only supported by the proactor event loop.
+    See also: https://docs.python.org/3.7/library/asyncio-eventloop.html
+
+    path - Windows named pipe path.
+    keepalive_timeout - (optional) Keep-alive timeout.
+    force_close - Set to True to force close and do reconnect
+        after each request (and between redirects).
+    limit - The total number of simultaneous connections.
+    limit_per_host - Number of simultaneous connections to one host.
+    loop - Optional event loop.
+    """
+
+    def __init__(self, path: str, force_close: bool=False,
+                 keepalive_timeout: Union[object, float, None]=sentinel,
+                 limit: int=100, limit_per_host: int=0) -> None:
+        super().__init__(force_close=force_close,
+                         keepalive_timeout=keepalive_timeout,
+                         limit=limit, limit_per_host=limit_per_host)
+        if not isinstance(self._loop, asyncio.ProactorEventLoop):  # type: ignore # noqa
+            raise RuntimeError("Named Pipes only available in proactor "
+                               "loop under windows")
+        self._path = path
+
+    @property
+    def path(self) -> str:
+        """Path to the named pipe."""
+        return self._path
+
+    async def _create_connection(self, req: 'ClientRequest',
+                                 traces: List['Trace'],
+                                 timeout: 'ClientTimeout') -> ResponseHandler:
+        try:
+            with CeilTimeout(timeout.sock_connect):
+                _, proto = await self._loop.create_pipe_connection(  # type: ignore # noqa
+                    self._factory, self._path
+                )
+                # the drain is required so that the connection_made is called
+                # and transport is set otherwise it is not set before the
+                # `assert conn.transport is not None`
+                # in client.py's _request method
+                await asyncio.sleep(0)
+                # other option is to manually set transport like
+                # `proto.transport = trans`
         except OSError as exc:
             raise ClientConnectorError(req.connection_key, exc) from exc
 

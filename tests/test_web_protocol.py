@@ -3,7 +3,6 @@
 import asyncio
 import socket
 from functools import partial
-from html import escape
 from unittest import mock
 
 import pytest
@@ -282,44 +281,21 @@ async def test_invalid_content_length(srv, buf) -> None:
     assert buf.startswith(b'HTTP/1.0 400 Bad Request\r\n')
 
 
-async def test_handle_error__utf(
-    make_srv, buf, transport, request_handler
-):
-    request_handler.side_effect = RuntimeError('что-то пошло не так')
-
-    srv = make_srv(debug=True)
-    srv.connection_made(transport)
-    srv.keep_alive(True)
-    srv.logger = mock.Mock()
-
-    srv.data_received(
-        b'GET / HTTP/1.0\r\n'
-        b'Host: example.com\r\n'
-        b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
-
-    assert b'HTTP/1.0 500 Internal Server Error' in buf
-    assert b'Content-Type: text/plain; charset=utf-8' in buf
-    pattern = escape("RuntimeError: что-то пошло не так")
-    assert pattern.encode('utf-8') in buf
-    assert not srv._keepalive
-
-    srv.logger.exception.assert_called_with(
-        "Error handling request", exc_info=mock.ANY)
-
-
 async def test_unhandled_runtime_error(
     make_srv, transport, request_handler
 ):
 
+    class MyResponse(web.Response):
+        async def write_eof(self, data=b''):
+            raise RuntimeError()
+
     async def handle(request):
-        resp = web.Response()
-        resp.write_eof = mock.Mock()
-        resp.write_eof.side_effect = RuntimeError
+        resp = MyResponse()
         return resp
 
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     srv = make_srv(lingering_time=0)
-    srv.debug = True
     srv.connection_made(transport)
     srv.logger.exception = mock.Mock()
     request_handler.side_effect = handle
@@ -389,7 +365,7 @@ async def test_handle_uncompleted_pipe(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     # with exception
     request_handler.side_effect = handle_with_error()
@@ -400,7 +376,7 @@ async def test_handle_uncompleted_pipe(
 
     assert srv._task_handler
 
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     await srv._task_handler
     assert normal_completed
@@ -497,9 +473,11 @@ async def test_handle_payload_access_error(
 
 
 async def test_handle_cancel(make_srv, transport) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     log = mock.Mock()
 
-    srv = make_srv(logger=log, debug=True)
+    srv = make_srv(logger=log)
     srv.connection_made(transport)
 
     async def handle_request(message, payload, writer):
@@ -520,9 +498,11 @@ async def test_handle_cancel(make_srv, transport) -> None:
 
 
 async def test_handle_cancelled(make_srv, transport) -> None:
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     log = mock.Mock()
 
-    srv = make_srv(logger=log, debug=True)
+    srv = make_srv(logger=log)
     srv.connection_made(transport)
 
     srv.handle_request = mock.Mock()
@@ -542,28 +522,6 @@ async def test_handle_400(srv, buf, transport) -> None:
 
     await asyncio.sleep(0)
     assert b'400 Bad Request' in buf
-
-
-async def test_handle_500(srv, buf, transport, request_handler) -> None:
-    request_handler.side_effect = ValueError
-
-    srv.data_received(
-        b'GET / HTTP/1.0\r\n'
-        b'Host: example.com\r\n\r\n')
-    await srv._task_handler
-
-    assert b'500 Internal Server Error' in buf
-
-
-async def test_handle_504(srv, buf, request_handler) -> None:
-    request_handler.side_effect = asyncio.TimeoutError
-
-    srv.data_received(
-        b'GET / HTTP/1.0\r\n'
-        b'Host: example.com\r\n\r\n')
-    await srv._task_handler
-
-    assert b'504 Gateway Timeout' in buf
 
 
 async def test_keep_alive(make_srv, transport, ceil) -> None:
@@ -634,7 +592,7 @@ async def test_content_length_0(srv, request_handler) -> None:
         b'GET / HTTP/1.1\r\n'
         b'Host: example.org\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     assert request_handler.called
     assert request_handler.call_args[0][0].content == streams.EMPTY_PAYLOAD
@@ -751,7 +709,7 @@ async def test_pipeline_response_order(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     # second
 
@@ -769,7 +727,7 @@ async def test_pipeline_response_order(
         b'GET / HTTP/1.1\r\n'
         b'Host: example.com\r\n'
         b'Content-Length: 0\r\n\r\n')
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
 
     assert srv._task_handler is not None
 
@@ -858,3 +816,31 @@ async def test_two_data_received_without_waking_up_start_task(srv) -> None:
     assert len(srv._messages) == 2
     assert srv._waiter.done()
     await asyncio.sleep(0.01)
+
+
+async def test_client_disconnect(aiohttp_server) -> None:
+
+    async def handler(request):
+        await request.content.read(10)
+        return web.Response()
+
+    loop = asyncio.get_event_loop()
+    loop.set_debug(True)
+    logger = mock.Mock()
+    app = web.Application()
+    app.router.add_route('POST', '/', handler)
+    server = await aiohttp_server(app, logger=logger)
+
+    _, writer = await asyncio.open_connection('127.0.0.1', server.port)
+    writer.write("""POST / HTTP/1.1\r
+Connection: keep-alive\r
+Content-Length: 10\r
+Host: localhost:{port}\r
+\r
+""".format(port=server.port).encode("ascii"))
+    await writer.drain()
+    await asyncio.sleep(0.1)
+    writer.write(b"x")
+    writer.close()
+    await asyncio.sleep(0.1)
+    logger.debug.assert_called_with('Ignored premature client disconnection.')

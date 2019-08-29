@@ -1,11 +1,9 @@
+.. currentmodule:: aiohttp
+
 .. _aiohttp-client-reference:
 
 Client Reference
 ================
-
-.. module:: aiohttp
-.. currentmodule:: aiohttp
-
 
 Client Session
 --------------
@@ -39,12 +37,11 @@ Usage example::
 
 The client session supports the context manager protocol for self closing.
 
-.. class:: ClientSession(*, connector=None, loop=None, cookies=None, \
+.. class:: ClientSession(*, connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
                          auth=None, json_serialize=json.dumps, \
                          version=aiohttp.HttpVersion11, \
-                         cookie_jar=None, read_timeout=None, \
-                         conn_timeout=None, \
+                         cookie_jar=None,
                          timeout=sentinel, \
                          raise_for_status=False, \
                          connector_owner=True, \
@@ -58,17 +55,6 @@ The client session supports the context manager protocol for self closing.
 
    :param aiohttp.connector.BaseConnector connector: BaseConnector
       sub-class instance to support connection pooling.
-
-   :param loop: :ref:`event loop<asyncio-event-loop>` used for
-      processing HTTP requests.
-
-      If *loop* is ``None`` the constructor
-      borrows it from *connector* if specified.
-
-      :func:`asyncio.get_event_loop` is used for getting default event
-      loop otherwise.
-
-      .. deprecated:: 2.0
 
    :param dict cookies: Cookies to send with the request (optional)
 
@@ -133,22 +119,6 @@ The client session supports the context manager protocol for self closing.
         total timeout by default.
 
       .. versionadded:: 3.3
-
-   :param float read_timeout: Request operations timeout. ``read_timeout`` is
-      cumulative for all request operations (request, redirects, responses,
-      data consuming). By default, the read timeout is 5*60 seconds.
-      Use ``None`` or ``0`` to disable timeout checks.
-
-      .. deprecated:: 3.3
-
-         Use ``timeout`` parameter instead.
-
-   :param float conn_timeout: timeout for connection establishing
-      (optional). Values ``0`` or ``None`` mean no timeout.
-
-      .. deprecated:: 3.3
-
-         Use ``timeout`` parameter instead.
 
    :param bool connector_owner:
 
@@ -215,23 +185,8 @@ The client session supports the context manager protocol for self closing.
 
       aiohttp re quote's redirect urls by default, but some servers
       require exact url from location header. To disable *re-quote* system
-      set :attr:`requote_redirect_url` attribute to ``False``.
+      create ``ClientSession`` with ``requote_redirect_url=False``.
 
-      .. versionadded:: 2.1
-
-      .. note:: This parameter affects all subsequent requests.
-
-      .. deprecated:: 3.5
-
-         The attribute modification is deprecated.
-
-   .. attribute:: loop
-
-      A loop instance used for session creation.
-
-      A read-only property.
-
-      .. deprecated:: 3.5
 
    .. comethod:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
@@ -265,8 +220,10 @@ The client session supports the context manager protocol for self closing.
                      - :class:`str` with preferably url-encoded content
                        (**Warning:** content will not be encoded by *aiohttp*)
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: The data to send in the body of the request. This can be a
+                   :class:`FormData` object or anything that can be passed into
+                   :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
+                   (optional)
 
       :param json: Any json compatible python object
                    (optional). *json* and *data* parameters could not
@@ -308,7 +265,7 @@ The client session supports the context manager protocol for self closing.
          with a *Content-Encoding* and *Content-Length* headers.
          ``None`` by default (optional).
 
-      :param int chunked: Enable chunked transfer encoding.
+      :param bool chunked: Enable chunked transfer encoding.
          It is up to the developer
          to decide how to chunk data streams. If chunking is enabled, aiohttp
          encodes the provided chunks in the "Transfer-encoding: chunked" format.
@@ -399,8 +356,9 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Data to send in the body of the request; see
+                   :meth:`request<aiohttp.ClientSession.request>`
+                   for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -418,8 +376,9 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
+      :param data: Data to send in the body of the request; see
+                   :meth:`request<aiohttp.ClientSession.request>`
+                   for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -488,9 +447,9 @@ The client session supports the context manager protocol for self closing.
 
       :param url: Request URL, :class:`str` or :class:`~yarl.URL`
 
-      :param data: Dictionary, bytes, or file-like object to
-                   send in the body of the request (optional)
-
+      :param data: Data to send in the body of the request; see
+                   :meth:`request<aiohttp.ClientSession.request>`
+                   for details (optional)
 
       :return ClientResponse: a :class:`client response
                               <ClientResponse>` object.
@@ -615,7 +574,7 @@ certification chaining.
                         encoding='utf-8', \
                         version=HttpVersion(major=1, minor=1), \
                         compress=None, chunked=None, expect100=False, raise_for_status=False, \
-                        connector=None, loop=None,\
+                        connector=None, \
                         read_until_eof=True, timeout=sentinel)
 
    :async-with:
@@ -630,8 +589,10 @@ certification chaining.
    :param dict params: Parameters to be sent in the query
                        string of the new request (optional)
 
-   :param data: Dictionary, bytes, or file-like object to
-                send in the body of the request (optional)
+   :param data: The data to send in the body of the request. This can be a
+                :class:`FormData` object or anything that can be passed into
+                :class:`FormData`, e.g. a dictionary, bytes, or file-like object.
+                (optional)
 
    :param json: Any json compatible python object (optional). *json* and *data*
                 parameters could not be used at the same time.
@@ -678,14 +639,6 @@ certification chaining.
    :param timeout: a :class:`ClientTimeout` settings structure, 5min
         total timeout by default.
 
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-                used for processing HTTP requests.
-                If param is ``None``, :func:`asyncio.get_event_loop`
-                is used for getting default event loop.
-
-      .. deprecated:: 2.0
-
-   :return ClientResponse: a :class:`client response <ClientResponse>` object.
 
    Usage::
 
@@ -723,7 +676,7 @@ BaseConnector
 
 .. class:: BaseConnector(*, keepalive_timeout=15, \
                          force_close=False, limit=100, limit_per_host=0, \
-                         enable_cleanup_closed=False, loop=None)
+                         enable_cleanup_closed=False)
 
    Base class for all connectors.
 
@@ -748,14 +701,6 @@ BaseConnector
       SSL shutdown process, in that case asyncio leaks ssl connections.
       If this parameter is set to True, aiohttp additionally aborts underlining
       transport after 2 seconds. It is off by default.
-
-
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-      used for handling connections.
-      If param is ``None``, :func:`asyncio.get_event_loop`
-      is used for getting default event loop.
-
-      .. deprecated:: 2.0
 
    .. attribute:: closed
 
@@ -785,7 +730,7 @@ BaseConnector
 
    .. comethod:: close()
 
-      Close all opened connections.
+      Close all open connections (and await them to close).
 
    .. comethod:: connect(request)
 
@@ -817,7 +762,7 @@ TCPConnector
                  family=0, local_addr=None, \
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
-                 enable_cleanup_closed=False, loop=None)
+                 enable_cleanup_closed=False)
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
 
@@ -862,15 +807,14 @@ TCPConnector
       If *limit* is ``0`` the connector has no limit (default: 0).
 
    :param aiohttp.abc.AbstractResolver resolver: custom resolver
-      instance to use.  ``aiohttp.DefaultResolver`` by
-      default (asynchronous if ``aiodns>=1.1`` is installed).
+      instance to use. ``aiohttp.DefaultResolver`` by default.
 
       Custom resolvers allow to resolve hostnames differently than the
       way the host is configured.
 
-      The resolver is ``aiohttp.ThreadedResolver`` by default,
-      asynchronous version is pretty robust but might fail in
-      very rare cases.
+      The resolver is ``aiohttp.ThreadedResolver`` by default. Asynchronous
+      version ``aiohttp.AsyncResolver`` (requires ``aiodns>=1.1``) is pretty
+      robust but might fail in very rare cases.
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :const:`socket.AF_INET`,
@@ -925,7 +869,7 @@ UnixConnector
 
 .. class:: UnixConnector(path, *, conn_timeout=None, \
                          keepalive_timeout=30, limit=100, \
-                         force_close=False, loop=None)
+                         force_close=False)
 
    Unix socket connector.
 
@@ -969,12 +913,6 @@ Connection
 
       :class:`bool` read-only property, ``True`` if connection was
       closed, released or detached.
-
-   .. attribute:: loop
-
-      Event loop used for connection
-
-      .. deprecated:: 3.5
 
    .. attribute:: transport
 
@@ -1148,7 +1086,7 @@ Response object
 
       Do nothing for success responses (less than 400).
 
-   .. comethod:: text(encoding=None)
+   .. comethod:: text(encoding=None, errors='strict')
 
       Read response's body and return decoded :class:`str` using
       specified *encoding* parameter.
@@ -1166,6 +1104,9 @@ Response object
       :param str encoding: text encoding used for *BODY* decoding, or
                            ``None`` for encoding autodetection
                            (default).
+
+      :param str errors: error handling scheme, see :ref:`error-handlers` for
+                         more details.  ``'strict'`` by default.
 
       :return str: decoded *BODY*
 
@@ -1538,7 +1479,7 @@ BasicAuth
 CookieJar
 ^^^^^^^^^
 
-.. class:: CookieJar(*, unsafe=False, loop=None)
+.. class:: CookieJar(*, unsafe=False)
 
    The cookie jar instance is available as :attr:`ClientSession.cookie_jar`.
 
@@ -1562,11 +1503,6 @@ CookieJar
    Implements cookie storage adhering to RFC 6265.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
-
-   :param bool loop: an :ref:`event loop<asyncio-event-loop>` instance.
-      See :class:`aiohttp.abc.AbstractCookieJar`
-
-      .. deprecated:: 2.0
 
    .. method:: update_cookies(cookies, response_url=None)
 
@@ -1610,7 +1546,7 @@ CookieJar
 
 
 
-.. class:: DummyCookieJar(*, loop=None)
+.. class:: DummyCookieJar()
 
    Dummy cookie jar which does not store cookies but ignores them.
 
@@ -1645,6 +1581,79 @@ CookieJar
       await session.get(url, ssl=aiohttp.Fingerprint(digest))
 
    .. versionadded:: 3.0
+
+FormData
+^^^^^^^^
+
+A :class:`FormData` object contains the form data and also handles
+encoding it into a body that is either ``multipart/form-data`` or
+``application/x-www-form-urlencoded``. ``multipart/form-data`` is
+used if at least one field is an :class:`io.IOBase` object or was
+added with at least one optional argument to :meth:`add_field<aiohttp.FormData.add_field>`
+(``content_type``, ``filename``, or ``content_transfer_encoding``).
+Otherwise, ``application/x-www-form-urlencoded`` is used.
+
+:class:`FormData` instances are callable and return a :class:`Payload`
+on being called.
+
+.. class:: FormData(fields, quote_fields=True, charset=None)
+
+   Helper class for multipart/form-data and application/x-www-form-urlencoded body generation.
+
+   :param fields: A container for the key/value pairs of this form.
+
+                  Possible types are:
+
+                  - :class:`dict`
+                  - :class:`tuple` or :class:`list`
+                  - :class:`io.IOBase`, e.g. a file-like object
+                  - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
+
+                  If it is a :class:`tuple` or :class:`list`, it must be a valid argument
+                  for :meth:`add_fields<aiohttp.FormData.add_fields>`.
+
+                  For :class:`dict`, :class:`multidict.MultiDict`, and :class:`multidict.MultiDictProxy`,
+                  the keys and values must be valid `name` and `value` arguments to
+                  :meth:`add_field<aiohttp.FormData.add_field>`, respectively.
+
+   .. method:: add_field(name, value, content_type=None, filename=None,\
+                         content_transfer_encoding=None)
+
+      Add a field to the form.
+
+      :param str name: Name of the field
+
+      :param value: Value of the field
+
+                    Possible types are:
+
+                    - :class:`str`
+                    - :class:`bytes`, :class:`bytesarray`, or :class:`memoryview`
+                    - :class:`io.IOBase`, e.g. a file-like object
+
+      :param str content_type: The field's content-type header (optional)
+
+      :param str filename: The field's filename (optional)
+
+                           If this is not set and ``value`` is a :class:`bytes`, :class:`bytesarray`,
+                           or :class:`memoryview` object, the `name` argument is used as the filename
+                           unless ``content_transfer_encoding`` is specified.
+
+                           If ``filename`` is not set and ``value`` is an :class:`io.IOBase`
+                           object, the filename is extracted from the object if possible.
+
+      :param str content_transfer_encoding: The field's content-transfer-encoding
+                                            header (optional)
+
+   .. method:: add_fields(fields)
+
+      Add one or more fields to the form.
+
+      :param fields: An iterable containing:
+
+                     - :class:`io.IOBase`, e.g. a file-like object
+                     - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
+                     - :class:`tuple` or :class:`list` of length two, containing a name-value pair
 
 Client exceptions
 -----------------

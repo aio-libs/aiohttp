@@ -34,8 +34,8 @@ async def logout(request):
     return resp
 
 
-def init(loop):
-    app = web.Application(loop=loop)
+def init():
+    app = web.Application()
     app.router.add_get('/', root)
     app.router.add_get('/login', login)
     app.router.add_get('/logout', logout)
