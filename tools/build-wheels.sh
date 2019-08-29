@@ -18,7 +18,7 @@ ORIG_WHEEL_DIR="${BUILD_DIR}/original-wheelhouse"
 SRC_DIR="${BUILD_DIR}/src"
 WHEELHOUSE_DIR="${WORKDIR_PATH}/dist"
 
-set -xeuo pipefail
+set -euo pipefail
 # ref: https://coderwall.com/p/fkfaqq/safer-bash-scripts-with-set-euxo-pipefail
 
 PYTHON_VERSIONS="cp35-cp35m cp36-cp36m cp37-cp37m"
@@ -82,8 +82,6 @@ for PYTHON in ${PYTHON_VERSIONS}; do
 
     echo
     echo -n "Test $PYTHON: "
-    yum install -y openssl-devel libffi-devel python-devel
-    yum update
     /opt/python/${PYTHON}/bin/python -c "import platform; print('Building wheel for {platform} platform.'.format(platform=platform.platform()))"
     /opt/python/${PYTHON}/bin/pip install -r ${WORKDIR_PATH}/requirements/ci-wheel.txt
     /opt/python/${PYTHON}/bin/pip install "$package_name" --no-index -f "file://${WHEELHOUSE_DIR}"
