@@ -45,6 +45,9 @@ jobs:
         - script: LC_ALL=C sort -c CONTRIBUTORS.txt
     steps:
     - uses: actions/checkout@master
+    - name: Sync Git submodules
+      if: matrix.jobs.install
+      run: git submodule update --init
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
