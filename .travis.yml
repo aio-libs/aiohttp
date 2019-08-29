@@ -1,10 +1,7 @@
-conditions: v1
-version: "= 0"
 if: >  # Forbid running non-PR pushes from pyup bot
   not (type != pull_request AND branch =~ ^pyup\-scheduled\-update\-)
 
 dist: xenial
-sudo: required
 
 language: python
 
@@ -55,7 +52,7 @@ _helpers:
 - &osx_python_base
   stage: &stage_test_osx_name test under OS X (last chance to fail before deploy available)
   os: osx
-  language: generic
+  language: shell
   python: *pypy3
   env:
   - &env_pypy3 PYTHON_VERSION=pypy3.6-7.1.1
@@ -80,12 +77,12 @@ _helpers:
     # `skip_cleanup: true` is required to preserve binary wheels, built
     # inside of manylinux1 docker container during `script` step above.
     skip_cleanup: true
-    # `skip-existing: true` is required to skip uploading dists, already
+    # `skip_existing: true` is required to skip uploading dists, already
     # present in PYPI instead of failing the whole process.
     # This happens when other CI (AppVeyor etc.) has already uploaded
     # the very same dist (usually sdist).
-    skip-existing: true
-    user: aio-libs-bot
+    skip_existing: true
+    username: aio-libs-bot
     password:
       # Encrypted with `travis encrypt -r aio-libs/aiohttp --api-endpoint 'https://api.travis-ci.com/'`:
       secure: bWF8GkGmjxfisMx+LqOmZgf9EXPT4yBMhiIbN+rU5gs53PJJyn1r287c5zEijnIHlpQaJVwWJ9ZFl1n34y37P1yvhlz0M6esr5K10B9fJ6nkUoAivtOWARcHLQ3bC+WGC/V9S0v0pZ11qFuSNzJzFZqfRabRw0H8muVWGhuBuYp97EdJWCdSNpXqsj2Ts8ytPMYv+5m3iPgXq833svFbWRjZ+HgX8HwvF2lo+ej+tsFJNACbQmj+eQDGlWQZzP2s4/3grHivd2retpqfW1cYgZaZX68/UB2ghsCtkxhcNpGaM8I/n3udAHkPSqz3MC2FJL0RdkyvQ8UZkcmcisQxz0voQM25995BHGWktwpDh7BxFtGJishXV7hiFz9zVOZLM9u5AzIO4hoN770SsZDewWdhzowXPYT8DXiHVg+roEkszg8FeBmisx1cw34CK9H0iLUSQ9EF2vuz8T4bqEpbT6Fyta90wZTvJ7GpJ4yXJXR6VAvLgiX4zXeFdx/4aViz3UzkDJ06qieRuZJWfQ9u2lDxJfqHEVy5IxM5iACagP1XayJiVIN0uFRxNElxTlCMope6ICCOu9fhcGnF15XNw5YpFPYYvph3JU1vC8cYw7ypg8LQGryp1fNM9SXWaGTiV+J/yvsynFiXX6QiyGOwSBIJ9XjZEfRd8i9HaGHw2cw=
@@ -135,7 +132,7 @@ _helpers:
 
 os: linux
 
-jobs:
+matrix:
   fast_finish: true
   allow_failures:
   - python: nightly
@@ -144,7 +141,7 @@ jobs:
   - name: 3.7 without extensions
     python: 3.7
     env:
-      AIOHTTP_NO_EXTENSIONS: 1
+      AIOHTTP_NO_EXTENSIONS: "1"
 
   - <<: *_doc_base
     name: Checking docs spelling
@@ -189,7 +186,7 @@ jobs:
 
   - <<: *_lint_base
     name: Making sure that CONTRIBUTORS.txt remains sorted
-    language: minimal
+    language: shell
     install:
     - skip
     script:
