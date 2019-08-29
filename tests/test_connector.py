@@ -18,7 +18,7 @@ import aiohttp
 from aiohttp import client, web
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_reqrep import ConnectionKey
-from aiohttp.connector import Connection, _DNSCacheTable, TCPConnector
+from aiohttp.connector import Connection, TCPConnector, _DNSCacheTable
 from aiohttp.helpers import PY_37
 from aiohttp.locks import EventResultOrError
 from aiohttp.test_utils import make_mocked_coro, unused_port
