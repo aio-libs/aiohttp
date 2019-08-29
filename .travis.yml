@@ -29,7 +29,7 @@ after_success:
 _helpers:
   # anchor nodes to be included elsewhere.
   # names that start with _ are only used in other helpers
-- &_mainstream_python_base
+- &mainstream_python_base
   python: *mainstream_python
 - &_reset_steps
   env: []
@@ -38,7 +38,7 @@ _helpers:
   script: skip
 
 - &lint_base
-  <<: *_mainstream_python_base
+  <<: *mainstream_python_base
   <<: *_reset_steps
   stage: &doc_stage_name docs, linting and pre-test checks
   env:
@@ -174,8 +174,8 @@ matrix:
   - python: nightly
 
   include:
-  - name: 3.7 without extensions
-    python: 3.7
+  - <<: *mainstream_python_base
+    name: without extensions
     env:
       AIOHTTP_NO_EXTENSIONS: "1"
 
