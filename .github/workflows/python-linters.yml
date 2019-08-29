@@ -34,7 +34,7 @@ jobs:
         - script: flake8 aiohttp examples tests
           install: pip install -r requirements/flake.txt
         - script: isort -c -rc aiohttp tests examples
-          install: pip install isort
+          install: pip install isort -r requirements/dev.txt
         - script: mypy aiohttp
           install: pip install -r requirements/ci.txt
         - script: |
