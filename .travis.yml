@@ -101,8 +101,15 @@ _helpers:
   - |
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
-  - pyenv install --skip-existing --keep --verbose "$PYTHON_VERSION"
-  - pyenv shell "$PYTHON_VERSION"
+    PYENV_PYTHON_VERSION="$(pyenv install --list \
+      | grep -E "^\\s*$PYTHON_VERSION" \
+      | sort -n -t. -k3 \
+      | tail -n1 \
+      | tr -d '[:space:]' \
+      )"
+    echo $PYENV_PYTHON_VERSION
+  - pyenv install --skip-existing --keep --verbose "$PYENV_PYTHON_VERSION"
+  - pyenv shell "$PYENV_PYTHON_VERSION"
   - python --version
   script: skip
   before_cache:
@@ -136,15 +143,15 @@ _helpers:
 # key is only needed to provide a container for
 # the &osx_env_<version> YAML anchor).
 - &osx_env_py35
-  - PYTHON_VERSION: "3.5.3"
+  - PYTHON_VERSION: "3.5"
   - *env_pyenv
   - *env_path
 - &osx_env_py36
-  - PYTHON_VERSION: "3.6.3"
+  - PYTHON_VERSION: "3.6"
   - *env_pyenv
   - *env_path
 - &osx_env_py37
-  - PYTHON_VERSION: "3.7.0"
+  - PYTHON_VERSION: "3.7"
   - *env_pyenv
   - *env_path
 
