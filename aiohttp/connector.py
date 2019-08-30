@@ -786,6 +786,7 @@ class TCPConnector(BaseConnector):
             return result
 
         if key in self._throttle_dns_events:
+            # get event early, before any await (#4014)
             event = self._throttle_dns_events[key]
             if traces:
                 for trace in traces:
