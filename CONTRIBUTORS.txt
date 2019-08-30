@@ -92,6 +92,7 @@ Eric Sheng
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
+Eugene Nikolaiev
 Eugene Tolmachev
 Evert Lammerts
 Felix Yan

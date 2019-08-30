@@ -1235,3 +1235,47 @@ def test_prefixed_subapp_resource_canonical(app) -> None:
     subapp = web.Application()
     res = subapp.add_subapp(canonical, subapp)
     assert res.canonical == canonical
+
+
+async def test_prefixed_subapp_overlap(app) -> None:
+    """
+    Subapp should not overshadow other subapps with overlapping prefixes
+    """
+    subapp1 = web.Application()
+    handler1 = make_handler()
+    subapp1.router.add_get('/a', handler1)
+    app.add_subapp('/s', subapp1)
+
+    subapp2 = web.Application()
+    handler2 = make_handler()
+    subapp2.router.add_get('/b', handler2)
+    app.add_subapp('/ss', subapp2)
+
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s/a'))
+    assert match_info.route.handler is handler1
+    match_info = await app.router.resolve(make_mocked_request('GET', '/ss/b'))
+    assert match_info.route.handler is handler2
+
+
+async def test_prefixed_subapp_empty_route(app) -> None:
+    subapp = web.Application()
+    handler = make_handler()
+    subapp.router.add_get('', handler)
+    app.add_subapp('/s', subapp)
+
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s'))
+    assert match_info.route.handler is handler
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s/'))
+    assert "<MatchInfoError 404: Not Found>" == repr(match_info)
+
+
+async def test_prefixed_subapp_root_route(app) -> None:
+    subapp = web.Application()
+    handler = make_handler()
+    subapp.router.add_get('/', handler)
+    app.add_subapp('/s', subapp)
+
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s/'))
+    assert match_info.route.handler is handler
+    match_info = await app.router.resolve(make_mocked_request('GET', '/s'))
+    assert "<MatchInfoError 404: Not Found>" == repr(match_info)
