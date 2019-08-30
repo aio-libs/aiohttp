@@ -793,6 +793,7 @@ class TCPConnector(BaseConnector):
                     await trace.send_dns_cache_hit(host)
             await event.wait()
         else:
+            # update dict early, before any await (#4014)
             self._throttle_dns_events[key] = \
                 EventResultOrError(self._loop)
             if traces:
