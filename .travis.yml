@@ -170,7 +170,7 @@ matrix:
 
   include:
   - <<: *mainstream_python_base
-    name: without extensions
+    name: 3.7 without extensions
     env:
       AIOHTTP_NO_EXTENSIONS: "1"
 
@@ -213,7 +213,6 @@ matrix:
 
   - <<: *lint_base
     name: Making sure that CONTRIBUTORS.txt remains sorted
-    language: shell
     install: skip
     script:
     - LC_ALL=C sort -c CONTRIBUTORS.txt
@@ -259,9 +258,9 @@ stages:
 - *doc_stage_name
 - test
 - name: *stage_test_osx_name
-  if: type IN (api, cron)
+  if: type IN (api, cron) OR tag IS present
 - name: *deploy_stage_name
-  if: type IN (api, cron)
+  if: type IN (api, cron) OR tag IS present
 
 
 cache: pip
