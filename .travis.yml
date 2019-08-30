@@ -14,8 +14,11 @@ python:
 
 install:
 - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
-- make cythonize
-- pip install -r requirements/ci.txt
+- pip install --upgrade -r requirements/cython.txt
+
+before_script:
+- &cythonize make cythonize
+- &ci_requirements pip install --upgrade -r requirements/ci.txt
 
 script:
 - make cov-ci-run
@@ -24,6 +27,8 @@ after_success:
  - codecov
 
 _helpers:
+  # anchor nodes to be included elsewhere.
+  # names that start with _ are only used in other helpers
 - &_mainstream_python_base
   python: *mainstream_python
 - &_reset_steps
@@ -31,48 +36,21 @@ _helpers:
   before_install: skip
   install: skip
   script: skip
-  after_success: []
-- &_lint_base
-  stage: &doc_stage_name docs, linting and pre-test checks
+
+- &lint_base
   <<: *_mainstream_python_base
   <<: *_reset_steps
-  install:
-  - *upgrade_python_toolset
-  - pip install -U -r requirements/ci.txt
-- &_doc_base
-  <<: *_lint_base
-  install:
-  - *upgrade_python_toolset
-  - pip install -U -r requirements/doc.txt -r requirements/doc-spelling.txt
-  after_failure: cat docs/_build/spelling/output.txt
-  addons:
-    apt:
-      packages:
-      - libenchant-dev
-- &osx_python_base
-  stage: &stage_test_osx_name test under OS X (last chance to fail before deploy available)
-  os: osx
-  language: shell
-  python: *pypy3
+  stage: &doc_stage_name docs, linting and pre-test checks
   env:
-  - &env_pypy3 PYTHON_VERSION=pypy3.6-7.1.1
-  - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
-  - &env_path PATH="$PYENV_ROOT/bin:$PATH"
-  before_install:
-  - brew update
-  - brew install pyenv || brew upgrade pyenv
-  - &ensure_pyenv_preloaded |
-    eval "$(pyenv init -)"
-    eval "$(pyenv virtualenv-init -)"
-  - &install_python pyenv install --skip-existing --keep --verbose "$PYTHON_VERSION"
-  - &switch_python pyenv shell "$PYTHON_VERSION"
-  - &python_version python --version
-  before_cache:
-  - brew --cache
-- &generic_deploy_base
-  stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
-  <<: *_mainstream_python_base
-  deploy: &deploy_step
+    AIOHTTP_NO_EXTENSIONS: "1"
+  install:
+  - *upgrade_python_toolset
+  - *ci_requirements
+  before_script: skip
+
+- &_generic_deploy_base
+  <<: *_reset_steps
+  deploy: &_deploy_defaults
     provider: pypi
     # `skip_cleanup: true` is required to preserve binary wheels, built
     # inside of manylinux1 docker container during `script` step above.
@@ -98,37 +76,88 @@ _helpers:
     on:
       tags: true
       all_branches: true
-- &osx_pypi_deploy_base_1011
-  <<: *osx_python_base
-  <<: *generic_deploy_base
-  osx_image: xcode7.3
-  script: skip
-  after_success: []
+
+- &_osx_pypi_deploy_base
+  <<: *_generic_deploy_base
+  stage: &stage_test_osx_name test under OS X (last chance to fail before deploy available)
+  os: osx
+  language: shell
   env:
-  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel=
-  - &env_py36 PYTHON_VERSION=3.6.3
-  - *env_pyenv
-  - *env_path
+  - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
+  - &env_path PATH="$PYENV_ROOT/bin:$PATH"
+  before_install:
+  - brew update
+  - |
+    if brew ls --versions pyenv > /dev/null; then
+      brew outdated pyenv || brew upgrade pyenv
+      if brew ls --versions pyenv-virtualenv > /dev/null; then
+        brew outdated pyenv-virtualenv || brew upgrade pyenv-virtualenv
+      else
+        brew install pyenv-virtualenv
+      fi
+    else
+      brew install pyenv pyenv-virtualenv
+    fi
+  - |
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
+  - pyenv install --skip-existing --keep --verbose "$PYTHON_VERSION"
+  - pyenv shell "$PYTHON_VERSION"
+  - python --version
+  script: skip
+  before_cache:
+  - brew --cache
   deploy:
-    <<: *deploy_step
+    <<: *_deploy_defaults
     skip_cleanup: false
     distributions: bdist_wheel
-- &osx_pypi_deploy_base_1012
-  <<: *osx_pypi_deploy_base_1011
-  osx_image: xcode8.1
-  env:
-  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
-  - *env_py36
-  - *env_pyenv
-  - *env_path
+
+# OS X test and deploy matrix helpers
+# These are used to build a matrix, with
+# N OSX image options and M python options,
+# of the form:
+#
+#   - <<: *osx_pypi_deploy_base_<osx version>
+#     name: <build name (optional)>
+#     env: *osx_env_<python version>
+
+# OS X image options
 - &osx_pypi_deploy_base_1010
-  <<: *osx_pypi_deploy_base_1011
+  <<: *_osx_pypi_deploy_base
   osx_image: xcode6.4
-  env:
-  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
-  - *env_py36
+- &osx_pypi_deploy_base_1011
+  <<: *_osx_pypi_deploy_base
+  osx_image: xcode7.3
+- &osx_pypi_deploy_base_1012
+  <<: *_osx_pypi_deploy_base
+  osx_image: xcode8.3
+
+# OS X Python options (the _osx_env_<version>
+# key is only needed to provide a container for
+# the &osx_env_<version> YAML anchor).
+- &osx_env_py35
+  - PYTHON_VERSION: "3.5.3"
   - *env_pyenv
   - *env_path
+- &osx_env_py36
+  - PYTHON_VERSION: "3.6.3"
+  - *env_pyenv
+  - *env_path
+- &osx_env_py37
+  - PYTHON_VERSION: "3.7.0"
+  - *env_pyenv
+  - *env_path
+
+- &linux_pypi_deploy_base
+  <<: *_generic_deploy_base
+  <<: *mainstream_python_base
+  stage: &deploy_stage_name Linux build and deploy
+  deploy:
+    <<: *_deploy_defaults
+    # `skip_cleanup: true` is required to preserve binary wheels, built
+    # inside of manylinux1 docker container during `script` step above.
+    skip_cleanup: true
+
 
 os: linux
 
@@ -143,156 +172,86 @@ matrix:
     env:
       AIOHTTP_NO_EXTENSIONS: "1"
 
-  - <<: *_doc_base
+  - <<: *lint_base
     name: Checking docs spelling
+    before_script:
+    - pip install --upgrade -r requirements/doc-spelling.txt
     script:
     - make doc-spelling
+    after_failure: cat docs/_build/spelling/output.txt
+    addons:
+      apt:
+        packages:
+        - libenchant-dev
 
-  - <<: *_doc_base
+  - <<: *lint_base
     name: Checking Towncrier fragments
-    install:
-    - *upgrade_python_toolset
-    - pip install -r requirements/cython.txt
-    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt
-    - pip install -r requirements/towncrier.txt
+    before_script:
+    - pip install --upgrade -r requirements/towncrier.txt
     script:
     - towncrier --yes
 
-  - <<: *_lint_base
+  - <<: *lint_base
     name: Linting source code with flake8
-    install:
-    - *upgrade_python_toolset
-    - pip install -r requirements/flake.txt
+    before_script:
+    - pip install --upgrade -r requirements/flake.txt
     script:
     - flake8 aiohttp examples tests
 
-  - <<: *_lint_base
+  - <<: *lint_base
     name: Linting source code with mypy
-    install:
-    - *upgrade_python_toolset
-    - pip install -r requirements/cython.txt
-    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt
     script:
     - mypy aiohttp
 
-  - <<: *_lint_base
+  - <<: *lint_base
     name: Verifying distribution package metadata
-    install:
-    - *upgrade_python_toolset
-    - AIOHTTP_NO_EXTENSIONS=1 pip install -r requirements/ci.txt -r requirements/doc.txt
     script:
-    - AIOHTTP_NO_EXTENSIONS=1 python setup.py --verbose sdist bdist_wheel
+    - python setup.py --verbose sdist bdist_wheel
     - twine check dist/*
 
-  - <<: *_lint_base
+  - <<: *lint_base
     name: Making sure that CONTRIBUTORS.txt remains sorted
     language: shell
-    install:
-    - skip
+    install: skip
     script:
     - LC_ALL=C sort -c CONTRIBUTORS.txt
 
-  - <<: *osx_python_base
-    python: 3.5.3
-    env:
-    - &env_py35 PYTHON_VERSION=3.5.3
-    - *env_pyenv
-    - *env_path
-  - <<: *osx_python_base
-    python: *mainstream_python
-    env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-  - <<: *osx_python_base
-    python: 3.7
-    env:
-    - &env_py37 PYTHON_VERSION=3.7.0
-    - *env_pyenv
-    - *env_path
-  # pypy3.5-5.10.0 fails under OS X because it's unsupported
+  # Build and deploy MacOS binary wheels for each OSX + Python combo possible
+  - <<: *osx_pypi_deploy_base_1010
+    name: binary wheel python 3.5 on OS X 10.10
+    env: *osx_env_py35
+  - <<: *osx_pypi_deploy_base_1010
+    name: binary wheel python 3.6 on OS X 10.10
+    env: *osx_env_py36
+  - <<: *osx_pypi_deploy_base_1010
+    name: binary wheel python 3.7 on OS X 10.10
+    env: *osx_env_py37
+  - <<: *osx_pypi_deploy_base_1011
+    name: binary wheel python 3.5 on OS X 10.11
+    env: *osx_env_py35
+  - <<: *osx_pypi_deploy_base_1011
+    name: binary wheel python 3.6 on OS X 10.11
+    env: *osx_env_py36
+  - <<: *osx_pypi_deploy_base_1011
+    name: binary wheel python 3.7 on OS X 10.11
+    env: *osx_env_py37
+  - <<: *osx_pypi_deploy_base_1012
+    name: binary wheel python 3.5 on OS X 10.12
+    env: *osx_env_py35
+  - <<: *osx_pypi_deploy_base_1012
+    name: binary wheel python 3.6 on OS X 10.12
+    env: *osx_env_py36
+  - <<: *osx_pypi_deploy_base_1012
+    name: binary wheel python 3.7 on OS X 10.12
+    env: *osx_env_py37
 
   # Build and deploy manylinux1 binary wheels and source distribution
-  - <<: *generic_deploy_base
-    <<: *_reset_steps
-    env: Build and deploy to PYPI of manylinux1 binary wheels for all supported Pythons and source distribution=
+  - <<: *linux_pypi_deploy_base
+    name: Build and deploy source distribution and manylinux1 binary wheels
     services:
     - docker
     script:
-    - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt  # to compile *.c files by Cython
-    - make cythonize
     - ./tools/run_docker.sh "aiohttp"
-    deploy:
-      <<: *deploy_step
-
-    # Build and deploy MacOS binary wheels for each OSX+Python combo possible
-    # OS X 10.10, Python 3.5
-  - <<: *osx_pypi_deploy_base_1010
-    python: 3.5
-    env:
-    - *env_os1010_msg
-    - *env_py35
-    - *env_pyenv
-    - *env_path
-    # OS X 10.10, Python 3.6
-  - <<: *osx_pypi_deploy_base_1010
-    env:
-    - *env_os1010_msg
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    # OS X 10.10, Python 3.7
-  - <<: *osx_pypi_deploy_base_1010
-    env:
-    - *env_os1010_msg
-    - *env_py37
-    - *env_pyenv
-    - *env_path
-    # OS X 10.11, Python 3.5
-  - <<: *osx_pypi_deploy_base_1011
-    python: 3.5
-    env:
-    - *env_os1011_msg
-    - *env_py35
-    - *env_pyenv
-    - *env_path
-    # OS X 10.11, Python 3.6
-  - <<: *osx_pypi_deploy_base_1011
-    env:
-    - *env_os1011_msg
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    # OS X 10.11, Python 3.7
-  - <<: *osx_pypi_deploy_base_1011
-    env:
-    - *env_os1011_msg
-    - *env_py37
-    - *env_pyenv
-    - *env_path
-    # OS X 10.12, Python 3.5
-  - <<: *osx_pypi_deploy_base_1012
-    python: 3.5
-    env:
-    - *env_os1012_msg
-    - *env_py35
-    - *env_pyenv
-    - *env_path
-    # OS X 10.12, Python 3.6
-  - <<: *osx_pypi_deploy_base_1012
-    env:
-    - *env_os1012_msg
-    - *env_py36
-    - *env_pyenv
-    - *env_path
-    # OS X 10.12, Python 3.7
-  - <<: *osx_pypi_deploy_base_1012
-    env:
-    - *env_os1012_msg
-    - *env_py37
-    - *env_pyenv
-    - *env_path
 
 stages:
 - *doc_stage_name
