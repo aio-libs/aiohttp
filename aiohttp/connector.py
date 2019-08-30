@@ -778,6 +778,7 @@ class TCPConnector(BaseConnector):
 
         if (key in self._cached_hosts) and \
                 (not self._cached_hosts.expired(key)):
+            # get result early, before any await (#4014)
             result = self._cached_hosts.next_addrs(key)
 
             if traces:
