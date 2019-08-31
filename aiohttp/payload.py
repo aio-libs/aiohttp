@@ -189,11 +189,15 @@ class Payload(ABC):
         return self._headers[hdrs.CONTENT_TYPE]
 
     def set_content_disposition(
-        self, disptype: str, quote_fields: bool = True, **params: Any
+        self,
+        disptype: str,
+        quote_fields: bool = True,
+        _charset: str = "utf-8",
+        **params: Any,
     ) -> None:
         """Sets ``Content-Disposition`` header."""
         self._headers[hdrs.CONTENT_DISPOSITION] = content_disposition_header(
-            disptype, quote_fields=quote_fields, **params
+            disptype, quote_fields=quote_fields, _charset=_charset, **params
         )
 
     @abstractmethod

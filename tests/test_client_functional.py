@@ -1422,7 +1422,7 @@ async def test_POST_FILES_SINGLE_content_disposition(aiohttp_client, fname) -> N
             "text/x-python",
         ]
         assert request.headers["content-disposition"] == (
-            "inline; filename=\"conftest.py\"; filename*=utf-8''conftest.py"
+            'inline; filename="conftest.py"'
         )
 
         return web.Response()

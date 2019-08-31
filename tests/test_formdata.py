@@ -72,18 +72,18 @@ def test_invalid_formdata_content_transfer_encoding() -> None:
 
 async def test_formdata_field_name_is_quoted(buf, writer) -> None:
     form = FormData(charset="ascii")
-    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
+    form.add_field("email 1", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
     await payload.write(writer)
-    assert b'name="emails%5B%5D"' in buf
+    assert b'name="email\\ 1"' in buf
 
 
 async def test_formdata_field_name_is_not_quoted(buf, writer) -> None:
     form = FormData(quote_fields=False, charset="ascii")
-    form.add_field("emails[]", "xxx@x.co", content_type="multipart/form-data")
+    form.add_field("email 1", "xxx@x.co", content_type="multipart/form-data")
     payload = form()
     await payload.write(writer)
-    assert b'name="emails[]"' in buf
+    assert b'name="email 1"' in buf
 
 
 async def test_mark_formdata_as_processed() -> None:

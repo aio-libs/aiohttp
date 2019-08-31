@@ -819,9 +819,7 @@ async def test_response_with_file(aiohttp_client, fname) -> None:
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    expected_content_disposition = (
-        "attachment; filename=\"conftest.py\"; filename*=utf-8''conftest.py"
-    )
+    expected_content_disposition = 'attachment; filename="conftest.py"'
     assert resp_data == data
     assert resp.headers.get("Content-Type") in (
         "application/octet-stream",
@@ -849,9 +847,7 @@ async def test_response_with_file_ctype(aiohttp_client, fname) -> None:
     resp = await client.get("/")
     assert 200 == resp.status
     resp_data = await resp.read()
-    expected_content_disposition = (
-        "attachment; filename=\"conftest.py\"; filename*=utf-8''conftest.py"
-    )
+    expected_content_disposition = 'attachment; filename="conftest.py"'
     assert resp_data == data
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
@@ -878,10 +874,7 @@ async def test_response_with_payload_disp(aiohttp_client, fname) -> None:
     assert resp_data == data
     assert resp.headers.get("Content-Type") == "text/binary"
     assert resp.headers.get("Content-Length") == str(len(resp_data))
-    assert (
-        resp.headers.get("Content-Disposition")
-        == "inline; filename=\"test.txt\"; filename*=utf-8''test.txt"
-    )
+    assert resp.headers.get("Content-Disposition") == 'inline; filename="test.txt"'
 
 
 async def test_response_with_payload_stringio(aiohttp_client, fname) -> None:
@@ -1521,10 +1514,7 @@ async def test_response_with_bodypart(aiohttp_client) -> None:
     assert body == b"test"
 
     disp = multipart.parse_content_disposition(resp.headers["content-disposition"])
-    assert disp == (
-        "attachment",
-        {"name": "file", "filename": "file", "filename*": "file"},
-    )
+    assert disp == ("attachment", {"name": "file", "filename": "file"})
 
 
 async def test_response_with_bodypart_named(aiohttp_client, tmp_path) -> None:
@@ -1547,10 +1537,7 @@ async def test_response_with_bodypart_named(aiohttp_client, tmp_path) -> None:
     assert body == b"test"
 
     disp = multipart.parse_content_disposition(resp.headers["content-disposition"])
-    assert disp == (
-        "attachment",
-        {"name": "file", "filename": "foobar.txt", "filename*": "foobar.txt"},
-    )
+    assert disp == ("attachment", {"name": "file", "filename": "foobar.txt"})
 
 
 async def test_response_with_bodypart_invalid_name(aiohttp_client) -> None:
