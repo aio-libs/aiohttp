@@ -411,6 +411,13 @@ class HttpParser(abc.ABC):
 
         return (headers, raw_headers, close_conn, encoding, upgrade, chunked)
 
+    def set_upgraded(self, val: bool) -> None:
+        """Set connection upgraded (to websocket) mode.
+
+        :param bool val: new state.
+        """
+        self._upgraded = val
+
 
 class HttpRequestParser(HttpParser):
     """Read request status line. Exception .http_exceptions.BadStatusLine
