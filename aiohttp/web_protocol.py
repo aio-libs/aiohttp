@@ -467,7 +467,7 @@ class RequestHandler(BaseProtocol):
                     self._handle_request(request, start))
                 try:
                     resp, reset = await task
-                except asyncio.CancelledError:
+                except (asyncio.CancelledError, ConnectionError):
                     self.log_debug('Ignored premature client disconnection')
                     break
 
@@ -568,7 +568,7 @@ class RequestHandler(BaseProtocol):
         try:
             await prepare_meth(request)
             await resp.write_eof()
-        except ConnectionResetError:
+        except ConnectionError:
             await self.log_access(request, resp, start_time)
             return True
         else:
