@@ -277,19 +277,6 @@ async def test_close_timeout(loop, aiohttp_client) -> None:
     await asyncio.sleep(0.08)
     msg = await ws._reader.read()
     assert msg.type == WSMsgType.CLOSE
-    await ws.send_str('hang')
-
-    # i am not sure what do we test here
-    # under uvloop this code raises RuntimeError
-    try:
-        await asyncio.sleep(0.08)
-        await ws.send_str('hang')
-        await asyncio.sleep(0.08)
-        await ws.send_str('hang')
-        await asyncio.sleep(0.08)
-        await ws.send_str('hang')
-    except RuntimeError:
-        pass
 
     await asyncio.sleep(0.08)
     assert (await aborted)
