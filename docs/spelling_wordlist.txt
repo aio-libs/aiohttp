@@ -193,6 +193,7 @@ pre
 programmatically
 proxied
 PRs
+proactor
 pubsub
 Punycode
 py
@@ -307,3 +308,4 @@ wss
 www
 xxx
 yarl
+unhandled
