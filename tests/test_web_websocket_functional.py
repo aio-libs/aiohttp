@@ -5,7 +5,7 @@ import asyncio
 import pytest
 
 import aiohttp
-from aiohttp import web
+from aiohttp import WSServerHandshakeError, web
 from aiohttp.http import WSMsgType
 
 
@@ -827,3 +827,29 @@ async def test_receive_bytes_nonbytes(loop, aiohttp_client) -> None:
     ws = await client.ws_connect('/')
     with pytest.raises(TypeError):
         await ws.receive_bytes()
+
+
+async def test_bug3380(loop, aiohttp_client) -> None:
+
+    async def handle_null(request):
+        return aiohttp.web.json_response({'err': None})
+
+    async def ws_handler(request):
+        return web.Response(status=401)
+
+    app = web.Application()
+    app.router.add_route('GET', '/ws', ws_handler)
+    app.router.add_route('GET', '/api/null', handle_null)
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/api/null')
+    assert (await resp.json()) == {'err': None}
+    resp.close()
+
+    with pytest.raises(WSServerHandshakeError):
+        await client.ws_connect('/ws')
+
+    resp = await client.get('/api/null', timeout=1)
+    assert (await resp.json()) == {'err': None}
+    resp.close()

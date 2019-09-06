@@ -47,6 +47,7 @@ Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bryan Kok
 Bryce Drennan
 Carl George
 Cecile Tonglet
@@ -91,6 +92,7 @@ Eric Sheng
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
+Eugene Nikolaiev
 Eugene Tolmachev
 Evert Lammerts
 Felix Yan
@@ -109,6 +111,7 @@ Günther Jena
 Hans Adema
 Harmon Y.
 Hu Bo
+Hugh Young
 Hugo Herter
 Hynek Schlawack
 Igor Alexandrov
@@ -131,6 +134,7 @@ Jian Zeng
 Jinkyu Yi
 Joel Watts
 Jon Nabozny
+Jonas Obrist
 Joongi Kim
 Josep Cugat
 Joshu Coats

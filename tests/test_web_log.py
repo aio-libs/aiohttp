@@ -5,6 +5,7 @@ from unittest import mock
 
 import pytest
 
+import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
 from aiohttp.helpers import PY_37
@@ -27,9 +28,9 @@ def test_access_logger_format() -> None:
     assert expected == access_logger._log_format
 
 
-@pytest.mark.skip(
+@pytest.mark.skipif(
     IS_PYPY,
-    """
+    reason="""
     Because of patching :py:class:`datetime.datetime`, under PyPy it
     fails in :py:func:`isinstance` call in
     :py:meth:`datetime.datetime.__sub__` (called from
@@ -60,16 +61,16 @@ def test_access_logger_format() -> None:
          }
          ),
         ('%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
-         ('127.0.0.2 [01/Jan/1843:00:29:56 +0000] <42> '
+         ('127.0.0.2 [01/Jan/1843:00:29:56 +0800] <42> '
           'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'),
          {
              'first_request_line': 'GET /path HTTP/1.1',
              'process_id': '<42>',
              'remote_address': '127.0.0.2',
-             'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
-             'request_time': 3,
+             'request_start_time': '[01/Jan/1843:00:29:56 +0800]',
+             'request_time': '3',
              'request_time_frac': '3.141593',
-             'request_time_micro': 3141593,
+             'request_time_micro': '3141593',
              'response_size': 42,
              'response_status': 200,
              'request_header': {'H1': 'a', 'H2': 'b'},
@@ -89,11 +90,11 @@ def test_access_logger_atoms(monkeypatch, log_format, expected, extra) -> None:
     access_logger = AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
                         method="GET", path_qs="/path",
-                        version=(1, 1),
+                        version=aiohttp.HttpVersion(1, 1),
                         remote="127.0.0.2")
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
-    assert not mock_logger.exception.called
+    assert not mock_logger.exception.called, mock_logger.exception.call_args
 
     mock_logger.info.assert_called_with(expected, extra=extra)
 

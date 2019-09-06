@@ -26,7 +26,7 @@ from .http import ws_ext_gen, ws_ext_parse
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
-from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
+from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
@@ -50,6 +50,8 @@ class WebSocketResponse(StreamResponse):
                  '_exception', '_timeout', '_receive_timeout', '_autoclose',
                  '_autoping', '_heartbeat', '_heartbeat_cb', '_pong_heartbeat',
                  '_pong_response_cb', '_compress', '_max_msg_size')
+
+    _length_check = False
 
     def __init__(self, *,
                  timeout: float=10.0, receive_timeout: Optional[float]=None,
@@ -134,8 +136,6 @@ class WebSocketResponse(StreamResponse):
                                                         bool,
                                                         bool]:
         headers = request.headers
-        if request.method != hdrs.METH_GET:
-            raise HTTPMethodNotAllowed(request.method, [hdrs.METH_GET])
         if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
             raise HTTPBadRequest(
                 text=('No WebSocket UPGRADE hdr: {}\n Can '

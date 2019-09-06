@@ -41,6 +41,16 @@ test_script:
 after_test:
   - "tools/build.cmd %PYTHON%\\python.exe -m codecov -f coverage.xml -X gcov"
 
+on_finish:
+- ps: >-
+    if($env:APPVEYOR_RDP_DEBUG -eq 'True') {
+      $blockRdp = $true
+      iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+      }
+- ps: |
+    $wc = New-Object 'System.Net.WebClient'
+    $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\.test-results\pytest\results.xml))
+
 artifacts:
   - path: dist\*
 
@@ -48,13 +58,6 @@ deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
           Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username aio-libs-bot --password $env:PYPI_PASSWD --skip-existing"
-      }
-
-on_finish:
-  - ps: >-
-      if($env:APPVEYOR_RDP_DEBUG -eq 'True') {
-        $blockRdp = $true
-        iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
       }
 
 #notifications:

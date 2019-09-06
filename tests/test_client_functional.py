@@ -2075,11 +2075,11 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
 
 async def test_raise_for_status(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handler(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app, raise_for_status=True)
 
     with pytest.raises(aiohttp.ClientResponseError):
@@ -2088,11 +2088,11 @@ async def test_raise_for_status(aiohttp_client) -> None:
 
 async def test_raise_for_status_per_request(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handler(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
 
     with pytest.raises(aiohttp.ClientResponseError):
@@ -2101,11 +2101,11 @@ async def test_raise_for_status_per_request(aiohttp_client) -> None:
 
 async def test_raise_for_status_disable_per_request(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handler(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app, raise_for_status=True)
 
     resp = await client.get('/', raise_for_status=False)

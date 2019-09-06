@@ -9,7 +9,12 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
-import trustme
+
+try:
+    import trustme
+    TRUSTME = True
+except ImportError:
+    TRUSTME = False
 
 pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
 
@@ -25,6 +30,8 @@ needs_unix = pytest.mark.skipif(not IS_UNIX, reason='requires UNIX sockets')
 
 @pytest.fixture
 def tls_certificate_authority():
+    if not TRUSTME:
+        pytest.xfail("trustme fails on 32bit Linux")
     return trustme.CA()
 
 

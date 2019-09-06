@@ -223,7 +223,6 @@ jobs:
     - docker
     script:
     - pip install -r requirements/cython.txt
-    - pip install -r requirements/ci.txt  # to compile *.c files by Cython
     - make cythonize
     - ./tools/run_docker.sh "aiohttp"
     deploy:
