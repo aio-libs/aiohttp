@@ -5,8 +5,6 @@
 Abstract Base Classes
 =====================
 
-.. module:: aiohttp.abc
-
 Abstract routing
 ----------------
 
