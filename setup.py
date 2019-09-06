@@ -22,7 +22,6 @@ if sys.implementation.name != "cpython":
 
 here = pathlib.Path(__file__).parent
 
-
 if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md').exists():
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
