@@ -14,6 +14,99 @@ Changelog
 
 .. towncrier release notes start
 
+3.6.0 (2019-09-06)
+==================
+
+Features
+--------
+
+- Add support for Named Pipes (Site and Connector) under Windows. This feature requires Proactor event loop to work.
+  `#3629 <https://github.com/aio-libs/aiohttp/issues/3629>`_
+- Removed `Transfer-Encoding: chunked` header from websocket responses to be compatible with more http proxy servers.
+  `#3798 <https://github.com/aio-libs/aiohttp/issues/3798>`_
+- Accept non-GET request for starting websocket handshake on server side.
+  `#3980 <https://github.com/aio-libs/aiohttp/issues/3980>`_
+
+
+Bugfixes
+--------
+
+- Raise a ClientResponseError instead of an AssertionError for a blank
+  HTTP Reason Phrase.
+  `#3532 <https://github.com/aio-libs/aiohttp/issues/3532>`_
+- Fix an issue where cookies would sometimes not be set during a redirect.
+  `#3576 <https://github.com/aio-libs/aiohttp/issues/3576>`_
+- Change normalize_path_middleware to use 308 redirect instead of 301.
+
+  This behavior should prevent clients from being unable to use PUT/POST
+  methods on endpoints that are redirected because of a trailing slash.
+  `#3579 <https://github.com/aio-libs/aiohttp/issues/3579>`_
+- Drop the processed task from ``all_tasks()`` list early. It prevents logging about a task with unhandled exception when the server is used in conjunction with ``asyncio.run()``.
+  `#3587 <https://github.com/aio-libs/aiohttp/issues/3587>`_
+- ``Signal`` type annotation changed from `Signal[Callable[['TraceConfig'], Awaitable[None]]]` to `Signal[Callable[ClientSession, SimpleNamespace, ...]`.
+  `#3595 <https://github.com/aio-libs/aiohttp/issues/3595>`_
+- Use sanitized URL as Location header in redirects
+  `#3614 <https://github.com/aio-libs/aiohttp/issues/3614>`_
+- Improve typing annotations for multipart.py along with changes required
+  by mypy in files that references multipart.py.
+  `#3621 <https://github.com/aio-libs/aiohttp/issues/3621>`_
+- Close session created inside ``aiohttp.request`` when unhandled exception occurs
+  `#3628 <https://github.com/aio-libs/aiohttp/issues/3628>`_
+- Cleanup per-chunk data in generic data read. Memory leak fixed.
+  `#3631 <https://github.com/aio-libs/aiohttp/issues/3631>`_
+- Use correct type for add_view and family
+  `#3633 <https://github.com/aio-libs/aiohttp/issues/3633>`_
+- Fix _keepalive field in __slots__ of web_protocol.RequestHandler.
+  `#3644 <https://github.com/aio-libs/aiohttp/issues/3644>`_
+- Properly handle ConnectionResetError, to silence the "Cannot write to closing
+  transport" exception when clients disconnect uncleanly.
+  `#3648 <https://github.com/aio-libs/aiohttp/issues/3648>`_
+- Suppress pytest warnings due to test util classes
+  `#3660 <https://github.com/aio-libs/aiohttp/issues/3660>`_
+- Fix overshadowing of overlapped subbaps prefixes.
+  `#3701 <https://github.com/aio-libs/aiohttp/issues/3701>`_
+- Fixed return type annotation for WSMessage.json()
+  `#3720 <https://github.com/aio-libs/aiohttp/issues/3720>`_
+- Properly expose TooManyRedirects publicly as documented.
+  `#3818 <https://github.com/aio-libs/aiohttp/issues/3818>`_
+- Fix missing brackets for IPv6 in proxy CONNECT request
+  `#3841 <https://github.com/aio-libs/aiohttp/issues/3841>`_
+- Make the signature of `aiohttp.test_utils.TestClient.request` match `asyncio.ClientSession.request` according to the docs
+  `#3852 <https://github.com/aio-libs/aiohttp/issues/3852>`_
+- Use correct style for re-exported imports, makes mypy ``--strict`` mode happy.
+  `#3868 <https://github.com/aio-libs/aiohttp/issues/3868>`_
+- Fixed type annotation for add_view method of UrlDispatcher to accept any subclass of View
+  `#3880 <https://github.com/aio-libs/aiohttp/issues/3880>`_
+- Made cython HTTP parser set Reason-Phrase of the response to an empty string if it is missing.
+  `#3906 <https://github.com/aio-libs/aiohttp/issues/3906>`_
+- Add URL to the string representation of ClientResponseError.
+  `#3959 <https://github.com/aio-libs/aiohttp/issues/3959>`_
+- Accept istr keys in LooseHeaders type hints.
+  `#3976 <https://github.com/aio-libs/aiohttp/issues/3976>`_
+- Fixed race conditions in _resolve_host caching and throttling when tracing is enabled.
+  `#4013 <https://github.com/aio-libs/aiohttp/issues/4013>`_
+- For URLs like "unix://localhost/..." set Host HTTP header to "localhost" instead of "localhost:None".
+  `#4039 <https://github.com/aio-libs/aiohttp/issues/4039>`_
+
+
+Improved Documentation
+----------------------
+
+- Modify documentation for Background Tasks to remove deprecated usage of event loop.
+  `#3526 <https://github.com/aio-libs/aiohttp/issues/3526>`_
+- use ``if __name__ == '__main__':`` in server examples.
+  `#3775 <https://github.com/aio-libs/aiohttp/issues/3775>`_
+- Update documentation reference to the default access logger.
+  `#3783 <https://github.com/aio-libs/aiohttp/issues/3783>`_
+- Improve documentation for ``web.BaseRequest.path`` and ``web.BaseRequest.raw_path``.
+  `#3791 <https://github.com/aio-libs/aiohttp/issues/3791>`_
+- Removed deprecation warning in tracing example docs
+  `#3964 <https://github.com/aio-libs/aiohttp/issues/3964>`_
+
+
+----
+
+
 3.5.4 (2019-01-12)
 ==================
 

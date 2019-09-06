@@ -1,1 +1,0 @@
-Make the signature of `aiohttp.test_utils.TestClient.request` match `asyncio.ClientSession.request` according to the docs

@@ -1,1 +1,0 @@
-Drop the processed task from ``all_tasks()`` list early. It prevents logging about a task with unhandled exception when the server is used in conjunction with ``asyncio.run()``.
