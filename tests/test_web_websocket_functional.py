@@ -665,19 +665,12 @@ async def test_heartbeat(loop, aiohttp_client, ceil) -> None:
 
 
 async def test_heartbeat_no_pong(loop, aiohttp_client, ceil) -> None:
-    cancelled = False
 
     async def handler(request):
-        nonlocal cancelled
-
         ws = web.WebSocketResponse(heartbeat=0.05)
         await ws.prepare(request)
 
-        try:
-            await ws.receive()
-        except asyncio.CancelledError:
-            cancelled = True
-
+        await ws.receive()
         return ws
 
     app = web.Application()
@@ -687,9 +680,7 @@ async def test_heartbeat_no_pong(loop, aiohttp_client, ceil) -> None:
     ws = await client.ws_connect('/', autoping=False)
     msg = await ws.receive()
     assert msg.type == aiohttp.WSMsgType.PING
-    await ws.receive()
-
-    assert cancelled
+    await ws.close()
 
 
 async def test_server_ws_async_for(loop, aiohttp_server) -> None:
