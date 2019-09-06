@@ -545,12 +545,12 @@ class ClientSession:
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
 
-            if raise_for_status is True:
+            if raise_for_status is None:
+                pass
+            elif callable(raise_for_status):
+                await raise_for_status(resp)
+            elif raise_for_status:
                 resp.raise_for_status()
-            elif raise_for_status is not False:
-                # raise_for_status is not a bool so it must be a coroutine,
-                # however mypy is unable to infer that
-                await raise_for_status(resp)  # type: ignore
 
             # register connection
             if handle is not None:
