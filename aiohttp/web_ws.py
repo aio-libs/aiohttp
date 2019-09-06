@@ -51,6 +51,8 @@ class WebSocketResponse(StreamResponse):
                  '_autoping', '_heartbeat', '_heartbeat_cb', '_pong_heartbeat',
                  '_pong_response_cb', '_compress', '_max_msg_size')
 
+    _length_check = False
+
     def __init__(self, *,
                  timeout: float=10.0, receive_timeout: Optional[float]=None,
                  autoclose: bool=True, autoping: bool=True,

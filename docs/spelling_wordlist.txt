@@ -9,8 +9,8 @@ alives
 api
 api’s
 app
-apps
 app’s
+apps
 arg
 Arsenic
 async
@@ -23,9 +23,9 @@ autogeneration
 awaitable
 backend
 backends
+backport
 Backport
 Backporting
-backport
 backports
 BaseEventLoop
 basename
@@ -33,9 +33,9 @@ BasicAuth
 BodyPartReader
 boolean
 botocore
+bugfix
 Bugfixes
 builtin
-bugfix
 BytesIO
 cchardet
 cChardet
@@ -66,9 +66,10 @@ CPython
 css
 ctor
 Ctrl
+cython
 Cython
-cythonized
 Cythonize
+cythonized
 de
 deduplicate
 # de-facto:
@@ -157,11 +158,12 @@ msg
 MsgType
 multi
 multidict
-multidicts
 multidict’s
+multidicts
 Multidicts
 multipart
 Multipart
+mypy
 Nagle
 Nagle’s
 namedtuple
@@ -191,6 +193,7 @@ poller
 pong
 Postgres
 pre
+proactor
 programmatically
 proxied
 PRs
@@ -261,13 +264,13 @@ syscalls
 Systemd
 tarball
 TCP
-TLS
 teardown
 Teardown
 TestClient
 Testsuite
 Tf
 timestamps
+TLS
 toolbar
 toplevel
 towncrier
@@ -277,6 +280,7 @@ UI
 un
 unawaited
 unclosed
+unhandled
 unicode
 unittest
 Unittest
@@ -287,8 +291,8 @@ upstr
 url
 urldispatcher
 urlencoded
-urls
 url’s
+urls
 utf
 utils
 uvloop
@@ -296,8 +300,8 @@ vcvarsall
 waituntil
 webapp
 websocket
-websockets
 websocket’s
+websockets
 Websockets
 wildcard
 Workflow
