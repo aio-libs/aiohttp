@@ -204,6 +204,11 @@ def test_host_port_nondefault_wss(make_request) -> None:
     assert req.is_ssl()
 
 
+def test_host_port_none_port(make_request) -> None:
+    req = make_request('get', 'unix://localhost/path')
+    assert req.headers['Host'] == 'localhost'
+
+
 def test_host_port_err(make_request) -> None:
     with pytest.raises(ValueError):
         make_request('get', 'http://python.org:123e/')
