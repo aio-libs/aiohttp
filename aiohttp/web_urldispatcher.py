@@ -155,8 +155,8 @@ class AbstractRoute(abc.ABC):
             async def handler_wrapper(request: Request) -> StreamResponse:
                 result = old_handler(request)
                 if asyncio.iscoroutine(result):
-                    result = await result
-                return result
+                    return await result
+                return result  # type: ignore
             old_handler = handler
             handler = handler_wrapper
 

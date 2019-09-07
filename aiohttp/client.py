@@ -180,7 +180,6 @@ class ClientSession:
         '_ws_response_class', '_trace_configs'])
 
     _source_traceback = None
-    _connector = None
 
     def __init__(self, *, connector: Optional[BaseConnector]=None,
                  loop: Optional[asyncio.AbstractEventLoop]=None,
@@ -229,7 +228,7 @@ class ClientSession:
         if cookies is not None:
             self._cookie_jar.update_cookies(cookies)
 
-        self._connector = connector  # type: BaseConnector
+        self._connector = connector  # type: Optional[BaseConnector]
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
