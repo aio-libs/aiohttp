@@ -1,1 +1,1 @@
-Drop sync context managers that raises :exc:`TypeError` already.
+Drop sync context managers that raises ``TypeError`` already.
