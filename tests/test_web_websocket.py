@@ -394,33 +394,7 @@ async def test_concurrent_receive(make_request) -> None:
         await ws.receive()
 
 
-async def test_close_exc(make_request, loop, mocker) -> None:
-    req = make_request('GET', '/')
-
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    ws._reader = mock.Mock()
-    exc = ValueError()
-    ws._reader.read.return_value = loop.create_future()
-    ws._reader.read.return_value.set_exception(exc)
-    ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = loop.create_future()
-    ws._payload_writer.drain.return_value.set_result(True)
-
-    await ws.close()
-    assert ws.closed
-    assert ws.exception() is exc
-
-    ws._closed = False
-    ws._reader.read.return_value = loop.create_future()
-    ws._reader.read.return_value.set_exception(asyncio.CancelledError())
-    with pytest.raises(asyncio.CancelledError):
-        await ws.close()
-    assert ws.close_code == 1006
-
-
-async def test_close_exc2(make_request) -> None:
+async def test_close_exc(make_request) -> None:
 
     req = make_request('GET', '/')
     ws = WebSocketResponse()
