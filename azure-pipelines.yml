@@ -28,6 +28,7 @@ stages:
     steps:
     - checkout: self
       clean: true
+      submodules: true
 
     - task: UsePythonVersion@0
       inputs:
