@@ -70,6 +70,7 @@ args = dict(
     version=version,
     description='Async http client/server framework (asyncio)',
     long_description='\n\n'.join((read('README.rst'), read('CHANGES.rst'))),
+    long_description_content_type="text/x-rst",
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
         'Intended Audience :: Developers',
