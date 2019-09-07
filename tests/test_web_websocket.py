@@ -320,40 +320,6 @@ async def test_receive_eofstream_in_reader(make_request, loop) -> None:
     assert ws.closed
 
 
-async def test_receive_exc_in_reader(make_request, loop) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    ws._reader = mock.Mock()
-    exc = ValueError()
-    res = loop.create_future()
-    res.set_exception(exc)
-    ws._reader.read = make_mocked_coro(res)
-    ws._payload_writer.drain = mock.Mock()
-    ws._payload_writer.drain.return_value = loop.create_future()
-    ws._payload_writer.drain.return_value.set_result(True)
-
-    msg = await ws.receive()
-    assert msg.type == WSMsgType.ERROR
-    assert msg.data is exc
-    assert ws.exception() is exc
-
-
-async def test_receive_cancelled(make_request, loop) -> None:
-    req = make_request('GET', '/')
-    ws = WebSocketResponse()
-    await ws.prepare(req)
-
-    ws._reader = mock.Mock()
-    res = loop.create_future()
-    res.set_exception(asyncio.CancelledError())
-    ws._reader.read = make_mocked_coro(res)
-
-    with pytest.raises(asyncio.CancelledError):
-        await ws.receive()
-
-
 async def test_receive_timeouterror(make_request, loop) -> None:
     req = make_request('GET', '/')
     ws = WebSocketResponse()
