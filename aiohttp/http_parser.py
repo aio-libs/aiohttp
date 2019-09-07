@@ -166,8 +166,8 @@ class HeadersParser:
 
 class HttpParser(abc.ABC):
 
-    def __init__(self, protocol: Optional[BaseProtocol]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
+    def __init__(self, protocol: BaseProtocol,
+                 loop: asyncio.AbstractEventLoop,
                  max_line_size: int=8190,
                  max_headers: int=32768,
                  max_field_size: int=8190,
@@ -410,6 +410,13 @@ class HttpParser(abc.ABC):
             chunked = True
 
         return (headers, raw_headers, close_conn, encoding, upgrade, chunked)
+
+    def set_upgraded(self, val: bool) -> None:
+        """Set connection upgraded (to websocket) mode.
+
+        :param bool val: new state.
+        """
+        self._upgraded = val
 
 
 class HttpRequestParser(HttpParser):
@@ -698,8 +705,26 @@ class DeflateBuffer:
             if not HAS_BROTLI:  # pragma: no cover
                 raise ContentEncodingError(
                     'Can not decode content-encoding: brotli (br). '
-                    'Please install `brotlipy`')
-            self.decompressor = brotli.Decompressor()
+                    'Please install `Brotli`')
+
+            class BrotliDecoder:
+                # Supports both 'brotlipy' and 'Brotli' packages
+                # since they share an import name. The top branches
+                # are for 'brotlipy' and bottom branches for 'Brotli'
+                def __init__(self) -> None:
+                    self._obj = brotli.Decompressor()
+
+                def decompress(self, data: bytes) -> bytes:
+                    if hasattr(self._obj, "decompress"):
+                        return self._obj.decompress(data)
+                    return self._obj.process(data)
+
+                def flush(self) -> bytes:
+                    if hasattr(self._obj, "flush"):
+                        return self._obj.flush()
+                    return b""
+
+            self.decompressor = BrotliDecoder()  # type: Any
         else:
             zlib_mode = (16 + zlib.MAX_WBITS
                          if encoding == 'gzip' else -zlib.MAX_WBITS)

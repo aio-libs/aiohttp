@@ -2,11 +2,18 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Set
+from typing import Any, List, Optional, Set, Type
 
 from yarl import URL
 
+from .abc import AbstractAccessLogger, AbstractStreamWriter
+from .helpers import get_running_loop
+from .http_parser import RawRequestMessage
+from .streams import StreamReader
 from .web_app import Application
+from .web_log import AccessLogger
+from .web_protocol import RequestHandler
+from .web_request import Request
 from .web_server import Server
 
 try:
@@ -15,8 +22,8 @@ except ImportError:
     SSLContext = object  # type: ignore
 
 
-__all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'SockSite', 'BaseRunner',
-           'AppRunner', 'ServerRunner', 'GracefulExit')
+__all__ = ('BaseSite', 'TCPSite', 'UnixSite', 'NamedPipeSite', 'SockSite',
+           'BaseRunner', 'AppRunner', 'ServerRunner', 'GracefulExit')
 
 
 class GracefulExit(SystemExit):
@@ -58,7 +65,9 @@ class BaseSite(ABC):
             self._runner._unreg_site(self)
             return  # not started yet
         self._server.close()
-        await self._server.wait_closed()
+        # named pipes do not have wait_closed property
+        if hasattr(self._server, 'wait_closed'):
+            await self._server.wait_closed()
         await self._runner.shutdown()
         assert self._runner.server
         await self._runner.server.shutdown(self._shutdown_timeout)
@@ -126,6 +135,33 @@ class UnixSite(BaseSite):
         self._server = await loop.create_unix_server(
             server, self._path,
             ssl=self._ssl_context, backlog=self._backlog)
+
+
+class NamedPipeSite(BaseSite):
+    __slots__ = ('_path', )
+
+    def __init__(self, runner: 'BaseRunner', path: str, *,
+                 shutdown_timeout: float=60.0) -> None:
+        loop = asyncio.get_event_loop()
+        if not isinstance(loop, asyncio.ProactorEventLoop):  # type: ignore
+            raise RuntimeError("Named Pipes only available in proactor"
+                               "loop under windows")
+        super().__init__(runner, shutdown_timeout=shutdown_timeout)
+        self._path = path
+
+    @property
+    def name(self) -> str:
+        return self._path
+
+    async def start(self) -> None:
+        await super().start()
+        loop = asyncio.get_event_loop()
+        server = self._runner.server
+        assert server is not None
+        _server = await loop.start_serving_pipe(  # type: ignore
+            server, self._path
+        )
+        self._server = _server[0]
 
 
 class SockSite(BaseSite):
@@ -281,11 +317,27 @@ class AppRunner(BaseRunner):
     __slots__ = ('_app',)
 
     def __init__(self, app: Application, *,
-                 handle_signals: bool=False, **kwargs: Any) -> None:
-        super().__init__(handle_signals=handle_signals, **kwargs)
+                 handle_signals: bool=False,
+                 access_log_class: Type[
+                     AbstractAccessLogger]=AccessLogger,
+                 **kwargs: Any) -> None:
+
         if not isinstance(app, Application):
             raise TypeError("The first argument should be web.Application "
                             "instance, got {!r}".format(app))
+        kwargs['access_log_class'] = access_log_class
+
+        if app._handler_args:
+            for k, v in app._handler_args.items():
+                kwargs[k] = v
+
+        if not issubclass(kwargs['access_log_class'], AbstractAccessLogger):
+            raise TypeError(
+                'access_log_class must be subclass of '
+                'aiohttp.abc.AbstractAccessLogger, got {}'.format(
+                    kwargs['access_log_class']))
+
+        super().__init__(handle_signals=handle_signals, **kwargs)
         self._app = app
 
     @property
@@ -296,13 +348,25 @@ class AppRunner(BaseRunner):
         await self._app.shutdown()
 
     async def _make_server(self) -> Server:
-        loop = asyncio.get_event_loop()
-        self._app._set_loop(loop)
         self._app.on_startup.freeze()
         await self._app.startup()
         self._app.freeze()
 
-        return self._app._make_handler(loop=loop, **self._kwargs)
+        return Server(self._app._handle,  # type: ignore
+                      request_factory=self._make_request,
+                      **self._kwargs)
+
+    def _make_request(self, message: RawRequestMessage,
+                      payload: StreamReader,
+                      protocol: RequestHandler,
+                      writer: AbstractStreamWriter,
+                      task: 'asyncio.Task[None]',
+                      _cls: Type[Request]=Request) -> Request:
+        loop = get_running_loop()
+        return _cls(
+            message, payload, protocol, writer, task,
+            loop,
+            client_max_size=self.app._client_max_size)
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()

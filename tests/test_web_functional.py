@@ -692,8 +692,6 @@ async def test_empty_content_for_query_without_body(aiohttp_client) -> None:
     async def handler(request):
         assert not request.body_exists
         assert not request.can_read_body
-        with pytest.warns(DeprecationWarning):
-            assert not request.has_body
         return web.Response()
 
     app = web.Application()
@@ -709,8 +707,6 @@ async def test_empty_content_for_query_with_body(aiohttp_client) -> None:
     async def handler(request):
         assert request.body_exists
         assert request.can_read_body
-        with pytest.warns(DeprecationWarning):
-            assert request.has_body
         body = await request.read()
         return web.Response(body=body)
 
@@ -1564,7 +1560,7 @@ async def test_response_with_bodypart(aiohttp_client) -> None:
                     {'name': 'file', 'filename': 'file', 'filename*': 'file'})
 
 
-async def test_response_with_bodypart_named(aiohttp_client, tmpdir) -> None:
+async def test_response_with_bodypart_named(aiohttp_client, tmp_path) -> None:
 
     async def handler(request):
         reader = await request.multipart()
@@ -1575,9 +1571,9 @@ async def test_response_with_bodypart_named(aiohttp_client, tmpdir) -> None:
     app.router.add_post('/', handler)
     client = await aiohttp_client(app)
 
-    f = tmpdir.join('foobar.txt')
+    f = tmp_path / 'foobar.txt'
     f.write_text('test', encoding='utf8')
-    data = {'file': open(str(f), 'rb')}
+    data = {'file': f.open('rb')}
     resp = await client.post('/', data=data)
 
     assert 200 == resp.status

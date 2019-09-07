@@ -5,10 +5,16 @@ import sys
 from hashlib import md5, sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 from uuid import uuid4
 
 import pytest
-import trustme
+
+try:
+    import trustme
+    TRUSTME = True
+except ImportError:
+    TRUSTME = False
 
 pytest_plugins = ['aiohttp.pytest_plugin', 'pytester']
 
@@ -24,6 +30,8 @@ needs_unix = pytest.mark.skipif(not IS_UNIX, reason='requires UNIX sockets')
 
 @pytest.fixture
 def tls_certificate_authority():
+    if not TRUSTME:
+        pytest.xfail("trustme fails on 32bit Linux")
     return trustme.CA()
 
 
@@ -71,6 +79,23 @@ def tls_certificate_pem_bytes(tls_certificate):
 def tls_certificate_fingerprint_sha256(tls_certificate_pem_bytes):
     tls_cert_der = ssl.PEM_cert_to_DER_cert(tls_certificate_pem_bytes.decode())
     return sha256(tls_cert_der).digest()
+
+
+@pytest.fixture
+def pipe_name():
+    name = r'\\.\pipe\{}'.format(uuid4().hex)
+    return name
+
+
+@pytest.fixture
+def create_mocked_conn(loop):
+    def _proto_factory(conn_closing_result=None, **kwargs):
+        proto = mock.Mock(**kwargs)
+        proto.closed = loop.create_future()
+        proto.closed.set_result(conn_closing_result)
+        return proto
+
+    yield _proto_factory
 
 
 @pytest.fixture

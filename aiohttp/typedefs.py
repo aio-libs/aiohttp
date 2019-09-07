@@ -12,7 +12,13 @@ from typing import (
     Union,
 )
 
-from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
+from multidict import (
+    CIMultiDict,
+    CIMultiDictProxy,
+    MultiDict,
+    MultiDictProxy,
+    istr,
+)
 from yarl import URL
 
 DEFAULT_JSON_ENCODER = json.dumps
@@ -33,7 +39,8 @@ else:
 Byteish = Union[bytes, bytearray, memoryview]
 JSONEncoder = Callable[[Any], str]
 JSONDecoder = Callable[[str], Any]
-LooseHeaders = Union[Mapping[str, str], _CIMultiDict, _CIMultiDictProxy]
+LooseHeaders = Union[Mapping[Union[str, istr], str], _CIMultiDict,
+                     _CIMultiDictProxy]
 RawHeaders = Tuple[Tuple[bytes, bytes], ...]
 StrOrURL = Union[str, URL]
 LooseCookies = Union[Iterable[Tuple[str, 'BaseCookie[str]']],

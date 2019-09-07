@@ -164,7 +164,7 @@ Resource in turn has at least one *route*.
 
 Route corresponds to handling *HTTP method* by calling *web handler*.
 
-Thus when you add a *route* the *resouce* object is created under the hood.
+Thus when you add a *route* the *resource* object is created under the hood.
 
 The library implementation **merges** all subsequent route additions
 for the same path adding the only resource for all HTTP methods.
@@ -301,13 +301,17 @@ retrieved by :attr:`View.request` property.
 After implementing the view (``MyView`` from example above) should be
 registered in application's router::
 
-   web.view('/path/to', MyView)
+   app.add_routes([web.view('/path/to', MyView)]) 
 
 or::
 
    @routes.view('/path/to')
    class MyView(web.View):
        ...
+
+or::
+
+   app.router.add_route('*', '/path/to', MyView)
 
 Example will process GET and POST requests for */path/to* but raise
 *405 Method not allowed* exception for unimplemented HTTP methods.

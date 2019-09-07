@@ -217,14 +217,6 @@ and :ref:`aiohttp-web-signals` handlers.
          if peername is not None:
              host, port = peername
 
-   .. attribute:: loop
-
-      An event loop instance used by HTTP request handling.
-
-      Read-only :class:`asyncio.AbstractEventLoop` property.
-
-      .. deprecated:: 3.5
-
    .. attribute:: cookies
 
       A multidict of all request's cookies.
@@ -253,16 +245,6 @@ and :ref:`aiohttp-web-signals` handlers.
       Read-only :class:`bool` property.
 
       .. versionadded:: 2.3
-
-   .. attribute:: has_body
-
-      Return ``True`` if request's *HTTP BODY* can be read, ``False`` otherwise.
-
-      Read-only :class:`bool` property.
-
-      .. deprecated:: 2.3
-
-         Use :meth:`can_read_body` instead.
 
    .. attribute:: content_type
 
@@ -385,21 +367,19 @@ and :ref:`aiohttp-web-signals` handlers.
          The method **does** store read data internally, subsequent
          :meth:`~Request.text` call will return the same value.
 
-   .. comethod:: json(*, loads=json.loads)
+   .. comethod:: json(*, loads=json.loads, \
+                    content_type='application/json')
 
-      Read request body decoded as *json*.
-
-      The method is just a boilerplate :ref:`coroutine <coroutine>`
-      implemented as::
-
-         async def json(self, *, loads=json.loads):
-             body = await self.text()
-             return loads(body)
+      Read request body decoded as *json*. If request's content-type does not
+      match `content_type` parameter, :class:`web.HTTPBadRequest` get raised.
+      To disable content type check pass ``None`` value.
 
       :param callable loads: any :term:`callable` that accepts
                               :class:`str` and returns :class:`dict`
                               with parsed JSON (:func:`json.loads` by
                               default).
+      :param str content_type: expected value of Content-Type header or ``None``
+                              ('application/json' by default)
 
       .. note::
 
@@ -644,7 +624,7 @@ StreamResponse
 
       .. seealso:: :attr:`enable_chunked_encoding`
 
-   .. method:: enable_chunked_encoding
+   .. method:: enable_chunked_encoding()
 
       Enables :attr:`chunked` encoding for response. There are no ways to
       disable it back. With enabled :attr:`chunked` encoding each :meth:`write`
@@ -869,6 +849,33 @@ Response
       :attr:`~StreamResponse.content_length` to ``None`` too, dropping
       *Content-Length* HTTP header.
 
+
+FileResponse
+^^^^^^^^^^^^^^
+
+.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None)
+
+   The response class used to send files, inherited from :class:`StreamResponse`.
+
+   Supports the ``Content-Range`` and ``If-Range`` HTTP Headers in requests.
+
+   The actual :attr:`body` sending happens in overridden :meth:`~StreamResponse.prepare`.
+
+   :param path: Path to file. Accepts both :class:`str` and :class:`pathlib.Path`.
+   :param int chunk_size: Chunk size in bytes which will be passed into
+                          :meth:`io.RawIOBase.read` in the event that the
+                          ``sendfile`` system call is not supported.
+
+   :param int status: HTTP status code, ``200`` by default.
+
+   :param str reason: HTTP reason. If param is ``None`` reason will be
+                      calculated basing on *status*
+                      parameter. Otherwise pass :class:`str` with
+                      arbitrary *status* explanation..
+
+   :param collections.abc.Mapping headers: HTTP headers that should be added to
+                           response's ones. The ``Content-Type`` response header
+                           will be overridden if provided.
 
 WebSocketResponse
 ^^^^^^^^^^^^^^^^^
@@ -1252,7 +1259,7 @@ duplicated like one using :meth:`Application.copy`.
 
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       loop=None, debug=...)
+                       debug=...)
 
    The class inherits :class:`dict`.
 
@@ -1264,25 +1271,20 @@ duplicated like one using :meth:`Application.copy`.
                        :ref:`aiohttp-web-middlewares` for details.
 
    :param handler_args: dict-like object that overrides keyword arguments of
-                        :meth:`Application.make_handler`
+                        :class:`AppRunner` constructor.
 
    :param client_max_size: client's maximum size in a request, in
                            bytes.  If a POST request exceeds this
                            value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
 
-   :param loop: event loop
-
-      .. deprecated:: 2.0
-
-         The parameter is deprecated. Loop is get set during freeze
-         stage.
-
    :param debug: Switches debug mode.
 
       .. deprecated:: 3.5
 
-         Use asyncio :ref:`asyncio-debug-mode` instead.
+         The argument does nothing starting from 4.0,
+         use asyncio :ref:`asyncio-debug-mode` instead.
+
 
    .. attribute:: router
 
@@ -1291,12 +1293,6 @@ duplicated like one using :meth:`Application.copy`.
    .. attribute:: logger
 
       :class:`logging.Logger` instance for storing application logs.
-
-   .. attribute:: loop
-
-      :ref:`event loop<asyncio-event-loop>` used for processing HTTP requests.
-
-      .. deprecated:: 3.5
 
    .. attribute:: debug
 
@@ -1422,59 +1418,6 @@ duplicated like one using :meth:`Application.copy`.
       :meth:`UrlDispatcher.add_routes`.
 
       .. versionadded:: 3.1
-
-   .. method:: make_handler(loop=None, **kwargs)
-
-      Creates HTTP protocol factory for handling requests.
-
-      :param loop: :ref:`event loop<asyncio-event-loop>` used
-        for processing HTTP requests.
-
-        If param is ``None`` :func:`asyncio.get_event_loop`
-        used for getting default event loop.
-
-        .. deprecated:: 2.0
-
-      :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
-      :param int keepalive_timeout: Number of seconds before closing Keep-Alive
-        connection. Default: ``75`` seconds (NGINX's default value).
-      :param logger: Custom logger object. Default:
-        :data:`aiohttp.log.server_logger`.
-      :param access_log: Custom logging object. Default:
-        :data:`aiohttp.log.access_logger`.
-      :param access_log_class: Class for `access_logger`. Default:
-        :data:`aiohttp.helpers.AccessLogger`.
-        Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
-      :param str access_log_format: Access log format string. Default:
-        :attr:`helpers.AccessLogger.LOG_FORMAT`.
-      :param int max_line_size: Optional maximum header line size. Default:
-        ``8190``.
-      :param int max_headers: Optional maximum header size. Default: ``32768``.
-      :param int max_field_size: Optional maximum header field size. Default:
-        ``8190``.
-
-      :param float lingering_time: Maximum time during which the server
-        reads and ignores additional data coming from the client when
-        lingering close is on.  Use ``0`` to disable lingering on
-        server channel closing.
-
-      You should pass result of the method as *protocol_factory* to
-      :meth:`~asyncio.AbstractEventLoop.create_server`, e.g.::
-
-         loop = asyncio.get_event_loop()
-
-         app = Application()
-
-         # setup route table
-         # app.router.add_route(...)
-
-         await loop.create_server(app.make_handler(),
-                                  '0.0.0.0', 8080)
-
-      .. deprecated:: 3.2
-
-         The method is deprecated and will be removed in future
-         aiohttp versions.  Please use :ref:`aiohttp-web-app-runners` instead.
 
    .. comethod:: startup()
 
@@ -2494,7 +2437,7 @@ application on specific TCP or Unix socket, e.g.::
    .. attribute:: sites
 
       A read-only :class:`set` of served sites (:class:`TCPSite` /
-      :class:`UnixSite` / :class:`SockSite` instances).
+      :class:`UnixSite` / :class:`NamedPipeSite` / :class:`SockSite` instances).
 
    .. comethod:: setup()
 
@@ -2521,6 +2464,32 @@ application on specific TCP or Unix socket, e.g.::
 
    :param kwargs: named parameters to pass into
                   web protocol.
+
+   Supported *kwargs*:
+
+   :param bool tcp_keepalive: Enable TCP Keep-Alive. Default: ``True``.
+   :param int keepalive_timeout: Number of seconds before closing Keep-Alive
+        connection. Default: ``75`` seconds (NGINX's default value).
+   :param logger: Custom logger object. Default:
+        :data:`aiohttp.log.server_logger`.
+   :param access_log: Custom logging object. Default:
+        :data:`aiohttp.log.access_logger`.
+   :param access_log_class: Class for `access_logger`. Default:
+        :data:`aiohttp.helpers.AccessLogger`.
+        Must to be a subclass of :class:`aiohttp.abc.AbstractAccessLogger`.
+   :param str access_log_format: Access log format string. Default:
+        :attr:`helpers.AccessLogger.LOG_FORMAT`.
+   :param int max_line_size: Optional maximum header line size. Default:
+        ``8190``.
+   :param int max_headers: Optional maximum header size. Default: ``32768``.
+   :param int max_field_size: Optional maximum header field size. Default:
+        ``8190``.
+
+   :param float lingering_time: Maximum time during which the server
+        reads and ignores additional data coming from the client when
+        lingering close is on.  Use ``0`` to disable lingering on
+        server channel closing.
+
 
    .. attribute:: app
 
@@ -2641,6 +2610,18 @@ application on specific TCP or Unix socket, e.g.::
                        connections, see :meth:`socket.listen` for details.
 
                        ``128`` by default.
+
+.. class:: NamedPipeSite(runner, path, *, shutdown_timeout=60.0)
+
+   Serve a runner on Named Pipe in Windows.
+
+   :param runner: a runner to serve.
+
+   :param str path: PATH of named pipe to listen.
+
+   :param float shutdown_timeout: a timeout for closing opened
+                                  connections on :meth:`BaseSite.stop`
+                                  call.
 
 .. class:: SockSite(runner, sock, *, \
                    shutdown_timeout=60.0, ssl_context=None, \

@@ -12,7 +12,7 @@ ALLOWED_SUFFIXES = ['.feature',
 
 
 def get_root(script_path):
-    folder = script_path.absolute().parent
+    folder = script_path.resolve().parent
     while not (folder / '.git').exists():
         folder = folder.parent
         if folder == folder.anchor:

@@ -3,7 +3,6 @@ import base64
 import gc
 import os
 import platform
-import tempfile
 from unittest import mock
 
 import pytest
@@ -11,6 +10,7 @@ from multidict import MultiDict
 from yarl import URL
 
 from aiohttp import helpers
+from aiohttp.helpers import is_expected_content_type
 
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
@@ -45,9 +45,19 @@ def test_parse_mimetype(mimetype, expected) -> None:
 
 # ------------------- guess_filename ----------------------------------
 
-def test_guess_filename_with_tempfile() -> None:
-    with tempfile.TemporaryFile() as fp:
+def test_guess_filename_with_file_object(tmp_path) -> None:
+    file_path = tmp_path / 'test_guess_filename'
+    with file_path.open('w+b') as fp:
         assert (helpers.guess_filename(fp, 'no-throw') is not None)
+
+
+def test_guess_filename_with_path(tmp_path) -> None:
+    file_path = tmp_path / 'test_guess_filename'
+    assert (helpers.guess_filename(file_path, 'no-throw') is not None)
+
+
+def test_guess_filename_with_default() -> None:
+    assert (helpers.guess_filename(None, 'no-throw') == 'no-throw')
 
 
 # ------------------- BasicAuth -----------------------------------
@@ -563,3 +573,31 @@ class TestChainMapProxy:
         cp = helpers.ChainMapProxy([d1, d2])
         expected = "ChainMapProxy({!r}, {!r})".format(d1, d2)
         assert expected == repr(cp)
+
+
+def test_is_expected_content_type_json_match_exact():
+    expected_ct = 'application/json'
+    response_ct = 'application/json'
+    assert is_expected_content_type(response_content_type=response_ct,
+                                    expected_content_type=expected_ct)
+
+
+def test_is_expected_content_type_json_match_partially():
+    expected_ct = 'application/json'
+    response_ct = 'application/alto-costmap+json'  # mime-type from rfc7285
+    assert is_expected_content_type(response_content_type=response_ct,
+                                    expected_content_type=expected_ct)
+
+
+def test_is_expected_content_type_non_json_match_exact():
+    expected_ct = 'text/javascript'
+    response_ct = 'text/javascript'
+    assert is_expected_content_type(response_content_type=response_ct,
+                                    expected_content_type=expected_ct)
+
+
+def test_is_expected_content_type_non_json_not_match():
+    expected_ct = 'application/json'
+    response_ct = 'text/plain'
+    assert not is_expected_content_type(response_content_type=response_ct,
+                                        expected_content_type=expected_ct)

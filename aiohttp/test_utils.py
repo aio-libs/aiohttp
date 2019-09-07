@@ -79,12 +79,10 @@ class BaseTestServer(ABC):
     def __init__(self,
                  *,
                  scheme: Union[str, object]=sentinel,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  host: str='127.0.0.1',
                  port: Optional[int]=None,
                  skip_url_asserts: bool=False,
                  **kwargs: Any) -> None:
-        self._loop = loop
         self.runner = None  # type: Optional[BaseRunner]
         self._root = None  # type: Optional[URL]
         self.host = host
@@ -94,11 +92,9 @@ class BaseTestServer(ABC):
         self.skip_url_asserts = skip_url_asserts
 
     async def start_server(self,
-                           loop: Optional[asyncio.AbstractEventLoop]=None,
                            **kwargs: Any) -> None:
         if self.runner:
             return
-        self._loop = loop
         self._ssl = kwargs.pop('ssl', None)
         self.runner = await self._make_runner(**kwargs)
         await self.runner.setup()
@@ -172,18 +168,8 @@ class BaseTestServer(ABC):
             self.port = None
             self._closed = True
 
-    def __enter__(self) -> None:
-        raise TypeError("Use async with instead")
-
-    def __exit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 traceback: Optional[TracebackType]) -> None:
-        # __exit__ should exist in pair with __enter__ but never executed
-        pass  # pragma: no cover
-
     async def __aenter__(self) -> 'BaseTestServer':
-        await self.start_server(loop=self._loop)
+        await self.start_server()
         return self
 
     async def __aexit__(self,
@@ -218,11 +204,10 @@ class RawTestServer(BaseTestServer):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self,
-                           debug: bool=True,
                            **kwargs: Any) -> ServerRunner:
         srv = Server(
-            self._handler, loop=self._loop, debug=debug, **kwargs)
-        return ServerRunner(srv, debug=debug, **kwargs)
+            self._handler, **kwargs)
+        return ServerRunner(srv, **kwargs)
 
 
 class TestClient:
@@ -236,24 +221,21 @@ class TestClient:
 
     def __init__(self, server: BaseTestServer, *,
                  cookie_jar: Optional[AbstractCookieJar]=None,
-                 loop: Optional[asyncio.AbstractEventLoop]=None,
                  **kwargs: Any) -> None:
         if not isinstance(server, BaseTestServer):
             raise TypeError("server must be TestServer "
                             "instance, found type: %r" % type(server))
         self._server = server
-        self._loop = loop
         if cookie_jar is None:
-            cookie_jar = aiohttp.CookieJar(unsafe=True, loop=loop)
-        self._session = ClientSession(loop=loop,
-                                      cookie_jar=cookie_jar,
+            cookie_jar = aiohttp.CookieJar(unsafe=True)
+        self._session = ClientSession(cookie_jar=cookie_jar,
                                       **kwargs)
         self._closed = False
         self._responses = []  # type: List[ClientResponse]
         self._websockets = []  # type: List[ClientWebSocketResponse]
 
     async def start_server(self) -> None:
-        await self._server.start_server(loop=self._loop)
+        await self._server.start_server()
 
     @property
     def scheme(self) -> Union[str, object]:
@@ -289,15 +271,8 @@ class TestClient:
     def make_url(self, path: str) -> URL:
         return self._server.make_url(path)
 
-    async def request(self, method: str, path: str,
-                      **kwargs: Any) -> ClientResponse:
-        """Routes a request to tested http server.
-
-        The interface is identical to aiohttp.ClientSession.request,
-        except the loop kwarg is overridden by the instance used by the
-        test server.
-
-        """
+    async def _request(self, method: str, path: str,
+                       **kwargs: Any) -> ClientResponse:
         resp = await self._session.request(
             method, self.make_url(path), **kwargs
         )
@@ -305,46 +280,59 @@ class TestClient:
         self._responses.append(resp)
         return resp
 
+    def request(self, method: str, path: str,
+                **kwargs: Any) -> _RequestContextManager:
+        """Routes a request to tested http server.
+
+        The interface is identical to aiohttp.ClientSession.request,
+        except the loop kwarg is overridden by the instance used by the
+        test server.
+
+        """
+        return _RequestContextManager(
+            self._request(method, path, **kwargs)
+        )
+
     def get(self, path: str, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP GET request."""
         return _RequestContextManager(
-            self.request(hdrs.METH_GET, path, **kwargs)
+            self._request(hdrs.METH_GET, path, **kwargs)
         )
 
     def post(self, path: str, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP POST request."""
         return _RequestContextManager(
-            self.request(hdrs.METH_POST, path, **kwargs)
+            self._request(hdrs.METH_POST, path, **kwargs)
         )
 
     def options(self, path: str, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP OPTIONS request."""
         return _RequestContextManager(
-            self.request(hdrs.METH_OPTIONS, path, **kwargs)
+            self._request(hdrs.METH_OPTIONS, path, **kwargs)
         )
 
     def head(self, path: str, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP HEAD request."""
         return _RequestContextManager(
-            self.request(hdrs.METH_HEAD, path, **kwargs)
+            self._request(hdrs.METH_HEAD, path, **kwargs)
         )
 
     def put(self, path: str, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PUT request."""
         return _RequestContextManager(
-            self.request(hdrs.METH_PUT, path, **kwargs)
+            self._request(hdrs.METH_PUT, path, **kwargs)
         )
 
     def patch(self, path: str, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(
-            self.request(hdrs.METH_PATCH, path, **kwargs)
+            self._request(hdrs.METH_PATCH, path, **kwargs)
         )
 
     def delete(self, path: str, **kwargs: Any) -> _RequestContextManager:
         """Perform an HTTP PATCH request."""
         return _RequestContextManager(
-            self.request(hdrs.METH_DELETE, path, **kwargs)
+            self._request(hdrs.METH_DELETE, path, **kwargs)
         )
 
     def ws_connect(self, path: str, **kwargs: Any) -> _WSRequestContextManager:
@@ -384,16 +372,6 @@ class TestClient:
             await self._session.close()
             await self._server.close()
             self._closed = True
-
-    def __enter__(self) -> None:
-        raise TypeError("Use async with instead")
-
-    def __exit__(self,
-                 exc_type: Optional[Type[BaseException]],
-                 exc: Optional[BaseException],
-                 tb: Optional[TracebackType]) -> None:
-        # __exit__ should exist in pair with __enter__ but never executed
-        pass  # pragma: no cover
 
     async def __aenter__(self) -> 'TestClient':
         await self.start_server()
@@ -464,11 +442,11 @@ class AioHTTPTestCase(unittest.TestCase):
 
     async def get_server(self, app: Application) -> TestServer:
         """Return a TestServer instance."""
-        return TestServer(app, loop=self.loop)
+        return TestServer(app)
 
     async def get_client(self, server: TestServer) -> TestClient:
         """Return a TestClient instance."""
-        return TestClient(server, loop=self.loop)
+        return TestClient(server)
 
 
 def unittest_run_loop(func: Any, *args: Any, **kwargs: Any) -> Any:
@@ -558,7 +536,6 @@ def _create_app_mock() -> mock.MagicMock:
     app.__getitem__ = get_dict
     app.__setitem__ = set_dict
 
-    app._debug = False
     app.on_response_prepare = Signal(app)
     app.on_response_prepare.freeze()
     return app

@@ -20,14 +20,13 @@ from .http import (
     WebSocketReader,
     WebSocketWriter,
     WSMessage,
-    WSMsgType,
-    ws_ext_gen,
-    ws_ext_parse,
 )
+from .http import WSMsgType as WSMsgType
+from .http import ws_ext_gen, ws_ext_parse
 from .log import ws_logger
 from .streams import EofStream, FlowControlDataQueue
 from .typedefs import JSONDecoder, JSONEncoder
-from .web_exceptions import HTTPBadRequest, HTTPException, HTTPMethodNotAllowed
+from .web_exceptions import HTTPBadRequest, HTTPException
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
@@ -46,6 +45,11 @@ class WebSocketReady:
 
 
 class WebSocketResponse(StreamResponse):
+    __slots__ = ('_protocols', '_ws_protocol', '_writer', '_reader', '_closed',
+                 '_closing', '_conn_lost', '_close_code', '_loop', '_waiting',
+                 '_exception', '_timeout', '_receive_timeout', '_autoclose',
+                 '_autoping', '_heartbeat', '_heartbeat_cb', '_pong_heartbeat',
+                 '_pong_response_cb', '_compress', '_max_msg_size')
 
     def __init__(self, *,
                  timeout: float=10.0, receive_timeout: Optional[float]=None,
@@ -54,6 +58,7 @@ class WebSocketResponse(StreamResponse):
                  protocols: Iterable[str]=(),
                  compress: bool=True, max_msg_size: int=4*1024*1024) -> None:
         super().__init__(status=101)
+        self._length_check = False
         self._protocols = protocols
         self._ws_protocol = None  # type: Optional[str]
         self._writer = None  # type: Optional[WebSocketWriter]
@@ -129,8 +134,6 @@ class WebSocketResponse(StreamResponse):
                                                         bool,
                                                         bool]:
         headers = request.headers
-        if request.method != hdrs.METH_GET:
-            raise HTTPMethodNotAllowed(request.method, [hdrs.METH_GET])
         if 'websocket' != headers.get(hdrs.UPGRADE, '').lower().strip():
             raise HTTPBadRequest(
                 text=('No WebSocket UPGRADE hdr: {}\n Can '
@@ -179,7 +182,6 @@ class WebSocketResponse(StreamResponse):
         response_headers = CIMultiDict(  # type: ignore
             {hdrs.UPGRADE: 'websocket',
              hdrs.CONNECTION: 'upgrade',
-             hdrs.TRANSFER_ENCODING: 'chunked',
              hdrs.SEC_WEBSOCKET_ACCEPT: accept_val})
 
         notakeover = False

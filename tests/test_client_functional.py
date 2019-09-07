@@ -11,7 +11,7 @@ from async_generator import async_generator, yield_
 from multidict import MultiDict
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, web
+from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, helpers, web
 from aiohttp.abc import AbstractResolver
 from aiohttp.client_exceptions import TooManyRedirects
 from aiohttp.test_utils import unused_port
@@ -326,8 +326,6 @@ async def test_tcp_connector_fingerprint_fail(
 
 
 async def test_format_task_get(aiohttp_server) -> None:
-    loop = asyncio.get_event_loop()
-
     async def handler(request):
         return web.Response(body=b'OK')
 
@@ -335,7 +333,7 @@ async def test_format_task_get(aiohttp_server) -> None:
     app.router.add_route('GET', '/', handler)
     server = await aiohttp_server(app)
     client = aiohttp.ClientSession()
-    task = loop.create_task(client.get(server.make_url('/')))
+    task = helpers.create_task(client.get(server.make_url('/')))
     assert "{}".format(task).startswith("<Task pending")
     resp = await task
     resp.close()
@@ -2073,26 +2071,13 @@ async def test_redirect_without_location_header(aiohttp_client) -> None:
     assert data == body
 
 
-async def test_chunked_deprecated(aiohttp_client) -> None:
-
-    async def handler_redirect(request):
-        return web.Response(status=301)
-
-    app = web.Application()
-    app.router.add_route('GET', '/redirect', handler_redirect)
-    client = await aiohttp_client(app)
-
-    with pytest.warns(DeprecationWarning):
-        await client.post('/', chunked=1024)
-
-
 async def test_raise_for_status(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handler(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app, raise_for_status=True)
 
     with pytest.raises(aiohttp.ClientResponseError):
@@ -2101,11 +2086,11 @@ async def test_raise_for_status(aiohttp_client) -> None:
 
 async def test_raise_for_status_per_request(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handler(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app)
 
     with pytest.raises(aiohttp.ClientResponseError):
@@ -2114,11 +2099,11 @@ async def test_raise_for_status_per_request(aiohttp_client) -> None:
 
 async def test_raise_for_status_disable_per_request(aiohttp_client) -> None:
 
-    async def handler_redirect(request):
+    async def handler(request):
         raise web.HTTPBadRequest()
 
     app = web.Application()
-    app.router.add_route('GET', '/', handler_redirect)
+    app.router.add_route('GET', '/', handler)
     client = await aiohttp_client(app, raise_for_status=True)
 
     resp = await client.get('/', raise_for_status=False)
@@ -2344,6 +2329,31 @@ async def test_aiohttp_request_context_manager(aiohttp_server) -> None:
     async with aiohttp.request('GET', server.make_url('/')) as resp:
         await resp.read()
         assert resp.status == 200
+
+
+async def test_aiohttp_request_ctx_manager_close_sess_on_error(
+        ssl_ctx, aiohttp_server) -> None:
+    async def handler(request):
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+
+    cm = aiohttp.request('GET', server.make_url('/'))
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        async with cm:
+            pass
+
+    assert cm._session.closed
+
+
+async def test_aiohttp_request_ctx_manager_not_found() -> None:
+
+    with pytest.raises(aiohttp.ClientConnectionError):
+        async with aiohttp.request('GET', 'http://wrong-dns-name.com'):
+            assert False, "never executed"  # pragma: no cover
 
 
 async def test_aiohttp_request_coroutine(aiohttp_server) -> None:

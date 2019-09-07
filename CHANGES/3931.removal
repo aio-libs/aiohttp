@@ -1,0 +1,1 @@
+Drop deprecated ``BaseRequest.message``, ``BaseRequest.loop``, ``BaseRequest.has_body``

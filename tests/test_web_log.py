@@ -5,9 +5,17 @@ from unittest import mock
 
 import pytest
 
+import aiohttp
+from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
+from aiohttp.helpers import PY_37
 from aiohttp.web_log import AccessLogger
 from aiohttp.web_response import Response
+
+try:
+    from contextvars import ContextVar
+except ImportError:
+    ContextVar = None
 
 IS_PYPY = platform.python_implementation() == 'PyPy'
 
@@ -20,9 +28,9 @@ def test_access_logger_format() -> None:
     assert expected == access_logger._log_format
 
 
-@pytest.mark.skip(
+@pytest.mark.skipif(
     IS_PYPY,
-    """
+    reason="""
     Because of patching :py:class:`datetime.datetime`, under PyPy it
     fails in :py:func:`isinstance` call in
     :py:meth:`datetime.datetime.__sub__` (called from
@@ -43,36 +51,50 @@ def test_access_logger_format() -> None:
     Ref: https://stackoverflow.com/a/46102240/595220
     """,  # noqa: E501
 )
-def test_access_logger_atoms(mocker) -> None:
-    utcnow = datetime.datetime(1843, 1, 1, 0, 30)
-    mock_datetime = mocker.patch("aiohttp.datetime.datetime")
-    mock_getpid = mocker.patch("os.getpid")
-    mock_datetime.utcnow.return_value = utcnow
-    mock_getpid.return_value = 42
-    log_format = '%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"'
+@pytest.mark.parametrize(
+    'log_format,expected,extra',
+    [
+        ('%t',
+         '[01/Jan/1843:00:29:56 +0800]',
+         {
+             'request_start_time': '[01/Jan/1843:00:29:56 +0800]'
+         }
+         ),
+        ('%a %t %P %r %s %b %T %Tf %D "%{H1}i" "%{H2}i"',
+         ('127.0.0.2 [01/Jan/1843:00:29:56 +0800] <42> '
+          'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"'),
+         {
+             'first_request_line': 'GET /path HTTP/1.1',
+             'process_id': '<42>',
+             'remote_address': '127.0.0.2',
+             'request_start_time': '[01/Jan/1843:00:29:56 +0800]',
+             'request_time': '3',
+             'request_time_frac': '3.141593',
+             'request_time_micro': '3141593',
+             'response_size': 42,
+             'response_status': 200,
+             'request_header': {'H1': 'a', 'H2': 'b'},
+         }
+         )
+    ]
+)
+def test_access_logger_atoms(monkeypatch, log_format, expected, extra) -> None:
+    class PatchedDatetime(datetime.datetime):
+        @staticmethod
+        def now(tz):
+            return datetime.datetime(1843, 1, 1, 0, 30, tzinfo=tz)
+    monkeypatch.setattr("datetime.datetime", PatchedDatetime)
+    monkeypatch.setattr("time.timezone", -28800)
+    monkeypatch.setattr("os.getpid", lambda: 42)
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
     request = mock.Mock(headers={'H1': 'a', 'H2': 'b'},
                         method="GET", path_qs="/path",
-                        version=(1, 1),
+                        version=aiohttp.HttpVersion(1, 1),
                         remote="127.0.0.2")
     response = mock.Mock(headers={}, body_length=42, status=200)
     access_logger.log(request, response, 3.1415926)
-    assert not mock_logger.exception.called
-    expected = ('127.0.0.2 [01/Jan/1843:00:29:56 +0000] <42> '
-                'GET /path HTTP/1.1 200 42 3 3.141593 3141593 "a" "b"')
-    extra = {
-        'first_request_line': 'GET /path HTTP/1.1',
-        'process_id': '<42>',
-        'remote_address': '127.0.0.2',
-        'request_start_time': '[01/Jan/1843:00:29:56 +0000]',
-        'request_time': 3,
-        'request_time_frac': '3.141593',
-        'request_time_micro': 3141593,
-        'response_size': 42,
-        'response_status': 200,
-        'request_header': {'H1': 'a', 'H2': 'b'},
-    }
+    assert not mock_logger.exception.called, mock_logger.exception.call_args
 
     mock_logger.info.assert_called_with(expected, extra=extra)
 
@@ -200,3 +222,31 @@ async def test_async_logger(aiohttp_raw_server, aiohttp_client):
     resp = await cli.get('/path/to', headers={'Accept': 'text/html'})
     assert resp.status == 200
     assert msg == '/path/to: 200'
+
+
+@pytest.mark.skipif(not PY_37,
+                    reason="contextvars support is required")
+async def test_contextvars_logger(aiohttp_server, aiohttp_client):
+    VAR = ContextVar('VAR')
+
+    async def handler(request):
+        return web.Response()
+
+    async def middleware(request, handler):
+        VAR.set("uuid")
+        return await handler(request)
+
+    msg = None
+
+    class Logger(AbstractAccessLogger):
+        def log(self, request, response, time):
+            nonlocal msg
+            msg = 'contextvars: {}'.format(VAR.get())
+
+    app = web.Application(middlewares=[middleware])
+    app.router.add_get('/', handler)
+    server = await aiohttp_server(app, access_log_class=Logger)
+    client = await aiohttp_client(server)
+    resp = await client.get('/')
+    assert 200 == resp.status
+    assert msg == 'contextvars: uuid'

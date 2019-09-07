@@ -533,6 +533,9 @@ cdef class HttpParser:
         else:
             return messages, False, b''
 
+    def set_upgraded(self, val):
+        self._upgraded = val
+
 
 cdef class HttpRequestParser(HttpParser):
 
@@ -576,7 +579,8 @@ cdef class HttpResponseParser(HttpParser):
         if self._buf:
             self._reason = self._buf.decode('utf-8', 'surrogateescape')
             PyByteArray_Resize(self._buf, 0)
-
+        else:
+            self._reason = self._reason or ''
 
 cdef int cb_on_message_begin(cparser.http_parser* parser) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data

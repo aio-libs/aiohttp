@@ -25,6 +25,7 @@ Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
 Amin Etesamian
+Amit Tulshyan
 Amy Boyle
 Anders Melchiorsen
 Andrei Ursulenko
@@ -46,6 +47,7 @@ Boyi Chen
 Brett Cannon
 Brian C. Lane
 Brian Muller
+Bryan Kok
 Bryce Drennan
 Carl George
 Cecile Tonglet
@@ -68,12 +70,14 @@ David Bibb
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
+Dennis Kliban
 Dima Veselov
 Dimitar Dimitrov
 Diogo Dutra da Mata
 Dmitriy Safonov
 Dmitry Doroshev
 Dmitry Lukashin
+Dmitry Marakasov
 Dmitry Shamov
 Dmitry Trofimov
 Dmytro Bohomiakov
@@ -88,9 +92,12 @@ Eric Sheng
 Erich Healy
 Eugene Chernyshov
 Eugene Naydenov
+Eugene Nikolaiev
 Eugene Tolmachev
 Evert Lammerts
+Felix Yan
 FichteFoll
+Florian Scheffler
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
@@ -104,12 +111,14 @@ Günther Jena
 Hans Adema
 Harmon Y.
 Hu Bo
+Hugh Young
 Hugo Herter
 Hynek Schlawack
 Igor Alexandrov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
+Ilya Chichak
 Ingmar Steen
 Ivan Larin
 Jacob Champion
@@ -125,6 +134,7 @@ Jian Zeng
 Jinkyu Yi
 Joel Watts
 Jon Nabozny
+Jonas Obrist
 Joongi Kim
 Josep Cugat
 Joshu Coats
@@ -139,6 +149,7 @@ Kay Zheng
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Konstantin Valetov
 Kyrylo Perevozchikov
 Lars P. Søndergaard
 Louis-Philippe Huberdeau
@@ -157,6 +168,7 @@ Martin Melka
 Martin Richard
 Mathias Fröjdman
 Mathieu Dugré
+Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
 Michael Ihnatenko
@@ -169,6 +181,7 @@ Mitchell Ferree
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
+Navid Sheikhol
 Nicolas Braem
 Nikolay Kim
 Nikolay Novik
@@ -192,6 +205,7 @@ Rafael Viotti
 Raúl Cumplido
 Required Field
 Robert Lu
+Robert Nikolich
 Roman Podoliaka
 Samuel Colvin
 Sean Hunt

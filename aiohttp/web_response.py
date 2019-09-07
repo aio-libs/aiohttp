@@ -59,12 +59,17 @@ class ContentCoding(enum.Enum):
 
 class StreamResponse(BaseClass, HeadersMixin):
 
-    _length_check = True
+    __slots__ = ('_length_check', '_body', '_keep_alive', '_chunked',
+                 '_compression', '_compression_force', '_cookies', '_req',
+                 '_payload_writer', '_eof_sent', '_body_length', '_state',
+                 '_headers', '_status', '_reason')
 
     def __init__(self, *,
                  status: int=200,
                  reason: Optional[str]=None,
                  headers: Optional[LooseHeaders]=None) -> None:
+        super().__init__()
+        self._length_check = True
         self._body = None
         self._keep_alive = None  # type: Optional[bool]
         self._chunked = False
@@ -135,36 +140,19 @@ class StreamResponse(BaseClass, HeadersMixin):
     def body_length(self) -> int:
         return self._body_length
 
-    @property
-    def output_length(self) -> int:
-        warnings.warn('output_length is deprecated', DeprecationWarning)
-        assert self._payload_writer
-        return self._payload_writer.buffer_size
-
-    def enable_chunked_encoding(self, chunk_size: Optional[int]=None) -> None:
+    def enable_chunked_encoding(self) -> None:
         """Enables automatic chunked transfer encoding."""
         self._chunked = True
 
         if hdrs.CONTENT_LENGTH in self._headers:
             raise RuntimeError("You can't enable chunked encoding when "
                                "a content length is set")
-        if chunk_size is not None:
-            warnings.warn('Chunk size is deprecated #1615', DeprecationWarning)
 
     def enable_compression(self,
-                           force: Optional[Union[bool, ContentCoding]]=None
+                           force: Optional[ContentCoding]=None
                            ) -> None:
         """Enables response compression encoding."""
         # Backwards compatibility for when force was a bool <0.17.
-        if type(force) == bool:
-            force = ContentCoding.deflate if force else ContentCoding.identity
-            warnings.warn("Using boolean for force is deprecated #3318",
-                          DeprecationWarning)
-        elif force is not None:
-            assert isinstance(force, ContentCoding), ("force should one of "
-                                                      "None, bool or "
-                                                      "ContentEncoding")
-
         self._compression = True
         self._compression_force = force
 
@@ -481,6 +469,11 @@ class StreamResponse(BaseClass, HeadersMixin):
 
 
 class Response(StreamResponse):
+
+    __slots__ = ('_body_payload',
+                 '_compressed_body',
+                 '_zlib_executor_size',
+                 '_zlib_executor')
 
     def __init__(self, *,
                  body: Any=None,
