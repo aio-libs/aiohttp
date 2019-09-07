@@ -266,10 +266,10 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            headers = CIMultiDict(headers)
+            real_headers = CIMultiDict(headers)  # type: CIMultiDict[str]
         else:
-            headers = CIMultiDict()
-        self._default_headers = headers
+            real_headers = CIMultiDict()
+        self._default_headers = real_headers   # type: CIMultiDict[str]
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
