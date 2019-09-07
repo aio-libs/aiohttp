@@ -904,9 +904,7 @@ class TCPConnector(BaseConnector):
             **kwargs: Any) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
             with CeilTimeout(timeout.sock_connect):
-                return cast(
-                    Tuple[asyncio.Transport, ResponseHandler],
-                    await self._loop.create_connection(*args, **kwargs))
+                return await self._loop.create_connection(*args, **kwargs)  # type: ignore  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(
                 req.connection_key, exc) from exc

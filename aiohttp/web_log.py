@@ -5,7 +5,7 @@ import os
 import re
 import time as time_mod
 from collections import namedtuple
-from typing import Callable, Dict, Iterable, List, Tuple  # noqa
+from typing import Any, Callable, Dict, Iterable, List, Tuple  # noqa
 
 from .abc import AbstractAccessLogger
 from .web_request import BaseRequest
@@ -228,9 +228,9 @@ class AccessLogger(AbstractAccessLogger):
                     extra[key] = value
                 else:
                     k1, k2 = key
-                    dct = extra.get(k1, {})
-                    dct[k2] = value  # type: ignore
-                    extra[k1] = dct  # type: ignore
+                    dct = extra.get(k1, {})  # type: Any
+                    dct[k2] = value
+                    extra[k1] = dct
 
             self.logger.info(self._log_format % tuple(values), extra=extra)
         except Exception:
