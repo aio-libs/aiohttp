@@ -299,6 +299,7 @@ class CookieJar(AbstractCookieJar):
                 month_match = cls.DATE_MONTH_RE.match(token)
                 if month_match:
                     found_month = True
+                    assert month_match.lastindex is not None
                     month = month_match.lastindex
                     continue
 

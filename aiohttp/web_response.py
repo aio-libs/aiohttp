@@ -81,7 +81,7 @@ class StreamResponse(BaseClass, HeadersMixin):
         if headers is not None:
             self._headers = CIMultiDict(headers)  # type: CIMultiDict[str]
         else:
-            self._headers = CIMultiDict()  # type: CIMultiDict[str]
+            self._headers = CIMultiDict()
 
         self.set_status(status, reason)
 
