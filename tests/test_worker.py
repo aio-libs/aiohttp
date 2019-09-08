@@ -270,7 +270,7 @@ def test__create_ssl_context_with_ciphers(
     worker.cfg.certfile = tls_certificate_pem_path
     worker.cfg.keyfile = tls_certificate_pem_path
     worker.cfg.ca_certs = None
-    worker.cfg.ciphers = 'PSK'
+    worker.cfg.ciphers = '3DES PSK'
     ctx = worker._create_ssl_context(worker.cfg)
     assert isinstance(ctx, ssl.SSLContext)
 
