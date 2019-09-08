@@ -1,6 +1,7 @@
 """Tests for aiohttp/server.py"""
 
 import asyncio
+import platform
 import socket
 from functools import partial
 from unittest import mock
@@ -8,6 +9,8 @@ from unittest import mock
 import pytest
 
 from aiohttp import helpers, http, streams, web
+
+IS_MACOS = platform.system() == 'Darwin'
 
 
 @pytest.fixture
@@ -335,6 +338,11 @@ async def test_handle_uncompleted(
         "Error handling request", exc_info=mock.ANY)
 
 
+@pytest.mark.xfail(
+    IS_MACOS,
+    raises=TypeError,
+    reason='Intermittently fails on macOS',
+)
 async def test_handle_uncompleted_pipe(
         make_srv, transport, request_handler, handle_with_error):
     closed = False
