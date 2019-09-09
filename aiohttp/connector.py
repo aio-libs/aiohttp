@@ -869,7 +869,16 @@ class TCPConnector(BaseConnector):
             sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             sslcontext.options |= ssl.OP_NO_SSLv2
             sslcontext.options |= ssl.OP_NO_SSLv3
-            sslcontext.options |= ssl.OP_NO_COMPRESSION
+            try:
+                sslcontext.options |= ssl.OP_NO_COMPRESSION
+            except AttributeError as attr_err:
+                warnings.warn(
+                    '{!s}: The Python interpreter is compiled '
+                    'against OpenSSL < 1.0.0. Ref: '
+                    'https://docs.python.org/3/library/ssl.html'
+                    '#ssl.OP_NO_COMPRESSION'.
+                    format(attr_err),
+                )
             sslcontext.set_default_verify_paths()
             return sslcontext
 
