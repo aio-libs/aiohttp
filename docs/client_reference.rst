@@ -309,7 +309,7 @@ The client session supports the context manager protocol for self closing.
          Set the argument to ``False`` to suppress a HTTP status chacker even if
          :class:`ClientSession` enables it.
 
-         Use *async callback* to call user code for that accepts a
+         Use an *async callback* to call user code that accepts a
          :class:`ClientResponse` and raises an exception to prevent the future
          processing.
 
