@@ -297,8 +297,8 @@ The client session supports the context manager protocol for self closing.
 
       :param ~typing.Union[bool, callable] raise_for_status:
 
-         Automatically apply a checker for failed status code (usually a code
-         that is greater than ``400``).
+         Automatically apply a check for failed status codes (usually a code
+         that is greater than or equal to ``400``).
 
          ``None`` (default) means that ``raise_for_status`` argument of
          :class:`ClientSession` constructor controls this behavior.
@@ -310,10 +310,10 @@ The client session supports the context manager protocol for self closing.
          :class:`ClientSession` enables it.
 
          Use an *async callback* to call user code that accepts a
-         :class:`ClientResponse` and raises an exception to prevent the future
+         :class:`ClientResponse` and raises an exception to prevent future
          processing.
 
-         The following callback example is a functional equivalent if
+         The following callback example is a functional equivalent of
          ``raise_for_status=True``::
 
              async def custom_check(response):
