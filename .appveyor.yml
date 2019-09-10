@@ -1,6 +1,10 @@
 environment:
+  PYPI_USER: __token__
   PYPI_PASSWD:
-    secure: HrwOVde4wZoYHJf9bZ5AsQ==
+    secure: >-
+      E3o5zJvWwZ08zASfNAFzB8nRC8DMNhl2V5B+cH6fpvqt2qBsOeoDhbmSVlxNSdYLhbohI3MGLPAEQ3U8TheQ5UypPx6VRTQDyOkeRC1goENfwHTz3fdWn8eBo3TCSTss5pKK92jWDLNkYirXIyZoz/ukAS2mfxYHMA0GoTiVc46xJzRvuiHjJgUgtsJOX3/rjrw2eFJXyZGyug4Zbvj64PIzzDNPm7umEDnpJzIvG8/CZuIEemZpNiA4FOehIcvMEXR9giox40/EN8Gwn4Jl3Q==
+  PYTHONIOENCODING: "utf8:backslashreplace"
+  PYTHONLEGACYWINDOWSSTDIO: "1"
   matrix:
     - PYTHON: "C:\\Python35"
     - PYTHON: "C:\\Python35-x64"
@@ -35,7 +39,7 @@ artifacts:
 deploy_script:
   - ps: >-
       if($env:appveyor_repo_tag -eq 'True') {
-          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username aio-libs-bot --password $env:PYPI_PASSWD --skip-existing"
+          Invoke-Expression "$env:PYTHON\\python.exe -m twine upload dist/* --username $env:PYPI_USER --password $env:PYPI_PASSWD --skip-existing"
       }
 
 #notifications:
