@@ -165,7 +165,11 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 
 def test_http_GET(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    # Python 3.8 will auto use mock.AsyncMock, it has different behavior
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.get("http://test.example.com",
                     params={"x": 1},
                     **params)
@@ -178,7 +182,10 @@ def test_http_GET(session, params) -> None:
 
 
 def test_http_OPTIONS(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.options("http://opt.example.com",
                         params={"x": 2},
                         **params)
@@ -191,7 +198,10 @@ def test_http_OPTIONS(session, params) -> None:
 
 
 def test_http_HEAD(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.head("http://head.example.com",
                      params={"x": 2},
                      **params)
@@ -204,7 +214,10 @@ def test_http_HEAD(session, params) -> None:
 
 
 def test_http_POST(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.post("http://post.example.com",
                      params={"x": 2},
                      data="Some_data",
@@ -218,7 +231,10 @@ def test_http_POST(session, params) -> None:
 
 
 def test_http_PUT(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.put("http://put.example.com",
                     params={"x": 2},
                     data="Some_data",
@@ -232,7 +248,10 @@ def test_http_PUT(session, params) -> None:
 
 
 def test_http_PATCH(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.patch("http://patch.example.com",
                       params={"x": 2},
                       data="Some_data",
@@ -246,7 +265,10 @@ def test_http_PATCH(session, params) -> None:
 
 
 def test_http_DELETE(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.delete("http://delete.example.com",
                        params={"x": 2},
                        **params)
@@ -492,7 +514,10 @@ async def test_session_default_version(loop) -> None:
 
 
 def test_proxy_str(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.get("http://test.example.com",
                     proxy='http://proxy.com',
                     **params)
