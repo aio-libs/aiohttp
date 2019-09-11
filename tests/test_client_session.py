@@ -17,6 +17,7 @@ from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.helpers import PY_36
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -515,9 +516,9 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     body = 'This is request body'
     gathered_req_body = BytesIO()
     gathered_res_body = BytesIO()
-    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
 
     async def on_request_chunk_sent(session, context, params):
         gathered_req_body.write(params.chunk)
@@ -568,9 +569,9 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
 
 
 async def test_request_tracing_exception(loop) -> None:
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_exception = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig()
