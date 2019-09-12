@@ -306,7 +306,7 @@ The client session supports the context manager protocol for self closing.
          Set the parameter to ``True`` if you need to enforce
          :meth:`ClientResponse.raise_for_status` call.
 
-         Set the argument to ``False`` to suppress a HTTP status chacker even if
+         Set the argument to ``False`` to suppress a HTTP status checker even if
          :class:`ClientSession` enables it.
 
          Use an *async callback* to call user code that accepts a
