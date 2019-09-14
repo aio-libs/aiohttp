@@ -71,7 +71,7 @@ except IndexError:
 install_requires = [
     'attrs>=17.3.0',
     'chardet>=2.0,<4.0',
-    'multidict>=4.0,<5.0',
+    'multidict>=4.5,<5.0',
     'async_timeout>=3.0,<4.0',
     'yarl>=1.0,<2.0',
     'idna-ssl>=1.0; python_version<"3.7"',
