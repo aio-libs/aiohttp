@@ -134,7 +134,7 @@ args = dict(
     install_requires=install_requires,
     extras_require={
         'speedups': [
-            'aiodns',
+            'aiodns>=1.1',
             'Brotli',
             'cchardet',
         ],
