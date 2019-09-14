@@ -115,6 +115,22 @@ The client session supports the context manager protocol for self closing.
       requests where you need to handle responses with status 400 or
       higher.
 
+      You can also provide a coroutine which takes the response as an
+      argument and can raise an exception based on custom logic, e.g.::
+
+          async def custom_check(response):
+              if response.status not in {201, 202}:
+                  raise RuntimeError('expected either 201 or 202')
+              text = await response.text()
+              if 'apple pie' not in text:
+                  raise RuntimeError('I wanted to see "apple pie" in response')
+
+          client_session = aiohttp.ClientSession(raise_for_status=custom_check)
+          ...
+
+      As with boolean values, you're free to set this on the session and/or
+      overwrite it on a per-request basis.
+
    :param timeout: a :class:`ClientTimeout` settings structure, 5min
         total timeout by default.
 
@@ -455,8 +471,8 @@ The client session supports the context manager protocol for self closing.
                               <ClientResponse>` object.
 
    .. comethod:: ws_connect(url, *, method='GET', \
-                            protocols=(), timeout=10.0,\
-                            receive_timeout=None,\
+                            protocols=(), \
+                            timeout=sentinel,\
                             auth=None,\
                             autoclose=True,\
                             autoping=True,\
@@ -476,12 +492,11 @@ The client session supports the context manager protocol for self closing.
 
       :param tuple protocols: Websocket protocols
 
-      :param float timeout: Timeout for websocket to close. ``10`` seconds
-                            by default
-
-      :param float receive_timeout: Timeout for websocket to receive
-                                    complete message.  ``None`` (unlimited)
-                                    seconds by default
+      :param timeout: a :class:`ClientWSTimeout` timeout for websocket.
+                      By default, the value
+                      `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
+                      (``10.0`` seconds for the websocket to close).
+                      ``None`` means no timeout will be used.
 
       :param aiohttp.BasicAuth auth: an object that represents HTTP
                                      Basic Authorization (optional)
@@ -1404,7 +1419,24 @@ ClientTimeout
 
       :class:`float`, ``None`` by default.
 
-   .. versionadded:: 3.3
+
+.. class:: ClientWSTimeout(*, ws_receive=None, ws_close=None)
+
+   A data class for websocket client timeout settings.
+
+   .. attribute:: ws_receive
+
+      A timeout for websocket to receive a complete message.
+
+      :class:`float`, ``None`` by default.
+
+   .. attribute:: ws_close
+
+      A timeout for the websocket to close.
+
+      :class:`float`, ``10.0`` by default.
+
+   .. versionadded:: 4.0
 
 RequestInfo
 ^^^^^^^^^^^

@@ -127,6 +127,9 @@ period ask to raise the status.
 - `aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_
   Swagger API Documentation builder for aiohttp server.
 
+- `aiohttp-swagger3 <https://github.com/hh-h/aiohttp-swagger3>`_
+  Library for Swagger documentation builder and validating aiohttp requests using swagger specification 3.0.
+
 - `aiohttp-swaggerify <https://github.com/dchaplinsky/aiohttp_swaggerify>`_
   Library to automatically generate swagger2.0 definition for aiohttp endpoints.
 
@@ -208,6 +211,9 @@ period ask to raise the status.
 
 - `aiogram <https://github.com/aiogram/aiogram>`_
   A fully asynchronous library for Telegram Bot API written with asyncio and aiohttp.
+  
+- `vk.py <https://github.com/prostomarkeloff/vk.py>`_
+  Extremely-fast Python 3.6+ toolkit for create applications work`s with VKAPI.
 
 - `aiohttp-graphql <https://github.com/graphql-python/aiohttp-graphql>`_
   GraphQL and GraphIQL interface for aiohttp.

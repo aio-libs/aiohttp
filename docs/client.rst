@@ -3,7 +3,7 @@
 Client
 ======
 
-.. module:: aiohttp
+.. currentmodule:: aiohttp
 
 The page contains all information about aiohttp Client API:
 
