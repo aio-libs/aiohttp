@@ -137,7 +137,7 @@ class RequestHandler(BaseProtocol):
                  '_waiter', '_error_handler', '_task_handler',
                  '_upgrade', '_payload_parser', '_request_parser',
                  '_reading_paused', 'logger', 'access_log',
-                 'access_logger', '_close', '_force_close')
+                 'access_logger', '_close', '_force_close', 'handle_request')
 
     def __init__(self, manager: 'Server', *,
                  loop: asyncio.AbstractEventLoop,

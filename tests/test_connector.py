@@ -734,7 +734,7 @@ async def test_tcp_connector_dns_throttle_requests_cancelled_when_close(
         await asyncio.sleep(0)
         await conn.close()
 
-        with pytest.raises(asyncio.futures.CancelledError):
+        with pytest.raises(asyncio.CancelledError):
             await f
 
 
