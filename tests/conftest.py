@@ -23,7 +23,9 @@ def shorttmpdir():
     """
     tmpdir = pathlib.Path(tempfile.mkdtemp())
     yield tmpdir
-    shutil.rmtree(tmpdir, ignore_errors=True)
+    # str(tmpdir) is required, Python 3.5 doesn't have __fspath__
+    # concept
+    shutil.rmtree(str(tmpdir), ignore_errors=True)
 
 
 @pytest.fixture
