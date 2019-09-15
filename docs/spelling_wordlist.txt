@@ -211,7 +211,6 @@ rebase
 redirections
 Redis
 refactor
-Refactor
 refactored
 refactoring
 regex
@@ -233,6 +232,7 @@ resolvers
 reusage
 reuseconn
 Runit
+runtime
 sa
 Satisfiable
 schemas
