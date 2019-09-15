@@ -20,7 +20,7 @@ Changelog
 Bugfixes
 --------
 
-- Emit a warning when :py:attr:`ssl.OP_NO_COMPRESSION` is
+- Emit a warning when ``ssl.OP_NO_COMPRESSION`` is
   unavailable because the runtime is built against
   an outdated OpenSSL.
   `#4052 <https://github.com/aio-libs/aiohttp/issues/4052>`_
