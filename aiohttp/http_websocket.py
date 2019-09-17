@@ -365,9 +365,12 @@ class WebSocketReader:
                             left = len(self._decompressobj.unconsumed_tail)
                             raise WebSocketError(
                                 WSCloseCode.MESSAGE_TOO_BIG,
-                                "Decompressed message size exceeds limit {}".
-                                format(self._max_msg_size + left,
-                                       self._max_msg_size))
+                                "Decompressed message size {} exceeds limit {}"
+                                .format(
+                                    self._max_msg_size + left,
+                                    self._max_msg_size
+                                )
+                            )
                     else:
                         payload_merged = bytes(self._partial)
 
