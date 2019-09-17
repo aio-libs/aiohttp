@@ -344,7 +344,7 @@ def test_timer_context_no_task(loop) -> None:
 async def test_weakref_handle(loop) -> None:
     cb = mock.Mock()
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
-    await asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1)
     assert cb.test.called
 
 
@@ -353,7 +353,7 @@ async def test_weakref_handle_weak(loop) -> None:
     helpers.weakref_handle(cb, 'test', 0.01, loop, False)
     del cb
     gc.collect()
-    await asyncio.sleep(0.1, loop=loop)
+    await asyncio.sleep(0.1)
 
 
 def test_ceil_call_later() -> None:

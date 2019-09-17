@@ -2420,8 +2420,7 @@ async def test_aiohttp_request_coroutine(aiohttp_server) -> None:
         await aiohttp.request('GET', server.make_url('/'))
 
 
-@asyncio.coroutine
-def test_yield_from_in_session_request(aiohttp_client) -> None:
+async def test_yield_from_in_session_request(aiohttp_client) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request):
         return web.Response()
@@ -2429,13 +2428,12 @@ def test_yield_from_in_session_request(aiohttp_client) -> None:
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = yield from aiohttp_client(app)
-    resp = yield from client.get('/')
+    client = await aiohttp_client(app)
+    resp = await client.get('/')
     assert resp.status == 200
 
 
-@asyncio.coroutine
-def test_close_context_manager(aiohttp_client) -> None:
+async def test_close_context_manager(aiohttp_client) -> None:
     # a test for backward compatibility with yield from syntax
     async def handler(request):
         return web.Response()
@@ -2443,7 +2441,7 @@ def test_close_context_manager(aiohttp_client) -> None:
     app = web.Application()
     app.router.add_get('/', handler)
 
-    client = yield from aiohttp_client(app)
+    client = await aiohttp_client(app)
     ctx = client.get('/')
     ctx.close()
     assert not ctx._coro.cr_running

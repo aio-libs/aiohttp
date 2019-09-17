@@ -13,7 +13,6 @@ try:  # pragma: no cover
 except ImportError:
     from typing_extensions import Deque  # noqa
 
-
 __all__ = (
     'EMPTY_PAYLOAD', 'EofStream', 'StreamReader', 'DataQueue',
     'FlowControlDataQueue')
@@ -409,7 +408,7 @@ class StreamReader(AsyncStreamReaderMixin):
             block = await self.read(n)
             if not block:
                 partial = b''.join(blocks)
-                raise asyncio.streams.IncompleteReadError(
+                raise asyncio.IncompleteReadError(
                     partial, len(partial) + n)
             blocks.append(block)
             n -= len(block)
@@ -514,7 +513,7 @@ class EmptyStreamReader(AsyncStreamReaderMixin):
         return (b'', True)
 
     async def readexactly(self, n: int) -> bytes:
-        raise asyncio.streams.IncompleteReadError(b'', n)
+        raise asyncio.IncompleteReadError(b'', n)
 
     def read_nowait(self) -> bytes:
         return b''

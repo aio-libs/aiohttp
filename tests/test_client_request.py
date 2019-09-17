@@ -917,7 +917,7 @@ async def test_data_stream_exc(loop, conn) -> None:
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         fut.set_exception(ValueError)
 
     loop.create_task(throw_exc())
@@ -942,7 +942,7 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
     inner_exc = ValueError()
 
     async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         fut.set_exception(inner_exc)
 
     loop.create_task(throw_exc())
@@ -970,7 +970,7 @@ async def test_data_stream_continue(loop, buf, conn) -> None:
     assert req.chunked
 
     async def coro():
-        await asyncio.sleep(0.0001, loop=loop)
+        await asyncio.sleep(0.0001)
         req._continue.set_result(1)
 
     loop.create_task(coro())
@@ -989,7 +989,7 @@ async def test_data_continue(loop, buf, conn) -> None:
         expect100=True, loop=loop)
 
     async def coro():
-        await asyncio.sleep(0.0001, loop=loop)
+        await asyncio.sleep(0.0001)
         req._continue.set_result(1)
 
     loop.create_task(coro())
