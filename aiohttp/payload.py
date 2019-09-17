@@ -207,7 +207,7 @@ class BytesPayload(Payload):
                  *args: Any,
                  **kwargs: Any) -> None:
         if not isinstance(value, (bytes, bytearray, memoryview)):
-            raise TypeError("value argument must be byte-ish, not (!r)"
+            raise TypeError("value argument must be byte-ish, not {!r}"
                             .format(type(value)))
 
         if 'content_type' not in kwargs:
