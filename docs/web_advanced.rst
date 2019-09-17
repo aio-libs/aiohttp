@@ -699,10 +699,6 @@ one ``yield``.
 *aiohttp* guarantees that *cleanup code* is called if and only if
 *startup code* was successfully finished.
 
-Asynchronous generators are supported by Python 3.6+, on Python 3.5
-please use `async_generator <https://pypi.org/project/async_generator/>`_
-library.
-
 .. versionadded:: 3.1
 
 .. _aiohttp-web-nested-applications:

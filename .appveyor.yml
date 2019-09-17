@@ -6,8 +6,6 @@ environment:
   PYTHONIOENCODING: "utf8:backslashreplace"
   PYTHONLEGACYWINDOWSSTDIO: "1"
   matrix:
-    - PYTHON: "C:\\Python35"
-    - PYTHON: "C:\\Python35-x64"
     - PYTHON: "C:\\Python36"
     - PYTHON: "C:\\Python36-x64"
     - PYTHON: "C:\\Python37"
