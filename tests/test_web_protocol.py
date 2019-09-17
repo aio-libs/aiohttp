@@ -403,7 +403,9 @@ async def test_lingering(srv, transport) -> None:
     async def handle(message, request, writer):
         pass
 
-    with mock.patch.object(web.RequestHandler, 'handle_request', new=handle):
+    with mock.patch.object(
+        web.RequestHandler, 'handle_request', create=True, new=handle
+    ):
         srv.data_received(
             b'GET / HTTP/1.0\r\n'
             b'Host: example.com\r\n'
@@ -494,18 +496,19 @@ async def test_handle_cancel(make_srv, transport) -> None:
     async def handle_request(message, payload, writer):
         await asyncio.sleep(10)
 
-    srv.handle_request = handle_request
-
     async def cancel():
         srv._task_handler.cancel()
 
-    srv.data_received(
-        b'GET / HTTP/1.0\r\n'
-        b'Content-Length: 10\r\n'
-        b'Host: example.com\r\n\r\n')
+    with mock.patch.object(
+        web.RequestHandler, 'handle_request', create=True, new=handle_request
+    ):
+        srv.data_received(
+            b'GET / HTTP/1.0\r\n'
+            b'Content-Length: 10\r\n'
+            b'Host: example.com\r\n\r\n')
 
-    await asyncio.gather(srv._task_handler, cancel())
-    assert log.debug.called
+        await asyncio.gather(srv._task_handler, cancel())
+        assert log.debug.called
 
 
 async def test_handle_cancelled(make_srv, transport) -> None:
@@ -516,7 +519,6 @@ async def test_handle_cancelled(make_srv, transport) -> None:
     srv = make_srv(logger=log)
     srv.connection_made(transport)
 
-    srv.handle_request = mock.Mock()
     # start request_handler task
     await asyncio.sleep(0)
 
@@ -538,16 +540,16 @@ async def test_handle_400(srv, buf, transport) -> None:
 async def test_keep_alive(make_srv, transport, ceil) -> None:
     loop = asyncio.get_event_loop()
     srv = make_srv(keepalive_timeout=0.05)
+    future = loop.create_future()
+    future.set_result(1)
+
     with mock.patch.object(
         web.RequestHandler, 'KEEPALIVE_RESCHEDULE_DELAY', new=0.1
+    ), mock.patch.object(
+        web.RequestHandler, 'handle_request', create=True, return_value=future
     ):
         srv.connection_made(transport)
-
         srv.keep_alive(True)
-        srv.handle_request = mock.Mock()
-        srv.handle_request.return_value = loop.create_future()
-        srv.handle_request.return_value.set_result(1)
-
         srv.data_received(
             b'GET / HTTP/1.1\r\n'
             b'Host: example.com\r\n'
@@ -639,29 +641,34 @@ async def test_close(srv, transport) -> None:
     srv.connection_made(transport)
     await asyncio.sleep(0)
 
-    srv.handle_request = mock.Mock()
-    srv.handle_request.side_effect = helpers.noop
+    handle_request = mock.Mock()
+    handle_request.side_effect = helpers.noop
+    with mock.patch.object(
+        web.RequestHandler,
+        'handle_request',
+        create=True,
+        new=handle_request
+    ):
+        assert transport is srv.transport
 
-    assert transport is srv.transport
+        srv._keepalive = True
+        srv.data_received(
+            b'GET / HTTP/1.1\r\n'
+            b'Host: example.com\r\n'
+            b'Content-Length: 0\r\n\r\n'
+            b'GET / HTTP/1.1\r\n'
+            b'Host: example.com\r\n'
+            b'Content-Length: 0\r\n\r\n')
 
-    srv._keepalive = True
-    srv.data_received(
-        b'GET / HTTP/1.1\r\n'
-        b'Host: example.com\r\n'
-        b'Content-Length: 0\r\n\r\n'
-        b'GET / HTTP/1.1\r\n'
-        b'Host: example.com\r\n'
-        b'Content-Length: 0\r\n\r\n')
+        await asyncio.sleep(0.05)
+        assert srv._task_handler
+        assert srv._waiter
 
-    await asyncio.sleep(0.05)
-    assert srv._task_handler
-    assert srv._waiter
-
-    srv.close()
-    await asyncio.sleep(0)
-    assert srv._task_handler is None
-    assert srv.transport is None
-    assert transport.close.called
+        srv.close()
+        await asyncio.sleep(0)
+        assert srv._task_handler is None
+        assert srv.transport is None
+        assert transport.close.called
 
 
 async def test_pipeline_multiple_messages(
