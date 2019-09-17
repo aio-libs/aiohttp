@@ -1,9 +1,9 @@
-import asyncio
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
+from aiohttp.test_utils import make_mocked_coro
 from aiohttp.tracing import (
     Trace,
     TraceConfig,
@@ -145,7 +145,7 @@ class TestTrace:
     async def test_send(self, signal, params, param_obj) -> None:
         session = Mock()
         trace_request_ctx = Mock()
-        callback = Mock(side_effect=asyncio.coroutine(Mock()))
+        callback = Mock(side_effect=make_mocked_coro(Mock()))
 
         trace_config = TraceConfig()
         getattr(trace_config, "on_%s" % signal).append(callback)
