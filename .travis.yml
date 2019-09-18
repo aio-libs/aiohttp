@@ -311,6 +311,7 @@ jobs:
     deploy:
       <<: *deploy_step
 
+    # Build and deploy MacOS binary wheels for each OSX+Python combo possible
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
     name: *env_os1010_msg
