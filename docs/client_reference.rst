@@ -98,7 +98,7 @@ The client session supports the context manager protocol for self closing.
 
       By default :func:`json.dumps` function.
 
-   :param bool raise_for_status:
+   :param ~typing.Union[bool, callable] raise_for_status:
 
       Automatically call :meth:`ClientResponse.raise_for_status()` for
       each response, ``False`` by default.
@@ -130,6 +130,10 @@ The client session supports the context manager protocol for self closing.
 
       As with boolean values, you're free to set this on the session and/or
       overwrite it on a per-request basis.
+
+      .. versionchanged:: 4.0
+
+         Async callback support is added.
 
    :param timeout: a :class:`ClientTimeout` settings structure, 5min
         total timeout by default.
@@ -291,12 +295,40 @@ The client session supports the context manager protocol for self closing.
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
 
-      :param bool raise_for_status: Automatically call :meth:`ClientResponse.raise_for_status()` for
-                                    response if set to ``True``.
-                                    If set to ``None`` value from ``ClientSession`` will be used.
-                                    ``None`` by default (optional).
+      :param ~typing.Union[bool, callable] raise_for_status:
 
-          .. versionadded:: 3.4
+         Automatically apply a check for failed status codes (usually a code
+         that is greater than or equal to ``400``).
+
+         ``None`` (default) means that ``raise_for_status`` argument of
+         :class:`ClientSession` constructor controls this behavior.
+
+         Set the parameter to ``True`` if you need to enforce
+         :meth:`ClientResponse.raise_for_status` call.
+
+         Set the argument to ``False`` to suppress a HTTP status checker even if
+         :class:`ClientSession` enables it.
+
+         Use an *async callback* to call user code that accepts a
+         :class:`ClientResponse` and raises an exception to prevent future
+         processing.
+
+         The following callback example is a functional equivalent of
+         ``raise_for_status=True``::
+
+             async def custom_check(response):
+                 if 400 <= response.status:
+                     raise aiohttp.ClientResponseError(
+                     response.request_info,
+                     response.history,
+                     status=response.status,
+                     message=response.reason,
+                     headers=response.headers)
+
+             client_session = aiohttp.ClientSession(raise_for_status=custom_check)
+             ...
+
+         .. versionchanged:: 4.0
 
       :param bool read_until_eof: Read response until EOF if response
                                   does not have Content-Length header.
