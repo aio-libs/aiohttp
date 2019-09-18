@@ -20,6 +20,7 @@ from aiohttp import (
     multipart,
     web,
 )
+from aiohttp.test_utils import make_mocked_coro
 
 try:
     import ssl
@@ -1815,17 +1816,17 @@ async def test_iter_any(aiohttp_server) -> None:
 
 async def test_request_tracing(aiohttp_server) -> None:
 
-    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_dns_resolvehost_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
     on_dns_resolvehost_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_connection_create_start = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
     on_connection_create_end = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock()))
+        side_effect=make_mocked_coro(mock.Mock()))
 
     async def redirector(request):
         raise web.HTTPFound(location=URL('/redirected'))
