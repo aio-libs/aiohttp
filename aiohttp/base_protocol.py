@@ -6,7 +6,7 @@ from .tcp_helpers import tcp_nodelay
 
 class BaseProtocol(asyncio.Protocol):
     __slots__ = ('_loop', '_paused', '_drain_waiter',
-                 '_connection_lost', 'transport')
+                 '_connection_lost', '_reading_paused', 'transport')
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop  # type: asyncio.AbstractEventLoop
