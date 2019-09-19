@@ -14,6 +14,39 @@ Changelog
 
 .. towncrier release notes start
 
+3.6.1 (2019-09-19)
+==================
+
+Features
+--------
+
+- Compatibility with Python 3.8.
+  `#4056 <https://github.com/aio-libs/aiohttp/issues/4056>`_
+
+
+Bugfixes
+--------
+
+- correct some exception string format
+  `#4068 <https://github.com/aio-libs/aiohttp/issues/4068>`_
+- Emit a warning when ``ssl.OP_NO_COMPRESSION`` is
+  unavailable because the runtime is built against
+  an outdated OpenSSL.
+  `#4052 <https://github.com/aio-libs/aiohttp/issues/4052>`_
+- Update multidict requirement to >= 4.5
+  `#4057 <https://github.com/aio-libs/aiohttp/issues/4057>`_
+
+
+Improved Documentation
+----------------------
+
+- Provide pytest-aiohttp namespace for pytest fixtures in docs.
+  `#3723 <https://github.com/aio-libs/aiohttp/issues/3723>`_
+
+
+----
+
+
 3.6.0 (2019-09-06)
 ==================
 
