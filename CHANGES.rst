@@ -14,12 +14,21 @@ Changelog
 
 .. towncrier release notes start
 
-3.6.1 (2019-09-15)
+3.6.1 (2019-09-19)
 ==================
+
+Features
+--------
+
+- Compatibility with Python 3.8.
+  `#4056 <https://github.com/aio-libs/aiohttp/issues/4056>`_
+
 
 Bugfixes
 --------
 
+- correct some exception string format
+  `#4068 <https://github.com/aio-libs/aiohttp/issues/4068>`_
 - Emit a warning when ``ssl.OP_NO_COMPRESSION`` is
   unavailable because the runtime is built against
   an outdated OpenSSL.
