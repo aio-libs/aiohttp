@@ -1,11 +1,7 @@
-import codecs
 import os
 import pathlib
 import re
 import sys
-from distutils.command.build_ext import build_ext
-from distutils.errors import (CCompilerError, DistutilsExecError,
-                              DistutilsPlatformError)
 
 from setuptools import Extension, setup
 
@@ -22,7 +18,8 @@ if sys.implementation.name != "cpython":
 
 here = pathlib.Path(__file__).parent
 
-if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md').exists():
+if ((here / '.git').exists() and
+        not (here / 'vendor/http-parser/README.md').exists()):
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  git submodule update --init", file=sys.stderr)
@@ -44,28 +41,6 @@ extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket.c']),
                         ['aiohttp/_helpers.c']),
               Extension('aiohttp._http_writer',
                         ['aiohttp/_http_writer.c'])]
-
-
-class BuildFailed(Exception):
-    pass
-
-
-class ve_build_ext(build_ext):
-    # This class allows C extension building to fail.
-
-    def run(self):
-        try:
-            build_ext.run(self)
-        except (DistutilsPlatformError, FileNotFoundError):
-            raise BuildFailed()
-
-    def build_extension(self, ext):
-        try:
-            build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError,
-                DistutilsPlatformError, ValueError):
-            raise BuildFailed()
-
 
 
 txt = (here / 'aiohttp' / '__init__.py').read_text('utf-8')
@@ -146,9 +121,7 @@ if not NO_EXTENSIONS:
     print("**********************")
     print("* Accellerated build *")
     print("**********************")
-    setup(ext_modules=extensions,
-          cmdclass=dict(build_ext=ve_build_ext),
-          **args)
+    setup(ext_modules=extensions, **args)
 else:
     print("*********************")
     print("* Pure Python build *")
