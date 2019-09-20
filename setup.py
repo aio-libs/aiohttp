@@ -11,17 +11,16 @@ if sys.version_info < (3, 5, 3):
 
 
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))  # type: bool
+HERE = pathlib.Path(__file__).parent
+IS_GIT_REPO = (HERE / '.git').exists()
+
 
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
 
 
-here = pathlib.Path(__file__).parent
-
-IS_GIT_REPO = (here / '.git').exists()
-
 if (IS_GIT_REPO and
-        not (here / 'vendor/http-parser/README.md').exists()):
+        not (HERE / 'vendor/http-parser/README.md').exists()):
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  git submodule update --init", file=sys.stderr)
@@ -45,7 +44,7 @@ extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket.c']),
                         ['aiohttp/_http_writer.c'])]
 
 
-txt = (here / 'aiohttp' / '__init__.py').read_text('utf-8')
+txt = (HERE / 'aiohttp' / '__init__.py').read_text('utf-8')
 try:
     version = re.findall(r"^__version__ = '([^']+)'\r?$",
                          txt, re.M)[0]
@@ -64,7 +63,7 @@ install_requires = [
 
 
 def read(f):
-    return (here / f).read_text('utf-8').strip()
+    return (HERE / f).read_text('utf-8').strip()
 
 
 args = dict(
