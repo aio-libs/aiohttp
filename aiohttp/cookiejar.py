@@ -47,7 +47,7 @@ class CookieJar(AbstractCookieJar):
 
     DATE_YEAR_RE = re.compile(r"(\d{2,4})")
 
-    MAX_TIME: datetime.datetime = datetime.datetime.max.replace(
+    MAX_TIME = datetime.datetime.max.replace(
         tzinfo=datetime.timezone.utc)
 
     def __init__(self, *, unsafe: bool=False) -> None:
