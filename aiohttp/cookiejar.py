@@ -91,7 +91,7 @@ class CookieJar(AbstractCookieJar):
         )
 
     def _do_expiration(self) -> None:
-        now: datetime.datetime = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
         if self._next_expiration > now:
             return
         if not self._expirations:
