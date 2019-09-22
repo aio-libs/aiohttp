@@ -353,7 +353,7 @@ class TestCookieJarSafe(TestCookieJarBase):
             "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
             "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
             "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
-            " Expires=Tue, 1 Jan 2039 12:00:00 GMT; "
+            " Expires=Tue, 1 Jan 1980 12:00:00 GMT; "
             "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
             " Max-Age=60; "
             "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
