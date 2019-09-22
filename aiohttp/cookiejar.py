@@ -56,7 +56,7 @@ class CookieJar(AbstractCookieJar):
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
         self._next_expiration: datetime.datetime = self._next_whole_second()
-        self._expirations: Dict[Tuple[str, str], datetime.datetime] = {}
+        self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
