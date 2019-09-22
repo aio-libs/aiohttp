@@ -170,6 +170,18 @@ async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
     assert jar._loop is loop
 
 
+async def test_constructor_with_expired(loop, cookies_to_send_with_expired,
+                                        cookies_to_receive) -> None:
+    jar = CookieJar()
+    jar.update_cookies(cookies_to_send_with_expired)
+    jar_cookies = SimpleCookie()
+    for cookie in jar:
+        dict.__setitem__(jar_cookies, cookie.key, cookie)
+    expected_cookies = cookies_to_send_with_expired
+    assert jar_cookies != expected_cookies
+    assert jar._loop is loop
+
+
 async def test_save_load(
     tmp_path, loop, cookies_to_send, cookies_to_receive
 ) -> None:
