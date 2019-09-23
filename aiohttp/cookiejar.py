@@ -22,7 +22,7 @@ from typing import (  # noqa
 from yarl import URL
 
 from .abc import AbstractCookieJar
-from .helpers import get_running_loop, is_ip_address
+from .helpers import get_running_loop, is_ip_address, next_whole_second
 from .typedefs import LooseCookies, PathLike
 
 __all__ = ('CookieJar', 'DummyCookieJar')
@@ -55,8 +55,8 @@ class CookieJar(AbstractCookieJar):
         self._cookies = defaultdict(SimpleCookie)  #type: DefaultDict[str, SimpleCookie]  # noqa
         self._host_only_cookies = set()  # type: Set[Tuple[str, str]]
         self._unsafe = unsafe
-        self._next_expiration = self._next_whole_second()
-        self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]
+        self._next_expiration = next_whole_second()
+        self._expirations = {}  # type: Dict[Tuple[str, str], datetime.datetime]  # noqa: E501
 
     def save(self, file_path: PathLike) -> None:
         file_path = pathlib.Path(file_path)
@@ -71,7 +71,7 @@ class CookieJar(AbstractCookieJar):
     def clear(self) -> None:
         self._cookies.clear()
         self._host_only_cookies.clear()
-        self._next_expiration = self._next_whole_second()
+        self._next_expiration = next_whole_second()
         self._expirations.clear()
 
     def __iter__(self) -> 'Iterator[Morsel[str]]':
@@ -81,14 +81,6 @@ class CookieJar(AbstractCookieJar):
 
     def __len__(self) -> int:
         return sum(1 for i in self)
-
-    def _next_whole_second(self) -> datetime.datetime:
-        """Return current time rounded up to the next whole second."""
-        return (
-            datetime.datetime.now(
-                datetime.timezone.utc).replace(microsecond=0) +
-            datetime.timedelta(seconds=0)
-        )
 
     def _do_expiration(self) -> None:
         now = datetime.datetime.now(datetime.timezone.utc)
