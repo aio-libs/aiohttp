@@ -185,8 +185,7 @@ class CookieJar(AbstractCookieJar):
                 if expires:
                     expire_time = self._parse_date(expires)
                     if expire_time:
-                        self._expire_cookie(datetime.datetime.fromtimestamp(
-                            expire_time.timestamp(), tz=datetime.timezone.utc),
+                        self._expire_cookie(expire_time,
                             domain, name)
                     else:
                         cookie["expires"] = ""
