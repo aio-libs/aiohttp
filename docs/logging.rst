@@ -22,7 +22,18 @@ page does not provide instructions for logging subscribing while the
 most friendly method is :func:`logging.config.dictConfig` for
 configuring whole loggers in your application.
 
+Logging does not work out of the box. It requires at least minimal ``'logging'``
+configuration.
+Example of minimal working logger setup::
 
+  import logging
+  from aiohttp import web
+
+  app = web.Application()
+  logging.basicConfig(level=logging.DEBUG)
+  web.run_app(app, port=5000)
+
+.. versionadded:: 4.0.0
 
 Access logs
 -----------
