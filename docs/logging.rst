@@ -32,6 +32,7 @@ Example of minimal working logger setup::
   app = web.Application()
   logging.basicConfig(level=logging.DEBUG)
   web.run_app(app, port=5000)
+
 .. versionadded:: 4.0.0
 
 Access logs
