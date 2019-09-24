@@ -1,6 +1,6 @@
 import warnings
 from http import HTTPStatus
-from typing import Any, Dict, Iterable, List, Optional, Set, Type, cast  # noqa
+from typing import Any, Iterable, Optional, Set, Tuple
 
 from multidict import CIMultiDict
 from yarl import URL
@@ -119,10 +119,10 @@ class HTTPException(Exception):
         elif hdrs.CONTENT_TYPE not in real_headers and text:
             real_headers[hdrs.CONTENT_TYPE] = 'text/plain'
 
-        super().__init__(reason)
-
+        self._reason = reason
         self._text = text
         self._headers = real_headers
+        self.args = ()
 
     def __bool__(self) -> bool:
         return True
@@ -133,7 +133,7 @@ class HTTPException(Exception):
 
     @property
     def reason(self) -> str:
-        return self.args[0]
+        return self._reason
 
     @property
     def text(self) -> Optional[str]:
@@ -142,6 +142,17 @@ class HTTPException(Exception):
     @property
     def headers(self) -> 'CIMultiDict[str]':
         return self._headers
+
+    def __str__(self) -> str:
+        return self.reason
+
+    def __repr__(self) -> str:
+        return "<%s: %s>" % (self.__class__.__name__, self.reason)
+
+    __reduce__ = object.__reduce__
+
+    def __getnewargs__(self) -> Tuple[Any, ...]:
+        return self.args
 
 
 class HTTPError(HTTPException):
