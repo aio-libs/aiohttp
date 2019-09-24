@@ -1,6 +1,7 @@
 """HTTP client functional tests against aiohttp.web server"""
 
 import asyncio
+import datetime
 import http.cookies
 import io
 import json
@@ -2029,6 +2030,30 @@ async def test_set_cookies_max_age(aiohttp_client) -> None:
     await asyncio.sleep(2)
     cookie_names = {c.key for c in client.session.cookie_jar}
     assert cookie_names == {'c1', 'c2'}
+    resp.close()
+
+
+async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = web.Response()
+        ret.headers.add('Set-Cookie',
+                        'overflow=overflow; '
+                        'HttpOnly; Path=/'
+                        " Max-Age=" +
+                        str(int(datetime.datetime.max.timestamp())) + "; ")
+        return ret
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    for cookie in client.session.cookie_jar:
+        if cookie.key == 'overflow':
+            assert int(cookie['max-age']) == int(
+                datetime.datetime.max.timestamp())
     resp.close()
 
 
