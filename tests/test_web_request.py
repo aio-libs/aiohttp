@@ -610,6 +610,25 @@ d\r
     assert dict(result) == {'a': 'b', 'c': 'd'}
 
 
+async def test_multipart_formdata_file(protocol) -> None:
+    payload = StreamReader(protocol, loop=asyncio.get_event_loop())
+    payload.feed_data(b"""-----------------------------326931944431359\r
+Content-Disposition: form-data; name="a_file"; filename="binary"\r
+\r
+\ff\r
+-----------------------------326931944431359--\r\n""")
+    content_type = "multipart/form-data; boundary="\
+                   "---------------------------326931944431359"
+    payload.feed_eof()
+    req = make_mocked_request('POST', '/',
+                              headers={'CONTENT-TYPE': content_type},
+                              payload=payload)
+    result = await req.post()
+    assert hasattr(result['a_file'], 'file')
+    content = result['a_file'].file.read()
+    assert content == b'\ff'
+
+
 async def test_make_too_big_request_limit_None(protocol) -> None:
     payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     large_file = 1024 ** 2 * b'x'

@@ -613,7 +613,7 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
                 if isinstance(field, BodyPartReader):
-                    if field.filename and field_ct:
+                    if field.filename:
                         # store file in temp file
                         tmp = tempfile.TemporaryFile()
                         chunk = await field.read_chunk(size=2**16)
