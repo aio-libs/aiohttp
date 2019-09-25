@@ -2040,10 +2040,17 @@ async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
         ret.headers.add('Set-Cookie',
                         'overflow=overflow; '
                         'HttpOnly; Path=/'
-                        " Max-Age=" +
-                        str(int(datetime.datetime.max.timestamp())) + "; ")
+                        " Max-Age=" + str(overflow) + "; ")
         return ret
 
+    overflow = int(datetime.datetime.max.timestamp() -
+                   datetime.datetime.now().timestamp() + 1000)
+    empty = None
+    try:
+        empty = datetime.datetime(overflow)
+    except OverflowError as ex:
+        assert isinstance(ex, OverflowError)
+    assert not isinstance(empty, datetime.datetime)
     app = web.Application()
     app.router.add_get('/', handler)
     client = await aiohttp_client(app)
@@ -2052,8 +2059,7 @@ async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
     assert 200 == resp.status
     for cookie in client.session.cookie_jar:
         if cookie.key == 'overflow':
-            assert int(cookie['max-age']) == int(
-                datetime.datetime.max.timestamp())
+            assert int(cookie['max-age']) <= int(overflow)
     resp.close()
 
 
