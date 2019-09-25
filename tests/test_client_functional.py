@@ -2044,11 +2044,11 @@ async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
         return ret
 
     overflow = int(datetime.datetime.max.replace(
-        tzinfo=datetime.timezone.utc).timestamp() -
-        datetime.datetime.now(datetime.timezone.utc).timestamp()) + 1000
+        tzinfo=datetime.timezone.utc).timestamp())
     empty = None
     try:
-        empty = datetime.datetime(overflow)
+        empty = (datetime.datetime.now(datetime.timezone.utc) +
+                 datetime.timedelta(seconds=overflow))
     except OverflowError as ex:
         assert isinstance(ex, OverflowError)
     assert not isinstance(empty, datetime.datetime)
@@ -2060,7 +2060,7 @@ async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
     assert 200 == resp.status
     for cookie in client.session.cookie_jar:
         if cookie.key == 'overflow':
-            assert int(cookie['max-age']) <= int(overflow)
+            assert int(cookie['max-age']) == int(overflow)
     resp.close()
 
 
