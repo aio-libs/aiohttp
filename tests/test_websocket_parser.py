@@ -1,3 +1,4 @@
+import pickle
 import random
 import struct
 import zlib
@@ -483,3 +484,20 @@ def test_compressed_msg_too_large(out) -> None:
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(data)
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+class TestWebSocketError:
+    def test_ctor(self) -> None:
+        err = WebSocketError(WSCloseCode.PROTOCOL_ERROR, 'Something invalid')
+        assert err.code == WSCloseCode.PROTOCOL_ERROR
+        assert str(err) == 'Something invalid'
+
+    def test_pickle(self) -> None:
+        err = WebSocketError(WSCloseCode.PROTOCOL_ERROR, 'Something invalid')
+        err.foo = 'bar'
+        for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.dumps(err, proto)
+            err2 = pickle.loads(pickled)
+            assert err2.code == WSCloseCode.PROTOCOL_ERROR
+            assert str(err2) == 'Something invalid'
+            assert err2.foo == 'bar'
