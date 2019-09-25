@@ -2044,7 +2044,7 @@ async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
         return ret
 
     overflow = int(datetime.datetime.max.timestamp() -
-                   datetime.datetime.now().timestamp() + 1000)
+                   datetime.datetime.now().timestamp()) + 1000
     empty = None
     try:
         empty = datetime.datetime(overflow)
