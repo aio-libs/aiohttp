@@ -1,6 +1,7 @@
 """HTTP client functional tests against aiohttp.web server"""
 
 import asyncio
+import datetime
 import http.cookies
 import io
 import json
@@ -2018,6 +2019,86 @@ async def test_set_cookies(aiohttp_client) -> None:
 
         m_log.warning.assert_called_with('Can not load response cookies: %s',
                                          mock.ANY)
+
+
+async def test_set_cookies_expired(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = web.Response()
+        ret.set_cookie('c1', 'cookie1')
+        ret.set_cookie('c2', 'cookie2')
+        ret.headers.add('Set-Cookie',
+                        'c3=cookie3; '
+                        'HttpOnly; Path=/'
+                        " Expires=Tue, 1 Jan 1980 12:00:00 GMT; ")
+        return ret
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    cookie_names = {c.key for c in client.session.cookie_jar}
+    assert cookie_names == {'c1', 'c2'}
+    resp.close()
+
+
+async def test_set_cookies_max_age(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = web.Response()
+        ret.set_cookie('c1', 'cookie1')
+        ret.set_cookie('c2', 'cookie2')
+        ret.headers.add('Set-Cookie',
+                        'c3=cookie3; '
+                        'HttpOnly; Path=/'
+                        " Max-Age=1; ")
+        return ret
+
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    cookie_names = {c.key for c in client.session.cookie_jar}
+    assert cookie_names == {'c1', 'c2', 'c3'}
+    await asyncio.sleep(2)
+    cookie_names = {c.key for c in client.session.cookie_jar}
+    assert cookie_names == {'c1', 'c2'}
+    resp.close()
+
+
+async def test_set_cookies_max_age_overflow(aiohttp_client) -> None:
+
+    async def handler(request):
+        ret = web.Response()
+        ret.headers.add('Set-Cookie',
+                        'overflow=overflow; '
+                        'HttpOnly; Path=/'
+                        " Max-Age=" + str(overflow) + "; ")
+        return ret
+
+    overflow = int(datetime.datetime.max.replace(
+        tzinfo=datetime.timezone.utc).timestamp())
+    empty = None
+    try:
+        empty = (datetime.datetime.now(datetime.timezone.utc) +
+                 datetime.timedelta(seconds=overflow))
+    except OverflowError as ex:
+        assert isinstance(ex, OverflowError)
+    assert not isinstance(empty, datetime.datetime)
+    app = web.Application()
+    app.router.add_get('/', handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert 200 == resp.status
+    for cookie in client.session.cookie_jar:
+        if cookie.key == 'overflow':
+            assert int(cookie['max-age']) == int(overflow)
+    resp.close()
 
 
 async def test_request_conn_error() -> None:
