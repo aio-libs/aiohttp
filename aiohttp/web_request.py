@@ -67,7 +67,7 @@ class FileField:
     name = attr.ib(type=str)
     filename = attr.ib(type=str)
     file = attr.ib(type=io.BufferedReader)
-    content_type = attr.ib(type=str)
+    content_type = attr.ib(type=Optional[str])
     headers = attr.ib(type=CIMultiDictProxy)  # type: CIMultiDictProxy[str]
 
 
@@ -613,6 +613,9 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
                 if isinstance(field, BodyPartReader):
+                    # Note that according to RFC 7578, the Content-Type header
+                    # is optional, even for files, so we can't assume it's present.
+                    # https://tools.ietf.org/html/rfc7578#section-4.4
                     if field.filename:
                         # store file in temp file
                         tmp = tempfile.TemporaryFile()
