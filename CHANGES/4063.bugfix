@@ -1,0 +1,1 @@
+Fix handling of expired cookies so they are not stored in CookieJar.
