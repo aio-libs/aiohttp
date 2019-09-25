@@ -600,8 +600,10 @@ Content-Disposition: form-data; name="c"\r
 \r
 d\r
 -----------------------------326931944431359--\r\n""")
-    content_type = "multipart/form-data; boundary="\
-                   "---------------------------326931944431359"
+    content_type = (
+        "multipart/form-data; boundary="
+        "---------------------------326931944431359"
+    )
     payload.feed_eof()
     req = make_mocked_request('POST', '/',
                               headers={'CONTENT-TYPE': content_type},
@@ -611,15 +613,17 @@ d\r
 
 
 async def test_multipart_formdata_file(protocol) -> None:
-    # Make sure file uploads work, even without a content type
+    """Make sure file uploads work, even without a content type"""
     payload = StreamReader(protocol, loop=asyncio.get_event_loop())
     payload.feed_data(b"""-----------------------------326931944431359\r
 Content-Disposition: form-data; name="a_file"; filename="binary"\r
 \r
 \ff\r
 -----------------------------326931944431359--\r\n""")
-    content_type = "multipart/form-data; boundary="\
-                   "---------------------------326931944431359"
+    content_type = (
+        "multipart/form-data; boundary="
+        "---------------------------326931944431359"
+    )
     payload.feed_eof()
     req = make_mocked_request('POST', '/',
                               headers={'CONTENT-TYPE': content_type},

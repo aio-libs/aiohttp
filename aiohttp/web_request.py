@@ -614,7 +614,8 @@ class BaseRequest(MutableMapping[str, Any], HeadersMixin):
 
                 if isinstance(field, BodyPartReader):
                     # Note that according to RFC 7578, the Content-Type header
-                    # is optional, even for files, so we can't assume it's present.
+                    # is optional, even for files, so we can't assume it's
+                    # present.
                     # https://tools.ietf.org/html/rfc7578#section-4.4
                     if field.filename:
                         # store file in temp file
