@@ -500,7 +500,7 @@ DER with e.g::
 Proxy support
 -------------
 
-aiohttp supports HTTP proxies and HTTP proxies that can be upgraded to HTTPS
+aiohttp supports plain HTTP proxies and HTTP proxies that can be upgraded to HTTPS
 via the HTTP CONNECT method. aiohttp does not support proxies that must be
 connected to via ``https://``. To connect, use the *proxy* parameter::
 
