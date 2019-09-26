@@ -591,15 +591,17 @@ async def test_make_too_big_request_adjust_limit(protocol) -> None:
 
 async def test_multipart_formdata(protocol) -> None:
     payload = StreamReader(protocol, loop=asyncio.get_event_loop())
-    payload.feed_data(b"""-----------------------------326931944431359\r
-Content-Disposition: form-data; name="a"\r
-\r
-b\r
------------------------------326931944431359\r
-Content-Disposition: form-data; name="c"\r
-\r
-d\r
------------------------------326931944431359--\r\n""")
+    payload.feed_data(
+        b'-----------------------------326931944431359\r\n'
+        b'Content-Disposition: form-data; name="a"\r\n'
+        b'\r\n'
+        b'b\r\n'
+        b'-----------------------------326931944431359\r\n'
+        b'Content-Disposition: form-data; name="c"\r\n'
+        b'\r\n'
+        b'd\r\n'
+        b'-----------------------------326931944431359--\r\n'
+    )
     content_type = (
         "multipart/form-data; boundary="
         "---------------------------326931944431359"
@@ -613,13 +615,15 @@ d\r
 
 
 async def test_multipart_formdata_file(protocol) -> None:
-    """Make sure file uploads work, even without a content type"""
+    # Make sure file uploads work, even without a content type
     payload = StreamReader(protocol, loop=asyncio.get_event_loop())
-    payload.feed_data(b"""-----------------------------326931944431359\r
-Content-Disposition: form-data; name="a_file"; filename="binary"\r
-\r
-\ff\r
------------------------------326931944431359--\r\n""")
+    payload.feed_data(
+        b'-----------------------------326931944431359\r\n'
+        b'Content-Disposition: form-data; name="a_file"; filename="binary"\r\n'
+        b'\r\n'
+        b'\ff\r\n'
+        b'-----------------------------326931944431359--\r\n'
+    )
     content_type = (
         "multipart/form-data; boundary="
         "---------------------------326931944431359"
