@@ -500,8 +500,9 @@ DER with e.g::
 Proxy support
 -------------
 
-aiohttp supports HTTP/HTTPS proxies. You have to use
-*proxy* parameter::
+aiohttp supports plain HTTP proxies and HTTP proxies that can be upgraded to HTTPS
+via the HTTP CONNECT method. aiohttp does not support proxies that must be
+connected to via ``https://``. To connect, use the *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
        async with session.get("http://python.org",
