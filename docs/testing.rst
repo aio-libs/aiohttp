@@ -512,7 +512,7 @@ basis, the TestClient object can be used directly::
 
     with loop_context() as loop:
         app = _create_example_app()
-        client = TestClient(TestSever(app), loop=loop)
+        client = TestClient(TestServer(app), loop=loop)
         loop.run_until_complete(client.start_server())
         root = "http://127.0.0.1:{}".format(port)
 
