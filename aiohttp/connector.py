@@ -849,7 +849,16 @@ class TCPConnector(BaseConnector):
             sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
             sslcontext.options |= ssl.OP_NO_SSLv2
             sslcontext.options |= ssl.OP_NO_SSLv3
-            sslcontext.options |= ssl.OP_NO_COMPRESSION
+            try:
+                sslcontext.options |= ssl.OP_NO_COMPRESSION
+            except AttributeError as attr_err:
+                warnings.warn(
+                    '{!s}: The Python interpreter is compiled '
+                    'against OpenSSL < 1.0.0. Ref: '
+                    'https://docs.python.org/3/library/ssl.html'
+                    '#ssl.OP_NO_COMPRESSION'.
+                    format(attr_err),
+                )
             sslcontext.set_default_verify_paths()
             return sslcontext
 
@@ -904,9 +913,7 @@ class TCPConnector(BaseConnector):
             **kwargs: Any) -> Tuple[asyncio.Transport, ResponseHandler]:
         try:
             with CeilTimeout(timeout.sock_connect):
-                return cast(
-                    Tuple[asyncio.Transport, ResponseHandler],
-                    await self._loop.create_connection(*args, **kwargs))
+                return await self._loop.create_connection(*args, **kwargs)  # type: ignore  # noqa
         except cert_errors as exc:
             raise ClientConnectorCertificateError(
                 req.connection_key, exc) from exc

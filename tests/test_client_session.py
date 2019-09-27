@@ -17,6 +17,7 @@ from aiohttp.client import ClientSession
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import BaseConnector, TCPConnector
 from aiohttp.helpers import PY_36
+from aiohttp.test_utils import make_mocked_coro
 
 
 @pytest.fixture
@@ -164,7 +165,11 @@ async def test_merge_headers_with_list_of_tuples_duplicated_names(
 
 
 def test_http_GET(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    # Python 3.8 will auto use mock.AsyncMock, it has different behavior
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.get("http://test.example.com",
                     params={"x": 1},
                     **params)
@@ -177,7 +182,10 @@ def test_http_GET(session, params) -> None:
 
 
 def test_http_OPTIONS(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.options("http://opt.example.com",
                         params={"x": 2},
                         **params)
@@ -190,7 +198,10 @@ def test_http_OPTIONS(session, params) -> None:
 
 
 def test_http_HEAD(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.head("http://head.example.com",
                      params={"x": 2},
                      **params)
@@ -203,7 +214,10 @@ def test_http_HEAD(session, params) -> None:
 
 
 def test_http_POST(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.post("http://post.example.com",
                      params={"x": 2},
                      data="Some_data",
@@ -217,7 +231,10 @@ def test_http_POST(session, params) -> None:
 
 
 def test_http_PUT(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.put("http://put.example.com",
                     params={"x": 2},
                     data="Some_data",
@@ -231,7 +248,10 @@ def test_http_PUT(session, params) -> None:
 
 
 def test_http_PATCH(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.patch("http://patch.example.com",
                       params={"x": 2},
                       data="Some_data",
@@ -245,7 +265,10 @@ def test_http_PATCH(session, params) -> None:
 
 
 def test_http_DELETE(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.delete("http://delete.example.com",
                        params={"x": 2},
                        **params)
@@ -491,7 +514,10 @@ async def test_session_default_version(loop) -> None:
 
 
 def test_proxy_str(session, params) -> None:
-    with mock.patch("aiohttp.client.ClientSession._request") as patched:
+    with mock.patch(
+        "aiohttp.client.ClientSession._request",
+        new_callable=mock.MagicMock
+    ) as patched:
         session.get("http://test.example.com",
                     proxy='http://proxy.com',
                     **params)
@@ -515,9 +541,9 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
     body = 'This is request body'
     gathered_req_body = BytesIO()
     gathered_res_body = BytesIO()
-    on_request_start = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
 
     async def on_request_chunk_sent(session, context, params):
         gathered_req_body.write(params.chunk)
@@ -568,9 +594,9 @@ async def test_request_tracing(loop, aiohttp_client) -> None:
 
 
 async def test_request_tracing_exception(loop) -> None:
-    on_request_end = mock.Mock(side_effect=asyncio.coroutine(mock.Mock()))
+    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
     on_request_exception = mock.Mock(
-        side_effect=asyncio.coroutine(mock.Mock())
+        side_effect=make_mocked_coro(mock.Mock())
     )
 
     trace_config = aiohttp.TraceConfig()

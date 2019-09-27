@@ -11,6 +11,8 @@ import warnings
 from types import SimpleNamespace, TracebackType
 from typing import (  # noqa
     Any,
+    Awaitable,
+    Callable,
     Coroutine,
     Generator,
     Generic,
@@ -194,7 +196,7 @@ class ClientSession:
                  version: HttpVersion=http.HttpVersion11,
                  cookie_jar: Optional[AbstractCookieJar]=None,
                  connector_owner: bool=True,
-                 raise_for_status: bool=False,
+                 raise_for_status: Union[bool, Callable[[ClientResponse], Awaitable[None]]]=False,  # noqa
                  timeout: Union[object, ClientTimeout]=sentinel,
                  auto_decompress: bool=True,
                  trust_env: bool=False,
@@ -241,10 +243,10 @@ class ClientSession:
 
         # Convert to list of tuples
         if headers:
-            headers = CIMultiDict(headers)
+            real_headers = CIMultiDict(headers)  # type: CIMultiDict[str]
         else:
-            headers = CIMultiDict()
-        self._default_headers = headers
+            real_headers = CIMultiDict()
+        self._default_headers = real_headers   # type: CIMultiDict[str]
         if skip_auto_headers is not None:
             self._skip_auto_headers = frozenset([istr(i)
                                                  for i in skip_auto_headers])
@@ -301,7 +303,7 @@ class ClientSession:
             compress: Optional[str]=None,
             chunked: Optional[bool]=None,
             expect100: bool=False,
-            raise_for_status: Optional[bool]=None,
+            raise_for_status: Union[None, bool, Callable[[ClientResponse], Awaitable[None]]]=None,  # noqa
             read_until_eof: bool=True,
             proxy: Optional[StrOrURL]=None,
             proxy_auth: Optional[BasicAuth]=None,
@@ -544,7 +546,12 @@ class ClientSession:
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
-            if raise_for_status:
+
+            if raise_for_status is None:
+                pass
+            elif callable(raise_for_status):
+                await raise_for_status(resp)
+            elif raise_for_status:
                 resp.raise_for_status()
 
             # register connection
