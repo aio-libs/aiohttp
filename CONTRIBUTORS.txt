@@ -1,19 +1,14 @@
 - Contributors -
 ----------------
-A. Jesse Jiryu Davis
 Adam Cooper
 Adam Mills
 Adrián Chaves
+A. Jesse Jiryu Davis
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
-Alex Hayes
-Alex Key
-Alex Khomchenko
-Alex Kuzmenko
-Alex Lisovoy
 Alexander Bayandin
 Alexander Karpinsky
 Alexander Koshevoy
@@ -25,6 +20,11 @@ Alexandru Mihai
 Alexey Firsov
 Alexey Popravka
 Alexey Stepanov
+Alex Hayes
+Alex Key
+Alex Khomchenko
+Alex Kuzmenko
+Alex Lisovoy
 Amin Etesamian
 Amit Tulshyan
 Amy Boyle
@@ -43,6 +43,7 @@ Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
 Benedikt Reinartz
+Ben Timby
 Boris Feld
 Boyi Chen
 Brett Cannon
@@ -62,11 +63,11 @@ Claudiu Popa
 Colin Dunklau
 Cong Xu
 Damien Nadé
-Dan Xu
 Daniel García
 Daniel Grossmann-Kavanagh
 Daniel Nelson
 Danny Song
+Dan Xu
 David Bibb
 David Michael Brown
 Denilson Amorim
@@ -89,8 +90,8 @@ Eli Ribble
 Elizabeth Leddy
 Emil Melnikov
 Enrique Saez
-Eric Sheng
 Erich Healy
+Eric Sheng
 Eugene Chernyshov
 Eugene Naydenov
 Eugene Nikolaiev
@@ -106,9 +107,9 @@ Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
+Günther Jena
 Gus Goulart
 Gustavo Carneiro
-Günther Jena
 Hans Adema
 Harmon Y.
 Hu Bo
@@ -134,8 +135,8 @@ Jesus Cea
 Jian Zeng
 Jinkyu Yi
 Joel Watts
-Jon Nabozny
 Jonas Obrist
+Jon Nabozny
 Joongi Kim
 Josep Cugat
 Joshu Coats
@@ -153,11 +154,11 @@ Kirill Malovitsa
 Konstantin Valetov
 Kyrylo Perevozchikov
 Lars P. Søndergaard
-Louis-Philippe Huberdeau
 Loïc Lajeanne
-Lu Gong
+Louis-Philippe Huberdeau
 Lubomir Gelo
 Ludovic Gasc
+Lu Gong
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
 Makc Belousow
@@ -169,9 +170,9 @@ Martin Melka
 Martin Richard
 Mathias Fröjdman
 Mathieu Dugré
-Matt VanEseltine
 Matthieu Hauglustaine
 Matthieu Rigal
+Matt VanEseltine
 Michael Ihnatenko
 Mikhail Burshteyn
 Mikhail Kashkin
@@ -256,13 +257,13 @@ Vladimir Rutsky
 Vladimir Shulyak
 Vladimir Zakharov
 Vladyslav Bondar
-W. Trevor King
 Wei Lin
 Weiwei Wang
-Will McGugan
 Willem de Groot
 William Grzybowski
+Will McGugan
 Wilson Ong
+W. Trevor King
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux
@@ -275,4 +276,3 @@ Yury Selivanov
 Yusuke Tsutsumi
 Марк Коренберг
 Семён Марьясин
-Ben Timby
