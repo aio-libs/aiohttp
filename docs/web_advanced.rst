@@ -19,6 +19,23 @@ But in case of custom regular expressions for
 *percent encoded*: if you pass Unicode patterns they don't match to
 *requoted* path.
 
+Peer disconnection
+------------------
+
+When a client peer is gone a subsequent reading or writing raises :exc:`OSError`
+or more specific exception like :exc:`ConnectionResetError`.
+
+The reason for disconnection is vary; it can be a network issue or explicit
+socket closing on the peer side without reading the whole server response.
+
+*aiohttp* handles disconnection properly but you can handle it explicitly, e.g.::
+
+   async def handler(request):
+       try:
+           text = await request.text()
+       except OSError:
+           # disconnected
+
 Passing a coroutine into run_app and Gunicorn
 ---------------------------------------------
 
