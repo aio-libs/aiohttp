@@ -1,0 +1,1 @@
+Don't clobber HTTP status when using FileResponse.
