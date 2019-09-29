@@ -1110,7 +1110,7 @@ class UnixConnector(BaseConnector):
                                  timeout: 'ClientTimeout') -> ResponseHandler:
         try:
             with CeilTimeout(timeout.sock_connect):
-                _, proto = await self._loop.create_unix_connection(
+                _, proto = await self._loop.create_unix_connection(  # type: ignore  # noqa
                     self._factory, self._path)
         except OSError as exc:
             raise ClientConnectorError(req.connection_key, exc) from exc
