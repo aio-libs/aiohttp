@@ -1,5 +1,5 @@
 setuptools-git==1.2
-mypy==0.720; implementation_name=="cpython"
+mypy==0.730; implementation_name=="cpython"
 mypy-extensions==0.4.1; implementation_name=="cpython"
 freezegun==0.3.12
 
