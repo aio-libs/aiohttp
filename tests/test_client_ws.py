@@ -9,7 +9,6 @@ import pytest
 import aiohttp
 from aiohttp import client, hdrs
 from aiohttp.http import WS_KEY
-from aiohttp.log import ws_logger
 from aiohttp.streams import EofStream
 from aiohttp.test_utils import make_mocked_coro
 
@@ -364,7 +363,7 @@ async def test_close_exc2(loop, ws_key, key_data) -> None:
                     await resp.close()
 
 
-async def test_send_data_after_close(ws_key, key_data, loop, mocker) -> None:
+async def test_send_data_after_close(ws_key, key_data, loop) -> None:
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -382,16 +381,13 @@ async def test_send_data_after_close(ws_key, key_data, loop, mocker) -> None:
                 'http://test.org')
             resp._writer._closing = True
 
-            mocker.spy(ws_logger, 'warning')
-
             for meth, args in ((resp.ping, ()),
                                (resp.pong, ()),
                                (resp.send_str, ('s',)),
                                (resp.send_bytes, (b'b',)),
                                (resp.send_json, ({},))):
-                await meth(*args)
-                assert ws_logger.warning.called
-                ws_logger.warning.reset_mock()
+                with pytest.raises(ConnectionResetError):
+                    await meth(*args)
 
 
 async def test_send_data_type_errors(ws_key, key_data, loop) -> None:
