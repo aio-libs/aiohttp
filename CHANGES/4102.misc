@@ -1,1 +1,1 @@
-web.Application object now has a boolean value of True
+web.Application and web.BaseRequest objects now has a boolean value of True
