@@ -136,8 +136,9 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.ssl
 
     def __str__(self) -> str:
-        return ('Cannot connect to host {0.host}:{0.port} ssl:{0.ssl} [{1}]'
-                .format(self, self.strerror))
+        return ('Cannot connect to host {0.host}:{0.port} ssl:{1} [{2}]'
+                .format(self, self.ssl if self.ssl is not None else 'default',
+                        self.strerror))
 
     # OSError.__reduce__ does too much black magick
     __reduce__ = BaseException.__reduce__
