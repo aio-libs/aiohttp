@@ -153,6 +153,61 @@ class ConnectionKey:
     proxy_headers_hash = attr.ib(type=int)  # type: Optional[int] # noqa # hash(CIMultiDict)
 
 
+class PreparedRequest:
+    __slots__ = ('_method', '_key', '_traces', '_headers', '_url',
+                 '_original_url')
+
+    def __init__(self, url: URL) -> None:
+        self._original_url = url
+        self._url = url.with_fragment(None)
+
+    # connection key
+
+    @property
+    def host(self) -> str:
+        return self._key.host
+
+    @property
+    def port(self) -> int:
+        return self._key.port
+
+    @property
+    def is_ssl(self) -> bool:
+        return self._key.is_ssl
+
+    @property
+    def ssl(self) -> Union[SSLContext, None, bool, Fingerprint]:
+        return self._key.ssl
+
+    @property
+    def proxy(self) -> Optional[URL]:
+        return self._key.proxy
+
+    @property
+    def proxy_auth(self) -> Optional[BasicAuth]:
+        return self._key.proxy_auth
+
+    # connection key end
+
+    def method(self) -> str:
+        return self._method
+
+    def url(self) -> URL:
+        return self._url
+
+    def original_url(self) -> URL:
+        return self._original_url
+
+    def headers(self) -> CIMultiDictProxy[str]:
+        return self._headers
+
+    @property
+    def request_info(self) -> RequestInfo:
+        headers = CIMultiDictProxy(self._headers)  # type: CIMultiDictProxy[str]
+        return RequestInfo(self.url, self.method,
+                           headers, self.original_url)
+
+
 class ClientRequest:
     GET_METHODS = {
         hdrs.METH_GET,
