@@ -7,6 +7,7 @@ from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
+from freezegun import freeze_time
 from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
@@ -14,6 +15,32 @@ from aiohttp import CookieJar, DummyCookieJar
 
 @pytest.fixture
 def cookies_to_send():
+    return SimpleCookie(
+        "shared-cookie=first; "
+        "domain-cookie=second; Domain=example.com; "
+        "subdomain1-cookie=third; Domain=test1.example.com; "
+        "subdomain2-cookie=fourth; Domain=test2.example.com; "
+        "dotted-domain-cookie=fifth; Domain=.example.com; "
+        "different-domain-cookie=sixth; Domain=different.org; "
+        "secure-cookie=seventh; Domain=secure.com; Secure; "
+        "no-path-cookie=eighth; Domain=pathtest.com; "
+        "path1-cookie=nineth; Domain=pathtest.com; Path=/; "
+        "path2-cookie=tenth; Domain=pathtest.com; Path=/one; "
+        "path3-cookie=eleventh; Domain=pathtest.com; Path=/one/two; "
+        "path4-cookie=twelfth; Domain=pathtest.com; Path=/one/two/; "
+        "expires-cookie=thirteenth; Domain=expirestest.com; Path=/;"
+        " Expires=Tue, 1 Jan 2039 12:00:00 GMT; "
+        "max-age-cookie=fourteenth; Domain=maxagetest.com; Path=/;"
+        " Max-Age=60; "
+        "invalid-max-age-cookie=fifteenth; Domain=invalid-values.com; "
+        " Max-Age=string; "
+        "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
+        " Expires=string;"
+    )
+
+
+@pytest.fixture
+def cookies_to_send_with_expired():
     return SimpleCookie(
         "shared-cookie=first; "
         "domain-cookie=second; Domain=example.com; "
@@ -140,6 +167,18 @@ async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
         dict.__setitem__(jar_cookies, cookie.key, cookie)
     expected_cookies = cookies_to_send
     assert jar_cookies == expected_cookies
+    assert jar._loop is loop
+
+
+async def test_constructor_with_expired(loop, cookies_to_send_with_expired,
+                                        cookies_to_receive) -> None:
+    jar = CookieJar()
+    jar.update_cookies(cookies_to_send_with_expired)
+    jar_cookies = SimpleCookie()
+    for cookie in jar:
+        dict.__setitem__(jar_cookies, cookie.key, cookie)
+    expected_cookies = cookies_to_send_with_expired
+    assert jar_cookies != expected_cookies
     assert jar._loop is loop
 
 
@@ -340,10 +379,19 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.jar = self.loop.run_until_complete(make_jar())
 
     def timed_request(self, url, update_time, send_time):
-        with mock.patch.object(self.loop, 'time', return_value=update_time):
+        if isinstance(update_time, int):
+            update_time = datetime.timedelta(seconds=update_time)
+        elif isinstance(update_time, float):
+            update_time = datetime.datetime.fromtimestamp(update_time)
+        if isinstance(send_time, int):
+            send_time = datetime.timedelta(seconds=send_time)
+        elif isinstance(send_time, float):
+            send_time = datetime.datetime.fromtimestamp(send_time)
+
+        with freeze_time(update_time):
             self.jar.update_cookies(self.cookies_to_send)
 
-        with mock.patch.object(self.loop, 'time', return_value=send_time):
+        with freeze_time(send_time):
             cookies_sent = self.jar.filter_cookies(URL(url))
 
         self.jar.clear()

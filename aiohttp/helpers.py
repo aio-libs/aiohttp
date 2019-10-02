@@ -4,6 +4,7 @@ import asyncio
 import base64
 import binascii
 import cgi
+import datetime
 import functools
 import inspect
 import netrc
@@ -53,6 +54,7 @@ __all__ = ('BasicAuth', 'ChainMapProxy')
 
 PY_36 = sys.version_info >= (3, 6)
 PY_37 = sys.version_info >= (3, 7)
+PY_38 = sys.version_info >= (3, 8)
 
 if not PY_37:
     import idna_ssl
@@ -454,6 +456,15 @@ is_ipv6_address = functools.partial(_is_ip_address, _ipv6_regex, _ipv6_regexb)
 def is_ip_address(
         host: Optional[Union[str, bytes, bytearray, memoryview]]) -> bool:
     return is_ipv4_address(host) or is_ipv6_address(host)
+
+
+def next_whole_second() -> datetime.datetime:
+    """Return current time rounded up to the next whole second."""
+    return (
+        datetime.datetime.now(
+            datetime.timezone.utc).replace(microsecond=0) +
+        datetime.timedelta(seconds=0)
+    )
 
 
 _cached_current_datetime = None  # type: Optional[int]

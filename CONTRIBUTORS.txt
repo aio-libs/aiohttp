@@ -4,6 +4,7 @@ A. Jesse Jiryu Davis
 Adam Cooper
 Adam Mills
 Adrián Chaves
+Alan Tse
 Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
@@ -41,6 +42,7 @@ Anton Zhdan-Pushkin
 Artem Yushkovskiy
 Arthur Darcet
 Ben Bader
+Ben Timby
 Benedikt Reinartz
 Boris Feld
 Boyi Chen
