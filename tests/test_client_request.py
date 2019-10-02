@@ -8,7 +8,6 @@ from http.cookies import BaseCookie, Morsel, SimpleCookie
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
@@ -943,10 +942,9 @@ async def test_expect_100_continue_header(loop, conn) -> None:
 
 
 async def test_data_stream(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b"binary data")
-        await yield_(b" result")
+        yield b"binary data"
+        yield b" result"
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
@@ -1008,9 +1006,8 @@ async def test_data_file(loop, buf, conn) -> None:
 async def test_data_stream_exc(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
-        await yield_(b"binary data")
+        yield b"binary data"
         await fut
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
@@ -1033,9 +1030,10 @@ async def test_data_stream_exc(loop, conn) -> None:
 async def test_data_stream_exc_chain(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
         await fut
+        return
+        yield
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
 
@@ -1059,10 +1057,9 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
 
 
 async def test_data_stream_continue(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b"binary data")
-        await yield_(b" result")
+        yield b"binary data"
+        yield b" result"
 
     req = ClientRequest(
         "POST", URL("http://python.org/"), data=gen(), expect100=True, loop=loop
@@ -1104,10 +1101,9 @@ async def test_data_continue(loop, buf, conn) -> None:
 
 
 async def test_close(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
         await asyncio.sleep(0.00001)
-        await yield_(b"result")
+        yield b"result"
 
     req = ClientRequest("POST", URL("http://python.org/"), data=gen(), loop=loop)
     resp = await req.send(conn)
