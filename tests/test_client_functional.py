@@ -11,7 +11,6 @@ import ssl
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import MultiDict
 from yarl import URL
 
@@ -2882,10 +2881,9 @@ async def test_async_payload_generator(aiohttp_client) -> None:
 
     client = await aiohttp_client(app)
 
-    @async_generator
     async def gen():
         for i in range(100):
-            await yield_(b"1234567890")
+            yield b"1234567890"
 
     resp = await client.post("/", data=gen())
     assert resp.status == 200
