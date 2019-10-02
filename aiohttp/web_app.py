@@ -338,6 +338,9 @@ class Application(MutableMapping[str, Any]):
     def __repr__(self) -> str:
         return "<Application 0x{:x}>".format(id(self))
 
+    def __bool__(self) -> bool:
+        return True
+
 
 class CleanupError(RuntimeError):
     @property

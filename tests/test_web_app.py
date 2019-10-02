@@ -450,3 +450,8 @@ def test_forbid_changing_frozen_app() -> None:
     app.freeze()
     with pytest.raises(RuntimeError):
         app['key'] = 'value'
+
+
+def test_app_boolean() -> None:
+    app = web.Application()
+    assert app
