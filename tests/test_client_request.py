@@ -4,13 +4,11 @@ import asyncio
 import hashlib
 import io
 import pathlib
-import urllib.parse
 import zlib
 from http.cookies import SimpleCookie
 from unittest import mock
 
 import pytest
-from async_generator import async_generator, yield_
 from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
@@ -451,32 +449,6 @@ def test_cookies_merge_with_headers(make_request) -> None:
     assert 'cookie1=val1; cookie2=val2' == req.headers['COOKIE']
 
 
-def test_unicode_get1(make_request) -> None:
-    req = make_request('get', 'http://python.org',
-                       params={'foo': 'f\xf8\xf8'})
-    assert 'http://python.org/?foo=f%C3%B8%C3%B8' == str(req.url)
-
-
-def test_unicode_get2(make_request) -> None:
-    req = make_request('', 'http://python.org',
-                       params={'f\xf8\xf8': 'f\xf8\xf8'})
-
-    assert 'http://python.org/?f%C3%B8%C3%B8=f%C3%B8%C3%B8' == str(req.url)
-
-
-def test_unicode_get3(make_request) -> None:
-    req = make_request('', 'http://python.org', params={'foo': 'foo'})
-    assert 'http://python.org/?foo=foo' == str(req.url)
-
-
-def test_unicode_get4(make_request) -> None:
-    def join(*suffix):
-        return urllib.parse.urljoin('http://python.org/', '/'.join(suffix))
-
-    req = make_request('', join('\xf8'), params={'foo': 'foo'})
-    assert 'http://python.org/%C3%B8?foo=foo' == str(req.url)
-
-
 def test_query_multivalued_param(make_request) -> None:
     for meth in ClientRequest.ALL_METHODS:
         req = make_request(
@@ -866,10 +838,9 @@ async def test_expect_100_continue_header(loop, conn) -> None:
 
 
 async def test_data_stream(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
-        await yield_(b' result')
+        yield b'binary data'
+        yield b' result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)
@@ -906,9 +877,8 @@ async def test_data_file(loop, buf, conn) -> None:
 async def test_data_stream_exc(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
+        yield b'binary data'
         await fut
 
     req = ClientRequest(
@@ -917,7 +887,7 @@ async def test_data_stream_exc(loop, conn) -> None:
     assert req.headers['TRANSFER-ENCODING'] == 'chunked'
 
     async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         fut.set_exception(ValueError)
 
     loop.create_task(throw_exc())
@@ -932,9 +902,10 @@ async def test_data_stream_exc(loop, conn) -> None:
 async def test_data_stream_exc_chain(loop, conn) -> None:
     fut = loop.create_future()
 
-    @async_generator
     async def gen():
         await fut
+        return
+        yield
 
     req = ClientRequest('POST', URL('http://python.org/'),
                         data=gen(), loop=loop)
@@ -942,7 +913,7 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
     inner_exc = ValueError()
 
     async def throw_exc():
-        await asyncio.sleep(0.01, loop=loop)
+        await asyncio.sleep(0.01)
         fut.set_exception(inner_exc)
 
     loop.create_task(throw_exc())
@@ -959,10 +930,9 @@ async def test_data_stream_exc_chain(loop, conn) -> None:
 
 
 async def test_data_stream_continue(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
-        await yield_(b'binary data')
-        await yield_(b' result')
+        yield b'binary data'
+        yield b' result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(),
@@ -970,7 +940,7 @@ async def test_data_stream_continue(loop, buf, conn) -> None:
     assert req.chunked
 
     async def coro():
-        await asyncio.sleep(0.0001, loop=loop)
+        await asyncio.sleep(0.0001)
         req._continue.set_result(1)
 
     loop.create_task(coro())
@@ -989,7 +959,7 @@ async def test_data_continue(loop, buf, conn) -> None:
         expect100=True, loop=loop)
 
     async def coro():
-        await asyncio.sleep(0.0001, loop=loop)
+        await asyncio.sleep(0.0001)
         req._continue.set_result(1)
 
     loop.create_task(coro())
@@ -1003,10 +973,9 @@ async def test_data_continue(loop, buf, conn) -> None:
 
 
 async def test_close(loop, buf, conn) -> None:
-    @async_generator
     async def gen():
         await asyncio.sleep(0.00001)
-        await yield_(b'result')
+        yield b'result'
 
     req = ClientRequest(
         'POST', URL('http://python.org/'), data=gen(), loop=loop)

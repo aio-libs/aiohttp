@@ -1,4 +1,3 @@
-import codecs
 import os
 import pathlib
 import re
@@ -7,19 +6,21 @@ import sys
 from setuptools import Extension, setup
 
 
-if sys.version_info < (3, 5, 3):
-    raise RuntimeError("aiohttp 3.x requires Python 3.5.3+")
+if sys.version_info < (3, 6):
+    raise RuntimeError("aiohttp 4.x requires Python 3.6+")
 
 
 NO_EXTENSIONS = bool(os.environ.get('AIOHTTP_NO_EXTENSIONS'))  # type: bool
+HERE = pathlib.Path(__file__).parent
+IS_GIT_REPO = (HERE / '.git').exists()
+
 
 if sys.implementation.name != "cpython":
     NO_EXTENSIONS = True
 
 
-here = pathlib.Path(__file__).parent
-
-if (here / '.git').exists() and not (here / 'vendor/http-parser/README.md').exists():
+if (IS_GIT_REPO and
+        not (HERE / 'vendor/http-parser/README.md').exists()):
     print("Install submodules when building from git clone", file=sys.stderr)
     print("Hint:", file=sys.stderr)
     print("  git submodule update --init", file=sys.stderr)
@@ -43,7 +44,7 @@ extensions = [Extension('aiohttp._websocket', ['aiohttp/_websocket.c']),
                         ['aiohttp/_http_writer.c'])]
 
 
-txt = (here / 'aiohttp' / '__init__.py').read_text('utf-8')
+txt = (HERE / 'aiohttp' / '__init__.py').read_text('utf-8')
 try:
     version = re.findall(r"^__version__ = '([^']+)'\r?$",
                          txt, re.M)[0]
@@ -53,7 +54,7 @@ except IndexError:
 install_requires = [
     'attrs>=17.3.0',
     'chardet>=2.0,<4.0',
-    'multidict>=4.0,<5.0',
+    'multidict>=4.5,<5.0',
     'async_timeout>=3.0,<4.0',
     'yarl>=1.0,<2.0',
     'idna-ssl>=1.0; python_version<"3.7"',
@@ -62,7 +63,7 @@ install_requires = [
 
 
 def read(f):
-    return (here / f).read_text('utf-8').strip()
+    return (HERE / f).read_text('utf-8').strip()
 
 
 args = dict(
@@ -76,9 +77,9 @@ args = dict(
         'Intended Audience :: Developers',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Development Status :: 5 - Production/Stable',
         'Operating System :: POSIX',
         'Operating System :: MacOS :: MacOS X',
@@ -105,11 +106,11 @@ args = dict(
     },
     license='Apache 2',
     packages=['aiohttp'],
-    python_requires='>=3.5.3',
+    python_requires='>=3.6',
     install_requires=install_requires,
     extras_require={
         'speedups': [
-            'aiodns',
+            'aiodns>=1.1',
             'Brotli',
             'cchardet',
         ],
@@ -121,8 +122,7 @@ if not NO_EXTENSIONS:
     print("**********************")
     print("* Accellerated build *")
     print("**********************")
-    setup(ext_modules=extensions,
-          **args)
+    setup(ext_modules=extensions, **args)
 else:
     print("*********************")
     print("* Pure Python build *")

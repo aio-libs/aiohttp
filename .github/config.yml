@@ -1,6 +1,6 @@
 chronographer:
   exclude:
     bots:
-    - dependabot
+    - dependabot-preview
     humans:
     - pyup-bot

@@ -224,8 +224,7 @@ class TestProxy(unittest.TestCase):
 
         seq = 0
 
-        @asyncio.coroutine
-        def create_connection(*args, **kwargs):
+        async def create_connection(*args, **kwargs):
             nonlocal seq
             seq += 1
 
@@ -275,8 +274,7 @@ class TestProxy(unittest.TestCase):
 
         seq = 0
 
-        @asyncio.coroutine
-        def create_connection(*args, **kwargs):
+        async def create_connection(*args, **kwargs):
             nonlocal seq
             seq += 1
 

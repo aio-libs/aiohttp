@@ -9,11 +9,10 @@ sudo: required
 language: python
 
 python:
-- 3.5
-- 3.6
-- &mainstream_python 3.7
+- &py36 3.6
+- &py37 3.7
 - nightly
-- &pypy3 pypy3.5-6.0.0
+- &pypy3 pypy3
 
 install:
 - &upgrade_python_toolset pip install --upgrade pip wheel setuptools
@@ -26,11 +25,21 @@ script:
 after_success:
  - codecov
 
+env:
+  global:
+    # Needed for macOS:
+    GIT_INSTALLER_DIR_PATH: ${HOME}/.git-installers
+    # Needed for macOS:
+    GIT_VERSION: 2.20.1
+    PYENV_ROOT: ${HOME}/.pyenv
+    # Needed for macOS:
+    PYTHON_INSTALLER_DIR_PATH: ${HOME}/.python-installers
+
 _helpers:
 - &_mainstream_python_base
-  python: *mainstream_python
+  python: *py37
 - &_reset_steps
-  env: []
+  env: {}
   before_install: skip
   install: skip
   script: skip
@@ -57,11 +66,15 @@ _helpers:
   os: osx
   language: generic
   python: *pypy3
-  env:
-  - &env_pypy3 PYTHON_VERSION=pypy3.6-7.1.1
-  - &env_pyenv PYENV_ROOT="$HOME/.pyenv"
-  - &env_path PATH="$PYENV_ROOT/bin:$PATH"
-  before_install:
+  env: &env_pyenv_base
+    PYTHON_VERSION: *pypy3
+    PATH: ${PYENV_ROOT}/bin:${PATH}
+  env: &env_osx_base
+    <<: *env_pyenv_base
+    PYTHON_VERSION: *pypy3
+    MACOSX_DEPLOYMENT_TARGET: 10.6
+    PYTHON_CONFIGURE_OPTS: "'--enable-universalsdk=/ --with-universal-archs=intel'"
+  before_install: &install-from-pyenv
   - brew update
   - brew install pyenv || brew upgrade pyenv
   - &ensure_pyenv_preloaded |
@@ -70,8 +83,80 @@ _helpers:
   - &install_python pyenv install --skip-existing --keep --verbose "$PYTHON_VERSION"
   - &switch_python pyenv shell "$PYTHON_VERSION"
   - &python_version python --version
+  before_install: &install-from-python_org
+  - |
+    function probe_url() {
+      local py_ver="$1"
+      [ $(curl -I --write-out '%{http_code}' --silent --output /dev/null "https://www.python.org/ftp/python/${py_ver}/python-${py_ver}-macosx10.6.pkg") == '200' ] && return 0
+      return 1
+    }
+  - |
+    function find_last_macos_py() {
+    for py_ver in $*
+    do
+      >&2 echo Probing $py_ver
+      probe_url $py_ver && >&2 echo "Found pkg: ${py_ver}" && echo $py_ver && return 0
+    done
+    >&2 echo Failed looking up macOS pkg for $*
+    return 1
+    }
+  - export GIT_DMG_NAME="git-${GIT_VERSION}-intel-universal-mavericks.dmg"
+  - export GIT_PKG_NAME="git-${GIT_VERSION}-intel-universal-mavericks.pkg"
+  - export GIT_DMG_PATH="${GIT_INSTALLER_DIR_PATH}/${GIT_DMG_NAME}"
+  - >
+    stat "${GIT_DMG_PATH}" &>/dev/null || wget -O "${GIT_DMG_PATH}" "https://sourceforge.net/projects/git-osx-installer/files/${GIT_DMG_NAME}/download?use_mirror=autoselect"
+  - stat "${GIT_DMG_PATH}" >/dev/null
+  - sudo hdiutil attach ${GIT_DMG_PATH}
+  - hdiutil info
+  - >
+    export GIT_INSTALLER_VOLUME=$(hdiutil info | tail -n1 | sed 's#^.*\(/Volumes.*\)#\1#')
+  - >
+    export GIT_INSTALLER_PATH="${GIT_INSTALLER_VOLUME}/${GIT_PKG_NAME}"
+  - ls -alh "${GIT_INSTALLER_VOLUME}"
+  - sudo installer -verboseR -dumplog -pkg "${GIT_INSTALLER_PATH}" -target /
+  - sudo hdiutil detach "${GIT_INSTALLER_VOLUME}"
+  - export PYTHON_VERSION_LONG_SUGGESTIONS=$(git ls-remote --sort -v:refname --tags git://github.com/python/cpython.git "${PYTHON_VERSION}*" "v${PYTHON_VERSION}*" | grep -v '\^{}$' | awk '{print$2}' | sed 's#^refs/tags/##;s#^v##' | grep -v '[abcepr]')
+  - export PYTHON_VERSION_LONG=$(find_last_macos_py $PYTHON_VERSION_LONG_SUGGESTIONS)
+  - export PYTHON_VERSION_SHORT=$(echo ${PYTHON_VERSION_LONG} | awk -F. '{print$1"."$2}')
+  - echo "Selected version vars are:"
+  - echo "PYTHON_VERSION=${PYTHON_VERSION}"
+  - echo "PYTHON_VERSION_SHORT=${PYTHON_VERSION_SHORT}"
+  - echo "PYTHON_VERSION_LONG=${PYTHON_VERSION_LONG}"
+  - export PYTHON_INSTALL_PATH="/Library/Frameworks/Python.framework/Versions/${PYTHON_VERSION_SHORT}"
+  - export PYTHON_INSTALL_EXE="${PYTHON_INSTALL_PATH}/bin/python${PYTHON_VERSION_SHORT}"
+  - export PATH="${PYTHON_INSTALL_PATH}/bin:${PATH}"
+  - export PYTHON_VENV_PATH="${HOME}/virtualenv/python${PYTHON_VERSION_SHORT}"
+  - export PYTHON_INSTALLER_PATH="${PYTHON_INSTALLER_DIR_PATH}/python-${PYTHON_VERSION_LONG}.pkg"
+  - echo "PYTHON_INSTALLER_PATH=${PYTHON_INSTALLER_PATH}"
+  - env
+  - >
+    stat "${PYTHON_INSTALLER_PATH}" &>/dev/null || wget -O "${PYTHON_INSTALLER_PATH}" "https://www.python.org/ftp/python/${PYTHON_VERSION_LONG}/python-${PYTHON_VERSION_LONG}-macosx10.6.pkg"
+  - stat "${PYTHON_INSTALLER_PATH}" >/dev/null
+  - sudo installer -verboseR -dumplog -pkg "${PYTHON_INSTALLER_PATH}" -target /
+  - ls "${PYTHON_INSTALL_PATH}/bin"
+  - ls -lh "${PYTHON_INSTALL_EXE}"
+  - stat "${PYTHON_INSTALL_EXE}"
+  - /Applications/Python\ ${PYTHON_VERSION_SHORT}/Install\ Certificates.command || echo "No need to fix certificates"
+  - curl https://bootstrap.pypa.io/get-pip.py | ${PYTHON_INSTALL_EXE}
+  - >
+    "${PYTHON_INSTALL_EXE}" -m pip install -U pip
+  - >
+    "${PYTHON_INSTALL_EXE}" -m pip install -U virtualenv
+  - >
+    "${PYTHON_INSTALL_EXE}" -m virtualenv "${PYTHON_VENV_PATH}"
+  - . "${PYTHON_VENV_PATH}/bin/activate"
+  - curl https://bootstrap.pypa.io/get-pip.py | python
+  - python -m pip install --upgrade pyOpenSSL
+  - python --version
+  - pip --version
   before_cache:
   - brew --cache
+  cache:
+    pip: true
+    directories:
+    - $HOME/Library/Caches/Homebrew
+    - $PYTHON_INSTALLER_DIR_PATH
+    - $GIT_INSTALLER_DIR_PATH
 - &generic_deploy_base
   stage: &deploy_stage_name deploy (PYPI upload itself runs only for tagged commits)
   <<: *_mainstream_python_base
@@ -85,10 +170,11 @@ _helpers:
     # This happens when other CI (AppVeyor etc.) has already uploaded
     # the very same dist (usually sdist).
     skip-existing: true
-    user: aio-libs-bot
+    user: __token__
     password:
       # Encrypted with `travis encrypt -r aio-libs/aiohttp --api-endpoint 'https://api.travis-ci.com/'`:
-      secure: bWF8GkGmjxfisMx+LqOmZgf9EXPT4yBMhiIbN+rU5gs53PJJyn1r287c5zEijnIHlpQaJVwWJ9ZFl1n34y37P1yvhlz0M6esr5K10B9fJ6nkUoAivtOWARcHLQ3bC+WGC/V9S0v0pZ11qFuSNzJzFZqfRabRw0H8muVWGhuBuYp97EdJWCdSNpXqsj2Ts8ytPMYv+5m3iPgXq833svFbWRjZ+HgX8HwvF2lo+ej+tsFJNACbQmj+eQDGlWQZzP2s4/3grHivd2retpqfW1cYgZaZX68/UB2ghsCtkxhcNpGaM8I/n3udAHkPSqz3MC2FJL0RdkyvQ8UZkcmcisQxz0voQM25995BHGWktwpDh7BxFtGJishXV7hiFz9zVOZLM9u5AzIO4hoN770SsZDewWdhzowXPYT8DXiHVg+roEkszg8FeBmisx1cw34CK9H0iLUSQ9EF2vuz8T4bqEpbT6Fyta90wZTvJ7GpJ4yXJXR6VAvLgiX4zXeFdx/4aViz3UzkDJ06qieRuZJWfQ9u2lDxJfqHEVy5IxM5iACagP1XayJiVIN0uFRxNElxTlCMope6ICCOu9fhcGnF15XNw5YpFPYYvph3JU1vC8cYw7ypg8LQGryp1fNM9SXWaGTiV+J/yvsynFiXX6QiyGOwSBIJ9XjZEfRd8i9HaGHw2cw=
+      secure: >-
+        LC+sJojSdf4KhjHc/loszfAQmUM/VNHJarmC3sY9Dfa3qUS+2bnXxQmLK+lNw6mlAaoTaz7Y4MQDggAH1pBkP5jKjQrUjArjCNSYIubmfjhFqRYGa1xFrBjEJYjYNEfFzjPx+TUX2+qHKaZ8qp7nxFaPHG4JKuUHZQk7F7J/zs3VufWnYmc+QhOGbWFfcWZwpFly46HNrX78/6Plr84Gsz0Hws3K3GHkyXusX9axlByUpe9VZ+nVcANF6PGzqFwipXEWAe31vYO4MnYuZRotQiWVsaHDb9Ki+OyHVJJ02xp4ooofBsYhgZ8axtWKu8639xtTlOagecjKBenhipOQc6OrVWigyYfARVUDY5bBWQlyyOKh5TJkrTScLf5P6MKQ+Pgj3hkzyDELusgxd7Jkb/CN3GraX7U0808x5TiOcm7/3BO+eR3+mP54n6qAyHB+ckOQzWRHMeGPjOy2eIR3VkVcFzJCpIJwtArjWVzO5KFBzPYdxgz2IVBhZRyg66AlQ+GHFp2sI6rZXOqQnJWZOL+RZe/xqircgwUQQm2MGjwW05K5WT2WEwuGkmRnFwSdcKv+PSrmCIyXoy3neo9u9rPbrwBfBIbPj3MmE51edUy2rS/qw7jLUG683RNXcx/LTXAtd7SZgaWVHnvyukBPi5akyGeV0Pd00Th3tkqYBto=
     # Although Travis CI instructs `setup.py` to build source distribution,
     # which is default value for distribution option (`distribution: sdist`),
     # it will also upload all wheels we've previously built in manylinux1
@@ -104,34 +190,34 @@ _helpers:
 - &osx_pypi_deploy_base_1011
   <<: *osx_python_base
   <<: *generic_deploy_base
+  name: &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel
   osx_image: xcode7.3
   script: skip
   after_success: []
+  python: *py37
   env:
-  - &env_os1011_msg Build and deploy to PYPI of OS X 10.11 binary wheel=
-  - &env_py36 PYTHON_VERSION=3.6.3
-  - *env_pyenv
-  - *env_path
+    <<: *env_osx_base
+    PYTHON_VERSION: *py37
   deploy:
     <<: *deploy_step
     skip_cleanup: false
     distributions: bdist_wheel
 - &osx_pypi_deploy_base_1012
   <<: *osx_pypi_deploy_base_1011
+  name: &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel
   osx_image: xcode8.1
+  python: *py37
   env:
-  - &env_os1012_msg Build and deploy to PYPI of OS X 10.12 binary wheel=
-  - *env_py36
-  - *env_pyenv
-  - *env_path
+    <<: *env_osx_base
+    PYTHON_VERSION: *py37
 - &osx_pypi_deploy_base_1010
   <<: *osx_pypi_deploy_base_1011
+  name: &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel
   osx_image: xcode6.4
+  python: *py37
   env:
-  - &env_os1010_msg Build and deploy to PYPI of OS X 10.10 binary wheel=
-  - *env_py36
-  - *env_pyenv
-  - *env_path
+    <<: *env_osx_base
+    PYTHON_VERSION: *py37
 
 os: linux
 
@@ -196,23 +282,20 @@ jobs:
     - LC_ALL=C sort -c CONTRIBUTORS.txt
 
   - <<: *osx_python_base
-    python: 3.5.3
+    python: *py35
     env:
-    - &env_py35 PYTHON_VERSION=3.5.3
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py35
   - <<: *osx_python_base
-    python: *mainstream_python
+    python: *py36
     env:
-    - *env_py36
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py36
   - <<: *osx_python_base
-    python: 3.7
+    python: *py37
     env:
-    - &env_py37 PYTHON_VERSION=3.7.0
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
   # pypy3.5-5.10.0 fails under OS X because it's unsupported
 
   # Build and deploy manylinux1 binary wheels and source distribution
@@ -229,72 +312,48 @@ jobs:
       <<: *deploy_step
 
     # Build and deploy MacOS binary wheels for each OSX+Python combo possible
-    # OS X 10.10, Python 3.5
-  - <<: *osx_pypi_deploy_base_1010
-    python: 3.5
-    env:
-    - *env_os1010_msg
-    - *env_py35
-    - *env_pyenv
-    - *env_path
     # OS X 10.10, Python 3.6
   - <<: *osx_pypi_deploy_base_1010
+    name: *env_os1010_msg
+    python: *py36
     env:
-    - *env_os1010_msg
-    - *env_py36
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py36
     # OS X 10.10, Python 3.7
   - <<: *osx_pypi_deploy_base_1010
+    name: *env_os1010_msg
+    python: *py37
     env:
-    - *env_os1010_msg
-    - *env_py37
-    - *env_pyenv
-    - *env_path
-    # OS X 10.11, Python 3.5
-  - <<: *osx_pypi_deploy_base_1011
-    python: 3.5
-    env:
-    - *env_os1011_msg
-    - *env_py35
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
     # OS X 10.11, Python 3.6
   - <<: *osx_pypi_deploy_base_1011
+    name: *env_os1011_msg
+    python: *py36
     env:
-    - *env_os1011_msg
-    - *env_py36
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py36
     # OS X 10.11, Python 3.7
   - <<: *osx_pypi_deploy_base_1011
+    name: *env_os1011_msg
+    python: *py37
     env:
-    - *env_os1011_msg
-    - *env_py37
-    - *env_pyenv
-    - *env_path
-    # OS X 10.12, Python 3.5
-  - <<: *osx_pypi_deploy_base_1012
-    python: 3.5
-    env:
-    - *env_os1012_msg
-    - *env_py35
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
     # OS X 10.12, Python 3.6
   - <<: *osx_pypi_deploy_base_1012
+    name: *env_os1012_msg
+    python: *py36
     env:
-    - *env_os1012_msg
-    - *env_py36
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py36
     # OS X 10.12, Python 3.7
   - <<: *osx_pypi_deploy_base_1012
+    name: *env_os1012_msg
+    python: *py37
     env:
-    - *env_os1012_msg
-    - *env_py37
-    - *env_pyenv
-    - *env_path
+      <<: *env_osx_base
+      PYTHON_VERSION: *py37
 
 stages:
 - *doc_stage_name
